@@ -1,6 +1,6 @@
 # Colabseg
 
-Colabseg is a Python-based tool for interactive processing, analysis, and parametrization of membrane segmentation.
+Colabseg is a Python-based tool for interactive processing, analysis, and parametrization of membrane segmentations.
 
 ## Installation
 
