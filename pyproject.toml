@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "colabseg"
+authors = [
+  { name = "Valentin Maurer", email = "valentin.maurer@embl-hamburg.de" },
+]
+version = "1.0.0"
+description = "Colabseg"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.22.2,<2.0",
+    "scipy>=1.10.0",
+    "vtk>=9.3.1",
+    "PyQt6>=6.7.1",
+    "pyqtgraph>=0.13.3",
+    "pytme>=0.2.5",
+    "open3d>=0.18.0",
+    "libigl==2.4.1"
+]
+license = {text = "Proprietary"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[project.gui-scripts]
+colabseg = "colabseg.scripts.app:main"
+
+[project.urls]
+"Homepage" = "https://github.com/KosinskiLab/colabseg"
+
+[tool.setuptools]
+include-package-data = true
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["colabseg*"]
+
+[tool.setuptools.package-data]
+"colabseg.data" = ["*.png"]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+]
+
+[tool.coverage.run]
+omit = [
+    "tests/*"
+]
