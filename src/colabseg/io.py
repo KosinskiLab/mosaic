@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
 
 from tme import Density, Orientations
-from tme.matching_utils import rotation_aligning_vectors, euler_to_rotationmatrix
+from tme.matching_utils import rotation_aligning_vectors
 
 
 class DataIO:
@@ -32,8 +32,6 @@ class DataIO:
 
 def _load_volume(filename: str):
     volume = Density.from_file(filename)
-    # volume.data = np.swapaxes(volume.data, 0, 2)
-    # volume.sampling_rate = volume.sampling_rate[::-1]
 
     points = np.where(volume.data > 0)
     points_cluster = volume.data[points]

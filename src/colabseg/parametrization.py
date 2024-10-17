@@ -13,7 +13,7 @@ import open3d as o3d
 from scipy.spatial import ConvexHull
 from scipy import optimize, interpolate
 
-from .mesh_repair import triangulate_refine_fair, com_cluster_points
+from .trimesh import triangulate_refine_fair, com_cluster_points
 
 
 def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.ndarray:
@@ -119,8 +119,6 @@ class TriangularMesh(Parametrization):
         mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
             pcd, o3d.utility.DoubleVector([5 * voxel_size])
         )
-        # print("Writing out initial mesh")
-        # o3d.io.write_triangle_mesh("initial_mesh.obj", mesh)
 
         # Remove noisy small meshes
         clusters, cluster_n, _ = mesh.cluster_connected_triangles()
@@ -145,6 +143,7 @@ class TriangularMesh(Parametrization):
         mesh = o3d.geometry.TriangleMesh()
         mesh.vertices = o3d.utility.Vector3dVector(new_vs)
         mesh.triangles = o3d.utility.Vector3iVector(new_fs)
+        mesh = mesh.remove_degenerate_triangles()
         mesh = mesh.filter_smooth_taubin(number_of_iterations=100)
 
         return cls(mesh=mesh)

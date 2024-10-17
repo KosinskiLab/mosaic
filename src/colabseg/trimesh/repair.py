@@ -1,17 +1,14 @@
-# This code was copied from https://github.com/kentechx/hole-filling
-
-import numpy as np
-import igl  # need version 2.4.0
-import scipy
-import scipy.sparse
-import scipy.sparse.linalg
-from scipy.spatial.distance import cdist
 from typing import Tuple
+
+import igl
+import numpy as np
+import scipy.sparse
+from scipy.spatial.distance import cdist
 
 _epsilon = 1e-16
 
 
-def close_hole(vs: np.ndarray, fs: np.ndarray, hole_vids, fast=True) -> np.ndarray:
+def _close_hole(vs: np.ndarray, fs: np.ndarray, hole_vids, fast=True) -> np.ndarray:
     """
     :param hole_vids: the vid sequence
     :return:
@@ -97,7 +94,7 @@ def close_hole(vs: np.ndarray, fs: np.ndarray, hole_vids, fast=True) -> np.ndarr
     return out_fs
 
 
-def close_holes(
+def __close_holes(
     vs: np.ndarray, fs: np.ndarray, hole_len_thr: float = 10000.0, fast=True
 ) -> np.ndarray:
     """
@@ -112,7 +109,7 @@ def close_holes(
         for b in igl.all_boundary_loop(out_fs):
             hole_edge_len = np.linalg.norm(vs[np.roll(b, -1)] - vs[b], axis=1).sum()
             if len(b) >= 3 and hole_edge_len <= hole_len_thr:
-                out_fs = close_hole(vs, out_fs, b, fast)
+                out_fs = _close_hole(vs, out_fs, b, fast)
                 updated = True
 
         if not updated:
@@ -124,6 +121,8 @@ def close_holes(
 def get_mollified_edge_length(
     vs: np.ndarray, fs: np.ndarray, mollify_factor=1e-5
 ) -> np.ndarray:
+    # This code was copied from https://github.com/kentechx/hole-filling
+
     lin = igl.edge_lengths(vs, fs)
     if mollify_factor == 0:
         return lin
@@ -136,10 +135,11 @@ def get_mollified_edge_length(
     return lin
 
 
-def mesh_fair_laplacian_energy(
+def _mesh_fair_laplacian_energy(
     vs: np.ndarray, fs: np.ndarray, vids: np.ndarray, alpha=0.05, k=2
 ):
-    L, M = robust_laplacian(vs, fs)
+    # This code was copied from https://github.com/kentechx/hole-filling
+    L, M = _robust_laplacian(vs, fs)
     Q = igl.harmonic_weights_integrated_from_laplacian_and_mass(L, M, k)
 
     a = np.full(len(vs), 0.0)  # alpha
@@ -149,10 +149,12 @@ def mesh_fair_laplacian_energy(
     return np.ascontiguousarray(out_vs)
 
 
-def robust_laplacian(
+def _robust_laplacian(
     vs, fs, mollify_factor=1e-5
 ) -> Tuple[scipy.sparse.csc_matrix, scipy.sparse.csc_matrix]:
     """
+    # This code was copied from https://github.com/kentechx/hole-filling
+
     Get a laplcian with iDT (intrinsic Delaunay triangulation) and intrinsic mollification.
     Ref https://www.cs.cmu.edu/~kmcrane/Projects/NonmanifoldLaplace/NonmanifoldLaplace.pdf
     :param mollify_factor: the mollification factor.
@@ -164,10 +166,12 @@ def robust_laplacian(
     return L, M
 
 
-def triangulation_refine_leipa(
+def _triangulation_refine_leipa(
     vs: np.ndarray, fs: np.ndarray, fids: np.ndarray, density_factor: float = np.sqrt(2)
 ):
     """
+    # This code was copied from https://github.com/kentechx/hole-filling
+
     Refine the triangles using barycentric subdivision and Delaunay triangulation.
     You should remove unreferenced vertices before the refinement.
     See "Filling holes in meshes." [Liepa 2003].
@@ -261,52 +265,23 @@ def triangulate_refine_fair(
     vs,
     fs,
     hole_len_thr=10000,
-    close_hole_fast=True,
+    _close_hole_fast=True,
     density_factor=np.sqrt(2),
     fair_alpha=0.05,
 ):
+    # This code was copied from https://github.com/kentechx/hole-filling
+
     # fill
-    out_fs = close_holes(vs, fs, hole_len_thr, close_hole_fast)
+    out_fs = __close_holes(vs, fs, hole_len_thr, _close_hole_fast)
     add_fids = np.arange(len(fs), len(out_fs))
 
     # refine
     nv = len(vs)
-    out_vs, out_fs, FI = triangulation_refine_leipa(
+    out_vs, out_fs, FI = _triangulation_refine_leipa(
         vs, out_fs, add_fids, density_factor
     )
     add_vids = np.arange(nv, len(out_vs))
 
     # fairing
-    out_vs = mesh_fair_laplacian_energy(out_vs, out_fs, add_vids, fair_alpha)
+    out_vs = _mesh_fair_laplacian_energy(out_vs, out_fs, add_vids, fair_alpha)
     return out_vs, out_fs
-
-
-# This code no longer belongs to the github repository mentione above
-def com_cluster_points(postions, cutoff):
-    """com clustering of points
-    Poor mans clustering code
-    """
-    com_list = []
-    tag = np.zeros(len(postions))
-    acc = False
-    while acc is False:
-        if len(np.where(tag == 0)[0]) == 0:
-            acc = True
-            break
-        randint = np.random.randint(0, len(np.where(tag == 0)[0]))
-        randint = np.where(tag == 0)[0][randint]
-
-        if tag[randint] != 0:
-            continue
-        # limit search if mesh or point cloud is large
-        # slower but less memory intensive
-        dist_arr = cdist([postions[randint]], postions)
-        indices = np.where(dist_arr[0] < cutoff)[0]
-        pos_cluster = postions[dist_arr[0] < cutoff]
-        center = np.average(pos_cluster, axis=0)
-        for index in indices:
-            tag[index] = 1
-        com_list.append(center)
-
-    com_list = np.asarray(com_list)
-    return com_list

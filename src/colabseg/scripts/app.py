@@ -17,7 +17,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QGuiApplication, QIcon
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-from colabseg import ColabsegData
+from colabseg import ColabsegData, VolumeViewer
 from colabseg.widgets import BoundingBoxWidget, KeybindsDialog
 from colabseg.tabs import ClusterSelectionTab, ParametrizationTab, DevTab, AnalysisTab
 
@@ -43,21 +43,24 @@ class App(QMainWindow):
         layout = QVBoxLayout(frame)
         splitter = QSplitter(Qt.Orientation.Vertical)
 
-        self.vtk_widget = QVTKRenderWindowInteractor(frame)
-        self.tab_widget = QTabWidget()
-        self.tab_widget.resize(1000, 200)
-        self.cdata = ColabsegData(self.vtk_widget)
-
-        splitter.addWidget(self.tab_widget)
-        splitter.addWidget(self.vtk_widget)
-        splitter.setSizes([250, 1200])
-        layout.addWidget(splitter)
-
         # Render Block
+        self.vtk_widget = QVTKRenderWindowInteractor(frame)
         self.renderer = vtk.vtkRenderer()
         self.renderer.SetBackground(0.1, 0.1, 0.1)
         self.renderer_next_background = (1.0, 1.0, 1.0)
         self.vtk_widget.GetRenderWindow().AddRenderer(self.renderer)
+
+        self.tab_widget = QTabWidget()
+        self.tab_widget.resize(1000, 200)
+        self.cdata = ColabsegData(self.vtk_widget)
+
+        self.volume_viewer = VolumeViewer(self.vtk_widget)
+
+        splitter.addWidget(self.tab_widget)
+        splitter.addWidget(self.vtk_widget)
+        splitter.addWidget(self.volume_viewer)
+        splitter.setSizes([250, 1200, 50])
+        layout.addWidget(splitter)
 
         # Setup GUI interactions
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
@@ -162,6 +165,8 @@ class App(QMainWindow):
             self.cdata.models.rendered_actors.clear()
             self.cdata.data.render()
             self.cdata.models.render()
+
+            self.renderer.AddViewProp(self.volume_viewer.slice)
             self.set_camera_view("z")
 
         except ValueError as e:
