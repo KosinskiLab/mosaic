@@ -21,7 +21,6 @@ class ParametrizationManager:
         self.fits[fit_id] = parametrization
         self.original_points[fit_id] = points
 
-        # Create mesh actor
         mesh = self.create_mesh_from_parametrization(parametrization)
         actor = vtk.vtkActor()
         actor.SetMapper(vtk.vtkPolyDataMapper())
@@ -45,24 +44,19 @@ class ParametrizationManager:
     def create_mesh_from_parametrization(
         self, parametrization: Parametrization
     ) -> vtk.vtkPolyData:
-        # Sample points from the parametrization
-        points = parametrization.sample(1000)  # Adjust the number of samples as needed
+        points = parametrization.sample(1000)
 
-        # Create a vtkPoints object and add the sampled points
         vtk_points = vtk.vtkPoints()
         for point in points:
             vtk_points.InsertNextPoint(point)
 
-        # Create a vtkPolyData object
         poly_data = vtk.vtkPolyData()
         poly_data.SetPoints(vtk_points)
 
-        # Use vtkDelaunay3D to create a mesh from the points
         delaunay = vtk.vtkDelaunay3D()
         delaunay.SetInputData(poly_data)
         delaunay.Update()
 
-        # Extract the surface of the 3D Delaunay triangulation
         surface_filter = vtk.vtkGeometryFilter()
         surface_filter.SetInputConnection(delaunay.GetOutputPort())
         surface_filter.Update()
