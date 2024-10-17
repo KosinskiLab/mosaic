@@ -3,6 +3,8 @@ from typing import Tuple
 import vtk
 
 
+
+
 class PointCloud:
     def __init__(self, points=None, color=(0.7, 0.7, 0.7), sampling_rate=None, meta={}):
         self._points = vtk.vtkPoints()
@@ -40,6 +42,7 @@ class PointCloud:
         self._actor.GetProperty().SetOpacity(opacity)
 
     def create_actor(self):
+        # Could also be replace dwith mesh
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(self._data)
 
@@ -93,3 +96,19 @@ class PointCloud:
         self._data.Modified()
 
         self.set_color()
+
+
+    def create_mesh(self) -> vtk.vtkPolyData:
+        delaunay = vtk.vtkDelaunay3D()
+        delaunay.SetInputData(self._data)
+        delaunay.Update()
+
+        surface_filter = vtk.vtkGeometryFilter()
+        surface_filter.SetInputConnection(delaunay.GetOutputPort())
+        surface_filter.Update()
+
+        mesh = surface_filter.GetOutput()
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(vtk.vtkPolyDataMapper())
+        actor.GetMapper().SetInputData(mesh)
