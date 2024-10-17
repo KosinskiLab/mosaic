@@ -18,8 +18,14 @@ from PyQt6.QtGui import QAction, QGuiApplication, QIcon
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from colabseg import ColabsegData, VolumeViewer
-from colabseg.widgets import BoundingBoxWidget, KeybindsDialog
-from colabseg.tabs import ClusterSelectionTab, ParametrizationTab, DevTab, AnalysisTab
+from colabseg.gui import (
+    ClusterSelectionTab,
+    ParametrizationTab,
+    DevTab,
+    AnalysisTab,
+    BoundingBoxWidget,
+    KeybindsDialog,
+)
 
 
 class App(QMainWindow):

@@ -51,7 +51,6 @@ def remesh_iter(mesh, min_length=1.0, max_length=np.sqrt(3), max_iterations=10):
             collapseflag=True,
         )
 
-
         split_length = max_edge - scale * (max_edge - max_length)
         merge_length = min_edge + scale * (min_length - min_edge)
 
@@ -70,7 +69,6 @@ def remesh_iter(mesh, min_length=1.0, max_length=np.sqrt(3), max_iterations=10):
         ms.meshing_remove_duplicate_vertices()
         ms.meshing_remove_unreferenced_vertices()
         ms.meshing_remove_null_faces()
-
 
         ms.meshing_surface_subdivision_ls3_loop(
             loopweight="Enhance regularity",
@@ -91,7 +89,6 @@ def remesh_iter(mesh, min_length=1.0, max_length=np.sqrt(3), max_iterations=10):
         #     targetlen=pymeshlab.PureValue(min_length), iterations=10
         # )
 
-
         print(
             f"{i+1} Min edge: {min_edge:.4f}, Max edge: {max_edge:.4f}, Avg edge: {avg_edge:.4f}"
         )
@@ -101,7 +98,6 @@ def remesh_iter(mesh, min_length=1.0, max_length=np.sqrt(3), max_iterations=10):
             break
 
     print(split_length)
-
 
     remeshed = ms.current_mesh()
     ret = o3d.geometry.TriangleMesh()

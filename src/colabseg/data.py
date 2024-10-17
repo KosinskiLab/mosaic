@@ -16,7 +16,7 @@ from .utils import (
 )
 from .point_cloud import PointCloud
 from .parametrization import PARAMETRIZATION_TYPE
-from .selection import DataContainerInteractor
+from .interactor import DataContainerInteractor
 
 AVAILABLE_PARAMETRIZATIONS = PARAMETRIZATION_TYPE
 rbf = PARAMETRIZATION_TYPE.pop("rbf")

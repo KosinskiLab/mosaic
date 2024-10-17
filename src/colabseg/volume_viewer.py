@@ -18,6 +18,7 @@ from tme import Density
 
 _colormaps = ["gray", "gray_r", "viridis", "magma", "twilight_shifted"]
 
+
 class VolumeViewer(QWidget):
     data_changed = pyqtSignal()
 
@@ -129,7 +130,7 @@ class VolumeViewer(QWidget):
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getOpenFileName(self, "Open Tomogram")
         if file_path is None:
-            return - 1
+            return -1
 
         try:
             self.load_volume(file_path)
@@ -143,10 +144,10 @@ class VolumeViewer(QWidget):
         self.volume = None
         self.renderer.RemoveViewProp(self.slice)
 
-        self.change_widget_state(is_enabled = False)
+        self.change_widget_state(is_enabled=False)
         self.vtk_widget.GetRenderWindow().Render()
 
-    def change_widget_state(self, is_enabled : bool = False):
+    def change_widget_state(self, is_enabled: bool = False):
         for widget in self.editable_widgets:
             widget.setEnabled(is_enabled)
 
@@ -177,7 +178,7 @@ class VolumeViewer(QWidget):
         self.slice_slider.setRange(0, dimensions[0] - 1)
         self.slice_slider.setValue(0)
 
-        self.change_widget_state(is_enabled = True)
+        self.change_widget_state(is_enabled=True)
 
         self.renderer.ResetCamera()
         self.vtk_widget.GetRenderWindow().Render()
