@@ -8,7 +8,7 @@ To install colabseg within a virtual environment
 
 ```
 python3 -m venv colabseg
-source pytme/bin/colabseg
+source colabseg/bin/colabseg
 pip install git+https://github.com/maurerv/colabseg
 ```
 
