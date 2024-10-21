@@ -1,4 +1,3 @@
-import numpy as np
 from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -33,6 +32,7 @@ class ParametrizationTab(QWidget):
         self.setup_cluster_list(main_layout)
         self.setup_operations(main_layout)
         self.setup_fit_list(main_layout)
+        # self.setup_equilibration_frame(main_layout)
         main_layout.addStretch()
 
     def setup_cluster_list(self, main_layout):
@@ -85,7 +85,7 @@ class ParametrizationTab(QWidget):
         grid_layout.addWidget(self.param_type_selector, 0, 1)
 
         # Crop row
-        crop_button = QPushButton("Crop Fit Around Cluster")
+        crop_button = QPushButton("Crop Around Cluster")
         crop_button.clicked.connect(self.crop_fit)
         self.crop_input = QLineEdit()
         self.crop_input.setPlaceholderText("Distance")
@@ -93,7 +93,7 @@ class ParametrizationTab(QWidget):
         grid_layout.addWidget(self.crop_input, 1, 1)
 
         # Export row
-        export_button = QPushButton("Export Fit")
+        export_button = QPushButton("Export")
         export_button.clicked.connect(self.export_fit)
         self.export_format = QComboBox()
         self.export_format.addItems(["txt", "star (relion 4)", "star (relion 5)"])
@@ -131,6 +131,27 @@ class ParametrizationTab(QWidget):
 
         operations_layout.addWidget(frame)
 
+    def setup_equilibration_frame(self, operations_layout):
+        frame = QFrame()
+        frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        frame_layout = QGridLayout(frame)
+
+        frame.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        frame.setMaximumWidth(150)
+
+        button = QPushButton("Equilibrate Edge Length")
+
+        self.lower_edge_length = QLineEdit()
+        self.lower_edge_length.setPlaceholderText("Lower Bound")
+        self.upper_edge_length = QLineEdit()
+        self.upper_edge_length.setPlaceholderText("Upper Bound")
+
+        frame_layout.addWidget(self.lower_edge_length, 0, 1)
+        frame_layout.addWidget(self.upper_edge_length, 0, 2)
+        frame_layout.addWidget(button, 1, 1, 1, 2)
+
+        operations_layout.addWidget(frame)
+
     def add_fit(self):
         self.cdata.add_fit(
             fit_type=self.param_type_selector.currentText(),
@@ -158,12 +179,6 @@ class ParametrizationTab(QWidget):
 
         return self.cdata.models.crop_cluster(distance=distance)
 
-    def add_cloud(self):
-        num_points = 1000
-        points = np.random.rand(num_points, 3) * 100
-        self.cdata._data.add(points=points)
-        self.cdata.data.render()
-
     def export_fit(self):
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getSaveFileName(self, "Save File")
@@ -171,3 +186,10 @@ class ParametrizationTab(QWidget):
         return self.cdata.export_fit(
             file_path=file_path, file_format=self.export_format.currentText()
         )
+
+    def equilibrate_fit(self):
+        try:
+            lower_bound = float(self.lower_edge_length.currentText())
+            upper_bound = float(self.upper_edge_length.currentText())
+        except Exception:
+            return -1

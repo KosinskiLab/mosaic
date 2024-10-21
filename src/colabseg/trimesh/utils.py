@@ -1,8 +1,13 @@
+import h5py
+import textwrap
+from subprocess import run
+from tempfile import NamedTemporaryFile
+
 import numpy as np
 import open3d as o3d
 from scipy.spatial.distance import cdist, pdist
 
-
+import subprocess
 def compute_edge_lengths(mesh):
     vertices = np.asarray(mesh.vertices)
     faces = np.asarray(mesh.triangles)
@@ -12,120 +17,17 @@ def compute_edge_lengths(mesh):
     return distances.ravel()
 
 
-def remesh_iter(mesh, min_length=1.0, max_length=np.sqrt(3), max_iterations=10):
-    vertices = np.asarray(mesh.vertices)
-    triangles = np.asarray(mesh.triangles)
-    ms = pymeshlab.MeshSet()
-    ms.add_mesh(pymeshlab.Mesh(vertices, triangles))
-
-    ms.meshing_repair_non_manifold_edges()
-    ms.meshing_repair_non_manifold_vertices()
-    ms.apply_coord_developability_of_mesh()
-    # ms.meshing_isotropic_explicit_remeshing(
-    #     targetlen=pymeshlab.PureValue(min_length), iterations=10, adaptive=True
-    # )
-
-    remeshed = ms.current_mesh()
-    ret = o3d.geometry.TriangleMesh()
-    ret.vertices = o3d.utility.Vector3dVector(remeshed.vertex_matrix())
-    ret.triangles = o3d.utility.Vector3iVector(remeshed.face_matrix())
-    edge_lengths = compute_edge_lengths(ret)
-    min_edge = np.min(edge_lengths)
-    max_edge = np.max(edge_lengths)
-    avg_edge = np.mean(edge_lengths)
-
-    print(
-        f"{0} Min edge: {min_edge:.4f}, Max edge: {max_edge:.4f}, Avg edge: {avg_edge:.4f}"
-    )
-
-    for i in range(max_iterations):
-        scale = np.sin((((i + 1) / max_iterations) * np.pi) / 2)
-        ms.meshing_isotropic_explicit_remeshing(
-            targetlen=pymeshlab.PureValue(13),
-            iterations=20,
-            adaptive=True,
-            swapflag=True,
-            splitflag=True,
-            reprojectflag=False,
-            collapseflag=True,
-        )
-
-        split_length = max_edge - scale * (max_edge - max_length)
-        merge_length = min_edge + scale * (min_length - min_edge)
-
-        # ms.meshing_surface_subdivision_ls3_loop(
-        #     # loopweight="Loop",
-        #     loopweight="Enhance regularity",
-        #     threshold=pymeshlab.PureValue(split_length),
-        # )
-
-        ms.meshing_merge_close_vertices(threshold=pymeshlab.PureValue(merge_length))
-
-        ms.meshing_repair_non_manifold_edges()
-        ms.meshing_repair_non_manifold_vertices()
-
-        ms.meshing_remove_duplicate_faces()
-        ms.meshing_remove_duplicate_vertices()
-        ms.meshing_remove_unreferenced_vertices()
-        ms.meshing_remove_null_faces()
-
-        ms.meshing_surface_subdivision_ls3_loop(
-            loopweight="Enhance regularity",
-            threshold=pymeshlab.PureValue(split_length),
-        )
-
-        remeshed = ms.current_mesh()
-        ret = o3d.geometry.TriangleMesh()
-        ret.vertices = o3d.utility.Vector3dVector(remeshed.vertex_matrix())
-        ret.triangles = o3d.utility.Vector3iVector(remeshed.face_matrix())
-
-        edge_lengths = compute_edge_lengths(ret)
-        min_edge = np.min(edge_lengths)
-        max_edge = np.max(edge_lengths)
-        avg_edge = np.mean(edge_lengths)
-
-        # ms.meshing_isotropic_explicit_remeshing(
-        #     targetlen=pymeshlab.PureValue(min_length), iterations=10
-        # )
-
-        print(
-            f"{i+1} Min edge: {min_edge:.4f}, Max edge: {max_edge:.4f}, Avg edge: {avg_edge:.4f}"
-        )
-
-        if min_edge >= min_length and max_edge <= max_length:
-            print("Desired edge length distribution achieved.")
-            break
-
-    print(split_length)
-
-    remeshed = ms.current_mesh()
-    ret = o3d.geometry.TriangleMesh()
-    ret.vertices = o3d.utility.Vector3dVector(remeshed.vertex_matrix())
-    ret.triangles = o3d.utility.Vector3iVector(remeshed.face_matrix())
-
-    edge_lengths = compute_edge_lengths(ret)
-    min_edge = np.min(edge_lengths)
-    max_edge = np.max(edge_lengths)
-    avg_edge = np.mean(edge_lengths)
-
-    print(
-        f"{i+1} Min edge: {min_edge:.4f}, Max edge: {max_edge:.4f}, Avg edge: {avg_edge:.4f}"
-    )
-
-    return ret
-
-
 def remesh(mesh, target_edge_length, n_iter=100, featuredeg=10, **kwargs):
-    import pymeshlab
+    from pymeshlab import MeshSet, Mesh, PureValue
 
     vertices = np.asarray(mesh.vertices)
     triangles = np.asarray(mesh.triangles)
 
-    ms = pymeshlab.MeshSet()
-    ms.add_mesh(pymeshlab.Mesh(vertices, triangles))
+    ms = MeshSet()
+    ms.add_mesh(Mesh(vertices, triangles))
 
     ms.meshing_isotropic_explicit_remeshing(
-        targetlen=pymeshlab.PureValue(target_edge_length),
+        targetlen=PureValue(target_edge_length),
         iterations=n_iter,
         featuredeg=featuredeg,
         **kwargs,
@@ -137,24 +39,93 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=10, **kwargs):
     ret.triangles = o3d.utility.Vector3iVector(remeshed.face_matrix())
     return ret
 
+def equilibrate_edges(mesh, lower_bound, upper_bound, steps = 2000):
+    if lower_bound > upper_bound:
+        raise ValueError("upper_bound needs to be larger than lower_bound.")
 
-def merge_vertices(mesh, target_edge_length, **kwargs):
-    import pymeshlab
+    with NamedTemporaryFile(suffix='.stl', delete=False) as tfile:
+        temp_mesh = tfile.name
 
-    vertices = np.asarray(mesh.vertices)
-    triangles = np.asarray(mesh.triangles)
+    if not mesh.has_triangle_normals():
+        mesh = mesh.compute_vertex_normals()
 
-    ms = pymeshlab.MeshSet()
-    ms.add_mesh(pymeshlab.Mesh(vertices, triangles))
+    o3d.io.write_triangle_mesh(temp_mesh, mesh)
 
-    ms.meshing_merge_close_vertices(threshold=pymeshlab.PureValue(target_edge_length))
+    config = textwrap.dedent(f"""
+        [GENERAL]
+        algorithm = minimize
+        info = 100
+        input = {temp_mesh}
+        output_format = vtu
 
-    remeshed = ms.current_mesh()
+        [BONDS]
+        bond_type = Edge
+        r = 2
+        lc0 = {upper_bound}
+        lc1 = {lower_bound}
+        [SURFACEREPULSION]
+        n_search = cell-list
+        rlist = 0.2
+        exclusion_level = 2
+        refresh = 10
+        r = 2
+        lc1 = 0.15
+
+        [ENERGY]
+        kappa_b = 300.0
+        kappa_a = 1.0e6
+        kappa_v = 1.0e6
+        kappa_c = 0.0
+        kappa_t = 1.0e5
+        kappa_r = 1.0e3
+        area_fraction = 1.0
+        volume_fraction = 1.0
+        curvature_fraction = 1.0
+        continuation_delta = 0.0
+        continuation_lambda = 1.0
+
+        [HMC]
+        num_steps = 10000
+        traj_steps = 100
+        step_size = 2.5e-5
+        momentum_variance = 1.0
+        thin = 100
+        flip_ratio = 0.1
+        flip_type = parallel
+        initial_temperature = 1.0
+        cooling_factor = 1.0e-3
+        start_cooling = 10000
+
+        [MINIMIZATION]
+        maxiter = {steps}
+        out_every = 0
+    """)
+    config = config.strip()
+
+    with NamedTemporaryFile(mode='w', suffix='.conf', delete=False) as tfile:
+        tfile.write(config)
+        tfile.flush()
+
+        ret = run(['mc_app', 'run', '--conf', str(tfile.name)])
+        if ret.stderr:
+            print(ret.stdout)
+            print(ret.stderr)
+
+        output_file = f"{tfile.name.replace('.conf', '')}.cpt.p0.h5"
+
+        with h5py.File(output_file, mode = "r") as infile:
+            faces = infile["cells"][()]
+            vertices = infile["points"][()]
+
     ret = o3d.geometry.TriangleMesh()
-    ret.vertices = o3d.utility.Vector3dVector(remeshed.vertex_matrix())
-    ret.triangles = o3d.utility.Vector3iVector(remeshed.face_matrix())
-    return ret
+    ret.vertices = o3d.utility.Vector3dVector(vertices)
+    ret.triangles = o3d.utility.Vector3iVector(faces)
 
+    edge_lengths = compute_edge_lengths(ret)
+    print(f"Requested lower {lower_bound}, actual {edge_lengths.min()}")
+    print(f"Requested upper {upper_bound}, actual {edge_lengths.max()}")
+
+    return ret
 
 def com_cluster_points(postions, cutoff):
     com_list = []

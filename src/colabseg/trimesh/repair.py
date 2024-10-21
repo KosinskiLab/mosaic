@@ -3,7 +3,6 @@ from typing import Tuple
 import igl
 import numpy as np
 import scipy.sparse
-from scipy.spatial.distance import cdist
 
 _epsilon = 1e-16
 
