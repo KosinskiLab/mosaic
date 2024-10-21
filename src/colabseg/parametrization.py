@@ -145,7 +145,6 @@ class TriangularMesh(Parametrization):
         mesh.triangles = o3d.utility.Vector3iVector(new_fs)
         mesh = mesh.remove_degenerate_triangles()
         mesh = mesh.filter_smooth_taubin(number_of_iterations=100)
-
         return cls(mesh=mesh)
 
     def sample(

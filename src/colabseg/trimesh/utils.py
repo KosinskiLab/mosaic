@@ -1,4 +1,3 @@
-# import pymeshlab
 import numpy as np
 import open3d as o3d
 from scipy.spatial.distance import cdist, pdist
@@ -116,7 +115,9 @@ def remesh_iter(mesh, min_length=1.0, max_length=np.sqrt(3), max_iterations=10):
     return ret
 
 
-def remesh(mesh, target_edge_length, n_iter=10, featuredeg=10, **kwargs):
+def remesh(mesh, target_edge_length, n_iter=100, featuredeg=10, **kwargs):
+    import pymeshlab
+
     vertices = np.asarray(mesh.vertices)
     triangles = np.asarray(mesh.triangles)
 
@@ -138,6 +139,8 @@ def remesh(mesh, target_edge_length, n_iter=10, featuredeg=10, **kwargs):
 
 
 def merge_vertices(mesh, target_edge_length, **kwargs):
+    import pymeshlab
+
     vertices = np.asarray(mesh.vertices)
     triangles = np.asarray(mesh.triangles)
 
