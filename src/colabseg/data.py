@@ -63,6 +63,9 @@ class ColabsegData:
                 continue
             points = self._data._get_cluster_points(index)
             fit = fit_object.fit(points, **kwargs)
+            if fit is None:
+                continue
+
             new_points = fit.sample(n_samples=1000)
             self._models.add(points=new_points, meta={"fit": fit, "points": points})
 

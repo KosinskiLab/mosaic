@@ -204,6 +204,10 @@ class TriangularMesh(Parametrization):
         mesh = mesh.remove_duplicated_vertices()
         mesh = mesh.filter_smooth_taubin(number_of_iterations=5)
 
+        if np.asarray(mesh.vertices).shape[0] == 0:
+            print("No suitable vertices for mesh creation found.")
+            return None
+
         # Hole filling and triangulation
         new_vs, new_fs = triangulate_refine_fair(
             np.asarray(mesh.vertices), np.asarray(mesh.triangles), fair_alpha=1
