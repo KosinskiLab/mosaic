@@ -1,5 +1,6 @@
 #!python3
 import sys
+import pickle
 from importlib_resources import files
 
 import vtk
@@ -101,8 +102,8 @@ class App(QMainWindow):
         focal_point = camera.GetFocalPoint()
 
         distance = 1000
-        if self.cdata._data.shape is not None:
-            distance = max(self.cdata._data.shape) * 2.0
+        if self.cdata.shape is not None:
+            distance = max(self.cdata.shape) * 2.0
 
         if view_key == "z":
             view = (0, 1, 0)
@@ -164,26 +165,31 @@ class App(QMainWindow):
 
         try:
             self.cdata.open_file(file_path)
-            self.renderer.RemoveAllViewProps()
-            self.bounding_box.setup(shape=self.cdata._data.shape)
-            self.renderer.AddActor(self.bounding_box.box_actor)
-            self.cdata.data.rendered_actors.clear()
-            self.cdata.models.rendered_actors.clear()
-            self.cdata.data.render()
-            self.cdata.models.render()
-
-            self.renderer.AddViewProp(self.volume_viewer.slice)
-            self.set_camera_view("z")
 
         except ValueError as e:
             print(f"Error opening file: {e}")
+            return -1
+
+        self.renderer.RemoveAllViewProps()
+        self.bounding_box.setup(shape=self.cdata.shape)
+        self.renderer.AddActor(self.bounding_box.box_actor)
+        self.cdata.data.rendered_actors.clear()
+        self.cdata.models.rendered_actors.clear()
+        self.cdata.data.render()
+        self.cdata.models.render()
+        self.renderer.AddViewProp(self.volume_viewer.slice)
+        self.set_camera_view("z")
 
     def save_file(self):
         file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getSaveFileName(self, "Save File")
+        file_dialog.setDefaultSuffix("pickle")
+        file_path, _ = file_dialog.getSaveFileName(
+            self, "Save File", "", "Pickle Files (*.pickle)"
+        )
         if not file_path:
             return -1
-        print("Save file method called")
+
+        self.cdata.to_file(file_path)
 
 
 def main():

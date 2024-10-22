@@ -7,7 +7,7 @@ import numpy as np
 import open3d as o3d
 from scipy.spatial.distance import cdist, pdist
 
-import subprocess
+
 def compute_edge_lengths(mesh):
     vertices = np.asarray(mesh.vertices)
     faces = np.asarray(mesh.triangles)
@@ -39,11 +39,12 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=10, **kwargs):
     ret.triangles = o3d.utility.Vector3iVector(remeshed.face_matrix())
     return ret
 
-def equilibrate_edges(mesh, lower_bound, upper_bound, steps = 2000):
+
+def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000):
     if lower_bound > upper_bound:
         raise ValueError("upper_bound needs to be larger than lower_bound.")
 
-    with NamedTemporaryFile(suffix='.stl', delete=False) as tfile:
+    with NamedTemporaryFile(suffix=".stl", delete=False) as tfile:
         temp_mesh = tfile.name
 
     if not mesh.has_triangle_normals():
@@ -51,7 +52,8 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps = 2000):
 
     o3d.io.write_triangle_mesh(temp_mesh, mesh)
 
-    config = textwrap.dedent(f"""
+    config = textwrap.dedent(
+        f"""
         [GENERAL]
         algorithm = minimize
         info = 100
@@ -63,6 +65,7 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps = 2000):
         r = 2
         lc0 = {upper_bound}
         lc1 = {lower_bound}
+
         [SURFACEREPULSION]
         n_search = cell-list
         rlist = 0.2
@@ -84,36 +87,25 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps = 2000):
         continuation_delta = 0.0
         continuation_lambda = 1.0
 
-        [HMC]
-        num_steps = 10000
-        traj_steps = 100
-        step_size = 2.5e-5
-        momentum_variance = 1.0
-        thin = 100
-        flip_ratio = 0.1
-        flip_type = parallel
-        initial_temperature = 1.0
-        cooling_factor = 1.0e-3
-        start_cooling = 10000
-
         [MINIMIZATION]
         maxiter = {steps}
         out_every = 0
-    """)
+    """
+    )
     config = config.strip()
 
-    with NamedTemporaryFile(mode='w', suffix='.conf', delete=False) as tfile:
+    with NamedTemporaryFile(mode="w", suffix=".conf", delete=False) as tfile:
         tfile.write(config)
         tfile.flush()
 
-        ret = run(['mc_app', 'run', '--conf', str(tfile.name)])
+        ret = run(["mc_app", "run", "--conf", str(tfile.name)])
         if ret.stderr:
             print(ret.stdout)
             print(ret.stderr)
 
         output_file = f"{tfile.name.replace('.conf', '')}.cpt.p0.h5"
 
-        with h5py.File(output_file, mode = "r") as infile:
+        with h5py.File(output_file, mode="r") as infile:
             faces = infile["cells"][()]
             vertices = infile["points"][()]
 
@@ -126,6 +118,7 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps = 2000):
     print(f"Requested upper {upper_bound}, actual {edge_lengths.max()}")
 
     return ret
+
 
 def com_cluster_points(postions, cutoff):
     com_list = []

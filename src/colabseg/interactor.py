@@ -5,11 +5,12 @@ from PyQt6.QtCore import QObject, QItemSelection, QItemSelectionModel
 from PyQt6.QtCore import pyqtSignal
 
 
-def _cluster_operation(func):
+def _cluster_modifier(func):
     @wraps(func)
     def wrapper(self, **kwargs):
         indices = self._get_selected_indices()
         result = func(self, indices=indices, **kwargs)
+        self.data_changed.emit()
         self.render()
         return result
 
@@ -29,7 +30,7 @@ class LinkedDataContainerInteractor(QObject):
 
         self._update_list()
 
-        self.interactor.data_container.data_changed.connect(self._update_list)
+        self.interactor.data_changed.connect(self._update_list)
 
     def _update_list(self):
         self.data_list.clear()
@@ -64,6 +65,8 @@ class LinkedDataContainerInteractor(QObject):
 
 
 class DataContainerInteractor(QObject):
+    data_changed = pyqtSignal()
+
     def __init__(self, data_container, vtk_widget, prefix="Cluster"):
         super().__init__()
         self.prefix = prefix
@@ -137,7 +140,7 @@ class DataContainerInteractor(QObject):
     def render(self):
         renderer = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
-        current_actors = set(self.data_container.actor_collection)
+        current_actors = set(self.data_container.get_actors())
         actors_to_remove = self.rendered_actors - current_actors
         for actor in actors_to_remove:
             renderer.RemoveActor(actor)
@@ -167,34 +170,38 @@ class DataContainerInteractor(QObject):
             self.data_container.highlight_points(cluster_index, point_ids, color)
         self.vtk_widget.GetRenderWindow().Render()
 
-    @_cluster_operation
+    @_cluster_modifier
     def merge_cluster(self, **kwargs):
         return self.data_container.merge(**kwargs)
 
-    @_cluster_operation
+    @_cluster_modifier
     def remove_cluster(self, **kwargs):
         return self.data_container.remove(**kwargs)
 
-    @_cluster_operation
+    @_cluster_modifier
     def split_cluster(self, **kwargs):
         return self.data_container.split(**kwargs)
 
-    @_cluster_operation
+    @_cluster_modifier
     def sample_cluster(self, **kwargs):
         return self.data_container.sample(**kwargs)
 
-    @_cluster_operation
+    @_cluster_modifier
     def crop_cluster(self, **kwargs):
         return self.data_container.crop(**kwargs)
 
-    @_cluster_operation
+    @_cluster_modifier
     def trim(self, **kwargs):
         return self.data_container.trim(**kwargs)
 
-    @_cluster_operation
+    @_cluster_modifier
     def dbscan_cluster(self, **kwargs):
         return self.data_container.dbscan_cluster(**kwargs)
 
-    @_cluster_operation
+    @_cluster_modifier
     def remove_outliers(self, **kwargs):
         return self.data_container.remove_outliers(**kwargs)
+
+    def update(self, *args, **kwargs):
+        _ = self.data_container.update(*args, **kwargs)
+        self.data_changed.emit()

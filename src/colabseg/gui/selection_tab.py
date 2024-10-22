@@ -91,7 +91,7 @@ class ClusterSelectionTab(QWidget):
         histogram_layout.addWidget(self.histogram_widget)
         main_layout.addWidget(histogram_frame, 1)
 
-        self.cdata._data.data_changed.connect(self.update_histogram)
+        self.cdata.data.data_changed.connect(self.update_histogram)
         self.histogram_widget.cutoff_changed.connect(self.cdata.data._on_cutoff_changed)
 
     def update_histogram(self):

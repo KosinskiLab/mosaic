@@ -1,0 +1,452 @@
+from functools import wraps
+from typing import List, Tuple, Union, Dict, Callable
+
+import vtk
+import numpy as np
+from sklearn.cluster import KMeans
+
+from .utils import (
+    find_neighbors,
+    trim,
+    statistical_outlier_removal,
+    dbscan_clustering,
+    eigenvalue_outlier_removal,
+)
+from .point_cloud import PointCloud
+
+
+def apply_over_indices(func: Callable) -> Callable:
+    @wraps(func)
+    def wrapper(self, indices: List[int], *args, **kwargs) -> None:
+        if isinstance(indices, int):
+            indices = [indices]
+        for index in indices:
+            if not self._index_ok(index):
+                continue
+            point_cloud = self.data[index]
+            new_points = func(self, point_cloud=point_cloud, *args, **kwargs)
+            if new_points is not None:
+                point_cloud.swap_data(new_points)
+
+    return wrapper
+
+
+class DataContainer:
+    """
+    Container for managing and manipulating point cloud data collections.
+
+    Parameters
+    ----------
+    base_color : tuple of float, optional
+        Default color for points in RGB format in range 0-1.
+        Default is (0.7, 0.7, 0.7).
+    highlight_color : tuple of float, optional
+        Highlight color for points in RGB format in range 0-1.
+        Default is (0.8, 0.2, 0.2).
+    """
+
+    def __init__(self, base_color=(0.7, 0.7, 0.7), highlight_color=(0.8, 0.2, 0.2)):
+        self.data = []
+        self.base_color = base_color
+        self.highlight_color = highlight_color
+
+    def update(self, other: "DataContainer"):
+        """Update current class instance with data from another container.
+
+        Parameters
+        ----------
+        other : DataContainer
+            Container whose data will be copied.
+        """
+        self.data.clear()
+        self.data.extend(other.data)
+
+    def get_actors(self):
+        """Get VTK actors from all point clouds.
+
+        Returns
+        -------
+        list
+            List of VTK actors.
+        """
+        return [x.actor for x in self.data]
+
+    def add(self, points, color=None, **kwargs):
+        """Add a new point cloud to the container.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            Points to add to the container.
+        color : tuple of float, optional
+            RGB color values for the point cloud.
+
+        Returns
+        -------
+        int
+            Index of the new point cloud.
+        """
+        if color is None:
+            color = self.base_color
+        new_cloud = PointCloud(points, color=color, **kwargs)
+        self.data.append(new_cloud)
+        return len(self.data) - 1
+
+    def remove(self, indices: Union[int, List[int]]):
+        """Remove point clouds at specified indices.
+
+        Parameters
+        ----------
+        indices : int or list of int
+            Indices of point clouds to remove.
+        """
+        if isinstance(indices, int):
+            indices = [indices]
+
+        # Reverse order to avoid potential shift issue
+        for index in sorted(indices, reverse=True):
+            if not self._index_ok(index):
+                continue
+            self.data.pop(index)
+
+    def new(self, data: Union[np.ndarray, List[int]], *args, **kwargs) -> int:
+        """Create new point cloud from existing data.
+
+        Parameters
+        ----------
+        data : np.ndarray or list of int
+            Points or indices of existing clouds to use.
+
+        Returns
+        -------
+        int
+            Index of new point cloud, -1 if creation failed.
+        """
+        if len(data) == 0:
+            return -1
+        if not isinstance(data, np.ndarray):
+            data = np.concatenate([self._get_cluster_points(i) for i in data])
+        return self.add(data, *args, **kwargs)
+
+    def merge(self, indices: List[int]) -> int:
+        """Merge multiple point clouds into one.
+
+        Parameters
+        ----------
+        indices : list of int
+            Indices of point clouds to merge.
+
+        Returns
+        -------
+        int
+            Index of merged cloud, -1 if merge failed.
+        """
+        if len(indices) < 2:
+            return -1
+        new_index = self.new(indices)
+        self.remove(indices)
+        return new_index
+
+    def split(self, indices: List[int]) -> Tuple[int, int]:
+        """Split point cloud into two using K-means.
+
+        Parameters
+        ----------
+        indices : list of int
+            Single-element list with index of cloud to split.
+
+        Returns
+        -------
+        tuple of int
+            Indices of resulting clouds, -1 if split failed.
+        """
+        if len(indices) != 1:
+            return -1
+
+        data = np.concatenate([self._get_cluster_points(i) for i in indices])
+        clustering = KMeans(n_clusters=2, n_init="auto").fit(data)
+
+        self.remove(indices)
+
+        new_cluster = []
+        new_indices = np.asarray(clustering.labels_)
+        for new_clusters in np.unique(new_indices):
+            new_cluster.append(self.add(data[np.where(new_indices == new_clusters)]))
+
+        return tuple(new_cluster)
+
+    @apply_over_indices
+    def crop(self, point_cloud, distance: float):
+        """Crop points based on distance criteria.
+
+        Parameters
+        ----------
+        point_cloud : PointCloud
+            Cloud to crop.
+        distance : float
+            Distance threshold for cropping.
+
+        Returns
+        -------
+        ndarray
+            Remaining points after cropping.
+        """
+        cloud_points = point_cloud._meta.get("points", None)
+        if cloud_points is None:
+            return None
+
+        points = self._get_cloud_points(point_cloud)
+        keep_points = find_neighbors(points, cloud_points, distance)
+        return keep_points
+
+    @apply_over_indices
+    def sample(self, point_cloud, sampling: float, method: str):
+        """Sample points from cloud.
+
+        Parameters
+        ----------
+        point_cloud : PointCloud
+            Cloud to sample from.
+        sampling : float
+            Sampling rate or number of points.
+        method : str
+            Sampling method to use.
+
+        Returns
+        -------
+        ndarray
+            Sampled points.
+        """
+        cloud_fit = point_cloud._meta.get("fit", None)
+        if cloud_fit is None:
+            return None
+
+        n_samples = sampling
+        if method != "N points":
+            n_samples = cloud_fit.points_per_sampling(sampling)
+
+        return cloud_fit.sample(int(n_samples))
+
+    @apply_over_indices
+    def trim(self, point_cloud, min_value, max_value, axis: str):
+        """Trim points based on axis-aligned bounds.
+
+        Parameters
+        ----------
+        point_cloud : PointCloud
+            Cloud to trim.
+        min_value : float
+            Minimum bound value.
+        max_value : float
+            Maximum bound value.
+        axis : str
+            Axis along which to trim.
+
+        Returns
+        -------
+        ndarray
+            Remaining points after trimming.
+        """
+        points = self._get_cloud_points(point_cloud)
+        new_points = trim(points, min_value, max_value, trim_axis=axis)
+        return new_points
+
+    @apply_over_indices
+    def dbscan_cluster(self, point_cloud, distance, min_points):
+        """Perform DBSCAN clustering.
+
+        Parameters
+        ----------
+        point_cloud : PointCloud
+            Cloud to cluster.
+        distance : float
+            DBSCAN epsilon parameter.
+        min_points : int
+            DBSCAN minimum points parameter.
+
+        Returns
+        -------
+        ndarray
+            Clustered points.
+        """
+        points = self._get_cloud_points(point_cloud)
+        return dbscan_clustering(points, eps=distance, min_points=min_points)
+
+    @apply_over_indices
+    def remove_outliers(self, point_cloud, method="statistical", **kwargs):
+        """Remove outliers from point cloud.
+
+        Parameters
+        ----------
+        point_cloud : PointCloud
+            Cloud to process.
+        method : str, optional
+            'statistical' or 'eigenvalue', default 'statistical'.
+        **kwargs
+            Additional parameters for outlier removal.
+
+        Returns
+        -------
+        ndarray
+            Points with outliers removed.
+        """
+        points = self._get_cloud_points(point_cloud)
+        func = statistical_outlier_removal
+        if method == "eigenvalue":
+            func = eigenvalue_outlier_removal
+
+        return func(points, **kwargs)
+
+    def highlight(self, indices: Tuple[int]):
+        """Highlight specified point clouds.
+
+        Parameters
+        ----------
+        indices : tuple of int
+            Indices of clouds to highlight.
+        """
+        _highlighted = getattr(self, "_highlighted_indices", set())
+        for index, cluster in enumerate(self.data):
+            if not self._index_ok(index):
+                continue
+            color, opacity = self.base_color, 0.6
+            if index in indices:
+                color, opacity = self.highlight_color, 1.0
+            elif index not in _highlighted:
+                continue
+
+            cluster.set_color(color)
+            cluster.set_opacity(opacity)
+
+        self._highlighted_indices = set(indices)
+        return None
+
+    def highlight_points(self, index: int, point_ids: set, color: Tuple[float]):
+        """Highlight specific points in a cloud.
+
+        Parameters
+        ----------
+        index : int
+            Index of target cloud.
+        point_ids : set
+            IDs of points to highlight.
+        color : tuple of float
+            RGB color for highlighting.
+        """
+        if self._index_ok(index):
+            self.data[index].color_points(point_ids, color)
+
+    def get_cluster_count(self) -> int:
+        """Get number of point clouds in container.
+
+        Returns
+        -------
+        int
+            Number of point clouds.
+        """
+        return len(self.data)
+
+    def get_cluster_size(self) -> List[int]:
+        """Get number of points in each cloud.
+
+        Returns
+        -------
+        list of int
+            Point count for each cloud.
+        """
+        return [cluster.get_number_of_points() for cluster in self.data]
+
+    def _index_ok(self, index: int):
+        """Check if index is valid.
+
+        Parameters
+        ----------
+        index : int
+            Index to check.
+
+        Returns
+        -------
+        bool
+            True if index is valid.
+        """
+        if 0 <= index < len(self.data):
+            return True
+        return False
+
+    def _get_cluster_points(self, index: int) -> np.ndarray:
+        """Get points from specified cloud.
+
+        Parameters
+        ----------
+        index : int
+            Index of target cloud.
+
+        Returns
+        -------
+        ndarray
+            Points from cloud, empty array if invalid index.
+        """
+        if self._index_ok(index):
+            return self.data[index].points
+        return np.array([])
+
+    def _get_cluster_index(self, actor) -> int:
+        """Get index of cloud containing actor.
+
+        Parameters
+        ----------
+        actor : vtkActor
+            Actor to search for.
+
+        Returns
+        -------
+        int or None
+            Index of cloud containing actor, None if not found.
+        """
+        for i, cluster in enumerate(self.data):
+            if cluster.actor == actor:
+                return i
+        return None
+
+    def add_selection(self, selected_point_ids: Dict[vtk.vtkActor, set]) -> int:
+        """Add new cloud from selected points.
+
+        Parameters
+        ----------
+        selected_point_ids : dict
+            Mapping of vtkActor to selected point IDs.
+
+        Returns
+        -------
+        int
+            Index of new cloud, -1 if creation failed.
+        """
+        new_cluster, remove_cluster = [], []
+        for index, point_ids in selected_point_ids.items():
+            if not len(point_ids):
+                continue
+
+            points = self._get_cluster_points(index)
+            if points.shape[0] == 0:
+                continue
+            mask = np.zeros(len(points), dtype=bool)
+            try:
+                mask[list(point_ids)] = True
+            except Exception as e:
+                print(e)
+                return -1
+
+            new_cluster.append(points[mask])
+            points = points[np.invert(mask)]
+
+            if points.shape[0] != 0:
+                point_cloud = self.data[index]
+                point_cloud.swap_data(points)
+            else:
+                remove_cluster.append(index)
+
+        self.remove(remove_cluster)
+
+        if len(new_cluster):
+            return self.add(np.concatenate(new_cluster))
+        return -1

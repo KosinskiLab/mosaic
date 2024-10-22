@@ -96,7 +96,9 @@ class ParametrizationTab(QWidget):
         export_button = QPushButton("Export")
         export_button.clicked.connect(self.export_fit)
         self.export_format = QComboBox()
-        self.export_format.addItems(["txt", "star (relion 4)", "star (relion 5)"])
+        self.export_format.addItems(
+            sorted(["txt", "star (relion 4)", "star (relion 5)", "stl"])
+        )
         grid_layout.addWidget(export_button, 2, 0)
         grid_layout.addWidget(self.export_format, 2, 1)
 
@@ -182,6 +184,8 @@ class ParametrizationTab(QWidget):
     def export_fit(self):
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getSaveFileName(self, "Save File")
+        if not file_path:
+            return -1
 
         return self.cdata.export_fit(
             file_path=file_path, file_format=self.export_format.currentText()

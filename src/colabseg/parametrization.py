@@ -44,7 +44,7 @@ def _sample_from_chull(
 
 class Parametrization(ABC):
     """
-    A strategy class to represent parametrizations of point clouds
+    A strategy class to represent picklable parametrizations of point clouds
     """
 
     def __init__(self, *args, **kwargs):
@@ -90,13 +90,81 @@ class Parametrization(ABC):
             Sampled points.
         """
 
+    @abstractmethod
+    def compute_normal(self, positions: np.ndarray, *args, **kwargs):
+        """
+        Compute the normal vector at a given point on the surface.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            Points on the surface with shape n x d
+
+        Returns
+        -------
+        np.ndarray
+            Normal vectors at the given points
+        """
+
+    @abstractmethod
+    def points_per_sampling(self, sampling_density: float) -> int:
+        """
+        Computes the approximate number of random samples
+        required to achieve a given spatial sampling_density.
+
+        Parameters
+        ----------
+        sampling_density : float
+            Average distance between points.
+
+        Returns
+        -------
+        int
+            Number of required random samples.
+        """
+
 
 class TriangularMesh(Parametrization):
     """
     Represent a point cloud as triangular mesh.
+
+    Parameters
+    ----------
+    mesh : open3d.cpu.pybind.geometry.TriangleMesh
+        Triangular mesh.
     """
 
     def __init__(self, mesh):
+        self.mesh = mesh
+
+    def to_file(self, file_path):
+        o3d.io.write_triangle_mesh(file_path, self.mesh)
+
+    def __getstate__(self):
+        state = {
+            "vertices": np.asarray(self.mesh.vertices),
+            "triangles": np.asarray(self.mesh.triangles),
+        }
+
+        if self.mesh.has_vertex_normals():
+            state["vertex_normals"] = np.asarray(self.mesh.vertex_normals)
+        if self.mesh.has_vertex_colors():
+            state["vertex_colors"] = np.asarray(self.mesh.vertex_colors)
+        if self.mesh.has_triangle_normals():
+            state["triangle_normals"] = np.asarray(self.mesh.triangle_normals)
+        return state
+
+    def __setstate__(self, state):
+        mesh = o3d.geometry.TriangleMesh()
+        mesh.vertices = o3d.utility.Vector3dVector(state["vertices"])
+        mesh.triangles = o3d.utility.Vector3iVector(state["triangles"])
+
+        attrs = ("vertex_normals", "vertex_colors", "triangle_normals")
+        for attr in attrs:
+            if attr not in state:
+                continue
+            setattr(mesh, attr, o3d.utility.Vector3dVector(state.get(attr)))
+
         self.mesh = mesh
 
     @classmethod
@@ -145,6 +213,7 @@ class TriangularMesh(Parametrization):
         mesh.triangles = o3d.utility.Vector3iVector(new_fs)
         mesh = mesh.remove_degenerate_triangles()
         mesh = mesh.filter_smooth_taubin(number_of_iterations=100)
+        mesh = mesh.compute_vertex_normals()
         return cls(mesh=mesh)
 
     def sample(
@@ -173,19 +242,6 @@ class TriangularMesh(Parametrization):
         return _sample_from_mesh(self.mesh, n_samples, mesh_init_factor)
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        """
-        Compute the normal vector at a given point on mesh.
-
-        Parameters
-        ----------
-        points : np.ndarray
-            Points on the sphere surface with shape n x d
-
-        Returns
-        -------
-        np.ndarray
-            Normal vectors at the given points
-        """
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(points)
         pcd.estimate_normals()
@@ -194,20 +250,6 @@ class TriangularMesh(Parametrization):
         return np.asarray(pcd.normals)
 
     def points_per_sampling(self, sampling_density: float) -> int:
-        """
-        Computes the apporximate number of random samples
-        required to achieve a given sampling_density.
-
-        Parameters
-        ----------
-        sampling_density : float
-            Average distance between points.
-
-        Returns
-        -------
-        int
-            Number of required random samples.
-        """
         area_per_sample = np.square(sampling_density)
         n_points = np.ceil(np.divide(self.mesh.get_surface_area(), area_per_sample))
 
@@ -217,37 +259,21 @@ class TriangularMesh(Parametrization):
 class Sphere(Parametrization):
     """
     Parametrize a point cloud as sphere.
+
+    Parameters
+    ----------
+    radius : np.ndarray
+        Radius of the sphere
+    center : np.ndarray
+        Center of the sphere along each axis.
     """
 
     def __init__(self, radius: np.ndarray, center: np.ndarray):
-        """
-        Initialize the Ellipsoid parametrization.
-
-        Parameters
-        ----------
-        radius : np.ndarray
-            Radius of the sphere
-        center : np.ndarray
-            Center of the sphere along each axis.
-        """
         self.radius = radius
         self.center = center
 
     @classmethod
     def fit(cls, positions: np.ndarray) -> "Sphere":
-        """
-        Fit an sphere to a set of 3D points.
-
-        Parameters
-        ----------
-        positions : np.ndarray
-            Point coordinates with shape (n x 3)
-
-        Returns
-        -------
-        Sphere
-            Class instance with fitted parameters.
-        """
         A = np.column_stack((2 * positions, np.ones(len(positions))))
         b = (positions**2).sum(axis=1)
 
@@ -311,36 +337,9 @@ class Sphere(Parametrization):
         return positions_xyz
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        """
-        Compute the normal vector at a given point on the sphere surface.
-
-        Parameters
-        ----------
-        points : np.ndarray
-            Points on the sphere surface with shape n x d
-
-        Returns
-        -------
-        np.ndarray
-            Normal vectors at the given points
-        """
         return (points - self.center) / self.radius
 
     def points_per_sampling(self, sampling_density: float) -> int:
-        """
-        Computes the apporximate number of random samples
-        required to achieve a given sampling_density.
-
-        Parameters
-        ----------
-        sampling_density : float
-            Average distance between points.
-
-        Returns
-        -------
-        int
-            Number of required random samples.
-        """
         n_points = np.multiply(
             np.square(np.pi),
             np.ceil(np.power(np.divide(self.radius, sampling_density), 2)),
@@ -351,49 +350,25 @@ class Sphere(Parametrization):
 class Ellipsoid(Parametrization):
     """
     Parametrize a point cloud as ellipsoid.
+
+    Parameters
+    ----------
+    radii : np.ndarray
+        Radii of the ellipse along each axis
+    center : np.ndarray
+        Center of the ellipse along each axis
+    orientations : np.ndarray
+        Square orientation matrix
     """
 
     def __init__(self, radii: np.ndarray, center: np.ndarray, orientations: np.ndarray):
-        """
-        Initialize the Ellipsoid parametrization.
-
-        Parameters
-        ----------
-        radii : np.ndarray
-            Radii of the ellipse along each axis
-        center : np.ndarray
-            Center of the ellipse along each axis
-        orientations : np.ndarray
-            Square orientation matrix
-        """
         self.radii = radii
         self.center = center
         self.orientations = orientations
 
     @classmethod
     def fit(cls, positions) -> "Ellipsoid":
-        """
-        Fit an ellipsoid to a set of 3D points.
-
-        Parameters
-        ----------
-        positions: np.ndarray
-            Point coordinates with shape (n x 3)
-
-        Returns
-        -------
-        Ellipsoid
-            Class instance with fitted parameters.
-
-        Raises
-        ------
-        NotImplementedError
-            If the points are not 3D.
-
-        References
-        ----------
-        .. [1]  https://de.mathworks.com/matlabcentral/fileexchange/24693-ellipsoid-fit
-        """
+        # Adapted from https://de.mathworks.com/matlabcentral/fileexchange/24693-ellipsoid-fit
         positions = np.asarray(positions, dtype=np.float64)
         if positions.shape[1] != 3 or len(positions.shape) != 2:
             raise NotImplementedError(
@@ -512,21 +487,6 @@ class Ellipsoid(Parametrization):
         return positions_xyz
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        """
-        Compute the normal vector at a given point on the ellipsoid surface.
-
-        Parameters
-        ----------
-        points : np.ndarray
-            Points on the sphere surface with shape n x d
-
-        Returns
-        -------
-        np.ndarray
-            Normal vectors at the given points
-        """
-        # points_norm = (points - self.center) / self.radii
-
         norm_points = (points - self.center).dot(np.linalg.inv(self.orientations.T))
         normals = np.divide(np.multiply(norm_points, 2), np.square(self.radii))
         normals = np.dot(normals, self.orientations.T)
@@ -535,20 +495,6 @@ class Ellipsoid(Parametrization):
         return normals
 
     def points_per_sampling(self, sampling_density: float) -> int:
-        """
-        Computes the apporximate number of random samples
-        required to achieve a given sampling_density.
-
-        Parameters
-        ----------
-        sampling_density : float
-            Average distance between points.
-
-        Returns
-        -------
-        int
-            Number of required random samples.
-        """
         area_points = np.pi * np.square(sampling_density)
         area_ellipsoid = np.power(self.radii[0] * self.radii[1], 1.6075)
         area_ellipsoid += np.power(self.radii[0] * self.radii[2], 1.6075)
@@ -564,6 +510,17 @@ class Ellipsoid(Parametrization):
 class Cylinder(Parametrization):
     """
     Parametrize a point cloud as cylinder.
+
+    Parameters
+    ----------
+    centers : np.ndarray
+        Center coordinates of the cylinder in X and Y.
+    orientations : np.ndarray
+        Square orientation matrix
+    radius: float
+        Radius of the cylinder.
+    height : float
+        Height of the cylinder.
     """
 
     def __init__(
@@ -573,20 +530,6 @@ class Cylinder(Parametrization):
         radius: float,
         height: float,
     ):
-        """
-        Initialize the Cylinder parametrization.
-
-        Parameters
-        ----------
-        centers : np.ndarray
-            Center coordinates of the cylinder in X and Y.
-        orientations : np.ndarray
-            Square orientation matrix
-        radius: float
-            Radius of the cylinder.
-        height : float
-            Height of the cylinder.
-        """
         self.centers = centers
         self.orientations = orientations
         self.radius = radius
@@ -594,27 +537,6 @@ class Cylinder(Parametrization):
 
     @classmethod
     def fit(cls, positions: np.ndarray) -> "Cylinder":
-        """
-        Fit a 3D point cloud to a cylinder.
-
-        Parameters
-        ----------
-        positions : np.ndarray
-            Point coordinates with shape (n x 3)
-
-        Returns
-        -------
-        Cylinder
-            Class instance with fitted parameters.
-
-        Raises
-        ------
-        ValueError
-            If th number of initial parameters is not equal to five.
-        NotImplementedError
-            If the points are not 3D.
-        """
-
         positions = np.asarray(positions, dtype=np.float64)
         if positions.shape[1] != 3 or len(positions.shape) != 2:
             raise NotImplementedError(
@@ -721,20 +643,6 @@ class Cylinder(Parametrization):
         return samples
 
     def points_per_sampling(self, sampling_density: float) -> int:
-        """
-        Computes the apporximate number of random samples
-        required to achieve a given sampling_density.
-
-        Parameters
-        ----------
-        sampling_density : float
-            Average distance between points.
-
-        Returns
-        -------
-        int
-            Number of required random samples.
-        """
         area_points = np.square(sampling_density)
         area = 2 * self.radius * (self.radius + self.height)
 
@@ -745,21 +653,18 @@ class Cylinder(Parametrization):
 class RBF(Parametrization):
     """
     Parametrize a point cloud as sphere.
+
+    Parameters
+    ----------
+    rbf : scipy.interpolate.Rbf
+        Radial basis function interpolator instance.
+    direction : str
+        Direction of interpolation relative to positions.
+    grid: Tuple
+        2D interpolation grid ranges.
     """
 
     def __init__(self, rbf: type, direction: str, grid: Tuple):
-        """
-        Initialize the Ellipsoid parametrization.
-
-        Parameters
-        ----------
-        rbf : scipy.interpolate.Rbf
-            Radial basis function interpolator instance.
-        direction : str
-            Direction of interpolation relative to positions.
-        grid: Tuple
-            2D interpolation grid ranges.
-        """
         self.rbf = rbf
         self.grid = grid
         self.direction = direction
@@ -803,23 +708,7 @@ class RBF(Parametrization):
         grid = ((np.min(X), np.max(X)), (np.min(Y), np.max(Y)))
         return cls(rbf=rbf, direction=direction, grid=grid)
 
-    def sample(
-        self,
-        n_samples: int,
-    ) -> np.ndarray:
-        """
-        Samples points from the RBF.
-
-        Parameters
-        ----------
-        n_samples : int
-            Number of samples to draw
-
-        Returns
-        -------
-        np.ndarray
-            Sampled points.
-        """
+    def sample(self, n_samples: int) -> np.ndarray:
         (xmin, xmax), (ymin, ymax) = self.grid
 
         n_samples = int(np.ceil(np.sqrt(n_samples)))
@@ -837,19 +726,6 @@ class RBF(Parametrization):
         return positions_xyz
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        """
-        Compute the normal vector at a given point on the surface.
-
-        Parameters
-        ----------
-        points : np.ndarray
-            Points on the surface with shape n x d
-
-        Returns
-        -------
-        np.ndarray
-            Normal vectors at the given points
-        """
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(points)
         pcd.estimate_normals()
@@ -859,20 +735,6 @@ class RBF(Parametrization):
         return np.asarray(pcd.normals)
 
     def points_per_sampling(self, sampling_density: float) -> int:
-        """
-        Computes the apporximate number of random samples
-        required to achieve a given sampling_density.
-
-        Parameters
-        ----------
-        sampling_density : float
-            Average distance between points.
-
-        Returns
-        -------
-        int
-            Number of required random samples.
-        """
         (xmin, xmax), (ymin, ymax) = self.grid
         surface_area = (xmax - xmin) * (ymax - xmin)
 

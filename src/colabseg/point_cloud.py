@@ -1,6 +1,7 @@
 from typing import Tuple
 
 import vtk
+import numpy as np
 
 
 class PointCloud:
@@ -22,6 +23,24 @@ class PointCloud:
 
         self.set_size(4)
         self.set_color(color)
+
+    def __getstate__(self):
+        return {
+            "points": self.points,
+            "sampling_rate": self._sampling_rate,
+            "meta": self._meta,
+        }
+
+    def __setstate__(self, state):
+        self.__init__(**state)
+
+    @property
+    def actor(self):
+        return self._actor
+
+    @property
+    def points(self):
+        return np.asarray(self._points.GetData())
 
     def add_points(self, points):
         for point in points:
@@ -47,10 +66,6 @@ class PointCloud:
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
         return actor
-
-    @property
-    def actor(self):
-        return self._actor
 
     def get_number_of_points(self):
         return self._points.GetNumberOfPoints()
