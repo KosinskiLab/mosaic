@@ -214,14 +214,16 @@ class TriangularMesh(Parametrization):
             print("No suitable vertices for mesh creation found.")
             return None
 
+        if not repair:
+            return mesh
+
         # Hole filling and triangulation
-        if repair:
-            new_vs, new_fs = triangulate_refine_fair(
-                np.asarray(mesh.vertices), np.asarray(mesh.triangles), fair_alpha=1
-            )
-            mesh = o3d.geometry.TriangleMesh()
-            mesh.vertices = o3d.utility.Vector3dVector(new_vs)
-            mesh.triangles = o3d.utility.Vector3iVector(new_fs)
+        new_vs, new_fs = triangulate_refine_fair(
+            np.asarray(mesh.vertices), np.asarray(mesh.triangles), fair_alpha=1
+        )
+        mesh = o3d.geometry.TriangleMesh()
+        mesh.vertices = o3d.utility.Vector3dVector(new_vs)
+        mesh.triangles = o3d.utility.Vector3iVector(new_fs)
         mesh = mesh.remove_degenerate_triangles()
         mesh = mesh.filter_smooth_taubin(number_of_iterations=100)
         mesh = mesh.compute_vertex_normals()
@@ -298,7 +300,6 @@ class Sphere(Parametrization):
         n_samples: int,
         radius: np.ndarray = None,
         center: np.ndarray = None,
-        sample_mesh: bool = False,
         mesh_init_factor: int = None,
     ) -> np.ndarray:
         """
@@ -312,9 +313,6 @@ class Sphere(Parametrization):
             Radius of the sphere
         center : np.ndarray, optional
             Center of the sphere along each axis
-        sample_mesh : bool, optional
-            Whether the samples should be drawn from a triangular mesh instead.
-            This can yield more equidistantly spaced points.
         mesh_init_factor : int, optional
             Number of times the mesh should be initialized for Poisson sampling.
             Five appears to be a reasonable number. Higher values typically yield
@@ -338,7 +336,7 @@ class Sphere(Parametrization):
         positions_xyz = np.multiply(positions_xyz, radius)
         positions_xyz = np.add(positions_xyz, center)
 
-        if sample_mesh:
+        if mesh_init_factor is not None:
             positions_xyz = _sample_from_chull(
                 positions_xyz=positions_xyz,
                 mesh_init_factor=mesh_init_factor,

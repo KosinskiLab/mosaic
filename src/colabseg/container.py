@@ -11,7 +11,7 @@ from .utils import (
     dbscan_clustering,
     eigenvalue_outlier_removal,
 )
-from .geometry import PointCloud
+from .geometry import PointCloud, TriangularMesh
 
 
 def apply_over_indices(func: Callable) -> Callable:
@@ -71,7 +71,7 @@ class DataContainer:
         return [x.actor for x in self.data]
 
     def add(self, points, color=None, **kwargs):
-        """Add a new point cloud to the container.
+        """Add a new geometry object to the container.
 
         Parameters
         ----------
@@ -87,8 +87,10 @@ class DataContainer:
         """
         if color is None:
             color = self.base_color
-        new_cloud = PointCloud(points, color=color, **kwargs)
-        self.data.append(new_cloud)
+
+        geometry = TriangularMesh if "faces" in kwargs else PointCloud
+        new_geometry = geometry(points, color=color, **kwargs)
+        self.data.append(new_geometry)
         return len(self.data) - 1
 
     def remove(self, indices: Union[int, List[int]]):
@@ -223,11 +225,12 @@ class DataContainer:
         if cloud_fit is None:
             return None
 
-        n_samples = sampling
+        n_samples, kwargs = sampling, {}
         if method != "N points":
             n_samples = cloud_fit.points_per_sampling(sampling)
+            kwargs["mesh_init_factor"] = 5
 
-        return cloud_fit.sample(int(n_samples))
+        return cloud_fit.sample(int(n_samples), **kwargs)
 
     @apply_over_indices
     def trim(self, point_cloud, min_value, max_value, axis: str = "z"):
@@ -327,14 +330,14 @@ class DataContainer:
         for index, cluster in enumerate(self.data):
             if not self._index_ok(index):
                 continue
-            color, opacity = self.base_color, 0.6
+            color, opacity = self.base_color, 0.8
             if index in indices:
                 color, opacity = self.highlight_color, 1.0
             elif index not in _highlighted:
                 continue
 
             cluster.set_color(color)
-            cluster.set_opacity(opacity)
+            cluster.set_appearance(opacity=opacity)
 
         self._highlighted_indices = set(indices)
         return None

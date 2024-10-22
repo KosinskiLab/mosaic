@@ -9,11 +9,11 @@ BASE_COLOR = (0.7, 0.7, 0.7)
 class PointCloud:
     def __init__(self, points=None, color=BASE_COLOR, sampling_rate=None, meta={}):
         self._points = vtk.vtkPoints()
-        self._verts = vtk.vtkCellArray()
+        self._cells = vtk.vtkCellArray()
 
         self._data = vtk.vtkPolyData()
         self._data.SetPoints(self._points)
-        self._data.SetVerts(self._verts)
+        self._data.SetVerts(self._cells)
 
         self._actor = self.create_actor()
         self._sampling_rate = sampling_rate
@@ -24,7 +24,7 @@ class PointCloud:
         if points is not None:
             self.add_points(points)
 
-        self.set_size(4)
+        self.set_appearance(size=8)
         self.set_color(color)
 
     def __getstate__(self):
@@ -48,8 +48,8 @@ class PointCloud:
     def add_points(self, points):
         for point in points:
             point_id = self._points.InsertNextPoint(point)
-            self._verts.InsertNextCell(1)
-            self._verts.InsertCellPoint(point_id)
+            self._cells.InsertNextCell(1)
+            self._cells.InsertCellPoint(point_id)
         self._data.Modified()
 
     def set_color(self, color: Tuple[int] = None):
@@ -57,11 +57,25 @@ class PointCloud:
             color = self._default_color
         self.color_points(range(self._points.GetNumberOfPoints()), color=color)
 
-    def set_size(self, size: int = 4):
-        self._actor.GetProperty().SetPointSize(size)
+    def set_appearance(
+        self,
+        size=8,
+        opacity=0.8,
+        render_spheres=True,
+        ambient=0.3,
+        diffuse=0.7,
+        specular=0.2,
+    ):
+        prop = self._actor.GetProperty()
 
-    def set_opacity(self, opacity: float = 0.6):
-        self._actor.GetProperty().SetOpacity(opacity)
+        if render_spheres:
+            prop.SetRenderPointsAsSpheres(True)
+
+        prop.SetPointSize(size)
+        prop.SetOpacity(opacity)
+        prop.SetAmbient(ambient)
+        prop.SetDiffuse(diffuse)
+        prop.SetSpecular(specular)
 
     def create_actor(self):
         mapper = vtk.vtkPolyDataMapper()
@@ -104,12 +118,12 @@ class PointCloud:
 
     def swap_data(self, new_points):
         self._points.Reset()
-        self._verts.Reset()
+        self._cells.Reset()
 
         self.add_points(new_points)
 
         self._data.SetPoints(self._points)
-        self._data.SetVerts(self._verts)
+        self._data.SetVerts(self._cells)
         self._data.Modified()
 
         self.set_color()
@@ -118,30 +132,77 @@ class PointCloud:
 class TriangularMesh(PointCloud):
     def __init__(self, points=None, faces=None, **kwargs):
         super().__init__(**kwargs)
-        self._data.SetPolys(self._verts)
+        self._data.SetPolys(self._cells)
+
+        if points is not None:
+            self.add_points(points)
+        if faces is not None:
+            self.add_faces(faces)
+
+        self.set_color(kwargs.get("color", BASE_COLOR))
+
+    def __getstate__(self):
+        state = super().__getstate__()
+        state.update({"faces": self.faces})
+        return state
+
+    def __setstate__(self, state):
+        faces = state.pop("faces", None)
+        super().__init__(**state)
+        if faces is not None:
+            self.add_faces(faces)
+
+    @property
+    def faces(self):
+        cells = []
+        idList = vtk.vtkIdList()
+        for i in range(self._cells.GetNumberOfCells()):
+            self._cells.GetCell(i, idList)
+            cells.append([idList.GetId(j) for j in range(idList.GetNumberOfIds())])
+        return np.array(cells)
 
     def set_color(self, color: Tuple[int] = None):
         if color is None:
             color = self._default_color
         self.actor.GetProperty().SetColor(color)
+        self.actor.GetProperty().SetRepresentationToSurface()
+
+    def color_faces(self, face_ids: set, color: Tuple[float]):
+        colors = vtk.vtkUnsignedCharArray()
+        colors.SetNumberOfComponents(3)
+        colors.SetName("Colors")
+
+        default_color = self.actor.GetProperty().GetColor()
+        color = tuple(int(c * 255) for c in color)
+        default_color = tuple(int(c * 255) for c in self._default_color)
+
+        num_faces = self._cells.GetNumberOfCells()
+        for i in range(num_faces):
+            if i in face_ids:
+                colors.InsertNextTuple3(*color)
+            else:
+                colors.InsertNextTuple3(*default_color)
+
+        self._data.GetCellData().SetScalars(colors)
+        self._data.Modified()
 
     def add_faces(self, faces):
         if faces.shape[1] != 3:
             raise ValueError("Only triangular faces are supported")
 
         for face in faces:
-            self._polys.InsertNextCell(3)
+            self._cells.InsertNextCell(3)
             for vertex_idx in face:
-                self._polys.InsertCellPoint(vertex_idx)
+                self._cells.InsertCellPoint(vertex_idx)
         self._data.Modified()
 
     def swap_data(self, new_points, new_faces):
         self._points.Reset()
-        self._verts.Reset()
+        self._cells.Reset()
 
         self.add_points(new_points)
         self.add_faces(new_faces)
-        self._data.SetPolys(self._verts)
 
+        self._data.SetPolys(self._cells)
         self._data.Modified()
         self.set_color()

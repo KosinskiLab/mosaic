@@ -9,8 +9,8 @@ from .parametrization import PARAMETRIZATION_TYPE, TriangularMesh
 AVAILABLE_PARAMETRIZATIONS = PARAMETRIZATION_TYPE
 rbf = PARAMETRIZATION_TYPE.pop("rbf")
 PARAMETRIZATION_TYPE["rbf [xy]"] = rbf
-PARAMETRIZATION_TYPE["rbf [yz]"] = rbf
 PARAMETRIZATION_TYPE["rbf [xz]"] = rbf
+PARAMETRIZATION_TYPE["rbf [yz]"] = rbf
 
 
 class ColabsegData:
@@ -75,6 +75,13 @@ class ColabsegData:
                 sampling_rate=cloud._sampling_rate,
                 meta={"fit": fit, "points": cloud.points},
             )
+
+            # self._models.add_mesh(
+            #     points=np.asarray(fit.mesh.vertices),
+            #     faces=np.asarray(fit.mesh.triangles),
+            #     sampling_rate=cloud._sampling_rate,
+            #     meta={"fit": fit, "points": cloud.points},
+            # )
 
     def export_fit(self, file_path: str, file_format: str):
         fit_indices = self.models._get_selected_indices()
