@@ -3,9 +3,11 @@ from typing import Tuple
 import vtk
 import numpy as np
 
+BASE_COLOR = (0.7, 0.7, 0.7)
+
 
 class PointCloud:
-    def __init__(self, points=None, color=(0.7, 0.7, 0.7), sampling_rate=None, meta={}):
+    def __init__(self, points=None, color=BASE_COLOR, sampling_rate=None, meta={}):
         self._points = vtk.vtkPoints()
         self._verts = vtk.vtkCellArray()
 
@@ -17,6 +19,7 @@ class PointCloud:
         self._sampling_rate = sampling_rate
 
         self._meta = meta
+        self._default_color = color
 
         if points is not None:
             self.add_points(points)
@@ -49,7 +52,9 @@ class PointCloud:
             self._verts.InsertCellPoint(point_id)
         self._data.Modified()
 
-    def set_color(self, color: Tuple[int] = (0.7, 0.7, 0.7)):
+    def set_color(self, color: Tuple[int] = None):
+        if color is None:
+            color = self._default_color
         self.color_points(range(self._points.GetNumberOfPoints()), color=color)
 
     def set_size(self, size: int = 4):
@@ -59,7 +64,6 @@ class PointCloud:
         self._actor.GetProperty().SetOpacity(opacity)
 
     def create_actor(self):
-        # Could also be replaced with mesh
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(self._data)
 
@@ -87,7 +91,7 @@ class PointCloud:
         default_color = self.actor.GetProperty().GetColor()
 
         color = tuple(int(c * 255) for c in color)
-        default_color = tuple(int(c * 255) for c in (0.7, 0.7, 0.7))
+        default_color = tuple(int(c * 255) for c in self._default_color)
 
         for i in range(self._points.GetNumberOfPoints()):
             if i in point_ids:
@@ -110,17 +114,34 @@ class PointCloud:
 
         self.set_color()
 
-    def create_mesh(self) -> vtk.vtkPolyData:
-        delaunay = vtk.vtkDelaunay3D()
-        delaunay.SetInputData(self._data)
-        delaunay.Update()
 
-        surface_filter = vtk.vtkGeometryFilter()
-        surface_filter.SetInputConnection(delaunay.GetOutputPort())
-        surface_filter.Update()
+class TriangularMesh(PointCloud):
+    def __init__(self, points=None, faces=None, **kwargs):
+        super().__init__(**kwargs)
+        self._data.SetPolys(self._verts)
 
-        mesh = surface_filter.GetOutput()
+    def set_color(self, color: Tuple[int] = None):
+        if color is None:
+            color = self._default_color
+        self.actor.GetProperty().SetColor(color)
 
-        actor = vtk.vtkActor()
-        actor.SetMapper(vtk.vtkPolyDataMapper())
-        actor.GetMapper().SetInputData(mesh)
+    def add_faces(self, faces):
+        if faces.shape[1] != 3:
+            raise ValueError("Only triangular faces are supported")
+
+        for face in faces:
+            self._polys.InsertNextCell(3)
+            for vertex_idx in face:
+                self._polys.InsertCellPoint(vertex_idx)
+        self._data.Modified()
+
+    def swap_data(self, new_points, new_faces):
+        self._points.Reset()
+        self._verts.Reset()
+
+        self.add_points(new_points)
+        self.add_faces(new_faces)
+        self._data.SetPolys(self._verts)
+
+        self._data.Modified()
+        self.set_color()

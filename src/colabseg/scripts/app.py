@@ -1,6 +1,5 @@
 #!python3
 import sys
-import pickle
 from importlib_resources import files
 
 import vtk
@@ -165,7 +164,6 @@ class App(QMainWindow):
 
         try:
             self.cdata.open_file(file_path)
-
         except ValueError as e:
             print(f"Error opening file: {e}")
             return -1

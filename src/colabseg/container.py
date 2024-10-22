@@ -3,16 +3,15 @@ from typing import List, Tuple, Union, Dict, Callable
 
 import vtk
 import numpy as np
+from scipy.spatial import cKDTree
 from sklearn.cluster import KMeans
 
 from .utils import (
-    find_neighbors,
-    trim,
     statistical_outlier_removal,
     dbscan_clustering,
     eigenvalue_outlier_removal,
 )
-from .point_cloud import PointCloud
+from .geometry import PointCloud
 
 
 def apply_over_indices(func: Callable) -> Callable:
@@ -195,9 +194,12 @@ class DataContainer:
         if cloud_points is None:
             return None
 
-        points = self._get_cloud_points(point_cloud)
-        keep_points = find_neighbors(points, cloud_points, distance)
-        return keep_points
+        points = point_cloud.points
+
+        tree = cKDTree(points)
+        indices = tree.query_ball_point(cloud_points, distance)
+        unique_indices = np.unique(np.concatenate(indices)).astype(int)
+        return points[unique_indices]
 
     @apply_over_indices
     def sample(self, point_cloud, sampling: float, method: str):
@@ -228,7 +230,7 @@ class DataContainer:
         return cloud_fit.sample(int(n_samples))
 
     @apply_over_indices
-    def trim(self, point_cloud, min_value, max_value, axis: str):
+    def trim(self, point_cloud, min_value, max_value, axis: str = "z"):
         """Trim points based on axis-aligned bounds.
 
         Parameters
@@ -239,17 +241,33 @@ class DataContainer:
             Minimum bound value.
         max_value : float
             Maximum bound value.
-        axis : str
-            Axis along which to trim.
+        axis : str, optional
+            Axis along which to trim, z by default.
 
         Returns
         -------
         ndarray
             Remaining points after trimming.
+
+        Raises
+        ------
+        ValueError
+            If an invalid trim_axis is provided.
         """
-        points = self._get_cloud_points(point_cloud)
-        new_points = trim(points, min_value, max_value, trim_axis=axis)
-        return new_points
+        _axis_map = {"x": 0, "y": 1, "z": 2}
+
+        trim_column = _axis_map.get(axis)
+        if trim_column is None:
+            raise ValueError(f"Value for trim axis must be in {_axis_map.keys()}.")
+
+        points = point_cloud.points
+
+        coordinate_colum = points[:, trim_column]
+        mask = np.logical_and(
+            coordinate_colum > min_value,
+            coordinate_colum < max_value,
+        )
+        return points[mask]
 
     @apply_over_indices
     def dbscan_cluster(self, point_cloud, distance, min_points):
@@ -269,8 +287,7 @@ class DataContainer:
         ndarray
             Clustered points.
         """
-        points = self._get_cloud_points(point_cloud)
-        return dbscan_clustering(points, eps=distance, min_points=min_points)
+        return dbscan_clustering(point_cloud.points, eps=distance, min_points=min_points)
 
     @apply_over_indices
     def remove_outliers(self, point_cloud, method="statistical", **kwargs):
@@ -290,12 +307,11 @@ class DataContainer:
         ndarray
             Points with outliers removed.
         """
-        points = self._get_cloud_points(point_cloud)
         func = statistical_outlier_removal
         if method == "eigenvalue":
             func = eigenvalue_outlier_removal
 
-        return func(points, **kwargs)
+        return func(point_cloud.points, **kwargs)
 
     def highlight(self, indices: Tuple[int]):
         """Highlight specified point clouds.
