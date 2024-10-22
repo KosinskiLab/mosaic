@@ -168,7 +168,13 @@ class TriangularMesh(Parametrization):
         self.mesh = mesh
 
     @classmethod
-    def fit(cls, positions: np.ndarray, voxel_size: float = 10):
+    def fit(
+        cls,
+        positions: np.ndarray,
+        voxel_size: float = 10,
+        repair: bool = True,
+        **kwargs,
+    ):
         # Surface reconstruction normal estimation
         ellipsoid = Ellipsoid.fit(positions)
 
@@ -209,12 +215,13 @@ class TriangularMesh(Parametrization):
             return None
 
         # Hole filling and triangulation
-        new_vs, new_fs = triangulate_refine_fair(
-            np.asarray(mesh.vertices), np.asarray(mesh.triangles), fair_alpha=1
-        )
-        mesh = o3d.geometry.TriangleMesh()
-        mesh.vertices = o3d.utility.Vector3dVector(new_vs)
-        mesh.triangles = o3d.utility.Vector3iVector(new_fs)
+        if repair:
+            new_vs, new_fs = triangulate_refine_fair(
+                np.asarray(mesh.vertices), np.asarray(mesh.triangles), fair_alpha=1
+            )
+            mesh = o3d.geometry.TriangleMesh()
+            mesh.vertices = o3d.utility.Vector3dVector(new_vs)
+            mesh.triangles = o3d.utility.Vector3iVector(new_fs)
         mesh = mesh.remove_degenerate_triangles()
         mesh = mesh.filter_smooth_taubin(number_of_iterations=100)
         mesh = mesh.compute_vertex_normals()
@@ -277,7 +284,7 @@ class Sphere(Parametrization):
         self.center = center
 
     @classmethod
-    def fit(cls, positions: np.ndarray) -> "Sphere":
+    def fit(cls, positions: np.ndarray, **kwargs) -> "Sphere":
         A = np.column_stack((2 * positions, np.ones(len(positions))))
         b = (positions**2).sum(axis=1)
 
@@ -371,7 +378,7 @@ class Ellipsoid(Parametrization):
         self.orientations = orientations
 
     @classmethod
-    def fit(cls, positions) -> "Ellipsoid":
+    def fit(cls, positions, **kwargs) -> "Ellipsoid":
         # Adapted from https://de.mathworks.com/matlabcentral/fileexchange/24693-ellipsoid-fit
         positions = np.asarray(positions, dtype=np.float64)
         if positions.shape[1] != 3 or len(positions.shape) != 2:
@@ -540,7 +547,7 @@ class Cylinder(Parametrization):
         self.height = height
 
     @classmethod
-    def fit(cls, positions: np.ndarray) -> "Cylinder":
+    def fit(cls, positions: np.ndarray, **kwargs) -> "Cylinder":
         positions = np.asarray(positions, dtype=np.float64)
         if positions.shape[1] != 3 or len(positions.shape) != 2:
             raise NotImplementedError(
@@ -675,7 +682,12 @@ class RBF(Parametrization):
 
     @classmethod
     def fit(
-        cls, positions: np.ndarray, direction: str = "xz", function="linear", smooth=5
+        cls,
+        positions: np.ndarray,
+        direction: str = "xz",
+        function="linear",
+        smooth=5,
+        **kwargs,
     ) -> "RBF":
         """
         Fit a RBF to a set of 3D points.

@@ -11,7 +11,6 @@ class KeybindsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Keybinds")
-        # self.setFixedSize(400, 450)
 
         layout = QVBoxLayout()
 

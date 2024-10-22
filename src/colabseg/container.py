@@ -287,7 +287,9 @@ class DataContainer:
         ndarray
             Clustered points.
         """
-        return dbscan_clustering(point_cloud.points, eps=distance, min_points=min_points)
+        return dbscan_clustering(
+            point_cloud.points, eps=distance, min_points=min_points
+        )
 
     @apply_over_indices
     def remove_outliers(self, point_cloud, method="statistical", **kwargs):

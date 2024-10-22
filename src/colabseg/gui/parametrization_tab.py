@@ -97,7 +97,7 @@ class ParametrizationTab(QWidget):
         export_button.clicked.connect(self.export_fit)
         self.export_format = QComboBox()
         self.export_format.addItems(
-            sorted(["txt", "star (relion 4)", "star (relion 5)", "stl"])
+            sorted(["txt", "star (relion 4)", "star (relion 5)", "stl", "obj"])
         )
         grid_layout.addWidget(export_button, 2, 0)
         grid_layout.addWidget(self.export_format, 2, 1)

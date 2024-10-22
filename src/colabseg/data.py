@@ -4,7 +4,7 @@ import numpy as np
 from .container import DataContainer
 from .io import DataIO, OrientationsIO
 from .interactor import DataContainerInteractor
-from .parametrization import PARAMETRIZATION_TYPE
+from .parametrization import PARAMETRIZATION_TYPE, TriangularMesh
 
 AVAILABLE_PARAMETRIZATIONS = PARAMETRIZATION_TYPE
 rbf = PARAMETRIZATION_TYPE.pop("rbf")
@@ -61,13 +61,20 @@ class ColabsegData:
         for index in cluster_indices:
             if not self._data._index_ok(index):
                 continue
-            points = self._data._get_cluster_points(index)
-            fit = fit_object.fit(points, **kwargs)
+
+            cloud = self._data.data[index]
+            kwargs["voxel_size"] = np.max(cloud._sampling_rate)
+
+            fit = fit_object.fit(cloud.points, **kwargs)
             if fit is None:
                 continue
 
             new_points = fit.sample(n_samples=1000)
-            self._models.add(points=new_points, meta={"fit": fit, "points": points})
+            self._models.add(
+                points=new_points,
+                sampling_rate=cloud._sampling_rate,
+                meta={"fit": fit, "points": cloud.points},
+            )
 
     def export_fit(self, file_path: str, file_format: str):
         fit_indices = self.models._get_selected_indices()
@@ -80,16 +87,19 @@ class ColabsegData:
         for index in fit_indices:
             if not self._models._index_ok(index):
                 continue
-            points = self._models._get_cluster_points(index)
 
+            points = self._models._get_cluster_points(index)
             cloud = self._models.data[index]
 
-            if file_format == "stl":
+            if file_format in ("stl", "obj"):
                 fit = cloud._meta["fit"]
                 if not hasattr(fit, "mesh"):
-                    continue
-                print(f"{file_path}_{index}.stl")
-                fit.to_file(f"{file_path}_{index}.stl")
+                    print(f"{index} is not a mesh. Creating a new one.")
+                    fit = TriangularMesh.fit(
+                        points, voxel_size=np.max(cloud._sampling_rate), repair=False
+                    )
+
+                fit.to_file(f"{file_path}_{index}.{file_format}")
 
             normals = cloud._meta["fit"].compute_normal(points)
             if cloud._sampling_rate is not None:

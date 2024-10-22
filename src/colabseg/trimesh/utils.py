@@ -17,6 +17,13 @@ def compute_edge_lengths(mesh):
     return distances.ravel()
 
 
+def scale(mesh, scaling):
+    ret = o3d.geometry.TriangleMesh()
+    ret.vertices = o3d.utility.Vector3dVector(np.asarray(mesh.vertices) * scaling)
+    ret.triangles = o3d.utility.Vector3iVector(np.asarray(mesh.triangles))
+    return ret
+
+
 def remesh(mesh, target_edge_length, n_iter=100, featuredeg=10, **kwargs):
     from pymeshlab import MeshSet, Mesh, PureValue
 

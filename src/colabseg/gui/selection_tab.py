@@ -91,6 +91,7 @@ class ClusterSelectionTab(QWidget):
         histogram_layout.addWidget(self.histogram_widget)
         main_layout.addWidget(histogram_frame, 1)
 
+        # TODO: Fix QEventPoint issue on trackpad
         self.cdata.data.data_changed.connect(self.update_histogram)
         self.histogram_widget.cutoff_changed.connect(self.cdata.data._on_cutoff_changed)
 

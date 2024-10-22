@@ -25,7 +25,6 @@ class AnalysisTab(QWidget):
         main_layout.setSpacing(layout_spacing)
 
         self.setup_protein_operations(main_layout)
-        self.setup_open_data(main_layout)
         self.setup_clustering_operations(main_layout)
 
     def setup_protein_operations(self, main_layout):
@@ -42,15 +41,6 @@ class AnalysisTab(QWidget):
             protein_layout.addWidget(button)
         protein_layout.addStretch()
         main_layout.addWidget(protein_frame)
-
-    def setup_open_data(self, main_layout):
-        open_data_frame = QFrame()
-        open_data_frame.setFrameStyle(QFrame.Shape.StyledPanel)
-        open_data_layout = QVBoxLayout(open_data_frame)
-        open_data_button = QPushButton("Open Data")
-        open_data_layout.addWidget(open_data_button)
-        open_data_layout.addStretch()
-        main_layout.addWidget(open_data_frame)
 
     def setup_clustering_operations(self, main_layout):
         analysis_frame = QFrame()
