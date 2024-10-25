@@ -378,7 +378,7 @@ class Ellipsoid(Parametrization):
     @classmethod
     def fit(cls, positions, **kwargs) -> "Ellipsoid":
         # Adapted from https://de.mathworks.com/matlabcentral/fileexchange/24693-ellipsoid-fit
-        positions = np.asarray(positions, dtype=np.float64)
+        positions = np.asarray(positions, dtype=np.float64).copy()
         if positions.shape[1] != 3 or len(positions.shape) != 2:
             raise NotImplementedError(
                 "Only three-dimensional point clouds are supported."
@@ -417,7 +417,6 @@ class Ellipsoid(Parametrization):
                 [v[6], v[7], v[8], v[9]],
             ]
         )
-
         center = np.linalg.solve(-A[:3, :3], v[6:9])
         T = np.eye(4)
         T[3, :3] = center.T
@@ -425,7 +424,6 @@ class Ellipsoid(Parametrization):
         R = T.dot(A).dot(T.T)
         evals, evecs = np.linalg.eig(R[:3, :3] / -R[3, 3])
         radii = np.sign(evals) * np.sqrt(1.0 / np.abs(evals))
-
         return cls(radii=radii, center=center, orientations=evecs)
 
     def sample(
@@ -586,6 +584,10 @@ class Cylinder(Parametrization):
         heights = rotated_points.max(axis=0) - rotated_points.min(axis=0)
         height = heights[np.argmax(np.abs(np.diff(heights))) + 1]
         return cls(radius=radius, centers=center, orientations=evecs, height=height)
+
+    def compute_normal(self, points: np.ndarray) -> np.ndarray:
+        print("Computing normals on Cylinders is not yet supported.")
+        return points
 
     def sample(
         self,

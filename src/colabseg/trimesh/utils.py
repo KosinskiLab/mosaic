@@ -121,10 +121,42 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000):
     ret.triangles = o3d.utility.Vector3iVector(faces)
 
     edge_lengths = compute_edge_lengths(ret)
-    print(f"Requested lower {lower_bound}, actual {edge_lengths.min()}")
-    print(f"Requested upper {upper_bound}, actual {edge_lengths.max()}")
+    print(f"Total edges {edge_lengths.size}")
+    print(f"Mean edge length {np.mean(edge_lengths)} [+/- {np.std(edge_lengths)}]")
+
+    n_lower = np.sum(edge_lengths < lower_bound - 1)
+    n_upper = np.sum(edge_lengths > upper_bound + 1)
+    print(f"Requested lower {lower_bound}, actual {edge_lengths.min()} [N={n_lower}]")
+    print(f"Requested upper {upper_bound}, actual {edge_lengths.max()} [N={n_upper}]")
 
     return ret
+
+
+def compute_scale_factor(mesh, lower_bound = 1.0, upper_bound = 1.7):
+    if lower_bound > upper_bound:
+        raise ValueError("lower_bound larger than upper_bound.")
+
+    edge_lengths = compute_edge_lengths(mesh)
+
+    min_val, max_val = np.min(edge_lengths), np.max(edge_lengths)
+    bin_edges = np.linspace(min_val, max_val, 1000)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+    max_count, peak_bin_center = 0, None
+    mean_bound = 1 + (upper_bound - lower_bound) / 2
+
+    for bin_center in bin_centers:
+        lb = bin_center * (lower_bound / mean_bound)
+        ub = bin_center * (upper_bound / mean_bound)
+
+        count = np.sum(np.logical_and(edge_lengths > lb, edge_lengths < ub))
+        if count > max_count:
+            max_count, peak_bin_center = count, bin_center
+
+    count_rel = np.round(100 * max_count/edge_lengths.size, 2)
+    print(f"{count_rel}% of edges [N={max_count}] are within range of {peak_bin_center}")
+
+    return mean_bound / peak_bin_center
 
 
 def com_cluster_points(postions, cutoff):

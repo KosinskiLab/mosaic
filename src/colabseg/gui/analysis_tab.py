@@ -1,143 +1,164 @@
-from PyQt6.QtWidgets import (
-    QWidget,
-    QHBoxLayout,
-    QVBoxLayout,
-    QFrame,
-    QPushButton,
-    QComboBox,
-    QGridLayout,
-    QSpinBox,
-    QLabel,
-    QDoubleSpinBox,
-)
+from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QFrame,
+                            QPushButton, QProgressBar, QLabel, QSizePolicy)
+from PyQt6.QtCore import QThread, pyqtSignal, QTimer, Qt
+import numpy as np
 
+class DistanceWorker(QThread):
+    progress = pyqtSignal(int)
+    finished = pyqtSignal(np.ndarray)
+    error = pyqtSignal(str)
+
+    def __init__(self, positions):
+        super().__init__()
+        self.positions = positions
+
+    def run(self):
+        try:
+            n = len(self.positions)
+            distances = np.zeros(n)
+
+            for i in range(n):
+                distances[i] = np.linalg.norm(self.positions[i])
+                progress = int((i + 1) * 100 / n)
+                self.progress.emit(progress)
+                self.msleep(1)
+
+                if self.isInterruptionRequested():
+                    return
+
+            self.finished.emit(distances)
+
+        except Exception as e:
+            self.error.emit(str(e))
 
 class AnalysisTab(QWidget):
     def __init__(self, cdata):
         super().__init__()
         self.cdata = cdata
         self._parameter_widgets = {}
+        self.worker = None
+        self.positions = None
         self.setup_ui()
 
     def setup_ui(self):
         layout_spacing = 5
         main_layout = QHBoxLayout(self)
         main_layout.setSpacing(layout_spacing)
-
         self.setup_protein_operations(main_layout)
-        self.setup_clustering_operations(main_layout)
+        main_layout.addStretch()
 
     def setup_protein_operations(self, main_layout):
+        # Create a fixed-width frame
         protein_frame = QFrame()
         protein_frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        protein_frame.setFixedWidth(300)
         protein_layout = QVBoxLayout(protein_frame)
-        protein_buttons = [
-            "Load Proteins",
-            "Protein Fit Distance",
-            "Protein Cluster Distance",
-        ]
-        for button_text in protein_buttons:
-            button = QPushButton(button_text)
-            protein_layout.addWidget(button)
+        protein_layout.setSpacing(10)
+
+        # Create fixed-height container for status elements
+        status_container = QFrame()
+        status_container.setFixedHeight(100)
+        status_layout = QVBoxLayout(status_container)
+        status_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Create and configure buttons with fixed height
+        load_button = QPushButton("Load Positions")
+        analyze_button = QPushButton("Analyze Distances")
+        self.cancel_button = QPushButton("Cancel Analysis")
+
+        for button in [load_button, analyze_button, self.cancel_button]:
+            button.setFixedHeight(30)
+            button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+        # Configure progress bar with fixed height
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setFixedHeight(30)
+        self.progress_bar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.progress_bar.hide()
+
+        # Configure status label with fixed height
+        self.status_label = QLabel()
+        self.status_label.setFixedHeight(30)
+        self.status_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_label.hide()
+
+        # Set up button connections
+        load_button.clicked.connect(self.load_positions)
+        analyze_button.clicked.connect(self.start_analysis)
+        self.cancel_button.clicked.connect(self.cancel_analysis)
+        self.cancel_button.hide()
+
+        # Add buttons to main layout
+        protein_layout.addWidget(load_button)
+        protein_layout.addWidget(analyze_button)
+
+        # Add status elements to status container
+        status_layout.addWidget(self.progress_bar)
+        status_layout.addWidget(self.status_label)
+        status_layout.addWidget(self.cancel_button)
+
+        # Add status container to main layout
+        protein_layout.addWidget(status_container)
+
+        # Add stretch at the bottom
         protein_layout.addStretch()
+
+        # Add frame to main layout
         main_layout.addWidget(protein_frame)
 
-    def setup_clustering_operations(self, main_layout):
-        analysis_frame = QFrame()
-        analysis_frame.setFrameStyle(QFrame.Shape.StyledPanel)
-        analysis_layout = QGridLayout(analysis_frame)
+    def show_temporary_message(self, message, duration=3000, is_error=False):
+        """Show a message that automatically disappears after duration milliseconds"""
+        self.status_label.setText(message)
+        if is_error:
+            self.status_label.setStyleSheet("color: red")
+        else:
+            self.status_label.setStyleSheet("color: green")
+        self.status_label.show()
 
-        self._create_parameter_widgets(
-            analysis_layout,
-            0,
-            self.dbscan_cluster,
-            "DBSCAN clustering",
-            [
-                ("Neighbor Dist:", 40, 0, QSpinBox),
-                ("Min Points:", 20, 0, QSpinBox),
-            ],
-        )
+        QTimer.singleShot(duration, self.status_label.hide)
 
-        self._create_parameter_widgets(
-            analysis_layout,
-            1,
-            self.outlier_removal,
-            "Outlier removal",
-            [
-                ("Num Neighbors:", 100, 0, QSpinBox),
-                ("Std Ratio:", 0.2, 0.0, QDoubleSpinBox),
-            ],
-        )
+    def load_positions(self):
+        self.positions = np.random.rand(1000, 3)
+        self.show_temporary_message("Positions loaded successfully!")
 
-        self._create_parameter_widgets(
-            analysis_layout,
-            2,
-            self.edge_outlier_removal,
-            "Edge outlier removal",
-            [
-                ("Num Neighbors:", 300, 0, QSpinBox),
-                ("Threshold:", 0.0, 0.0, QDoubleSpinBox),
-            ],
-        )
+    def start_analysis(self):
+        if self.positions is None:
+            self.show_temporary_message("Please load positions first!", is_error=True)
+            return
 
-        self._create_parameter_widgets(
-            analysis_layout,
-            3,
-            self.trim_cluster,
-            "Trim",
-            [("Trim Min:", 100, 0, QSpinBox), ("Trim Max:", 100, 0, QSpinBox)],
-        )
+        self.sender().setEnabled(False)
+        self.progress_bar.setValue(0)
+        self.progress_bar.show()
+        self.cancel_button.show()
 
-        # Axis selection for trimming
-        analysis_layout.addWidget(QLabel("Trim Axis:"), 3, 5)
-        self.axis_combo = QComboBox()
-        self.axis_combo.addItems(["x", "y", "x"])
-        analysis_layout.addWidget(self.axis_combo, 3, 6)
+        self.worker = DistanceWorker(self.positions)
+        self.worker.progress.connect(self.update_progress)
+        self.worker.finished.connect(self.analysis_finished)
+        self.worker.error.connect(self.analysis_error)
+        self.worker.start()
 
-        main_layout.addWidget(analysis_frame)
+    def cancel_analysis(self):
+        if self.worker and self.worker.isRunning():
+            self.worker.requestInterruption()
+            self.worker.wait()
+            self.cleanup_analysis()
+            self.show_temporary_message("Analysis cancelled by user.")
 
-    def _create_parameter_widgets(self, layout, row, func, button_text, parameters):
-        button = QPushButton(button_text)
-        button.clicked.connect(func)
-        layout.addWidget(button, row, 0)
+    def update_progress(self, value):
+        self.progress_bar.setValue(value)
 
-        self._parameter_widgets[button_text] = []
+    def analysis_finished(self, distances):
+        self.cleanup_analysis()
+        self.show_temporary_message(f"Analysis complete! Computed {len(distances)} distances.")
 
-        for col, (label, value, min_value, widget) in enumerate(parameters, start=1):
-            layout.addWidget(QLabel(label), row, col * 2 - 1)
-            widget = widget()
-            widget.setMinimum(min_value)
-            widget.setValue(value)
-            if isinstance(widget, QSpinBox):
-                widget.setMaximum(2147483647)
-            elif isinstance(widget, QDoubleSpinBox):
-                widget.setMaximum(float("inf"))
-                widget.setDecimals(4)
-            self._parameter_widgets[button_text].append(widget)
-            layout.addWidget(widget, row, col * 2)
+    def analysis_error(self, error_message):
+        self.cleanup_analysis()
+        self.show_temporary_message(f"Analysis failed: {error_message}", is_error=True)
 
-    def trim_cluster(self):
-        min_value, max_value, *_ = self._parameter_widgets["DBSCAN clustering"]
-        return self.cdata.data.trim(
-            min_value=min_value.value(),
-            max_value=max_value.value(),
-            axis=self.axis_combo.currentText(),
-        )
-
-    def dbscan_cluster(self):
-        neighbors, min_points, *_ = self._parameter_widgets["DBSCAN clustering"]
-        return self.cdata.data.dbscan_cluster(
-            distance=neighbors.value(), min_points=min_points.value()
-        )
-
-    def outlier_removal(self):
-        k_n, thresh, *_ = self._parameter_widgets["Outlier removal"]
-        return self.cdata.data.remove_outliers(
-            k_neighbors=k_n.value(), std_ratio=thresh.value(), method="statistical"
-        )
-
-    def edge_outlier_removal(self):
-        k_n, thresh, *_ = self._parameter_widgets["Edge outlier removal"]
-        return self.cdata.data.remove_outliers(
-            k_neighbors=k_n.value(), thresh=thresh.value(), method="eigenvalue"
-        )
+    def cleanup_analysis(self):
+        self.progress_bar.hide()
+        self.cancel_button.hide()
+        for button in self.findChildren(QPushButton):
+            if button.text() == "Analyze Distances":
+                button.setEnabled(True)

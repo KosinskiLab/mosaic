@@ -29,9 +29,15 @@ class DataIO:
         func = self._formats.get(extension, _load_volume)
         return func(filename, *args, **kwargs)
 
+def load_density(filename : str):
+    volume = Density.from_file(filename)
+    volume.data = np.moveaxis(volume.data, 0, 2)
+    volume.sampling_rate = volume.sampling_rate[::-1]
+    return volume
+
 
 def _load_volume(filename: str):
-    volume = Density.from_file(filename)
+    volume = load_density(filename)
 
     points = np.where(volume.data > 0)
     points_cluster = volume.data[points]

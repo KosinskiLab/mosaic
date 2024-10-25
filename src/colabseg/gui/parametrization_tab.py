@@ -11,10 +11,29 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QFileDialog,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
+from .widgets import ProgressButton
 from ..data import AVAILABLE_PARAMETRIZATIONS
 from ..interactor import LinkedDataContainerInteractor
+
+class FitWorker(QThread):
+    finished = pyqtSignal()
+
+    def __init__(self, cdata, fit_type):
+        super().__init__()
+        self.cdata = cdata
+        self.fit_type = fit_type
+
+    def run(self):
+        self.cdata.add_fit(fit_type=self.fit_type)
+        self.finished.emit()
+
+    def kill(self, timeout=10000):
+        self.quit()
+        if not self.wait(timeout):
+            self.terminate()
+            self.wait()
 
 
 class ParametrizationTab(QWidget):
@@ -77,11 +96,11 @@ class ParametrizationTab(QWidget):
         frame.setMaximumWidth(300)
 
         # Fit row
-        fit_button = QPushButton("Fit")
-        fit_button.clicked.connect(self.add_fit)
+        self.fit_button = ProgressButton("Fit")
+        self.fit_button.clicked.connect(self.add_fit)
         self.param_type_selector = QComboBox()
         self.param_type_selector.addItems(AVAILABLE_PARAMETRIZATIONS.keys())
-        grid_layout.addWidget(fit_button, 0, 0)
+        grid_layout.addWidget(self.fit_button, 0, 0)
         grid_layout.addWidget(self.param_type_selector, 0, 1)
 
         # Crop row
@@ -155,9 +174,20 @@ class ParametrizationTab(QWidget):
         operations_layout.addWidget(frame)
 
     def add_fit(self):
-        self.cdata.add_fit(
-            fit_type=self.param_type_selector.currentText(),
+        self.fit_button.listen(self.cdata.progress)
+
+        self.fit_worker = FitWorker(
+            self.cdata,
+            fit_type=self.param_type_selector.currentText()
         )
+        self.fit_worker.finished.connect(self._on_fit_complete)
+        self.fit_button.cancel.connect(self.fit_worker.kill)
+        self.fit_worker.start()
+
+    def _on_fit_complete(self):
+        self.fit_worker.deleteLater()
+        self.fit_worker = None
+
         self.cdata.data.render()
         self.cdata.models.render()
 

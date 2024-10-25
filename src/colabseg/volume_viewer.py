@@ -13,7 +13,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from vtkmodules.util import numpy_support
 from matplotlib.pyplot import get_cmap
 
-from tme import Density
+from .io import load_density
 
 
 _colormaps = ["gray", "gray_r", "viridis", "magma", "twilight_shifted"]
@@ -143,6 +143,8 @@ class VolumeViewer(QWidget):
 
         self.volume = None
         self.renderer.RemoveViewProp(self.slice)
+        self.slice_mapper = vtk.vtkImageSliceMapper()
+        self.slice = vtk.vtkImageSlice()
 
         self.change_widget_state(is_enabled=False)
         self.vtk_widget.GetRenderWindow().Render()
@@ -152,7 +154,7 @@ class VolumeViewer(QWidget):
             widget.setEnabled(is_enabled)
 
     def load_volume(self, file_path):
-        volume = Density.from_file(file_path)
+        volume = load_density(file_path)
 
         self.volume = vtk.vtkImageData()
         self.volume.SetDimensions(volume.shape)

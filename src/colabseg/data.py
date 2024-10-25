@@ -1,5 +1,6 @@
 import pickle
 import numpy as np
+from PyQt6.QtCore import pyqtSignal, QObject
 
 from .container import DataContainer
 from .io import DataIO, OrientationsIO
@@ -13,8 +14,10 @@ PARAMETRIZATION_TYPE["rbf [xz]"] = rbf
 PARAMETRIZATION_TYPE["rbf [yz]"] = rbf
 
 
-class ColabsegData:
+class ColabsegData(QObject):
+    progress = pyqtSignal(float)
     def __init__(self, vtk_widget):
+        super().__init__()
         # Data containers and GUI interaction elements
         self.shape = None
         self._data = DataContainer()
@@ -59,29 +62,36 @@ class ColabsegData:
 
         fit_object = PARAMETRIZATION_TYPE[fit_type]
         for index in cluster_indices:
+            self.progress.emit((index + 1)/ len(cluster_indices))
+
             if not self._data._index_ok(index):
                 continue
 
             cloud = self._data.data[index]
             kwargs["voxel_size"] = np.max(cloud._sampling_rate)
 
-            fit = fit_object.fit(cloud.points, **kwargs)
-            if fit is None:
+            n = cloud.points.shape[0]
+            if n < 50:
+                print(f"Cluster {index} contains insufficient points for fit ({n}<50).")
                 continue
 
-            new_points = fit.sample(n_samples=1000)
-            self._models.add(
-                points=new_points,
-                sampling_rate=cloud._sampling_rate,
-                meta={"fit": fit, "points": cloud.points},
-            )
+            try:
+                fit = fit_object.fit(cloud.points, **kwargs)
+                if fit is None:
+                    continue
 
-            # self._models.add_mesh(
-            #     points=np.asarray(fit.mesh.vertices),
-            #     faces=np.asarray(fit.mesh.triangles),
-            #     sampling_rate=cloud._sampling_rate,
-            #     meta={"fit": fit, "points": cloud.points},
-            # )
+                new_points = fit.sample(n_samples=1000)
+                self._models.add(
+                    points=new_points,
+                    sampling_rate=cloud._sampling_rate,
+                    meta={"fit": fit, "points": cloud.points},
+                )
+            except Exception as e:
+                print(e)
+                continue
+
+        # Termination signal for listeners
+        self.progress.emit(1)
 
     def export_fit(self, file_path: str, file_format: str):
         fit_indices = self.models._get_selected_indices()

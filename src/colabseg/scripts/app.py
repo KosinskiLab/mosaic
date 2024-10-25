@@ -1,4 +1,10 @@
 #!python3
+import os
+
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+
 import sys
 from importlib_resources import files
 
@@ -19,6 +25,7 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from colabseg import ColabsegData, VolumeViewer
 from colabseg.gui import (
+    EditingTab,
     ClusterSelectionTab,
     ParametrizationTab,
     DevTab,
@@ -105,10 +112,12 @@ class App(QMainWindow):
             distance = max(self.cdata.shape) * 2.0
 
         if view_key == "z":
-            view = (0, 1, 0)
+            # view = (0, 1, 0)
+            view = (1, 0, 1)
             position = focal_point[0], focal_point[1], focal_point[2] + distance
         elif view_key == "c":
-            view = (0, 0, 1)
+            # view = (0, 0, 1)
+            view = (1, 0, 0)
             position = focal_point[0], focal_point[1] + distance, focal_point[2]
         elif view_key == "x":
             view = (0, 1, 0)
@@ -120,8 +129,9 @@ class App(QMainWindow):
         self.vtk_widget.GetRenderWindow().Render()
 
     def setup_tabs(self):
-        self.tab_widget.addTab(ClusterSelectionTab(self.cdata), "Cluster Selection")
+        self.tab_widget.addTab(ClusterSelectionTab(self.cdata), "Selection")
         self.tab_widget.addTab(ParametrizationTab(self.cdata), "Fits")
+        self.tab_widget.addTab(EditingTab(self.cdata), "Editing")
         self.tab_widget.addTab(AnalysisTab(self.cdata), "Analysis")
         self.tab_widget.addTab(DevTab(self.cdata), "Dev")
         for tab in self.tab_widget.children():
@@ -176,7 +186,7 @@ class App(QMainWindow):
         self.cdata.data.render()
         self.cdata.models.render()
         self.renderer.AddViewProp(self.volume_viewer.slice)
-        self.set_camera_view("z")
+        self.set_camera_view("x")
 
     def save_file(self):
         file_dialog = QFileDialog()
