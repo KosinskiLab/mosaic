@@ -5,16 +5,32 @@ from PyQt6.QtCore import Qt, QObject, QItemSelection, QItemSelectionModel, pyqtS
 from PyQt6.QtGui import QAction, QColor
 
 
-def _cluster_modifier(func):
-    @wraps(func)
-    def wrapper(self, **kwargs):
-        indices = self._get_selected_indices()
-        result = func(self, indices=indices, **kwargs)
-        self.data_changed.emit()
-        self.render()
-        return result
+def _cluster_modifier(keep_selection: bool = False):
+    def decorator(func):
+        @wraps(func)
+        def func_wrapper(self, **kwargs):
+            indices = self._get_selected_indices()
+            result = func(self, indices=indices, **kwargs)
+            self.data_changed.emit()
+            self.render()
 
-    return wrapper
+            if not keep_selection:
+                return result
+
+            selection = QItemSelection()
+            for index in indices:
+                index = self.data_list.model().index(index, 0)
+                selection.select(index, index)
+
+            selection_model_flag = QItemSelectionModel.SelectionFlag
+            self.data_list.selectionModel().select(
+                selection, selection_model_flag.Clear | selection_model_flag.Select
+            )
+            return result
+
+        return func_wrapper
+
+    return decorator
 
 
 class LinkedDataContainerInteractor(QObject):
@@ -38,13 +54,11 @@ class LinkedDataContainerInteractor(QObject):
 
     def _update_list(self):
         self.data_list.clear()
+        color = self.interactor.invisible_color
         for i in range(self.interactor.data_container.get_cluster_count()):
             visible = self.data_container.data[i].visible
-            color = self.interactor.invisible_color
-            if visible:
-                color = self.interactor.visible_color
             item = QListWidgetItem(f"{self.interactor.prefix} {i}")
-            item.setForeground(color)
+            item.setForeground(self.interactor.visible_color if visible else color)
             self.data_list.addItem(item)
 
     def _on_cluster_selection_changed(self):
@@ -211,7 +225,7 @@ class DataContainerInteractor(QObject):
             self.data_container.highlight_points(cluster_index, point_ids, color)
         self.vtk_widget.GetRenderWindow().Render()
 
-    @_cluster_modifier
+    @_cluster_modifier()
     def change_visibility(self, **kwargs):
         if len(kwargs["indices"]) == 0:
             kwargs["indices"] = tuple(
@@ -219,46 +233,46 @@ class DataContainerInteractor(QObject):
             )
         return self.data_container.change_visibility(**kwargs)
 
-    @_cluster_modifier
+    @_cluster_modifier(keep_selection=True)
     def toggle_visibility(self, **kwargs):
         if len(kwargs["indices"]) == 0:
-            kwargs["indices"] = tuple(
-                range(len(self.data_container.get_cluster_count()))
-            )
+            kwargs["indices"] = tuple(range(self.data_container.get_cluster_count()))
+
         for index in kwargs["indices"]:
             visible = not self.data_container.data[index].visible
             self.data_container.change_visibility([index], visible=visible)
-        return -1
 
-    @_cluster_modifier
+        return None
+
+    @_cluster_modifier()
     def merge_cluster(self, **kwargs):
         return self.data_container.merge(**kwargs)
 
-    @_cluster_modifier
+    @_cluster_modifier()
     def remove_cluster(self, **kwargs):
         return self.data_container.remove(**kwargs)
 
-    @_cluster_modifier
+    @_cluster_modifier()
     def split_cluster(self, **kwargs):
         return self.data_container.split(**kwargs)
 
-    @_cluster_modifier
+    @_cluster_modifier()
     def sample_cluster(self, **kwargs):
         return self.data_container.sample(**kwargs)
 
-    @_cluster_modifier
+    @_cluster_modifier()
     def crop_cluster(self, **kwargs):
         return self.data_container.crop(**kwargs)
 
-    @_cluster_modifier
+    @_cluster_modifier()
     def trim(self, **kwargs):
         return self.data_container.trim(**kwargs)
 
-    @_cluster_modifier
+    @_cluster_modifier()
     def dbscan_cluster(self, **kwargs):
         return self.data_container.dbscan_cluster(**kwargs)
 
-    @_cluster_modifier
+    @_cluster_modifier()
     def remove_outliers(self, **kwargs):
         return self.data_container.remove_outliers(**kwargs)
 
