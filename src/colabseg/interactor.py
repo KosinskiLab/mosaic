@@ -31,11 +31,21 @@ class LinkedDataContainerInteractor(QObject):
         self._update_list()
 
         self.interactor.data_changed.connect(self._update_list)
+        self.data_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.data_list.customContextMenuRequested.connect(
+            self.interactor._show_context_menu
+        )
 
     def _update_list(self):
         self.data_list.clear()
         for i in range(self.interactor.data_container.get_cluster_count()):
-            self.data_list.addItem(f"{self.interactor.prefix} {i}")
+            visible = self.data_container.data[i].visible
+            color = self.interactor.invisible_color
+            if visible:
+                color = self.interactor.visible_color
+            item = QListWidgetItem(f"{self.interactor.prefix} {i}")
+            item.setForeground(color)
+            self.data_list.addItem(item)
 
     def _on_cluster_selection_changed(self):
         selected_indices = self._get_selected_indices()
