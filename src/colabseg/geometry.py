@@ -42,6 +42,10 @@ class PointCloud:
         return self._actor
 
     @property
+    def visible(self):
+        return self._actor.GetVisibility()
+
+    @property
     def points(self):
         return np.asarray(self._points.GetData())
 
@@ -61,9 +65,7 @@ class PointCloud:
         return self._actor.SetVisibility(visibility)
 
     def toggle_visibility(self):
-        current_visibility = self._actor.GetVisibility()
-        new_visibility = not current_visibility
-        return self.set_visibility(new_visibility)
+        return self.set_visibility(not self.visible)
 
     def set_appearance(
         self,

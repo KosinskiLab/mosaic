@@ -1,8 +1,8 @@
 import vtk
 from functools import wraps
-from PyQt6.QtWidgets import QListWidget, QListWidgetItem
-from PyQt6.QtCore import Qt, QObject, QItemSelection, QItemSelectionModel
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QListWidget, QListWidgetItem, QMenu
+from PyQt6.QtCore import Qt, QObject, QItemSelection, QItemSelectionModel, pyqtSignal
+from PyQt6.QtGui import QAction, QColor
 
 
 def _cluster_modifier(func):
@@ -87,6 +87,12 @@ class DataContainerInteractor(QObject):
         self.interactor.SetInteractorStyle(style)
         self.area_picker.AddObserver("EndPickEvent", self._on_area_pick)
 
+        self.visible_color = QColor(0, 0, 0)
+        self.invisible_color = QColor(128, 128, 128)
+
+        self.data_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.data_list.customContextMenuRequested.connect(self._show_context_menu)
+
     def _on_cluster_selection_changed(self):
         selected_indices = set(self._get_selected_indices())
         self.data_container.highlight(selected_indices)
@@ -123,6 +129,28 @@ class DataContainerInteractor(QObject):
                 )
         self.highlight_selected_points(color=(0.8, 0.2, 0.2))
 
+    def _show_context_menu(self, position):
+        item = self.data_list.itemAt(position)
+        if not item:
+            return -1
+
+        context_menu = QMenu(self.data_list)
+
+        show_action = QAction("Show", self.data_list)
+        show_action.triggered.connect(lambda: self.change_visibility(visible=True))
+        context_menu.addAction(show_action)
+        hide_action = QAction("Hide", self.data_list)
+        hide_action.triggered.connect(lambda: self.change_visibility(visible=False))
+        context_menu.addAction(hide_action)
+
+        # context_menu.addSeparator()
+        # if self.data_list.selectedItems():
+        #     remove_action = QAction("Remove Selected", self.data_list)
+        #     remove_action.triggered.connect(self.remove_points)
+        #     context_menu.addAction(remove_action)
+
+        context_menu.exec(self.data_list.mapToGlobal(position))
+
     def _get_selected_indices(self):
         return [item.row() for item in self.data_list.selectedIndexes()]
 
@@ -153,7 +181,10 @@ class DataContainerInteractor(QObject):
 
         self.data_list.clear()
         for i in range(self.data_container.get_cluster_count()):
-            self.data_list.addItem(f"{self.prefix} {i}")
+            visible = self.data_container.data[i].visible
+            item = QListWidgetItem(f"{self.prefix} {i}")
+            item.setForeground(self.visible_color if visible else self.invisible_color)
+            self.data_list.addItem(item)
 
         self.vtk_widget.GetRenderWindow().Render()
 
@@ -171,8 +202,23 @@ class DataContainerInteractor(QObject):
         self.vtk_widget.GetRenderWindow().Render()
 
     @_cluster_modifier
+    def change_visibility(self, **kwargs):
+        if len(kwargs["indices"]) == 0:
+            kwargs["indices"] = tuple(
+                range(len(self.data_container.get_cluster_count()))
+            )
+        return self.data_container.change_visibility(**kwargs)
+
+    @_cluster_modifier
     def toggle_visibility(self, **kwargs):
-        return self.data_container.toggle_visibility(**kwargs)
+        if len(kwargs["indices"]) == 0:
+            kwargs["indices"] = tuple(
+                range(len(self.data_container.get_cluster_count()))
+            )
+        for index in kwargs["indices"]:
+            visible = not self.data_container.data[index].visible
+            self.data_container.change_visibility([index], visible=visible)
+        return -1
 
     @_cluster_modifier
     def merge_cluster(self, **kwargs):
