@@ -1,7 +1,7 @@
 import vtk
 from functools import wraps
-from PyQt6.QtWidgets import QListWidget
-from PyQt6.QtCore import QObject, QItemSelection, QItemSelectionModel
+from PyQt6.QtWidgets import QListWidget, QListWidgetItem
+from PyQt6.QtCore import Qt, QObject, QItemSelection, QItemSelectionModel
 from PyQt6.QtCore import pyqtSignal
 
 
@@ -169,6 +169,10 @@ class DataContainerInteractor(QObject):
         for cluster_index, point_ids in self.point_selection.items():
             self.data_container.highlight_points(cluster_index, point_ids, color)
         self.vtk_widget.GetRenderWindow().Render()
+
+    @_cluster_modifier
+    def toggle_visibility(self, **kwargs):
+        return self.data_container.toggle_visibility(**kwargs)
 
     @_cluster_modifier
     def merge_cluster(self, **kwargs):

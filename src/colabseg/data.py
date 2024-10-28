@@ -16,6 +16,7 @@ PARAMETRIZATION_TYPE["rbf [yz]"] = rbf
 
 class ColabsegData(QObject):
     progress = pyqtSignal(float)
+
     def __init__(self, vtk_widget):
         super().__init__()
         # Data containers and GUI interaction elements
@@ -62,7 +63,7 @@ class ColabsegData(QObject):
 
         fit_object = PARAMETRIZATION_TYPE[fit_type]
         for index in cluster_indices:
-            self.progress.emit((index + 1)/ len(cluster_indices))
+            self.progress.emit((index + 1) / len(cluster_indices))
 
             if not self._data._index_ok(index):
                 continue

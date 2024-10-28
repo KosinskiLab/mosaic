@@ -17,6 +17,7 @@ from .widgets import ProgressButton
 from ..data import AVAILABLE_PARAMETRIZATIONS
 from ..interactor import LinkedDataContainerInteractor
 
+
 class FitWorker(QThread):
     finished = pyqtSignal()
 
@@ -177,8 +178,7 @@ class ParametrizationTab(QWidget):
         self.fit_button.listen(self.cdata.progress)
 
         self.fit_worker = FitWorker(
-            self.cdata,
-            fit_type=self.param_type_selector.currentText()
+            self.cdata, fit_type=self.param_type_selector.currentText()
         )
         self.fit_worker.finished.connect(self._on_fit_complete)
         self.fit_button.cancel.connect(self.fit_worker.kill)

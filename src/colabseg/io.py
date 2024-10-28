@@ -29,7 +29,8 @@ class DataIO:
         func = self._formats.get(extension, _load_volume)
         return func(filename, *args, **kwargs)
 
-def load_density(filename : str):
+
+def load_density(filename: str):
     volume = Density.from_file(filename)
     volume.data = np.moveaxis(volume.data, 0, 2)
     volume.sampling_rate = volume.sampling_rate[::-1]

@@ -1,7 +1,16 @@
-from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QFrame,
-                            QPushButton, QProgressBar, QLabel, QSizePolicy)
+from PyQt6.QtWidgets import (
+    QWidget,
+    QHBoxLayout,
+    QVBoxLayout,
+    QFrame,
+    QPushButton,
+    QProgressBar,
+    QLabel,
+    QSizePolicy,
+)
 from PyQt6.QtCore import QThread, pyqtSignal, QTimer, Qt
 import numpy as np
+
 
 class DistanceWorker(QThread):
     progress = pyqtSignal(int)
@@ -30,6 +39,7 @@ class DistanceWorker(QThread):
 
         except Exception as e:
             self.error.emit(str(e))
+
 
 class AnalysisTab(QWidget):
     def __init__(self, cdata):
@@ -73,13 +83,17 @@ class AnalysisTab(QWidget):
         # Configure progress bar with fixed height
         self.progress_bar = QProgressBar()
         self.progress_bar.setFixedHeight(30)
-        self.progress_bar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.progress_bar.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
         self.progress_bar.hide()
 
         # Configure status label with fixed height
         self.status_label = QLabel()
         self.status_label.setFixedHeight(30)
-        self.status_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.status_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_label.hide()
 
@@ -150,7 +164,9 @@ class AnalysisTab(QWidget):
 
     def analysis_finished(self, distances):
         self.cleanup_analysis()
-        self.show_temporary_message(f"Analysis complete! Computed {len(distances)} distances.")
+        self.show_temporary_message(
+            f"Analysis complete! Computed {len(distances)} distances."
+        )
 
     def analysis_error(self, error_message):
         self.cleanup_analysis()

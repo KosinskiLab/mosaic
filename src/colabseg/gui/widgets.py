@@ -69,12 +69,14 @@ class ProgressButton(QPushButton):
         self._fade_opacity = 1.0
 
         self._cancel_button = QPushButton(parent=self)
-        self._cancel_button.setStyleSheet("""
+        self._cancel_button.setStyleSheet(
+            """
             QPushButton {
                 background-color: transparent;
                 border: none;
             }
-        """)
+        """
+        )
 
         self._cancel_button.clicked.connect(self._handle_cancel_click)
         self._cancel_button.setEnabled(False)
@@ -169,8 +171,6 @@ class ProgressButton(QPushButton):
 
         painter.setPen(Qt.GlobalColor.white)
         painter.drawText(
-            self.rect(),
-            Qt.AlignmentFlag.AlignCenter,
-            f"{int(self._progress)}%"
+            self.rect(), Qt.AlignmentFlag.AlignCenter, f"{int(self._progress)}%"
         )
         painter.restore()

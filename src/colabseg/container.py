@@ -357,6 +357,20 @@ class DataContainer:
         if self._index_ok(index):
             self.data[index].color_points(point_ids, color)
 
+    def toggle_visibility(self, indices: Tuple[int]):
+        """Toggle visibility of specified point clouds.
+
+        Parameters
+        ----------
+        indices : tuple of int
+            Indices of clouds whose visibility to toggle.
+        """
+        for index in indices:
+            if not self._index_ok(index):
+                continue
+            self.data[index].toggle_visibility()
+        return None
+
     def get_cluster_count(self) -> int:
         """Get number of point clouds in container.
 

@@ -57,6 +57,14 @@ class PointCloud:
             color = self._default_color
         self.color_points(range(self._points.GetNumberOfPoints()), color=color)
 
+    def set_visibility(self, visibility: bool = True):
+        return self._actor.SetVisibility(visibility)
+
+    def toggle_visibility(self):
+        current_visibility = self._actor.GetVisibility()
+        new_visibility = not current_visibility
+        return self.set_visibility(new_visibility)
+
     def set_appearance(
         self,
         size=8,

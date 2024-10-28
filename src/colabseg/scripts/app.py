@@ -1,9 +1,9 @@
 #!python3
 import os
 
-os.environ['OMP_NUM_THREADS'] = '1'
-os.environ['MKL_NUM_THREADS'] = '1'
-os.environ['NUMEXPR_NUM_THREADS'] = '1'
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 import sys
 from importlib_resources import files
@@ -98,6 +98,8 @@ class App(QMainWindow):
         elif key == "\x7f":
             self.cdata.data.remove_cluster()
             self.cdata.data.remove_points()
+        elif key == "h":
+            self.cdata.data.toggle_visibility()
 
     def on_right_click(self, obj, event):
         self.cdata.data.deselect()
