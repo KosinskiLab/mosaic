@@ -215,7 +215,7 @@ class TriangularMesh(Parametrization):
             return None
 
         if not repair:
-            return mesh
+            return cls(mesh=mesh)
 
         # Hole filling and triangulation
         new_vs, new_fs = triangulate_refine_fair(

@@ -54,11 +54,11 @@ class LinkedDataContainerInteractor(QObject):
 
     def _update_list(self):
         self.data_list.clear()
-        color = self.interactor.invisible_color
         for i in range(self.interactor.data_container.get_cluster_count()):
             visible = self.data_container.data[i].visible
             item = QListWidgetItem(f"{self.interactor.prefix} {i}")
-            item.setForeground(self.interactor.visible_color if visible else color)
+            if not visible:
+                item.setForeground(self.interactor.invisible_color)
             self.data_list.addItem(item)
 
     def _on_cluster_selection_changed(self):
@@ -111,7 +111,6 @@ class DataContainerInteractor(QObject):
         self.interactor.SetInteractorStyle(style)
         self.area_picker.AddObserver("EndPickEvent", self._on_area_pick)
 
-        self.visible_color = QColor(0, 0, 0)
         self.invisible_color = QColor(128, 128, 128)
 
         self.data_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -180,6 +179,9 @@ class DataContainerInteractor(QObject):
 
     def remove_points(self):
         added_cluster = self.data_container.add_selection(self.point_selection)
+        if added_cluster == -1:
+            print("Something went wrong while removing points.")
+            return -1
         self.deselect_points()
         self.data_container.remove(added_cluster)
         self.render()
@@ -207,7 +209,8 @@ class DataContainerInteractor(QObject):
         for i in range(self.data_container.get_cluster_count()):
             visible = self.data_container.data[i].visible
             item = QListWidgetItem(f"{self.prefix} {i}")
-            item.setForeground(self.visible_color if visible else self.invisible_color)
+            if not visible:
+                item.setForeground(self.invisible_color)
             self.data_list.addItem(item)
 
         self.vtk_widget.GetRenderWindow().Render()

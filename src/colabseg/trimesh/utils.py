@@ -154,11 +154,10 @@ def compute_scale_factor(mesh, lower_bound=1.0, upper_bound=1.7):
             max_count, peak_bin_center = count, bin_center
 
     count_rel = np.round(100 * max_count / edge_lengths.size, 2)
-    print(
-        f"{count_rel}% of edges [N={max_count}] are within range of {peak_bin_center}"
-    )
+    scale_factor = mean_bound / peak_bin_center
+    print(f"{count_rel}% of edges [N={max_count}] are within range of {scale_factor}")
 
-    return mean_bound / peak_bin_center
+    return scale_factor
 
 
 def com_cluster_points(postions, cutoff):

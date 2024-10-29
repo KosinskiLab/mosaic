@@ -484,4 +484,4 @@ class DataContainer:
 
         if len(new_cluster):
             return self.add(np.concatenate(new_cluster))
-        return -1
+        return 0

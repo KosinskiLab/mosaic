@@ -32,7 +32,7 @@ class DataIO:
 
 def load_density(filename: str):
     volume = Density.from_file(filename)
-    volume.data = np.moveaxis(volume.data, 0, 2)
+    volume.data = np.swapaxes(volume.data, 0, 2)
     volume.sampling_rate = volume.sampling_rate[::-1]
     return volume
 
