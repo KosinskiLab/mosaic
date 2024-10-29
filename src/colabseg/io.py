@@ -59,7 +59,7 @@ def _load_volume(filename: str):
     return ret, shape, volume.sampling_rate
 
 
-def _load_txt(self, filename: str):
+def _load_txt(filename: str):
     ret = []
     data = np.loadtxt(filename)
 
@@ -81,7 +81,7 @@ def _load_txt(self, filename: str):
     return ret, shape, (1, 1, 1)
 
 
-def _load_mesh(self, filename: str):
+def _load_mesh(filename: str):
     mesh = o3d.io.read_triangle_mesh(filename)
     ret = [np.asarray(mesh.vertices)]
 

@@ -150,7 +150,7 @@ def compute_scale_factor(mesh, lower_bound=1.0, upper_bound=1.7):
         ub = bin_center * (upper_bound / mean_bound)
 
         count = np.sum(np.logical_and(edge_lengths > lb, edge_lengths < ub))
-        if count > max_count:
+        if count >= max_count:
             max_count, peak_bin_center = count, bin_center
 
     count_rel = np.round(100 * max_count / edge_lengths.size, 2)
