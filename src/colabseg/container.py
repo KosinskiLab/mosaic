@@ -127,6 +127,9 @@ class DataContainer:
             return -1
         if not isinstance(data, np.ndarray):
             data = np.concatenate([self._get_cluster_points(i) for i in data])
+            if "sampling_rate" not in kwargs:
+                kwargs["sampling_rate"] = self.data[data[0]]._sampling_rate
+
         return self.add(data, *args, **kwargs)
 
     def merge(self, indices: List[int]) -> int:
@@ -172,7 +175,12 @@ class DataContainer:
         new_cluster = []
         new_indices = np.asarray(clustering.labels_)
         for new_clusters in np.unique(new_indices):
-            new_cluster.append(self.add(data[np.where(new_indices == new_clusters)]))
+            new_cluster.append(
+                self.add(
+                    data[np.where(new_indices == new_clusters)],
+                    sampling_rate=self.data[indices[0]]._sampling_rate,
+                )
+            )
 
         return tuple(new_cluster)
 
@@ -461,6 +469,10 @@ class DataContainer:
             if not len(point_ids):
                 continue
 
+            # Ignore selected points from invisible geometries
+            if not self.data[index].visible:
+                continue
+
             points = self._get_cluster_points(index)
             if points.shape[0] == 0:
                 continue
@@ -484,4 +496,4 @@ class DataContainer:
 
         if len(new_cluster):
             return self.add(np.concatenate(new_cluster))
-        return 0
+        return -1

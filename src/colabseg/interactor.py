@@ -180,7 +180,6 @@ class DataContainerInteractor(QObject):
     def remove_points(self):
         added_cluster = self.data_container.add_selection(self.point_selection)
         if added_cluster == -1:
-            print("Something went wrong while removing points.")
             return -1
         self.deselect_points()
         self.data_container.remove(added_cluster)
