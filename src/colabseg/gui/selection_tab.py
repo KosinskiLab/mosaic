@@ -6,12 +6,10 @@ from PyQt6.QtWidgets import (
     QFrame,
     QPushButton,
     QGridLayout,
-    QDialog,
-    QComboBox,
 )
 
 from .widgets import HistogramWidget
-from .dialog import format_tooltip, OperationDialog
+from .dialog import format_tooltip, show_parameter_dialog
 
 
 class ClusterSelectionTab(QWidget):
@@ -119,8 +117,13 @@ class ClusterSelectionTab(QWidget):
         for row, (operation_name, parameters) in enumerate(CLUSTER_OPERATIONS.items()):
             button = QPushButton(operation_name)
             button.clicked.connect(
-                lambda checked, op=operation_name, params=parameters: self.show_parameter_dialog(
-                    op, params
+                lambda checked, op=operation_name, params=parameters: show_parameter_dialog(
+                    op,
+                    params,
+                    self,
+                    {
+                        "Recluster": self.cdata.data.dbscan_cluster,
+                    },
                 )
             )
             button.setToolTip(
@@ -135,11 +138,16 @@ class ClusterSelectionTab(QWidget):
         analysis_frame.setFrameStyle(QFrame.Shape.StyledPanel)
         analysis_layout = QGridLayout(analysis_frame)
 
+        operations_mapping = {
+            "Trim Range": self.cdata.data.trim,
+            "Remove Outlier": self.cdata.data.remove_outliers,
+        }
+
         for row, (operation_name, parameters) in enumerate(POINT_OPERATIONS.items()):
             button = QPushButton(operation_name)
             button.clicked.connect(
-                lambda checked, op=operation_name, params=parameters: self.show_parameter_dialog(
-                    op, params
+                lambda checked, op=operation_name, params=parameters: show_parameter_dialog(
+                    op, params, self, operations_mapping
                 )
             )
             button.setToolTip(
@@ -148,34 +156,6 @@ class ClusterSelectionTab(QWidget):
             analysis_layout.addWidget(button, row, 0)
 
         main_layout.addWidget(analysis_frame)
-
-    def show_parameter_dialog(self, operation_type, parameters):
-        dialog = OperationDialog(operation_type, parameters, self)
-
-        if dialog.exec() == QDialog.DialogCode.Rejected:
-            return -1
-
-        params = {
-            label: (
-                widget.currentText()
-                if isinstance(widget, QComboBox)
-                else widget.value()
-            )
-            for label, widget in dialog.parameter_widgets.items()
-        }
-        _mapping = {
-            "Trim Range": self.cdata.data.trim,
-            "Recluster": self.cdata.data.dbscan_cluster,
-            "Remove Outlier": self.cdata.data.remove_outliers,
-        }
-
-        func = _mapping.get(operation_type)
-        if func is None:
-            print(
-                f"Unknown operation {operation_type}. Supported are {_mapping.keys()}."
-            )
-
-        return func(**params)
 
 
 CLUSTER_OPERATIONS = {

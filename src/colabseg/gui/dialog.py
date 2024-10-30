@@ -152,3 +152,25 @@ class OperationDialog(QDialog):
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
+
+
+def show_parameter_dialog(operation_type, parameters, obj, operation_mapping):
+    dialog = OperationDialog(operation_type, parameters, obj)
+
+    if dialog.exec() == QDialog.DialogCode.Rejected:
+        return -1
+
+    params = {
+        label: (
+            widget.currentText() if isinstance(widget, QComboBox) else widget.value()
+        )
+        for label, widget in dialog.parameter_widgets.items()
+    }
+
+    func = operation_mapping.get(operation_type)
+    if func is None:
+        print(
+            f"{operation_type} is unknown - Supported are {operation_mapping.keys()}."
+        )
+
+    return func(**params)

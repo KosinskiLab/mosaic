@@ -288,6 +288,7 @@ class Sphere(Parametrization):
 
     @classmethod
     def fit(cls, positions: np.ndarray, **kwargs) -> "Sphere":
+        positions = np.asarray(positions, dtype=np.float64)
         A = np.column_stack((2 * positions, np.ones(len(positions))))
         b = (positions**2).sum(axis=1)
 
@@ -379,7 +380,7 @@ class Ellipsoid(Parametrization):
     @classmethod
     def fit(cls, positions, **kwargs) -> "Ellipsoid":
         # Adapted from https://de.mathworks.com/matlabcentral/fileexchange/24693-ellipsoid-fit
-        positions = np.asarray(positions, dtype=np.float64).copy()
+        positions = np.asarray(positions, dtype=np.float64)
         if positions.shape[1] != 3 or len(positions.shape) != 2:
             raise NotImplementedError(
                 "Only three-dimensional point clouds are supported."

@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
 from .widgets import ProgressButton
+from .dialog import show_parameter_dialog
 from ..data import AVAILABLE_PARAMETRIZATIONS
 from ..interactor import LinkedDataContainerInteractor
 
@@ -52,6 +53,7 @@ class ParametrizationTab(QWidget):
         self.setup_cluster_list(main_layout)
         self.setup_operations(main_layout)
         self.setup_fit_list(main_layout)
+        self.setup_editing(main_layout)
         # self.setup_equilibration_frame(main_layout)
         main_layout.addStretch()
 
@@ -104,14 +106,6 @@ class ParametrizationTab(QWidget):
         grid_layout.addWidget(self.fit_button, 0, 0)
         grid_layout.addWidget(self.param_type_selector, 0, 1)
 
-        # Crop row
-        crop_button = QPushButton("Crop Around Cluster")
-        crop_button.clicked.connect(self.crop_fit)
-        self.crop_input = QLineEdit()
-        self.crop_input.setPlaceholderText("Distance")
-        grid_layout.addWidget(crop_button, 1, 0)
-        grid_layout.addWidget(self.crop_input, 1, 1)
-
         # Export row
         export_button = QPushButton("Export")
         export_button.clicked.connect(self.export_fit)
@@ -153,25 +147,49 @@ class ParametrizationTab(QWidget):
 
         operations_layout.addWidget(frame)
 
+    def setup_editing(self, main_layout):
+        operations_layout = QVBoxLayout()
+        operations_layout.setSpacing(5)
+
+        self.setup_fit_operations(operations_layout)
+        # operations_layout.addStretch()
+        self.setup_equilibration_frame(operations_layout)
+
+        main_layout.addLayout(operations_layout)
+
+    def setup_fit_operations(self, operations_layout):
+        frame = QFrame()
+        frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        frame_layout = QGridLayout(frame)
+
+        to_cluster = QPushButton("To Cluster")
+        to_cluster.clicked.connect(self.fit_to_cluster)
+        frame_layout.addWidget(to_cluster, 0, 0)
+
+        for row, (operation_name, parameters) in enumerate(FIT_OPERATIONS.items()):
+            button = QPushButton(operation_name)
+            button.clicked.connect(
+                lambda checked, op=operation_name, params=parameters: show_parameter_dialog(
+                    op, params, self, {"Crop Around Cluster": self.crop_fit}
+                )
+            )
+            frame_layout.addWidget(button, row + 1, 0)
+
+        operations_layout.addWidget(frame)
+
     def setup_equilibration_frame(self, operations_layout):
         frame = QFrame()
         frame.setFrameStyle(QFrame.Shape.StyledPanel)
         frame_layout = QGridLayout(frame)
 
-        frame.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        frame.setMaximumWidth(150)
-
-        button = QPushButton("Equilibrate Edge Length")
-        button.clicked.connect(self.equilibrate_fit)
-
-        self.lower_edge_length = QLineEdit()
-        self.lower_edge_length.setPlaceholderText("Lower Bound")
-        self.upper_edge_length = QLineEdit()
-        self.upper_edge_length.setPlaceholderText("Upper Bound")
-
-        frame_layout.addWidget(self.lower_edge_length, 0, 1)
-        frame_layout.addWidget(self.upper_edge_length, 0, 2)
-        frame_layout.addWidget(button, 1, 1, 1, 2)
+        for row, (operation_name, parameters) in enumerate(MESH_OPERATIONS.items()):
+            button = QPushButton(operation_name)
+            button.clicked.connect(
+                lambda checked, op=operation_name, params=parameters: show_parameter_dialog(
+                    op, params, self, {"Equilibrate Mesh": self.equilibrate_fit}
+                )
+            )
+            frame_layout.addWidget(button, row, 0)
 
         operations_layout.addWidget(frame)
 
@@ -204,13 +222,21 @@ class ParametrizationTab(QWidget):
             method=sampling_method,
         )
 
-    def crop_fit(self):
-        try:
-            distance = float(self.crop_input.text())
-        except Exception:
-            return -1
+    def crop_fit(self, *args, **kwargs):
+        return self.cdata.models.crop_cluster(*args, **kwargs)
 
-        return self.cdata.models.crop_cluster(distance=distance)
+    def fit_to_cluster(self, *args, **kwargs):
+        indices = self.cdata.models._get_selected_indices()
+
+        for index in indices:
+            if not self.cdata._models._index_ok(index):
+                continue
+
+            points = self.cdata._models.data[index].points
+            sampling = self.cdata._models.data[index]._sampling_rate
+            self.cdata._data.new(points, sampling_rate=sampling)
+        self.cdata.data.render()
+        return None
 
     def export_fit(self):
         file_dialog = QFileDialog()
@@ -223,8 +249,153 @@ class ParametrizationTab(QWidget):
         )
 
     def equilibrate_fit(self):
-        try:
-            lower_bound = float(self.lower_edge_length.currentText())
-            upper_bound = float(self.upper_edge_length.currentText())
-        except Exception:
+        indices = self.cdata.models._get_selected_indices()
+        if len(indices) != 1:
+            print("Can only equilibrate a single mesh at once.")
             return -1
+        fit = self.cdata.models.data[indices[0]]
+
+        return -1
+
+
+FIT_OPERATIONS = {
+    "Crop Around Cluster": [
+        (
+            "distance",
+            40,
+            0,
+            {
+                "title": "Distance",
+                "description": "Maximum distance between fit and cluster point.",
+                "default_value": "40",
+            },
+        ),
+    ],
+}
+
+MESH_OPERATIONS = {
+    "Equilibrate Mesh": [
+        (
+            "averge_edge",
+            40,
+            0,
+            {
+                "title": "Mean edge length",
+                "description": "Average edge length of mesh.",
+                "default_value": "35",
+            },
+        ),
+        (
+            "lower_bound",
+            35,
+            0,
+            {
+                "title": "Lower Bound (lc1)",
+                "description": "Minimum edge length of mesh.",
+                "default_value": "35",
+            },
+        ),
+        (
+            "upper_bound",
+            45,
+            0,
+            {
+                "title": "Upper Bound (lc0)",
+                "description": "Maximum edge length of mesh.",
+                "default_value": "45",
+            },
+        ),
+        (
+            "steps",
+            5000,
+            1,
+            {
+                "title": "Steps",
+                "description": "Maximum number of minimization iterations.",
+                "default_value": "5000",
+            },
+        ),
+        (
+            "kappa_b",
+            300,
+            0,
+            {
+                "title": "Bending Stiffness",
+                "description": "Bending energy coefficient (kappa_b).",
+                "default_value": "300.0",
+            },
+        ),
+        (
+            "kappa_a",
+            int(1.0e6),
+            0,
+            {
+                "title": "Area Constraint",
+                "description": "Area conservation coefficient (kappa_a).",
+                "default_value": "1.0e6",
+            },
+        ),
+        (
+            "kappa_v",
+            int(1.0e6),
+            0,
+            {
+                "title": "Volume Constraint",
+                "description": "Volume conservation coefficient (kappa_v).",
+                "default_value": "1.0e6",
+            },
+        ),
+        (
+            "kappa_c",
+            0.0,
+            0,
+            {
+                "title": "Curvature Energy",
+                "description": "Curvature energy coefficient (kappa_c).",
+                "default_value": "0.0",
+            },
+        ),
+        (
+            "kappa_t",
+            int(1.0e5),
+            0,
+            {
+                "title": "Edge Tension",
+                "description": "Edge tension coefficient (kappa_t).",
+                "default_value": "1.0e5",
+            },
+        ),
+        (
+            "kappa_r",
+            int(1.0e3),
+            0,
+            {
+                "title": "Repulsion Strength",
+                "description": "Surface repulsion coefficient (kappa_r).",
+                "default_value": "1.0e3",
+            },
+        ),
+    ],
+    "Scale Mesh": [
+        (
+            "lower_bound",
+            1.0,
+            0.0,
+            {
+                "title": "Lower Bound",
+                "description": "Lower bound for edge length.",
+                "default_value": "1.0",
+            },
+        ),
+        (
+            "upper_bound",
+            1.7,
+            0.0,
+            {
+                "title": "Upper Bound",
+                "description": "Upper bound for edge length.",
+                "default_value": "1.7",
+            },
+        ),
+    ],
+}

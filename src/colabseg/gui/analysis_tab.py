@@ -55,7 +55,7 @@ class AnalysisTab(QWidget):
         main_layout = QHBoxLayout(self)
         main_layout.setSpacing(layout_spacing)
         self.setup_protein_operations(main_layout)
-        main_layout.addStretch()
+        # main_layout.addStretch()
 
     def setup_protein_operations(self, main_layout):
         # Create a fixed-width frame

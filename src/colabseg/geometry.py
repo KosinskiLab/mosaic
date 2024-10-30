@@ -50,8 +50,9 @@ class PointCloud:
         return np.asarray(self._points.GetData())
 
     def add_points(self, points):
-        for point in points:
-            point_id = self._points.InsertNextPoint(point)
+        points = np.asarray(points, dtype=np.float32)
+        for i in range(points.shape[0]):
+            point_id = self._points.InsertNextPoint(points[i])
             self._cells.InsertNextCell(1)
             self._cells.InsertCellPoint(point_id)
         self._data.Modified()

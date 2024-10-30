@@ -290,8 +290,6 @@ class DataContainerInteractor(QObject):
 
     @_cluster_modifier()
     def dbscan_cluster(self, **kwargs):
-        print("clustering")
-        return -1
         return self.data_container.dbscan_cluster(**kwargs)
 
     @_cluster_modifier()

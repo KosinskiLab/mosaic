@@ -25,8 +25,7 @@ def dbscan_clustering(points, eps=0.02, min_points=10):
     """
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points.astype(np.float64))
-    pcd = pcd.cluster_dbscan(eps=eps, min_points=min_points)
-    dbscan_labels = np.asarray(pcd.points)
+    dbscan_labels = np.asarray(pcd.cluster_dbscan(eps=eps, min_points=min_points))
 
     new_cluster = []
     for label in np.unique(dbscan_labels):
