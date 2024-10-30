@@ -209,7 +209,7 @@ POINT_OPERATIONS = {
     "Remove Outlier": [
         (
             "k_neighbors",
-            100,
+            10,
             0,
             {
                 "title": "Number of Neighbors",
@@ -220,7 +220,7 @@ POINT_OPERATIONS = {
         ),
         (
             "thresh",
-            0.2,
+            0.02,
             0.0,
             {
                 "title": "Threshold",

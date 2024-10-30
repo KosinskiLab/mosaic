@@ -176,6 +176,7 @@ class TriangularMesh(Parametrization):
         **kwargs,
     ):
         # Surface reconstruction normal estimation
+        positions = np.asarray(positions, dtype=np.float64)
         ellipsoid = Ellipsoid.fit(positions)
 
         # Reduce membrane thickness
@@ -222,8 +223,8 @@ class TriangularMesh(Parametrization):
             np.asarray(mesh.vertices), np.asarray(mesh.triangles), fair_alpha=1
         )
         mesh = o3d.geometry.TriangleMesh()
-        mesh.vertices = o3d.utility.Vector3dVector(new_vs)
-        mesh.triangles = o3d.utility.Vector3iVector(new_fs)
+        mesh.vertices = o3d.utility.Vector3dVector(new_vs.astype(np.float64))
+        mesh.triangles = o3d.utility.Vector3iVector(new_fs.astype(np.int32))
         mesh = mesh.remove_degenerate_triangles()
         mesh = mesh.filter_smooth_taubin(number_of_iterations=100)
         mesh = mesh.compute_vertex_normals()

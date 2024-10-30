@@ -3,7 +3,7 @@ import open3d as o3d
 from scipy import spatial
 
 
-def dbscan_clustering(points, minimal_dbscsan_size=1000, eps=40, min_points=20):
+def dbscan_clustering(points, eps=0.02, min_points=10):
     """
     Perform DBSCAN clustering on the input points.
 
@@ -11,8 +11,6 @@ def dbscan_clustering(points, minimal_dbscsan_size=1000, eps=40, min_points=20):
     ----------
     points : ndarray
         Input point cloud.
-    minimal_dbscsan_size : int, optional
-        Minimum cluster size to keep, by default 1000.
     eps : float, optional
         Maximum distance between two samples for one to be considered as in
         the neighborhood of the other, by default 40.
@@ -26,15 +24,14 @@ def dbscan_clustering(points, minimal_dbscsan_size=1000, eps=40, min_points=20):
         List of clusters, where each cluster is an array of points.
     """
     pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(points)
-    dbscan_labels = np.asarray(pcd.cluster_dbscan(eps=eps, min_points=min_points))
+    pcd.points = o3d.utility.Vector3dVector(points.astype(np.float64))
+    pcd = pcd.cluster_dbscan(eps=eps, min_points=min_points)
+    dbscan_labels = np.asarray(pcd.points)
 
     new_cluster = []
     for label in np.unique(dbscan_labels):
         positions_to_write = np.asarray(pcd.points)[dbscan_labels == label]
         if label == -1:
-            continue
-        if len(positions_to_write) < minimal_dbscsan_size:
             continue
         new_cluster.append(positions_to_write)
 
@@ -100,8 +97,7 @@ def statistical_outlier_removal(points, k_neighbors=100, thresh=0.2):
         Filtered point cloud with outliers removed.
     """
     pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(points)
+    pcd.points = o3d.utility.Vector3dVector(points.astype(np.float64))
 
     cl, ind = pcd.remove_statistical_outlier(nb_neighbors=k_neighbors, std_ratio=thresh)
-
     return np.asarray(cl.points)
