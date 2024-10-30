@@ -164,9 +164,9 @@ class ClusterSelectionTab(QWidget):
             for label, widget in dialog.parameter_widgets.items()
         }
         _mapping = {
-            "Trim": self.cdata.data.trim,
-            "Cluster": self.cdata.data.dbscan_cluster,
-            "Outlier": self.cdata.data.remove_outliers,
+            "Trim Range": self.cdata.data.trim,
+            "Recluster": self.cdata.data.dbscan_cluster,
+            "Remove Outlier": self.cdata.data.remove_outliers,
         }
 
         func = _mapping.get(operation_type)
@@ -219,7 +219,7 @@ POINT_OPERATIONS = {
             },
         ),
         (
-            "std_ratio",
+            "thresh",
             0.2,
             0.0,
             {

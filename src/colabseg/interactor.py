@@ -16,7 +16,6 @@ def _cluster_modifier(keep_selection: bool = False):
             if not isinstance(kwarg_indices, (Tuple, List)):
                 kwarg_indices = [kwarg_indices]
 
-            print(indices, kwarg_indices)
             result = func(self, indices=(*indices, *kwarg_indices), **kwargs)
             self.data_changed.emit()
             self.render()

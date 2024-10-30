@@ -81,7 +81,7 @@ def eigenvalue_outlier_removal(points, k_neighbors=300, thresh=0.05):
     return points[mask]
 
 
-def statistical_outlier_removal(points, k_neighbors=100, std_ratio=0.2):
+def statistical_outlier_removal(points, k_neighbors=100, thresh=0.2):
     """
     Remove statistical outliers from the point cloud.
 
@@ -91,7 +91,7 @@ def statistical_outlier_removal(points, k_neighbors=100, std_ratio=0.2):
         Input point cloud.
     k_neighbors : int, optional
         Number of neighbors to use for mean distance estimation, by default 100.
-    std_ratio : float, optional
+    thresh : float, optional
         Standard deviation ratio to identify outliers, by default 0.2.
 
     Returns
@@ -102,8 +102,6 @@ def statistical_outlier_removal(points, k_neighbors=100, std_ratio=0.2):
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points)
 
-    cl, ind = pcd.remove_statistical_outlier(
-        nb_neighbors=k_neighbors, std_ratio=std_ratio
-    )
+    cl, ind = pcd.remove_statistical_outlier(nb_neighbors=k_neighbors, std_ratio=thresh)
 
     return np.asarray(cl.points)

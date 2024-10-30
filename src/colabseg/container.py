@@ -147,6 +147,7 @@ class DataContainer:
         """
         if len(indices) < 2:
             return -1
+        indices = [x for x in indices if self._index_ok(x)]
         new_index = self.new(indices)
         self.remove(indices)
         return new_index - len(indices)
