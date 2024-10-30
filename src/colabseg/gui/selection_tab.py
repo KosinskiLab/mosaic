@@ -1,6 +1,3 @@
-import numpy as np
-import pyqtgraph as pg
-
 from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -8,10 +5,13 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QFrame,
     QPushButton,
-    QSlider,
+    QGridLayout,
+    QDialog,
+    QComboBox,
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QColor
+
+from .widgets import HistogramWidget
+from .dialog import format_tooltip, OperationDialog
 
 
 class ClusterSelectionTab(QWidget):
@@ -26,7 +26,8 @@ class ClusterSelectionTab(QWidget):
         main_layout.setSpacing(layout_spacing)
 
         self.setup_cluster_list(main_layout)
-        self.setup_operations(main_layout)
+        self.setup_cluster(main_layout)
+        self.setup_points(main_layout)
         self.setup_histogram(main_layout)
 
     def setup_cluster_list(self, main_layout):
@@ -40,15 +41,23 @@ class ClusterSelectionTab(QWidget):
 
         main_layout.addWidget(scroll_area, 1)
 
-    def setup_operations(self, main_layout):
+    def setup_cluster(self, main_layout):
         operations_layout = QVBoxLayout()
         operations_layout.setSpacing(5)
 
         self.setup_cluster_operations(operations_layout)
-        operations_layout.addStretch()
-        self.setup_point_operations(operations_layout)
-
+        # operations_layout.addStretch()
+        self.setup_cluster_editing_operations(operations_layout)
         main_layout.addLayout(operations_layout)
+
+    def setup_points(self, main_layout):
+        editing_layout = QVBoxLayout()
+        editing_layout.setSpacing(5)
+
+        self.setup_point_operations(editing_layout)
+        # editing_layout.addStretch()
+        self.setup_point_editing_operations(editing_layout)
+        main_layout.addLayout(editing_layout)
 
     def setup_cluster_operations(self, operations_layout):
         self.cluster_buttons = {}
@@ -58,7 +67,6 @@ class ClusterSelectionTab(QWidget):
         cluster_ops_mapping = [
             ("Merge Cluster", self.cdata.data.merge_cluster),
             ("Remove Cluster", self.cdata.data.remove_cluster),
-            ("Split Cluster", self.cdata.data.split_cluster),
         ]
         for button_text, button_method in cluster_ops_mapping:
             button = QPushButton(button_text)
@@ -73,7 +81,7 @@ class ClusterSelectionTab(QWidget):
         point_ops_frame.setFrameStyle(QFrame.Shape.StyledPanel)
         point_ops_layout = QVBoxLayout(point_ops_frame)
         points_ops_mapping = [
-            ("Cluster Points", self.cdata.data.cluster_points),
+            ("Merge Points", self.cdata.data.cluster_points),
             ("Remove Points", self.cdata.data.remove_points),
         ]
         for button_text, button_method in points_ops_mapping:
@@ -98,63 +106,195 @@ class ClusterSelectionTab(QWidget):
     def update_histogram(self):
         self.histogram_widget.update_histogram(self.cdata._data.get_cluster_size())
 
+    def setup_cluster_editing_operations(self, main_layout):
+        analysis_frame = QFrame()
+        analysis_frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        analysis_layout = QGridLayout(analysis_frame)
 
-class HistogramWidget(QWidget):
-    cutoff_changed = pyqtSignal(float)
+        button = QPushButton("Split Cluster")
+        button.clicked.connect(self.cdata.data.split_cluster)
+        analysis_layout.addWidget(button)
+        self.cluster_buttons["Split Cluster"] = button
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.initUI()
-
-    def initUI(self):
-        layout = QHBoxLayout(self)
-
-        # Histogram plotter
-        self.histogram_plot = pg.PlotWidget()
-        self.histogram_plot.setBackground(None)
-        self.histogram_plot.getAxis("left").setPen(pg.mkPen(color=(0, 0, 0)))
-        self.histogram_plot.getAxis("bottom").setPen(pg.mkPen(color=(0, 0, 0)))
-        self.histogram_plot.setLabel("left", "Count")
-        self.histogram_plot.setLabel("bottom", "Cluster Size")
-        layout.addWidget(self.histogram_plot)
-
-        # Cutoff line
-        self.cutoff_line = pg.InfiniteLine(
-            angle=90,
-            movable=False,
-            pen=pg.mkPen(QColor(70, 130, 180), width=2, style=Qt.PenStyle.DotLine),
-        )
-        self.histogram_plot.addItem(self.cutoff_line)
-
-        # Slider
-        slider_layout = QVBoxLayout()
-        self.slider = QSlider(Qt.Orientation.Vertical)
-        self.slider.setMinimum(0)
-        self.slider.setMaximum(100)
-        self.slider.setValue(50)
-        self.slider.valueChanged.connect(self.update_cutoff_line)
-        slider_layout.addWidget(self.slider)
-        layout.addLayout(slider_layout)
-
-        self.max_cluster_size = 1  # Default value to avoid division by zero
-
-    def update_histogram(self, cluster_sizes):
-        if cluster_sizes:
-            y, x = np.histogram(cluster_sizes, bins=max(10, len(set(cluster_sizes))))
-            self.histogram_plot.clear()
-            bar_graph = pg.BarGraphItem(
-                x=x[:-1],
-                height=y,
-                width=(x[1] - x[0]) * 0.8,
-                brush=QColor(70, 130, 180),
+        for row, (operation_name, parameters) in enumerate(CLUSTER_OPERATIONS.items()):
+            button = QPushButton(operation_name)
+            button.clicked.connect(
+                lambda checked, op=operation_name, params=parameters: self.show_parameter_dialog(
+                    op, params
+                )
             )
-            self.histogram_plot.addItem(bar_graph)
-            self.histogram_plot.addItem(self.cutoff_line)
-            self.max_cluster_size = max(cluster_sizes) + 1
-            self.update_cutoff_line(emit=False)
+            button.setToolTip(
+                format_tooltip(**CLUSTER_OPERATION_TOOLTIPS[operation_name])
+            )
+            analysis_layout.addWidget(button, row + 1, 0)
 
-    def update_cutoff_line(self, emit: bool = True):
-        cutoff_value = (self.slider.value() / 100.0) * self.max_cluster_size
-        self.cutoff_line.setValue(cutoff_value)
-        if emit:
-            self.cutoff_changed.emit(cutoff_value)
+        main_layout.addWidget(analysis_frame)
+
+    def setup_point_editing_operations(self, main_layout):
+        analysis_frame = QFrame()
+        analysis_frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        analysis_layout = QGridLayout(analysis_frame)
+
+        for row, (operation_name, parameters) in enumerate(POINT_OPERATIONS.items()):
+            button = QPushButton(operation_name)
+            button.clicked.connect(
+                lambda checked, op=operation_name, params=parameters: self.show_parameter_dialog(
+                    op, params
+                )
+            )
+            button.setToolTip(
+                format_tooltip(**POINT_OPERATION_TOOLTIPS[operation_name])
+            )
+            analysis_layout.addWidget(button, row, 0)
+
+        main_layout.addWidget(analysis_frame)
+
+    def show_parameter_dialog(self, operation_type, parameters):
+        dialog = OperationDialog(operation_type, parameters, self)
+
+        if dialog.exec() == QDialog.DialogCode.Rejected:
+            return -1
+
+        params = {
+            label: (
+                widget.currentText()
+                if isinstance(widget, QComboBox)
+                else widget.value()
+            )
+            for label, widget in dialog.parameter_widgets.items()
+        }
+        _mapping = {
+            "Trim": self.cdata.data.trim,
+            "Cluster": self.cdata.data.dbscan_cluster,
+            "Outlier": self.cdata.data.remove_outliers,
+        }
+
+        func = _mapping.get(operation_type)
+        if func is None:
+            print(
+                f"Unknown operation {operation_type}. Supported are {_mapping.keys()}."
+            )
+
+        return func(**params)
+
+
+CLUSTER_OPERATIONS = {
+    "Recluster": [
+        (
+            "distance",
+            40,
+            0,
+            {
+                "title": "Neighbor Distance",
+                "description": "Maximum distance between two neighbors.",
+                "default_value": "40",
+                "notes": "Larger values create bigger clusters",
+            },
+        ),
+        (
+            "min_points",
+            20,
+            0,
+            {
+                "title": "Minimum Points",
+                "description": "Minimum number of points required to form a cluster.",
+                "default_value": "20",
+                "notes": "Higher values make the algorithm more selective",
+            },
+        ),
+    ],
+}
+
+POINT_OPERATIONS = {
+    "Remove Outlier": [
+        (
+            "k_neighbors",
+            100,
+            0,
+            {
+                "title": "Number of Neighbors",
+                "description": "k-Neighbors to consider for detecting outliers.",
+                "default_value": "100",
+                "notes": "Affects the local density estimation",
+            },
+        ),
+        (
+            "std_ratio",
+            0.2,
+            0.0,
+            {
+                "title": "Threshold",
+                "description": "Threshold for outlier detection.",
+                "default_value": "0.2",
+                "notes": "Meaning depends on method - Low values remove more points.",
+            },
+        ),
+        (
+            "method",
+            ["statistical", "eigenvalue"],
+            "statistical",
+            {
+                "title": "Method",
+                "description": "Statistical - General outliers. Eigenvalue - Noisy Edges",
+                "default_value": "Statistical",
+                "notes": "Threshold is standard deviation for statistical, eigenvalue ratio otherwise.",
+            },
+        ),
+    ],
+    "Trim Range": [
+        (
+            "min_value",
+            100,
+            0,
+            {
+                "title": "Minimum Value",
+                "description": "Minimum value to keep in the selected axis.",
+                "default_value": "100",
+                "notes": "Points below this value will be removed",
+            },
+        ),
+        (
+            "max_value",
+            100,
+            0,
+            {
+                "title": "Maximum Value",
+                "description": "Maximum value to keep in the selected axis.",
+                "default_value": "100",
+                "notes": "Points above this value will be removed",
+            },
+        ),
+        (
+            "axis",
+            ["x", "y", "z"],
+            0,
+            {
+                "title": "Trim Axis",
+                "description": "Axis along which to perform the trimming operation.",
+                "default_value": "x",
+                "notes": "Choose the spatial dimension to trim",
+            },
+        ),
+    ],
+}
+
+CLUSTER_OPERATION_TOOLTIPS = {
+    "Recluster": {
+        "title": "DBSCAN Clustering",
+        "description": "Cluster points based on density and proximity.",
+        "notes": "Useful for finding clusters of arbitrary shape",
+    }
+}
+
+POINT_OPERATION_TOOLTIPS = {
+    "Remove Outlier": {
+        "title": "Outlier Removal",
+        "description": "Remove points that deviate from local distribution.",
+        "notes": "Useful for general outliers and noisy edges",
+    },
+    "Trim Range": {
+        "title": "Trim Range",
+        "description": "Remove points outside specified range along an axis.",
+        "notes": "Useful for trimming lamellas",
+    },
+}

@@ -25,7 +25,6 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from colabseg import ColabsegData, VolumeViewer
 from colabseg.gui import (
-    EditingTab,
     ClusterSelectionTab,
     ParametrizationTab,
     DevTab,
@@ -133,7 +132,6 @@ class App(QMainWindow):
     def setup_tabs(self):
         self.tab_widget.addTab(ClusterSelectionTab(self.cdata), "Selection")
         self.tab_widget.addTab(ParametrizationTab(self.cdata), "Fits")
-        self.tab_widget.addTab(EditingTab(self.cdata), "Editing")
         self.tab_widget.addTab(AnalysisTab(self.cdata), "Analysis")
         self.tab_widget.addTab(DevTab(self.cdata), "Dev")
         for tab in self.tab_widget.children():
