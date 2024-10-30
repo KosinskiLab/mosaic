@@ -97,6 +97,11 @@ class App(QMainWindow):
         elif key == "\x7f":
             self.cdata.data.remove_cluster()
             self.cdata.data.remove_points()
+        elif key == "m":
+            # In case both clusters and poitns are selected
+            new_cluster = self.cdata.data.merge_cluster()
+            point_cluster = self.cdata.data.cluster_points()
+            self.cdata.data.merge_cluster(indices=(new_cluster, point_cluster))
         elif key == "h":
             self.cdata.data.toggle_visibility()
 
@@ -113,11 +118,9 @@ class App(QMainWindow):
             distance = max(self.cdata.shape) * 2.0
 
         if view_key == "z":
-            # view = (0, 1, 0)
             view = (1, 0, 1)
             position = focal_point[0], focal_point[1], focal_point[2] + distance
         elif view_key == "c":
-            # view = (0, 0, 1)
             view = (1, 0, 0)
             position = focal_point[0], focal_point[1] + distance, focal_point[2]
         elif view_key == "x":

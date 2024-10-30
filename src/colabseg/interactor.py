@@ -1,3 +1,5 @@
+from typing import Tuple, List
+
 import vtk
 from functools import wraps
 from PyQt6.QtWidgets import QListWidget, QListWidgetItem, QMenu
@@ -10,7 +12,12 @@ def _cluster_modifier(keep_selection: bool = False):
         @wraps(func)
         def func_wrapper(self, **kwargs):
             indices = self._get_selected_indices()
-            result = func(self, indices=indices, **kwargs)
+            kwarg_indices = kwargs.pop("indices", ())
+            if not isinstance(kwarg_indices, (Tuple, List)):
+                kwarg_indices = [kwarg_indices]
+
+            print(indices, kwarg_indices)
+            result = func(self, indices=(*indices, *kwarg_indices), **kwargs)
             self.data_changed.emit()
             self.render()
 

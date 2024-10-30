@@ -143,13 +143,13 @@ class DataContainer:
         Returns
         -------
         int
-            Index of merged cloud, -1 if merge failed.
+            Index of merged cloud, negative value if merge failed.
         """
         if len(indices) < 2:
             return -1
         new_index = self.new(indices)
         self.remove(indices)
-        return new_index
+        return new_index - len(indices)
 
     def split(self, indices: List[int]) -> Tuple[int, int]:
         """Split point cloud into two using K-means.
@@ -468,6 +468,9 @@ class DataContainer:
         new_cluster, remove_cluster = [], []
         for index, point_ids in selected_point_ids.items():
             if not len(point_ids):
+                continue
+
+            if not self._index_ok(index):
                 continue
 
             # Ignore selected points from invisible geometries

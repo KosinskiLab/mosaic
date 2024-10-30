@@ -25,6 +25,7 @@ class KeybindsDialog(QDialog):
             ("c", "Set camera view along Y-axis"),
             ("d", "Toggle renderer background color"),
             ("h", "Toggle visibility of selected clusters"),
+            ("m", "Merge selected cluster or points"),
             ("Delete", "Remove selected cluster or points"),
             ("R", "Bring up point selector"),
             ("Right Mouse", "Deselect cluster or points"),
