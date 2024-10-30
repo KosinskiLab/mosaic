@@ -166,6 +166,18 @@ class DataContainerInteractor(QObject):
         hide_action.triggered.connect(lambda: self.change_visibility(visible=False))
         context_menu.addAction(hide_action)
 
+        # representation_menu = QMenu("Representation", context_menu)
+        # pointcloud_action = QAction("Pointcloud", representation_menu)
+        # pointcloud_action.triggered.connect(lambda: self.change_representation("pointcloud"))
+        # representation_menu.addAction(pointcloud_action)
+
+        # mesh_action = QAction("Mesh", representation_menu)
+        # mesh_action.triggered.connect(lambda: self.change_representation("mesh"))
+        # representation_menu.addAction(mesh_action)
+
+        # context_menu.addSeparator()
+        # context_menu.addMenu(representation_menu)
+
         # context_menu.addSeparator()
         # if self.data_list.selectedItems():
         #     remove_action = QAction("Remove Selected", self.data_list)

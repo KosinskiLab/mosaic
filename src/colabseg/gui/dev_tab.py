@@ -40,7 +40,7 @@ class DevTab(QWidget):
         scale_label = QLabel("Scale Factor:")
         self.scale_input = QLineEdit()
         self.scale_input.setValidator(QDoubleValidator())
-        self.scale_input.setText("1.0")
+        self.scale_input.setText("0.03777476638012516")
         scale_layout.addWidget(scale_label)
         scale_layout.addWidget(self.scale_input)
 
@@ -63,18 +63,17 @@ class DevTab(QWidget):
             self,
             "Import Point Cloud File",
         )
-        if file_name is None:
+        if not file_name:
             return -1
 
         try:
             scale_factor = float(self.scale_input.text())
         except ValueError:
-            scale_factor = 1.0
-            self.scale_input.setText("1.0")
+            scale_factor = 0.03777476638012516
 
         data, shape, sampling = DataIO().open_file(filename=file_name)
         for points in data:
             self.cdata._data.add(
-                points=points * 1 / 0.03777476638012516, sampling_rate=sampling
+                points=points * 1 / scale_factor, sampling_rate=sampling
             )
         self.cdata.data.render()

@@ -162,6 +162,7 @@ class ParametrizationTab(QWidget):
         frame.setMaximumWidth(150)
 
         button = QPushButton("Equilibrate Edge Length")
+        button.clicked.connect(self.equilibrate_fit)
 
         self.lower_edge_length = QLineEdit()
         self.lower_edge_length.setPlaceholderText("Lower Bound")

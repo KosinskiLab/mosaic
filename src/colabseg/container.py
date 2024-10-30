@@ -126,9 +126,9 @@ class DataContainer:
         if len(data) == 0:
             return -1
         if not isinstance(data, np.ndarray):
-            data = np.concatenate([self._get_cluster_points(i) for i in data])
             if "sampling_rate" not in kwargs:
                 kwargs["sampling_rate"] = self.data[data[0]]._sampling_rate
+            data = np.concatenate([self._get_cluster_points(i) for i in data])
 
         return self.add(data, *args, **kwargs)
 
@@ -168,6 +168,7 @@ class DataContainer:
             return -1
 
         data = np.concatenate([self._get_cluster_points(i) for i in indices])
+        sampling_rate = self.data[indices[0]]._sampling_rate
         clustering = KMeans(n_clusters=2, n_init="auto").fit(data)
 
         self.remove(indices)
@@ -178,7 +179,7 @@ class DataContainer:
             new_cluster.append(
                 self.add(
                     data[np.where(new_indices == new_clusters)],
-                    sampling_rate=self.data[indices[0]]._sampling_rate,
+                    sampling_rate=sampling_rate,
                 )
             )
 
