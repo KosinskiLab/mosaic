@@ -12,6 +12,9 @@ import numpy as np
 import open3d as o3d
 from scipy.spatial import ConvexHull
 from scipy import optimize, interpolate
+from scipy.interpolate import splprep, splev
+from scipy.optimize import minimize
+from scipy.spatial import cKDTree
 
 from .trimesh import triangulate_refine_fair, com_cluster_points
 
@@ -173,6 +176,7 @@ class TriangularMesh(Parametrization):
         positions: np.ndarray,
         voxel_size: float = 10,
         repair: bool = True,
+        fair_alpha: float = 1,
         **kwargs,
     ):
         # Surface reconstruction normal estimation
@@ -218,15 +222,15 @@ class TriangularMesh(Parametrization):
         if not repair:
             return cls(mesh=mesh)
 
-        # Hole filling and triangulation
+        # Hole triangulation and fairing
         new_vs, new_fs = triangulate_refine_fair(
-            np.asarray(mesh.vertices), np.asarray(mesh.triangles), fair_alpha=1
+            np.asarray(mesh.vertices), np.asarray(mesh.triangles), fair_alpha=fair_alpha
         )
         mesh = o3d.geometry.TriangleMesh()
         mesh.vertices = o3d.utility.Vector3dVector(new_vs.astype(np.float64))
         mesh.triangles = o3d.utility.Vector3iVector(new_fs.astype(np.int32))
         mesh = mesh.remove_degenerate_triangles()
-        mesh = mesh.filter_smooth_taubin(number_of_iterations=100)
+        mesh = mesh.filter_smooth_taubin(number_of_iterations=5)
         mesh = mesh.compute_vertex_normals()
         return cls(mesh=mesh)
 
@@ -266,7 +270,6 @@ class TriangularMesh(Parametrization):
     def points_per_sampling(self, sampling_density: float) -> int:
         area_per_sample = np.square(sampling_density)
         n_points = np.ceil(np.divide(self.mesh.get_surface_area(), area_per_sample))
-
         return int(n_points)
 
 
@@ -373,9 +376,9 @@ class Ellipsoid(Parametrization):
     """
 
     def __init__(self, radii: np.ndarray, center: np.ndarray, orientations: np.ndarray):
-        self.radii = radii
-        self.center = center
-        self.orientations = orientations
+        self.radii = np.asarray(radii)
+        self.center = np.asarray(center)
+        self.orientations = np.asarray(orientations)
 
     @classmethod
     def fit(cls, positions, **kwargs) -> "Ellipsoid":
@@ -494,6 +497,12 @@ class Ellipsoid(Parametrization):
             )
 
         return positions_xyz
+
+    def _compute_residual(self, points: np.ndarray) -> float:
+        points = (points - self.center) @ self.orientations
+        points = np.divide(points, self.radii)
+
+        return 1 - np.linalg.norm(points, axis=1)
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
         norm_points = (points - self.center).dot(np.linalg.inv(self.orientations.T))
@@ -760,10 +769,126 @@ class RBF(Parametrization):
         return int(n_points)
 
 
+class Hull(TriangularMesh):
+    """
+    Represent a point cloud as triangular mesh.
+
+    Parameters
+    ----------
+    mesh : open3d.cpu.pybind.geometry.TriangleMesh
+        Triangular mesh.
+    """
+
+    def __init__(self, mesh):
+        self.mesh = mesh
+
+    def to_file(self, file_path):
+        o3d.io.write_triangle_mesh(file_path, self.mesh)
+
+    def __getstate__(self):
+        state = {
+            "vertices": np.asarray(self.mesh.vertices),
+            "triangles": np.asarray(self.mesh.triangles),
+        }
+
+        if self.mesh.has_vertex_normals():
+            state["vertex_normals"] = np.asarray(self.mesh.vertex_normals)
+        if self.mesh.has_vertex_colors():
+            state["vertex_colors"] = np.asarray(self.mesh.vertex_colors)
+        if self.mesh.has_triangle_normals():
+            state["triangle_normals"] = np.asarray(self.mesh.triangle_normals)
+        return state
+
+    def __setstate__(self, state):
+        mesh = o3d.geometry.TriangleMesh()
+        mesh.vertices = o3d.utility.Vector3dVector(state["vertices"])
+        mesh.triangles = o3d.utility.Vector3iVector(state["triangles"])
+
+        attrs = ("vertex_normals", "vertex_colors", "triangle_normals")
+        for attr in attrs:
+            if attr not in state:
+                continue
+            setattr(mesh, attr, o3d.utility.Vector3dVector(state.get(attr)))
+
+        self.mesh = mesh
+
+    @classmethod
+    def fit(
+        cls,
+        positions: np.ndarray,
+        voxel_size: float = 10,
+        alpha=1,
+        **kwargs,
+    ):
+        voxel_size = 1 if voxel_size is None else voxel_size
+
+        # Surface reconstruction normal estimation
+        positions = np.asarray(positions, dtype=np.float64)
+        ellipsoid = Ellipsoid.fit(positions)
+
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(positions)
+        pcd.normals = o3d.utility.Vector3dVector(ellipsoid.compute_normal(positions))
+        pcd = pcd.voxel_down_sample(voxel_size=2 * voxel_size)
+
+        positions = np.asarray(pcd.points)
+        scale = positions.max(axis=0)
+        pcd.points = o3d.utility.Vector3dVector(positions / scale)
+        pcd.normals = o3d.utility.Vector3dVector(ellipsoid.compute_normal(positions))
+
+        with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Error):
+            mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(
+                pcd, alpha
+            )
+
+        mesh.vertices = o3d.utility.Vector3dVector(
+            np.multiply(np.asarray(mesh.vertices), scale)
+        )
+        mesh = mesh.remove_non_manifold_edges()
+        mesh = mesh.remove_degenerate_triangles()
+        mesh = mesh.remove_duplicated_triangles()
+        mesh = mesh.remove_unreferenced_vertices()
+        mesh = mesh.remove_duplicated_vertices()
+
+        # Better compression and guaranteed to be watertight
+        mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
+        mesh = mesh.compute_convex_hull()
+        mesh = mesh.to_legacy()
+
+        return cls(mesh=mesh)
+
+    def sample(
+        self, n_samples: int, mesh_init_factor: bool = None, **kwargs
+    ) -> np.ndarray:
+        return _sample_from_mesh(self.mesh, n_samples, mesh_init_factor)
+
+
+class FairHull(Hull):
+    @classmethod
+    def fit(
+        cls,
+        positions: np.ndarray,
+        voxel_size: float = 10,
+        alpha: float = 1,
+        **kwargs,
+    ):
+        hull = super().fit(positions=positions, voxel_size=voxel_size, alpha=alpha)
+        mesh = hull.mesh
+
+        from .trimesh import fair, remesh
+
+        mesh = remesh(mesh, 12 * voxel_size)
+        mesh = fair(mesh, n_iter=1000)
+
+        return cls(mesh=mesh)
+
+
 PARAMETRIZATION_TYPE = {
     "sphere": Sphere,
     "ellipsoid": Ellipsoid,
     "cylinder": Cylinder,
     "mesh": TriangularMesh,
     "rbf": RBF,
+    "hull": Hull,
+    "fairhull": FairHull,
 }

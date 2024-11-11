@@ -42,8 +42,12 @@ class ColabsegData(QObject):
             point_manager, model_manager = data["_data"], data["_models"]
 
         else:
-            data, shape, sampling = DataIO().open_file(filename)
+            ret = DataIO().open_file(filename)
 
+            if ret is None:
+                return -1
+
+            data, shape, sampling = ret
             point_manager, model_manager = DataContainer(), DataContainer()
             for x in data:
                 point_manager.add(points=x.astype(np.float32), sampling_rate=sampling)
@@ -63,8 +67,6 @@ class ColabsegData(QObject):
 
         fit_object = PARAMETRIZATION_TYPE[fit_type]
         for index in cluster_indices:
-            self.progress.emit((index + 1) / len(cluster_indices))
-
             if not self._data._index_ok(index):
                 continue
 
@@ -84,12 +86,16 @@ class ColabsegData(QObject):
                 new_points = fit.sample(n_samples=1000)
                 self._models.add(
                     points=new_points,
+                    # points=np.asarray(fit.mesh.vertices),
+                    # faces=np.asarray(fit.mesh.triangles),
                     sampling_rate=cloud._sampling_rate,
                     meta={"fit": fit, "points": cloud.points},
                 )
             except Exception as e:
                 print(e)
                 continue
+
+            self.progress.emit((index + 1) / len(cluster_indices))
 
         # Termination signal for listeners
         self.progress.emit(1)

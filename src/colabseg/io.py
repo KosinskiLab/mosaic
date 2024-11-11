@@ -34,6 +34,14 @@ def load_density(filename: str):
     volume = Density.from_file(filename)
     volume.data = np.swapaxes(volume.data, 0, 2)
     volume.sampling_rate = volume.sampling_rate[::-1]
+
+    if np.allclose(volume.sampling_rate, 0):
+        warnings.warn(
+            "All sampling rates are 0 - Setting them to 1 for now. Some functions might"
+            "not behave properly. Make sure to define sampling rates if you forgot."
+        )
+        volume.sampling_rate = 1
+
     return volume
 
 
@@ -49,6 +57,7 @@ def _load_volume(filename: str):
         warnings.warn(
             "Found more than 10k cluster. Make sure you are loading a segmentation."
         )
+        return None
 
     ret = []
     for cluster in unique_clusters:

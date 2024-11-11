@@ -54,7 +54,6 @@ class ParametrizationTab(QWidget):
         self.setup_operations(main_layout)
         self.setup_fit_list(main_layout)
         self.setup_editing(main_layout)
-        # self.setup_equilibration_frame(main_layout)
         main_layout.addStretch()
 
     def setup_cluster_list(self, main_layout):
@@ -84,7 +83,6 @@ class ParametrizationTab(QWidget):
         operations_layout.setSpacing(5)
 
         self.setup_fitting_frame(operations_layout)
-        operations_layout.addStretch()
         self.setup_sampling_frame(operations_layout)
 
         main_layout.addLayout(operations_layout)
@@ -152,7 +150,6 @@ class ParametrizationTab(QWidget):
         operations_layout.setSpacing(5)
 
         self.setup_fit_operations(operations_layout)
-        # operations_layout.addStretch()
         self.setup_equilibration_frame(operations_layout)
 
         main_layout.addLayout(operations_layout)
@@ -182,11 +179,15 @@ class ParametrizationTab(QWidget):
         frame.setFrameStyle(QFrame.Shape.StyledPanel)
         frame_layout = QGridLayout(frame)
 
+        operation_mapping = {
+            "Equilibrate Mesh": self.equilibrate_fit,
+            "Scale Mesh": self.equilibrate_fit,
+        }
         for row, (operation_name, parameters) in enumerate(MESH_OPERATIONS.items()):
             button = QPushButton(operation_name)
             button.clicked.connect(
                 lambda checked, op=operation_name, params=parameters: show_parameter_dialog(
-                    op, params, self, {"Equilibrate Mesh": self.equilibrate_fit}
+                    op, params, self, operation_mapping
                 )
             )
             frame_layout.addWidget(button, row, 0)
@@ -235,6 +236,7 @@ class ParametrizationTab(QWidget):
             points = self.cdata._models.data[index].points
             sampling = self.cdata._models.data[index]._sampling_rate
             self.cdata._data.new(points, sampling_rate=sampling)
+        self.cdata.data.data_changed.emit()
         self.cdata.data.render()
         return None
 

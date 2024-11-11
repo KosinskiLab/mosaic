@@ -141,6 +141,8 @@ class VolumeViewer(QWidget):
         if self.volume is None:
             return -1
 
+        self.orientation_selector.setCurrentIndex(0)
+
         self.volume = None
         self.renderer.RemoveViewProp(self.slice)
         self.slice_mapper = vtk.vtkImageSliceMapper()

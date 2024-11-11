@@ -5,7 +5,20 @@ from tempfile import NamedTemporaryFile
 
 import numpy as np
 import open3d as o3d
+from scipy.spatial import cKDTree
 from scipy.spatial.distance import cdist, pdist
+
+
+def _to_open3d(vertices, faces):
+    ret = o3d.geometry.TriangleMesh()
+    ret.vertices = o3d.utility.Vector3dVector(np.asarray(vertices, dtype=np.float64))
+    ret.triangles = o3d.utility.Vector3iVector(np.asarray(faces, dtype=np.float32))
+    return ret
+
+
+def _compute_edge_lengths(filename):
+    mesh = o3d.io.read_triangle_mesh(filename)
+    return compute_edge_lengths(mesh)
 
 
 def compute_edge_lengths(mesh):
@@ -41,9 +54,27 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=10, **kwargs):
     )
 
     remeshed = ms.current_mesh()
-    ret = o3d.geometry.TriangleMesh()
-    ret.vertices = o3d.utility.Vector3dVector(remeshed.vertex_matrix())
-    ret.triangles = o3d.utility.Vector3iVector(remeshed.face_matrix())
+    ret = _to_open3d(remeshed.vertex_matrix(), remeshed.face_matrix())
+    return ret
+
+
+def fair(mesh, n_iter=3, featuredeg=90, **kwargs):
+    from pymeshlab import MeshSet, Mesh, PercentageValue
+
+    vertices = np.asarray(mesh.vertices)
+    triangles = np.asarray(mesh.triangles)
+
+    ms = MeshSet()
+    ms.add_mesh(Mesh(vertices, triangles))
+
+    ms.apply_coord_laplacian_smoothing_scale_dependent(
+        stepsmoothnum=n_iter,
+        delta=PercentageValue(1),
+        **kwargs,
+    )
+
+    remeshed = ms.current_mesh()
+    ret = _to_open3d(remeshed.vertex_matrix(), remeshed.face_matrix())
     return ret
 
 
@@ -160,27 +191,26 @@ def compute_scale_factor(mesh, lower_bound=1.0, upper_bound=1.7):
     return scale_factor
 
 
-def com_cluster_points(postions, cutoff):
-    com_list = []
-    tag = np.zeros(len(postions))
-    acc = False
-    while acc is False:
-        if len(np.where(tag == 0)[0]) == 0:
-            acc = True
-            break
-        randint = np.random.randint(0, len(np.where(tag == 0)[0]))
-        randint = np.where(tag == 0)[0][randint]
+def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
+    if not isinstance(positions, np.ndarray):
+        positions = np.array(positions)
 
-        if tag[randint] != 0:
-            continue
+    tree = cKDTree(positions)
+    n_points = len(positions)
+    unassigned = np.ones(n_points, dtype=bool)
+    clusters = []
 
-        dist_arr = cdist([postions[randint]], postions)
-        indices = np.where(dist_arr[0] < cutoff)[0]
-        pos_cluster = postions[dist_arr[0] < cutoff]
-        center = np.average(pos_cluster, axis=0)
-        for index in indices:
-            tag[index] = 1
-        com_list.append(center)
+    unassigned_indices = np.where(unassigned)[0]
+    while np.any(unassigned):
+        seed_idx = np.random.choice(unassigned_indices)
 
-    com_list = np.asarray(com_list)
-    return com_list
+        cluster_indices = tree.query_ball_point(positions[seed_idx], cutoff)
+        cluster_indices = np.array([idx for idx in cluster_indices if unassigned[idx]])
+
+        if len(cluster_indices) > 0:
+            cluster_center = np.mean(positions[cluster_indices], axis=0)
+            clusters.append(cluster_center)
+            unassigned[cluster_indices] = False
+            unassigned_indices = np.where(unassigned)[0]
+
+    return np.array(clusters)

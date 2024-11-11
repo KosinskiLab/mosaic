@@ -248,9 +248,7 @@ class DataContainerInteractor(QObject):
     @_cluster_modifier()
     def change_visibility(self, **kwargs):
         if len(kwargs["indices"]) == 0:
-            kwargs["indices"] = tuple(
-                range(len(self.data_container.get_cluster_count()))
-            )
+            kwargs["indices"] = tuple(range(self.data_container.get_cluster_count()))
         return self.data_container.change_visibility(**kwargs)
 
     @_cluster_modifier(keep_selection=True)

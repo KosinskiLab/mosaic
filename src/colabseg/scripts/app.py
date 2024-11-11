@@ -28,7 +28,6 @@ from colabseg.gui import (
     ClusterSelectionTab,
     ParametrizationTab,
     DevTab,
-    AnalysisTab,
     BoundingBoxWidget,
     KeybindsDialog,
 )

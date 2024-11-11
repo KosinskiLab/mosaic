@@ -1,6 +1,10 @@
 import numpy as np
 import open3d as o3d
 from scipy import spatial
+from scipy.interpolate import griddata
+from scipy.interpolate import griddata, LinearNDInterpolator, NearestNDInterpolator
+
+from scipy.ndimage import map_coordinates
 
 
 def dbscan_clustering(points, eps=0.02, min_points=10):
@@ -100,3 +104,29 @@ def statistical_outlier_removal(points, k_neighbors=100, thresh=0.2):
 
     cl, ind = pcd.remove_statistical_outlier(nb_neighbors=k_neighbors, std_ratio=thresh)
     return np.asarray(cl.points)
+
+
+def points_to_volume(points, values, shape, method="linear"):
+    """
+    Maps scattered points back to a regular grid.
+
+    Parameters
+    ----------
+    points : ndarray, shape (n, k)
+        Point coordinates.
+    values : ndarray, shape (n,)
+        Weight associated with each point.
+    shape : tuple of int, default
+        The shape of the output array.
+    method : str, default 'linear'
+        The interpolation method ('linear', 'nearest', or 'cubic')
+
+    Returns
+    -------
+    ndarray
+        The interpolation result.
+    """
+    grid = np.indices(shape).T.reshape(-1, len(shape))
+    ret = griddata(points, values, grid, method=method, fill_value=0)
+    print("done interpolating")
+    return ret.reshape(shape)
