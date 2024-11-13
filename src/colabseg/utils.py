@@ -2,9 +2,6 @@ import numpy as np
 import open3d as o3d
 from scipy import spatial
 from scipy.interpolate import griddata
-from scipy.interpolate import griddata, LinearNDInterpolator, NearestNDInterpolator
-
-from scipy.ndimage import map_coordinates
 
 
 def dbscan_clustering(points, eps=0.02, min_points=10):
@@ -128,5 +125,4 @@ def points_to_volume(points, values, shape, method="linear"):
     """
     grid = np.indices(shape).T.reshape(-1, len(shape))
     ret = griddata(points, values, grid, method=method, fill_value=0)
-    print("done interpolating")
     return ret.reshape(shape)

@@ -52,13 +52,16 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=10, **kwargs):
         featuredeg=featuredeg,
         **kwargs,
     )
+    ms.meshing_merge_close_vertices(
+        threshold=PureValue(target_edge_length / 3)
+    )
 
     remeshed = ms.current_mesh()
     ret = _to_open3d(remeshed.vertex_matrix(), remeshed.face_matrix())
     return ret
 
 
-def fair(mesh, n_iter=3, featuredeg=90, **kwargs):
+def fair(mesh, n_iter=3, delta=20, **kwargs):
     from pymeshlab import MeshSet, Mesh, PercentageValue
 
     vertices = np.asarray(mesh.vertices)
@@ -66,10 +69,9 @@ def fair(mesh, n_iter=3, featuredeg=90, **kwargs):
 
     ms = MeshSet()
     ms.add_mesh(Mesh(vertices, triangles))
-
     ms.apply_coord_laplacian_smoothing_scale_dependent(
         stepsmoothnum=n_iter,
-        delta=PercentageValue(1),
+        delta=PercentageValue(delta),
         **kwargs,
     )
 
@@ -110,7 +112,6 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000):
         exclusion_level = 2
         refresh = 10
         r = 2
-        lc1 = 0.15
 
         [ENERGY]
         kappa_b = 300.0
@@ -119,8 +120,8 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000):
         kappa_c = 0.0
         kappa_t = 1.0e5
         kappa_r = 1.0e3
-        area_fraction = 1.0
-        volume_fraction = 1.0
+        area_fraction = 1.2
+        volume_fraction = 1.2
         curvature_fraction = 1.0
         continuation_delta = 0.0
         continuation_lambda = 1.0
