@@ -6,6 +6,7 @@ os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 import sys
+import enum
 from importlib_resources import files
 
 import vtk
@@ -19,8 +20,17 @@ from PyQt6.QtWidgets import (
     QSplitter,
     QFileDialog,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QGuiApplication, QIcon
+from PyQt6.QtCore import Qt, QPoint, QSize
+from PyQt6.QtGui import (
+    QAction,
+    QGuiApplication,
+    QIcon,
+    QCursor,
+    QColor,
+    QPixmap,
+    QPainter,
+    QPen,
+)
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from colabseg import ColabsegData, VolumeViewer
@@ -31,6 +41,61 @@ from colabseg._gui import (
     BoundingBoxWidget,
     KeybindsDialog,
 )
+
+
+class Mode(enum.Enum):
+    VIEWING = "Viewing"
+    SELECTION = "Selection"
+    DRAWING = "Drawing"
+
+
+class CursorModeHandler:
+    def __init__(self, widget: QWidget):
+        self.widget = widget
+        self.current_mode = Mode.VIEWING
+
+        self.cursor_colors = {
+            Mode.VIEWING: None,
+            Mode.SELECTION: QColor("#2196F3"),
+            Mode.DRAWING: QColor("#FFC107"),
+        }
+
+        self.cursors = {
+            Mode.VIEWING: Qt.CursorShape.ArrowCursor,
+            Mode.SELECTION: self._create_custom_cursor(
+                self.cursor_colors[Mode.SELECTION]
+            ),
+            Mode.DRAWING: self._create_custom_cursor(self.cursor_colors[Mode.DRAWING]),
+        }
+
+    def _create_custom_cursor(self, color: QColor, size: int = 16) -> QCursor:
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.GlobalColor.transparent)
+
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        pen = QPen(color)
+        pen.setWidth(1)
+        painter.setPen(pen)
+        painter.drawEllipse(1, 1, size - 2, size - 2)
+
+        pen.setWidth(1)
+        painter.setPen(pen)
+        center = size // 2
+        painter.drawLine(QPoint(center - 3, center), QPoint(center + 3, center))
+        painter.drawLine(QPoint(center, center - 3), QPoint(center, center + 3))
+        painter.end()
+
+        return QCursor(pixmap, size // 2, size // 2)
+
+    def update_mode(self, mode: Mode):
+        self.current_mode = mode
+        self.widget.setCursor(self.cursors[mode])
+
+    def current_mode(self) -> Mode:
+        """Get the current mode."""
+        return self.current_mode
 
 
 class App(QMainWindow):
@@ -82,6 +147,7 @@ class App(QMainWindow):
         self.setup_tabs()
         self.actor_collection = vtk.vtkActorCollection()
         self.bounding_box = BoundingBoxWidget(self.renderer, self.interactor)
+        self.cursor_handler = CursorModeHandler(self.vtk_widget)
 
     def on_key_press(self, obj, event):
         key = obj.GetKeyCode()
@@ -103,10 +169,28 @@ class App(QMainWindow):
             self.cdata.data.merge_cluster(indices=(new_cluster, point_cluster))
         elif key == "h":
             self.cdata.data.toggle_visibility()
+        elif key == "a":
+            self.cdata.data.toggle_drawing_mode()
+            self._transition_modes(Mode.DRAWING)
+        elif key == "r":
+            mode = self._transition_modes(Mode.SELECTION)
 
     def on_right_click(self, obj, event):
         self.cdata.data.deselect()
         self.cdata.models.deselect()
+
+    def _transition_modes(self, new_mode):
+        current_mode = self.cursor_handler.current_mode
+
+        if current_mode == new_mode:
+            return self.cursor_handler.update_mode(Mode.VIEWING)
+
+        if current_mode == Mode.DRAWING:
+            self.cdata.data.deactivate_drawing_mode()
+        elif current_mode == Mode.SELECTION:
+            self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleRubberBandPick())
+
+        return self.cursor_handler.update_mode(new_mode)
 
     def set_camera_view(self, view_key):
         camera = self.renderer.GetActiveCamera()

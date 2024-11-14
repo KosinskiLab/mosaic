@@ -129,8 +129,6 @@ class DataContainerInteractor(QObject):
         self.data_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.data_list.customContextMenuRequested.connect(self._show_context_menu)
 
-        self.interactor.AddObserver("KeyPressEvent", self._on_key_press)
-
         # Functionality to add points
         self._point_mode, self._active_cluster = False, None
         self.point_picker = vtk.vtkWorldPointPicker()
@@ -167,23 +165,26 @@ class DataContainerInteractor(QObject):
         self.render()
         return 0
 
-    def _on_key_press(self, obj, event):
-        key = obj.GetKeySym().lower()
-        if key == "a":
-            self._point_mode = not self._point_mode
-            self._active_cluster = None
-            if self._point_mode:
-                active_clusters = list(set(self._get_selected_indices()))
-                if len(active_clusters) > 1:
-                    print("Can only add points if a single cluster is selected.")
-                    return -1
-                elif len(active_clusters) == 0:
-                    new_cluster = self.data_container.add(
-                        points=np.empty((0, 3), dtype=np.float32)
-                    )
-                    active_clusters = [new_cluster]
+    def deactivate_drawing_mode(self):
+        if self._point_mode:
+            return self.toggle_drawing_mode()
+        return None
 
-                self._active_cluster = active_clusters[0]
+    def toggle_drawing_mode(self):
+        self._point_mode = not self._point_mode
+        self._active_cluster = None
+        if self._point_mode:
+            active_clusters = list(set(self._get_selected_indices()))
+            if len(active_clusters) > 1:
+                print("Can only add points if a single cluster is selected.")
+                return -1
+            elif len(active_clusters) == 0:
+                new_cluster = self.data_container.add(
+                    points=np.empty((0, 3), dtype=np.float32)
+                )
+                active_clusters = [new_cluster]
+
+            self._active_cluster = active_clusters[0]
 
     def _on_cluster_selection_changed(self):
         selected_indices = set(self._get_selected_indices())
