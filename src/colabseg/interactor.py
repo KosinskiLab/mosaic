@@ -12,7 +12,7 @@ from PyQt6.QtCore import (
     pyqtSignal,
     QEvent,
 )
-from PyQt6.QtGui import QAction, QColor
+from PyQt6.QtGui import QAction, QColor, QCursor
 
 
 def _cluster_modifier(keep_selection: bool = False):
@@ -138,14 +138,16 @@ class DataContainerInteractor(QObject):
 
     def eventFilter(self, watched_obj, event):
         # VTK camera also observes left-click, so duplicate calls need to be handled
-        if self._point_mode and event.type() == QEvent.Type.MouseButtonPress:
-            if event.button() == Qt.MouseButton.LeftButton:
-                clickPos = self.interactor.GetEventPosition()
+
+        # Add different modes that determine how the events are handled
+        if self._point_mode and event.type() in [QEvent.Type.MouseButtonPress, QEvent.Type.MouseMove]:
+            if event.buttons() & Qt.MouseButton.LeftButton:
+                position = event.pos()
                 self.point_picker.Pick(
-                    clickPos[0],
-                    clickPos[1],
-                    0,
-                    self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer(),
+                   position.x(),
+                   self.vtk_widget.height() - position.y(),
+                   0,
+                   self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer(),
                 )
                 world_position = self.point_picker.GetPickPosition()
                 self._add_point(world_position)
