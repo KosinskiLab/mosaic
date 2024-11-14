@@ -1,9 +1,17 @@
+import numpy as np
 from typing import Tuple, List
 
 import vtk
 from functools import wraps
 from PyQt6.QtWidgets import QListWidget, QListWidgetItem, QMenu
-from PyQt6.QtCore import Qt, QObject, QItemSelection, QItemSelectionModel, pyqtSignal
+from PyQt6.QtCore import (
+    Qt,
+    QObject,
+    QItemSelection,
+    QItemSelectionModel,
+    pyqtSignal,
+    QEvent,
+)
 from PyQt6.QtGui import QAction, QColor
 
 
@@ -118,9 +126,61 @@ class DataContainerInteractor(QObject):
         self.area_picker.AddObserver("EndPickEvent", self._on_area_pick)
 
         self.invisible_color = QColor(128, 128, 128)
-
         self.data_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.data_list.customContextMenuRequested.connect(self._show_context_menu)
+
+        self.interactor.AddObserver("KeyPressEvent", self._on_key_press)
+
+        # Functionality to add points
+        self._point_mode, self._active_cluster = False, None
+        self.point_picker = vtk.vtkWorldPointPicker()
+        self.vtk_widget.installEventFilter(self)
+
+    def eventFilter(self, watched_obj, event):
+        # VTK camera also observes left-click, so duplicate calls need to be handled
+        if self._point_mode and event.type() == QEvent.Type.MouseButtonPress:
+            if event.button() == Qt.MouseButton.LeftButton:
+                clickPos = self.interactor.GetEventPosition()
+                self.point_picker.Pick(
+                    clickPos[0],
+                    clickPos[1],
+                    0,
+                    self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer(),
+                )
+                world_position = self.point_picker.GetPickPosition()
+                self._add_point(world_position)
+                return True
+
+        # Let vtk events pass through
+        return super().eventFilter(watched_obj, event)
+
+    def _add_point(self, point):
+        if self._active_cluster is None:
+            return -1
+
+        cluster = self.data_container.data[self._active_cluster]
+        cluster.swap_data(np.concatenate((cluster.points, np.asarray(point)[None])))
+        self.data_changed.emit()
+        self.render()
+        return 0
+
+    def _on_key_press(self, obj, event):
+        key = obj.GetKeySym().lower()
+        if key == "a":
+            self._point_mode = not self._point_mode
+            self._active_cluster = None
+            if self._point_mode:
+                active_clusters = list(set(self._get_selected_indices()))
+                if len(active_clusters) > 1:
+                    print("Can only add points if a single cluster is selected.")
+                    return -1
+                elif len(active_clusters) == 0:
+                    new_cluster = self.data_container.add(
+                        points=np.empty((0, 3), dtype=np.float32)
+                    )
+                    active_clusters = [new_cluster]
+
+                self._active_cluster = active_clusters[0]
 
     def _on_cluster_selection_changed(self):
         selected_indices = set(self._get_selected_indices())

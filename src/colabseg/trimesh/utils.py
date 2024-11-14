@@ -52,9 +52,7 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=10, **kwargs):
         featuredeg=featuredeg,
         **kwargs,
     )
-    ms.meshing_merge_close_vertices(
-        threshold=PureValue(target_edge_length / 3)
-    )
+    ms.meshing_merge_close_vertices(threshold=PureValue(target_edge_length / 3))
 
     remeshed = ms.current_mesh()
     ret = _to_open3d(remeshed.vertex_matrix(), remeshed.face_matrix())

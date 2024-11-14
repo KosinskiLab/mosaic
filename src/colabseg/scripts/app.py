@@ -24,7 +24,7 @@ from PyQt6.QtGui import QAction, QGuiApplication, QIcon
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from colabseg import ColabsegData, VolumeViewer
-from colabseg.gui import (
+from colabseg._gui import (
     ClusterSelectionTab,
     ParametrizationTab,
     DevTab,
