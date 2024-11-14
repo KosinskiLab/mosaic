@@ -141,6 +141,9 @@ class VolumeViewer(QWidget):
         if self.volume is None:
             return -1
 
+        self.min_contrast_slider.setValue(0)
+        self.max_contrast_slider.setValue(100)
+        self.gamma_slider.setValue(100)
         self.orientation_selector.setCurrentIndex(0)
 
         self.volume = None

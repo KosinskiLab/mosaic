@@ -138,16 +138,17 @@ class DataContainerInteractor(QObject):
 
     def eventFilter(self, watched_obj, event):
         # VTK camera also observes left-click, so duplicate calls need to be handled
-
-        # Add different modes that determine how the events are handled
-        if self._point_mode and event.type() in [QEvent.Type.MouseButtonPress, QEvent.Type.MouseMove]:
+        if self._point_mode and event.type() in [
+            QEvent.Type.MouseButtonPress,
+            QEvent.Type.MouseMove,
+        ]:
             if event.buttons() & Qt.MouseButton.LeftButton:
                 position = event.pos()
                 self.point_picker.Pick(
-                   position.x(),
-                   self.vtk_widget.height() - position.y(),
-                   0,
-                   self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer(),
+                    position.x(),
+                    self.vtk_widget.height() - position.y(),
+                    0,
+                    self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer(),
                 )
                 world_position = self.point_picker.GetPickPosition()
                 self._add_point(world_position)

@@ -93,7 +93,7 @@ class App(QMainWindow):
             self.renderer.SetBackground(*self.renderer_next_background)
             self.renderer_next_background = current_color
             self.vtk_widget.GetRenderWindow().Render()
-        elif key == "\x7f":
+        elif key in ["\x7f", "\x08"]:
             self.cdata.data.remove_cluster()
             self.cdata.data.remove_points()
         elif key == "m":
