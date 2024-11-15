@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QFileDialog,
     QLabel,
+    QCheckBox,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from vtkmodules.util import numpy_support
@@ -47,6 +48,7 @@ class VolumeViewer(QWidget):
 
         self.orientation_selector = QComboBox()
         self.orientation_selector.addItems(["X", "Y", "Z"])
+        self._orientation_mapping = {"X": 0, "Y": 1, "Z": 2}
         self.orientation_selector.currentTextChanged.connect(self.change_orientation)
         self.orientation_selector.setEnabled(False)
 
@@ -82,6 +84,12 @@ class VolumeViewer(QWidget):
         self.contrast_value_label.setFixedWidth(80)
         self.gamma_value_label.setFixedWidth(30)
 
+        # Project 3D geometries on 2D slice
+        self.project_actors = QCheckBox("Project")
+        self.project_actors.setEnabled(False)
+        self.project_actors.stateChanged.connect(self.toggle_projection)
+        self.clipping_plane = vtk.vtkPlane()
+
         # Create layout
         controls_layout = QHBoxLayout()
         controls_layout.addWidget(self.tomogram_label)
@@ -99,6 +107,7 @@ class VolumeViewer(QWidget):
         controls_layout.addWidget(QLabel("Gamma:"))
         controls_layout.addWidget(self.gamma_slider)
         controls_layout.addWidget(self.gamma_value_label)
+        controls_layout.addWidget(self.project_actors)
 
         self.editable_widgets = [
             self.slice_slider,
@@ -108,6 +117,7 @@ class VolumeViewer(QWidget):
             self.max_contrast_slider,
             self.gamma_slider,
             self.close_button,
+            self.project_actors,
         ]
 
         layout = QVBoxLayout(self)
@@ -193,24 +203,25 @@ class VolumeViewer(QWidget):
     def update_slice(self, slice_number):
         self.slice_mapper.SetSliceNumber(slice_number)
         self.slice_value_label.setText(str(slice_number))
+        self.update_clipping_plane()
         self.vtk_widget.GetRenderWindow().Render()
 
     def change_orientation(self, orientation):
         dimensions = self.get_dimensions()
+
         if orientation == "X":
             self.slice_mapper.SetOrientationToX()
-            slider_range = (0, dimensions[0] - 1)
         elif orientation == "Y":
             self.slice_mapper.SetOrientationToY()
-            slider_range = (0, dimensions[1] - 1)
         elif orientation == "Z":
             self.slice_mapper.SetOrientationToZ()
-            slider_range = (0, dimensions[2] - 1)
 
-        self.slice_slider.setRange(*slider_range)
+        dim = self._orientation_mapping.get(orientation, 0)
+        self.slice_slider.setRange(*(0, dimensions[dim] - 1))
 
         self.slice_slider.setValue(0)
         self.slice_mapper.SetSliceNumber(0)
+        self.update_clipping_plane()
 
         self.renderer.ResetCamera()
         self.vtk_widget.GetRenderWindow().Render()
@@ -257,5 +268,35 @@ class VolumeViewer(QWidget):
 
         self.slice.GetProperty().SetColorWindow(value_range)
         self.slice.GetProperty().SetColorLevel(min_value + value_range / 2)
+
+        self.vtk_widget.GetRenderWindow().Render()
+
+    def update_clipping_plane(self):
+        if self.volume is None or not self.project_actors.isChecked():
+            return None
+
+        dim = self._orientation_mapping.get(self.orientation_selector.currentText(), 0)
+
+        pos = self.slice_slider.value()
+        origin, spacing = self.volume.GetOrigin()[dim], self.volume.GetSpacing()[dim]
+        self.clipping_plane.SetNormal(*[0 if i != dim else -1 for i in range(3)])
+        self.clipping_plane.SetOrigin(
+            *[0 if i != dim else origin + pos * spacing for i in range(3)]
+        )
+        return None
+
+    def toggle_projection(self, state):
+        if self.volume is None:
+            return
+
+        actors = self.renderer.GetActors()
+        actors.InitTraversal()
+
+        for i in range(actors.GetNumberOfItems()):
+            actor = actors.GetNextActor()
+            if state == Qt.CheckState.Checked.value:
+                actor.GetMapper().AddClippingPlane(self.clipping_plane)
+            else:
+                actor.GetMapper().RemoveAllClippingPlanes()
 
         self.vtk_widget.GetRenderWindow().Render()

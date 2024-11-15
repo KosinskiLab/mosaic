@@ -128,47 +128,15 @@ class DevTab(QWidget):
             points = cloud.points
 
             fit = Ellipsoid.fit(points)
-            # points = fit.sample(5000)
             distances = (fit._compute_residual(points) - 1) * -1
-            # distances = np.abs(fit._compute_residual(points))
-
             distances = np.exp(
                 (distances - distances.min()) / (distances.max() - distances.min())
             )
 
-            points = np.divide(points, cloud._sampling_rate)
-            points = points.astype(int)
+            points = np.divide(points, cloud._sampling_rate).astype(int)
             ret[tuple(points.T)] += np.maximum(distances, ret[tuple(points.T)])
 
-            # print(distances)
-
-            # print(points.shape, distances.shape)
-            # points_min = points.min(axis = 0)
-            # points = points - points_min + margin
-            # box = np.ceil(_compute_bounding_box([points])).astype(int)
-            # vol = points_to_volume(points, distances, box + 2 * margin, method = "nearest")
-
-            # box_start = np.floor(points_min - margin).astype(int)
-            # box_stop = np.add(box_start, vol.shape).astype(int)
-
-            # start_vol = np.abs(np.minimum(box_start, 0))
-            # stop_vol = np.subtract(
-            #     vol.shape, np.abs(np.minimum(np.subtract(ret.shape, box_stop), 0))
-            # )
-            # box_start = np.maximum(box_start, 0)
-            # box_stop = np.minimum(box_stop, ret.shape)
-
-            # box_start = tuple(int(x) for x in box_start)
-            # box_stop = tuple(int(x) for x in box_stop)
-            # stop_vol = tuple(int(x) for x in stop_vol)
-            # stop_vol = tuple(int(x) for x in stop_vol)
-
-            # subset = tuple(slice(*x) for x in zip(box_start, box_stop))
-            # subset_vol = tuple(slice(*x) for x in zip(start_vol, stop_vol))
-            # ret[subset] += vol[subset_vol]
-
         from tme import Density, Preprocessor
-
         ret = np.swapaxes(ret, 0, 2)
         ret = Preprocessor().gaussian_filter(ret, sigma=1)
 
@@ -254,8 +222,8 @@ class DevTab(QWidget):
         except ValueError:
             scale_factor = 0.03777476638012516
 
-        scale_factor = 0.034093344855561064
-        offset = 1.7262001037597656
+        scale_factor = 0.00906220370306874
+        offset = 20.011848400346935
         points = (self.cloud_series[frame_idx] - offset) / scale_factor
         if self.cloud is None:
             index = self.cdata._data.add(points=points)
