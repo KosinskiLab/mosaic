@@ -137,6 +137,7 @@ class DevTab(QWidget):
             ret[tuple(points.T)] += np.maximum(distances, ret[tuple(points.T)])
 
         from tme import Density, Preprocessor
+
         ret = np.swapaxes(ret, 0, 2)
         ret = Preprocessor().gaussian_filter(ret, sigma=1)
 

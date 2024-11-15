@@ -7,7 +7,9 @@ BASE_COLOR = (0.7, 0.7, 0.7)
 
 
 class PointCloud:
-    def __init__(self, points=None, color=BASE_COLOR, sampling_rate=np.ones(3), meta={}):
+    def __init__(
+        self, points=None, color=BASE_COLOR, sampling_rate=np.ones(3), meta={}
+    ):
         self._points = vtk.vtkPoints()
         self._cells = vtk.vtkCellArray()
 
