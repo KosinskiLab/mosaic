@@ -7,6 +7,8 @@ import open3d as o3d
 from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
 
+from .utils import volume_to_points
+
 from tme import Density, Orientations
 from tme.matching_utils import rotation_aligning_vectors
 
@@ -48,22 +50,7 @@ def load_density(filename: str):
 def _load_volume(filename: str):
     volume = load_density(filename)
 
-    points = np.where(volume.data > 0)
-    points_cluster = volume.data[points]
-
-    points = np.multiply(np.array(points).T, volume.sampling_rate)
-    unique_clusters = np.unique(points_cluster)
-    if unique_clusters.size > 10000:
-        warnings.warn(
-            "Found more than 10k cluster. Make sure you are loading a segmentation."
-        )
-        return None
-
-    ret = []
-    for cluster in unique_clusters:
-        indices = np.where(points_cluster == cluster)
-        ret.append(points[indices])
-
+    ret = volume_to_points(volume.data, volume.sampling_rate)
     shape = np.multiply(volume.shape, volume.sampling_rate)
     return ret, shape, volume.sampling_rate
 

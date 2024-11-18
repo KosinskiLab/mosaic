@@ -327,6 +327,33 @@ class DataContainerInteractor(QObject):
         return None
 
     @_cluster_modifier()
+    def cluster(self, method, **kwargs):
+        """
+        Cluster point cloud using specified clustering method.
+
+        Parameters
+        ----------
+        point_cloud : ndarray
+            Input point cloud coordinates.
+        method : str
+            Clustering method to use. Options are:
+            - 'DBSCAN'
+            - 'Connected Components'
+        **kwargs
+            Additional arguments passed to the chosen clustering method.
+
+        Returns
+        -------
+        list
+            List of point clouds, one for each identified cluster.
+        """
+        func = self.data_container.dbscan_cluster
+        if method == "Connected Components":
+            func = self.data_container.connected_components
+
+        return func(**kwargs)
+
+    @_cluster_modifier()
     def merge_cluster(self, **kwargs):
         return self.data_container.merge(**kwargs)
 

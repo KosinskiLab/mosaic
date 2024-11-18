@@ -122,7 +122,7 @@ class ClusterSelectionTab(QWidget):
                     params,
                     self,
                     {
-                        "Recluster": self.cdata.data.dbscan_cluster,
+                        "Recluster": self.cdata.data.cluster,
                     },
                 )
             )
@@ -161,6 +161,17 @@ class ClusterSelectionTab(QWidget):
 CLUSTER_OPERATIONS = {
     "Recluster": [
         (
+            "method",
+            ["Connected Components", "DBSCAN"],
+            "Connected Components",
+            {
+                "title": "Method",
+                "description": "Separated - Connected Components otherwise DBSCAN",
+                "default_value": "Connected Components",
+                "notes": "Segmentations need to be disconnected for Connected Components.",
+            },
+        ),
+        (
             "distance",
             40,
             0,
@@ -168,7 +179,7 @@ CLUSTER_OPERATIONS = {
                 "title": "Neighbor Distance",
                 "description": "Maximum distance between two neighbors.",
                 "default_value": "40",
-                "notes": "Larger values create bigger clusters",
+                "notes": "Larger values create bigger clusters (Only used by DBSCAN).",
             },
         ),
         (
@@ -179,7 +190,7 @@ CLUSTER_OPERATIONS = {
                 "title": "Minimum Points",
                 "description": "Minimum number of points required to form a cluster.",
                 "default_value": "20",
-                "notes": "Higher values make the algorithm more selective",
+                "notes": "Higher values make the algorithm more selective (Only used by DBSCAN).",
             },
         ),
     ],

@@ -1,7 +1,101 @@
 import numpy as np
 import open3d as o3d
 from scipy import spatial
+from skimage import measure
 from scipy.interpolate import griddata
+
+
+def points_to_volume(points, sampling_rate=1, shape=None):
+    """
+    Convert point cloud to a volumetric representation.
+
+    Parameters
+    ----------
+    points : ndarray
+        Input point cloud coordinates.
+    sampling_rate : float, optional
+        Spacing between volume voxels, by default 1.
+    shape : tuple, optional
+        Output volume dimensions. If None, automatically determined from points.
+
+    Returns
+    -------
+    tuple
+        (volume, origin) where volume is ndarray of point densities and
+        origin is the minimum coordinate of input points.
+    """
+    origin = points.min(axis=0)
+    positions = (points - origin) / sampling_rate
+    positions = np.rint(positions).astype(int)
+
+    if shape is None:
+        shape = positions.max(axis=0) + 1
+
+    valid_positions = np.sum(np.logical_and(positions < shape, positions >= 0), axis=1)
+    positions = positions[valid_positions == positions.shape[1], :]
+
+    volume = np.zeros(shape, dtype=np.float32)
+    np.add.at(volume, tuple(positions.T), 1)
+    return volume, origin
+
+
+def volume_to_points(volume, sampling_rate):
+    """
+    Convert volumetric representation back to point clouds.
+
+    Parameters
+    ----------
+    volume : ndarray
+        Input volumetric data with cluster labels.
+    sampling_rate : float
+        Spacing between volume voxels.
+
+    Returns
+    -------
+    list
+        List of point clouds, one for each unique cluster label.
+        Returns None if more than 10k clusters are found.
+    """
+    points = np.where(volume > 0)
+    points_cluster = volume[points]
+
+    points = np.multiply(np.array(points).T, sampling_rate)
+    unique_clusters = np.unique(points_cluster)
+    if unique_clusters.size > 10000:
+        warnings.warn(
+            "Found more than 10k cluster. Make sure you are loading a segmentation."
+        )
+        return None
+
+    ret = []
+    for cluster in unique_clusters:
+        indices = np.where(points_cluster == cluster)
+        ret.append(points[indices])
+
+    return ret
+
+
+def connected_components(points, sampling_rate=1, **kwargs):
+    """
+    Find connected components in point cloud using volumetric analysis.
+
+    Parameters
+    ----------
+    points : ndarray
+        Input point cloud coordinates.
+    sampling_rate : float, optional
+        Spacing between volume voxels, by default 1.
+    **kwargs
+        Additional arguments passed to skimage.measure.label.
+
+    Returns
+    -------
+    list
+        List of point clouds, one for each connected component.
+    """
+    volume, origin = points_to_volume(points, sampling_rate=sampling_rate)
+    labels = measure.label(volume.astype(np.int32), background=0, **kwargs)
+    return volume_to_points(labels, sampling_rate)
 
 
 def dbscan_clustering(points, eps=0.02, min_points=10):
@@ -101,28 +195,3 @@ def statistical_outlier_removal(points, k_neighbors=100, thresh=0.2):
 
     cl, ind = pcd.remove_statistical_outlier(nb_neighbors=k_neighbors, std_ratio=thresh)
     return np.asarray(cl.points)
-
-
-def points_to_volume(points, values, shape, method="linear"):
-    """
-    Maps scattered points back to a regular grid.
-
-    Parameters
-    ----------
-    points : ndarray, shape (n, k)
-        Point coordinates.
-    values : ndarray, shape (n,)
-        Weight associated with each point.
-    shape : tuple of int, default
-        The shape of the output array.
-    method : str, default 'linear'
-        The interpolation method ('linear', 'nearest', or 'cubic')
-
-    Returns
-    -------
-    ndarray
-        The interpolation result.
-    """
-    grid = np.indices(shape).T.reshape(-1, len(shape))
-    ret = griddata(points, values, grid, method=method, fill_value=0)
-    return ret.reshape(shape)

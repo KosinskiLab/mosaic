@@ -10,6 +10,7 @@ from .utils import (
     statistical_outlier_removal,
     dbscan_clustering,
     eigenvalue_outlier_removal,
+    connected_components,
 )
 from .geometry import PointCloud, TriangularMesh
 
@@ -24,8 +25,10 @@ def apply_over_indices(func: Callable) -> Callable:
                 continue
             point_cloud = self.data[index]
             new_points = func(self, point_cloud=point_cloud, *args, **kwargs)
-            if new_points is not None:
+            if isinstance(new_points, np.ndarray):
                 point_cloud.swap_data(new_points)
+            elif new_points == 101:
+                self.remove(index)
 
     return wrapper
 
@@ -283,7 +286,22 @@ class DataContainer:
         return points[mask]
 
     @apply_over_indices
-    def dbscan_cluster(self, point_cloud, distance, min_points):
+    def connected_components(self, point_cloud, **kwargs):
+        """Identify connected components in a point cloud.
+
+        Parameters
+        ----------
+        point_cloud : PointCloud
+            Cloud to cluster.
+        """
+        sampling = point_cloud._sampling_rate
+        components = connected_components(point_cloud.points, sampling_rate=sampling)
+        for component in components:
+            self.add(component, sampling_rate=sampling)
+        return 101
+
+    @apply_over_indices
+    def dbscan_cluster(self, point_cloud, distance, min_points, **kwargs):
         """Perform DBSCAN clustering.
 
         Parameters
