@@ -112,12 +112,7 @@ class ClusterSelectionTab(QWidget):
         button, params = QPushButton(name), THINNING_OPERATIONS[name]
         button.clicked.connect(
             lambda checked, op=name, params=params: show_parameter_dialog(
-                op,
-                params,
-                self,
-                {
-                    "Thinning": self.cdata.data.decimate,
-                },
+                op, params, self, {"Thinning": self.cdata.data.decimate}, button
             )
         )
         analysis_layout.addWidget(button, 0, 0)
@@ -132,6 +127,7 @@ class ClusterSelectionTab(QWidget):
                 {
                     "Clustering": self.cdata.data.cluster,
                 },
+                button,
             )
         )
         tooltip = {
@@ -157,7 +153,7 @@ class ClusterSelectionTab(QWidget):
             button = QPushButton(name)
             button.clicked.connect(
                 lambda checked, op=name, params=parameters: show_parameter_dialog(
-                    op, params, self, operations_mapping
+                    op, params, self, operations_mapping[name], button
                 )
             )
             button.setToolTip(format_tooltip(**POINT_OPERATION_TOOLTIPS[name]))
@@ -222,7 +218,9 @@ POINT_OPERATIONS = {
     "Trim Range": [
         make_param("min_value", 100, 0, "Points below this value will be removed."),
         make_param("max_value", 100, 0, "Points above this value will be removed."),
-        make_param("axis", 0, ["x", "y", "z"], "Axis along which to perform trimming."),
+        make_param(
+            "axis", "x", ["x", "y", "z"], "Axis along which to perform trimming."
+        ),
     ],
 }
 

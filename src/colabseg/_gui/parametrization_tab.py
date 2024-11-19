@@ -15,20 +15,19 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
 from .widgets import ProgressButton
 from .dialog import show_parameter_dialog, make_param
-from ..data import AVAILABLE_PARAMETRIZATIONS
 from ..interactor import LinkedDataContainerInteractor
 
 
 class FitWorker(QThread):
     finished = pyqtSignal()
 
-    def __init__(self, cdata, fit_type):
+    def __init__(self, cdata, **kwargs):
         super().__init__()
         self.cdata = cdata
-        self.fit_type = fit_type
+        self.kwargs = kwargs
 
     def run(self):
-        self.cdata.add_fit(fit_type=self.fit_type)
+        self.cdata.add_fit(**self.kwargs)
         self.finished.emit()
 
     def kill(self, timeout=10000):
@@ -96,13 +95,14 @@ class ParametrizationTab(QWidget):
         frame.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         frame.setMaximumWidth(300)
 
-        # Fit row
-        self.fit_button = ProgressButton("Fit")
-        self.fit_button.clicked.connect(self.add_fit)
-        self.param_type_selector = QComboBox()
-        self.param_type_selector.addItems(AVAILABLE_PARAMETRIZATIONS.keys())
-        grid_layout.addWidget(self.fit_button, 0, 0)
-        grid_layout.addWidget(self.param_type_selector, 0, 1)
+        name = "Fit"
+        self.fit_button = ProgressButton(name)
+        self.fit_button.clicked.connect(
+            lambda checked, op=name, params=FIT_OPERATIONS: show_parameter_dialog(
+                op, params, self, {"Fit": self.add_fit}, self.fit_button
+            )
+        )
+        grid_layout.addWidget(self.fit_button, 0, 0, 1, 2)
 
         # Export row
         export_button = QPushButton("Export")
@@ -163,11 +163,11 @@ class ParametrizationTab(QWidget):
         to_cluster.clicked.connect(self.fit_to_cluster)
         frame_layout.addWidget(to_cluster, 0, 0)
 
-        for row, (operation_name, parameters) in enumerate(FIT_OPERATIONS.items()):
-            button = QPushButton(operation_name)
+        for row, (name, parameters) in enumerate(CROP_OPERATIONS.items()):
+            button = QPushButton(name)
             button.clicked.connect(
-                lambda checked, op=operation_name, params=parameters: show_parameter_dialog(
-                    op, params, self, {"Crop Around Cluster": self.crop_fit}
+                lambda checked, op=name, params=parameters: show_parameter_dialog(
+                    op, params, self, {"Crop Around Cluster": self.crop_fit}, button
                 )
             )
             frame_layout.addWidget(button, row + 1, 0)
@@ -187,19 +187,17 @@ class ParametrizationTab(QWidget):
             button = QPushButton(operation_name)
             button.clicked.connect(
                 lambda checked, op=operation_name, params=parameters: show_parameter_dialog(
-                    op, params, self, operation_mapping
+                    op, params, self, operation_mapping, button
                 )
             )
             frame_layout.addWidget(button, row, 0)
 
         operations_layout.addWidget(frame)
 
-    def add_fit(self):
+    def add_fit(self, **kwargs):
         self.fit_button.listen(self.cdata.progress)
 
-        self.fit_worker = FitWorker(
-            self.cdata, fit_type=self.param_type_selector.currentText()
-        )
+        self.fit_worker = FitWorker(self.cdata, **kwargs)
         self.fit_worker.finished.connect(self._on_fit_complete)
         self.fit_button.cancel.connect(self.fit_worker.kill)
         self.fit_worker.start()
@@ -255,20 +253,69 @@ class ParametrizationTab(QWidget):
         if len(indices) != 1:
             print("Can only equilibrate a single mesh at once.")
             return -1
-        fit = self.cdata.models.data[indices[0]]
+        _ = self.cdata.models.data[indices[0]]
 
         return -1
 
 
-def op_type(name, operations):
-    """Create an operation type specification."""
-    return {"name": name, "operations": operations}
-
-
-FIT_OPERATIONS = {
+CROP_OPERATIONS = {
     "Crop Around Cluster": [
         make_param("distance", 40, 0, "Maximum distance between fit and cluster point.")
     ],
+}
+
+FIT_OPERATIONS = {
+    "Sphere": [],
+    "Ellipsoid": [],
+    "Cylinder": [],
+    "Mesh": [
+        make_param("fair_alpha", 1.0, 0.0, "Laplacian membrane energy weight."),
+        make_param(
+            "elastic_weight",
+            0.0,
+            0.0,
+            "Elastic membrane energy weight.",
+            notes="Larger values promote more direct closing of meshes.",
+        ),
+        make_param(
+            "curvature_weight",
+            0.0,
+            0.0,
+            "Curvature membrane energy. weight",
+            notes="Larger values promote conservation of mean curvature.",
+        ),
+        make_param(
+            "hole_size",
+            -1,
+            -1,
+            "Maximum surface area of holes considered for triangulation.",
+            notes="Negative values disable hole size checks - 0 corresponds to no fill.",
+        ),
+        make_param(
+            "downsample_input",
+            True,
+            [True, False],
+            "Thin input point cloud to core. Can be omitted if cluster is thinned.",
+        ),
+        make_param(
+            "n_smoothing",
+            5,
+            0,
+            "Number of pre-smoothing operations.",
+            notes="Pre-smoothing improves repair, but has little influence on "
+            "final mesh topology. Consider tuning the fairing weights instead.",
+        ),
+    ],
+    "Hull": [
+        make_param(
+            "alpha",
+            1.0,
+            0.0,
+            "Alpha-shape parameter - Larger values emphasize coarse features.",
+        ),
+        make_param("n_fairing", 0.0, 0.0, "Number of smoothing operations."),
+    ],
+    "RBF": [make_param("direction", "xy", ["xy", "xz", "yz"], "Plane to fit RBF in.")],
 }
 
 MESH_OPERATIONS = {

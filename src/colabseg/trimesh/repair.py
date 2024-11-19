@@ -8,10 +8,23 @@ _epsilon = 1e-16
 
 
 def _close_hole(vs: np.ndarray, fs: np.ndarray, hole_vids, fast=True) -> np.ndarray:
-    """
-    :param hole_vids: the vid sequence
-    :return:
-        out_fs:
+    """Close mesh holes with perimeter length below threshold.
+
+    Parameters
+    ----------
+    vs : ndarray, shape (N, 3)
+        Vertex coordinates.
+    fs : ndarray, shape (M, 3)
+        Face indices.
+    hole_vids : ndarray, shape (K, 3)
+        Boundary vertex indices.
+    fast : bool, optional
+        Whether to use fast hole filling. Default is True.
+
+    Returns
+    -------
+    ndarray, shape (K, 3)
+        Face indices of mesh with holes closed.
     """
 
     def hash_func(edges):
@@ -93,21 +106,37 @@ def _close_hole(vs: np.ndarray, fs: np.ndarray, hole_vids, fast=True) -> np.ndar
     return out_fs
 
 
-def __close_holes(
+def close_holes(
     vs: np.ndarray, fs: np.ndarray, hole_len_thr: float = 10000.0, fast=True
 ) -> np.ndarray:
-    """
-    Close holes whose length is less than a given threshold.
-    :param edge_len_thr:
-    :return:
-        out_fs: output faces
+    """Close mesh holes with perimeter length below threshold.
+
+    Parameters
+    ----------
+    vs : ndarray, shape (N, 3)
+        Vertex coordinates.
+    fs : ndarray, shape (M, 3)
+        Face indices.
+    hole_len_thr : float, optional
+        Maximum perimeter length of holes to close. Default is 10000.0.
+    fast : bool, optional
+        Whether to use fast hole filling. Default is True.
+
+    Returns
+    -------
+    ndarray, shape (K, 3)
+        Face indices of mesh with holes closed.
+
+    References
+    ----------
+    .. [1] Code adapted from https://github.com/kentechx/hole-filling
     """
     out_fs = fs.copy()
     while True:
         updated = False
         for b in igl.all_boundary_loop(out_fs):
             hole_edge_len = np.linalg.norm(vs[np.roll(b, -1)] - vs[b], axis=1).sum()
-            if len(b) >= 3 and hole_edge_len <= hole_len_thr:
+            if len(b) >= 3 and (hole_edge_len <= hole_len_thr or hole_len_thr < 0):
                 out_fs = _close_hole(vs, out_fs, b, fast)
                 updated = True
 
@@ -120,8 +149,26 @@ def __close_holes(
 def get_mollified_edge_length(
     vs: np.ndarray, fs: np.ndarray, mollify_factor=1e-5
 ) -> np.ndarray:
-    # This code was copied from https://github.com/kentechx/hole-filling
+    """Calculate mollified edge lengths of mesh faces.
 
+    Parameters
+    ----------
+    vs : ndarray, shape (N, 3)
+        Vertex coordinates.
+    fs : ndarray, shape (M, 3)
+        Face indices.
+    mollify_factor : float, optional
+        Factor controlling edge length smoothing. Default is 1e-5.
+
+    Returns
+    -------
+    ndarray, shape (M, 3)
+        Mollified edge lengths for each face triangle.
+
+    References
+    ----------
+    .. [1] Code adapted from https://github.com/kentechx/hole-filling
+    """
     lin = igl.edge_lengths(vs, fs)
     if mollify_factor == 0:
         return lin
@@ -134,47 +181,75 @@ def get_mollified_edge_length(
     return lin
 
 
-def _mesh_fair_laplacian_energy(
-    vs: np.ndarray, fs: np.ndarray, vids: np.ndarray, alpha=0.05, k=2
-):
-    # This code was copied from https://github.com/kentechx/hole-filling
-    L, M = _robust_laplacian(vs, fs)
-    Q = igl.harmonic_weights_integrated_from_laplacian_and_mass(L, M, k)
-
-    a = np.full(len(vs), 0.0)  # alpha
-    a[vids] = alpha
-    a = scipy.sparse.diags(a)
-    out_vs = scipy.sparse.linalg.spsolve(a * Q + M - a * M, (M - a * M) @ vs)
-    return np.ascontiguousarray(out_vs)
-
-
-def compute_elastic_energy_matrix(vs: np.ndarray, fs: np.ndarray):
+def compute_elastic_energy(vs: np.ndarray, fs: np.ndarray):
     """
-    Compute elastic membrane energy matrix (first-order deformation)
-    Uses cotangent weights for better geometric properties
-    """
+    Compute elastic membrane energy matrix as first-order deformation
+    using cotangent weights.
 
-    # L[v] = Σ w_i * (v - n_i) ; w_i = (cot(α_vi) + cot(β_vi))/2
-    # Where w_i are the cotangent weights of neighboring vertices
+    Parameters
+    ----------
+    vs : ndarray, shape (N, 3)
+        Vertex coordinates.
+    fs : ndarray, shape (M, 3)
+        Face indices.
+
+    Returns
+    -------
+    ndarray, shape (N, N)
+        Energy matrix ||Lx||² = Σ_v (Σ_i w_i(x_v - x_i))²
+
+    Notes
+    -----
+    The energy penalizes vertices moving away from their weighted average positions
+    via membraine stain, i.e. stretching or compression, using cotangent weights
+
+    ..math::
+        w_{ij} = \\frac{\\cot(\\alpha_{ij}) + \\cot(\\beta_{ij})}{2}
+
+        L[v] = \\sum_i w_i(x_v - x_i)
+
+        E = \\|Lx\\|^2 = \\sum_v (\\sum_i w_i(x_v - x_i))^2
+    """
     L = -igl.cotmatrix(vs, fs)
-
-    # Elastic Energy ||Lx||² = Σ_v (Σ_i w_i(x_v - x_i))²
-    # This energy penalizes vertices moving away from their weighted average position
-    # It effectively measures membrane strain (stretching/compression)
     return L.T @ L
 
 
-def compute_curvature_energy_matrix(vs: np.ndarray, fs: np.ndarray):
+def compute_curvature_energy(vs: np.ndarray, fs: np.ndarray):
     """
-    Compute curvature energy matrix (second-order deformation)
-    Uses bilaplacian for curvature approximation
+    Compute elastic membrane energy matrix as second-order deformation
+    using cotangent weights and bilaplacian approximation.
+
+    Parameters
+    ----------
+    vs : ndarray, shape (N, 3)
+        Vertex coordinates.
+    fs : ndarray, shape (M, 3)
+        Face indices.
+
+    Returns
+    -------
+    ndarray, shape (N, N)
+        Energy matrix measuring surface bending/curvature changes.
+
+    Notes
+    -----
+    The energy penalizes changes in surface normals/curvature
+
+    ..math::
+       L = -\\text{cotmatrix}(v, f)
+
+       E = \\|L^T L x\\|^2 = x^T (L^T L)^2 x
+
+    where L is the cotangent Laplacian operator.
     """
-    # Get laplacian
     L = -igl.cotmatrix(vs, fs)
-    # Convert to curvature energy matrix (L^T * L * L^T * L)
-    # Second L^T * L * L^T * L measures how L^T * L itself varies
-    # It effectively measures the surface normal direction changes, penalizing bending/curvature changes
     return L.T @ L @ L.T @ L
+
+
+def _create_weights(size, indices, weight):
+    ret = np.full(size, fill_value=0.0)
+    ret[indices] = weight
+    return scipy.sparse.diags(ret)
 
 
 def mesh_fair_with_elastic_curvature(
@@ -198,38 +273,19 @@ def mesh_fair_with_elastic_curvature(
         gamma: curvature weight
         k: order of harmonic weights
     """
-    # Original Laplacian energy terms
     L, M = _robust_laplacian(vs, fs)
     Q = igl.harmonic_weights_integrated_from_laplacian_and_mass(L, M, k)
+    E = compute_elastic_energy(vs, fs)
+    C = compute_curvature_energy(vs, fs)
 
-    # Setup alpha weights
-    a = np.full(len(vs), 0.0)
-    a[vids] = alpha
-    a = scipy.sparse.diags(a)
+    a = _create_weights(len(vs), vids, alpha)
+    b = _create_weights(len(vs), vids, beta)
+    g = _create_weights(len(vs), vids, gamma)
 
-    # Compute elastic membrane energy matrix
-    E = compute_elastic_energy_matrix(vs, fs)
-
-    # Compute curvature energy matrix
-    C = compute_curvature_energy_matrix(vs, fs)
-
-    # Create weight matrices for elastic and curvature terms
-    b = np.full(len(vs), 0.0)
-    b[vids] = beta
-    b = scipy.sparse.diags(b)
-
-    g = np.full(len(vs), 0.0)
-    g[vids] = gamma
-    g = scipy.sparse.diags(g)
-
-    # Combine all energy terms
-    # System matrix: (αQ + M - αM + βE + γC)
+    # System matrix: (αQ + M - αM + βE + γC) @ out_vs = (M - αM)v_original
     A = a * Q + M - a * M + b * E + g * C
-
-    # Right hand side: (M - αM)v_original
     b = (M - a * M) @ vs
 
-    # Solve the system
     out_vs = scipy.sparse.linalg.spsolve(A, b)
     return np.ascontiguousarray(out_vs)
 
@@ -238,11 +294,26 @@ def _robust_laplacian(
     vs, fs, mollify_factor=1e-5
 ) -> Tuple[scipy.sparse.csc_matrix, scipy.sparse.csc_matrix]:
     """
-    # This code was copied from https://github.com/kentechx/hole-filling
+    Get a laplacian with intrinsic Delaunay triangulation and intrinsic mollification.
 
-    Get a laplcian with iDT (intrinsic Delaunay triangulation) and intrinsic mollification.
-    Ref https://www.cs.cmu.edu/~kmcrane/Projects/NonmanifoldLaplace/NonmanifoldLaplace.pdf
-    :param mollify_factor: the mollification factor.
+    Parameters
+    ----------
+    vs : ndarray, shape (N, 3)
+        Vertex coordinates.
+    fs : ndarray, shape (M, 3)
+        Face indices.
+    mollify_factor : float, optional
+        Factor controlling edge length smoothing. Default is 1e-5.
+
+    Returns
+    -------
+    ndarray, shape (M, 3)
+        Mollified edge lengths for each face triangle.
+
+    References
+    ----------
+    .. [1] Code copied from https://github.com/kentechx/hole-filling
+    .. [2] https://www.cs.cmu.edu/~kmcrane/Projects/NonmanifoldLaplace/NonmanifoldLaplace.pdf
     """
     lin = get_mollified_edge_length(vs, fs, mollify_factor)
     lin, fin = igl.intrinsic_delaunay_triangulation(lin.astype("f8"), fs)
@@ -255,17 +326,35 @@ def _triangulation_refine_leipa(
     vs: np.ndarray, fs: np.ndarray, fids: np.ndarray, density_factor: float = np.sqrt(2)
 ):
     """
-    # This code was copied from https://github.com/kentechx/hole-filling
+    Refine triangles using barycentric subdivision and Delaunay triangulation
+    using Liepa's hole filling algorithm [1].
 
-    Refine the triangles using barycentric subdivision and Delaunay triangulation.
-    You should remove unreferenced vertices before the refinement.
-    See "Filling holes in meshes." [Liepa 2003].
 
-    :return:
-        out_vs: (n, 3), the added vertices are appended to the end of the original vertices.
-        out_fs: (m, 3), the added faces are appended to the end of the original faces.
-        FI: (len(fs), ), face index mapping from the original faces to the refined faces, where
-            fs[i] = out_fs[FI[i]], and FI[i]=-1 means the i-th face is deleted.
+    Parameters
+    ----------
+    vs : ndarray, shape (N, 3)
+        Vertex coordinates.
+    fs : ndarray, shape (M, 3)
+        Face indices.
+    fids : ndarray, shape (K,)
+        Indices of faces to refine.
+    density_factor : float, optional
+        Controls subdivision density. Default is sqrt(2).
+
+    Returns
+    -------
+    out_vs : ndarray, shape (N+P, 3)
+        Output vertices, with new vertices appended.
+    out_fs : ndarray, shape (M+Q, 3)
+        Output faces, with new faces appended.
+    FI : ndarray, shape (M,)
+        Maps original face indices to refined face indices.
+        FI[i] = -1 indicates face i was deleted.
+
+    References
+    ----------
+    .. [1] Code copied from Liepa, P. "Filling holes in meshes." (2003)
+    .. [2] Liepa, P. "Filling holes in meshes." (2003)
     """
     out_vs = np.copy(vs)
     out_fs = np.copy(fs)
@@ -349,25 +438,53 @@ def _triangulation_refine_leipa(
 def triangulate_refine_fair(
     vs,
     fs,
-    hole_len_thr=10000,
-    _close_hole_fast=True,
+    hole_len_thr=-1,
+    close_hole_fast=True,
     density_factor=np.sqrt(2),
     fair_alpha=0.05,
+    beta=0.0,
+    gamma=0.0,
 ):
-    # This code was copied from https://github.com/kentechx/hole-filling
+    """
+    Fill and fair holes in triangular meshes.
 
-    # fill
-    out_fs = __close_holes(vs, fs, hole_len_thr, _close_hole_fast)
+    Parameters
+    ----------
+    vs : ndarray, shape (N, 3)
+        Vertex coordinates.
+    fs : ndarray, shape (M, 3)
+        Face indices.
+    hole_len_thr : float, optional
+        Maximum hole perimeter to fill. Default is -1 (no limit).
+    close_hole_fast : bool, optional
+        Use fast hole filling. Default is True.
+    density_factor : float, optional
+        Controls subdivision density. Default is sqrt(2).
+    fair_alpha : float, optional
+        Weight for membrane energy. Default is 0.05.
+    beta : float, optional
+        Weight for elastic energy. Default is 0.
+    gamma : float, optional
+        Weight for curvature energy. Default is 0.
+
+    Returns
+    -------
+    out_vs : ndarray, shape (N+P, 3)
+        Output vertices after filling and fairing.
+    out_fs : ndarray, shape (M+Q, 3)
+        Output faces after filling and fairing.
+    """
+    out_fs = close_holes(vs, fs, hole_len_thr, close_hole_fast)
     add_fids = np.arange(len(fs), len(out_fs))
 
-    # refine
     nv = len(vs)
     out_vs, out_fs, FI = _triangulation_refine_leipa(
         vs, out_fs, add_fids, density_factor
     )
     add_vids = np.arange(nv, len(out_vs))
 
-    # fairing
-    # out_vs = _mesh_fair_laplacian_energy(out_vs, out_fs, add_vids, fair_alpha)
-    out_vs = mesh_fair_with_elastic_curvature(out_vs, out_fs, add_vids, fair_alpha)
+    # Fair selected parts of the mesh
+    out_vs = mesh_fair_with_elastic_curvature(
+        out_vs, out_fs, add_vids, alpha=fair_alpha, beta=beta, gamma=gamma
+    )
     return out_vs, out_fs

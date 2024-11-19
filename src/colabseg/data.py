@@ -1,5 +1,7 @@
 import pickle
 import numpy as np
+from functools import wraps
+from typing import Callable
 from PyQt6.QtCore import pyqtSignal, QObject
 
 from .container import DataContainer
@@ -12,6 +14,21 @@ rbf = PARAMETRIZATION_TYPE.pop("rbf")
 PARAMETRIZATION_TYPE["rbf [xy]"] = rbf
 PARAMETRIZATION_TYPE["rbf [xz]"] = rbf
 PARAMETRIZATION_TYPE["rbf [yz]"] = rbf
+
+
+def _progress_decorator(func: Callable) -> Callable:
+    @wraps(func)
+    def wrapper(self, *args, **kwargs) -> None:
+        try:
+            ret = func(self, *args, **kwargs)
+        except Exception as e:
+            print(e)
+        finally:
+            # Termination signal for listeners
+            self.progress.emit(1)
+        return ret
+
+    return wrapper
 
 
 class ColabsegData(QObject):
@@ -56,21 +73,25 @@ class ColabsegData(QObject):
         self.data.update(point_manager)
         self.models.update(model_manager)
 
-    def add_fit(self, fit_type: str, fit_args: str = "xz"):
+    @_progress_decorator
+    def add_fit(self, method: str, fit_args: str = "xz", **kwargs):
+        method = method.lower()
         cluster_indices = self.data._get_selected_indices()
-        if fit_type not in PARAMETRIZATION_TYPE:
+        if method not in PARAMETRIZATION_TYPE:
             return -1
 
         kwargs = {}
-        if fit_type.startswith("rbf") and len(fit_type) == 8:
-            kwargs["direction"] = fit_type[5:7]
+        if method.startswith("rbf") and len(method) == 8:
+            kwargs["direction"] = method[5:7]
 
-        fit_object = PARAMETRIZATION_TYPE[fit_type]
+        fit_object = PARAMETRIZATION_TYPE[method]
         for index in cluster_indices:
             if not self._data._index_ok(index):
                 continue
 
             cloud = self._data.data[index]
+            if cloud._sampling_rate is None:
+                cloud._sampling_rate = 10
             kwargs["voxel_size"] = np.max(cloud._sampling_rate)
 
             n = cloud.points.shape[0]
@@ -96,9 +117,6 @@ class ColabsegData(QObject):
                 continue
 
             self.progress.emit((index + 1) / len(cluster_indices))
-
-        # Termination signal for listeners
-        self.progress.emit(1)
 
     def export_fit(self, file_path: str, file_format: str):
         fit_indices = self.models._get_selected_indices()

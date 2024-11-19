@@ -6,8 +6,9 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
     QSpinBox,
     QDoubleSpinBox,
-    QGridLayout,
     QComboBox,
+    QFormLayout,
+    QCheckBox,
 )
 
 
@@ -97,23 +98,19 @@ class OperationDialog(QDialog):
         self.operation_type = operation_type
         self.parameters = parameters
         self.parameter_widgets = {}
-
         self.is_hierarchical = isinstance(parameters, dict)
 
         self.setWindowTitle(self.operation_type)
-
         self.main_layout = QVBoxLayout(self)
-        self.params_layout = QGridLayout()
+        self.params_layout = QFormLayout()
 
         if self.is_hierarchical:
-            label = QLabel("Method:")
             self.type_selector = QComboBox()
             self.type_selector.addItems(list(self.parameters.keys()))
             self.type_selector.currentIndexChanged.connect(
                 self.update_operation_options
             )
-            self.params_layout.addWidget(label, 0, 0)
-            self.params_layout.addWidget(self.type_selector, 0, 1)
+            self.params_layout.addRow("Method:", self.type_selector)
 
         self.main_layout.addLayout(self.params_layout)
 
@@ -133,23 +130,20 @@ class OperationDialog(QDialog):
         self.update_parameters(self.parameters[current_type])
 
     def update_parameters(self, parameters):
-        for i in reversed(range(self.params_layout.count())):
-            widget = self.params_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
+        while self.params_layout.rowCount() > (1 if self.is_hierarchical else 0):
+            self.params_layout.removeRow(self.params_layout.rowCount() - 1)
         self.parameter_widgets.clear()
-        for row, param_info in enumerate(parameters):
-            row_index = row + int(self.is_hierarchical)
 
+        for param_info in parameters:
             label, value, min_value, tooltip_info = param_info
             tooltip = format_tooltip(**tooltip_info)
-
             label_widget = QLabel(f"{tooltip_info['title']}:")
             label_widget.setToolTip(tooltip)
-            self.params_layout.addWidget(label_widget, row_index, 0)
 
-            if isinstance(min_value, list):
+            if isinstance(value, bool):
+                widget = QCheckBox()
+                widget.setChecked(value)
+            elif isinstance(min_value, list):
                 widget = QComboBox()
                 widget.addItems(min_value)
                 widget.setCurrentText(value)
@@ -167,29 +161,33 @@ class OperationDialog(QDialog):
 
             widget.setToolTip(tooltip)
             self.parameter_widgets[label] = widget
-            self.params_layout.addWidget(widget, row_index, 1)
+            self.params_layout.addRow(label_widget, widget)
 
 
-def show_parameter_dialog(operation_type, parameters, obj, operation_mapping):
+def show_parameter_dialog(operation_type, parameters, obj, mapping, source_widget=None):
     dialog = OperationDialog(operation_type, parameters, obj)
+    if source_widget:
+        pos = source_widget.mapToGlobal(source_widget.rect().bottomLeft())
+        dialog.move(pos)
 
     if dialog.exec() == QDialog.DialogCode.Rejected:
         return -1
 
-    params = {
-        label: (
-            widget.currentText() if isinstance(widget, QComboBox) else widget.value()
-        )
-        for label, widget in dialog.parameter_widgets.items()
-    }
+    params = {}
+    for label, widget in dialog.parameter_widgets.items():
+        if isinstance(widget, QComboBox):
+            params[label] = widget.currentText()
+        elif isinstance(widget, QCheckBox):
+            params[label] = widget.isChecked()
+        else:
+            params[label] = widget.value()
+
     if dialog.is_hierarchical:
         params["method"] = dialog.type_selector.currentText()
 
-    func = operation_mapping.get(operation_type)
+    func = mapping.get(operation_type)
     if func is None:
-        print(
-            f"{operation_type} is unknown - Supported are {operation_mapping.keys()}."
-        )
+        print(f"{operation_type} is unknown - Supported are {mapping.keys()}.")
     return func(**params)
 
 

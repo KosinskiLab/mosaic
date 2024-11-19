@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
     QSplitter,
     QFileDialog,
 )
-from PyQt6.QtCore import Qt, QPoint, QSize
+from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import (
     QAction,
     QGuiApplication,

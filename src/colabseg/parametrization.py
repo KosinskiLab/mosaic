@@ -125,152 +125,6 @@ class Parametrization(ABC):
         """
 
 
-class TriangularMesh(Parametrization):
-    """
-    Represent a point cloud as triangular mesh.
-
-    Parameters
-    ----------
-    mesh : open3d.cpu.pybind.geometry.TriangleMesh
-        Triangular mesh.
-    """
-
-    def __init__(self, mesh):
-        self.mesh = mesh
-
-    def to_file(self, file_path):
-        o3d.io.write_triangle_mesh(file_path, self.mesh)
-
-    def __getstate__(self):
-        state = {
-            "vertices": np.asarray(self.mesh.vertices),
-            "triangles": np.asarray(self.mesh.triangles),
-        }
-
-        if self.mesh.has_vertex_normals():
-            state["vertex_normals"] = np.asarray(self.mesh.vertex_normals)
-        if self.mesh.has_vertex_colors():
-            state["vertex_colors"] = np.asarray(self.mesh.vertex_colors)
-        if self.mesh.has_triangle_normals():
-            state["triangle_normals"] = np.asarray(self.mesh.triangle_normals)
-        return state
-
-    def __setstate__(self, state):
-        mesh = o3d.geometry.TriangleMesh()
-        mesh.vertices = o3d.utility.Vector3dVector(state["vertices"])
-        mesh.triangles = o3d.utility.Vector3iVector(state["triangles"])
-
-        attrs = ("vertex_normals", "vertex_colors", "triangle_normals")
-        for attr in attrs:
-            if attr not in state:
-                continue
-            setattr(mesh, attr, o3d.utility.Vector3dVector(state.get(attr)))
-
-        self.mesh = mesh
-
-    @classmethod
-    def fit(
-        cls,
-        positions: np.ndarray,
-        voxel_size: float = 10,
-        repair: bool = True,
-        fair_alpha: float = 1,
-        **kwargs,
-    ):
-        # Surface reconstruction normal estimation
-        positions = np.asarray(positions, dtype=np.float64)
-        ellipsoid = Ellipsoid.fit(positions)
-
-        # Reduce membrane thickness
-        positions = com_cluster_points(positions, cutoff=4 * voxel_size)
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(positions)
-        pcd.normals = o3d.utility.Vector3dVector(ellipsoid.compute_normal(positions))
-        pcd = pcd.voxel_down_sample(voxel_size=2 * voxel_size)
-
-        pcd.estimate_normals(
-            search_param=o3d.geometry.KDTreeSearchParamHybrid(
-                radius=10 * voxel_size, max_nn=30
-            )
-        )
-        mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
-            pcd, o3d.utility.DoubleVector([5 * voxel_size])
-        )
-
-        # Remove noisy small meshes
-        clusters, cluster_n, _ = mesh.cluster_connected_triangles()
-        clusters = np.asarray(clusters)
-        cluster_n = np.asarray(cluster_n)
-        cutoff = 0.02 * cluster_n.sum()
-        triangles_to_remove = cluster_n[clusters] < cutoff
-        mesh.remove_triangles_by_mask(triangles_to_remove)
-
-        # Repair and smooth
-        mesh = mesh.remove_non_manifold_edges()
-        mesh = mesh.remove_degenerate_triangles()
-        mesh = mesh.remove_duplicated_triangles()
-        mesh = mesh.remove_unreferenced_vertices()
-        mesh = mesh.remove_duplicated_vertices()
-        mesh = mesh.filter_smooth_taubin(number_of_iterations=5)
-
-        if np.asarray(mesh.vertices).shape[0] == 0:
-            print("No suitable vertices for mesh creation found.")
-            return None
-
-        if not repair:
-            return cls(mesh=mesh)
-
-        # Hole triangulation and fairing
-        new_vs, new_fs = triangulate_refine_fair(
-            np.asarray(mesh.vertices), np.asarray(mesh.triangles), fair_alpha=fair_alpha
-        )
-        mesh = o3d.geometry.TriangleMesh()
-        mesh.vertices = o3d.utility.Vector3dVector(new_vs.astype(np.float64))
-        mesh.triangles = o3d.utility.Vector3iVector(new_fs.astype(np.int32))
-        mesh = mesh.remove_degenerate_triangles()
-        mesh = mesh.filter_smooth_taubin(number_of_iterations=5)
-        mesh = mesh.compute_vertex_normals()
-        return cls(mesh=mesh)
-
-    def sample(
-        self, n_samples: int, mesh_init_factor: bool = None, **kwargs
-    ) -> np.ndarray:
-        """
-        Samples points from the Triangular mesh.
-
-        Parameters
-        ----------
-        n_samples : int
-            Number of samples to draw
-        sample_mesh : bool, optional
-            Whether the samples should be drawn from a triangular mesh instead.
-            This can yield more equidistantly spaced points.
-        mesh_init_factor : int, optional
-            Number of times the mesh should be initialized for Poisson sampling.
-            Five appears to be a reasonable number. Higher values typically yield
-            better sampling.
-
-        Returns
-        -------
-        np.ndarray
-            Sampled points.
-        """
-        return _sample_from_mesh(self.mesh, n_samples, mesh_init_factor)
-
-    def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(points)
-        pcd.estimate_normals()
-        pcd.normalize_normals()
-        pcd.orient_normals_consistent_tangent_plane(k=50)
-        return np.asarray(pcd.normals)
-
-    def points_per_sampling(self, sampling_density: float) -> int:
-        area_per_sample = np.square(sampling_density)
-        n_points = np.ceil(np.divide(self.mesh.get_surface_area(), area_per_sample))
-        return int(n_points)
-
-
 class Sphere(Parametrization):
     """
     Parametrize a point cloud as sphere.
@@ -767,6 +621,166 @@ class RBF(Parametrization):
         return int(n_points)
 
 
+class TriangularMesh(Parametrization):
+    """
+    Represent a point cloud as triangular mesh.
+
+    Parameters
+    ----------
+    mesh : open3d.cpu.pybind.geometry.TriangleMesh
+        Triangular mesh.
+    """
+
+    def __init__(self, mesh):
+        self.mesh = mesh
+
+    def to_file(self, file_path):
+        o3d.io.write_triangle_mesh(file_path, self.mesh)
+
+    def __getstate__(self):
+        state = {
+            "vertices": np.asarray(self.mesh.vertices),
+            "triangles": np.asarray(self.mesh.triangles),
+        }
+
+        if self.mesh.has_vertex_normals():
+            state["vertex_normals"] = np.asarray(self.mesh.vertex_normals)
+        if self.mesh.has_vertex_colors():
+            state["vertex_colors"] = np.asarray(self.mesh.vertex_colors)
+        if self.mesh.has_triangle_normals():
+            state["triangle_normals"] = np.asarray(self.mesh.triangle_normals)
+        return state
+
+    def __setstate__(self, state):
+        mesh = o3d.geometry.TriangleMesh()
+        mesh.vertices = o3d.utility.Vector3dVector(state["vertices"])
+        mesh.triangles = o3d.utility.Vector3iVector(state["triangles"])
+
+        attrs = ("vertex_normals", "vertex_colors", "triangle_normals")
+        for attr in attrs:
+            if attr not in state:
+                continue
+            setattr(mesh, attr, o3d.utility.Vector3dVector(state.get(attr)))
+
+        self.mesh = mesh
+
+    @classmethod
+    def fit(
+        cls,
+        positions: np.ndarray,
+        voxel_size: float = 10,
+        max_hole_size: float = -1,
+        downsample_input: bool = True,
+        fair_alpha: float = 1,
+        elastic_weight: float = 0.0,
+        curvature_weight: float = 0.0,
+        n_smoothing: int = 5,
+        **kwargs,
+    ):
+        # Surface reconstruction normal estimation
+        positions = np.asarray(positions, dtype=np.float64)
+        ellipsoid = Ellipsoid.fit(positions)
+
+        # Reduce membrane thickness
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(positions)
+        pcd.normals = o3d.utility.Vector3dVector(ellipsoid.compute_normal(positions))
+        if downsample_input:
+            positions = com_cluster_points(positions, cutoff=4 * voxel_size)
+            pcd.points = o3d.utility.Vector3dVector(positions)
+            pcd.normals = o3d.utility.Vector3dVector(
+                ellipsoid.compute_normal(positions)
+            )
+            pcd = pcd.voxel_down_sample(voxel_size=2 * voxel_size)
+
+        pcd.estimate_normals(
+            search_param=o3d.geometry.KDTreeSearchParamHybrid(
+                radius=10 * voxel_size, max_nn=30
+            )
+        )
+        mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
+            pcd, o3d.utility.DoubleVector([5 * voxel_size])
+        )
+
+        # Remove noisy small meshes
+        clusters, cluster_n, _ = mesh.cluster_connected_triangles()
+        clusters = np.asarray(clusters)
+        cluster_n = np.asarray(cluster_n)
+        cutoff = 0.02 * cluster_n.sum()
+        triangles_to_remove = cluster_n[clusters] < cutoff
+        mesh.remove_triangles_by_mask(triangles_to_remove)
+
+        # Repair and smooth
+        mesh = mesh.remove_non_manifold_edges()
+        mesh = mesh.remove_degenerate_triangles()
+        mesh = mesh.remove_duplicated_triangles()
+        mesh = mesh.remove_unreferenced_vertices()
+        mesh = mesh.remove_duplicated_vertices()
+        mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
+
+        if np.asarray(mesh.vertices).shape[0] == 0:
+            print("No suitable vertices for mesh creation found.")
+            return None
+
+        if max_hole_size == 0:
+            return cls(mesh=mesh)
+
+        # Hole triangulation and fairing
+        new_vs, new_fs = triangulate_refine_fair(
+            vs=np.asarray(mesh.vertices),
+            fs=np.asarray(mesh.triangles),
+            hole_len_thr=max_hole_size,
+            fair_alpha=fair_alpha,
+            beta=elastic_weight,
+            gamma=curvature_weight,
+        )
+        mesh = o3d.geometry.TriangleMesh()
+        mesh.vertices = o3d.utility.Vector3dVector(new_vs.astype(np.float64))
+        mesh.triangles = o3d.utility.Vector3iVector(new_fs.astype(np.int32))
+        mesh = mesh.remove_degenerate_triangles()
+        mesh = mesh.filter_smooth_taubin(number_of_iterations=5)
+        mesh = mesh.compute_vertex_normals()
+        return cls(mesh=mesh)
+
+    def sample(
+        self, n_samples: int, mesh_init_factor: bool = None, **kwargs
+    ) -> np.ndarray:
+        """
+        Samples points from the Triangular mesh.
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of samples to draw
+        sample_mesh : bool, optional
+            Whether the samples should be drawn from a triangular mesh instead.
+            This can yield more equidistantly spaced points.
+        mesh_init_factor : int, optional
+            Number of times the mesh should be initialized for Poisson sampling.
+            Five appears to be a reasonable number. Higher values typically yield
+            better sampling.
+
+        Returns
+        -------
+        np.ndarray
+            Sampled points.
+        """
+        return _sample_from_mesh(self.mesh, n_samples, mesh_init_factor)
+
+    def compute_normal(self, points: np.ndarray) -> np.ndarray:
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(points)
+        pcd.estimate_normals()
+        pcd.normalize_normals()
+        pcd.orient_normals_consistent_tangent_plane(k=50)
+        return np.asarray(pcd.normals)
+
+    def points_per_sampling(self, sampling_density: float) -> int:
+        area_per_sample = np.square(sampling_density)
+        n_points = np.ceil(np.divide(self.mesh.get_surface_area(), area_per_sample))
+        return int(n_points)
+
+
 class Hull(TriangularMesh):
     """
     Represent a point cloud as triangular mesh.
@@ -816,6 +830,7 @@ class Hull(TriangularMesh):
         positions: np.ndarray,
         voxel_size: float = 10,
         alpha=1,
+        n_fairing: int = 0,
         **kwargs,
     ):
         voxel_size = 1 if voxel_size is None else voxel_size
@@ -853,32 +868,18 @@ class Hull(TriangularMesh):
         mesh = mesh.compute_convex_hull()
         mesh = mesh.to_legacy()
 
+        if n_fairing:
+            from .trimesh import fair, remesh
+
+            mesh = remesh(mesh, 12 * voxel_size)
+            mesh = fair(mesh, n_iter=1000)
+
         return cls(mesh=mesh)
 
     def sample(
         self, n_samples: int, mesh_init_factor: bool = None, **kwargs
     ) -> np.ndarray:
         return _sample_from_mesh(self.mesh, n_samples, mesh_init_factor)
-
-
-class FairHull(Hull):
-    @classmethod
-    def fit(
-        cls,
-        positions: np.ndarray,
-        voxel_size: float = 10,
-        alpha: float = 1,
-        **kwargs,
-    ):
-        hull = super().fit(positions=positions, voxel_size=voxel_size, alpha=alpha)
-        mesh = hull.mesh
-
-        from .trimesh import fair, remesh
-
-        mesh = remesh(mesh, 12 * voxel_size)
-        mesh = fair(mesh, n_iter=1000)
-
-        return cls(mesh=mesh)
 
 
 PARAMETRIZATION_TYPE = {
@@ -888,5 +889,4 @@ PARAMETRIZATION_TYPE = {
     "mesh": TriangularMesh,
     "rbf": RBF,
     "hull": Hull,
-    "fairhull": FairHull,
 }

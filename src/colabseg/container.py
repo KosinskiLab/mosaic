@@ -14,7 +14,7 @@ from .utils import (
 )
 from .geometry import PointCloud, TriangularMesh
 from .trimesh.utils import com_cluster_points, find_closest_points
-from .parametrization import Hull, Sphere
+from .parametrization import Hull
 
 
 def apply_over_indices(func: Callable) -> Callable:
@@ -216,22 +216,24 @@ class DataContainer:
             return -1
 
         cloud = self.data[indices[0]]
+
+        points = cloud.points
         cutoff = 4 * np.max(cloud._sampling_rate)
         if method == "core":
-            points = com_cluster_points(cloud.points, cutoff)
+            points = com_cluster_points(points, cutoff)
         elif method == "outer":
-            hull = Hull.fit(cloud.points)
-            hull_points = hull.sample(4 * cloud.points.shape[0])
-            distances, _ = find_closest_points(hull_points, cloud.points)
-            points = cloud.points[distances < cutoff]
+            hull = Hull.fit(points)
+            hull_points = hull.sample(4 * points.shape[0])
+            distances, _ = find_closest_points(hull_points, points)
+            points = points[distances < cutoff]
         elif method == "inner":
             # Budget ray-casting using spherical coordinates
-            centroid = np.mean(cloud.points, axis=0)
-            points = cloud.points - centroid
+            centroid = np.mean(points, axis=0)
+            centered_points = points - centroid
 
-            r = np.linalg.norm(points, axis=1)
-            theta = np.arccos(points[:, 2] / r)
-            phi = np.arctan2(points[:, 1], points[:, 0])
+            r = np.linalg.norm(centered_points, axis=1)
+            theta = np.arccos(centered_points[:, 2] / r)
+            phi = np.arctan2(centered_points[:, 1], centered_points[:, 0])
 
             n_phi_bins = 360
             theta_idx = np.digitize(theta, np.linspace(0, np.pi, n_phi_bins // 2))
@@ -243,9 +245,9 @@ class DataContainer:
                 mask = np.where(bin_id == b)[0]
                 inner_indices.append(mask[np.argmin(r[mask])])
 
-            points = cloud.points[inner_indices]
+            points = points[inner_indices]
         else:
-            raise ValueError("Supported methods are 'inner', 'core' and 'outer.")
+            print("Supported methods are 'inner', 'core' and 'outer.")
 
         return self.add(points, sampling_rate=cloud._sampling_rate)
 
