@@ -6,7 +6,7 @@ from tempfile import NamedTemporaryFile
 import numpy as np
 import open3d as o3d
 from scipy.spatial import cKDTree
-from scipy.spatial.distance import cdist, pdist
+from scipy.spatial.distance import pdist
 
 
 def _to_open3d(vertices, faces):
@@ -190,9 +190,19 @@ def compute_scale_factor(mesh, lower_bound=1.0, upper_bound=1.7):
     return scale_factor
 
 
+def find_closest_points(positions1, positions2, k=1):
+    positions1, positions2 = np.asarray(positions1), np.asarray(positions2)
+
+    tree = cKDTree(positions1)
+    return tree.query(positions2, k=k)
+
+
 def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
     if not isinstance(positions, np.ndarray):
         positions = np.array(positions)
+
+    if isinstance(cutoff, np.ndarray):
+        cutoff = np.max(cutoff)
 
     tree = cKDTree(positions)
     n_points = len(positions)

@@ -2,7 +2,6 @@ import numpy as np
 import open3d as o3d
 from scipy import spatial
 from skimage import measure
-from scipy.interpolate import griddata
 
 
 def points_to_volume(points, sampling_rate=1, shape=None):

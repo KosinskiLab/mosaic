@@ -148,6 +148,92 @@ def _mesh_fair_laplacian_energy(
     return np.ascontiguousarray(out_vs)
 
 
+def compute_elastic_energy_matrix(vs: np.ndarray, fs: np.ndarray):
+    """
+    Compute elastic membrane energy matrix (first-order deformation)
+    Uses cotangent weights for better geometric properties
+    """
+
+    # L[v] = Σ w_i * (v - n_i) ; w_i = (cot(α_vi) + cot(β_vi))/2
+    # Where w_i are the cotangent weights of neighboring vertices
+    L = -igl.cotmatrix(vs, fs)
+
+    # Elastic Energy ||Lx||² = Σ_v (Σ_i w_i(x_v - x_i))²
+    # This energy penalizes vertices moving away from their weighted average position
+    # It effectively measures membrane strain (stretching/compression)
+    return L.T @ L
+
+
+def compute_curvature_energy_matrix(vs: np.ndarray, fs: np.ndarray):
+    """
+    Compute curvature energy matrix (second-order deformation)
+    Uses bilaplacian for curvature approximation
+    """
+    # Get laplacian
+    L = -igl.cotmatrix(vs, fs)
+    # Convert to curvature energy matrix (L^T * L * L^T * L)
+    # Second L^T * L * L^T * L measures how L^T * L itself varies
+    # It effectively measures the surface normal direction changes, penalizing bending/curvature changes
+    return L.T @ L @ L.T @ L
+
+
+def mesh_fair_with_elastic_curvature(
+    vs: np.ndarray,
+    fs: np.ndarray,
+    vids: np.ndarray,
+    alpha=0.05,  # Laplacian smoothing weight
+    beta=0.1,  # Elastic membrane weight
+    gamma=0.1,  # Curvature weight
+    k=2,
+):
+    """
+    Mesh fairing with elastic membrane and curvature priors
+
+    Parameters:
+        vs: vertex positions
+        fs: faces
+        vids: vertices to optimize
+        alpha: smoothness weight
+        beta: elastic membrane weight
+        gamma: curvature weight
+        k: order of harmonic weights
+    """
+    # Original Laplacian energy terms
+    L, M = _robust_laplacian(vs, fs)
+    Q = igl.harmonic_weights_integrated_from_laplacian_and_mass(L, M, k)
+
+    # Setup alpha weights
+    a = np.full(len(vs), 0.0)
+    a[vids] = alpha
+    a = scipy.sparse.diags(a)
+
+    # Compute elastic membrane energy matrix
+    E = compute_elastic_energy_matrix(vs, fs)
+
+    # Compute curvature energy matrix
+    C = compute_curvature_energy_matrix(vs, fs)
+
+    # Create weight matrices for elastic and curvature terms
+    b = np.full(len(vs), 0.0)
+    b[vids] = beta
+    b = scipy.sparse.diags(b)
+
+    g = np.full(len(vs), 0.0)
+    g[vids] = gamma
+    g = scipy.sparse.diags(g)
+
+    # Combine all energy terms
+    # System matrix: (αQ + M - αM + βE + γC)
+    A = a * Q + M - a * M + b * E + g * C
+
+    # Right hand side: (M - αM)v_original
+    b = (M - a * M) @ vs
+
+    # Solve the system
+    out_vs = scipy.sparse.linalg.spsolve(A, b)
+    return np.ascontiguousarray(out_vs)
+
+
 def _robust_laplacian(
     vs, fs, mollify_factor=1e-5
 ) -> Tuple[scipy.sparse.csc_matrix, scipy.sparse.csc_matrix]:
@@ -282,5 +368,6 @@ def triangulate_refine_fair(
     add_vids = np.arange(nv, len(out_vs))
 
     # fairing
-    out_vs = _mesh_fair_laplacian_energy(out_vs, out_fs, add_vids, fair_alpha)
+    # out_vs = _mesh_fair_laplacian_energy(out_vs, out_fs, add_vids, fair_alpha)
+    out_vs = mesh_fair_with_elastic_curvature(out_vs, out_fs, add_vids, fair_alpha)
     return out_vs, out_fs

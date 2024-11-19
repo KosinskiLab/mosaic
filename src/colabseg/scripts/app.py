@@ -173,7 +173,7 @@ class App(QMainWindow):
             self.cdata.data.toggle_drawing_mode()
             self._transition_modes(Mode.DRAWING)
         elif key == "r":
-            mode = self._transition_modes(Mode.SELECTION)
+            self._transition_modes(Mode.SELECTION)
 
     def on_right_click(self, obj, event):
         self.cdata.data.deselect()

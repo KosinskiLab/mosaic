@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
 )
 
 from .widgets import HistogramWidget
-from .dialog import format_tooltip, show_parameter_dialog
+from .dialog import format_tooltip, show_parameter_dialog, make_param
 
 
 class ClusterSelectionTab(QWidget):
@@ -44,7 +44,6 @@ class ClusterSelectionTab(QWidget):
         operations_layout.setSpacing(5)
 
         self.setup_cluster_operations(operations_layout)
-        # operations_layout.addStretch()
         self.setup_cluster_editing_operations(operations_layout)
         main_layout.addLayout(operations_layout)
 
@@ -109,28 +108,39 @@ class ClusterSelectionTab(QWidget):
         analysis_frame.setFrameStyle(QFrame.Shape.StyledPanel)
         analysis_layout = QGridLayout(analysis_frame)
 
-        button = QPushButton("Split Cluster")
-        button.clicked.connect(self.cdata.data.split_cluster)
-        analysis_layout.addWidget(button)
-        self.cluster_buttons["Split Cluster"] = button
-
-        for row, (operation_name, parameters) in enumerate(CLUSTER_OPERATIONS.items()):
-            button = QPushButton(operation_name)
-            button.clicked.connect(
-                lambda checked, op=operation_name, params=parameters: show_parameter_dialog(
-                    op,
-                    params,
-                    self,
-                    {
-                        "Recluster": self.cdata.data.cluster,
-                    },
-                )
+        name = "Thinning"
+        button, params = QPushButton(name), THINNING_OPERATIONS[name]
+        button.clicked.connect(
+            lambda checked, op=name, params=params: show_parameter_dialog(
+                op,
+                params,
+                self,
+                {
+                    "Thinning": self.cdata.data.decimate,
+                },
             )
-            button.setToolTip(
-                format_tooltip(**CLUSTER_OPERATION_TOOLTIPS[operation_name])
-            )
-            analysis_layout.addWidget(button, row + 1, 0)
+        )
+        analysis_layout.addWidget(button, 0, 0)
 
+        name = "Clustering"
+        button = QPushButton(name)
+        button.clicked.connect(
+            lambda checked, op=name, params=CLUSTER_OPERATIONS: show_parameter_dialog(
+                op,
+                params,
+                self,
+                {
+                    "Clustering": self.cdata.data.cluster,
+                },
+            )
+        )
+        tooltip = {
+            "title": "DBSCAN Clustering",
+            "description": "Cluster points based on density and proximity.",
+            "notes": "Useful for finding clusters of arbitrary shape",
+        }
+        button.setToolTip(format_tooltip(**tooltip))
+        analysis_layout.addWidget(button, 1, 0)
         main_layout.addWidget(analysis_frame)
 
     def setup_point_editing_operations(self, main_layout):
@@ -143,138 +153,77 @@ class ClusterSelectionTab(QWidget):
             "Remove Outlier": self.cdata.data.remove_outliers,
         }
 
-        for row, (operation_name, parameters) in enumerate(POINT_OPERATIONS.items()):
-            button = QPushButton(operation_name)
+        for row, (name, parameters) in enumerate(POINT_OPERATIONS.items()):
+            button = QPushButton(name)
             button.clicked.connect(
-                lambda checked, op=operation_name, params=parameters: show_parameter_dialog(
+                lambda checked, op=name, params=parameters: show_parameter_dialog(
                     op, params, self, operations_mapping
                 )
             )
-            button.setToolTip(
-                format_tooltip(**POINT_OPERATION_TOOLTIPS[operation_name])
-            )
+            button.setToolTip(format_tooltip(**POINT_OPERATION_TOOLTIPS[name]))
             analysis_layout.addWidget(button, row, 0)
 
         main_layout.addWidget(analysis_frame)
 
 
-CLUSTER_OPERATIONS = {
-    "Recluster": [
-        (
+THINNING_OPERATIONS = {
+    "Thinning": [
+        make_param(
             "method",
-            ["Connected Components", "DBSCAN"],
-            "Connected Components",
-            {
-                "title": "Method",
-                "description": "Separated - Connected Components otherwise DBSCAN",
-                "default_value": "Connected Components",
-                "notes": "Segmentations need to be disconnected for Connected Components.",
-            },
+            "core",
+            ["outer", "core", "inner"],
+            "Reduce cluster to outer, core or inner points.",
         ),
-        (
+    ],
+}
+
+CLUSTER_OPERATIONS = {
+    "Connected Components": [],
+    "DBSCAN": [
+        make_param(
             "distance",
             40,
             0,
-            {
-                "title": "Neighbor Distance",
-                "description": "Maximum distance between two neighbors.",
-                "default_value": "40",
-                "notes": "Larger values create bigger clusters (Only used by DBSCAN).",
-            },
+            "Maximum distance between two neighbors.",
+            notes="Larger values create bigger clusters (Only used by DBSCAN).",
         ),
-        (
-            "min_points",
-            20,
-            0,
-            {
-                "title": "Minimum Points",
-                "description": "Minimum number of points required to form a cluster.",
-                "default_value": "20",
-                "notes": "Higher values make the algorithm more selective (Only used by DBSCAN).",
-            },
+        make_param(
+            "min_points", 20, 0, "Minimum number of points required to form a cluster."
         ),
+    ],
+    "K-Means": [
+        make_param("k", 2, 1, "Number of clusters"),
     ],
 }
 
 POINT_OPERATIONS = {
     "Remove Outlier": [
-        (
+        make_param(
             "k_neighbors",
             10,
             0,
-            {
-                "title": "Number of Neighbors",
-                "description": "k-Neighbors to consider for detecting outliers.",
-                "default_value": "100",
-                "notes": "Affects the local density estimation",
-            },
+            "k-Neighbors to consider for detecting outliers.",
+            notes="Affects the local density estimation",
         ),
-        (
+        make_param(
             "thresh",
             0.02,
-            0.0,
-            {
-                "title": "Threshold",
-                "description": "Threshold for outlier detection.",
-                "default_value": "0.2",
-                "notes": "Meaning depends on method - Low values remove more points.",
-            },
+            0,
+            "Threshold for outlier detection.",
+            notes="Threshold is sdev for statistical, eigenvalue ratio otherwise.",
         ),
-        (
+        make_param(
             "method",
-            ["statistical", "eigenvalue"],
             "statistical",
-            {
-                "title": "Method",
-                "description": "Statistical - General outliers. Eigenvalue - Noisy Edges",
-                "default_value": "Statistical",
-                "notes": "Threshold is standard deviation for statistical, eigenvalue ratio otherwise.",
-            },
+            ["statistical", "eigenvalue"],
+            "Statistical - General outliers. Eigenvalue - Noisy Edges",
         ),
     ],
     "Trim Range": [
-        (
-            "min_value",
-            100,
-            0,
-            {
-                "title": "Minimum Value",
-                "description": "Minimum value to keep in the selected axis.",
-                "default_value": "100",
-                "notes": "Points below this value will be removed",
-            },
-        ),
-        (
-            "max_value",
-            100,
-            0,
-            {
-                "title": "Maximum Value",
-                "description": "Maximum value to keep in the selected axis.",
-                "default_value": "100",
-                "notes": "Points above this value will be removed",
-            },
-        ),
-        (
-            "axis",
-            ["x", "y", "z"],
-            0,
-            {
-                "title": "Trim Axis",
-                "description": "Axis along which to perform the trimming operation.",
-                "default_value": "x",
-                "notes": "Choose the spatial dimension to trim",
-            },
-        ),
+        make_param("min_value", 100, 0, "Points below this value will be removed."),
+        make_param("max_value", 100, 0, "Points above this value will be removed."),
+        make_param("axis", 0, ["x", "y", "z"], "Axis along which to perform trimming."),
     ],
-}
-
-CLUSTER_OPERATION_TOOLTIPS = {
-    "Recluster": {
-        "title": "DBSCAN Clustering",
-        "description": "Cluster points based on density and proximity.",
-        "notes": "Useful for finding clusters of arbitrary shape",
-    }
 }
 
 POINT_OPERATION_TOOLTIPS = {

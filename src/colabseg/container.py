@@ -13,6 +13,8 @@ from .utils import (
     connected_components,
 )
 from .geometry import PointCloud, TriangularMesh
+from .trimesh.utils import com_cluster_points, find_closest_points
+from .parametrization import Hull, Sphere
 
 
 def apply_over_indices(func: Callable) -> Callable:
@@ -155,13 +157,15 @@ class DataContainer:
         self.remove(indices)
         return new_index - len(indices)
 
-    def split(self, indices: List[int]) -> Tuple[int, int]:
-        """Split point cloud into two using K-means.
+    def split(self, indices: List[int], k=2) -> Tuple[int, int]:
+        """Split point cloud into k using K-means.
 
         Parameters
         ----------
         indices : list of int
             Single-element list with index of cloud to split.
+        k : int
+            Number of clusteres.
 
         Returns
         -------
@@ -173,7 +177,7 @@ class DataContainer:
 
         data = np.concatenate([self._get_cluster_points(i) for i in indices])
         sampling_rate = self.data[indices[0]]._sampling_rate
-        clustering = KMeans(n_clusters=2, n_init="auto").fit(data)
+        clustering = KMeans(n_clusters=k, n_init="auto").fit(data)
 
         self.remove(indices)
 
@@ -188,6 +192,62 @@ class DataContainer:
             )
 
         return tuple(new_cluster)
+
+    def decimate(self, indices: List[int], method: str = "middle") -> int:
+        """
+        Decimate point cloud using specified method
+
+        Parameters
+        ----------
+        method : str
+            Method to use. Options are:
+            - 'outer' : Keep outer hull
+            - 'core' : Keep core
+            - 'inner' : Keep inner hull
+        **kwargs
+            Additional arguments passed to the chosen clustering method.
+
+        Returns
+        -------
+        int
+            Index of newly added point cloud.
+        """
+        if len(indices) != 1:
+            return -1
+
+        cloud = self.data[indices[0]]
+        cutoff = 4 * np.max(cloud._sampling_rate)
+        if method == "core":
+            points = com_cluster_points(cloud.points, cutoff)
+        elif method == "outer":
+            hull = Hull.fit(cloud.points)
+            hull_points = hull.sample(4 * cloud.points.shape[0])
+            distances, _ = find_closest_points(hull_points, cloud.points)
+            points = cloud.points[distances < cutoff]
+        elif method == "inner":
+            # Budget ray-casting using spherical coordinates
+            centroid = np.mean(cloud.points, axis=0)
+            points = cloud.points - centroid
+
+            r = np.linalg.norm(points, axis=1)
+            theta = np.arccos(points[:, 2] / r)
+            phi = np.arctan2(points[:, 1], points[:, 0])
+
+            n_phi_bins = 360
+            theta_idx = np.digitize(theta, np.linspace(0, np.pi, n_phi_bins // 2))
+            phi_idx = np.digitize(phi, np.linspace(-np.pi, np.pi, n_phi_bins))
+            bin_id = theta_idx * n_phi_bins + phi_idx
+
+            inner_indices = []
+            for b in np.unique(bin_id):
+                mask = np.where(bin_id == b)[0]
+                inner_indices.append(mask[np.argmin(r[mask])])
+
+            points = cloud.points[inner_indices]
+        else:
+            raise ValueError("Supported methods are 'inner', 'core' and 'outer.")
+
+        return self.add(points, sampling_rate=cloud._sampling_rate)
 
     @apply_over_indices
     def crop(self, point_cloud, distance: float):

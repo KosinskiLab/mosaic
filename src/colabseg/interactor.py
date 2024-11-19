@@ -12,7 +12,7 @@ from PyQt6.QtCore import (
     pyqtSignal,
     QEvent,
 )
-from PyQt6.QtGui import QAction, QColor, QCursor
+from PyQt6.QtGui import QAction, QColor
 
 
 def _cluster_modifier(keep_selection: bool = False):
@@ -350,8 +350,14 @@ class DataContainerInteractor(QObject):
         func = self.data_container.dbscan_cluster
         if method == "Connected Components":
             func = self.data_container.connected_components
+        elif method == "K-Means":
+            func = self.data_container.split
 
         return func(**kwargs)
+
+    @_cluster_modifier()
+    def decimate(self, **kwargs):
+        return self.data_container.decimate(**kwargs)
 
     @_cluster_modifier()
     def merge_cluster(self, **kwargs):

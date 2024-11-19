@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
 from .widgets import ProgressButton
-from .dialog import show_parameter_dialog
+from .dialog import show_parameter_dialog, make_param
 from ..data import AVAILABLE_PARAMETRIZATIONS
 from ..interactor import LinkedDataContainerInteractor
 
@@ -260,144 +260,32 @@ class ParametrizationTab(QWidget):
         return -1
 
 
+def op_type(name, operations):
+    """Create an operation type specification."""
+    return {"name": name, "operations": operations}
+
+
 FIT_OPERATIONS = {
     "Crop Around Cluster": [
-        (
-            "distance",
-            40,
-            0,
-            {
-                "title": "Distance",
-                "description": "Maximum distance between fit and cluster point.",
-                "default_value": "40",
-            },
-        ),
+        make_param("distance", 40, 0, "Maximum distance between fit and cluster point.")
     ],
 }
 
 MESH_OPERATIONS = {
     "Equilibrate Mesh": [
-        (
-            "averge_edge",
-            40,
-            0,
-            {
-                "title": "Mean edge length",
-                "description": "Average edge length of mesh.",
-                "default_value": "35",
-            },
-        ),
-        (
-            "lower_bound",
-            35,
-            0,
-            {
-                "title": "Lower Bound (lc1)",
-                "description": "Minimum edge length of mesh.",
-                "default_value": "35",
-            },
-        ),
-        (
-            "upper_bound",
-            45,
-            0,
-            {
-                "title": "Upper Bound (lc0)",
-                "description": "Maximum edge length of mesh.",
-                "default_value": "45",
-            },
-        ),
-        (
-            "steps",
-            5000,
-            1,
-            {
-                "title": "Steps",
-                "description": "Maximum number of minimization iterations.",
-                "default_value": "5000",
-            },
-        ),
-        (
-            "kappa_b",
-            300,
-            0,
-            {
-                "title": "Bending Stiffness",
-                "description": "Bending energy coefficient (kappa_b).",
-                "default_value": "300.0",
-            },
-        ),
-        (
-            "kappa_a",
-            int(1.0e6),
-            0,
-            {
-                "title": "Area Constraint",
-                "description": "Area conservation coefficient (kappa_a).",
-                "default_value": "1.0e6",
-            },
-        ),
-        (
-            "kappa_v",
-            int(1.0e6),
-            0,
-            {
-                "title": "Volume Constraint",
-                "description": "Volume conservation coefficient (kappa_v).",
-                "default_value": "1.0e6",
-            },
-        ),
-        (
-            "kappa_c",
-            0.0,
-            0,
-            {
-                "title": "Curvature Energy",
-                "description": "Curvature energy coefficient (kappa_c).",
-                "default_value": "0.0",
-            },
-        ),
-        (
-            "kappa_t",
-            int(1.0e5),
-            0,
-            {
-                "title": "Edge Tension",
-                "description": "Edge tension coefficient (kappa_t).",
-                "default_value": "1.0e5",
-            },
-        ),
-        (
-            "kappa_r",
-            int(1.0e3),
-            0,
-            {
-                "title": "Repulsion Strength",
-                "description": "Surface repulsion coefficient (kappa_r).",
-                "default_value": "1.0e3",
-            },
-        ),
+        make_param("average_edge", 40, 0, "Average edge length of mesh."),
+        make_param("lower_bound", 35, 0, "Minimum edge length of mesh (lc1)."),
+        make_param("upper_bound", 45, 0, "Maximumg edge length of mesh (lc0)."),
+        make_param("steps", 5000, 0, "Number of minimization steps."),
+        make_param("kappa_b", 300.0, 0, "Bending energy coefficient (kappa_b)."),
+        make_param("kappa_b", 1e6, 0, "Area conservation coefficient (kappa_a)."),
+        make_param("kappa_v", 1e6, 0, "Volume conservation coefficient (kappa_v)."),
+        make_param("kappa_c", 0.0, 0, "Curvature energy coefficient (kappa_c)."),
+        make_param("kappa_t", 1e5, 0, "Edge tension coefficient (kappa_t)."),
+        make_param("kappa_r", 1e3, 0, "Surface repulsion coefficient (kappa_r)."),
     ],
     "Scale Mesh": [
-        (
-            "lower_bound",
-            1.0,
-            0.0,
-            {
-                "title": "Lower Bound",
-                "description": "Lower bound for edge length.",
-                "default_value": "1.0",
-            },
-        ),
-        (
-            "upper_bound",
-            1.7,
-            0.0,
-            {
-                "title": "Upper Bound",
-                "description": "Upper bound for edge length.",
-                "default_value": "1.7",
-            },
-        ),
+        make_param("lower_bound", 1.0, 0, "Lower bound for edge length."),
+        make_param("upper_bound", 1.7, 0, "Upper bound for edge length."),
     ],
 }

@@ -13,9 +13,6 @@ import numpy as np
 import open3d as o3d
 from scipy.spatial import ConvexHull
 from scipy import optimize, interpolate
-from scipy.interpolate import splprep, splev
-from scipy.optimize import minimize
-from scipy.spatial import cKDTree
 
 from .trimesh import triangulate_refine_fair, com_cluster_points
 

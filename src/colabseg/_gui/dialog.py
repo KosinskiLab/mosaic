@@ -3,7 +3,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QDialog,
     QLabel,
-    QPushButton,
     QDialogButtonBox,
     QSpinBox,
     QDoubleSpinBox,
@@ -23,6 +22,7 @@ class KeybindsDialog(QDialog):
             ("z", "Set camera view along Z-axis"),
             ("x", "Set camera view along X-axis"),
             ("c", "Set camera view along Y-axis"),
+            ("a", "Toggle draawing mode"),
             ("d", "Toggle renderer background color"),
             ("h", "Toggle visibility of selected clusters"),
             ("m", "Merge selected cluster or points"),
@@ -40,9 +40,8 @@ class KeybindsDialog(QDialog):
             key_label = QLabel(f"<b>{key}</b>: {description}")
             layout.addWidget(key_label)
 
-        close_button = QPushButton("Close")
-        close_button.setFixedSize(100, 30)
-        close_button.clicked.connect(self.accept)
+        close_button = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+        close_button.accepted.connect(self.accept)
         layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.setLayout(layout)
@@ -56,17 +55,6 @@ class KeybindsDialog(QDialog):
             }
             QLabel {
                 color: #333333;
-            }
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                padding: 5px 10px;
-                text-align: center;
-                text-decoration: none;
-                font-size: 14px;
-                margin: 4px 2px;
-                border-radius: 4px;
             }
             QPushButton:hover {
                 background-color: #45a049;
@@ -109,25 +97,62 @@ class OperationDialog(QDialog):
         self.operation_type = operation_type
         self.parameters = parameters
         self.parameter_widgets = {}
-        self.setup_ui()
 
-    def setup_ui(self):
+        self.is_hierarchical = isinstance(parameters, dict)
+
         self.setWindowTitle(self.operation_type)
-        layout = QVBoxLayout(self)
 
-        params_layout = QGridLayout()
-        for row, param_info in enumerate(self.parameters):
+        self.main_layout = QVBoxLayout(self)
+        self.params_layout = QGridLayout()
+
+        if self.is_hierarchical:
+            label = QLabel("Method:")
+            self.type_selector = QComboBox()
+            self.type_selector.addItems(list(self.parameters.keys()))
+            self.type_selector.currentIndexChanged.connect(
+                self.update_operation_options
+            )
+            self.params_layout.addWidget(label, 0, 0)
+            self.params_layout.addWidget(self.type_selector, 0, 1)
+
+        self.main_layout.addLayout(self.params_layout)
+
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        self.main_layout.addWidget(button_box)
+
+        if self.is_hierarchical:
+            return self.update_operation_options(0)
+        return self.update_parameters(self.parameters)
+
+    def update_operation_options(self, index):
+        current_type = list(self.parameters.keys())[index]
+        self.update_parameters(self.parameters[current_type])
+
+    def update_parameters(self, parameters):
+        for i in reversed(range(self.params_layout.count())):
+            widget = self.params_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        self.parameter_widgets.clear()
+        for row, param_info in enumerate(parameters):
+            row_index = row + int(self.is_hierarchical)
+
             label, value, min_value, tooltip_info = param_info
             tooltip = format_tooltip(**tooltip_info)
 
             label_widget = QLabel(f"{tooltip_info['title']}:")
             label_widget.setToolTip(tooltip)
-            params_layout.addWidget(label_widget, row, 0)
+            self.params_layout.addWidget(label_widget, row_index, 0)
 
-            if isinstance(value, list):
+            if isinstance(min_value, list):
                 widget = QComboBox()
-                widget.addItems(value)
-                widget.setCurrentText(value[0])
+                widget.addItems(min_value)
+                widget.setCurrentText(value)
             elif isinstance(value, float):
                 widget = QDoubleSpinBox()
                 widget.setMinimum(min_value)
@@ -142,16 +167,7 @@ class OperationDialog(QDialog):
 
             widget.setToolTip(tooltip)
             self.parameter_widgets[label] = widget
-            params_layout.addWidget(widget, row, 1)
-
-        layout.addLayout(params_layout)
-
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
+            self.params_layout.addWidget(widget, row_index, 1)
 
 
 def show_parameter_dialog(operation_type, parameters, obj, operation_mapping):
@@ -166,11 +182,26 @@ def show_parameter_dialog(operation_type, parameters, obj, operation_mapping):
         )
         for label, widget in dialog.parameter_widgets.items()
     }
+    if dialog.is_hierarchical:
+        params["method"] = dialog.type_selector.currentText()
 
     func = operation_mapping.get(operation_type)
     if func is None:
         print(
             f"{operation_type} is unknown - Supported are {operation_mapping.keys()}."
         )
-
     return func(**params)
+
+
+def make_param(param, default, min_val=0, description=None, notes=None):
+    return (
+        param,
+        default,
+        min_val,
+        {
+            "title": param.lower().replace("_", " ").capitalize(),
+            "description": description or param,
+            "default_value": str(default),
+            "notes": notes if notes else None,
+        },
+    )
