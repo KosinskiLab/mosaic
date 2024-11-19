@@ -216,7 +216,7 @@ POINT_OPERATIONS = {
         ),
     ],
     "Trim Range": [
-        make_param("min_value", 100, 0, "Points below this value will be removed."),
+        make_param("min_value", 50, 0, "Points below this value will be removed."),
         make_param("max_value", 100, 0, "Points above this value will be removed."),
         make_param(
             "axis", "x", ["x", "y", "z"], "Axis along which to perform trimming."
