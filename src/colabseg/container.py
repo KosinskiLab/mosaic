@@ -224,8 +224,8 @@ class DataContainer:
         elif method == "outer":
             hull = Hull.fit(points)
             hull_points = hull.sample(4 * points.shape[0])
-            distances, _ = find_closest_points(hull_points, points)
-            points = points[distances < cutoff]
+            _, indices = find_closest_points(points, hull_points)
+            points = points[np.unique(indices)]
         elif method == "inner":
             # Budget ray-casting using spherical coordinates
             centroid = np.mean(points, axis=0)

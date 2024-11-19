@@ -4,7 +4,7 @@ from scipy import spatial
 from skimage import measure
 
 
-def points_to_volume(points, sampling_rate=1, shape=None):
+def points_to_volume(points, sampling_rate=1, shape=None, weight=1, out=None):
     """
     Convert point cloud to a volumetric representation.
 
@@ -16,6 +16,10 @@ def points_to_volume(points, sampling_rate=1, shape=None):
         Spacing between volume voxels, by default 1.
     shape : tuple, optional
         Output volume dimensions. If None, automatically determined from points.
+    weight : float, optional
+        Weight value for each individual point. Defaults to one.
+    out : ndarray, optional
+        Array to place result into.
 
     Returns
     -------
@@ -33,9 +37,11 @@ def points_to_volume(points, sampling_rate=1, shape=None):
     valid_positions = np.sum(np.logical_and(positions < shape, positions >= 0), axis=1)
     positions = positions[valid_positions == positions.shape[1], :]
 
-    volume = np.zeros(shape, dtype=np.float32)
-    np.add.at(volume, tuple(positions.T), 1)
-    return volume, origin
+    if out is None:
+        out = np.zeros(tuple(int(x) for x in shape), dtype=np.float32)
+
+    out[tuple(positions.T)] = weight
+    return out, origin
 
 
 def volume_to_points(volume, sampling_rate):

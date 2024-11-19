@@ -671,8 +671,7 @@ class TriangularMesh(Parametrization):
         voxel_size: float = 10,
         max_hole_size: float = -1,
         downsample_input: bool = True,
-        fair_alpha: float = 1,
-        elastic_weight: float = 0.0,
+        elastic_weight: float = 1.0,
         curvature_weight: float = 0.0,
         n_smoothing: int = 5,
         **kwargs,
@@ -730,9 +729,8 @@ class TriangularMesh(Parametrization):
             vs=np.asarray(mesh.vertices),
             fs=np.asarray(mesh.triangles),
             hole_len_thr=max_hole_size,
-            fair_alpha=fair_alpha,
-            beta=elastic_weight,
-            gamma=curvature_weight,
+            alpha=elastic_weight,
+            beta=curvature_weight,
         )
         mesh = o3d.geometry.TriangleMesh()
         mesh.vertices = o3d.utility.Vector3dVector(new_vs.astype(np.float64))
@@ -829,8 +827,8 @@ class Hull(TriangularMesh):
         cls,
         positions: np.ndarray,
         voxel_size: float = 10,
-        alpha=1,
-        n_fairing: int = 0,
+        alpha: float = 1,
+        smoothing_steps: int = 0,
         **kwargs,
     ):
         voxel_size = 1 if voxel_size is None else voxel_size
@@ -868,11 +866,11 @@ class Hull(TriangularMesh):
         mesh = mesh.compute_convex_hull()
         mesh = mesh.to_legacy()
 
-        if n_fairing:
+        if smoothing_steps > 0:
             from .trimesh import fair, remesh
 
             mesh = remesh(mesh, 12 * voxel_size)
-            mesh = fair(mesh, n_iter=1000)
+            mesh = fair(mesh, n_iter=smoothing_steps)
 
         return cls(mesh=mesh)
 

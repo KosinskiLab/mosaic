@@ -4,8 +4,9 @@ from functools import wraps
 from typing import Callable
 from PyQt6.QtCore import pyqtSignal, QObject
 
+from .utils import points_to_volume
 from .container import DataContainer
-from .io import DataIO, OrientationsIO
+from .io import DataIO, OrientationsIO, write_densities
 from .interactor import DataContainerInteractor
 from .parametrization import PARAMETRIZATION_TYPE, TriangularMesh
 
@@ -19,6 +20,7 @@ PARAMETRIZATION_TYPE["rbf [yz]"] = rbf
 def _progress_decorator(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(self, *args, **kwargs) -> None:
+        ret = None
         try:
             ret = func(self, *args, **kwargs)
         except Exception as e:
@@ -80,8 +82,7 @@ class ColabsegData(QObject):
         if method not in PARAMETRIZATION_TYPE:
             return -1
 
-        kwargs = {}
-        if method.startswith("rbf") and len(method) == 8:
+        if method.startswith("rbf") and len(method) == 8 and "direction" in kwargs:
             kwargs["direction"] = method[5:7]
 
         fit_object = PARAMETRIZATION_TYPE[method]
@@ -118,13 +119,14 @@ class ColabsegData(QObject):
 
             self.progress.emit((index + 1) / len(cluster_indices))
 
-    def export_fit(self, file_path: str, file_format: str):
+    def export_fit(self, file_path: str, file_format: str, **kwargs):
         fit_indices = self.models._get_selected_indices()
 
         center = False
-        if file_format == "star (relion 5)":
-            center = True
+        if file_format == "star":
+            center = kwargs.get("center", False)
 
+        sampling = 10
         export_data = {"points": [], "normals": []}
         for index in fit_indices:
             if not self._models._index_ok(index):
@@ -145,6 +147,7 @@ class ColabsegData(QObject):
 
             normals = cloud._meta["fit"].compute_normal(points)
             if cloud._sampling_rate is not None:
+                sampling = np.max(cloud._sampling_rate)
                 points = np.divide(points, cloud._sampling_rate)
 
             if center and self._data.shape is not None:
@@ -158,6 +161,15 @@ class ColabsegData(QObject):
 
         if file_format.startswith("star"):
             file_format = "star"
+
+        if file_format == "mrc":
+            points = export_data["points"]
+            fnames = [f"{file_path}_0.{file_format}"]
+            if not kwargs.get("one_file", False):
+                fnames = [
+                    f"{file_path}_{index}.{file_format}" for index in range(len(points))
+                ]
+            write_densities(points, fnames, sampling_rate=sampling, shape=self.shape)
 
         if file_format not in ("txt", "star"):
             return -1

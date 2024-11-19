@@ -10,11 +10,12 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QGridLayout,
     QFileDialog,
+    QStyle,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
 from .widgets import ProgressButton
-from .dialog import show_parameter_dialog, make_param
+from .dialog import show_parameter_dialog, make_param, ident, ParameterHandler
 from ..interactor import LinkedDataContainerInteractor
 
 
@@ -95,24 +96,62 @@ class ParametrizationTab(QWidget):
         frame.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         frame.setMaximumWidth(300)
 
-        name = "Fit"
-        self.fit_button = ProgressButton(name)
-        self.fit_button.clicked.connect(
-            lambda checked, op=name, params=FIT_OPERATIONS: show_parameter_dialog(
-                op, params, self, {"Fit": self.add_fit}, self.fit_button
+        # name = "Fit"
+        # self.fit_button = ProgressButton(name)
+        # self.fit_button.clicked.connect(
+        #     lambda checked, op=name, params=FIT_OPERATIONS: show_parameter_dialog(
+        #         op, params, self, {"Fit": self.add_fit}, self.fit_button
+        #     )
+        # )
+        # grid_layout.addWidget(self.fit_button, 0, 0, 1, 2)
+
+        # Create widgets
+        self.fit_button = ProgressButton("Fit")
+        self.fit_button.clicked.connect(self.add_fit)
+
+        self.fit_selector = QComboBox()
+        self.fit_selector.addItems(FIT_OPERATIONS.keys())
+        fit_settings = QPushButton()
+        fit_settings.setIcon(
+            self.style().standardIcon(
+                QStyle.StandardPixmap.SP_ToolBarVerticalExtensionButton
             )
         )
-        grid_layout.addWidget(self.fit_button, 0, 0, 1, 2)
+        fit_settings.setFixedSize(25, 25)
+
+        self.fit_handler = ParameterHandler(
+            FIT_OPERATIONS, fit_settings, self.fit_selector
+        )
+        self.fit_selector.currentTextChanged.connect(self.fit_handler.update_button)
+        fit_settings.clicked.connect(self.fit_handler.show_dialog)
+
+        grid_layout.addWidget(self.fit_button, 0, 0)
+        grid_layout.addWidget(self.fit_selector, 0, 1)
+        grid_layout.addWidget(fit_settings, 0, 2)
 
         # Export row
         export_button = QPushButton("Export")
         export_button.clicked.connect(self.export_fit)
         self.export_format = QComboBox()
-        self.export_format.addItems(
-            sorted(["txt", "star (relion 4)", "star (relion 5)", "stl", "obj"])
+        self.export_format.addItems(sorted(["txt", "star", "obj", "mrc"]))
+
+        export_settings = QPushButton()
+        export_settings.setIcon(
+            self.style().standardIcon(
+                QStyle.StandardPixmap.SP_ToolBarVerticalExtensionButton
+            )
         )
+        export_settings.setFixedSize(25, 25)
+
+        self.export_handler = ParameterHandler(
+            EXPORT_OPERATIONS, export_settings, self.export_format
+        )
+        self.export_format.currentTextChanged.connect(self.export_handler.update_button)
+        export_settings.clicked.connect(self.export_handler.show_dialog)
+
         grid_layout.addWidget(export_button, 2, 0)
         grid_layout.addWidget(self.export_format, 2, 1)
+        grid_layout.addWidget(export_settings, 2, 2)
 
         # Delete row
         delete_button = QPushButton("Delete")
@@ -197,7 +236,10 @@ class ParametrizationTab(QWidget):
     def add_fit(self, **kwargs):
         self.fit_button.listen(self.cdata.progress)
 
-        self.fit_worker = FitWorker(self.cdata, **kwargs)
+        method = self.fit_selector.currentText()
+        parameters = self.fit_handler.get(method, {})
+
+        self.fit_worker = FitWorker(self.cdata, method=method, **parameters)
         self.fit_worker.finished.connect(self._on_fit_complete)
         self.fit_button.cancel.connect(self.fit_worker.kill)
         self.fit_worker.start()
@@ -244,8 +286,11 @@ class ParametrizationTab(QWidget):
         if not file_path:
             return -1
 
+        method = self.export_format.currentText()
+        parameters = self.export_handler.get(method, {})
+
         return self.cdata.export_fit(
-            file_path=file_path, file_format=self.export_format.currentText()
+            file_path=file_path, file_format=method, **parameters
         )
 
     def equilibrate_fit(self):
@@ -269,20 +314,17 @@ FIT_OPERATIONS = {
     "Ellipsoid": [],
     "Cylinder": [],
     "Mesh": [
-        make_param("fair_alpha", 1.0, 0.0, "Laplacian membrane energy weight."),
         make_param(
             "elastic_weight",
+            1.0,
             0.0,
-            0.0,
-            "Elastic membrane energy weight.",
-            notes="Larger values promote more direct closing of meshes.",
+            "Controls mesh smoothness and elasticity.",
         ),
         make_param(
             "curvature_weight",
             0.0,
             0.0,
-            "Curvature membrane energy. weight",
-            notes="Larger values promote conservation of mean curvature.",
+            "Controls propagation of mesh curvature.",
         ),
         make_param(
             "hole_size",
@@ -298,7 +340,7 @@ FIT_OPERATIONS = {
             "Thin input point cloud to core. Can be omitted if cluster is thinned.",
         ),
         make_param(
-            "n_smoothing",
+            "smoothing_steps",
             5,
             0,
             "Number of pre-smoothing operations.",
@@ -317,6 +359,16 @@ FIT_OPERATIONS = {
     ],
     "RBF": [make_param("direction", "xy", ["xy", "xz", "yz"], "Plane to fit RBF in.")],
 }
+
+EXPORT_OPERATIONS = {
+    "txt": [],
+    "star": [
+        make_param("center", False, [False, True], "Center coordinates (Relion 5)."),
+    ],
+    "obj": [],
+    "mrc": [make_param("one_file", True, [False, True], "Use one MRC for all fits.")],
+}
+
 
 MESH_OPERATIONS = {
     "Equilibrate Mesh": [

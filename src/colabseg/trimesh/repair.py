@@ -181,71 +181,6 @@ def get_mollified_edge_length(
     return lin
 
 
-def compute_elastic_energy(vs: np.ndarray, fs: np.ndarray):
-    """
-    Compute elastic membrane energy matrix as first-order deformation
-    using cotangent weights.
-
-    Parameters
-    ----------
-    vs : ndarray, shape (N, 3)
-        Vertex coordinates.
-    fs : ndarray, shape (M, 3)
-        Face indices.
-
-    Returns
-    -------
-    ndarray, shape (N, N)
-        Energy matrix ||Lx||² = Σ_v (Σ_i w_i(x_v - x_i))²
-
-    Notes
-    -----
-    The energy penalizes vertices moving away from their weighted average positions
-    via membraine stain, i.e. stretching or compression, using cotangent weights
-
-    ..math::
-        w_{ij} = \\frac{\\cot(\\alpha_{ij}) + \\cot(\\beta_{ij})}{2}
-
-        L[v] = \\sum_i w_i(x_v - x_i)
-
-        E = \\|Lx\\|^2 = \\sum_v (\\sum_i w_i(x_v - x_i))^2
-    """
-    L = -igl.cotmatrix(vs, fs)
-    return L.T @ L
-
-
-def compute_curvature_energy(vs: np.ndarray, fs: np.ndarray):
-    """
-    Compute elastic membrane energy matrix as second-order deformation
-    using cotangent weights and bilaplacian approximation.
-
-    Parameters
-    ----------
-    vs : ndarray, shape (N, 3)
-        Vertex coordinates.
-    fs : ndarray, shape (M, 3)
-        Face indices.
-
-    Returns
-    -------
-    ndarray, shape (N, N)
-        Energy matrix measuring surface bending/curvature changes.
-
-    Notes
-    -----
-    The energy penalizes changes in surface normals/curvature
-
-    ..math::
-       L = -\\text{cotmatrix}(v, f)
-
-       E = \\|L^T L x\\|^2 = x^T (L^T L)^2 x
-
-    where L is the cotangent Laplacian operator.
-    """
-    L = -igl.cotmatrix(vs, fs)
-    return L.T @ L @ L.T @ L
-
-
 def _create_weights(size, indices, weight):
     ret = np.full(size, fill_value=0.0)
     ret[indices] = weight
@@ -257,8 +192,7 @@ def mesh_fair_with_elastic_curvature(
     fs: np.ndarray,
     vids: np.ndarray,
     alpha=0.05,  # Laplacian smoothing weight
-    beta=0.1,  # Elastic membrane weight
-    gamma=0.1,  # Curvature weight
+    beta=0.1,  # Curvatuer membrane weight
     k=2,
 ):
     """
@@ -272,18 +206,25 @@ def mesh_fair_with_elastic_curvature(
         beta: elastic membrane weight
         gamma: curvature weight
         k: order of harmonic weights
+
+    Notes
+    -----
+    The energy penalizes changes in surface normals/curvature
+
+    ..math::
+       L = -\\text{cotmatrix}(v, f)
+
+       E = \\|L^T L x\\|^2 = x^T (L^T L)^2 x
+
     """
     L, M = _robust_laplacian(vs, fs)
     Q = igl.harmonic_weights_integrated_from_laplacian_and_mass(L, M, k)
-    E = compute_elastic_energy(vs, fs)
-    C = compute_curvature_energy(vs, fs)
 
     a = _create_weights(len(vs), vids, alpha)
     b = _create_weights(len(vs), vids, beta)
-    g = _create_weights(len(vs), vids, gamma)
 
-    # System matrix: (αQ + M - αM + βE + γC) @ out_vs = (M - αM)v_original
-    A = a * Q + M - a * M + b * E + g * C
+    # System matrix: (αQ + M - αM + bC) @ out_vs = (M - αM)v_original
+    A = a * Q + M - a * M + b * Q @ Q
     b = (M - a * M) @ vs
 
     out_vs = scipy.sparse.linalg.spsolve(A, b)
@@ -441,9 +382,8 @@ def triangulate_refine_fair(
     hole_len_thr=-1,
     close_hole_fast=True,
     density_factor=np.sqrt(2),
-    fair_alpha=0.05,
+    alpha=0.05,
     beta=0.0,
-    gamma=0.0,
 ):
     """
     Fill and fair holes in triangular meshes.
@@ -460,11 +400,9 @@ def triangulate_refine_fair(
         Use fast hole filling. Default is True.
     density_factor : float, optional
         Controls subdivision density. Default is sqrt(2).
-    fair_alpha : float, optional
+    alpha : float, optional
         Weight for membrane energy. Default is 0.05.
     beta : float, optional
-        Weight for elastic energy. Default is 0.
-    gamma : float, optional
         Weight for curvature energy. Default is 0.
 
     Returns
@@ -485,6 +423,6 @@ def triangulate_refine_fair(
 
     # Fair selected parts of the mesh
     out_vs = mesh_fair_with_elastic_curvature(
-        out_vs, out_fs, add_vids, alpha=fair_alpha, beta=beta, gamma=gamma
+        out_vs, out_fs, add_vids, alpha=alpha, beta=beta
     )
     return out_vs, out_fs
