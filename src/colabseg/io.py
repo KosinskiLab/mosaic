@@ -46,6 +46,7 @@ def load_density(filename: str):
 
     return volume
 
+
 def write_density(data, filename, sampling_rate=1, origin=0):
     dens = Density(data, sampling_rate=sampling_rate, origin=origin)
     dens.data = np.swapaxes(dens.data, 0, 2)

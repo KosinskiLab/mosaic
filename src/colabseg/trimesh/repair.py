@@ -237,11 +237,9 @@ def mesh_fair_with_elastic_curvature(
 
     # return igl.harmonic(vs, fs, fixed_vertices, target_positions, 4)
 
-
     # vs = scipy.sparse.linalg.spsolve(A, b)
     # fixed_vertices = np.setdiff1d(np.arange(len(vs)), vids)
     # target_positions = vs[fixed_vertices]
-
 
     # L, M = _robust_laplacian(vs, fs)
     # Q_elastic = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)

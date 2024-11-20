@@ -18,6 +18,7 @@ from .trimesh import triangulate_refine_fair, com_cluster_points
 from .trimesh.utils import find_closest_points
 from .trimesh.repair import mesh_fair_with_elastic_curvature
 
+
 def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.ndarray:
     if mesh_init_factor is None:
         point_cloud = mesh.sample_points_uniformly(
@@ -789,6 +790,7 @@ class Hull(TriangularMesh):
     mesh : open3d.cpu.pybind.geometry.TriangleMesh
         Triangular mesh.
     """
+
     @classmethod
     def fit(
         cls,

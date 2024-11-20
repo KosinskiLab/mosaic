@@ -122,18 +122,18 @@ class ColabsegData(QObject):
     def export_fit(self, file_path: str, file_format: str, **kwargs):
         if file_format == "mrc":
             self._export_fit(
-                indices = self.data._get_selected_indices(),
-                container = self._data,
-                file_path = f"{file_path}_cluster",
+                indices=self.data._get_selected_indices(),
+                container=self._data,
+                file_path=f"{file_path}_cluster",
                 file_format=file_format,
-                **kwargs
+                **kwargs,
             )
         self._export_fit(
             indices=self.models._get_selected_indices(),
             container=self._models,
             file_path=f"{file_path}_fit",
             file_format=file_format,
-            **kwargs
+            **kwargs,
         )
 
     def _export_fit(self, indices, container, file_path, file_format, **kwargs):
@@ -192,7 +192,7 @@ class ColabsegData(QObject):
             data = None
             for index, points in enumerate(export_data["points"]):
                 data = points_to_volume(
-                    points, sampling_rate=1, shape=shape, weight= index + 1, out=data
+                    points, sampling_rate=1, shape=shape, weight=index + 1, out=data
                 )
             if data is None:
                 return -1
