@@ -6,7 +6,7 @@ from PyQt6.QtCore import pyqtSignal, QObject
 
 from .utils import points_to_volume
 from .container import DataContainer
-from .io import DataIO, OrientationsIO, write_densities
+from .io import DataIO, OrientationsIO, write_density
 from .interactor import DataContainerInteractor
 from .parametrization import PARAMETRIZATION_TYPE, TriangularMesh
 
@@ -120,7 +120,25 @@ class ColabsegData(QObject):
             self.progress.emit((index + 1) / len(cluster_indices))
 
     def export_fit(self, file_path: str, file_format: str, **kwargs):
-        fit_indices = self.models._get_selected_indices()
+        if file_format == "mrc":
+            self._export_fit(
+                indices = self.data._get_selected_indices(),
+                container = self._data,
+                file_path = f"{file_path}_cluster",
+                file_format=file_format,
+                **kwargs
+            )
+        self._export_fit(
+            indices=self.models._get_selected_indices(),
+            container=self._models,
+            file_path=f"{file_path}_fit",
+            file_format=file_format,
+            **kwargs
+        )
+
+    def _export_fit(self, indices, container, file_path, file_format, **kwargs):
+        if not len(indices):
+            return -1
 
         center = False
         if file_format == "star":
@@ -128,12 +146,12 @@ class ColabsegData(QObject):
 
         sampling = 10
         export_data = {"points": [], "normals": []}
-        for index in fit_indices:
-            if not self._models._index_ok(index):
+        for index in indices:
+            if not container._index_ok(index):
                 continue
 
-            points = self._models._get_cluster_points(index)
-            cloud = self._models.data[index]
+            points = container._get_cluster_points(index)
+            cloud = container.data[index]
 
             if file_format in ("stl", "obj"):
                 fit = cloud._meta["fit"]
@@ -145,7 +163,10 @@ class ColabsegData(QObject):
 
                 fit.to_file(f"{file_path}_{index}.{file_format}")
 
-            normals = cloud._meta["fit"].compute_normal(points)
+            normals = None
+            if "fit" in cloud._meta:
+                normals = cloud._meta["fit"].compute_normal(points)
+
             if cloud._sampling_rate is not None:
                 sampling = np.max(cloud._sampling_rate)
                 points = np.divide(points, cloud._sampling_rate)
@@ -159,17 +180,28 @@ class ColabsegData(QObject):
         if len(export_data["points"]) == 0:
             return -1
 
-        if file_format.startswith("star"):
-            file_format = "star"
-
         if file_format == "mrc":
-            points = export_data["points"]
-            fnames = [f"{file_path}_0.{file_format}"]
-            if not kwargs.get("one_file", False):
-                fnames = [
-                    f"{file_path}_{index}.{file_format}" for index in range(len(points))
-                ]
-            write_densities(points, fnames, sampling_rate=sampling, shape=self.shape)
+            shape = self.shape
+            if shape is None:
+                temp = np.concatenate(export_data["points"])
+                temp = np.rint(temp).astype(int)
+                shape = temp.max(axis=0) + 1
+            else:
+                shape = np.rint(np.divide(shape, sampling)).astype(int)
+
+            data = None
+            for index, points in enumerate(export_data["points"]):
+                data = points_to_volume(
+                    points, sampling_rate=1, shape=shape, weight= index + 1, out=data
+                )
+            if data is None:
+                return -1
+
+            return write_density(
+                data,
+                filename=f"{file_path}.{file_format}",
+                sampling_rate=sampling,
+            )
 
         if file_format not in ("txt", "star"):
             return -1

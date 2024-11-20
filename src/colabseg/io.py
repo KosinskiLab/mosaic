@@ -46,37 +46,7 @@ def load_density(filename: str):
 
     return volume
 
-
-def write_densities(points, filenames, sampling_rate, shape=None):
-    one_file = len(filenames) == 1
-
-    if not one_file and len(filenames) != len(points):
-        raise ValueError("Mismatch between sets of points and filenames.")
-
-    if shape is None and one_file:
-        temp = np.concatenate(points)
-        origin = temp.min(axis=0)
-        temp = (temp - origin) / sampling_rate
-        temp = np.rint(temp).astype(int)
-        shape = temp.max(axis=0) + 1
-
-    data = None
-    for index, point in enumerate(points):
-        weight = index + 1 if one_file else 1
-        data, origin = points_to_volume(
-            point, sampling_rate=sampling_rate, shape=shape, weight=weight, out=data
-        )
-        if not one_file:
-            _write_density(data, filenames[index], sampling_rate, origin)
-            data = None
-
-    if one_file:
-        _write_density(data, filenames[0], sampling_rate, origin)
-
-    return None
-
-
-def _write_density(data, filename, sampling_rate=1, origin=0):
+def write_density(data, filename, sampling_rate=1, origin=0):
     dens = Density(data, sampling_rate=sampling_rate, origin=origin)
     dens.data = np.swapaxes(dens.data, 0, 2)
     dens.sampling_rate = dens.sampling_rate[::-1]

@@ -355,7 +355,7 @@ FIT_OPERATIONS = {
             0.0,
             "Alpha-shape parameter - Larger values emphasize coarse features.",
         ),
-        make_param("n_fairing", 0.0, 0.0, "Number of smoothing operations."),
+        make_param("smoothing_steps", 0, 0, "Number of smoothing operations."),
     ],
     "RBF": [make_param("direction", "xy", ["xy", "xz", "yz"], "Plane to fit RBF in.")],
 }
@@ -366,7 +366,7 @@ EXPORT_OPERATIONS = {
         make_param("center", False, [False, True], "Center coordinates (Relion 5)."),
     ],
     "obj": [],
-    "mrc": [make_param("one_file", True, [False, True], "Use one MRC for all fits.")],
+    "mrc": [],
 }
 
 

@@ -15,7 +15,8 @@ from scipy.spatial import ConvexHull
 from scipy import optimize, interpolate
 
 from .trimesh import triangulate_refine_fair, com_cluster_points
-
+from .trimesh.utils import find_closest_points
+from .trimesh.repair import mesh_fair_with_elastic_curvature
 
 def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.ndarray:
     if mesh_init_factor is None:
@@ -788,40 +789,6 @@ class Hull(TriangularMesh):
     mesh : open3d.cpu.pybind.geometry.TriangleMesh
         Triangular mesh.
     """
-
-    def __init__(self, mesh):
-        self.mesh = mesh
-
-    def to_file(self, file_path):
-        o3d.io.write_triangle_mesh(file_path, self.mesh)
-
-    def __getstate__(self):
-        state = {
-            "vertices": np.asarray(self.mesh.vertices),
-            "triangles": np.asarray(self.mesh.triangles),
-        }
-
-        if self.mesh.has_vertex_normals():
-            state["vertex_normals"] = np.asarray(self.mesh.vertex_normals)
-        if self.mesh.has_vertex_colors():
-            state["vertex_colors"] = np.asarray(self.mesh.vertex_colors)
-        if self.mesh.has_triangle_normals():
-            state["triangle_normals"] = np.asarray(self.mesh.triangle_normals)
-        return state
-
-    def __setstate__(self, state):
-        mesh = o3d.geometry.TriangleMesh()
-        mesh.vertices = o3d.utility.Vector3dVector(state["vertices"])
-        mesh.triangles = o3d.utility.Vector3iVector(state["triangles"])
-
-        attrs = ("vertex_normals", "vertex_colors", "triangle_normals")
-        for attr in attrs:
-            if attr not in state:
-                continue
-            setattr(mesh, attr, o3d.utility.Vector3dVector(state.get(attr)))
-
-        self.mesh = mesh
-
     @classmethod
     def fit(
         cls,
@@ -870,14 +837,9 @@ class Hull(TriangularMesh):
             from .trimesh import fair, remesh
 
             mesh = remesh(mesh, 12 * voxel_size)
-            mesh = fair(mesh, n_iter=smoothing_steps)
+            mesh = fair(mesh, n_iter=int(smoothing_steps))
 
         return cls(mesh=mesh)
-
-    def sample(
-        self, n_samples: int, mesh_init_factor: bool = None, **kwargs
-    ) -> np.ndarray:
-        return _sample_from_mesh(self.mesh, n_samples, mesh_init_factor)
 
 
 PARAMETRIZATION_TYPE = {

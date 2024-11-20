@@ -23,13 +23,10 @@ def points_to_volume(points, sampling_rate=1, shape=None, weight=1, out=None):
 
     Returns
     -------
-    tuple
-        (volume, origin) where volume is ndarray of point densities and
-        origin is the minimum coordinate of input points.
+    ndarray
+        volume ndarray of point densities
     """
-    origin = points.min(axis=0)
-    positions = (points - origin) / sampling_rate
-    positions = np.rint(positions).astype(int)
+    positions = np.rint(np.divide(points, sampling_rate)).astype(int)
 
     if shape is None:
         shape = positions.max(axis=0) + 1
@@ -41,7 +38,7 @@ def points_to_volume(points, sampling_rate=1, shape=None, weight=1, out=None):
         out = np.zeros(tuple(int(x) for x in shape), dtype=np.float32)
 
     out[tuple(positions.T)] = weight
-    return out, origin
+    return out
 
 
 def volume_to_points(volume, sampling_rate):
