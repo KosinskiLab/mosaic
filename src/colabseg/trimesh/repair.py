@@ -186,15 +186,72 @@ def _create_weights(size, indices, weight):
     return scipy.sparse.diags(ret)
 
 
-def mesh_fair_with_elastic_curvature(
+def get_ring1_vertices(V, F, query_vertices):
+    """
+    Find ring-1 vertices for given vertices in a mesh.
+
+    Args:
+        V: #V by 3 vertices array
+        F: #F by 3 faces array
+        query_vertices: list/array of vertex indices
+
+    Returns:
+        ring1_vertices: set of vertex indices that are one-ring neighbors
+    """
+    # Get vertex-vertex adjacency matrix
+    A = igl.adjacency_matrix(F)
+
+    vertex_set = set(query_vertices)
+    for v in query_vertices:
+        neighbors = A.getrow(v).indices
+        vertex_set.update(neighbors)
+
+    return vertex_set
+
+
+def get_ring2_vertices(V, F, query_vertices):
+    """
+    Find ring-2 vertices for given vertices in a mesh.
+    Args:
+        V: #V by 3 vertices array
+        F: #F by 3 faces array
+        query_vertices: list/array of vertex indices
+    Returns:
+        ring2_vertices: set of vertex indices up to two rings away
+    """
+    A = igl.adjacency_matrix(F)
+    vertex_set = set(query_vertices)
+
+    ring1 = set()
+    for v in query_vertices:
+        ring1.update(A.getrow(v).indices)
+    vertex_set.update(ring1)
+
+    for v in ring1:
+        vertex_set.update(A.getrow(v).indices)
+
+    return vertex_set
+
+
+def harmonic_deformation(vs, fs, vids, k=2):
+    vs = vs.astype(np.float32)
+    fs = fs.astype(np.int32)
+
+    fixed_vertices = np.setdiff1d(np.arange(len(vs)), vids).astype(np.int32)
+    target_positions = vs[fixed_vertices]
+    out_vs = igl.harmonic(vs, fs, fixed_vertices, target_positions, k)
+    return np.ascontiguousarray(out_vs)
+
+
+def fair_mesh(
     vs: np.ndarray,
     fs: np.ndarray,
     vids: np.ndarray,
-    alpha=0.05,
-    beta=0.1,
+    alpha=1,
+    beta=0.0,
 ):
     """
-    Mesh fairing with elastic membrane and curvature priors
+    Minimizes vertex displacement and polyharmonic energy of a mesh at vids.
 
     Parameters
     ----------
@@ -205,65 +262,29 @@ def mesh_fair_with_elastic_curvature(
     vids: ndarray (k)
         Vertices to optimize
     alpha : float
-        Elastic membrane weight
+        k2 polyharmonic weighting factor.
     beta : float
-        Curvature membrane weight
-
-    Notes
-    -----
-    The energy penalizes changes in surface normals/curvature
-
-    ..math::
-       L = -\\text{cotmatrix}(v, f)
-
-       E = \\|L^T L x\\|^2 = x^T (L^T L)^2 x
-
+        k4 polyharmonic weighting factor.
     """
+    bbox = vs.max(axis=0) - vs.min(axis=0)
+    mesh_scale = np.linalg.norm(bbox)
+
+    vids = list(get_ring2_vertices(vs, fs, vids))
+    beta = beta * (mesh_scale**2)
+
     L, M = _robust_laplacian(vs, fs)
-    Q_elastic = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)
-    Q_curvature = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 4)
+    Q2 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)
+    Q4 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 4)
 
     a = _create_weights(len(vs), vids, alpha)
     b = _create_weights(len(vs), vids, beta)
 
-    Q = a * Q_elastic + M - a * M + b * Q_curvature
-    B = (M - a * M) @ vs
+    # Alpha is coupled to displacement to avoid mesh shrinkage
+    displacement = M - a * M
+    Q = a * Q2 + b * Q4 + displacement
+    B = displacement @ vs
+
     return np.ascontiguousarray(igl.spsolve(Q, B))
-
-    # vs = vs.astype(np.float32)
-    # fs = fs.astype(np.int32)
-    # fixed_vertices = np.setdiff1d(np.arange(len(vs)), vids).astype(np.int32)
-    # target_positions = vs[fixed_vertices]
-
-    # return igl.harmonic(vs, fs, fixed_vertices, target_positions, 4)
-
-    # vs = scipy.sparse.linalg.spsolve(A, b)
-    # fixed_vertices = np.setdiff1d(np.arange(len(vs)), vids)
-    # target_positions = vs[fixed_vertices]
-
-    # L, M = _robust_laplacian(vs, fs)
-    # Q_elastic = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)
-    # Q_curvature = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 4)
-    # Q = alpha * Q_elastic + beta * Q_curvature + alpha * M - M
-    # Q = Q.tocsr()
-
-    # n_vertices = len(vs)
-    # B = np.zeros((n_vertices, 3))
-    # B = (alpha * M - M) @ vs
-
-    # if len(fixed_vertices) == 0:
-    #     return np.ascontiguousarray(igl.spsolve(Q, B))
-
-    # success, out_vs = igl.min_quad_with_fixed(
-    #     Q,
-    #     B,
-    #     fixed_vertices,
-    #     target_positions,
-    #     scipy.sparse.csr_matrix((0, n_vertices)),
-    #     np.array([]),
-    #     True
-    # )
-    # return np.ascontiguousarray(out_vs)
 
 
 def _robust_laplacian(
@@ -457,7 +478,5 @@ def triangulate_refine_fair(
     add_vids = np.arange(nv, len(out_vs))
 
     # Fair selected parts of the mesh
-    out_vs = mesh_fair_with_elastic_curvature(
-        out_vs, out_fs, add_vids, alpha=alpha, beta=beta
-    )
+    out_vs = fair_mesh(out_vs, out_fs, add_vids, alpha=alpha, beta=beta)
     return out_vs, out_fs

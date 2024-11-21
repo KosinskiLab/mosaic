@@ -223,7 +223,7 @@ class DataContainer:
             points = com_cluster_points(points, cutoff)
         elif method == "outer":
             hull = Hull.fit(points)
-            hull_points = hull.sample(4 * points.shape[0])
+            hull_points = hull.sample(0.5 * points.shape[0])
             _, indices = find_closest_points(points, hull_points)
             points = points[np.unique(indices)]
         elif method == "inner":
@@ -420,7 +420,7 @@ class DataContainer:
         for index, cluster in enumerate(self.data):
             if not self._index_ok(index):
                 continue
-            color, opacity = self.base_color, 0.8
+            color, opacity = self.base_color, 1.0
             if index in indices:
                 color, opacity = self.highlight_color, 1.0
             elif index not in _highlighted:

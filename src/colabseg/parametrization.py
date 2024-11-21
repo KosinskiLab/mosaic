@@ -14,9 +14,8 @@ import open3d as o3d
 from scipy.spatial import ConvexHull
 from scipy import optimize, interpolate
 
-from .trimesh import triangulate_refine_fair, com_cluster_points
+from .trimesh import triangulate_refine_fair, com_cluster_points, fair_mesh, remesh
 from .trimesh.utils import find_closest_points
-from .trimesh.repair import mesh_fair_with_elastic_curvature
 
 
 def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.ndarray:
@@ -683,6 +682,7 @@ class TriangularMesh(Parametrization):
         ellipsoid = Ellipsoid.fit(positions)
 
         # Reduce membrane thickness
+        voxel_size = np.max(voxel_size)
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(positions)
         pcd.normals = o3d.utility.Vector3dVector(ellipsoid.compute_normal(positions))
@@ -844,6 +844,65 @@ class Hull(TriangularMesh):
         return cls(mesh=mesh)
 
 
+class FairHull(Hull):
+    """
+    Represent a point cloud as triangular mesh.
+
+    Parameters
+    ----------
+    mesh : open3d.cpu.pybind.geometry.TriangleMesh
+        Triangular mesh.
+    """
+
+    @classmethod
+    def fit(
+        cls,
+        positions: np.ndarray,
+        voxel_size: float = 10,
+        alpha: float = 1,
+        elastic_weight=0,
+        curvature_weight=0,
+        **kwargs,
+    ):
+        voxel_size = 1 if voxel_size is None else voxel_size
+
+        voxel_size = np.max(voxel_size)
+        mesh = (
+            super()
+            .fit(
+                positions=positions,
+                voxel_size=voxel_size,
+                alpha=alpha,
+                smoothing_steps=0,
+            )
+            .mesh
+        )
+
+        if elastic_weight == 0:
+            return cls(mesh=mesh)
+
+        mesh = remesh(mesh, 12 * voxel_size)
+        vs, fs = np.asarray(mesh.vertices), np.asarray(mesh.triangles)
+        distances, indices = find_closest_points(positions, vs)
+
+        vids = np.where(distances > 6 * voxel_size)[0]
+
+        out_vs = fair_mesh(
+            vs,
+            fs,
+            vids=vids,
+            alpha=elastic_weight,
+            beta=curvature_weight,
+        )
+
+        # out_vs = harmonic_deformation(vs, fs, vids, 2)
+
+        mesh = o3d.geometry.TriangleMesh()
+        mesh.vertices = o3d.utility.Vector3dVector(out_vs.astype(np.float64))
+        mesh.triangles = o3d.utility.Vector3iVector(fs.astype(np.int32))
+        return cls(mesh=mesh)
+
+
 PARAMETRIZATION_TYPE = {
     "sphere": Sphere,
     "ellipsoid": Ellipsoid,
@@ -851,4 +910,5 @@ PARAMETRIZATION_TYPE = {
     "mesh": TriangularMesh,
     "rbf": RBF,
     "hull": Hull,
+    "fairhull": FairHull,
 }

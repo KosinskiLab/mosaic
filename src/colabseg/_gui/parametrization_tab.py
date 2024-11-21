@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
 from .widgets import ProgressButton
-from .dialog import show_parameter_dialog, make_param, ident, ParameterHandler
+from .dialog import show_parameter_dialog, make_param, ParameterHandler
 from ..interactor import LinkedDataContainerInteractor
 
 
@@ -319,6 +319,7 @@ FIT_OPERATIONS = {
             1.0,
             0.0,
             "Controls mesh smoothness and elasticity.",
+            notes="0 - strong anchoring, 1 - no anchoring, > 1 repulsion.",
         ),
         make_param(
             "curvature_weight",
@@ -356,6 +357,26 @@ FIT_OPERATIONS = {
             "Alpha-shape parameter - Larger values emphasize coarse features.",
         ),
         make_param("smoothing_steps", 0, 0, "Number of smoothing operations."),
+    ],
+    "FairHull": [
+        make_param(
+            "alpha",
+            1.0,
+            0.0,
+            "Alpha-shape parameter - Larger values emphasize coarse features.",
+        ),
+        make_param(
+            "elastic_weight",
+            1.0,
+            0.0,
+            "Controls mesh smoothness and elasticity.",
+        ),
+        make_param(
+            "curvature_weight",
+            0.0,
+            0.0,
+            "Controls propagation of mesh curvature.",
+        ),
     ],
     "RBF": [make_param("direction", "xy", ["xy", "xz", "yz"], "Plane to fit RBF in.")],
 }

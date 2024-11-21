@@ -73,7 +73,7 @@ class PointCloud:
     def set_appearance(
         self,
         size=8,
-        opacity=0.8,
+        opacity=1.0,
         render_spheres=True,
         ambient=0.3,
         diffuse=0.7,
