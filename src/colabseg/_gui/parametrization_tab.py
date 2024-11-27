@@ -133,7 +133,7 @@ class ParametrizationTab(QWidget):
         export_button = QPushButton("Export")
         export_button.clicked.connect(self.export_fit)
         self.export_format = QComboBox()
-        self.export_format.addItems(sorted(["txt", "star", "obj", "mrc"]))
+        self.export_format.addItems(sorted(["txt", "star", "obj", "mrc", "xyz"]))
 
         export_settings = QPushButton()
         export_settings.setIcon(
@@ -377,6 +377,12 @@ FIT_OPERATIONS = {
             0.0,
             "Controls propagation of mesh curvature.",
         ),
+        make_param(
+            "volume_weight",
+            0.0,
+            0.0,
+            "Controls propagation of mesh curvature.",
+        ),
     ],
     "RBF": [make_param("direction", "xy", ["xy", "xz", "yz"], "Plane to fit RBF in.")],
 }
@@ -388,6 +394,7 @@ EXPORT_OPERATIONS = {
     ],
     "obj": [],
     "mrc": [],
+    "xyz": [],
 }
 
 

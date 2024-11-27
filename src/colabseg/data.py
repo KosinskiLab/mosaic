@@ -76,7 +76,7 @@ class ColabsegData(QObject):
         self.models.update(model_manager)
 
     @_progress_decorator
-    def add_fit(self, method: str, fit_args: str = "xz", **kwargs):
+    def add_fit(self, method: str, **kwargs):
         method = method.lower()
         cluster_indices = self.data._get_selected_indices()
         if method not in PARAMETRIZATION_TYPE:
@@ -120,7 +120,7 @@ class ColabsegData(QObject):
             self.progress.emit((index + 1) / len(cluster_indices))
 
     def export_fit(self, file_path: str, file_format: str, **kwargs):
-        if file_format == "mrc":
+        if file_format in ("mrc", "xyz"):
             self._export_fit(
                 indices=self.data._get_selected_indices(),
                 container=self._data,
@@ -203,8 +203,15 @@ class ColabsegData(QObject):
                 sampling_rate=sampling,
             )
 
+        if file_format == "xyz":
+            for index, points in enumerate(export_data["points"]):
+                fname = f"{file_path}_{index}.{file_format}"
+                np.savetxt(fname, points, header="x y z", comments="")
+
         if file_format not in ("txt", "star"):
             return -1
+
+        print(export_data)
 
         orientations = OrientationsIO(**export_data)
         orientations.to_file(file_path, file_format=file_format)

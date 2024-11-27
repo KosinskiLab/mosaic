@@ -31,13 +31,12 @@ def compute_edge_lengths(mesh):
 
 
 def scale(mesh, scaling):
-    ret = o3d.geometry.TriangleMesh()
-    ret.vertices = o3d.utility.Vector3dVector(np.asarray(mesh.vertices) * scaling)
-    ret.triangles = o3d.utility.Vector3iVector(np.asarray(mesh.triangles))
-    return ret
+    vertices = np.multiply(np.asarray(mesh.vertices).copy(), scaling)
+    triangles = np.asarray(mesh.triangles).copy()
+    return _to_open3d(vertices, triangles)
 
 
-def remesh(mesh, target_edge_length, n_iter=100, featuredeg=10, **kwargs):
+def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
     from pymeshlab import MeshSet, Mesh, PureValue
 
     vertices = np.asarray(mesh.vertices)
@@ -59,26 +58,13 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=10, **kwargs):
     return ret
 
 
-def fair(mesh, n_iter=3, delta=20, **kwargs):
-    from pymeshlab import MeshSet, Mesh, PercentageValue
+def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
+    default_args = {
+        "area_fraction": 1.2,
+        "volume_fraction": 1.2,
+    }
+    default_args.update(kwargs)
 
-    vertices = np.asarray(mesh.vertices)
-    triangles = np.asarray(mesh.triangles)
-
-    ms = MeshSet()
-    ms.add_mesh(Mesh(vertices, triangles))
-    ms.apply_coord_laplacian_smoothing_scale_dependent(
-        stepsmoothnum=n_iter,
-        delta=PercentageValue(delta),
-        **kwargs,
-    )
-
-    remeshed = ms.current_mesh()
-    ret = _to_open3d(remeshed.vertex_matrix(), remeshed.face_matrix())
-    return ret
-
-
-def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000):
     if lower_bound > upper_bound:
         raise ValueError("upper_bound needs to be larger than lower_bound.")
 
@@ -118,8 +104,8 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000):
         kappa_c = 0.0
         kappa_t = 1.0e5
         kappa_r = 1.0e3
-        area_fraction = 1.2
-        volume_fraction = 1.2
+        area_fraction = {default_args['area_fraction']}
+        volume_fraction = {default_args['volume_fraction']}
         curvature_fraction = 1.0
         continuation_delta = 0.0
         continuation_lambda = 1.0
@@ -187,6 +173,12 @@ def compute_scale_factor(mesh, lower_bound=1.0, upper_bound=1.7):
     scale_factor = mean_bound / peak_bin_center
     print(f"{count_rel}% of edges [N={max_count}] are within range of {scale_factor}")
 
+    return scale_factor
+
+
+def compute_scale_factor_lower(mesh, lower_bound=1.05):
+    edge_lengths = compute_edge_lengths(mesh)
+    scale_factor = lower_bound / edge_lengths.min()
     return scale_factor
 
 

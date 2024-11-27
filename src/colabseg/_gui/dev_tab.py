@@ -1,3 +1,8 @@
+import re
+import os
+from os.path import join
+
+
 import numpy as np
 from PyQt6.QtWidgets import (
     QWidget,
@@ -12,28 +17,17 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QDoubleValidator
-from hmff.utils import read_topology_file
+import vtkmodules.qt
+from vtkmodules.util import numpy_support
 
-
-from ..io import DataIO, _compute_bounding_box
+from ..io import DataIO
 from ..parametrization import Ellipsoid
-from ..utils import points_to_volume
-
-import re
-from os import listdir
-from os.path import join
 
 
 def load_series(path):
-    ret = []
-    files = [x for x in listdir(path) if x.endswith(".tsi")]
+    files = [x for x in os.listdir(path) if x.endswith(".tsi")]
     files = sorted(files, key=lambda x: int(re.findall(r"\d+", x)[0]))
-
-    for file in files:
-        data = read_topology_file(join(path, file))
-        ret.append(data["vertices"][:, 1:4])
-
-    return ret
+    return [DataIO().open_file(join(path, file)) for file in files]
 
 
 class DevTab(QWidget):
@@ -98,6 +92,11 @@ class DevTab(QWidget):
         distance_button = QPushButton("Make Distance Map")
         distance_button.clicked.connect(self.make_distance_map)
         buttons_layout.addWidget(distance_button)
+
+        export_series_button = QPushButton("Export Video")
+        export_series_button.clicked.connect(self.export_series)
+        buttons_layout.addWidget(export_series_button)
+
         main_layout.addLayout(buttons_layout)
 
     def make_distance_map(self):
@@ -223,8 +222,12 @@ class DevTab(QWidget):
         except ValueError:
             scale_factor = 0.03777476638012516
 
-        scale_factor = 0.00906220370306874
-        offset = 20.011848400346935
+        # scale_factor = 0.005365266062387542
+        scale_factor = 0.0055079992690044936
+        offset = 22.0
+
+        # scale_factor =0.012626655910736868
+        # offset = 19.95996379852295
         points = (self.cloud_series[frame_idx] - offset) / scale_factor
         if self.cloud is None:
             index = self.cdata._data.add(points=points)
@@ -275,9 +278,108 @@ class DevTab(QWidget):
         except ValueError:
             scale_factor = 0.03777476638012516
 
-        data, shape, sampling = DataIO().open_file(filename=file_name)
+        ret = DataIO().open_file(filename=file_name)
+
+        if isinstance(ret, np.ndarray):
+            data = [ret]
+
+        if len(ret) == 3:
+            data, shape, sampling_rate = ret
+
         for points in data:
-            self.cdata._data.add(
-                points=points * 1 / scale_factor, sampling_rate=sampling
-            )
+            self.cdata._data.add(points=points / scale_factor)
         self.cdata.data.render()
+
+    def capture_screenshot(self):
+        import cv2
+
+        """Capture the current VTK render window as a numpy array"""
+        renderer = self.cdata.data.vtk_widget
+        render_window = renderer.GetRenderWindow()
+
+        # Create a window to image filter
+        window_to_image = vtkmodules.vtkRenderingCore.vtkWindowToImageFilter()
+        window_to_image.SetInput(render_window)
+        window_to_image.Update()
+
+        # Convert VTK image data to numpy array
+        vtk_image = window_to_image.GetOutput()
+        width, height, _ = vtk_image.GetDimensions()
+        vtk_array = numpy_support.vtk_to_numpy(vtk_image.GetPointData().GetScalars())
+
+        # Reshape and reorder to BGR for OpenCV
+        numpy_array = vtk_array.reshape(height, width, -1)
+        numpy_array = numpy_array[:, :, :3]  # Keep only RGB channels
+        numpy_array = numpy_array[::-1]  # Flip vertically
+        numpy_array = cv2.cvtColor(numpy_array, cv2.COLOR_RGB2BGR)
+
+        return numpy_array
+
+    def export_series(self):
+        import cv2
+
+        """Export the point cloud series as a video"""
+        if not self.cloud_series:
+            print("No series loaded to export")
+            return
+
+        # Ask for export directory
+        export_dir = QFileDialog.getExistingDirectory(
+            self,
+            "Select Export Directory",
+            "",
+            QFileDialog.Option.ShowDirsOnly,
+        )
+
+        if not export_dir:
+            return
+
+        # Create frames directory
+        frames_dir = os.path.join(export_dir, "frames")
+        os.makedirs(frames_dir, exist_ok=True)
+
+        # Save current frame to restore later
+        original_frame = self.current_frame
+
+        # Capture screenshots for each frame
+        frame_files = []
+        # for frame_idx in range(len(self.cloud_series)):
+        for frame_idx in range(100):
+            self.display_frame(frame_idx)
+            self.cdata.data.vtk_widget.GetRenderWindow().Render()
+
+            # Capture and save screenshot
+            screenshot = self.capture_screenshot()
+            frame_path = os.path.join(frames_dir, f"frame_{frame_idx:04d}.png")
+            cv2.imwrite(frame_path, screenshot)
+            frame_files.append(frame_path)
+
+        # Create video from frames
+        self.create_video(frame_files, export_dir)
+
+        # Restore original frame
+        self.display_frame(original_frame)
+        self.frame_slider.setValue(original_frame)
+
+    def create_video(self, frame_files, export_dir, fps=10, frame_stride=1):
+        """Create a video from a list of frame files"""
+        import cv2
+
+        if not frame_files:
+            return
+
+        # Read first frame to get dimensions
+        first_frame = cv2.imread(frame_files[0])
+        height, width = first_frame.shape[:2]
+
+        # Create video writer
+        output_path = os.path.join(export_dir, "output.mp4")
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        video_writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+        # Write frames to video
+        for i in range(0, len(frame_files), frame_stride):
+            frame = cv2.imread(frame_files[i])
+            video_writer.write(frame)
+
+        video_writer.release()

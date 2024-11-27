@@ -243,12 +243,20 @@ def harmonic_deformation(vs, fs, vids, k=2):
     return np.ascontiguousarray(out_vs)
 
 
+def compute_vertex_normals(vs, fs):
+    """
+    Compute per-vertex normals weighted by face areas
+    """
+    return igl.per_vertex_normals(vs, fs)
+
+
 def fair_mesh(
     vs: np.ndarray,
     fs: np.ndarray,
     vids: np.ndarray,
     alpha=1,
     beta=0.0,
+    gamma=0.0,
 ):
     """
     Minimizes vertex displacement and polyharmonic energy of a mesh at vids.
@@ -269,12 +277,12 @@ def fair_mesh(
     bbox = vs.max(axis=0) - vs.min(axis=0)
     mesh_scale = np.linalg.norm(bbox)
 
-    vids = list(get_ring2_vertices(vs, fs, vids))
+    # vids = list(get_ring2_vertices(vs, fs, vids))
     beta = beta * (mesh_scale**2)
 
     L, M = _robust_laplacian(vs, fs)
     Q2 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)
-    Q4 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 4)
+    Q4 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 3)
 
     a = _create_weights(len(vs), vids, alpha)
     b = _create_weights(len(vs), vids, beta)
@@ -283,12 +291,26 @@ def fair_mesh(
     displacement = M - a * M
     Q = a * Q2 + b * Q4 + displacement
     B = displacement @ vs
+    out_vs = np.ascontiguousarray(igl.spsolve(Q, B))
+
+    if gamma == 0:
+        return out_vs
+
+    L, M = _robust_laplacian(out_vs, fs)
+    Q2 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)
+    Q4 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 3)
+
+    normals = compute_vertex_normals(vs, fs)
+
+    displacement = M - a * M
+    B = displacement @ vs + gamma * normals
+    Q = a * Q2 + b * Q4 + displacement
 
     return np.ascontiguousarray(igl.spsolve(Q, B))
 
 
 def _robust_laplacian(
-    vs, fs, mollify_factor=1e-5
+    vs, fs, mollify_factor=1e-5, weighting_method=None
 ) -> Tuple[scipy.sparse.csc_matrix, scipy.sparse.csc_matrix]:
     """
     Get a laplacian with intrinsic Delaunay triangulation and intrinsic mollification.
@@ -316,7 +338,31 @@ def _robust_laplacian(
     lin, fin = igl.intrinsic_delaunay_triangulation(lin.astype("f8"), fs)
     L = igl.cotmatrix_intrinsic(lin, fin)
     M = igl.massmatrix_intrinsic(lin, fin, igl.MASSMATRIX_TYPE_VORONOI)
+
+    if weighting_method == "MEAN_CURVATURE":
+        W = compute_mean_curvature_weights(vs, fs, L, M)
+        M = M @ W
+    elif weighting_method == "GAUSSIAN_CURVATURE":
+        W = compute_gaussian_curvature_weights(vs, fs)
+        M = M @ W
+
     return L, M
+
+
+def compute_mean_curvature_weights(vs, fs, L, M):
+    """Compute weights based on mean curvature magnitude"""
+    # Mean curvature normal = -LV/M
+    M_inv = scipy.sparse.diags(1.0 / M.diagonal())
+    Hn = -M_inv @ (L @ vs)  # Mean curvature normal
+    H = np.linalg.norm(Hn, axis=1)  # Mean curvature magnitude
+    return scipy.sparse.diags(1.0 + H)
+
+
+def compute_gaussian_curvature_weights(vs, fs):
+    """Compute weights based on absolute gaussian curvature"""
+    K = igl.gaussian_curvature(vs, fs)
+    K = np.abs(K)  # Use magnitude of gaussian curvature
+    return scipy.sparse.diags(1.0 + K)
 
 
 def _triangulation_refine_leipa(

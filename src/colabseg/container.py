@@ -223,7 +223,7 @@ class DataContainer:
             points = com_cluster_points(points, cutoff)
         elif method == "outer":
             hull = Hull.fit(points)
-            hull_points = hull.sample(0.5 * points.shape[0])
+            hull_points = hull.sample(int(0.5 * points.shape[0]))
             _, indices = find_closest_points(points, hull_points)
             points = points[np.unique(indices)]
         elif method == "inner":

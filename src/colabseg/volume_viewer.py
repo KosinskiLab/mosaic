@@ -156,6 +156,9 @@ class VolumeViewer(QWidget):
         self.gamma_slider.setValue(100)
         self.orientation_selector.setCurrentIndex(0)
 
+        if self.project_actors.isChecked():
+            self.toggle_projection(False)
+
         self.volume = None
         self.renderer.RemoveViewProp(self.slice)
         self.slice_mapper = vtk.vtkImageSliceMapper()

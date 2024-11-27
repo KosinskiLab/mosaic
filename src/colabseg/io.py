@@ -15,11 +15,13 @@ from tme.matching_utils import rotation_aligning_vectors
 
 class DataIO:
     def __init__(self):
-        self._formats = {"txt": _load_txt}
+        self._formats = {"txt": _load_txt, "tsv": _load_txt}
         for ext in ["stl", "obj"]:
             self._formats[ext] = _load_mesh
         for ext in ["mrc", "em", "h5"]:
             self._formats[ext] = _load_volume
+        for ext in ["q", "tsi"]:
+            self._formats[ext] = _load_topology_file
 
     @property
     def supported_formats(self):
@@ -30,6 +32,13 @@ class DataIO:
 
         func = self._formats.get(extension, _load_volume)
         return func(filename, *args, **kwargs)
+
+
+def _load_topology_file(filename):
+    from hmff.utils import read_topology_file
+
+    data = read_topology_file(filename)
+    return data["vertices"][:, 1:4]
 
 
 def load_density(filename: str):
