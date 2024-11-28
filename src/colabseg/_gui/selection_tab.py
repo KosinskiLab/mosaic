@@ -20,6 +20,7 @@ from .dialog import (
     make_param,
     ParameterHandler,
     DistanceAnalysisDialog,
+    DistanceStatsDialog,
 )
 
 
@@ -38,7 +39,7 @@ class ClusterSelectionTab(QWidget):
         self.setup_cluster(main_layout)
         self.setup_points(main_layout)
         self.setup_histogram(main_layout)
-        self.setup_distance_computation(main_layout)
+        self.setup_distance(main_layout)
 
     def setup_cluster_list(self, main_layout):
         scroll_area = QScrollArea()
@@ -64,7 +65,6 @@ class ClusterSelectionTab(QWidget):
         editing_layout.setSpacing(5)
 
         self.setup_point_operations(editing_layout)
-        # editing_layout.addStretch()
         self.setup_point_editing_operations(editing_layout)
         main_layout.addLayout(editing_layout)
 
@@ -173,7 +173,45 @@ class ClusterSelectionTab(QWidget):
 
         main_layout.addWidget(analysis_frame)
 
-    def setup_distance_computation(self, main_layout):
+    def setup_distance(self, main_layout):
+        analysis_layout = QVBoxLayout()
+        analysis_layout.setSpacing(5)
+
+        self.setup_distance_cropping(analysis_layout)
+        self.setup_distance_comparison(analysis_layout)
+        main_layout.addLayout(analysis_layout)
+
+    def setup_distance_cropping(self, main_layout):
+        operations_layout = QVBoxLayout()
+
+        frame = QFrame()
+        frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        frame_layout = QGridLayout(frame)
+
+        stats_button = QPushButton("Distance Statistics")
+        stats_button.clicked.connect(self._compute_stats)
+        frame_layout.addWidget(stats_button, 0, 0)
+
+        import_button = QPushButton("Distance Crop")
+        import_button.clicked.connect(self._import_points)
+        frame_layout.addWidget(import_button, 1, 0)
+
+        operations_layout.addWidget(frame)
+        main_layout.addLayout(operations_layout)
+
+    def _format_clusters(self):
+        clusters = []
+        for i in range(self.cdata.data.data_list.count()):
+            list_item = self.cdata.data.data_list.item(i)
+            clusters.append((list_item.text(), self.cdata._data._get_cluster_points(i)))
+        return clusters
+
+    def _compute_stats(self):
+        clusters = self._format_clusters()
+        dialog = DistanceStatsDialog(clusters, self)
+        return dialog.show()
+
+    def setup_distance_comparison(self, main_layout):
         operations_layout = QVBoxLayout()
 
         frame = QFrame()
@@ -206,7 +244,6 @@ class ClusterSelectionTab(QWidget):
         frame_layout.addWidget(import_button, 1, 0, 1, 2)
 
         operations_layout.addWidget(frame)
-        operations_layout.addStretch()
         main_layout.addLayout(operations_layout)
 
     def _import_points(self, **kwargs):
@@ -231,10 +268,7 @@ class ClusterSelectionTab(QWidget):
         return 0
 
     def _analyze_distances(self):
-        clusters = []
-        for i in range(self.cdata.data.data_list.count()):
-            list_item = self.cdata.data.data_list.item(i)
-            clusters.append((list_item.text(), self.cdata._data._get_cluster_points(i)))
+        clusters = self._format_clusters()
 
         dialog = DistanceAnalysisDialog(clusters, self)
         return dialog.show()

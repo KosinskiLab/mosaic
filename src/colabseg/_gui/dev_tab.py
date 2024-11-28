@@ -320,6 +320,7 @@ class DevTab(QWidget):
         numpy_array = cv2.cvtColor(numpy_array, cv2.COLOR_RGB2BGR)
 
         return numpy_array
+
     def export_series(self):
         import cv2
 
@@ -351,13 +352,11 @@ class DevTab(QWidget):
             cv2.imwrite(frame_path, screenshot)
             frame_files.append(frame_path)
 
-
         self.create_video(frame_files, export_dir)
 
         self.display_frame(original_frame)
         self.frame_slider.setValue(original_frame)
         rmtree(frames_dir)
-
 
     def export_slices(self):
         import cv2
