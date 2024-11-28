@@ -21,6 +21,7 @@ from .dialog import (
     ParameterHandler,
     DistanceAnalysisDialog,
     DistanceStatsDialog,
+    DistanceCropDialog,
 )
 
 
@@ -188,12 +189,12 @@ class ClusterSelectionTab(QWidget):
         frame.setFrameStyle(QFrame.Shape.StyledPanel)
         frame_layout = QGridLayout(frame)
 
-        stats_button = QPushButton("Distance Statistics")
-        stats_button.clicked.connect(self._compute_stats)
+        stats_button = QPushButton("Distance Crop")
+        stats_button.clicked.connect(self._distance_crop)
         frame_layout.addWidget(stats_button, 0, 0)
 
-        import_button = QPushButton("Distance Crop")
-        import_button.clicked.connect(self._import_points)
+        import_button = QPushButton("Distance Statistics")
+        import_button.clicked.connect(self._compute_stats)
         frame_layout.addWidget(import_button, 1, 0)
 
         operations_layout.addWidget(frame)
@@ -210,6 +211,26 @@ class ClusterSelectionTab(QWidget):
         clusters = self._format_clusters()
         dialog = DistanceStatsDialog(clusters, self)
         return dialog.show()
+
+    def _distance_crop(self):
+        clusters = self._format_clusters()
+        dialog = DistanceCropDialog(clusters, self)
+        sources, targets, distance = dialog.get_results()
+        if sources is None:
+            return -1
+
+        # Build points attribute first to avoid synchronization issues
+        for source in sources:
+            temp_targets = [x for x in targets if x != source]
+            target_points = np.concatenate(
+                [self.cdata._data._get_cluster_points(x) for x in temp_targets]
+            )
+            self.cdata._data.data[source]._meta["points"] = target_points
+
+        for source in sources:
+            self.cdata._data.crop(indices=[source], distance=distance)
+            _ = self.cdata._data.data[source]._meta.pop("points")
+        self.cdata.data.render()
 
     def setup_distance_comparison(self, main_layout):
         operations_layout = QVBoxLayout()
