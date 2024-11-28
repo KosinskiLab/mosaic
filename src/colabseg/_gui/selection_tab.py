@@ -1,3 +1,4 @@
+import numpy as np
 from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -6,10 +7,20 @@ from PyQt6.QtWidgets import (
     QFrame,
     QPushButton,
     QGridLayout,
+    QComboBox,
+    QStyle,
+    QFileDialog,
 )
 
 from .widgets import HistogramWidget
-from .dialog import format_tooltip, show_parameter_dialog, make_param
+from ..io import import_points
+from .dialog import (
+    format_tooltip,
+    show_parameter_dialog,
+    make_param,
+    ParameterHandler,
+    DistanceAnalysisDialog,
+)
 
 
 class ClusterSelectionTab(QWidget):
@@ -27,6 +38,7 @@ class ClusterSelectionTab(QWidget):
         self.setup_cluster(main_layout)
         self.setup_points(main_layout)
         self.setup_histogram(main_layout)
+        self.setup_distance_computation(main_layout)
 
     def setup_cluster_list(self, main_layout):
         scroll_area = QScrollArea()
@@ -161,6 +173,72 @@ class ClusterSelectionTab(QWidget):
 
         main_layout.addWidget(analysis_frame)
 
+    def setup_distance_computation(self, main_layout):
+        operations_layout = QVBoxLayout()
+
+        frame = QFrame()
+        frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        frame_layout = QGridLayout(frame)
+
+        import_button = QPushButton("Import Points")
+        import_button.clicked.connect(self._import_points)
+
+        selector = QComboBox()
+        selector.addItems(IMPORT_OPERATIONS.keys())
+        fit_settings = QPushButton()
+        fit_settings.setIcon(
+            self.style().standardIcon(
+                QStyle.StandardPixmap.SP_ToolBarVerticalExtensionButton
+            )
+        )
+        fit_settings.setFixedSize(25, 25)
+
+        self.import_handler = ParameterHandler(
+            IMPORT_OPERATIONS, fit_settings, selector
+        )
+        fit_settings.clicked.connect(self.import_handler.show_dialog)
+
+        frame_layout.addWidget(import_button, 0, 0)
+        frame_layout.addWidget(fit_settings, 0, 1)
+
+        import_button = QPushButton("Analyze Distances")
+        import_button.clicked.connect(self._analyze_distances)
+        frame_layout.addWidget(import_button, 1, 0, 1, 2)
+
+        operations_layout.addWidget(frame)
+        operations_layout.addStretch()
+        main_layout.addLayout(operations_layout)
+
+    def _import_points(self, **kwargs):
+        parameters = self.import_handler.get("Import Points", {})
+        parameters.update(kwargs)
+
+        filenames, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Select Point Files",
+            "",
+            "Point Files (*.xyz *.pts *.csv *.tsv);;All Files (*.*)",
+        )
+
+        if not filenames:
+            return -1
+
+        for filename in filenames:
+            points = import_points(filename, **parameters)
+            for point in points:
+                self.cdata._data.add(points=point.astype(np.float32))
+        self.cdata.data.render()
+        return 0
+
+    def _analyze_distances(self):
+        clusters = []
+        for i in range(self.cdata.data.data_list.count()):
+            list_item = self.cdata.data.data_list.item(i)
+            clusters.append((list_item.text(), self.cdata._data._get_cluster_points(i)))
+
+        dialog = DistanceAnalysisDialog(clusters, self)
+        return dialog.show()
+
 
 THINNING_OPERATIONS = {
     "Thinning": [
@@ -235,4 +313,12 @@ POINT_OPERATION_TOOLTIPS = {
         "description": "Remove points outside specified range along an axis.",
         "notes": "Useful for trimming lamellas",
     },
+}
+
+
+IMPORT_OPERATIONS = {
+    "Import Points": [
+        make_param("scale", 1.0, 0.0, "Scale imported points by 1 / scale."),
+        make_param("offset", 0.0, -1e32, "Add offset as (points - offset) / scale "),
+    ],
 }

@@ -163,7 +163,7 @@ class App(QMainWindow):
             self.cdata.data.remove_cluster()
             self.cdata.data.remove_points()
         elif key == "m":
-            # In case both clusters and poitns are selected
+            # In case both clusters and points are selected
             new_cluster = self.cdata.data.merge_cluster()
             point_cluster = self.cdata.data.cluster_points()
             self.cdata.data.merge_cluster(indices=(new_cluster, point_cluster))
@@ -218,7 +218,6 @@ class App(QMainWindow):
     def setup_tabs(self):
         self.tab_widget.addTab(ClusterSelectionTab(self.cdata), "Selection")
         self.tab_widget.addTab(ParametrizationTab(self.cdata), "Fits")
-        # self.tab_widget.addTab(AnalysisTab(self.cdata), "Analysis")
         self.tab_widget.addTab(DevTab(self.cdata), "Dev")
         for tab in self.tab_widget.children():
             if isinstance(tab, QWidget):

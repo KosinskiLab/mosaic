@@ -1,3 +1,6 @@
+import numpy as np
+import pyqtgraph as pg
+import pyqtgraph.exporters
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QVBoxLayout,
@@ -9,7 +12,17 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QFormLayout,
     QCheckBox,
+    QHBoxLayout,
+    QPushButton,
+    QFileDialog,
+    QMessageBox,
+    QGroupBox,
+    QListWidgetItem,
+    QListWidget,
+    QWidget,
+    QSplitter,
 )
+from ..trimesh.utils import find_closest_points
 
 
 class KeybindsDialog(QDialog):
@@ -250,3 +263,299 @@ def make_param(param, default, min_val=0, description=None, notes=None):
             "notes": notes if notes else None,
         },
     )
+
+
+def _get_distinct_colors(cmap_name, n):
+    from matplotlib.pyplot import get_cmap
+
+    cmap = get_cmap(cmap_name)
+
+    colors = []
+    for i in range(n):
+        rgba = cmap(i)
+        rgb = tuple(int(x * 255) for x in rgba[:3])
+        color = pg.mkColor(*rgb, 255)
+        colors.append(color)
+    return colors
+
+
+class DistanceAnalysisDialog(QDialog):
+    def __init__(self, clusters, parent=None):
+        super().__init__(parent)
+        self.clusters = clusters
+        self.setWindowTitle("Distance Analysis")
+        self.resize(1200, 800)
+
+        self.distances = []
+
+        # Maintain access to pyqtgraph plot modulation features
+        self.setWindowFlags(Qt.WindowType.Window)
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QHBoxLayout(self)
+
+        config_widget = self._create_config_widget()
+        viz_widget = self._create_histogram_widget()
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.addWidget(config_widget)
+        splitter.addWidget(viz_widget)
+        splitter.setSizes([360, 720])
+
+        layout.addWidget(splitter)
+
+    def _create_config_widget(self):
+        config_widget = QWidget()
+        config_layout = QVBoxLayout(config_widget)
+
+        preset_group = QGroupBox("Quick Presets")
+        preset_layout = QHBoxLayout()
+
+        one_to_all_btn = QPushButton("One → All")
+        one_to_all_btn.clicked.connect(self.preset_one_to_all)
+
+        all_to_all_btn = QPushButton("All ↔ All")
+        all_to_all_btn.clicked.connect(self.preset_all_to_all)
+
+        preset_layout.addWidget(one_to_all_btn)
+        preset_layout.addWidget(all_to_all_btn)
+        preset_group.setLayout(preset_layout)
+        config_layout.addWidget(preset_group)
+
+        source_group = QGroupBox("Select Source Clusters")
+        source_layout = QVBoxLayout()
+        self.source_list = QListWidget()
+        self.source_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
+        for name, data in self.clusters:
+            item = QListWidgetItem(name)
+            item.setData(Qt.ItemDataRole.UserRole, data)
+            self.source_list.addItem(item)
+        source_layout.addWidget(self.source_list)
+        source_group.setLayout(source_layout)
+        config_layout.addWidget(source_group)
+
+        target_group = QGroupBox("Select Target Clusters")
+        target_layout = QVBoxLayout()
+
+        self.all_targets_checkbox = QCheckBox("Compare with all other clusters")
+        self.all_targets_checkbox.stateChanged.connect(self.toggle_target_list)
+        target_layout.addWidget(self.all_targets_checkbox)
+
+        self.target_list = QListWidget()
+        self.target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
+        for name, data in self.clusters:
+            item = QListWidgetItem(name)
+            item.setData(Qt.ItemDataRole.UserRole, data)
+            self.target_list.addItem(item)
+        target_layout.addWidget(self.target_list)
+        target_group.setLayout(target_layout)
+        config_layout.addWidget(target_group)
+
+        strat_group = QGroupBox("Options")
+        strat_layout = QVBoxLayout()
+
+        strat_attr_layout = QHBoxLayout()
+        self.strat_attr_label = QLabel("Stratification:")
+        self.strat_attr_combo = QComboBox()
+        self.strat_attr_combo.addItems(["Default", "Target"])
+        self.strat_attr_combo.setEnabled(True)
+        self.strat_attr_combo.currentIndexChanged.connect(self._update_plot)
+        strat_attr_layout.addWidget(self.strat_attr_label)
+        strat_attr_layout.addWidget(self.strat_attr_combo)
+
+        # Color palette selection
+        palette_layout = QHBoxLayout()
+        self.palette_label = QLabel("Color Palette:")
+        self.palette_combo = QComboBox()
+        self.palette_combo.addItems(
+            [
+                "Set1",
+                "Set2",
+                "Set3",
+                "tab10",
+                "tab20",
+                "Paired",
+                "Accent",
+                "Dark2",
+                "Pastel1",
+                "Pastel2",
+            ]
+        )
+        self.palette_combo.setEnabled(True)
+        self.palette_combo.currentIndexChanged.connect(self._update_plot)
+        palette_layout.addWidget(self.palette_label)
+        palette_layout.addWidget(self.palette_combo)
+
+        strat_layout.addLayout(strat_attr_layout)
+        strat_layout.addLayout(palette_layout)
+        strat_group.setLayout(strat_layout)
+        config_layout.addWidget(strat_group)
+
+        compute_btn = QPushButton("Compute Distances")
+        compute_btn.clicked.connect(self._compute_distances)
+        config_layout.addStretch()
+        config_layout.addWidget(compute_btn)
+        return config_widget
+
+    def _create_histogram_widget(self):
+        viz_widget = QWidget()
+        viz_layout = QVBoxLayout(viz_widget)
+
+        self.plot_widget = pg.GraphicsLayoutWidget()
+        self.plot_widget.setBackground(None)
+        viz_layout.addWidget(self.plot_widget)
+
+        button_layout = QHBoxLayout()
+        save_plot_btn = QPushButton("Save Plot")
+        save_plot_btn.clicked.connect(self.save_plot)
+        export_data_btn = QPushButton("Export Data")
+        export_data_btn.clicked.connect(self.export_data)
+        button_layout.addWidget(save_plot_btn)
+        button_layout.addWidget(export_data_btn)
+        button_layout.addStretch()
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.close)
+        button_layout.addWidget(close_btn)
+        viz_layout.addLayout(button_layout)
+
+        return viz_widget
+
+    def _compute_distances(self):
+        sources = self.source_list.selectedItems()
+
+        targets = self.target_list.selectedItems()
+        if self.all_targets_checkbox.isChecked():
+            targets = [
+                self.target_list.item(i) for i in range(self.target_list.count())
+            ]
+
+        if not len(sources) or not len(targets):
+            QMessageBox.critical(self, "Error", "Sources and targets are required.")
+            return -1
+
+        ret = []
+        for source in sources:
+            temp = [x for x in targets if x.text() != source.text()]
+
+            source = source.data(Qt.ItemDataRole.UserRole)
+
+            target_data, bins = [], []
+            for target_cluster in temp:
+                xdata = target_cluster.data(Qt.ItemDataRole.UserRole)
+                target_data.append(xdata)
+                bins.append(xdata.shape[0])
+
+            target_data = np.concatenate(target_data)
+            distances, indices = find_closest_points(target_data, source, k=1)
+            bins = np.cumsum(bins)
+            clusters = np.digitize(indices, bins)
+            ret.append((distances, clusters))
+
+        self.distances = ret
+        self._update_plot()
+
+    def _update_plot(self):
+        distances = self.distances
+
+        if not len(distances):
+            return -1
+
+        self.plot_widget.clear()
+        n_sources = len(distances)
+        n_cols = min(2, n_sources)
+
+        strat_mode = self.strat_attr_combo.currentText()
+        for idx, (distance, index) in enumerate(distances):
+            subplot = self.plot_widget.addPlot(row=idx // n_cols, col=idx % n_cols)
+            subplot.setTitle(f"Source: {idx}")
+            subplot.setLabel("left", "Frequency")
+            subplot.setLabel("bottom", "Distance")
+
+            bins = np.histogram_bin_edges(distance, bins="auto")
+
+            if strat_mode == "Default":
+                self._create_histogram(
+                    subplot,
+                    distance,
+                    color=pg.mkColor(70, 130, 180, 200),
+                    bins=bins,
+                )
+                continue
+
+            unique_targets = np.unique(index)
+
+            colors = _get_distinct_colors(
+                self.palette_combo.currentText(), unique_targets.size
+            )
+
+            legend = subplot.addLegend(offset=(-10, 10))
+            legend.setPos(subplot.getViewBox().screenGeometry().width() - 20, 0)
+            for target_idx, target in enumerate(unique_targets):
+                self._create_histogram(
+                    subplot,
+                    distance[index == target],
+                    colors[target_idx],
+                    name=f"Target {target}",
+                    bins=bins,
+                )
+
+    def _create_histogram(self, subplot, distances, color, bins, width=None, name=None):
+        if width is None:
+            width = (bins[1] - bins[0]) * 0.8
+
+        hist, _ = np.histogram(distances, bins=bins)
+        bin_centers = (bins[:-1] + bins[1:]) / 2
+
+        bargraph = pg.BarGraphItem(
+            x=bin_centers,
+            height=hist,
+            width=width,
+            brush=color,
+            pen=pg.mkPen("k", width=1),
+            name=name,
+        )
+        subplot.addItem(bargraph)
+
+    def toggle_target_list(self, state):
+        self.target_list.setEnabled(not state)
+
+    def preset_one_to_all(self):
+        self.source_list.clearSelection()
+        if self.source_list.count() > 0:
+            self.source_list.item(0).setSelected(True)
+        self.all_targets_checkbox.setChecked(True)
+        self._update_plot()
+
+    def preset_all_to_all(self):
+        self.source_list.selectAll()
+        self.all_targets_checkbox.setChecked(True)
+        self._update_plot()
+
+    def save_plot(self):
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Save Plot", "", "PNG Files (*.png);;All Files (*.*)"
+        )
+        if not filename:
+            QMessageBox.critical(self, "Error", "Failed to save plot.")
+            return -1
+
+        exporter = pg.exporters.ImageExporter(self.plot_widget.plotItem)
+        exporter.parameters()["width"] = 1920
+        exporter.export(filename)
+        QMessageBox.information(self, "Success", "Plot saved successfully!")
+
+    def export_data(self):
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Data",
+            "",
+            "CSV Files (*.csv);;TSV Files (*.tsv);;All Files (*.*)",
+        )
+        if not filename:
+            QMessageBox.critical(self, "Error", "Failed to export data.")
+            return -1
+
+        with open(filename, mode="w", encoding="utf-8") as ofile:
+            ofile.write("\n".join([f"{x}" for x in self.distances]))
+        QMessageBox.information(self, "Success", "Data exported successfully!")

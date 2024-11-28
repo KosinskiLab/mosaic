@@ -20,7 +20,7 @@ from PyQt6.QtGui import QDoubleValidator
 import vtkmodules.qt
 from vtkmodules.util import numpy_support
 
-from ..io import DataIO
+from ..io import DataIO, import_points
 from ..parametrization import Ellipsoid
 
 
@@ -74,14 +74,23 @@ class DevTab(QWidget):
         scale_label = QLabel("Scale Factor:")
         self.scale_input = QLineEdit()
         self.scale_input.setValidator(QDoubleValidator())
-        self.scale_input.setText("0.03777476638012516")
+        self.scale_input.setText("1")
         scale_layout.addWidget(scale_label)
         scale_layout.addWidget(self.scale_input)
+
+        offset_layout = QHBoxLayout()
+        offset_label = QLabel("Offset:")
+        self.offset_input = QLineEdit()
+        self.offset_input.setValidator(QDoubleValidator())
+        self.offset_input.setText("0")
+        offset_layout.addWidget(offset_label)
+        offset_layout.addWidget(self.offset_input)
 
         # Add all elements to the layout
         buttons_layout.addWidget(add_cloud_button)
         buttons_layout.addWidget(import_button)
         buttons_layout.addLayout(scale_layout)
+        buttons_layout.addLayout(offset_layout)
 
         main_layout.addLayout(buttons_layout)
 
@@ -216,19 +225,17 @@ class DevTab(QWidget):
         self.display_frame(value)
 
     def display_frame(self, frame_idx):
-        offset = 0
         try:
             scale_factor = float(self.scale_input.text())
         except ValueError:
-            scale_factor = 0.03777476638012516
+            scale_factor = 1
 
-        # scale_factor = 0.005365266062387542
-        scale_factor = 0.0055079992690044936
-        offset = 22.0
+        try:
+            offset_input = float(self.offset_input.text())
+        except ValueError:
+            offset_input = 0
 
-        # scale_factor =0.012626655910736868
-        # offset = 19.95996379852295
-        points = (self.cloud_series[frame_idx] - offset) / scale_factor
+        points = (self.cloud_series[frame_idx] - offset_input) / scale_factor
         if self.cloud is None:
             index = self.cdata._data.add(points=points)
             self.cloud = self.cdata._data.data[index]
@@ -276,18 +283,15 @@ class DevTab(QWidget):
         try:
             scale_factor = float(self.scale_input.text())
         except ValueError:
-            scale_factor = 0.03777476638012516
+            scale_factor = 1
 
-        ret = DataIO().open_file(filename=file_name)
+        try:
+            offset_input = float(self.offset_input.text())
+        except ValueError:
+            offset_input = 0
 
-        if isinstance(ret, np.ndarray):
-            data = [ret]
-
-        if len(ret) == 3:
-            data, shape, sampling_rate = ret
-
-        for points in data:
-            self.cdata._data.add(points=points / scale_factor)
+        for points in import_points(file_name, scale_factor, offset_input):
+            self.cdata._data.add(points=points)
         self.cdata.data.render()
 
     def capture_screenshot(self):

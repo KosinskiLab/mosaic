@@ -1,5 +1,5 @@
 import warnings
-from typing import List
+from typing import List, Dict
 from os.path import basename, splitext
 
 import numpy as np
@@ -7,7 +7,7 @@ import open3d as o3d
 from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
 
-from .utils import volume_to_points, points_to_volume
+from .utils import volume_to_points
 
 from tme import Density, Orientations
 from tme.matching_utils import rotation_aligning_vectors
@@ -34,9 +34,111 @@ class DataIO:
         return func(filename, *args, **kwargs)
 
 
-def _load_topology_file(filename):
-    from hmff.utils import read_topology_file
+def _drop_prefix(iterable, target_length: int):
+    if len(iterable) == target_length:
+        iterable.pop(0)
+    return iterable
 
+
+def read_topology_file(file_path: str) -> Dict:
+    """
+    Reads a topology file [1]_.
+
+    Parameters
+    ----------
+    file_path : str
+        The path to the topology file to be parsed.
+
+    Returns
+    -------
+    Dict
+        Topology file content.
+
+    References
+    ----------
+    .. [1] https://github.com/weria-pezeshkian/FreeDTS/wiki/Manual-for-version-1
+    """
+    _keys = ("version", "box", "n_vertices", "vertices", "n_faces", "faces")
+    ret = {k: None for k in _keys}
+
+    with open(file_path, mode="r", encoding="utf-8") as infile:
+        data = [x.strip() for x in infile.read().split("\n") if len(x.strip())]
+
+    # Version prefix
+    if "version" in data[0]:
+        ret["version"] = data.pop(0).split()[1]
+
+    # Box prefix
+    box = _drop_prefix(data.pop(0).split(), 4)
+    ret["box"] = tuple(float(x) for x in box)
+
+    # Vertex prefix
+    n_vertices = _drop_prefix(data.pop(0).split(), 2)
+    n_vertices = int(n_vertices[0])
+    vertices, data = data[:n_vertices], data[n_vertices:]
+    ret["n_vertices"] = n_vertices
+    ret["vertices"] = np.array([x.split() for x in vertices], dtype=np.float64)
+
+    # Face prefix
+    n_faces = _drop_prefix(data.pop(0).split(), 2)
+    n_faces = int(n_faces[0])
+    faces, data = data[:n_faces], data[n_faces:]
+    ret["n_faces"] = n_faces
+    ret["faces"] = np.array([x.split() for x in faces], dtype=np.float64)
+
+    return ret
+
+
+def _numpy_to_string(arr: NDArray) -> str:
+    ret = ""
+    stop = arr.shape[1] - 1
+    for i in range(arr.shape[0]):
+        ret += f"{int(arr[i, 0])}  "
+        ret += "  ".join([str(x) for x in arr[i, 1:stop]])
+        ret += f"  {int(arr[i, stop])}\n"
+    return ret
+
+
+def write_topology_file(file_path: str, data: Dict) -> None:
+    """
+    Write a topology file [1]_.
+
+    Parameters
+    ----------
+    file_path : str
+        The path to the output file.
+    data : Dict
+        Topology file data as per :py:meth:`read_topology_file`.
+
+    References
+    ----------
+    .. [1] https://github.com/weria-pezeshkian/FreeDTS/wiki/Manual-for-version-1
+    """
+
+    vertex_string = ""
+    stop = data["vertices"].shape[1] - 1
+    for i in range(data["vertices"].shape[0]):
+        vertex_string += f"{int(data['vertices'][i, 0])}  "
+        vertex_string += "  ".join([f"{x:<.10f}" for x in data["vertices"][i, 1:stop]])
+        vertex_string += f"  {int(data['vertices'][i, stop])}\n"
+
+    face_string = ""
+    stop = data["faces"].shape[1] - 1
+    for i in range(data["faces"].shape[0]):
+        face = [f"{int(x):d}" for x in data["faces"][i]]
+        face[1] += " "
+        face.append("")
+        face_string += "  ".join(face) + "\n"
+
+    with open(file_path, mode="w", encoding="utf-8") as ofile:
+        ofile.write(f"{'   '.join([f'{x:<.10f}' for x in data['box']])}   \n")
+        ofile.write(f"{data['n_vertices']}\n")
+        ofile.write(vertex_string)
+        ofile.write(f"{data['n_faces']}\n")
+        ofile.write(face_string)
+
+
+def _load_topology_file(filename):
     data = read_topology_file(filename)
     return data["vertices"][:, 1:4]
 
@@ -113,6 +215,18 @@ def _compute_bounding_box(points: List[NDArray]) -> List[float]:
         stops = np.maximum(stops, stops_inner)
 
     return stops - starts
+
+
+def import_points(filename, scale=1, offset=1) -> List[NDArray]:
+    ret = DataIO().open_file(filename=filename)
+
+    if isinstance(ret, np.ndarray):
+        data = [ret]
+
+    if len(ret) == 3:
+        data, shape, sampling_rate = ret
+
+    return [np.divide(np.subtract(x, offset), scale) for x in data]
 
 
 class OrientationsIO:
