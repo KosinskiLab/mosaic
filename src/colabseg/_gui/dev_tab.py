@@ -1,6 +1,7 @@
 import re
 import os
 from os.path import join
+from shutil import rmtree
 
 
 import numpy as np
@@ -31,7 +32,7 @@ def load_series(path):
 
 
 class DevTab(QWidget):
-    def __init__(self, cdata):
+    def __init__(self, cdata, volume_viewer):
         super().__init__()
         self.cdata = cdata
         self.cloud_series = None
@@ -39,7 +40,8 @@ class DevTab(QWidget):
         self.playing = False
         self.play_timer = QTimer()
         self.play_timer.timeout.connect(self.next_frame)
-        self.play_timer.setInterval(100)  # 10 FPS default
+        self.play_timer.setInterval(100)
+        self.volume_viewer = volume_viewer
 
         self.setup_ui()
 
@@ -318,16 +320,13 @@ class DevTab(QWidget):
         numpy_array = cv2.cvtColor(numpy_array, cv2.COLOR_RGB2BGR)
 
         return numpy_array
-
     def export_series(self):
         import cv2
 
-        """Export the point cloud series as a video"""
         if not self.cloud_series:
             print("No series loaded to export")
             return
 
-        # Ask for export directory
         export_dir = QFileDialog.getExistingDirectory(
             self,
             "Select Export Directory",
@@ -338,50 +337,71 @@ class DevTab(QWidget):
         if not export_dir:
             return
 
-        # Create frames directory
         frames_dir = os.path.join(export_dir, "frames")
         os.makedirs(frames_dir, exist_ok=True)
-
-        # Save current frame to restore later
         original_frame = self.current_frame
 
-        # Capture screenshots for each frame
         frame_files = []
-        # for frame_idx in range(len(self.cloud_series)):
-        for frame_idx in range(100):
+        for frame_idx in range(0, len(self.cloud_series)):
             self.display_frame(frame_idx)
             self.cdata.data.vtk_widget.GetRenderWindow().Render()
 
-            # Capture and save screenshot
             screenshot = self.capture_screenshot()
             frame_path = os.path.join(frames_dir, f"frame_{frame_idx:04d}.png")
             cv2.imwrite(frame_path, screenshot)
             frame_files.append(frame_path)
 
-        # Create video from frames
+
         self.create_video(frame_files, export_dir)
 
-        # Restore original frame
         self.display_frame(original_frame)
         self.frame_slider.setValue(original_frame)
+        rmtree(frames_dir)
+
+
+    def export_slices(self):
+        import cv2
+
+        export_dir = QFileDialog.getExistingDirectory(
+            self,
+            "Select Export Directory",
+            "",
+            QFileDialog.Option.ShowDirsOnly,
+        )
+
+        if not export_dir:
+            return
+
+        frames_dir = os.path.join(export_dir, "slices")
+        os.makedirs(frames_dir, exist_ok=True)
+
+        frame_files = []
+        slice_min = self.volume_viewer.slice_slider.minimum()
+        slice_max = self.volume_viewer.slice_slider.maximum()
+        for slice_idx in range(slice_min, slice_max):
+            self.volume_viewer.slice_slider.setValue(slice_idx)
+
+            screenshot = self.capture_screenshot()
+            frame_path = os.path.join(frames_dir, f"frame_{slice_idx:04d}.png")
+            cv2.imwrite(frame_path, screenshot)
+            frame_files.append(frame_path)
+
+        self.create_video(frame_files, export_dir)
+        rmtree(frames_dir)
 
     def create_video(self, frame_files, export_dir, fps=10, frame_stride=1):
-        """Create a video from a list of frame files"""
         import cv2
 
         if not frame_files:
             return
 
-        # Read first frame to get dimensions
         first_frame = cv2.imread(frame_files[0])
         height, width = first_frame.shape[:2]
 
-        # Create video writer
         output_path = os.path.join(export_dir, "output.mp4")
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         video_writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-        # Write frames to video
         for i in range(0, len(frame_files), frame_stride):
             frame = cv2.imread(frame_files[i])
             video_writer.write(frame)
