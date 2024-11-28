@@ -238,10 +238,10 @@ class App(QMainWindow):
         save_file_action.setShortcut("Ctrl+S")
         save_file_action.triggered.connect(self.save_file)
 
-        self.keybinds_dialog = KeybindsDialog()
+        self.keybinds_dialog = KeybindsDialog(self)
         show_keybinds_action = QAction("Keybinds", self)
         show_keybinds_action.setShortcut("Ctrl+H")
-        show_keybinds_action.triggered.connect(self.keybinds_dialog.show_keybinds)
+        show_keybinds_action.triggered.connect(self.keybinds_dialog.show)
 
         file_menu.addAction(open_file_action)
         file_menu.addAction(save_file_action)

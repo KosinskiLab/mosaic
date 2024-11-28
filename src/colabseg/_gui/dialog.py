@@ -60,23 +60,6 @@ class KeybindsDialog(QDialog):
 
         self.setLayout(layout)
 
-    def show_keybinds(parent):
-        dialog = KeybindsDialog(parent)
-        dialog.setStyleSheet(
-            """
-            QDialog {
-                background-color: #f0f0f0;
-            }
-            QLabel {
-                color: #333333;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-        """
-        )
-        dialog.exec()
-
 
 def format_tooltip(title, description, default_value=None, notes=None):
     """Create a formatted HTML tooltip with consistent styling."""
@@ -439,7 +422,6 @@ class DistanceAnalysisDialog(QDialog):
             temp = [x for x in targets if x.text() != source.text()]
 
             source = source.data(Qt.ItemDataRole.UserRole)
-
             target_data, bins = [], []
             for target_cluster in temp:
                 xdata = target_cluster.data(Qt.ItemDataRole.UserRole)
@@ -465,10 +447,11 @@ class DistanceAnalysisDialog(QDialog):
         n_sources = len(distances)
         n_cols = min(2, n_sources)
 
+        sources = self.source_list.selectedItems()
         strat_mode = self.strat_attr_combo.currentText()
         for idx, (distance, index) in enumerate(distances):
             subplot = self.plot_widget.addPlot(row=idx // n_cols, col=idx % n_cols)
-            subplot.setTitle(f"Source: {idx}")
+            subplot.setTitle(sources[idx].text())
             subplot.setLabel("left", "Frequency")
             subplot.setLabel("bottom", "Distance")
 
