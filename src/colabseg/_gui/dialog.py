@@ -650,13 +650,21 @@ class DistanceCropDialog(QDialog):
         layout = QHBoxLayout()
 
         source_layout = QVBoxLayout()
-        source_layout.addWidget(QLabel("Source Clusters"))
+        label = QLabel("Source Clusters")
+        tooltip = format_tooltip("Source Clusters", "Clusters to crop.", None)
+        label.setToolTip(tooltip)
+        source_layout.addWidget(label)
         self.source_list = QListWidget()
         self.source_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         source_layout.addWidget(self.source_list)
 
         target_layout = QVBoxLayout()
-        target_layout.addWidget(QLabel("Target Clusters"))
+        label = QLabel("Target Clusters")
+        tooltip = format_tooltip(
+            "Target Clusters", "Reference to compute source distances to.", None
+        )
+        label.setToolTip(tooltip)
+        target_layout.addWidget(label)
         self.target_list = QListWidget()
         self.target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         target_layout.addWidget(self.target_list)
@@ -667,7 +675,12 @@ class DistanceCropDialog(QDialog):
 
         param_layout = QVBoxLayout()
         dist_layout = QHBoxLayout()
-        dist_layout.addWidget(QLabel("Distance:"))
+        label = QLabel("Distance:")
+        tooltip = format_tooltip(
+            "Distance", "Maximum distance between source and target.", 40
+        )
+        label.setToolTip(tooltip)
+        dist_layout.addWidget(label)
         self.distance_input = QDoubleSpinBox()
         self.distance_input.setValue(40.0)
         self.distance_input.setMaximum(float("inf"))
