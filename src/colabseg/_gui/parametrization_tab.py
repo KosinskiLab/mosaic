@@ -295,8 +295,10 @@ class ParametrizationTab(QWidget):
         if not directory:
             return
 
+        print(directory)
         self.current_geometry = None
         self.mesh_trajectory = load_mesh_trajectory(directory)
+        print(len(self.mesh_trajectory))
 
         if len(self.mesh_trajectory) == 0:
             return -1

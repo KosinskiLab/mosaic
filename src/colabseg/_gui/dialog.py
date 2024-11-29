@@ -1,7 +1,7 @@
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.exporters
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QLocale
 from PyQt6.QtWidgets import (
     QVBoxLayout,
     QDialog,
@@ -149,13 +149,9 @@ class OperationDialog(QDialog):
                 widget.addItems(min_value)
                 widget.setCurrentText(value)
             elif isinstance(value, float):
-                # widget = QDoubleSpinBox()
-                # widget.setMinimum(min_value)
-                # widget.setMaximum(float("inf"))
-                # widget.setDecimals(4)
-                # widget.setValue(value)
                 widget = QLineEdit()
                 validator = QDoubleValidator()
+                validator.setLocale(QLocale.c())
                 validator.setNotation(QDoubleValidator.Notation.StandardNotation)
                 validator.setBottom(min_value)
                 widget.setValidator(validator)
