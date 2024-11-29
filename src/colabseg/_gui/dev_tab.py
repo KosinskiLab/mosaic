@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QSlider,
     QDoubleSpinBox,
+    QGridLayout,
 )
 from PyQt6.QtCore import Qt, QTimer
 import vtkmodules.qt
@@ -105,9 +106,10 @@ class DevTab(QWidget):
 
     def setup_player_controls(self, main_layout):
         """Setup the point cloud series player controls"""
-        player_layout = QVBoxLayout()
-        open_series_button = QPushButton("Open Series")
-        open_series_button.clicked.connect(self.open_series)
+        player_layout = QGridLayout()
+        import_trajectory = QPushButton("Open Trajectory")
+        import_trajectory.clicked.connect(self.open_series)
+        to_fit = QPushButton("To Fit")
 
         self.frame_slider = QSlider(Qt.Orientation.Horizontal)
         self.frame_slider.setEnabled(False)
@@ -116,22 +118,20 @@ class DevTab(QWidget):
         playback_layout = QHBoxLayout()
         prev_button = QPushButton("⏮")
         prev_button.clicked.connect(self.prev_frame)
-
         self.play_button = QPushButton("▶")
         self.play_button.clicked.connect(self.toggle_play)
-
         next_button = QPushButton("⏭")
         next_button.clicked.connect(self.next_frame)
         self.frame_label = QLabel("Frame: 0/0")
-
         playback_layout.addWidget(prev_button)
         playback_layout.addWidget(self.play_button)
         playback_layout.addWidget(next_button)
         playback_layout.addWidget(self.frame_label)
 
-        player_layout.addWidget(open_series_button)
-        player_layout.addWidget(self.frame_slider)
-        player_layout.addLayout(playback_layout)
+        player_layout.addWidget(import_trajectory, 0, 0)
+        player_layout.addLayout(playback_layout, 0, 1)
+        player_layout.addWidget(to_fit, 1, 0)
+        player_layout.addWidget(self.frame_slider, 1, 1)
 
         main_layout.addLayout(player_layout)
 

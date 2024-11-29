@@ -250,6 +250,10 @@ class DataContainerInteractor(QObject):
         hide_action.triggered.connect(lambda: self.change_visibility(visible=False))
         context_menu.addAction(hide_action)
 
+        duplicate_action = QAction("Duplicate", self.data_list)
+        duplicate_action.triggered.connect(self.duplicate)
+        context_menu.addAction(duplicate_action)
+
         formats = [
             "Pointcloud",
             # "Pointcloud with Normals",
@@ -518,6 +522,10 @@ class DataContainerInteractor(QObject):
             func = self.container.split
 
         return func(**kwargs)
+
+    @_cluster_modifier()
+    def duplicate(self, **kwargs):
+        return self.container.duplicate(**kwargs)
 
     @_cluster_modifier()
     def decimate(self, **kwargs):

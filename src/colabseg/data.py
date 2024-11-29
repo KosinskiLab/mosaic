@@ -87,9 +87,6 @@ class ColabsegData(QObject):
         if method not in PARAMETRIZATION_TYPE:
             return -1
 
-        if method.startswith("rbf") and len(method) == 8 and "direction" in kwargs:
-            kwargs["direction"] = method[5:7]
-
         fit_object = PARAMETRIZATION_TYPE[method]
         for index in cluster_indices:
             if not self._data._index_ok(index):
@@ -127,3 +124,29 @@ class ColabsegData(QObject):
                 continue
 
             self.progress.emit((index + 1) / len(cluster_indices))
+
+    def sample_fit(self, sampling, method, **kwargs):
+        fit_indices = self.models._get_selected_indices()
+        for index in fit_indices:
+            if not self._models._index_ok(index):
+                continue
+
+            geometry = self._models.data[index]
+            fit = geometry._meta.get("fit", None)
+            if fit is None:
+                return None
+
+            n_samples, kwargs = sampling, {}
+            if method != "N points":
+                n_samples = fit.points_per_sampling(sampling)
+                kwargs["mesh_init_factor"] = 5
+
+            points = fit.sample(int(n_samples), **kwargs)
+            self._data.add(
+                points=points,
+                normals=fit.compute_normal(points),
+                sampling_rate=geometry._sampling_rate,
+            )
+
+        self.data.data_changed.emit()
+        self.data.render()

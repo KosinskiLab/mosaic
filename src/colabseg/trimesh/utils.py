@@ -9,7 +9,7 @@ from scipy.spatial import cKDTree
 from scipy.spatial.distance import pdist
 
 
-def _to_open3d(vertices, faces):
+def to_open3d(vertices, faces):
     ret = o3d.geometry.TriangleMesh()
     ret.vertices = o3d.utility.Vector3dVector(np.asarray(vertices, dtype=np.float64))
     ret.triangles = o3d.utility.Vector3iVector(np.asarray(faces, dtype=np.float32))
@@ -33,7 +33,7 @@ def compute_edge_lengths(mesh):
 def scale(mesh, scaling):
     vertices = np.multiply(np.asarray(mesh.vertices).copy(), scaling)
     triangles = np.asarray(mesh.triangles).copy()
-    return _to_open3d(vertices, triangles)
+    return to_open3d(vertices, triangles)
 
 
 def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
@@ -54,7 +54,7 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
     ms.meshing_merge_close_vertices(threshold=PureValue(target_edge_length / 3))
 
     remeshed = ms.current_mesh()
-    ret = _to_open3d(remeshed.vertex_matrix(), remeshed.face_matrix())
+    ret = to_open3d(remeshed.vertex_matrix(), remeshed.face_matrix())
     return ret
 
 

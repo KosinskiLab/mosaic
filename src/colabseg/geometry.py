@@ -58,7 +58,7 @@ class Geometry:
         """
         if isinstance(idx, (int, np.integer)):
             idx = [idx]
-        elif isinstance(idx, slice):
+        elif isinstance(idx, slice) or idx is ...:
             idx = np.arange(self.get_number_of_points())[idx]
 
         idx = np.asarray(idx)
@@ -223,6 +223,10 @@ class Geometry:
         return self.swap_data(subset.points, normals=subset.normals)
 
     def swap_data(self, new_points, normals=None):
+        target_representation = self._representation
+        if self._representation != "pointcloud":
+            self.change_representation("pointcloud")
+
         self._points.Reset()
         self._cells.Reset()
         self._normals.Reset()
@@ -236,6 +240,7 @@ class Geometry:
         self._data.Modified()
 
         self.set_color()
+        self.change_representation(target_representation)
 
     def change_representation(self, representation: str = "pointcloud") -> int:
         supported = ["pointcloud", "pointcloud_normals", "mesh", "wireframe"]
@@ -263,7 +268,9 @@ class Geometry:
 
         if representation in _save and hasattr(self, "_original_data"):
             self._data.Reset()
-            self._normals = self._original_data.GetPointData().GetNormals()
+            normals = self._original_data.GetPointData().GetNormals()
+            if normals is not None:
+                self._normals = normals
             self._points = self._original_data.GetPoints()
             self._cells = self._original_data.GetVerts()
             self._data.SetPoints(self._points)

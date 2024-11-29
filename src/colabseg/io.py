@@ -1,6 +1,8 @@
+import re
 import warnings
+from os import listdir
 from typing import List, Dict
-from os.path import basename, splitext
+from os.path import basename, splitext, isdir, join
 
 import numpy as np
 import open3d as o3d
@@ -229,9 +231,24 @@ def import_points(filename, scale=1, offset=1) -> List[NDArray]:
     return [np.divide(np.subtract(x, offset), scale) for x in data]
 
 
+def load_mesh_trajectory(path):
+    files = [path]
+    if isdir(path):
+        files = [join(path, x) for x in listdir(path)]
+
+    files = [x for x in files if x.endswith(".tsi")]
+    files = sorted(files, key=lambda x: int(re.findall(r"\d+", basename(x))[0]))
+
+    ret = []
+    for file in files:
+        data = read_topology_file(file)
+        ret.append((data["vertices"][:, 1:4], data["faces"][:, 1:4]))
+
+    return ret
+
+
 class OrientationsIO:
     def __init__(self, points, normals):
-        print(points)
         self.entities = np.concatenate(
             [np.full(x.shape[0], fill_value=i) for i, x in enumerate(points)]
         )

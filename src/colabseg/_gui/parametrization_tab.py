@@ -11,10 +11,16 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QFileDialog,
     QStyle,
+    QSlider,
+    QLabel,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
+
 
 from .widgets import ProgressButton
+from ..io import load_mesh_trajectory
+from ..trimesh.utils import to_open3d
+from ..parametrization import TriangularMesh
 from .dialog import show_parameter_dialog, make_param, ParameterHandler
 
 
@@ -54,7 +60,7 @@ class ParametrizationTab(QWidget):
         self.setup_cluster_list(main_layout)
         self.setup_operations(main_layout)
         self.setup_fit_list(main_layout)
-        self.setup_editing(main_layout)
+        self.setup_trajectory(main_layout)
         main_layout.addStretch()
 
     def setup_cluster_list(self, main_layout):
@@ -177,17 +183,21 @@ class ParametrizationTab(QWidget):
 
         operations_layout.addWidget(frame)
 
-    def setup_editing(self, main_layout):
+    def setup_trajectory(self, main_layout):
         operations_layout = QVBoxLayout()
         operations_layout.setSpacing(5)
 
-        self.setup_equilibration_frame(operations_layout)
+        # self.setup_equilibration_frame(operations_layout)
+        self.setup_trajectory_player(operations_layout)
+        operations_layout.addStretch()
 
         main_layout.addLayout(operations_layout)
 
     def setup_equilibration_frame(self, operations_layout):
         frame = QFrame()
         frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        frame.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+
         frame_layout = QGridLayout(frame)
 
         operation_mapping = {
@@ -204,6 +214,142 @@ class ParametrizationTab(QWidget):
             frame_layout.addWidget(button, row, 0)
 
         operations_layout.addWidget(frame)
+
+    def setup_trajectory_player(self, main_layout):
+        frame = QFrame()
+        frame.setFrameStyle(QFrame.Shape.StyledPanel)
+
+        frame_layout = QGridLayout(frame)
+
+        self.mesh_trajectory = None
+        self.current_frame = 0
+        self.playing = False
+        self.play_timer = QTimer()
+        self.play_timer.timeout.connect(self.next_frame)
+        self.play_timer.setInterval(100)
+
+        import_trajectory = QPushButton("Open Trajectory")
+        import_trajectory.clicked.connect(self.open_series)
+
+        self.frame_slider = QSlider(Qt.Orientation.Horizontal)
+        self.frame_slider.setEnabled(False)
+        self.frame_slider.valueChanged.connect(lambda x: self.display_frame(x))
+
+        playback_layout = QHBoxLayout()
+        prev_button = QPushButton()
+        prev_button.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaSkipBackward)
+        )
+        prev_button.clicked.connect(self.prev_frame)
+
+        self.play_button = QPushButton()
+        self.play_button.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+        )
+        self.play_button.clicked.connect(self.toggle_play)
+
+        next_button = QPushButton()
+        next_button.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaSkipForward)
+        )
+
+        next_button.clicked.connect(self.next_frame)
+        self.frame_label = QLabel("Frame: 0/0")
+        self.frame_label.setFixedWidth(100)
+        playback_layout.addWidget(prev_button)
+        playback_layout.addWidget(self.play_button)
+        playback_layout.addWidget(next_button)
+        playback_layout.addWidget(self.frame_label)
+
+        frame_layout.addWidget(import_trajectory, 0, 0)
+        frame_layout.addLayout(playback_layout, 0, 1)
+
+        frame_layout.addWidget(self.frame_slider, 1, 1)
+
+        main_layout.addWidget(frame)
+
+    def open_series(self):
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "Select Directory with Point Cloud Series",
+            "",
+            QFileDialog.Option.ShowDirsOnly,
+        )
+        if not directory:
+            return
+
+        self.current_geometry = None
+        self.mesh_trajectory = load_mesh_trajectory(directory)
+
+        if len(self.mesh_trajectory) == 0:
+            return -1
+
+        self.current_frame = 0
+        self.frame_slider.setMinimum(0)
+        self.frame_slider.setMaximum(len(self.mesh_trajectory) - 1)
+        self.frame_slider.setEnabled(True)
+        self.frame_slider.setValue(0)
+        self.display_frame(0)
+
+    def display_frame(self, frame_idx: int):
+        if not self.mesh_trajectory:
+            return -1
+
+        if frame_idx < 0 or frame_idx >= len(self.mesh_trajectory):
+            if self.playing:
+                self.toggle_play()
+            return -1
+
+        self.current_frame = frame_idx
+        self.frame_slider.setValue(self.current_frame)
+
+        # scale = self.scale_input.value()
+        # offset = self.offset_input.value()
+        scale = 1
+        offset = 0
+
+        n_frames = len(self.mesh_trajectory) - 1
+        n_digits = len(str(n_frames))
+        self.frame_label.setText(f"Frame: {frame_idx:0{n_digits}d}/{n_frames}")
+
+        faces = self.mesh_trajectory[frame_idx][1].astype(int)
+        points = (self.mesh_trajectory[frame_idx][0] - offset) / scale
+
+        if self.current_geometry is None:
+            index = self.cdata._models.add(points=points)
+            self.current_geometry = self.cdata._models.data[index]
+
+        fit = TriangularMesh(to_open3d(points, faces))
+        meta = {"points": points, "faces": faces, "fit": fit}
+
+        self.current_geometry.swap_data(points)
+        self.current_geometry._meta.update(meta)
+        self.cdata.models.render()
+
+    def next_frame(self):
+        return self.display_frame(self.current_frame + 1)
+
+    def prev_frame(self):
+        return self.display_frame(self.current_frame - 1)
+
+    def toggle_play(self):
+        if len(self.mesh_trajectory) == 0:
+            return -1
+
+        self.playing = not self.playing
+        if self.playing:
+            if self.current_frame == len(self.mesh_trajectory) - 1:
+                self.current_frame = 0
+            self.play_button.setIcon(
+                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause)
+            )
+            self.play_timer.start()
+            return None
+
+        self.play_button.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+        )
+        self.play_timer.stop()
 
     def add_fit(self, **kwargs):
         self.fit_button.listen(self.cdata.progress)
@@ -231,6 +377,10 @@ class ParametrizationTab(QWidget):
 
         parameters = self.sampling_handler.get("Options", {})
         sampling_method = parameters.get("Sampling Method", "N points")
+        # return self.cdata.sample_fit(
+        #     sampling=sampling,
+        #     method=sampling_method
+        # )
         return self.cdata.models.sample_cluster(
             sampling=sampling,
             method=sampling_method,

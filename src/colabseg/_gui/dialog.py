@@ -135,7 +135,6 @@ class OperationDialog(QDialog):
 
         for param_info in parameters:
             label, value, min_value, tooltip_info = param_info
-            print(tooltip_info)
             tooltip = format_tooltip(**tooltip_info)
             label_widget = QLabel(f"{tooltip_info['title']}:")
             label_widget.setToolTip(tooltip)

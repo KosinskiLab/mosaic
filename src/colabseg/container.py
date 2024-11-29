@@ -69,7 +69,7 @@ class DataContainer:
         self.metadata.update(other.metadata)
 
     def get_actors(self):
-        """Get VTK actors from all point clouds.
+        """Get VTK actors from all geometries.
 
         Returns
         -------
@@ -83,7 +83,7 @@ class DataContainer:
 
         Parameters
         ----------
-        points : np.ndarray
+        points : np.ndarray or Geometry
             Points to add to the container.
         color : tuple of float, optional
             RGB color values for the point cloud.
@@ -96,17 +96,20 @@ class DataContainer:
         if color is None:
             color = self.base_color
 
-        new_geometry = Geometry(points, color=color, **kwargs)
+        if isinstance(points, Geometry):
+            new_geometry = points
+        else:
+            new_geometry = Geometry(points, color=color, **kwargs)
         self.data.append(new_geometry)
         return len(self.data) - 1
 
     def remove(self, indices: Union[int, List[int]]):
-        """Remove point clouds at specified indices.
+        """Remove geometries at specified indices.
 
         Parameters
         ----------
         indices : int or list of int
-            Indices of point clouds to remove.
+            Indices of geometries to remove.
         """
         if isinstance(indices, int):
             indices = [indices]
@@ -140,12 +143,12 @@ class DataContainer:
         return self.add(data, *args, **kwargs)
 
     def merge(self, indices: List[int]) -> int:
-        """Merge multiple point clouds into one.
+        """Merge multiple geometries into one.
 
         Parameters
         ----------
         indices : list of int
-            Indices of point clouds to merge.
+            Indices of geometries to merge.
 
         Returns
         -------
@@ -158,6 +161,23 @@ class DataContainer:
         new_index = self.new(indices)
         self.remove(indices)
         return new_index - len(indices)
+
+    def duplicate(self, indices: List[int]) -> int:
+        """Duplicate different geometries
+
+        Parameters
+        ----------
+        indices : list of int
+            Indices of geometries to merge.
+
+        Returns
+        -------
+        int
+            Number of added geometries.
+        """
+        for index in indices:
+            self.add(self.data[index][...])
+        return len(indices)
 
     def split(self, indices: List[int], k=2) -> Tuple[int, int]:
         """Split point cloud into k using K-means.
@@ -411,7 +431,7 @@ class DataContainer:
         return func(point_cloud.points, **kwargs)
 
     def highlight(self, indices: Tuple[int]):
-        """Highlight specified point clouds.
+        """Highlight specified geometries.
 
         Parameters
         ----------
@@ -450,12 +470,12 @@ class DataContainer:
             self.data[index].color_points(point_ids, color)
 
     def change_visibility(self, indices: Tuple[int], visible, **kwargs):
-        """Change visibility of specified point clouds.
+        """Change visibility of specified geometries.
 
         Parameters
         ----------
         indices : tuple of int
-            Indices of point clouds to apply operation to.
+            Indices of geometries to apply operation to.
         """
         for index in indices:
             if not self._index_ok(index):
@@ -464,12 +484,12 @@ class DataContainer:
         return None
 
     def get_cluster_count(self) -> int:
-        """Get number of point clouds in container.
+        """Get number of geometries in container.
 
         Returns
         -------
         int
-            Number of point clouds.
+            Number of geometries.
         """
         return len(self.data)
 
