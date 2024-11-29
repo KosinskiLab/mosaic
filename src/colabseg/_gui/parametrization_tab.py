@@ -216,6 +216,8 @@ class ParametrizationTab(QWidget):
         operations_layout.addWidget(frame)
 
     def setup_trajectory_player(self, main_layout):
+        from .selection_tab import IMPORT_OPERATIONS
+
         frame = QFrame()
         frame.setFrameStyle(QFrame.Shape.StyledPanel)
 
@@ -230,6 +232,21 @@ class ParametrizationTab(QWidget):
 
         import_trajectory = QPushButton("Open Trajectory")
         import_trajectory.clicked.connect(self.open_series)
+
+        selector = QComboBox()
+        selector.addItems(IMPORT_OPERATIONS.keys())
+        import_settings = QPushButton()
+        import_settings.setIcon(
+            self.style().standardIcon(
+                QStyle.StandardPixmap.SP_ToolBarVerticalExtensionButton
+            )
+        )
+        import_settings.setFixedSize(25, 25)
+
+        self.import_handler = ParameterHandler(
+            IMPORT_OPERATIONS, import_settings, selector
+        )
+        import_settings.clicked.connect(self.import_handler.show_dialog)
 
         self.frame_slider = QSlider(Qt.Orientation.Horizontal)
         self.frame_slider.setEnabled(False)
@@ -259,12 +276,12 @@ class ParametrizationTab(QWidget):
         playback_layout.addWidget(prev_button)
         playback_layout.addWidget(self.play_button)
         playback_layout.addWidget(next_button)
-        playback_layout.addWidget(self.frame_label)
 
         frame_layout.addWidget(import_trajectory, 0, 0)
-        frame_layout.addLayout(playback_layout, 0, 1)
-
-        frame_layout.addWidget(self.frame_slider, 1, 1)
+        frame_layout.addWidget(import_settings, 0, 1)
+        frame_layout.addLayout(playback_layout, 0, 2)
+        frame_layout.addWidget(self.frame_label, 1, 0)
+        frame_layout.addWidget(self.frame_slider, 1, 1, 1, 2)
 
         main_layout.addWidget(frame)
 
@@ -303,10 +320,9 @@ class ParametrizationTab(QWidget):
         self.current_frame = frame_idx
         self.frame_slider.setValue(self.current_frame)
 
-        # scale = self.scale_input.value()
-        # offset = self.offset_input.value()
-        scale = 1
-        offset = 0
+        parameters = self.import_handler.get("Import Points", {})
+        scale = parameters.get("scale", 1)
+        offset = parameters.get("offset", 0)
 
         n_frames = len(self.mesh_trajectory) - 1
         n_digits = len(str(n_frames))

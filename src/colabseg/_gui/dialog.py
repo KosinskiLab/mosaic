@@ -24,7 +24,9 @@ from PyQt6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
+    QLineEdit,
 )
+from PyQt6.QtGui import QDoubleValidator
 
 from ..trimesh.utils import find_closest_points
 
@@ -147,11 +149,17 @@ class OperationDialog(QDialog):
                 widget.addItems(min_value)
                 widget.setCurrentText(value)
             elif isinstance(value, float):
-                widget = QDoubleSpinBox()
-                widget.setMinimum(min_value)
-                widget.setMaximum(float("inf"))
-                widget.setDecimals(4)
-                widget.setValue(value)
+                # widget = QDoubleSpinBox()
+                # widget.setMinimum(min_value)
+                # widget.setMaximum(float("inf"))
+                # widget.setDecimals(4)
+                # widget.setValue(value)
+                widget = QLineEdit()
+                validator = QDoubleValidator()
+                validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+                validator.setBottom(min_value)
+                widget.setValidator(validator)
+                widget.setText(str(value))
             else:
                 widget = QSpinBox()
                 widget.setMinimum(min_value)
@@ -163,16 +171,17 @@ class OperationDialog(QDialog):
             self.params_layout.addRow(label_widget, widget)
 
     def get_parameters(self):
-        return {
-            param_name: (
-                widget.isChecked()
-                if isinstance(widget, QCheckBox)
-                else widget.currentText()
-                if isinstance(widget, QComboBox)
-                else widget.value()
-            )
-            for param_name, widget in self.parameter_widgets.items()
-        }
+        ret = {}
+        for param_name, widget in self.parameter_widgets.items():
+            if isinstance(widget, QCheckBox):
+                ret[param_name] = widget.isChecked()
+            elif isinstance(widget, QComboBox):
+                ret[param_name] = widget.currentText()
+            elif isinstance(widget, QLineEdit):
+                ret[param_name] = float(widget.text())
+            else:
+                ret[param_name] = widget.value()
+        return ret
 
 
 class ParameterHandler:
@@ -231,15 +240,7 @@ def show_parameter_dialog(
     if dialog.exec() == QDialog.DialogCode.Rejected:
         return -1
 
-    params = {}
-    for label, widget in dialog.parameter_widgets.items():
-        if isinstance(widget, QComboBox):
-            params[label] = widget.currentText()
-        elif isinstance(widget, QCheckBox):
-            params[label] = widget.isChecked()
-        else:
-            params[label] = widget.value()
-
+    params = dialog.get_parameters()
     if dialog.is_hierarchical:
         params["method"] = dialog.type_selector.currentText()
 
