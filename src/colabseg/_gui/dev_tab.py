@@ -12,17 +12,15 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QFileDialog,
-    QLineEdit,
     QLabel,
     QSlider,
+    QDoubleSpinBox,
 )
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QDoubleValidator
 import vtkmodules.qt
 from vtkmodules.util import numpy_support
 
 from ..io import DataIO, import_points
-from ..parametrization import Ellipsoid
 
 
 def load_series(path):
@@ -57,38 +55,33 @@ class DevTab(QWidget):
         """Setup the original cloud manipulation controls"""
         buttons_layout = QVBoxLayout()
 
-        # Add Cloud button
         add_cloud_button = QPushButton("Add Cloud")
         add_cloud_button.clicked.connect(self.add_cloud)
         add_cloud_button.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
 
-        # Import Cloud button
         import_button = QPushButton("Import Cloud")
         import_button.clicked.connect(self.import_cloud)
         import_button.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
 
-        # Scale factor controls
         scale_layout = QHBoxLayout()
         scale_label = QLabel("Scale Factor:")
-        self.scale_input = QLineEdit()
-        self.scale_input.setValidator(QDoubleValidator())
-        self.scale_input.setText("1")
+        self.scale_input = QDoubleSpinBox()
+        self.scale_input.setValue(1.0)
+        self.scale_input.setDecimals(18)
         scale_layout.addWidget(scale_label)
         scale_layout.addWidget(self.scale_input)
 
         offset_layout = QHBoxLayout()
         offset_label = QLabel("Offset:")
-        self.offset_input = QLineEdit()
-        self.offset_input.setValidator(QDoubleValidator())
-        self.offset_input.setText("0")
+        self.offset_input = QDoubleSpinBox()
+        self.offset_input.setValue(0)
         offset_layout.addWidget(offset_label)
         offset_layout.addWidget(self.offset_input)
 
-        # Add all elements to the layout
         buttons_layout.addWidget(add_cloud_button)
         buttons_layout.addWidget(import_button)
         buttons_layout.addLayout(scale_layout)
@@ -100,98 +93,42 @@ class DevTab(QWidget):
         """Setup the original cloud manipulation controls"""
         buttons_layout = QVBoxLayout()
 
-        distance_button = QPushButton("Make Distance Map")
-        distance_button.clicked.connect(self.make_distance_map)
-        buttons_layout.addWidget(distance_button)
-
         export_series_button = QPushButton("Export Video")
         export_series_button.clicked.connect(self.export_series)
         buttons_layout.addWidget(export_series_button)
 
+        export_series_button = QPushButton("Export Slice Video")
+        export_series_button.clicked.connect(self.export_slices)
+        buttons_layout.addWidget(export_series_button)
+
         main_layout.addLayout(buttons_layout)
-
-    def make_distance_map(self):
-        file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getSaveFileName(self, "Save File")
-        if not file_path:
-            return -1
-
-        file_path = file_path.replace(".mrc.m", ".mrc")
-        sampling_rate = 1
-        all_points, all_weights = [], []
-        for cloud in self.cdata._data.data:
-            if cloud._sampling_rate is None:
-                continue
-            sampling_rate = cloud._sampling_rate
-
-        shape = self.cdata.shape
-        if shape is None:
-            shape = (50, 50, 50)
-        shape = tuple(int(x) for x in np.divide(shape, sampling_rate).astype(int))
-        ret = np.zeros(shape)
-
-        margin = 5
-        for cloud in self.cdata._data.data:
-            if cloud._sampling_rate is None:
-                continue
-            sampling_rate = cloud._sampling_rate
-            points = cloud.points
-
-            fit = Ellipsoid.fit(points)
-            distances = (fit._compute_residual(points) - 1) * -1
-            distances = np.exp(
-                (distances - distances.min()) / (distances.max() - distances.min())
-            )
-
-            points = np.divide(points, cloud._sampling_rate).astype(int)
-            ret[tuple(points.T)] += np.maximum(distances, ret[tuple(points.T)])
-
-        from tme import Density, Preprocessor
-
-        ret = np.swapaxes(ret, 0, 2)
-        ret = Preprocessor().gaussian_filter(ret, sigma=1)
-
-        dens = Density(ret, sampling_rate=sampling_rate)
-        dens.to_file(file_path)
 
     def setup_player_controls(self, main_layout):
         """Setup the point cloud series player controls"""
         player_layout = QVBoxLayout()
-
-        # Open series button
         open_series_button = QPushButton("Open Series")
         open_series_button.clicked.connect(self.open_series)
 
-        # Frame slider
         self.frame_slider = QSlider(Qt.Orientation.Horizontal)
         self.frame_slider.setEnabled(False)
         self.frame_slider.valueChanged.connect(self.slider_changed)
 
-        # Playback controls
         playback_layout = QHBoxLayout()
-
-        # Previous frame button
         prev_button = QPushButton("⏮")
         prev_button.clicked.connect(self.prev_frame)
 
-        # Play/Pause button
         self.play_button = QPushButton("▶")
         self.play_button.clicked.connect(self.toggle_play)
 
-        # Next frame button
         next_button = QPushButton("⏭")
         next_button.clicked.connect(self.next_frame)
-
-        # Frame counter
         self.frame_label = QLabel("Frame: 0/0")
 
-        # Add controls to playback layout
         playback_layout.addWidget(prev_button)
         playback_layout.addWidget(self.play_button)
         playback_layout.addWidget(next_button)
         playback_layout.addWidget(self.frame_label)
 
-        # Add all elements to the player layout
         player_layout.addWidget(open_series_button)
         player_layout.addWidget(self.frame_slider)
         player_layout.addLayout(playback_layout)
@@ -208,7 +145,6 @@ class DevTab(QWidget):
         if not directory:
             return
 
-        # Assuming load_series exists and returns a list of point clouds
         self.cloud_series = load_series(directory)
         self.cloud = None
 
@@ -227,17 +163,10 @@ class DevTab(QWidget):
         self.display_frame(value)
 
     def display_frame(self, frame_idx):
-        try:
-            scale_factor = float(self.scale_input.text())
-        except ValueError:
-            scale_factor = 1
+        scale = self.scale_input.value()
+        offset = self.offset_input.value()
 
-        try:
-            offset_input = float(self.offset_input.text())
-        except ValueError:
-            offset_input = 0
-
-        points = (self.cloud_series[frame_idx] - offset_input) / scale_factor
+        points = (self.cloud_series[frame_idx] - offset) / scale
         if self.cloud is None:
             index = self.cdata._data.add(points=points)
             self.cloud = self.cdata._data.data[index]
@@ -272,6 +201,7 @@ class DevTab(QWidget):
         num_points = 1000
         points = np.random.rand(num_points, 3) * 100
         self.cdata._data.add(points=points, sampling_rate=1)
+        self.cdata.data.data_changed.emit()
         self.cdata.data.render()
 
     def import_cloud(self):
@@ -282,41 +212,29 @@ class DevTab(QWidget):
         if not file_name:
             return -1
 
-        try:
-            scale_factor = float(self.scale_input.text())
-        except ValueError:
-            scale_factor = 1
-
-        try:
-            offset_input = float(self.offset_input.text())
-        except ValueError:
-            offset_input = 0
-
-        for points in import_points(file_name, scale_factor, offset_input):
+        scale = self.scale_input.value()
+        offset = self.offset_input.value()
+        for points in import_points(file_name, scale, offset):
             self.cdata._data.add(points=points)
         self.cdata.data.render()
 
     def capture_screenshot(self):
         import cv2
 
-        """Capture the current VTK render window as a numpy array"""
         renderer = self.cdata.data.vtk_widget
         render_window = renderer.GetRenderWindow()
 
-        # Create a window to image filter
         window_to_image = vtkmodules.vtkRenderingCore.vtkWindowToImageFilter()
         window_to_image.SetInput(render_window)
         window_to_image.Update()
 
-        # Convert VTK image data to numpy array
         vtk_image = window_to_image.GetOutput()
         width, height, _ = vtk_image.GetDimensions()
         vtk_array = numpy_support.vtk_to_numpy(vtk_image.GetPointData().GetScalars())
 
-        # Reshape and reorder to BGR for OpenCV
         numpy_array = vtk_array.reshape(height, width, -1)
-        numpy_array = numpy_array[:, :, :3]  # Keep only RGB channels
-        numpy_array = numpy_array[::-1]  # Flip vertically
+        numpy_array = numpy_array[:, :, :3]
+        numpy_array = numpy_array[::-1]
         numpy_array = cv2.cvtColor(numpy_array, cv2.COLOR_RGB2BGR)
 
         return numpy_array

@@ -216,7 +216,7 @@ class App(QMainWindow):
         self.vtk_widget.GetRenderWindow().Render()
 
     def setup_tabs(self):
-        self.tab_widget.addTab(ClusterSelectionTab(self.cdata), "Selection")
+        self.tab_widget.addTab(ClusterSelectionTab(self.cdata), "Segmentation")
         self.tab_widget.addTab(ParametrizationTab(self.cdata), "Fits")
         self.tab_widget.addTab(DevTab(self.cdata, self.volume_viewer), "Dev")
         for tab in self.tab_widget.children():

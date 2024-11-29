@@ -4,11 +4,10 @@ from functools import wraps
 from typing import Callable
 from PyQt6.QtCore import pyqtSignal, QObject
 
-from .utils import points_to_volume
+from .io import DataIO
 from .container import DataContainer
-from .io import DataIO, OrientationsIO, write_density
 from .interactor import DataContainerInteractor
-from .parametrization import PARAMETRIZATION_TYPE, TriangularMesh
+from .parametrization import PARAMETRIZATION_TYPE
 
 AVAILABLE_PARAMETRIZATIONS = PARAMETRIZATION_TYPE
 rbf = PARAMETRIZATION_TYPE.pop("rbf")
@@ -53,6 +52,7 @@ class ColabsegData(QObject):
             pickle.dump(state, ofile)
 
     def open_file(self, filename):
+        sampling = 1
         if filename.endswith("pickle"):
             with open(filename, "rb") as ifile:
                 data = pickle.load(ifile)
@@ -70,6 +70,11 @@ class ColabsegData(QObject):
             point_manager, model_manager = DataContainer(), DataContainer()
             for x in data:
                 point_manager.add(points=x.astype(np.float32), sampling_rate=sampling)
+
+        metadata = {"shape": self.shape, "sampling_rate": sampling}
+
+        point_manager.metadata = metadata.copy()
+        model_manager.metadata = metadata.copy()
 
         self.shape = shape
         self.data.update(point_manager)
@@ -105,113 +110,20 @@ class ColabsegData(QObject):
                 if fit is None:
                     continue
 
+                meta = {"fit": fit, "points": cloud.points, "faces": None}
+                if hasattr(fit, "mesh"):
+                    meta["points"] = np.asarray(fit.mesh.vertices)
+                    meta["faces"] = np.asarray(fit.mesh.triangles)
+
                 new_points = fit.sample(n_samples=1000)
                 self._models.add(
                     points=new_points,
-                    # points=np.asarray(fit.mesh.vertices),
-                    # faces=np.asarray(fit.mesh.triangles),
+                    normals=fit.compute_normal(new_points),
                     sampling_rate=cloud._sampling_rate,
-                    meta={"fit": fit, "points": cloud.points},
+                    meta=meta,
                 )
             except Exception as e:
                 print(e)
                 continue
 
             self.progress.emit((index + 1) / len(cluster_indices))
-
-    def export_fit(self, file_path: str, file_format: str, **kwargs):
-        if file_format in ("mrc", "xyz"):
-            self._export_fit(
-                indices=self.data._get_selected_indices(),
-                container=self._data,
-                file_path=f"{file_path}_cluster",
-                file_format=file_format,
-                **kwargs,
-            )
-        self._export_fit(
-            indices=self.models._get_selected_indices(),
-            container=self._models,
-            file_path=f"{file_path}_fit",
-            file_format=file_format,
-            **kwargs,
-        )
-
-    def _export_fit(self, indices, container, file_path, file_format, **kwargs):
-        if not len(indices):
-            return -1
-
-        center = False
-        if file_format == "star":
-            center = kwargs.get("center", False)
-
-        sampling = 10
-        export_data = {"points": [], "normals": []}
-        for index in indices:
-            if not container._index_ok(index):
-                continue
-
-            points = container._get_cluster_points(index)
-            cloud = container.data[index]
-
-            if file_format in ("stl", "obj"):
-                fit = cloud._meta["fit"]
-                if not hasattr(fit, "mesh"):
-                    print(f"{index} is not a mesh. Creating a new one.")
-                    fit = TriangularMesh.fit(
-                        points, voxel_size=np.max(cloud._sampling_rate), repair=False
-                    )
-
-                fit.to_file(f"{file_path}_{index}.{file_format}")
-
-            normals = None
-            if "fit" in cloud._meta:
-                normals = cloud._meta["fit"].compute_normal(points)
-
-            if cloud._sampling_rate is not None:
-                sampling = np.max(cloud._sampling_rate)
-                points = np.divide(points, cloud._sampling_rate)
-
-            if center and self._data.shape is not None:
-                points = np.subtract(points, np.divide(self._data.shape, 2).astype(int))
-
-            export_data["points"].append(points)
-            export_data["normals"].append(normals)
-
-        if len(export_data["points"]) == 0:
-            return -1
-
-        if file_format == "mrc":
-            shape = self.shape
-            if shape is None:
-                temp = np.concatenate(export_data["points"])
-                temp = np.rint(temp).astype(int)
-                shape = temp.max(axis=0) + 1
-            else:
-                shape = np.rint(np.divide(shape, sampling)).astype(int)
-
-            data = None
-            for index, points in enumerate(export_data["points"]):
-                data = points_to_volume(
-                    points, sampling_rate=1, shape=shape, weight=index + 1, out=data
-                )
-            if data is None:
-                return -1
-
-            return write_density(
-                data,
-                filename=f"{file_path}.{file_format}",
-                sampling_rate=sampling,
-            )
-
-        if file_format == "xyz":
-            for index, points in enumerate(export_data["points"]):
-                fname = f"{file_path}_{index}.{file_format}"
-                np.savetxt(fname, points, header="x y z", comments="")
-
-        if file_format not in ("txt", "star"):
-            return -1
-
-        print(export_data)
-
-        orientations = OrientationsIO(**export_data)
-        orientations.to_file(file_path, file_format=file_format)

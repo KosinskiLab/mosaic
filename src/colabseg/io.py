@@ -244,11 +244,12 @@ class OrientationsIO:
             )
 
     def to_file(self, file_path, file_format):
-        _supported_formats = {"txt": self._to_txt, "star": self._to_star}
+        _supported_formats = {"tsv": self._to_txt, "star": self._to_star}
 
         func = _supported_formats.get(file_format, None)
         if func is None:
-            raise ValueError(f"Supported formats are {_supported_formats.keys()}")
+            formats = ", ".join([str(x) for x in _supported_formats.keys()])
+            raise ValueError(f"Supported formats are {formats}.")
 
         return func(file_path)
 

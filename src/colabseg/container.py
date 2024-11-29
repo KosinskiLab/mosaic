@@ -12,7 +12,7 @@ from .utils import (
     eigenvalue_outlier_removal,
     connected_components,
 )
-from .geometry import PointCloud, TriangularMesh
+from .geometry import Geometry
 from .trimesh.utils import com_cluster_points, find_closest_points
 from .parametrization import Hull
 
@@ -51,6 +51,7 @@ class DataContainer:
 
     def __init__(self, base_color=(0.7, 0.7, 0.7), highlight_color=(0.8, 0.2, 0.2)):
         self.data = []
+        self.metadata = {}
         self.base_color = base_color
         self.highlight_color = highlight_color
 
@@ -64,6 +65,8 @@ class DataContainer:
         """
         self.data.clear()
         self.data.extend(other.data)
+        self.metadata.clear()
+        self.metadata.update(other.metadata)
 
     def get_actors(self):
         """Get VTK actors from all point clouds.
@@ -93,8 +96,7 @@ class DataContainer:
         if color is None:
             color = self.base_color
 
-        geometry = TriangularMesh if "faces" in kwargs else PointCloud
-        new_geometry = geometry(points, color=color, **kwargs)
+        new_geometry = Geometry(points, color=color, **kwargs)
         self.data.append(new_geometry)
         return len(self.data) - 1
 
@@ -298,7 +300,7 @@ class DataContainer:
         """
         cloud_fit = point_cloud._meta.get("fit", None)
         if cloud_fit is None:
-            return None
+            return point_cloud.points
 
         n_samples, kwargs = sampling, {}
         if method != "N points":
@@ -555,25 +557,25 @@ class DataContainer:
                 continue
 
             # Ignore selected points from invisible geometries
-            if not self.data[index].visible:
+            geometry = self.data[index]
+            if not geometry.visible:
                 continue
 
-            points = self._get_cluster_points(index)
-            if points.shape[0] == 0:
+            if geometry.points.shape[0] == 0:
                 continue
-            mask = np.zeros(len(points), dtype=bool)
+
+            mask = np.zeros(len(geometry.points), dtype=bool)
             try:
                 mask[list(point_ids)] = True
             except Exception as e:
                 print(e)
                 return -1
 
-            new_cluster.append(points[mask])
-            points = points[np.invert(mask)]
+            new_cluster.append(geometry.points[mask])
 
-            if points.shape[0] != 0:
-                point_cloud = self.data[index]
-                point_cloud.swap_data(points)
+            inverse_mask = np.invert(mask)
+            if inverse_mask.sum() != 0:
+                geometry.subset(inverse_mask)
             else:
                 remove_cluster.append(index)
 

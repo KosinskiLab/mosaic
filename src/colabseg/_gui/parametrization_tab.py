@@ -16,7 +16,6 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
 from .widgets import ProgressButton
 from .dialog import show_parameter_dialog, make_param, ParameterHandler
-from ..interactor import LinkedDataContainerInteractor
 
 
 class FitWorker(QThread):
@@ -40,6 +39,8 @@ class FitWorker(QThread):
 
 class ParametrizationTab(QWidget):
     def __init__(self, cdata):
+        from ..interactor import LinkedDataContainerInteractor
+
         super().__init__()
         self.cdata = cdata
         self.linked_interactor = LinkedDataContainerInteractor(self.cdata.data)
@@ -96,15 +97,6 @@ class ParametrizationTab(QWidget):
         frame.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         frame.setMaximumWidth(300)
 
-        # name = "Fit"
-        # self.fit_button = ProgressButton(name)
-        # self.fit_button.clicked.connect(
-        #     lambda checked, op=name, params=FIT_OPERATIONS: show_parameter_dialog(
-        #         op, params, self, {"Fit": self.add_fit}, self.fit_button
-        #     )
-        # )
-        # grid_layout.addWidget(self.fit_button, 0, 0, 1, 2)
-
         # Create widgets
         self.fit_button = ProgressButton("Fit")
         self.fit_button.clicked.connect(self.add_fit)
@@ -129,58 +121,59 @@ class ParametrizationTab(QWidget):
         grid_layout.addWidget(self.fit_selector, 0, 1)
         grid_layout.addWidget(fit_settings, 0, 2)
 
-        # Export row
-        export_button = QPushButton("Export")
-        export_button.clicked.connect(self.export_fit)
-        self.export_format = QComboBox()
-        self.export_format.addItems(sorted(["txt", "star", "obj", "mrc", "xyz"]))
-
-        export_settings = QPushButton()
-        export_settings.setIcon(
-            self.style().standardIcon(
-                QStyle.StandardPixmap.SP_ToolBarVerticalExtensionButton
-            )
-        )
-        export_settings.setFixedSize(25, 25)
-
-        self.export_handler = ParameterHandler(
-            EXPORT_OPERATIONS, export_settings, self.export_format
-        )
-        self.export_format.currentTextChanged.connect(self.export_handler.update_button)
-        export_settings.clicked.connect(self.export_handler.show_dialog)
-
-        grid_layout.addWidget(export_button, 2, 0)
-        grid_layout.addWidget(self.export_format, 2, 1)
-        grid_layout.addWidget(export_settings, 2, 2)
-
         # Delete row
         delete_button = QPushButton("Delete")
         delete_button.clicked.connect(self.cdata.models.remove_cluster)
-
-        grid_layout.addWidget(delete_button, 3, 0, 1, 2)
+        grid_layout.addWidget(delete_button, 2, 0, 1, 3)
 
         operations_layout.addWidget(frame)
 
     def setup_sampling_frame(self, operations_layout):
         frame = QFrame()
         frame.setFrameStyle(QFrame.Shape.StyledPanel)
-        frame_layout = QHBoxLayout(frame)
+        frame_layout = QGridLayout(frame)
+        frame_layout.setSpacing(8)
 
-        frame.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        frame.setMaximumWidth(300)
-
-        alignment = Qt.AlignmentFlag.AlignTop
         sample_button = QPushButton("Sample Fit")
+        sample_button.clicked.connect(self.sample_fit)
         self.sampling_rate_selector = QComboBox()
 
+        SAMPLING_OPTIONS = {
+            "Options": [
+                make_param(
+                    "Sampling Method",
+                    "N points",
+                    ["N points", "Avg Distance"],
+                    "Sampling method to use. Use Avg Distance for equidistant sampling.",
+                )
+            ],
+        }
+
+        selector = QComboBox()
+        selector.addItems(SAMPLING_OPTIONS.keys())
+        sampling_settings = QPushButton()
+        sampling_settings.setIcon(
+            self.style().standardIcon(
+                QStyle.StandardPixmap.SP_ToolBarVerticalExtensionButton
+            )
+        )
+        sampling_settings.setFixedSize(25, 25)
+        self.sampling_handler = ParameterHandler(
+            SAMPLING_OPTIONS, sampling_settings, selector
+        )
+        sampling_settings.clicked.connect(self.sampling_handler.show_dialog)
+
         self.sampling_rate_input = QLineEdit()
-        sample_button.clicked.connect(self.sample_fit)
-        self.sampling_rate_selector.addItems(["N points", "Avg Distance"])
+        self.sampling_rate_input.setFixedSize(75, 25)
         self.sampling_rate_input.setPlaceholderText("1000")
 
-        frame_layout.addWidget(sample_button, alignment=alignment)
-        frame_layout.addWidget(self.sampling_rate_selector, alignment=alignment)
-        frame_layout.addWidget(self.sampling_rate_input, alignment=alignment)
+        frame_layout.addWidget(sample_button, 0, 0)
+        frame_layout.addWidget(self.sampling_rate_input, 0, 1)
+        frame_layout.addWidget(sampling_settings, 0, 2)
+
+        to_cluster = QPushButton("To Cluster")
+        to_cluster.clicked.connect(self.fit_to_cluster)
+        frame_layout.addWidget(to_cluster, 1, 0, 1, 3)
 
         operations_layout.addWidget(frame)
 
@@ -188,30 +181,9 @@ class ParametrizationTab(QWidget):
         operations_layout = QVBoxLayout()
         operations_layout.setSpacing(5)
 
-        self.setup_fit_operations(operations_layout)
         self.setup_equilibration_frame(operations_layout)
 
         main_layout.addLayout(operations_layout)
-
-    def setup_fit_operations(self, operations_layout):
-        frame = QFrame()
-        frame.setFrameStyle(QFrame.Shape.StyledPanel)
-        frame_layout = QGridLayout(frame)
-
-        to_cluster = QPushButton("To Cluster")
-        to_cluster.clicked.connect(self.fit_to_cluster)
-        frame_layout.addWidget(to_cluster, 0, 0)
-
-        for row, (name, parameters) in enumerate(CROP_OPERATIONS.items()):
-            button = QPushButton(name)
-            button.clicked.connect(
-                lambda checked, op=name, params=parameters: show_parameter_dialog(
-                    op, params, self, {"Crop Around Cluster": self.crop_fit}, button
-                )
-            )
-            frame_layout.addWidget(button, row + 1, 0)
-
-        operations_layout.addWidget(frame)
 
     def setup_equilibration_frame(self, operations_layout):
         frame = QFrame()
@@ -254,10 +226,11 @@ class ParametrizationTab(QWidget):
     def sample_fit(self):
         try:
             sampling = float(self.sampling_rate_input.text())
-            sampling_method = self.sampling_rate_selector.currentText()
         except Exception:
-            return -1
+            sampling = 1000
 
+        parameters = self.sampling_handler.get("Options", {})
+        sampling_method = parameters.get("Sampling Method", "N points")
         return self.cdata.models.sample_cluster(
             sampling=sampling,
             method=sampling_method,
@@ -273,9 +246,15 @@ class ParametrizationTab(QWidget):
             if not self.cdata._models._index_ok(index):
                 continue
 
-            points = self.cdata._models.data[index].points
-            sampling = self.cdata._models.data[index]._sampling_rate
-            self.cdata._data.new(points, sampling_rate=sampling)
+            geometry = self.cdata._models.data[index]
+
+            points = geometry.points
+            sampling = geometry._sampling_rate
+            normals = geometry._meta.get("fit", None)
+            if normals is not None:
+                normals = normals.compute_normal(points)
+
+            self.cdata._data.new(points, normals=normals, sampling_rate=sampling)
         self.cdata.data.data_changed.emit()
         self.cdata.data.render()
         return None
@@ -302,12 +281,6 @@ class ParametrizationTab(QWidget):
 
         return -1
 
-
-CROP_OPERATIONS = {
-    "Crop Around Cluster": [
-        make_param("distance", 40, 0, "Maximum distance between fit and cluster point.")
-    ],
-}
 
 FIT_OPERATIONS = {
     "Sphere": [],

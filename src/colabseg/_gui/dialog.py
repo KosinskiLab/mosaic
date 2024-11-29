@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
 )
+
 from ..trimesh.utils import find_closest_points
 
 
@@ -108,7 +109,7 @@ class OperationDialog(QDialog):
             self.type_selector.currentIndexChanged.connect(
                 self.update_operation_options
             )
-            self.params_layout.addRow("Method:", self.type_selector)
+            self.params_layout.addRow("Option:", self.type_selector)
 
         self.main_layout.addLayout(self.params_layout)
 
@@ -134,6 +135,7 @@ class OperationDialog(QDialog):
 
         for param_info in parameters:
             label, value, min_value, tooltip_info = param_info
+            print(tooltip_info)
             tooltip = format_tooltip(**tooltip_info)
             label_widget = QLabel(f"{tooltip_info['title']}:")
             label_widget.setToolTip(tooltip)
@@ -160,6 +162,18 @@ class OperationDialog(QDialog):
             widget.setToolTip(tooltip)
             self.parameter_widgets[label] = widget
             self.params_layout.addRow(label_widget, widget)
+
+    def get_parameters(self):
+        return {
+            param_name: (
+                widget.isChecked()
+                if isinstance(widget, QCheckBox)
+                else widget.currentText()
+                if isinstance(widget, QComboBox)
+                else widget.value()
+            )
+            for param_name, widget in self.parameter_widgets.items()
+        }
 
 
 class ParameterHandler:
@@ -531,7 +545,7 @@ class DistanceAnalysisDialog(QDialog):
         exporter = pg.exporters.ImageExporter(self.plot_widget.plotItem)
         exporter.parameters()["width"] = 1920
         exporter.export(filename)
-        QMessageBox.information(self, "Success", "Plot saved successfully!")
+        QMessageBox.information(self, "Success", "Plot saved successfully.")
 
     def export_data(self):
         filename, _ = QFileDialog.getSaveFileName(
@@ -546,7 +560,7 @@ class DistanceAnalysisDialog(QDialog):
 
         with open(filename, mode="w", encoding="utf-8") as ofile:
             ofile.write("\n".join([f"{x}" for x in self.distances]))
-        QMessageBox.information(self, "Success", "Data exported successfully!")
+        QMessageBox.information(self, "Success", "Data export successful.")
 
 
 class DistanceStatsDialog(QDialog):

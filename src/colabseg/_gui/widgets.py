@@ -3,7 +3,15 @@ from typing import Tuple
 import vtk
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QSlider
+from PyQt6.QtWidgets import (
+    QWidget,
+    QPushButton,
+    QHBoxLayout,
+    QVBoxLayout,
+    QSlider,
+    QMenu,
+    QFileDialog,
+)
 from PyQt6.QtGui import QPainter, QColor
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, pyqtProperty, pyqtSignal
 
