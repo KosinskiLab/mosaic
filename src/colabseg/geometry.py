@@ -313,6 +313,8 @@ class Geometry:
             self._points.Reset()
             self.add_points(self._meta["points"])
             self.add_faces(self._meta["faces"])
+            if "normals" in self._meta:
+                self.add_normals(self._meta["normals"])
 
             self._data.SetPolys(self._cells)
             mapper.SetInputData(self._data)
@@ -322,7 +324,7 @@ class Geometry:
             else:
                 prop.SetRepresentationToSurface()
                 prop.SetEdgeVisibility(True)
-                prop.SetOpacity(0.2)
+                prop.SetOpacity(0.3)
 
         self._representation = representation
         mapper.Update()

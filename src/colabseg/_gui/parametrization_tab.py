@@ -320,7 +320,12 @@ class ParametrizationTab(QWidget):
             self.current_geometry = self.cdata._models.data[index]
 
         fit = TriangularMesh(to_open3d(points, faces))
-        meta = {"points": points, "faces": faces, "fit": fit}
+        meta = {
+            "points": points,
+            "faces": faces,
+            "fit": fit,
+            "normal": fit.compute_normal(points),
+        }
 
         self.current_geometry.swap_data(points)
         self.current_geometry._meta.update(meta)
@@ -377,14 +382,11 @@ class ParametrizationTab(QWidget):
 
         parameters = self.sampling_handler.get("Options", {})
         sampling_method = parameters.get("Sampling Method", "N points")
-        # return self.cdata.sample_fit(
+        return self.cdata.sample_fit(sampling=sampling, method=sampling_method)
+        # return self.cdata.models.sample_cluster(
         #     sampling=sampling,
-        #     method=sampling_method
+        #     method=sampling_method,
         # )
-        return self.cdata.models.sample_cluster(
-            sampling=sampling,
-            method=sampling_method,
-        )
 
     def crop_fit(self, *args, **kwargs):
         return self.cdata.models.crop_cluster(*args, **kwargs)
