@@ -1,4 +1,5 @@
 from typing import Callable
+from os.path import splitext
 
 try:
     import cv2
@@ -29,11 +30,25 @@ from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
 from vtkmodules.util import numpy_support
 
 
+class FrameWriter:
+    def __init__(self, filename):
+        self.index = 0
+        self.filename, self.ext = splitext(filename)
+
+    def write(self, img):
+        cv2.imwrite(f"{self.filename}_{self.index}{self.ext}", img)
+        self.index += 1
+
+    def release(self):
+        self.index = 0
+
+
 class AnimationSettingsDialog(QDialog):
-    def __init__(self, volume_viewer, param_tab, parent=None):
+    def __init__(self, volume_viewer, param_tab, formats, parent=None):
         super().__init__(parent)
         self.volume_viewer = volume_viewer
         self.param_tab = param_tab
+        self.formats = formats
         self.setWindowTitle("Animation Settings")
         self.setup_ui()
 
@@ -66,7 +81,7 @@ class AnimationSettingsDialog(QDialog):
         export_format_grid = QGridLayout()
         export_format_grid.addWidget(QLabel("Format:"), 0, 0)
         self.format_combo = QComboBox()
-        self.format_combo.addItems(["MP4", "AVI"])
+        self.format_combo.addItems(self.formats)
         export_format_grid.addWidget(self.format_combo, 0, 1)
         export_format_grid.addWidget(QLabel("Quality:"), 1, 0)
         self.quality = QSpinBox()
@@ -141,38 +156,47 @@ class ExportManager:
         self.format_settings = {
             "MP4": {"fourcc": "mp4v", "ext": ".mp4"},
             "AVI": {"fourcc": "MJPG", "ext": ".avi"},
+            "RGBA": {"frame_series": True, "ext": ".png"},
         }
 
     def copy_screenshot_to_clipboard(self):
-        screenshot = self.capture_screenshot()
-        rgb_screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGR2RGB)
+        screenshot = self.capture_screenshot(transparent_bg=True)
+        screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2RGBA)
 
-        height, width, channel = rgb_screenshot.shape
+        height, width, channel = screenshot.shape
         q_image = QImage(
-            rgb_screenshot.data,
+            screenshot.data,
             width,
             height,
             channel * width,
-            QImage.Format.Format_RGB888,
+            QImage.Format.Format_RGBA8888,
         )
 
         clipboard = QGuiApplication.clipboard()
         return clipboard.setImage(q_image)
 
-    def capture_screenshot(self):
+    def capture_screenshot(self, transparent_bg: bool = False):
         """Capture screenshot of current VTK window"""
-        renderer = self.vtk_widget.GetRenderWindow()
+        render_window = self.vtk_widget.GetRenderWindow()
+        render_window.SetAlphaBitPlanes(1)
+        render_window.SetMultiSamples(0)
 
         window_to_image = vtkWindowToImageFilter()
-        window_to_image.SetInput(renderer)
+        window_to_image.SetInput(render_window)
+        window_to_image.SetInputBufferTypeToRGBA()
         window_to_image.Update()
 
         vtk_image = window_to_image.GetOutput()
         width, height, _ = vtk_image.GetDimensions()
 
         ret = numpy_support.vtk_to_numpy(vtk_image.GetPointData().GetScalars())
-        ret = ret.reshape(height, width, -1)[:, :, :3]
-        return cv2.cvtColor(ret[::-1], cv2.COLOR_RGB2BGR)
+
+        ret_format = cv2.COLOR_RGBA2BGRA
+        ret = ret.reshape(height, width, -1)
+        if not transparent_bg:
+            ret_format = cv2.COLOR_RGB2BGR
+
+        return cv2.cvtColor(ret[::-1], ret_format)
 
     def save_screenshot(self):
         file_path, _ = QFileDialog.getSaveFileName(
@@ -194,7 +218,9 @@ class ExportManager:
             )
             return -1
 
-        dialog = AnimationSettingsDialog(self.volume_viewer, self.param_tab)
+        dialog = AnimationSettingsDialog(
+            self.volume_viewer, self.param_tab, self.format_settings.keys()
+        )
 
         if dialog.exec():
             use_trajectory = dialog.trajectory_radio.isChecked()
@@ -233,9 +259,6 @@ class ExportManager:
         quality: int = 80,
     ):
         """Create animation video from frames"""
-        from time import time
-
-        start = time()
         filename, _ = QFileDialog.getSaveFileName(
             None, "Save Animation", "", f"Video (*{format_settings['ext']})"
         )
@@ -245,19 +268,23 @@ class ExportManager:
         renderer = self.vtk_widget.GetRenderWindow()
         renderer.SetOffScreenRendering(1)
 
+        is_video = not format_settings.get("frame_series", False)
+
         update_func(start_frame)
         renderer.Render()
-        height, width = self.capture_screenshot().shape[:2]
+        height, width = self.capture_screenshot(not is_video).shape[:2]
 
-        fourcc = cv2.VideoWriter_fourcc(*format_settings["fourcc"])
-        video_writer = cv2.VideoWriter(
-            filename,
-            fourcc,
-            fps,
-            (width, height),
-        )
-        if format_settings["fourcc"] in ["mp4v", "MJPG"]:
-            video_writer.set(cv2.VIDEOWRITER_PROP_QUALITY, quality)
+        writer = FrameWriter(filename=filename)
+        if is_video:
+            writer = cv2.VideoWriter(
+                filename,
+                cv2.VideoWriter_fourcc(*format_settings["fourcc"]),
+                fps,
+                (width, height),
+                isColor=True,
+            )
+            if format_settings["fourcc"] in ["mp4v", "MJPG"]:
+                writer.set(cv2.VIDEOWRITER_PROP_QUALITY, quality)
 
         progress = QProgressDialog()
         progress.setWindowTitle("Animation")
@@ -270,16 +297,14 @@ class ExportManager:
         for frame_idx in range(start_frame, end_frame + 1, stride):
             update_func(frame_idx)
             renderer.Render()
-            video_writer.write(self.capture_screenshot())
+            writer.write(self.capture_screenshot(not is_video))
 
             progress.setValue(frame_idx)
             QApplication.processEvents()
 
-        video_writer.release()
+        writer.release()
         progress.close()
 
         renderer.SetOffScreenRendering(0)
         if original_frame is not None:
             update_func(original_frame)
-
-        print(time() - start)

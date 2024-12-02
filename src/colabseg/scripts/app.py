@@ -125,6 +125,13 @@ class App(QMainWindow):
         self.renderer = vtk.vtkRenderer()
         self.renderer.SetBackground(0.1, 0.1, 0.1)
         self.renderer_next_background = (1.0, 1.0, 1.0)
+
+        # Check how these settings perform
+        # self.renderer.GradientBackgroundOff()
+        # self.renderer.SetUseDepthPeeling(1)
+        # self.renderer.SetOcclusionRatio(0.0)
+        # self.renderer.SetMaximumNumberOfPeels(4)
+
         self.vtk_widget.GetRenderWindow().AddRenderer(self.renderer)
 
         self.tab_widget = QTabWidget()
