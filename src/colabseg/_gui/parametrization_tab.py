@@ -6,10 +6,8 @@
 """
 from os import makedirs
 
-import numpy as np
 import qtawesome as qta
-import pyqtgraph as pg
-import pyqtgraph.exporters
+import matplotlib.pyplot as plt
 from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -492,7 +490,7 @@ class ParametrizationTab(QWidget):
 
             # Remeshed
             mesh = remesh(mesh_base, edge_length, n_iter=500)
-            scale_factor = compute_scale_factor_lower(mesh, lower_bound=1.0)
+            scale_factor = compute_scale_factor_lower(mesh, lower_bound=etarget)
             mesh_scale = scale(mesh, scale_factor)
             mesh_data, offset = center_mesh(mesh_scale)
             fname = f"{filename}_remeshed.q"
@@ -512,65 +510,42 @@ class ParametrizationTab(QWidget):
             ofile.write(f"{fname}\t{scale_factor}\t{offset}\n")
             dist_equil = compute_edge_lengths(mesh_scale)
 
-            plt = pg.plot()
-            plt.setBackground(None)
-            # fg.setBackground(None)
-            # plt = fg.addPlot()
-            plt.setTitle("Edge Length Distribution")
-            plt.setLabel("left", "Frequency")
-            plt.setLabel("bottom", "Edge Lengths")
-
-            bins = np.histogram_bin_edges(
-                np.concatenate((dist_base, dist_remesh, dist_equil)), bins=150
+            plt.style.use("seaborn-v0_8")
+            plt.figure(figsize=(10, 6))
+            plt.hist(
+                dist_base,
+                bins=30,
+                alpha=0.6,
+                color="#1f77b4",
+                label="Baseline",
+                density=True,
+            )
+            plt.hist(
+                dist_remesh,
+                bins=30,
+                alpha=0.6,
+                color="#2ca02c",
+                label="Remeshed",
+                density=True,
+            )
+            plt.hist(
+                dist_equil,
+                bins=30,
+                alpha=0.6,
+                color="#ff7f0e",
+                label="Equilibrated",
+                density=True,
             )
 
-            x = (bins[:-1] + bins[1:]) / 2
-            width = (bins[1] - bins[0]) * 0.8
-
-            y_base, _ = np.histogram(dist_base, bins=bins, density=True)
-            curve1 = pg.BarGraphItem(
-                x=x,
-                height=y_base,
-                width=width,
-                pen=pg.mkPen("k", width=1),
-                brush=pg.mkBrush(31, 119, 180, 150),
-                name="Baseline",
+            plt.xlabel("Edge Lengths")
+            plt.ylabel("Frequency")
+            plt.legend()
+            plt.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plt.savefig(
+                f"{filename}_edgelength_histogram.png", dpi=300, bbox_inches="tight"
             )
-            plt.addItem(curve1)
-
-            y_remesh, _ = np.histogram(dist_remesh, bins=bins, density=True)
-            curve2 = pg.BarGraphItem(
-                x=x,
-                height=y_remesh,
-                y0=y_base,
-                width=width,
-                pen=pg.mkPen("k", width=1),
-                brush=pg.mkBrush(44, 160, 44, 150),
-                name="Remeshed",
-            )
-            plt.addItem(curve2)
-
-            y_equil, _ = np.histogram(dist_equil, bins=bins, density=True)
-            curve3 = pg.BarGraphItem(
-                x=x,
-                height=y_equil,
-                y0=y_remesh,
-                width=width,
-                pen=pg.mkPen("k", width=1),
-                brush=pg.mkBrush(255, 127, 14, 150),
-                name="Equilibrated",
-            )
-            plt.addItem(curve3)
-
-            legend = pg.LegendItem()
-            legend.setParentItem(plt.graphicsItem())
-            legend.addItem(curve1, "Baseline")
-            legend.addItem(curve2, "Remeshed")
-            legend.addItem(curve3, "Equilibrated")
-
-            exporter = pg.exporters.ImageExporter(plt.scene())
-            exporter.parameters()["width"] = 640
-            exporter.export(f"{filename}_edgelength_histogram.png")
+            plt.close()
 
         return -1
 

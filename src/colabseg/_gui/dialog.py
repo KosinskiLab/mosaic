@@ -415,8 +415,18 @@ class DistanceAnalysisDialog(QDialog):
         palette_layout.addWidget(self.palette_label)
         palette_layout.addWidget(self.palette_combo)
 
+        alpha_layout = QHBoxLayout()
+        alpha_label = QLabel("Blend Alpha:")
+        self.alpha_value = QSpinBox()
+        self.alpha_value.setRange(0, 255)
+        self.alpha_value.setValue(255)
+        alpha_layout.addWidget(alpha_label)
+        alpha_layout.addWidget(self.alpha_value)
+        self.alpha_value.valueChanged.connect(self._update_plot)
+
         strat_layout.addLayout(strat_attr_layout)
         strat_layout.addLayout(palette_layout)
+        strat_layout.addLayout(alpha_layout)
         strat_group.setLayout(strat_layout)
         config_layout.addWidget(strat_group)
 
@@ -496,6 +506,7 @@ class DistanceAnalysisDialog(QDialog):
         if n_cols == 0:
             return -1
 
+        alpha = self.alpha_value.value()
         strat_mode = self.strat_attr_combo.currentText()
         for idx, (distance, index) in enumerate(distances):
             subplot = self.plot_widget.addPlot(row=idx // n_cols, col=idx % n_cols)
@@ -511,6 +522,7 @@ class DistanceAnalysisDialog(QDialog):
                     distance,
                     color=pg.mkColor(70, 130, 180, 200),
                     bins=bins,
+                    alpha=alpha,
                 )
                 continue
 
@@ -520,28 +532,35 @@ class DistanceAnalysisDialog(QDialog):
                 self.palette_combo.currentText(), unique_targets.size
             )
 
-            y0 = None
             legend = subplot.addLegend(offset=(-10, 10))
             legend.setPos(subplot.getViewBox().screenGeometry().width() - 20, 0)
             for target_idx, target in enumerate(unique_targets):
-                y0 = self._create_histogram(
+                self._create_histogram(
                     subplot,
                     distance[index == target],
                     colors[target_idx],
-                    y0=y0,
                     name=f"Target {target}",
                     bins=bins,
+                    alpha=alpha,
                 )
 
     def _create_histogram(
-        self, subplot, distances, color, bins, width=None, name=None, y0=None
+        self,
+        subplot,
+        distances,
+        color,
+        bins,
+        width=None,
+        name=None,
+        y0=None,
+        alpha=255,
     ):
         if width is None:
             width = (bins[1] - bins[0]) * 0.8
 
         hist, _ = np.histogram(distances, bins=bins)
         bin_centers = (bins[:-1] + bins[1:]) / 2
-
+        color.setAlpha(alpha)
         bargraph = pg.BarGraphItem(
             x=bin_centers,
             height=hist,
