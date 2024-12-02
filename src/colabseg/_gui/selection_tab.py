@@ -275,7 +275,7 @@ class ClusterSelectionTab(QWidget):
             self,
             "Select Point Files",
             "",
-            "Point Files (*.xyz *.pts *.csv *.tsv);;All Files (*.*)",
+            "Point Files (*.xyz *.star *.csv *.tsv);;All Files (*.*)",
         )
 
         if not filenames:

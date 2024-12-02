@@ -17,7 +17,7 @@ from tme.matching_utils import rotation_aligning_vectors
 
 class DataIO:
     def __init__(self):
-        self._formats = {"txt": _load_txt, "tsv": _load_txt}
+        self._formats = {"txt": _load_txt, "tsv": _load_txt, "star": _load_star}
         for ext in ["stl", "obj"]:
             self._formats[ext] = _load_mesh
         for ext in ["mrc", "em", "h5"]:
@@ -201,6 +201,13 @@ def _load_mesh(filename: str):
     mesh = o3d.io.read_triangle_mesh(filename)
     ret = [np.asarray(mesh.vertices)]
 
+    shape = _compute_bounding_box(ret)
+    return ret, shape, (1, 1, 1)
+
+
+def _load_star(filename):
+    data = Orientations.from_file(filename)
+    ret = [data.translations]
     shape = _compute_bounding_box(ret)
     return ret, shape, (1, 1, 1)
 
