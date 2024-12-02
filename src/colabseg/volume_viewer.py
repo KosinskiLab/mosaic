@@ -1,3 +1,10 @@
+""" Implements VolumeViewer, which provides overlays volumeetric data with
+    the corresponding point cloud segmentations.
+
+    Copyright (c) 2023-2024 European Molecular Biology Laboratory
+
+    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
 import vtk
 from PyQt6.QtWidgets import (
     QVBoxLayout,

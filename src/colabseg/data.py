@@ -1,3 +1,11 @@
+""" Implements ColabsegData, which is reponsible for tracking overall
+    application state and mediating interaction between segmentations
+    and parametrizations.
+
+    Copyright (c) 2024 European Molecular Biology Laboratory
+
+    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
 import pickle
 import numpy as np
 from functools import wraps

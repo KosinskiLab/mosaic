@@ -1,3 +1,9 @@
+""" Variety of widgets used throughout the GUI.
+
+    Copyright (c) 2024 European Molecular Biology Laboratory
+
+    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
 from typing import Tuple
 
 import vtk

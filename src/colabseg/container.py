@@ -1,3 +1,9 @@
+""" Implements DataContainer as handler of Geometry object collections.
+
+    Copyright (c) 2024 European Molecular Biology Laboratory
+
+    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
 from functools import wraps
 from typing import List, Tuple, Union, Dict, Callable
 

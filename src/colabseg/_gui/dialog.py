@@ -1,3 +1,9 @@
+""" Dialog functions used throughout the GUI.
+
+    Copyright (c) 2024 European Molecular Biology Laboratory
+
+    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.exporters

@@ -1,3 +1,11 @@
+""" Implemenents DataContainerInteractor and LinkedDataContainerInteractor,
+    which mediate interaction between the GUI and underlying DataContainers.
+    This includes selection, editing and rendering.
+
+    Copyright (c) 2024 European Molecular Biology Laboratory
+
+    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
 import numpy as np
 from os.path import splitext
 from typing import Tuple, List

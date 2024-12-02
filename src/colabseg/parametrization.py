@@ -1,7 +1,11 @@
-""" Parametrize point clouds and define methods for equidistant sampling
-    of points and corresponding normal vectors.
+""" Implements geometric surface models for point cloud data. This includes
+    parameteric as well as non-parametric triangular-mesh baed approaches.
 
-    Copyright (c) 2023 European Molecular Biology Laboratory
+    Children of the underlying abstract Parametrization, further define means
+    for equidistant sampling and computation of normal vectors. Furthermore,
+    there are amenable to native python pickling.
+
+    Copyright (c) 2023-2024 European Molecular Biology Laboratory
 
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """

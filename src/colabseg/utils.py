@@ -1,3 +1,9 @@
+""" Utility functions.
+
+    Copyright (c) 2023-2024 European Molecular Biology Laboratory
+
+    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
 import warnings
 import numpy as np
 import open3d as o3d

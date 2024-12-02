@@ -1,4 +1,10 @@
 #!python3
+""" GUI entrypoint.
+
+    Copyright (c) 2024 European Molecular Biology Laboratory
+
+    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
 import os
 
 os.environ["OMP_NUM_THREADS"] = "1"
