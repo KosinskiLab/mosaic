@@ -25,46 +25,12 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QLineEdit,
+    QFrame,
+    QGridLayout,
 )
 from PyQt6.QtGui import QDoubleValidator
 
 from ..trimesh.utils import find_closest_points
-
-
-class KeybindsDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Keybinds")
-
-        layout = QVBoxLayout()
-
-        keybinds = [
-            ("z", "Set camera view along Z-axis"),
-            ("x", "Set camera view along X-axis"),
-            ("c", "Set camera view along Y-axis"),
-            ("a", "Toggle draawing mode"),
-            ("d", "Toggle renderer background color"),
-            ("h", "Toggle visibility of selected clusters"),
-            ("m", "Merge selected cluster or points"),
-            ("Delete", "Remove selected cluster or points"),
-            ("R", "Bring up point selector"),
-            ("Right Mouse", "Deselect cluster or points"),
-            ("Left Mouse Drag", "Rotate scene"),
-            ("Shift Left Mouse Drag", "Translate scene"),
-            ("Ctrl+O", "Open file"),
-            ("Ctrl+S", "Save file"),
-            ("Ctrl+H", "Show this keybinds popup"),
-        ]
-
-        for key, description in keybinds:
-            key_label = QLabel(f"<b>{key}</b>: {description}")
-            layout.addWidget(key_label)
-
-        close_button = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        close_button.accepted.connect(self.accept)
-        layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        self.setLayout(layout)
 
 
 def format_tooltip(title, description, default_value=None, notes=None):
