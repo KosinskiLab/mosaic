@@ -465,6 +465,9 @@ class DistanceAnalysisDialog(QDialog):
         n_sources = len(sources)
         n_cols = min(2, n_sources)
 
+        if n_cols == 0:
+            return -1
+
         strat_mode = self.strat_attr_combo.currentText()
         for idx, (distance, index) in enumerate(distances):
             subplot = self.plot_widget.addPlot(row=idx // n_cols, col=idx % n_cols)
