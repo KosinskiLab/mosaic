@@ -139,18 +139,17 @@ class AnimationSettingsDialog(QDialog):
         self.update_frame_ranges()
 
     def update_frame_ranges(self):
+        min_frame, max_frame = 0, 0
         if self.trajectory_radio.isChecked() and self.param_tab.mesh_trajectory:
             max_frame = len(self.param_tab.mesh_trajectory) - 1
-            self.start_frame.setRange(0, max_frame)
-            self.end_frame.setRange(0, max_frame)
-            self.end_frame.setValue(max_frame)
         elif self.slice_radio.isChecked() and self.volume_viewer.volume is not None:
-            max_slice = self.volume_viewer.slice_slider.maximum()
-            min_slice = self.volume_viewer.slice_slider.minimum()
-            self.start_frame.setRange(min_slice, max_slice)
-            self.end_frame.setRange(min_slice, max_slice)
-            self.start_frame.setValue(min_slice)
-            self.end_frame.setValue(max_slice)
+            max_frame = self.volume_viewer.slice_slider.maximum()
+            min_frame = self.volume_viewer.slice_slider.minimum()
+
+        self.start_frame.setRange(min_frame, max_frame)
+        self.end_frame.setRange(min_frame, max_frame)
+        self.start_frame.setValue(min_frame)
+        self.end_frame.setValue(max_frame)
 
 
 class ExportManager:
@@ -231,6 +230,14 @@ class ExportManager:
         if dialog.exec():
             use_trajectory = dialog.trajectory_radio.isChecked()
 
+            if dialog.start_frame.value() > dialog.end_frame.value():
+                QMessageBox.warning(
+                    None,
+                    "Export Error",
+                    "Start frame larger than stop frame.",
+                )
+                return -1
+
             def _update(frame_idx):
                 if use_trajectory:
                     self.param_tab.display_frame(frame_idx)
@@ -268,7 +275,7 @@ class ExportManager:
         filename, _ = QFileDialog.getSaveFileName(
             None, "Save Animation", "", f"Video (*{format_settings['ext']})"
         )
-        if filename is None:
+        if filename is None or len(filename) == 0:
             return -1
 
         renderer = self.vtk_widget.GetRenderWindow()

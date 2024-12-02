@@ -60,10 +60,22 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
 
 def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
     default_args = {
+        "bond_r": 2,
         "area_fraction": 1.2,
         "volume_fraction": 1.2,
+        "kappa_a": 1.0e6,
+        "kappa_b": 300.0,
+        "kappa_c": 0.0,
+        "kappa_v": 1.0e6,
+        "kappa_t": 1.0e5,
+        "kappa_r": 1.0e3,
+        "curvature_fraction": 1.0,
+        "continuation_delta": 0.0,
+        "continuation_lambda": 1.0,
     }
     default_args.update(kwargs)
+    default_args["lc0"] = lower_bound
+    default_args["lc1"] = upper_bound
 
     if lower_bound > upper_bound:
         raise ValueError("upper_bound needs to be larger than lower_bound.")
@@ -86,9 +98,9 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
 
         [BONDS]
         bond_type = Edge
-        r = 2
-        lc0 = {upper_bound}
-        lc1 = {lower_bound}
+        r = {default_args['bond_r']}
+        lc0 = {default_args['lc0']}
+        lc1 = {default_args['lc1']}
 
         [SURFACEREPULSION]
         n_search = cell-list
@@ -98,17 +110,17 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
         r = 2
 
         [ENERGY]
-        kappa_b = 300.0
-        kappa_a = 1.0e6
-        kappa_v = 1.0e6
-        kappa_c = 0.0
-        kappa_t = 1.0e5
-        kappa_r = 1.0e3
+        kappa_a = {default_args['kappa_a']}
+        kappa_b = {default_args['kappa_b']}
+        kappa_c = {default_args['kappa_c']}
+        kappa_v = {default_args['kappa_v']}
+        kappa_t = {default_args['kappa_t']}
+        kappa_r = {default_args['kappa_r']}
         area_fraction = {default_args['area_fraction']}
         volume_fraction = {default_args['volume_fraction']}
-        curvature_fraction = 1.0
-        continuation_delta = 0.0
-        continuation_lambda = 1.0
+        curvature_fraction = {default_args['curvature_fraction']}
+        continuation_delta = {default_args['continuation_delta']}
+        continuation_lambda = {default_args['continuation_lambda']}
 
         [MINIMIZATION]
         maxiter = {steps}
@@ -128,9 +140,14 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
 
         output_file = f"{tfile.name.replace('.conf', '')}.cpt.p0.h5"
 
-        with h5py.File(output_file, mode="r") as infile:
-            faces = infile["cells"][()]
-            vertices = infile["points"][()]
+        try:
+            with h5py.File(output_file, mode="r") as infile:
+                faces = infile["cells"][()]
+                vertices = infile["points"][()]
+        except Exception as e:
+            print(e)
+            print("Skipping calibration. Check trimem installation validity.")
+            return mesh
 
     ret = o3d.geometry.TriangleMesh()
     ret.vertices = o3d.utility.Vector3dVector(vertices)
@@ -215,3 +232,36 @@ def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
             unassigned_indices = np.where(unassigned)[0]
 
     return np.array(clusters)
+
+
+def center_mesh(mesh, center: bool = True, margin=20):
+    vertices = np.asarray(mesh.vertices)
+
+    box_size = np.max(np.ceil(vertices.max(axis=0) + margin).astype(int))
+
+    offset = 0
+    if center:
+        offset = np.min(vertices.min(axis=0)) - margin
+        offset = np.sign(offset) * np.ceil(np.abs(offset))
+        vertices -= offset
+        print("Mesh offset", offset)
+        box_size = np.max(np.ceil(vertices.max(axis=0) + margin).astype(int))
+
+    edges = np.zeros((vertices.shape[0], 5))
+    edges[:, 0] = np.arange(edges.shape[0])
+    edges[:, 1:4] = vertices
+
+    faces = np.asarray(mesh.triangles)
+    triangles = np.zeros((faces.shape[0], 5))
+    triangles[:, 0] = np.arange(faces.shape[0])
+    triangles[:, 1:4] = faces
+
+    data = {
+        "version": "1.0a",
+        "box": tuple(int(box_size) for _ in range(3)),
+        "n_vertices": edges.shape[0],
+        "vertices": edges,
+        "n_faces": triangles.shape[0],
+        "faces": triangles,
+    }
+    return data, offset

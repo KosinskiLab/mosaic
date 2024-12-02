@@ -69,6 +69,7 @@ class OperationDialog(QDialog):
         self.operation_type = operation_type
         self.parameters = parameters
         self.parameter_widgets = {}
+        self.label_widgets = {}
         self.is_hierarchical = isinstance(parameters, dict)
 
         self.setWindowTitle(self.operation_type)
@@ -104,6 +105,7 @@ class OperationDialog(QDialog):
         while self.params_layout.rowCount() > (1 if self.is_hierarchical else 0):
             self.params_layout.removeRow(self.params_layout.rowCount() - 1)
         self.parameter_widgets.clear()
+        self.label_widgets.clear()
 
         for param_info in parameters:
             label, value, min_value, tooltip_info = param_info
@@ -133,6 +135,7 @@ class OperationDialog(QDialog):
                 widget.setValue(value)
 
             widget.setToolTip(tooltip)
+            self.label_widgets[label] = label_widget
             self.parameter_widgets[label] = widget
             self.params_layout.addRow(label_widget, widget)
 
@@ -179,20 +182,19 @@ class ParameterHandler:
             default = custom_parameters.get(param[0], param[1])
             params.append(tuple(x if i != 1 else default for i, x in enumerate(param)))
 
+        def _ident(**kwargs):
+            return kwargs
+
         kwargs = show_parameter_dialog(
             current_type,
             params,
             self.settings_button.parent(),
-            {current_type: ident},
+            {current_type: _ident},
             self.settings_button,
         )
 
         if isinstance(kwargs, dict):
             self.parameters_store[current_type] = kwargs
-
-
-def ident(**kwargs):
-    return kwargs
 
 
 def show_parameter_dialog(
@@ -228,6 +230,62 @@ def make_param(param, default, min_val=0, description=None, notes=None):
             "notes": notes if notes else None,
         },
     )
+
+
+class MeshEquilibrationDialog(OperationDialog):
+    def __init__(self, parent=None):
+        self._operations = [
+            make_param("average_edge_length", 40.0, 0, "Average edge length of mesh."),
+            make_param("lower_bound", 35.0, 0, "Minimum edge length of mesh (lc1)."),
+            make_param("upper_bound", 45.0, 0, "Maximumg edge length of mesh (lc0)."),
+            make_param("steps", 5000, 0, "Number of minimization steps."),
+            make_param("kappa_b", 300.0, 0, "Bending energy coefficient (kappa_b)."),
+            make_param("kappa_a", 1e6, 0, "Area conservation coefficient (kappa_a)."),
+            make_param("kappa_v", 1e6, 0, "Volume conservation coefficient (kappa_v)."),
+            make_param("kappa_c", 0.0, 0, "Curvature energy coefficient (kappa_c)."),
+            make_param("kappa_t", 1e5, 0, "Edge tension coefficient (kappa_t)."),
+            make_param("kappa_r", 1e3, 0, "Surface repulsion coefficient (kappa_r)."),
+            make_param("volume_fraction", 1.1, 0, "Fraction VN/V0."),
+            make_param("area_fraction", 1.1, 0, "Fraction AN/A0."),
+            make_param(
+                "scaling_lower", 1.0, 0, "Lower bound for rescalde mesh edge length."
+            ),
+        ]
+
+        super().__init__("Mesh Equilibration", self._operations, parent)
+        self.setup_custom_ui()
+
+    def setup_custom_ui(self):
+        # Hide all parameter widgets initially except edge length
+        self.edge_length = self.parameter_widgets[self._operations[0][0]]
+        self.edge_length.textChanged.connect(self.update_bounds)
+
+        # Add parameter mode selection
+        self.mode_selector = QComboBox()
+        self.mode_selector.addItems(["Default", "Advanced"])
+        self.mode_selector.currentTextChanged.connect(self.toggle_advanced)
+        self.params_layout.insertRow(1, "Settings:", self.mode_selector)
+        self.toggle_advanced("Default")
+
+    def update_bounds(self, value):
+        try:
+            val = float(value)
+            lower_bound = self.parameter_widgets["lower_bound"]
+            upper_bound = self.parameter_widgets["upper_bound"]
+            if lower_bound and upper_bound:
+                lower_bound.setText(f"{val * 0.75}")
+                upper_bound.setText(f"{val * 1.25}")
+        except ValueError:
+            pass
+
+    def toggle_advanced(self, mode):
+        for name, widget in self.parameter_widgets.items():
+            if widget != self.edge_length:
+                widget.setVisible(mode == "Advanced")
+
+        for name, widget in self.label_widgets.items():
+            if name != "average_edge_length":
+                widget.setVisible(mode == "Advanced")
 
 
 def _get_distinct_colors(cmap_name, n):
@@ -462,18 +520,22 @@ class DistanceAnalysisDialog(QDialog):
                 self.palette_combo.currentText(), unique_targets.size
             )
 
+            y0 = None
             legend = subplot.addLegend(offset=(-10, 10))
             legend.setPos(subplot.getViewBox().screenGeometry().width() - 20, 0)
             for target_idx, target in enumerate(unique_targets):
-                self._create_histogram(
+                y0 = self._create_histogram(
                     subplot,
                     distance[index == target],
                     colors[target_idx],
+                    y0=y0,
                     name=f"Target {target}",
                     bins=bins,
                 )
 
-    def _create_histogram(self, subplot, distances, color, bins, width=None, name=None):
+    def _create_histogram(
+        self, subplot, distances, color, bins, width=None, name=None, y0=None
+    ):
         if width is None:
             width = (bins[1] - bins[0]) * 0.8
 
@@ -483,12 +545,14 @@ class DistanceAnalysisDialog(QDialog):
         bargraph = pg.BarGraphItem(
             x=bin_centers,
             height=hist,
+            y0=y0,
             width=width,
             brush=color,
             pen=pg.mkPen("k", width=1),
             name=name,
         )
         subplot.addItem(bargraph)
+        return hist
 
     def toggle_target_list(self, state):
         self.target_list.setEnabled(not state)

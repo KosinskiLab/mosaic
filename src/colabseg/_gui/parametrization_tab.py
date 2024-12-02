@@ -4,8 +4,12 @@
 
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
+from os import makedirs
 
+import numpy as np
 import qtawesome as qta
+import pyqtgraph as pg
+import pyqtgraph.exporters
 from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -26,10 +30,18 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 
 
 from .widgets import ProgressButton
-from ..io import load_mesh_trajectory
-from ..trimesh.utils import to_open3d
+from ..io import load_mesh_trajectory, write_topology_file
+from ..trimesh.utils import (
+    to_open3d,
+    equilibrate_edges,
+    remesh,
+    compute_edge_lengths,
+    scale,
+    compute_scale_factor_lower,
+    center_mesh,
+)
 from ..parametrization import TriangularMesh
-from .dialog import show_parameter_dialog, make_param, ParameterHandler
+from .dialog import MeshEquilibrationDialog, make_param, ParameterHandler
 
 
 class FitWorker(QThread):
@@ -187,9 +199,9 @@ class ParametrizationTab(QWidget):
         operations_layout = QVBoxLayout()
         operations_layout.setSpacing(5)
 
-        # self.setup_equilibration_frame(operations_layout)
         self.setup_trajectory_player(operations_layout)
-        operations_layout.addStretch()
+        self.setup_equilibration_frame(operations_layout)
+        # operations_layout.addStretch()
 
         main_layout.addLayout(operations_layout)
 
@@ -200,18 +212,9 @@ class ParametrizationTab(QWidget):
 
         frame_layout = QGridLayout(frame)
 
-        operation_mapping = {
-            "Equilibrate Mesh": self.equilibrate_fit,
-            "Scale Mesh": self.equilibrate_fit,
-        }
-        for row, (operation_name, parameters) in enumerate(MESH_OPERATIONS.items()):
-            button = QPushButton(operation_name)
-            button.clicked.connect(
-                lambda checked, op=operation_name, params=parameters: show_parameter_dialog(
-                    op, params, self, operation_mapping, button
-                )
-            )
-            frame_layout.addWidget(button, row, 0)
+        button = QPushButton("Equilibrate Mesh")
+        button.clicked.connect(self.equilibrate_fit)
+        frame_layout.addWidget(button, 0, 0)
 
         operations_layout.addWidget(frame)
 
@@ -439,9 +442,135 @@ class ParametrizationTab(QWidget):
     def equilibrate_fit(self):
         indices = self.cdata.models._get_selected_indices()
         if len(indices) != 1:
-            print("Can only equilibrate a single mesh at once.")
+            print("Can only equilibrate a single mesh at a time.")
             return -1
-        _ = self.cdata.models.data[indices[0]]
+
+        index = indices[0]
+        geometry = self.cdata._models.data[index]
+        if geometry._meta.get("fit", None) is None:
+            print(f"No parametrization associated with {index}.")
+            return -1
+
+        if not hasattr(geometry._meta.get("fit", None), "mesh"):
+            print(f"{index} is not a triangular mesh.")
+            return -1
+
+        dialog = MeshEquilibrationDialog(None)
+        if dialog.exec():
+            parameters = dialog.get_parameters()
+        else:
+            return -1
+
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "Select or Create Directory",
+            options=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
+        )
+        if not directory:
+            return -1
+
+        makedirs(directory, exist_ok=True)
+
+        mesh_base = geometry._meta.get("fit").mesh
+        edge_length = parameters.get("average_edge_length", 40)
+        lower_bound = parameters.pop("lower_bound", (1 - 0.25) * edge_length)
+        upper_bound = parameters.pop("upper_bound", (1 + 0.25) * edge_length)
+        etarget = parameters.get("scaling_lower", 1.0)
+
+        filename = f"{directory}/mesh"
+        with open(f"{filename}.txt", mode="w", encoding="utf-8") as ofile:
+            ofile.write("file\tscale_factor\toffset\n")
+
+            # Baseline without remeshing
+            scale_factor = compute_scale_factor_lower(mesh_base, lower_bound=etarget)
+            mesh_scale = scale(mesh_base, scale_factor)
+            mesh_data, offset = center_mesh(mesh_scale)
+            fname = f"{filename}_base.q"
+            write_topology_file(file_path=fname, data=mesh_data)
+            ofile.write(f"{fname}\t{scale_factor}\t{offset}\n")
+            dist_base = compute_edge_lengths(mesh_scale)
+
+            # Remeshed
+            mesh = remesh(mesh_base, edge_length, n_iter=500)
+            scale_factor = compute_scale_factor_lower(mesh, lower_bound=1.0)
+            mesh_scale = scale(mesh, scale_factor)
+            mesh_data, offset = center_mesh(mesh_scale)
+            fname = f"{filename}_remeshed.q"
+            write_topology_file(file_path=fname, data=mesh_data)
+            ofile.write(f"{fname}\t{scale_factor}\t{offset}\n")
+            dist_remesh = compute_edge_lengths(mesh_scale)
+
+            # Equilibrated
+            ret = equilibrate_edges(
+                mesh, lower_bound=lower_bound, upper_bound=upper_bound, **parameters
+            )
+            scale_factor = compute_scale_factor_lower(ret, lower_bound=etarget)
+            mesh_scale = scale(ret, scale_factor)
+            mesh_data, offset = center_mesh(mesh_scale)
+            fname = f"{filename}_equilibrated.q"
+            write_topology_file(file_path=fname, data=mesh_data)
+            ofile.write(f"{fname}\t{scale_factor}\t{offset}\n")
+            dist_equil = compute_edge_lengths(mesh_scale)
+
+            plt = pg.plot()
+            plt.setBackground(None)
+            # fg.setBackground(None)
+            # plt = fg.addPlot()
+            plt.setTitle("Edge Length Distribution")
+            plt.setLabel("left", "Frequency")
+            plt.setLabel("bottom", "Edge Lengths")
+
+            bins = np.histogram_bin_edges(
+                np.concatenate((dist_base, dist_remesh, dist_equil)), bins=150
+            )
+
+            x = (bins[:-1] + bins[1:]) / 2
+            width = (bins[1] - bins[0]) * 0.8
+
+            y_base, _ = np.histogram(dist_base, bins=bins, density=True)
+            curve1 = pg.BarGraphItem(
+                x=x,
+                height=y_base,
+                width=width,
+                pen=pg.mkPen("k", width=1),
+                brush=pg.mkBrush(31, 119, 180, 150),
+                name="Baseline",
+            )
+            plt.addItem(curve1)
+
+            y_remesh, _ = np.histogram(dist_remesh, bins=bins, density=True)
+            curve2 = pg.BarGraphItem(
+                x=x,
+                height=y_remesh,
+                y0=y_base,
+                width=width,
+                pen=pg.mkPen("k", width=1),
+                brush=pg.mkBrush(44, 160, 44, 150),
+                name="Remeshed",
+            )
+            plt.addItem(curve2)
+
+            y_equil, _ = np.histogram(dist_equil, bins=bins, density=True)
+            curve3 = pg.BarGraphItem(
+                x=x,
+                height=y_equil,
+                y0=y_remesh,
+                width=width,
+                pen=pg.mkPen("k", width=1),
+                brush=pg.mkBrush(255, 127, 14, 150),
+                name="Equilibrated",
+            )
+            plt.addItem(curve3)
+
+            legend = pg.LegendItem()
+            legend.setParentItem(plt.graphicsItem())
+            legend.addItem(curve1, "Baseline")
+            legend.addItem(curve2, "Remeshed")
+            legend.addItem(curve3, "Equilibrated")
+
+            exporter = pg.exporters.ImageExporter(plt.scene())
+            exporter.parameters()["width"] = 640
+            exporter.export(f"{filename}_edgelength_histogram.png")
 
         return -1
 
@@ -532,24 +661,4 @@ EXPORT_OPERATIONS = {
     "obj": [],
     "mrc": [],
     "xyz": [],
-}
-
-
-MESH_OPERATIONS = {
-    "Equilibrate Mesh": [
-        make_param("average_edge", 40, 0, "Average edge length of mesh."),
-        make_param("lower_bound", 35, 0, "Minimum edge length of mesh (lc1)."),
-        make_param("upper_bound", 45, 0, "Maximumg edge length of mesh (lc0)."),
-        make_param("steps", 5000, 0, "Number of minimization steps."),
-        make_param("kappa_b", 300.0, 0, "Bending energy coefficient (kappa_b)."),
-        make_param("kappa_b", 1e6, 0, "Area conservation coefficient (kappa_a)."),
-        make_param("kappa_v", 1e6, 0, "Volume conservation coefficient (kappa_v)."),
-        make_param("kappa_c", 0.0, 0, "Curvature energy coefficient (kappa_c)."),
-        make_param("kappa_t", 1e5, 0, "Edge tension coefficient (kappa_t)."),
-        make_param("kappa_r", 1e3, 0, "Surface repulsion coefficient (kappa_r)."),
-    ],
-    "Scale Mesh": [
-        make_param("lower_bound", 1.0, 0, "Lower bound for edge length."),
-        make_param("upper_bound", 1.7, 0, "Upper bound for edge length."),
-    ],
 }
