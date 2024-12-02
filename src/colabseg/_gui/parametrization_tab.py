@@ -39,7 +39,7 @@ from ..trimesh.utils import (
     center_mesh,
 )
 from ..parametrization import TriangularMesh
-from .dialog import MeshEquilibrationDialog, make_param, ParameterHandler
+from .dialog import HMFFDialog, MeshEquilibrationDialog, make_param, ParameterHandler
 
 
 class FitWorker(QThread):
@@ -199,7 +199,6 @@ class ParametrizationTab(QWidget):
 
         self.setup_trajectory_player(operations_layout)
         self.setup_equilibration_frame(operations_layout)
-        # operations_layout.addStretch()
 
         main_layout.addLayout(operations_layout)
 
@@ -213,6 +212,10 @@ class ParametrizationTab(QWidget):
         button = QPushButton("Equilibrate Mesh")
         button.clicked.connect(self.equilibrate_fit)
         frame_layout.addWidget(button, 0, 0)
+
+        button = QPushButton("Setup HMFF")
+        button.clicked.connect(self.setup_hmff)
+        frame_layout.addWidget(button, 1, 0)
 
         operations_layout.addWidget(frame)
 
@@ -547,6 +550,23 @@ class ParametrizationTab(QWidget):
             )
             plt.close()
 
+        return -1
+
+    def setup_hmff(self):
+        dialog = HMFFDialog(None)
+        if not dialog.exec():
+            return -1
+
+        parameters = dialog.get_parameters()
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "Select or Create Directory",
+            options=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
+        )
+        if not directory:
+            return -1
+
+        makedirs(directory, exist_ok=True)
         return -1
 
 
