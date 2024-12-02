@@ -9,8 +9,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QVBoxLayout,
     QSlider,
-    QMenu,
-    QFileDialog,
 )
 from PyQt6.QtGui import QPainter, QColor
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, pyqtProperty, pyqtSignal

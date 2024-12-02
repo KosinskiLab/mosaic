@@ -25,8 +25,6 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QLineEdit,
-    QFrame,
-    QGridLayout,
 )
 from PyQt6.QtGui import QDoubleValidator
 
