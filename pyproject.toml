@@ -20,6 +20,7 @@ dependencies = [
     "open3d>=0.18.0",
     "libigl==2.5.1",
     "importlib_resources",
+    "qtawesome",
 ]
 license = {text = "Proprietary"}
 classifiers = [

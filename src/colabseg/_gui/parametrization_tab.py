@@ -1,3 +1,4 @@
+import qtawesome as qta
 from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -110,11 +111,7 @@ class ParametrizationTab(QWidget):
         self.fit_selector = QComboBox()
         self.fit_selector.addItems(FIT_OPERATIONS.keys())
         fit_settings = QPushButton()
-        fit_settings.setIcon(
-            self.style().standardIcon(
-                QStyle.StandardPixmap.SP_ToolBarVerticalExtensionButton
-            )
-        )
+        fit_settings.setIcon(qta.icon("fa5s.sliders-h", opacity=0.7))
         fit_settings.setFixedSize(25, 25)
 
         self.fit_handler = ParameterHandler(
@@ -158,11 +155,7 @@ class ParametrizationTab(QWidget):
         selector = QComboBox()
         selector.addItems(SAMPLING_OPTIONS.keys())
         sampling_settings = QPushButton()
-        sampling_settings.setIcon(
-            self.style().standardIcon(
-                QStyle.StandardPixmap.SP_ToolBarVerticalExtensionButton
-            )
-        )
+        sampling_settings.setIcon(qta.icon("fa5s.sliders-h", opacity=0.7))
         sampling_settings.setFixedSize(25, 25)
         self.sampling_handler = ParameterHandler(
             SAMPLING_OPTIONS, sampling_settings, selector
@@ -236,11 +229,7 @@ class ParametrizationTab(QWidget):
         selector = QComboBox()
         selector.addItems(IMPORT_OPERATIONS.keys())
         import_settings = QPushButton()
-        import_settings.setIcon(
-            self.style().standardIcon(
-                QStyle.StandardPixmap.SP_ToolBarVerticalExtensionButton
-            )
-        )
+        import_settings.setIcon(qta.icon("fa5s.sliders-h", opacity=0.7))
         import_settings.setFixedSize(25, 25)
 
         self.import_handler = ParameterHandler(

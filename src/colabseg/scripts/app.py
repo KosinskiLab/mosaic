@@ -10,6 +10,7 @@ import enum
 from importlib_resources import files
 
 import vtk
+import qtawesome as qta
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -33,7 +34,7 @@ from PyQt6.QtGui import (
 )
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-from colabseg import ColabsegData, VolumeViewer
+from colabseg import ColabsegData, VolumeViewer, ExportManager
 from colabseg._gui import (
     ClusterSelectionTab,
     ParametrizationTab,
@@ -149,6 +150,12 @@ class App(QMainWindow):
         self.bounding_box = BoundingBoxWidget(self.renderer, self.interactor)
         self.cursor_handler = CursorModeHandler(self.vtk_widget)
 
+        self.export_manager = ExportManager(
+            self.vtk_widget,
+            self.volume_viewer,
+            self.tab_widget.findChild(ParametrizationTab),
+        )
+
     def on_key_press(self, obj, event):
         key = obj.GetKeyCode()
 
@@ -231,24 +238,63 @@ class App(QMainWindow):
         help_menu = menu_bar.addMenu("Help")
         toolbar = self.addToolBar("Main")
 
-        open_file_action = QAction("Open", self)
+        open_file_action = QAction(
+            qta.icon("fa5s.folder-open", opacity=0.7, color="gray"), "Open File", self
+        )
         open_file_action.setShortcut("Ctrl+O")
         open_file_action.triggered.connect(self.open_file)
-        save_file_action = QAction("Save", self)
+
+        save_file_action = QAction(
+            qta.icon("fa5s.save", opacity=0.7, color="gray"), "Save Session", self
+        )
         save_file_action.setShortcut("Ctrl+S")
         save_file_action.triggered.connect(self.save_file)
 
         self.keybinds_dialog = KeybindsDialog(self)
-        show_keybinds_action = QAction("Keybinds", self)
+        show_keybinds_action = QAction(
+            qta.icon("fa5s.keyboard", opacity=0.7, color="gray"), "Keybinds", self
+        )
         show_keybinds_action.setShortcut("Ctrl+H")
         show_keybinds_action.triggered.connect(self.keybinds_dialog.show)
 
+        screenshot_action = QAction(
+            qta.icon("fa5s.camera", opacity=0.7, color="gray"), "Save Screenshot", self
+        )
+        screenshot_action.setShortcut("Ctrl+P")
+        screenshot_action.triggered.connect(
+            lambda x: self.export_manager.save_screenshot()
+        )
+
+        animation_action = QAction(
+            qta.icon("fa5s.film", opacity=0.7, color="gray"), "Export Animation", self
+        )
+        animation_action.setShortcut("Ctrl+E")
+        animation_action.triggered.connect(
+            lambda x: self.export_manager.export_animation()
+        )
+
+        clipboard_action = QAction(
+            qta.icon("fa5s.clipboard", opacity=0.7, color="gray"),
+            "Save Screenshot to Clipboard",
+            self,
+        )
+        clipboard_action.setShortcut("Ctrl+Shift+C")
+        clipboard_action.triggered.connect(
+            lambda x: self.export_manager.copy_screenshot_to_clipboard()
+        )
+
         file_menu.addAction(open_file_action)
         file_menu.addAction(save_file_action)
+        file_menu.addSeparator()
+        file_menu.addAction(screenshot_action)
+        file_menu.addAction(clipboard_action)
+        file_menu.addAction(animation_action)
+
         help_menu.addAction(show_keybinds_action)
 
         toolbar.addAction(open_file_action)
         toolbar.addAction(save_file_action)
+        toolbar.addSeparator()
         toolbar.addAction(show_keybinds_action)
 
     def open_file(self):

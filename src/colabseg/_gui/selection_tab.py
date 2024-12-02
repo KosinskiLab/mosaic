@@ -1,4 +1,5 @@
 import numpy as np
+import qtawesome as qta
 from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -8,7 +9,6 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QGridLayout,
     QComboBox,
-    QStyle,
     QFileDialog,
 )
 
@@ -245,11 +245,7 @@ class ClusterSelectionTab(QWidget):
         selector = QComboBox()
         selector.addItems(IMPORT_OPERATIONS.keys())
         fit_settings = QPushButton()
-        fit_settings.setIcon(
-            self.style().standardIcon(
-                QStyle.StandardPixmap.SP_ToolBarVerticalExtensionButton
-            )
-        )
+        fit_settings.setIcon(qta.icon("fa5s.sliders-h", opacity=0.7))
         fit_settings.setFixedSize(25, 25)
 
         self.import_handler = ParameterHandler(
@@ -285,6 +281,8 @@ class ClusterSelectionTab(QWidget):
             points = import_points(filename, **parameters)
             for point in points:
                 self.cdata._data.add(points=point.astype(np.float32))
+
+        self.cdata.data.data_changed.emit()
         self.cdata.data.render()
         return 0
 
