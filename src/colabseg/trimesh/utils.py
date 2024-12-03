@@ -1,12 +1,18 @@
+import sys
 import h5py
 import textwrap
+from os import devnull
 from subprocess import run
+from platform import system
+from functools import wraps
+from contextlib import redirect_stdout, redirect_stderr
 from tempfile import NamedTemporaryFile
 
 import numpy as np
 import open3d as o3d
 from scipy.spatial import cKDTree
 from scipy.spatial.distance import pdist
+import multiprocessing as mp
 
 
 def to_open3d(vertices, faces):
@@ -36,15 +42,14 @@ def scale(mesh, scaling):
     return to_open3d(vertices, triangles)
 
 
-def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
+def _remesh(
+    vertices, triangles, target_edge_length, n_iter=100, featuredeg=30, **kwargs
+):
+    """Remesh to target edge length"""
     from pymeshlab import MeshSet, Mesh, PureValue
-
-    vertices = np.asarray(mesh.vertices)
-    triangles = np.asarray(mesh.triangles)
 
     ms = MeshSet()
     ms.add_mesh(Mesh(vertices, triangles))
-
     ms.meshing_isotropic_explicit_remeshing(
         targetlen=PureValue(target_edge_length),
         iterations=n_iter,
@@ -52,10 +57,29 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
         **kwargs,
     )
     ms.meshing_merge_close_vertices(threshold=PureValue(target_edge_length / 3))
-
     remeshed = ms.current_mesh()
-    ret = to_open3d(remeshed.vertex_matrix(), remeshed.face_matrix())
-    return ret
+    return remeshed.vertex_matrix(), remeshed.face_matrix()
+
+
+def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
+    """Remesh to target edge length
+
+    Notes
+    -----
+    On Darwin platforms this function will spawn a new process to avoid
+    instabilities from colabseg's Qt6 and pymeshlab's Qt5.
+    """
+    vertices = np.asarray(mesh.vertices)
+    triangles = np.asarray(mesh.triangles)
+
+    args = (vertices, triangles, target_edge_length, n_iter, featuredeg)
+    if system() == "Darwin":
+        with mp.Pool(1) as pool:
+            ret = pool.apply(_remesh, args=args, kwds=kwargs)
+    else:
+        ret = _remesh(*args, **kwargs)
+
+    return to_open3d(*ret)
 
 
 def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
