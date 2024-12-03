@@ -351,14 +351,19 @@ class ParametrizationTab(QWidget):
         n_digits = len(str(n_frames))
         self.frame_label.setText(f"Frame: {frame_idx:0{n_digits}d}/{n_frames}")
 
+        selected_indices = self.cdata.models._get_selected_indices()
         points, meta = self.mesh_trajectory[frame_idx]
         if self.current_geometry is None:
             index = self.cdata._models.add(points=points)
             self.current_geometry = self.cdata._models.data[index]
+            self.cdata.models.render()
 
         self.current_geometry.swap_data(points)
-        self.current_geometry._meta.update(points)
-        self.cdata.models.render()
+        self.current_geometry._meta.update(meta)
+        if selected_indices:
+            return self.cdata.models.set_selection(selected_indices)
+
+        return self.cdata.models.render_vtk()
 
     def next_frame(self):
         return self.display_frame(self.current_frame + 1)
@@ -703,6 +708,12 @@ FIT_OPERATIONS = {
             "Controls propagation of mesh curvature.",
         ),
         make_param(
+            "volume_weight",
+            0.0,
+            0.0,
+            "Controls volume pressure.",
+        ),
+        make_param(
             "hole_size",
             -1,
             -1,
@@ -719,21 +730,12 @@ FIT_OPERATIONS = {
             "smoothing_steps",
             5,
             0,
-            "Number of pre-smoothing operations.",
+            "Number of pre-smoothing steps.",
             notes="Pre-smoothing improves repair, but has little influence on "
             "final mesh topology. Consider tuning the fairing weights instead.",
         ),
     ],
-    "Hull": [
-        make_param(
-            "alpha",
-            1.0,
-            0.0,
-            "Alpha-shape parameter - Larger values emphasize coarse features.",
-        ),
-        make_param("smoothing_steps", 0, 0, "Number of smoothing operations."),
-    ],
-    "FairHull": [
+    "ConvexHull": [
         make_param(
             "alpha",
             1.0,
@@ -742,9 +744,10 @@ FIT_OPERATIONS = {
         ),
         make_param(
             "elastic_weight",
-            1.0,
+            0.0,
             0.0,
             "Controls mesh smoothness and elasticity.",
+            notes="0 - strong anchoring, 1 - no anchoring, > 1 repulsion.",
         ),
         make_param(
             "curvature_weight",
@@ -756,11 +759,11 @@ FIT_OPERATIONS = {
             "volume_weight",
             0.0,
             0.0,
-            "Controls propagation of mesh curvature.",
+            "Controls volume pressure.",
         ),
         make_param(
             "boundary_ring",
-            1,
+            0,
             0,
             "Also optimize n-ring of boundary vertices.",
             notes="This is useful for large structures with ill-defined boundaries.",
@@ -768,6 +771,7 @@ FIT_OPERATIONS = {
     ],
     "RBF": [make_param("direction", "xy", ["xy", "xz", "yz"], "Plane to fit RBF in.")],
 }
+
 
 EXPORT_OPERATIONS = {
     "txt": [],

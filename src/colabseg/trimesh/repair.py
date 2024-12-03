@@ -462,6 +462,7 @@ def triangulate_refine_fair(
     density_factor=np.sqrt(2),
     alpha=0.05,
     beta=0.0,
+    gamma=0,
 ):
     """
     Fill and fair holes in triangular meshes.
@@ -482,6 +483,8 @@ def triangulate_refine_fair(
         Weight for membrane energy. Default is 0.05.
     beta : float, optional
         Weight for curvature energy. Default is 0.
+    gamma : float, optional
+        Volume pressure. Default is 0.
 
     Returns
     -------
@@ -500,5 +503,5 @@ def triangulate_refine_fair(
     add_vids = np.arange(nv, len(out_vs))
 
     # Fair selected parts of the mesh
-    out_vs = fair_mesh(out_vs, out_fs, add_vids, alpha=alpha, beta=beta)
+    out_vs = fair_mesh(out_vs, out_fs, add_vids, alpha=alpha, beta=beta, gamma=gamma)
     return out_vs, out_fs

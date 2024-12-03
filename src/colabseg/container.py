@@ -20,7 +20,7 @@ from .utils import (
 )
 from .geometry import Geometry
 from .trimesh.utils import com_cluster_points, find_closest_points
-from .parametrization import Hull
+from .parametrization import ConvexHull
 
 
 def apply_over_indices(func: Callable) -> Callable:
@@ -250,7 +250,9 @@ class DataContainer:
         if method == "core":
             points = com_cluster_points(points, cutoff)
         elif method == "outer":
-            hull = Hull.fit(points)
+            hull = ConvexHull.fit(
+                points, elastic_weight=0, curvature_weight=0, volume_weight=0
+            )
             hull_points = hull.sample(int(0.5 * points.shape[0]))
             _, indices = find_closest_points(points, hull_points)
             points = points[np.unique(indices)]

@@ -15,7 +15,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import open3d as o3d
-from scipy.spatial import ConvexHull
+from scipy.spatial import ConvexHull as scConvexHull
 from scipy import optimize, interpolate
 
 from .trimesh import (
@@ -24,7 +24,7 @@ from .trimesh import (
     fair_mesh,
     remesh,
 )
-from .trimesh.utils import find_closest_points
+from .trimesh.utils import find_closest_points, to_open3d
 from .trimesh.repair import get_ring_vertices
 
 
@@ -46,7 +46,7 @@ def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.
 def _sample_from_chull(
     positions_xyz: np.ndarray, n_samples: int, mesh_init_factor: int = None
 ) -> np.ndarray:
-    hull = ConvexHull(positions_xyz)
+    hull = scConvexHull(positions_xyz)
     mesh = o3d.geometry.TriangleMesh()
     mesh.vertices = o3d.utility.Vector3dVector(positions_xyz[hull.vertices])
     mesh.triangles = o3d.utility.Vector3iVector(hull.simplices)
@@ -214,7 +214,9 @@ class Sphere(Parametrization):
         return positions_xyz
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        return (points - self.center) / self.radius
+        normals = (points - self.center) / self.radius
+        normals /= np.linalg.norm(normals, axis=1)[:, None]
+        return normals
 
     def points_per_sampling(self, sampling_density: float) -> int:
         n_points = np.multiply(
@@ -361,12 +363,6 @@ class Ellipsoid(Parametrization):
 
         return positions_xyz
 
-    def _compute_residual(self, points: np.ndarray) -> float:
-        points = (points - self.center) @ self.orientations
-        points = np.divide(points, self.radii)
-
-        return 1 - np.linalg.norm(points, axis=1)
-
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
         norm_points = (points - self.center).dot(np.linalg.inv(self.orientations.T))
         normals = np.divide(np.multiply(norm_points, 2), np.square(self.radii))
@@ -439,13 +435,10 @@ class Cylinder(Parametrization):
         def cylinder_loss(params, data_points, orientations):
             radii, center = params[0], params[1:]
             transformed_points = np.dot(data_points - center, orientations)
-
             normalized_points = transformed_points / radii
 
             distances = np.sum(normalized_points**2, axis=1) - 1
-
-            loss = np.sum(distances**2)
-            return loss
+            return np.sum(distances**2)
 
         result = optimize.minimize(
             cylinder_loss,
@@ -580,7 +573,7 @@ class RBF(Parametrization):
         Returns
         -------
         RBF
-            Class instance with fitted parameters.
+            Parametrization instance.
         """
         n_positions = positions.shape[0] // 50
         positions = positions[::n_positions]
@@ -684,6 +677,7 @@ class TriangularMesh(Parametrization):
         downsample_input: bool = True,
         elastic_weight: float = 1.0,
         curvature_weight: float = 0.0,
+        volume_weight: float = 0.0,
         n_smoothing: int = 5,
         **kwargs,
     ):
@@ -743,6 +737,7 @@ class TriangularMesh(Parametrization):
             hole_len_thr=max_hole_size,
             alpha=elastic_weight,
             beta=curvature_weight,
+            gamma=volume_weight,
         )
         mesh = o3d.geometry.TriangleMesh()
         mesh.vertices = o3d.utility.Vector3dVector(new_vs.astype(np.float64))
@@ -791,7 +786,7 @@ class TriangularMesh(Parametrization):
         return int(n_points)
 
 
-class Hull(TriangularMesh):
+class ConvexHull(TriangularMesh):
     """
     Represent a point cloud as triangular mesh.
 
@@ -805,12 +800,16 @@ class Hull(TriangularMesh):
     def fit(
         cls,
         positions: np.ndarray,
-        voxel_size: float = 10,
+        voxel_size: float = None,
         alpha: float = 1,
-        smoothing_steps: int = 0,
+        elastic_weight: float = 0,
+        curvature_weight: float = 0,
+        volume_weight: float = 0,
+        boundary_ring: int = 0,
         **kwargs,
     ):
         voxel_size = 1 if voxel_size is None else voxel_size
+        voxel_size = np.max(voxel_size)
 
         # Surface reconstruction normal estimation
         positions = np.asarray(positions, dtype=np.float64)
@@ -845,54 +844,10 @@ class Hull(TriangularMesh):
         mesh = mesh.compute_convex_hull()
         mesh = mesh.to_legacy()
 
-        if smoothing_steps > 0:
-            from .trimesh import fair, remesh
-
-            mesh = remesh(mesh, 12 * voxel_size)
-            mesh = fair(mesh, n_iter=int(smoothing_steps))
-
-        return cls(mesh=mesh)
-
-
-class FairHull(Hull):
-    """
-    Represent a point cloud as triangular mesh.
-
-    Parameters
-    ----------
-    mesh : open3d.cpu.pybind.geometry.TriangleMesh
-        Triangular mesh.
-    """
-
-    @classmethod
-    def fit(
-        cls,
-        positions: np.ndarray,
-        voxel_size: float = 10,
-        alpha: float = 1,
-        elastic_weight=0,
-        curvature_weight=0,
-        volume_weight=0,
-        boundary_ring: int = 1,
-        **kwargs,
-    ):
-        voxel_size = 1 if voxel_size is None else voxel_size
-
-        voxel_size = np.max(voxel_size)
-        mesh = (
-            super()
-            .fit(
-                positions=positions,
-                voxel_size=voxel_size,
-                alpha=alpha,
-                smoothing_steps=0,
-            )
-            .mesh
-        )
-
-        if elastic_weight == 0 and curvature_weight == 0:
+        if elastic_weight == curvature_weight == volume_weight == 0:
             return cls(mesh=mesh)
 
+        # Fair vertices that are distant to input points
         mesh = remesh(mesh, 12 * voxel_size)
         vs, fs = np.asarray(mesh.vertices), np.asarray(mesh.triangles)
         distances, indices = find_closest_points(positions, vs)
@@ -909,10 +864,7 @@ class FairHull(Hull):
             gamma=volume_weight,
         )
 
-        mesh = o3d.geometry.TriangleMesh()
-        mesh.vertices = o3d.utility.Vector3dVector(out_vs.astype(np.float64))
-        mesh.triangles = o3d.utility.Vector3iVector(fs.astype(np.int32))
-        return cls(mesh=mesh)
+        return cls(mesh=to_open3d(out_vs, fs))
 
 
 PARAMETRIZATION_TYPE = {
@@ -921,6 +873,5 @@ PARAMETRIZATION_TYPE = {
     "cylinder": Cylinder,
     "mesh": TriangularMesh,
     "rbf": RBF,
-    "hull": Hull,
-    "fairhull": FairHull,
+    "convexhull": ConvexHull,
 }

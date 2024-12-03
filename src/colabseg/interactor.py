@@ -95,20 +95,8 @@ class LinkedDataContainerInteractor(QObject):
 
     def _on_cluster_selection_changed(self):
         selected_indices = self._get_selected_indices()
-        self.set_selection(selected_indices)
+        self.interactor.set_selection(selected_indices)
         self.selectionChanged.emit()
-
-    def set_selection(self, selected_indices):
-        selection = QItemSelection()
-        for index in selected_indices:
-            index = self.interactor.data_list.model().index(index, 0)
-            selection.select(index, index)
-
-        selection_model_flag = QItemSelectionModel.SelectionFlag
-        self.interactor.data_list.selectionModel().select(
-            selection, selection_model_flag.Clear | selection_model_flag.Select
-        )
-        self.interactor.vtk_widget.GetRenderWindow().Render()
 
     def _get_selected_indices(self):
         return [item.row() for item in self.data_list.selectedIndexes()]
@@ -205,6 +193,18 @@ class DataContainerInteractor(QObject):
                 active_clusters = [new_cluster]
 
             self._active_cluster = active_clusters[0]
+
+    def set_selection(self, selected_indices):
+        selection = QItemSelection()
+        for index in selected_indices:
+            index = self.data_list.model().index(index, 0)
+            selection.select(index, index)
+
+        selection_model_flag = QItemSelectionModel.SelectionFlag
+        self.data_list.selectionModel().select(
+            selection, selection_model_flag.Clear | selection_model_flag.Select
+        )
+        self._on_cluster_selection_changed()
 
     def _on_cluster_selection_changed(self):
         selected_indices = set(self._get_selected_indices())
@@ -455,6 +455,9 @@ class DataContainerInteractor(QObject):
                 item.setForeground(self.invisible_color)
             self.data_list.addItem(item)
 
+        return self.render_vtk()
+
+    def render_vtk(self):
         self.vtk_widget.GetRenderWindow().Render()
 
     def deselect(self):
