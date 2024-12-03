@@ -4,10 +4,17 @@
 
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
+import textwrap
 from os import makedirs
+from os.path import exists, join
 
+import numpy as np
 import qtawesome as qta
 import matplotlib.pyplot as plt
+from tme import Density
+from tme.preprocessing import BandPassFilter
+from PyQt6.QtGui import QDoubleValidator
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QLocale
 from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -23,9 +30,8 @@ from PyQt6.QtWidgets import (
     QStyle,
     QSlider,
     QLabel,
+    QMessageBox,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
-
 
 from .widgets import ProgressButton
 from ..io import load_mesh_trajectory, write_topology_file
@@ -182,6 +188,11 @@ class ParametrizationTab(QWidget):
         self.sampling_rate_input = QLineEdit()
         self.sampling_rate_input.setFixedSize(75, 25)
         self.sampling_rate_input.setPlaceholderText("1000")
+        validator = QDoubleValidator()
+        validator.setLocale(QLocale.c())
+        validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+        validator.setBottom(0)
+        self.sampling_rate_input.setValidator(validator)
 
         frame_layout.addWidget(sample_button, 0, 0)
         frame_layout.addWidget(self.sampling_rate_input, 0, 1)
@@ -298,6 +309,22 @@ class ParametrizationTab(QWidget):
         self.current_geometry = None
         self.mesh_trajectory = load_mesh_trajectory(directory)
 
+        parameters = self.import_handler.get("Import Points", {})
+        scale = parameters.get("scale", 1)
+        offset = parameters.get("offset", 0)
+
+        for index in range(len(self.mesh_trajectory)):
+            faces = self.mesh_trajectory[index][1].astype(int)
+            points = (self.mesh_trajectory[index][0] - offset) / scale
+            fit = TriangularMesh(to_open3d(points, faces))
+            meta = {
+                "points": points,
+                "faces": faces,
+                "fit": fit,
+                "normal": fit.compute_normal(points),
+            }
+            self.mesh_trajectory[index] = (points, meta)
+
         if len(self.mesh_trajectory) == 0:
             return -1
 
@@ -320,31 +347,17 @@ class ParametrizationTab(QWidget):
         self.current_frame = frame_idx
         self.frame_slider.setValue(self.current_frame)
 
-        parameters = self.import_handler.get("Import Points", {})
-        scale = parameters.get("scale", 1)
-        offset = parameters.get("offset", 0)
-
         n_frames = len(self.mesh_trajectory) - 1
         n_digits = len(str(n_frames))
         self.frame_label.setText(f"Frame: {frame_idx:0{n_digits}d}/{n_frames}")
 
-        faces = self.mesh_trajectory[frame_idx][1].astype(int)
-        points = (self.mesh_trajectory[frame_idx][0] - offset) / scale
-
+        points, meta = self.mesh_trajectory[frame_idx]
         if self.current_geometry is None:
             index = self.cdata._models.add(points=points)
             self.current_geometry = self.cdata._models.data[index]
 
-        fit = TriangularMesh(to_open3d(points, faces))
-        meta = {
-            "points": points,
-            "faces": faces,
-            "fit": fit,
-            "normal": fit.compute_normal(points),
-        }
-
         self.current_geometry.swap_data(points)
-        self.current_geometry._meta.update(meta)
+        self.current_geometry._meta.update(points)
         self.cdata.models.render()
 
     def next_frame(self):
@@ -399,10 +412,6 @@ class ParametrizationTab(QWidget):
         parameters = self.sampling_handler.get("Options", {})
         sampling_method = parameters.get("Sampling Method", "N points")
         return self.cdata.sample_fit(sampling=sampling, method=sampling_method)
-        # return self.cdata.models.sample_cluster(
-        #     sampling=sampling,
-        #     method=sampling_method,
-        # )
 
     def crop_fit(self, *args, **kwargs):
         return self.cdata.models.crop_cluster(*args, **kwargs)
@@ -553,21 +562,126 @@ class ParametrizationTab(QWidget):
         return -1
 
     def setup_hmff(self):
-        dialog = HMFFDialog(None)
-        if not dialog.exec():
-            return -1
-
-        parameters = dialog.get_parameters()
         directory = QFileDialog.getExistingDirectory(
             self,
-            "Select or Create Directory",
+            "Select directory with equilibrated meshes.",
             options=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
         )
         if not directory:
             return -1
 
-        makedirs(directory, exist_ok=True)
-        return -1
+        mesh_config = join(directory, "mesh.txt")
+        if not exists(mesh_config):
+            print(
+                f"Missing mesh_config at {mesh_config}. Most likely {directory} "
+                "is not a valid directory created by Equilibrate Mesh."
+            )
+            return -1
+
+        with open(mesh_config, mode="r", encoding="utf-8") as infile:
+            data = [x.strip() for x in infile.read().split("\n")]
+            data = [x.split("\t") for x in data if len(x)]
+
+        headers = data.pop(0)
+        ret = {header: list(column) for header, column in zip(headers, zip(*data))}
+
+        if not all(t in ret.keys() for t in ("file", "scale_factor", "offset")):
+            print(
+                "mesh_config is malformated. Expected file, scale_factor, "
+                f"offset columns, got {', '.join(list(ret.keys()))}."
+            )
+            return -1
+
+        dialog = HMFFDialog(None, mesh_options=ret["file"])
+        if not dialog.exec():
+            return -1
+
+        p = dialog.get_parameters()
+
+        mesh_index = ret["file"].index(p["mesh"])
+        mesh_offset = -float(ret["offset"][mesh_index])
+        mesh_scale = ret["scale_factor"][mesh_index]
+
+        data = Density.from_file(p["volume_path"])
+        if np.allclose(data.sampling_rate, 1):
+            print(
+                f"Sampling of {p['volume_path']} is 1 along all axes."
+                "If thats not intended, please adapt the respective files."
+            )
+
+        sampling, origin = data.sampling_rate, data.origin
+        bpf = BandPassFilter(
+            lowpass=p["lowpass_cutoff"],
+            highpass=p["highpass_cutoff"],
+            sampling_rate=np.max(sampling),
+            use_gaussian=True,
+            shape_is_real_fourier=True,
+            return_real_fourier=True,
+        )
+        template_ft = np.fft.rfftn(data.data, s=data.shape)
+
+        mask = bpf(shape=template_ft.shape)["data"]
+        np.multiply(template_ft, mask, out=template_ft)
+        data = np.fft.irfftn(template_ft, s=data.shape).real
+
+        dpath = join(directory, "density.mrc")
+        Density(data, origin=origin, sampling_rate=sampling).to_file(dpath)
+
+        integrator = "MetropolisAlgorithm"
+        if p["threads"] != 1:
+            integrator = "MetropolisAlgorithmOpenMP"
+        dts_config = textwrap.dedent(
+            f"""
+            EnergyMethod             = FreeDTS1.0_MDFF {p['volume_path']} {p['xi']} 0 \
+            {mesh_scale} {mesh_offset} {int(p['invert_contrast'])} \
+            {p['gradient_step_size']}
+            Integrator_Type          = MC_Simulation
+            VertexPositionIntegrator = {integrator} 1 1 0.05
+            AlexanderMove            = {integrator} 1
+            InclusionPoseIntegrator  = MetropolisAlgorithm 1 1
+            VisualizationFormat      = VTUFileFormat VTU_F 100
+            NonbinaryTrajectory      = TSI TrajTSI 1000
+            Kappa                    = {p['kappa']} 0 0
+            Temperature              = 1 0
+            Set_Steps                = 1 5000
+            Min_Max_Lenghts          = 1 8
+            TimeSeriesData_Period    = 100
+            VolumeCoupling           = No SecondOrder 0.0 10000 0.7
+            GlobalCurvatureCoupling  = No HarmonicPotential 180 0.3
+            TotalAreaCoupling        = No HarmonicPotential 1000 0.34
+            Box_Centering_F          = 0
+        """
+        )
+
+        dts_config_path = join(directory, "input.dts")
+        with open(dts_config_path, mode="w", encoding="utf-8") as ofile:
+            ofile.write(dts_config.strip() + "\n")
+
+        topol_path = join(directory, "topol.top")
+        with open(topol_path, mode="w", encoding="utf-8") as ofile:
+            ofile.write(f"{p['mesh']} 1\n")
+
+        run_config = textwrap.dedent(
+            f"""
+            #!/bin/bash
+            rm -rf VTU_F TrajTSI
+            mkdir -p  {directory}/TrajTSI
+            ln -s {p['mesh']} {directory}/TrajTSI/dts0.tsi
+
+            DTS -in {dts_config_path} \\
+                -top {topol_path} \\
+                -e {p['steps']} \\
+                -nt {p['threads']} \\
+                -seed 76532
+        """
+        )
+
+        with open(join(directory, "run.sh"), mode="w", encoding="utf-8") as ofile:
+            ofile.write(run_config.strip() + "\n")
+
+        QMessageBox.information(self, "Success", "HMFF directory setup successfully.")
+
+        return 0
 
 
 FIT_OPERATIONS = {
@@ -643,6 +757,13 @@ FIT_OPERATIONS = {
             0.0,
             0.0,
             "Controls propagation of mesh curvature.",
+        ),
+        make_param(
+            "boundary_ring",
+            1,
+            0,
+            "Also optimize n-ring of boundary vertices.",
+            notes="This is useful for large structures with ill-defined boundaries.",
         ),
     ],
     "RBF": [make_param("direction", "xy", ["xy", "xz", "yz"], "Plane to fit RBF in.")],

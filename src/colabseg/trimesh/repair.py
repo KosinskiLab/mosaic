@@ -1,3 +1,15 @@
+""" Utilities for repair of triangular meshes.
+
+    Hole filling and Leipa triangulation were adapted from
+    https://github.com/kentechx/hole-filling and are distributed under
+    MIT license. This origin is indicated as reference for the
+    respective functions.
+
+    Copyright (c) 2024 European Molecular Biology Laboratory
+
+    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
+
 from typing import Tuple
 
 import igl
@@ -186,49 +198,29 @@ def _create_weights(size, indices, weight):
     return scipy.sparse.diags(ret)
 
 
-def get_ring1_vertices(V, F, query_vertices):
+def get_ring_vertices(V, F, query_vertices, n=1):
     """
-    Find ring-1 vertices for given vertices in a mesh.
-
+    Find n-ring vertices for given vertices in a mesh.
     Args:
         V: #V by 3 vertices array
         F: #F by 3 faces array
         query_vertices: list/array of vertex indices
-
+        n: integer specifying the number of rings (default=1)
     Returns:
-        ring1_vertices: set of vertex indices that are one-ring neighbors
+        ring_vertices: set of vertex indices up to n rings away
     """
-    # Get vertex-vertex adjacency matrix
-    A = igl.adjacency_matrix(F)
-
     vertex_set = set(query_vertices)
-    for v in query_vertices:
-        neighbors = A.getrow(v).indices
-        vertex_set.update(neighbors)
+    if n < 1:
+        return vertex_set
 
-    return vertex_set
-
-
-def get_ring2_vertices(V, F, query_vertices):
-    """
-    Find ring-2 vertices for given vertices in a mesh.
-    Args:
-        V: #V by 3 vertices array
-        F: #F by 3 faces array
-        query_vertices: list/array of vertex indices
-    Returns:
-        ring2_vertices: set of vertex indices up to two rings away
-    """
     A = igl.adjacency_matrix(F)
-    vertex_set = set(query_vertices)
-
-    ring1 = set()
-    for v in query_vertices:
-        ring1.update(A.getrow(v).indices)
-    vertex_set.update(ring1)
-
-    for v in ring1:
-        vertex_set.update(A.getrow(v).indices)
+    current_ring = set(query_vertices)
+    for i in range(n):
+        next_ring = set()
+        for v in current_ring:
+            next_ring.update(A.getrow(v).indices)
+        vertex_set.update(next_ring)
+        current_ring = next_ring
 
     return vertex_set
 
@@ -241,13 +233,6 @@ def harmonic_deformation(vs, fs, vids, k=2):
     target_positions = vs[fixed_vertices]
     out_vs = igl.harmonic(vs, fs, fixed_vertices, target_positions, k)
     return np.ascontiguousarray(out_vs)
-
-
-def compute_vertex_normals(vs, fs):
-    """
-    Compute per-vertex normals weighted by face areas
-    """
-    return igl.per_vertex_normals(vs, fs)
 
 
 def fair_mesh(
@@ -272,7 +257,9 @@ def fair_mesh(
     alpha : float
         k2 polyharmonic weighting factor.
     beta : float
-        k4 polyharmonic weighting factor.
+        k3 polyharmonic weighting factor.
+    gamma : float
+        Internal mesh pressure.
     """
     bbox = vs.max(axis=0) - vs.min(axis=0)
     mesh_scale = np.linalg.norm(bbox)
@@ -300,7 +287,7 @@ def fair_mesh(
     Q2 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)
     Q4 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 3)
 
-    normals = compute_vertex_normals(vs, fs)
+    normals = igl.per_vertex_normals(vs, fs)
 
     displacement = M - a * M
     B = displacement @ vs + gamma * normals
@@ -340,29 +327,18 @@ def _robust_laplacian(
     M = igl.massmatrix_intrinsic(lin, fin, igl.MASSMATRIX_TYPE_VORONOI)
 
     if weighting_method == "MEAN_CURVATURE":
-        W = compute_mean_curvature_weights(vs, fs, L, M)
+        M_inv = scipy.sparse.diags(1.0 / M.diagonal())
+        Hn = -M_inv @ (L @ vs)
+
+        # Mean curvature magnitude
+        W = scipy.sparse.diags(1.0 + np.linalg.norm(Hn, axis=1))
         M = M @ W
     elif weighting_method == "GAUSSIAN_CURVATURE":
-        W = compute_gaussian_curvature_weights(vs, fs)
+        K = igl.gaussian_curvature(vs, fs)
+        W = scipy.sparse.diags(1.0 + np.abs(K))
         M = M @ W
 
     return L, M
-
-
-def compute_mean_curvature_weights(vs, fs, L, M):
-    """Compute weights based on mean curvature magnitude"""
-    # Mean curvature normal = -LV/M
-    M_inv = scipy.sparse.diags(1.0 / M.diagonal())
-    Hn = -M_inv @ (L @ vs)  # Mean curvature normal
-    H = np.linalg.norm(Hn, axis=1)  # Mean curvature magnitude
-    return scipy.sparse.diags(1.0 + H)
-
-
-def compute_gaussian_curvature_weights(vs, fs):
-    """Compute weights based on absolute gaussian curvature"""
-    K = igl.gaussian_curvature(vs, fs)
-    K = np.abs(K)  # Use magnitude of gaussian curvature
-    return scipy.sparse.diags(1.0 + K)
 
 
 def _triangulation_refine_leipa(

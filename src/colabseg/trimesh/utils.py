@@ -1,11 +1,13 @@
-import sys
+""" Utilities for triangular meshes.
+
+    Copyright (c) 2024 European Molecular Biology Laboratory
+
+    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
 import h5py
 import textwrap
-from os import devnull
 from subprocess import run
 from platform import system
-from functools import wraps
-from contextlib import redirect_stdout, redirect_stderr
 from tempfile import NamedTemporaryFile
 
 import numpy as np

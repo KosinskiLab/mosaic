@@ -23,10 +23,9 @@ from .trimesh import (
     com_cluster_points,
     fair_mesh,
     remesh,
-    harmonic_deformation,
 )
 from .trimesh.utils import find_closest_points
-from .trimesh.repair import get_ring1_vertices
+from .trimesh.repair import get_ring_vertices
 
 
 def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.ndarray:
@@ -874,6 +873,7 @@ class FairHull(Hull):
         elastic_weight=0,
         curvature_weight=0,
         volume_weight=0,
+        boundary_ring: int = 1,
         **kwargs,
     ):
         voxel_size = 1 if voxel_size is None else voxel_size
@@ -898,19 +898,16 @@ class FairHull(Hull):
         distances, indices = find_closest_points(positions, vs)
 
         vids = np.where(distances > 6 * voxel_size)[0]
-        vids = np.asarray(list(get_ring1_vertices(vs, fs, vids)))
+        vids = np.asarray(list(get_ring_vertices(vs, fs, vids, boundary_ring)))
 
-        if curvature_weight != 0:
-            out_vs = fair_mesh(
-                vs,
-                fs,
-                vids=vids,
-                alpha=elastic_weight,
-                beta=curvature_weight,
-                gamma=volume_weight,
-            )
-        else:
-            out_vs = harmonic_deformation(vs, fs, vids, 2)
+        out_vs = fair_mesh(
+            vs,
+            fs,
+            vids=vids,
+            alpha=elastic_weight,
+            beta=curvature_weight,
+            gamma=volume_weight,
+        )
 
         mesh = o3d.geometry.TriangleMesh()
         mesh.vertices = o3d.utility.Vector3dVector(out_vs.astype(np.float64))

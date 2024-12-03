@@ -134,7 +134,7 @@ class OperationDialog(QDialog):
                 widget.setText(str(value))
             else:
                 widget = QSpinBox()
-                widget.setMinimum(min_value)
+                widget.setMinimum(int(min_value))
                 widget.setMaximum(2147483647)
                 widget.setValue(value)
 
@@ -297,8 +297,9 @@ class MeshEquilibrationDialog(OperationDialog):
 
 
 class HMFFDialog(OperationDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, mesh_options=[""]):
         self._operations = [
+            make_param("mesh", mesh_options[0], mesh_options, "Mesh to simulate."),
             make_param("volume_path", 0.0, "", "Path to HMFF potential file."),
             make_param(
                 "lowpass_cutoff", 140.0, 0.0, "Resolution to lowpass filter to [Å]."
@@ -312,13 +313,16 @@ class HMFFDialog(OperationDialog):
                 [False, True],
                 "Invert data, i.e. switch from Black-White to White-Black contrast.",
             ),
-            make_param("Xi", 5.0, 0.0, "Weighting factor of HMFF potential."),
+            make_param("xi", 5.0, 0.0, "Weighting factor of HMFF potential."),
             make_param(
                 "gradient_step_size",
                 0.0,
                 0.0,
                 "Gradient step size along HMFF potential.",
             ),
+            make_param("kappa", 25.0, 0.0, "Membrane rigidity."),
+            make_param("steps", 50000, 0.0, "Simulation steps."),
+            make_param("threads", 1, 0, "Simulation threads."),
         ]
         super().__init__("Setup HMFF", self._operations, parent)
         self.setup_custom_ui()
@@ -337,8 +341,13 @@ class HMFFDialog(OperationDialog):
         volume_layout.addWidget(self.volume_input)
         volume_layout.addWidget(self.select_volume_button)
 
-        self.params_layout.removeRow(0)
-        self.params_layout.insertRow(0, label, volume_layout)
+        row_index = 0
+        for i, k in enumerate(self._operations):
+            if k[0] == "volume_path":
+                row_index = i
+
+        self.params_layout.removeRow(row_index)
+        self.params_layout.insertRow(row_index, label, volume_layout)
 
         self.lowpass_input = self.parameter_widgets["lowpass_cutoff"]
         self.highpass_input = self.parameter_widgets["highpass_cutoff"]
