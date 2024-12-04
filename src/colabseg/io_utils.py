@@ -44,7 +44,7 @@ class VertexDataLoader:
 
 def read_star(filename):
     data = Orientations.from_file(filename)
-    ret = [data.translations]
+    ret = [data.translations[:, ::-1]]
     shape = compute_bounding_box(ret)
     return ret, shape, (1, 1, 1)
 
@@ -120,8 +120,8 @@ class OrientationsWriter:
     def _to_txt(self, file_path):
         rotations = Rotation.from_euler(angles=self.rotations, seq="zyz", degrees=True)
         orientations = Orientations(
-            translations=self.points,
-            rotations=rotations.as_euler(seq="zyx", degrees=True),
+            translations=self.points[:, ::-1],
+            rotations=rotations.as_euler(seq="zyx", degrees=True)[:, ::-1],
             scores=np.zeros(self.rotations.shape[0]),
             details=self.entities,
         )

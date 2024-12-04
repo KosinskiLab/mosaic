@@ -146,7 +146,7 @@ class VolumeViewer(QWidget):
 
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getOpenFileName(self, "Open Tomogram")
-        if file_path is None:
+        if not file_path:
             return -1
 
         try:

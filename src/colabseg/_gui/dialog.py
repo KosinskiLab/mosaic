@@ -484,8 +484,12 @@ class DistanceAnalysisDialog(QDialog):
         target_group = QGroupBox("Select Target Clusters")
         target_layout = QVBoxLayout()
 
+        self.exclude_self_checkbox = QCheckBox("Exclude within-cluster distances")
+        self.exclude_self_checkbox.setChecked(True)
+
         self.all_targets_checkbox = QCheckBox("Compare with all other clusters")
         self.all_targets_checkbox.stateChanged.connect(self.toggle_target_list)
+        target_layout.addWidget(self.exclude_self_checkbox)
         target_layout.addWidget(self.all_targets_checkbox)
 
         self.target_list = QListWidget()
@@ -542,6 +546,15 @@ class DistanceAnalysisDialog(QDialog):
         alpha_layout.addWidget(self.alpha_value)
         self.alpha_value.valueChanged.connect(self._update_plot)
 
+        neighbor_layout = QHBoxLayout()
+        neighbor_label = QLabel("k-Nearest Neighbor:")
+        self.neighbor_value = QSpinBox()
+        self.neighbor_value.setRange(1, 255)
+        self.neighbor_value.setValue(1)
+        neighbor_layout.addWidget(neighbor_label)
+        neighbor_layout.addWidget(self.neighbor_value)
+
+        strat_layout.addLayout(neighbor_layout)
         strat_layout.addLayout(strat_attr_layout)
         strat_layout.addLayout(palette_layout)
         strat_layout.addLayout(alpha_layout)
@@ -591,8 +604,11 @@ class DistanceAnalysisDialog(QDialog):
             return -1
 
         ret = []
+        k = int(self.neighbor_value.value())
         for source in sources:
             temp = [x for x in targets if x.text() != source.text()]
+            if not self.exclude_self_checkbox.isChecked():
+                temp = [x for x in targets]
 
             source = source.data(Qt.ItemDataRole.UserRole)
             target_data, bins = [], []
@@ -601,8 +617,15 @@ class DistanceAnalysisDialog(QDialog):
                 target_data.append(xdata)
                 bins.append(xdata.shape[0])
 
+            if not len(target_data):
+                return -1
+
             target_data = np.concatenate(target_data)
-            distances, indices = find_closest_points(target_data, source, k=1)
+            distances, indices = find_closest_points(target_data, source, k=k)
+            if k > 1:
+                k_index = k - 1
+                distances, indices = distances[:, k_index], indices[:, k_index]
+
             bins = np.cumsum(bins)
             clusters = np.digitize(indices, bins)
             ret.append((distances, clusters))

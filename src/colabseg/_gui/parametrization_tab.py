@@ -441,19 +441,6 @@ class ParametrizationTab(QWidget):
         self.cdata.data.render()
         return None
 
-    def export_fit(self):
-        file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getSaveFileName(self, "Save File")
-        if not file_path:
-            return -1
-
-        method = self.export_format.currentText()
-        parameters = self.export_handler.get(method, {})
-
-        return self.cdata.export_fit(
-            file_path=file_path, file_format=method, **parameters
-        )
-
     def equilibrate_fit(self):
         indices = self.cdata.models._get_selected_indices()
         if len(indices) != 1:
