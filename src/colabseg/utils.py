@@ -5,10 +5,13 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 import warnings
+from typing import List
+
 import numpy as np
 import open3d as o3d
 from scipy import spatial
 from skimage import measure
+from scipy.spatial import cKDTree
 
 
 def points_to_volume(points, sampling_rate=1, shape=None, weight=1, out=None):
@@ -204,3 +207,52 @@ def statistical_outlier_removal(points, k_neighbors=100, thresh=0.2):
 
     cl, ind = pcd.remove_statistical_outlier(nb_neighbors=k_neighbors, std_ratio=thresh)
     return np.asarray(cl.points)
+
+
+def find_closest_points(positions1, positions2, k=1):
+    positions1, positions2 = np.asarray(positions1), np.asarray(positions2)
+
+    tree = cKDTree(positions1)
+    return tree.query(positions2, k=k)
+
+
+def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
+    if not isinstance(positions, np.ndarray):
+        positions = np.array(positions)
+
+    if isinstance(cutoff, np.ndarray):
+        cutoff = np.max(cutoff)
+
+    tree = cKDTree(positions)
+    n_points = len(positions)
+    unassigned = np.ones(n_points, dtype=bool)
+    clusters = []
+
+    unassigned_indices = np.where(unassigned)[0]
+    while np.any(unassigned):
+        seed_idx = np.random.choice(unassigned_indices)
+
+        cluster_indices = tree.query_ball_point(positions[seed_idx], cutoff)
+        cluster_indices = np.array([idx for idx in cluster_indices if unassigned[idx]])
+
+        if len(cluster_indices) > 0:
+            cluster_center = np.mean(positions[cluster_indices], axis=0)
+            clusters.append(cluster_center)
+            unassigned[cluster_indices] = False
+            unassigned_indices = np.where(unassigned)[0]
+
+    return np.array(clusters)
+
+
+def compute_bounding_box(points: List[np.ndarray]) -> List[float]:
+    if len(points) == 0:
+        return (0, 0, 0)
+    starts = points[0].min(axis=0)
+    stops = points[0].max(axis=0)
+    for point in points[1:]:
+        starts_inner = point.min(axis=0)
+        stops_inner = point.max(axis=0)
+        starts = np.minimum(starts, starts_inner)
+        stops = np.maximum(stops, stops_inner)
+
+    return stops - starts

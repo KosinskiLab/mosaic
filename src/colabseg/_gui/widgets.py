@@ -82,6 +82,7 @@ class ProgressButton(QPushButton):
         self._original_text = text
         self._fade_opacity = 1.0
 
+        # Re-clicking the progress button should allow cancelling the operation
         self._cancel_button = QPushButton(parent=self)
         self._cancel_button.setStyleSheet(
             """
@@ -139,7 +140,6 @@ class ProgressButton(QPushButton):
             QTimer.singleShot(200, self._exit)
 
     def _handle_cancel_click(self):
-        print("click")
         if self._is_progressing:
             self.cancel.emit()
             self._exit()

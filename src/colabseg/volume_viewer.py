@@ -21,7 +21,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from vtkmodules.util import numpy_support
 from matplotlib.pyplot import get_cmap
 
-from .io import load_density
+from .io_utils import load_density
 
 
 _colormaps = ["gray", "gray_r", "viridis", "magma", "twilight_shifted"]

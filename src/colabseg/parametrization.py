@@ -18,14 +18,14 @@ import open3d as o3d
 from scipy.spatial import ConvexHull as scConvexHull
 from scipy import optimize, interpolate
 
-from .trimesh import (
+from .utils import find_closest_points, com_cluster_points
+from .meshing import (
     triangulate_refine_fair,
-    com_cluster_points,
     fair_mesh,
     remesh,
+    to_open3d,
+    get_ring_vertices,
 )
-from .trimesh.utils import find_closest_points, to_open3d
-from .trimesh.repair import get_ring_vertices
 
 
 def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.ndarray:

@@ -12,7 +12,7 @@ from functools import wraps
 from typing import Callable
 from PyQt6.QtCore import pyqtSignal, QObject
 
-from .io import DataIO
+from .io_utils import VertexDataLoader
 from .container import DataContainer
 from .interactor import DataContainerInteractor
 from .parametrization import PARAMETRIZATION_TYPE
@@ -69,7 +69,7 @@ class ColabsegData(QObject):
             point_manager, model_manager = data["_data"], data["_models"]
 
         else:
-            ret = DataIO().open_file(filename)
+            ret = VertexDataLoader().open_file(filename)
 
             if ret is None:
                 return -1

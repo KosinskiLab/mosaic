@@ -19,7 +19,6 @@ from PyQt6.QtWidgets import (
 )
 
 from .widgets import HistogramWidget
-from ..io import import_points
 from .dialog import (
     format_tooltip,
     show_parameter_dialog,
@@ -29,6 +28,7 @@ from .dialog import (
     DistanceStatsDialog,
     DistanceCropDialog,
 )
+from ..io_utils import import_points
 
 
 class ClusterSelectionTab(QWidget):

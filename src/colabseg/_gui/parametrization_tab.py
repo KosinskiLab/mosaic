@@ -34,8 +34,10 @@ from PyQt6.QtWidgets import (
 )
 
 from .widgets import ProgressButton
-from ..io import load_mesh_trajectory, write_topology_file
-from ..trimesh.utils import (
+from .dialog import HMFFDialog, MeshEquilibrationDialog, make_param, ParameterHandler
+from ..parametrization import TriangularMesh
+from ..io_utils import import_mesh_trajectory, write_topology_file
+from ..meshing.utils import (
     to_open3d,
     equilibrate_edges,
     remesh,
@@ -44,8 +46,6 @@ from ..trimesh.utils import (
     compute_scale_factor_lower,
     center_mesh,
 )
-from ..parametrization import TriangularMesh
-from .dialog import HMFFDialog, MeshEquilibrationDialog, make_param, ParameterHandler
 
 
 class FitWorker(QThread):
@@ -307,7 +307,7 @@ class ParametrizationTab(QWidget):
             return
 
         self.current_geometry = None
-        self.mesh_trajectory = load_mesh_trajectory(directory)
+        self.mesh_trajectory = import_mesh_trajectory(directory)
 
         parameters = self.import_handler.get("Import Points", {})
         scale = parameters.get("scale", 1)

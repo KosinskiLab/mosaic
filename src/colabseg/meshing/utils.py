@@ -12,7 +12,6 @@ from tempfile import NamedTemporaryFile
 
 import numpy as np
 import open3d as o3d
-from scipy.spatial import cKDTree
 from scipy.spatial.distance import pdist
 import multiprocessing as mp
 
@@ -223,41 +222,6 @@ def compute_scale_factor_lower(mesh, lower_bound=1.05):
     edge_lengths = compute_edge_lengths(mesh)
     scale_factor = lower_bound / edge_lengths.min()
     return scale_factor
-
-
-def find_closest_points(positions1, positions2, k=1):
-    positions1, positions2 = np.asarray(positions1), np.asarray(positions2)
-
-    tree = cKDTree(positions1)
-    return tree.query(positions2, k=k)
-
-
-def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
-    if not isinstance(positions, np.ndarray):
-        positions = np.array(positions)
-
-    if isinstance(cutoff, np.ndarray):
-        cutoff = np.max(cutoff)
-
-    tree = cKDTree(positions)
-    n_points = len(positions)
-    unassigned = np.ones(n_points, dtype=bool)
-    clusters = []
-
-    unassigned_indices = np.where(unassigned)[0]
-    while np.any(unassigned):
-        seed_idx = np.random.choice(unassigned_indices)
-
-        cluster_indices = tree.query_ball_point(positions[seed_idx], cutoff)
-        cluster_indices = np.array([idx for idx in cluster_indices if unassigned[idx]])
-
-        if len(cluster_indices) > 0:
-            cluster_center = np.mean(positions[cluster_indices], axis=0)
-            clusters.append(cluster_center)
-            unassigned[cluster_indices] = False
-            unassigned_indices = np.where(unassigned)[0]
-
-    return np.array(clusters)
 
 
 def center_mesh(mesh, center: bool = True, margin=20):

@@ -37,7 +37,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QDoubleValidator
 
-from ..trimesh.utils import find_closest_points
+from ..utils import find_closest_points
 
 
 def format_tooltip(title, description, default_value=None, notes=None):

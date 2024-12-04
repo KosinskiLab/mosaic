@@ -30,7 +30,7 @@ from PyQt6.QtCore import (
 from PyQt6.QtGui import QAction, QColor
 
 from .utils import points_to_volume
-from .io import OrientationsIO, write_density
+from .io_utils import OrientationsWriter, write_density
 
 
 def _cluster_modifier(keep_selection: bool = False):
@@ -414,7 +414,7 @@ class DataContainerInteractor(QObject):
         if file_format not in ("tsv", "star"):
             return -1
 
-        orientations = OrientationsIO(**export_data)
+        orientations = OrientationsWriter(**export_data)
         orientations.to_file(f"{file_path}.{file_format}", file_format=file_format)
 
     def _get_selected_indices(self):

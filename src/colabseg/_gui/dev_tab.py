@@ -21,13 +21,13 @@ from PyQt6.QtCore import Qt, QTimer
 import vtkmodules.qt
 from vtkmodules.util import numpy_support
 
-from ..io import DataIO, import_points
+from ..io_utils import VertexDataLoader, import_points
 
 
 def load_series(path):
     files = [x for x in os.listdir(path) if x.endswith(".tsi")]
     files = sorted(files, key=lambda x: int(re.findall(r"\d+", x)[0]))
-    return [DataIO().open_file(join(path, file)) for file in files]
+    return [VertexDataLoader().open_file(join(path, file)) for file in files]
 
 
 class DevTab(QWidget):

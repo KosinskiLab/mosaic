@@ -17,9 +17,10 @@ from .utils import (
     dbscan_clustering,
     eigenvalue_outlier_removal,
     connected_components,
+    com_cluster_points,
+    find_closest_points,
 )
 from .geometry import Geometry
-from .trimesh.utils import com_cluster_points, find_closest_points
 from .parametrization import ConvexHull
 
 
