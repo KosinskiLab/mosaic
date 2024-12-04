@@ -547,12 +547,21 @@ class DistanceAnalysisDialog(QDialog):
         self.alpha_value.valueChanged.connect(self._update_plot)
 
         neighbor_layout = QHBoxLayout()
-        neighbor_label = QLabel("k-Nearest Neighbor:")
-        self.neighbor_value = QSpinBox()
-        self.neighbor_value.setRange(1, 255)
-        self.neighbor_value.setValue(1)
+        neighbor_label = QLabel("k-Nearest Neighbors:")
+        knn_layout = QHBoxLayout()
+        self.neighbor_start = QSpinBox()
+        self.neighbor_start.setRange(1, 255)
+        self.neighbor_start.setValue(1)
+        neighbor_to_label = QLabel("to")
+        self.neighbor_end = QSpinBox()
+        self.neighbor_end.setRange(1, 255)
+        self.neighbor_end.setValue(1)
+        knn_layout.addWidget(self.neighbor_start)
+        neighbor_to_label.setAlignment(Qt.AlignCenter)
+        knn_layout.addWidget(neighbor_to_label)
+        knn_layout.addWidget(self.neighbor_end)
         neighbor_layout.addWidget(neighbor_label)
-        neighbor_layout.addWidget(self.neighbor_value)
+        neighbor_layout.addLayout(knn_layout)
 
         strat_layout.addLayout(neighbor_layout)
         strat_layout.addLayout(strat_attr_layout)
@@ -604,7 +613,10 @@ class DistanceAnalysisDialog(QDialog):
             return -1
 
         ret = []
-        k = int(self.neighbor_value.value())
+        k_start, k = int(self.neighbor_start.value()), int(self.neighbor_end.value())
+        if k < k_start:
+            return -1
+
         for source in sources:
             temp = [x for x in targets if x.text() != source.text()]
             if not self.exclude_self_checkbox.isChecked():
@@ -623,8 +635,11 @@ class DistanceAnalysisDialog(QDialog):
             target_data = np.concatenate(target_data)
             distances, indices = find_closest_points(target_data, source, k=k)
             if k > 1:
-                k_index = k - 1
-                distances, indices = distances[:, k_index], indices[:, k_index]
+                k_slice = (slice(None), slice(k_start, k))
+                distances, indices = (
+                    distances[k_slice].ravel(),
+                    indices[k_slice].ravel(),
+                )
 
             bins = np.cumsum(bins)
             clusters = np.digitize(indices, bins)
