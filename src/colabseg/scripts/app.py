@@ -16,7 +16,6 @@ import enum
 from importlib_resources import files
 
 import vtk
-import qtawesome as qta
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -38,6 +37,7 @@ from PyQt6.QtGui import (
     QPainter,
     QPen,
 )
+import qtawesome as qta
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from colabseg import ColabsegData, VolumeViewer, ExportManager
