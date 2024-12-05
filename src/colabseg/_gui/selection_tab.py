@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QFileDialog,
 )
+from PyQt6.QtCore import Qt, QEvent
 
 from .widgets import HistogramWidget
 from .dialog import (
@@ -29,6 +30,7 @@ from .dialog import (
     DistanceCropDialog,
 )
 from ..io_utils import import_points
+from ..plane_trimmer import PlaneTrimmer
 
 
 class ClusterSelectionTab(QWidget):
@@ -36,6 +38,32 @@ class ClusterSelectionTab(QWidget):
         super().__init__()
         self.cdata = cdata
         self.setup_ui()
+        self.cdata.data.vtk_widget.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        """Handle Escape key to exit trimmer mode."""
+        if not self.plane_trimmer:
+            return super().eventFilter(obj, event)
+
+        if event.type() == QEvent.Type.KeyPress:
+            key = event.key()
+            if key == Qt.Key.Key_Escape:
+                self.plane_trimmer.cleanup()
+                self.plane_trimmer = None
+                return True
+
+            if key in (Qt.Key.Key_X, Qt.Key.Key_C, Qt.Key.Key_Z):
+                axis = {Qt.Key.Key_X: "x", Qt.Key.Key_C: "y", Qt.Key.Key_Z: "z"}[key]
+
+                self.plane_trimmer.align_to_axis(
+                    self.plane_trimmer.plane_widget1, f"-{axis}"
+                )
+                self.plane_trimmer.align_to_axis(
+                    self.plane_trimmer.plane_widget2, f"{axis}"
+                )
+                return True
+
+        return super().eventFilter(obj, event)
 
     def setup_ui(self):
         layout_spacing = 5
@@ -163,8 +191,13 @@ class ClusterSelectionTab(QWidget):
         analysis_frame.setFrameStyle(QFrame.Shape.StyledPanel)
         analysis_layout = QGridLayout(analysis_frame)
 
+        self.plane_trimmer = None
+        plane_trim_button = QPushButton("Trim Range")
+        plane_trim_button.clicked.connect(self._toggle_plane_trimmer)
+        plane_trim_button.setToolTip("Select points using two adjustable planes")
+        analysis_layout.addWidget(plane_trim_button, 0, 0)
+
         operations_mapping = {
-            "Trim Range": self.cdata.data.trim,
             "Remove Outlier": self.cdata.data.remove_outliers,
         }
 
@@ -176,9 +209,19 @@ class ClusterSelectionTab(QWidget):
                 )
             )
             button.setToolTip(format_tooltip(**POINT_OPERATION_TOOLTIPS[name]))
-            analysis_layout.addWidget(button, row, 0)
+            analysis_layout.addWidget(button, row + 1, 0)
 
         main_layout.addWidget(analysis_frame)
+
+    def _toggle_plane_trimmer(self):
+        if self.plane_trimmer is not None:
+            self.plane_trimmer.toggle(False)
+            self.plane_trimmer.cleanup()
+            self.plane_trimmer = None
+            return True
+
+        self.plane_trimmer = PlaneTrimmer(self.cdata.data)
+        self.plane_trimmer.toggle(True)
 
     def setup_distance(self, main_layout):
         analysis_layout = QVBoxLayout()
@@ -350,13 +393,6 @@ POINT_OPERATIONS = {
             "statistical",
             ["statistical", "eigenvalue"],
             "Statistical - General outliers. Eigenvalue - Noisy Edges",
-        ),
-    ],
-    "Trim Range": [
-        make_param("min_value", 50, 0, "Points below this value will be removed."),
-        make_param("max_value", 100, 0, "Points above this value will be removed."),
-        make_param(
-            "axis", "x", ["x", "y", "z"], "Axis along which to perform trimming."
         ),
     ],
 }

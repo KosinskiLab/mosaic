@@ -59,7 +59,7 @@ class Mode(enum.Enum):
 class CursorModeHandler:
     def __init__(self, widget: QWidget):
         self.widget = widget
-        self.current_mode = Mode.VIEWING
+        self._current_mode = Mode.VIEWING
 
         self.cursor_colors = {
             Mode.VIEWING: None,
@@ -97,12 +97,12 @@ class CursorModeHandler:
         return QCursor(pixmap, size // 2, size // 2)
 
     def update_mode(self, mode: Mode):
-        self.current_mode = mode
+        self._current_mode = mode
         self.widget.setCursor(self.cursors[mode])
 
-    def current_mode(self) -> Mode:
-        """Get the current mode."""
-        return self.current_mode
+    @property
+    def current_mode(self):
+        return self._current_mode
 
 
 class App(QMainWindow):

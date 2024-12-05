@@ -157,6 +157,9 @@ class ParametrizationTab(QWidget):
     def setup_sampling_frame(self, operations_layout):
         frame = QFrame()
         frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        frame.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        frame.setMaximumWidth(300)
+
         frame_layout = QGridLayout(frame)
         frame_layout.setSpacing(8)
 
@@ -167,11 +170,18 @@ class ParametrizationTab(QWidget):
         SAMPLING_OPTIONS = {
             "Options": [
                 make_param(
-                    "Sampling Method",
+                    "sampling_method",
                     "N points",
                     ["N points", "Avg Distance"],
                     "Sampling method to use. Use Avg Distance for equidistant sampling.",
-                )
+                ),
+                make_param(
+                    "normal_offset",
+                    0.0,
+                    0.0,
+                    "Translate points by the product of offset and normal vector.",
+                    notes="Useful to improve seed points for particle picking.",
+                ),
             ],
         }
 
@@ -415,8 +425,7 @@ class ParametrizationTab(QWidget):
             sampling = 1000
 
         parameters = self.sampling_handler.get("Options", {})
-        sampling_method = parameters.get("Sampling Method", "N points")
-        return self.cdata.sample_fit(sampling=sampling, method=sampling_method)
+        return self.cdata.sample_fit(sampling=sampling, **parameters)
 
     def crop_fit(self, *args, **kwargs):
         return self.cdata.models.crop_cluster(*args, **kwargs)

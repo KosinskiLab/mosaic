@@ -134,7 +134,7 @@ class ColabsegData(QObject):
 
             self.progress.emit((index + 1) / len(cluster_indices))
 
-    def sample_fit(self, sampling, method, **kwargs):
+    def sample_fit(self, sampling, sampling_method, normal_offset=0, **kwargs):
         fit_indices = self.models._get_selected_indices()
         for index in fit_indices:
             if not self._models._index_ok(index):
@@ -146,14 +146,17 @@ class ColabsegData(QObject):
                 return None
 
             n_samples, kwargs = sampling, {}
-            if method != "N points":
+            if sampling_method != "N points":
                 n_samples = fit.points_per_sampling(sampling)
                 kwargs["mesh_init_factor"] = 5
 
             points = fit.sample(int(n_samples), **kwargs)
+            normals = fit.compute_normal(points)
+            points = np.add(points, np.multiply(normals, normal_offset))
+
             self._data.add(
                 points=points,
-                normals=fit.compute_normal(points),
+                normals=normals,
                 sampling_rate=geometry._sampling_rate,
             )
 

@@ -614,8 +614,9 @@ class RBF(Parametrization):
         pcd.estimate_normals()
         pcd.normalize_normals()
         pcd.orient_normals_consistent_tangent_plane(k=50)
-
-        return np.asarray(pcd.normals)
+        normals = np.asarray(pcd.normals)
+        normals /= np.linalg.norm(normals, axis=1)[:, None]
+        return normals
 
     def points_per_sampling(self, sampling_density: float) -> int:
         (xmin, xmax), (ymin, ymax) = self.grid
@@ -778,7 +779,9 @@ class TriangularMesh(Parametrization):
         pcd.estimate_normals()
         pcd.normalize_normals()
         pcd.orient_normals_consistent_tangent_plane(k=50)
-        return np.asarray(pcd.normals)
+        normals = np.asarray(pcd.normals)
+        normals /= np.linalg.norm(normals, axis=1)[:, None]
+        return normals
 
     def points_per_sampling(self, sampling_density: float) -> int:
         area_per_sample = np.square(sampling_density)
