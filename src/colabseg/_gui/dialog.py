@@ -644,6 +644,7 @@ class DistanceAnalysisDialog(QDialog):
 
             bins = np.cumsum(bins)
             clusters = np.digitize(indices, bins)
+            clusters = np.array([temp[i].text() for i in clusters])
             ret.append((distances, clusters))
 
         self.distances = ret
@@ -696,7 +697,7 @@ class DistanceAnalysisDialog(QDialog):
                     subplot,
                     distance[index == target],
                     colors[target_idx],
-                    name=f"Target {target}",
+                    name=target,
                     bins=bins,
                     alpha=alpha,
                 )
@@ -751,7 +752,7 @@ class DistanceAnalysisDialog(QDialog):
             QMessageBox.critical(self, "Error", "Failed to save plot.")
             return -1
 
-        exporter = pg.exporters.ImageExporter(self.plot_widget.plotItem)
+        exporter = pg.exporters.ImageExporter(self.plot_widget.scene())
         exporter.parameters()["width"] = 1920
         exporter.export(filename)
         QMessageBox.information(self, "Success", "Plot saved successfully.")
@@ -768,7 +769,12 @@ class DistanceAnalysisDialog(QDialog):
             return -1
 
         with open(filename, mode="w", encoding="utf-8") as ofile:
-            ofile.write("\n".join([f"{x}" for x in self.distances]))
+            ofile.write("source,distance,target\n")
+            for idx, (distance, index) in enumerate(self.distances):
+                print(index)
+                lines = "\n".join([f"{idx},{d},{i}" for d, i in zip(distance, index)])
+                ofile.write(lines + "\n")
+
         QMessageBox.information(self, "Success", "Data export successful.")
 
 
