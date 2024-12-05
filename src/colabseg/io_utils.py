@@ -23,7 +23,9 @@ from .utils import volume_to_points, compute_bounding_box
 
 class VertexDataLoader:
     def __init__(self):
-        self._formats = {"txt": read_txt, "tsv": read_txt, "star": read_star}
+        self._formats = {"star": read_star, "tsv": read_tsv}
+        for ext in ["txt", "xyz"]:
+            self._formats[ext] = read_txt
         for ext in ["stl", "obj"]:
             self._formats[ext] = read_mesh
         for ext in ["mrc", "em", "h5"]:
@@ -69,6 +71,12 @@ def read_txt(filename: str):
 
     shape = compute_bounding_box(ret)
     return ret, shape, (1, 1, 1)
+
+
+def read_tsv(filename: str):
+    data = [Orientations.from_file(filename).translations]
+    shape = compute_bounding_box(data)
+    return data, shape, (1, 1, 1)
 
 
 def read_topology_vertices(filename: str):

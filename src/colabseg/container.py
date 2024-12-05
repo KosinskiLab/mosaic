@@ -32,10 +32,10 @@ def apply_over_indices(func: Callable) -> Callable:
         for index in indices:
             if not self._index_ok(index):
                 continue
-            point_cloud = self.data[index]
-            new_points = func(self, point_cloud=point_cloud, *args, **kwargs)
+            geometry = self.data[index]
+            new_points = func(self, geometry=geometry, *args, **kwargs)
             if isinstance(new_points, np.ndarray):
-                point_cloud.swap_data(new_points)
+                geometry.swap_data(new_points)
             elif new_points == 101:
                 self.remove(index)
 
@@ -222,12 +222,15 @@ class DataContainer:
 
         return tuple(new_cluster)
 
-    def decimate(self, indices: List[int], method: str = "middle") -> int:
+    @apply_over_indices
+    def decimate(self, geometry, method: str = "middle") -> int:
         """
         Decimate point cloud using specified method
 
         Parameters
         ----------
+        geometry : :py:class:`colabseg.geometry.Geometry`
+            Cloud to decimate.
         method : str
             Method to use. Options are:
             - 'outer' : Keep outer hull
@@ -241,13 +244,8 @@ class DataContainer:
         int
             Index of newly added point cloud.
         """
-        if len(indices) != 1:
-            return -1
-
-        cloud = self.data[indices[0]]
-
-        points = cloud.points
-        cutoff = 4 * np.max(cloud._sampling_rate)
+        points = geometry.points
+        cutoff = 4 * np.max(geometry._sampling_rate)
         if method == "core":
             points = com_cluster_points(points, cutoff)
         elif method == "outer":
@@ -280,15 +278,15 @@ class DataContainer:
         else:
             print("Supported methods are 'inner', 'core' and 'outer.")
 
-        return self.add(points, sampling_rate=cloud._sampling_rate)
+        return self.add(points, sampling_rate=geometry._sampling_rate)
 
     @apply_over_indices
-    def crop(self, point_cloud, distance: float):
+    def crop(self, geometry, distance: float):
         """Crop points based on distance criteria.
 
         Parameters
         ----------
-        point_cloud : PointCloud
+        geometry : :py:class:`colabseg.geometry.Geometry`
             Cloud to crop.
         distance : float
             Distance threshold for cropping.
@@ -298,11 +296,11 @@ class DataContainer:
         ndarray
             Remaining points after cropping.
         """
-        cloud_points = point_cloud._meta.get("points", None)
+        cloud_points = geometry._meta.get("points", None)
         if cloud_points is None:
             return None
 
-        points = point_cloud.points
+        points = geometry.points
 
         tree = cKDTree(points)
         indices = tree.query_ball_point(cloud_points, distance)
@@ -310,12 +308,12 @@ class DataContainer:
         return points[unique_indices]
 
     @apply_over_indices
-    def sample(self, point_cloud, sampling: float, method: str):
+    def sample(self, geometry, sampling: float, method: str):
         """Sample points from cloud.
 
         Parameters
         ----------
-        point_cloud : PointCloud
+        geometry : :py:class:`colabseg.geometry.Geometry`
             Cloud to sample from.
         sampling : float
             Sampling rate or number of points.
@@ -327,9 +325,9 @@ class DataContainer:
         ndarray
             Sampled points.
         """
-        cloud_fit = point_cloud._meta.get("fit", None)
+        cloud_fit = geometry._meta.get("fit", None)
         if cloud_fit is None:
-            return point_cloud.points
+            return geometry.points
 
         n_samples, kwargs = sampling, {}
         if method != "N points":
@@ -339,12 +337,12 @@ class DataContainer:
         return cloud_fit.sample(int(n_samples), **kwargs)
 
     @apply_over_indices
-    def trim(self, point_cloud, min_value, max_value, axis: str = "z"):
+    def trim(self, geometry, min_value, max_value, axis: str = "z"):
         """Trim points based on axis-aligned bounds.
 
         Parameters
         ----------
-        point_cloud : PointCloud
+        geometry : :py:class:`colabseg.geometry.Geometry`
             Cloud to trim.
         min_value : float
             Minimum bound value.
@@ -369,7 +367,7 @@ class DataContainer:
         if trim_column is None:
             raise ValueError(f"Value for trim axis must be in {_axis_map.keys()}.")
 
-        points = point_cloud.points
+        points = geometry.points
 
         coordinate_colum = points[:, trim_column]
         mask = np.logical_and(
@@ -379,27 +377,27 @@ class DataContainer:
         return points[mask]
 
     @apply_over_indices
-    def connected_components(self, point_cloud, **kwargs):
+    def connected_components(self, geometry, **kwargs):
         """Identify connected components in a point cloud.
 
         Parameters
         ----------
-        point_cloud : PointCloud
+        geometry : :py:class:`colabseg.geometry.Geometry`
             Cloud to cluster.
         """
-        sampling = point_cloud._sampling_rate
-        components = connected_components(point_cloud.points, sampling_rate=sampling)
+        sampling = geometry._sampling_rate
+        components = connected_components(geometry.points, sampling_rate=sampling)
         for component in components:
             self.add(component, sampling_rate=sampling)
         return 101
 
     @apply_over_indices
-    def dbscan_cluster(self, point_cloud, distance, min_points, **kwargs):
+    def dbscan_cluster(self, geometry, distance, min_points, **kwargs):
         """Perform DBSCAN clustering.
 
         Parameters
         ----------
-        point_cloud : PointCloud
+        geometry : :py:class:`colabseg.geometry.Geometry`
             Cloud to cluster.
         distance : float
             DBSCAN epsilon parameter.
@@ -411,17 +409,15 @@ class DataContainer:
         ndarray
             Clustered points.
         """
-        return dbscan_clustering(
-            point_cloud.points, eps=distance, min_points=min_points
-        )
+        return dbscan_clustering(geometry.points, eps=distance, min_points=min_points)
 
     @apply_over_indices
-    def remove_outliers(self, point_cloud, method="statistical", **kwargs):
+    def remove_outliers(self, geometry, method="statistical", **kwargs):
         """Remove outliers from point cloud.
 
         Parameters
         ----------
-        point_cloud : PointCloud
+        geometry : :py:class:`colabseg.geometry.Geometry`
             Cloud to process.
         method : str, optional
             'statistical' or 'eigenvalue', default 'statistical'.
@@ -437,7 +433,7 @@ class DataContainer:
         if method == "eigenvalue":
             func = eigenvalue_outlier_removal
 
-        return func(point_cloud.points, **kwargs)
+        return func(geometry.points, **kwargs)
 
     def highlight(self, indices: Tuple[int]):
         """Highlight specified geometries.

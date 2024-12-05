@@ -55,7 +55,13 @@ class Geometry:
             "normals": self.normals,
             "sampling_rate": self.sampling_rate,
             "meta": self._meta,
+            "visible": self.visible,
         }
+
+    def __setstate__(self, state):
+        visible = state.pop("visible", True)
+        self.__init__(**state)
+        self.set_visibility(visible)
 
     def __getitem__(self, idx):
         """
@@ -104,9 +110,6 @@ class Geometry:
             normals=normals,
             sampling_rate=clouds[0]._sampling_rate,
         )
-
-    def __setstate__(self, state):
-        self.__init__(**state)
 
     @property
     def actor(self):

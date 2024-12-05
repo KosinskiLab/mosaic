@@ -613,8 +613,9 @@ class DistanceAnalysisDialog(QDialog):
             return -1
 
         ret = []
-        k_start, k = int(self.neighbor_start.value()), int(self.neighbor_end.value())
-        if k < k_start:
+        k = int(self.neighbor_end.value())
+        k_start = max(int(self.neighbor_start.value()) - 1, 0)
+        if k <= k_start:
             return -1
 
         for source in sources:
