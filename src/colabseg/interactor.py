@@ -6,6 +6,7 @@
 
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
+
 import numpy as np
 from os.path import splitext
 from typing import Tuple, List

@@ -5,6 +5,7 @@
 
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
+
 import vtk
 from PyQt6.QtWidgets import (
     QVBoxLayout,

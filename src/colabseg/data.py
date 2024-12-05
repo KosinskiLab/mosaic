@@ -6,6 +6,7 @@
 
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
+
 import pickle
 import numpy as np
 from functools import wraps

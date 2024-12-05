@@ -4,6 +4,7 @@
 
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
+
 import textwrap
 from os import makedirs
 from os.path import exists, join
@@ -382,7 +383,7 @@ class ParametrizationTab(QWidget):
         return self.display_frame(self.current_frame - 1)
 
     def toggle_play(self):
-        if len(self.mesh_trajectory) == 0:
+        if not self.mesh_trajectory:
             return -1
 
         self.playing = not self.playing

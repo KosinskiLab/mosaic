@@ -4,6 +4,7 @@
 
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
+
 import numpy as np
 import qtawesome as qta
 from PyQt6.QtWidgets import (

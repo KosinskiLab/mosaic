@@ -4,6 +4,7 @@
 
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
+
 from typing import Callable
 from os.path import splitext
 

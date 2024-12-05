@@ -4,6 +4,7 @@
 
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
+
 from functools import wraps
 from typing import List, Tuple, Union, Dict, Callable
 

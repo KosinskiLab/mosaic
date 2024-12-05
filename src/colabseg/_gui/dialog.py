@@ -4,6 +4,7 @@
 
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
+
 from os.path import exists
 
 import numpy as np

@@ -4,6 +4,7 @@
 
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
+
 import re
 import warnings
 from os import listdir
@@ -24,7 +25,7 @@ from .utils import volume_to_points, compute_bounding_box
 class VertexDataLoader:
     def __init__(self):
         self._formats = {"star": read_star, "tsv": read_tsv}
-        for ext in ["txt", "xyz"]:
+        for ext in ["txt", "xyz", "csv"]:
             self._formats[ext] = read_txt
         for ext in ["stl", "obj"]:
             self._formats[ext] = read_mesh
@@ -40,7 +41,9 @@ class VertexDataLoader:
     def open_file(self, filename: str, *args, **kwargs):
         extension = splitext(basename(filename))[1][1:]
 
-        func = self._formats.get(extension, read_volume)
+        func = self._formats.get(extension, None)
+        if func is None:
+            raise ValueError(f"Unknown format with extension '{extension}'.")
         return func(filename, *args, **kwargs)
 
 
@@ -53,7 +56,12 @@ def read_star(filename):
 
 def read_txt(filename: str):
     ret = []
-    data = np.loadtxt(filename)
+
+    delimiter = None
+    if filename.endswith("csv"):
+        delimiter = ","
+
+    data = np.loadtxt(filename, delimiter=delimiter)
 
     n_cols = data.shape[1]
     if n_cols < 3 or n_cols > 4:
