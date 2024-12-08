@@ -14,6 +14,7 @@ except Exception:
     print("Run: 'pip install opencv-python' for export functionality.")
     cv2 = None
 
+import numpy as np
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
@@ -165,8 +166,10 @@ class ExportManager:
             "RGBA": {"frame_series": True, "ext": ".png"},
         }
 
-    def copy_screenshot_to_clipboard(self):
+    def copy_screenshot_to_clipboard(self, window: bool = False):
         screenshot = self.capture_screenshot(transparent_bg=True)
+        if window:
+            screenshot = self.capture_window_screenshot(transparent_bg=True)
         screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2RGBA)
 
         height, width, channel = screenshot.shape
@@ -203,6 +206,32 @@ class ExportManager:
             ret_format = cv2.COLOR_RGB2BGR
 
         return cv2.cvtColor(ret[::-1], ret_format)
+
+    def capture_window_screenshot(self, transparent_bg: bool = False):
+        """Capture a screenshot of the entire PyQt window application."""
+        top_window = self.vtk_widget
+        while top_window.parent():
+            top_window = top_window.parent()
+
+        geometry = top_window.geometry()
+        screen = QGuiApplication.screenAt(top_window.mapToGlobal(geometry.topLeft()))
+        if screen is None:
+            raise RuntimeError("Could not find screen containing the window")
+
+        image = screen.grabWindow(
+            top_window.winId(), 0, 0, geometry.width(), geometry.height()
+        ).toImage()
+
+        width = image.width()
+        height = image.height()
+        ptr = image.constBits()
+        ptr.setsize(height * width * 4)
+
+        ret_format = cv2.COLOR_RGBA2BGRA
+        if not transparent_bg:
+            ret_format = cv2.COLOR_RGB2BGR
+        arr = np.frombuffer(ptr, np.uint8).reshape(height, width, -1)
+        return cv2.cvtColor(arr, ret_format)
 
     def save_screenshot(self):
         file_path, _ = QFileDialog.getSaveFileName(

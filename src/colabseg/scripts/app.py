@@ -271,7 +271,9 @@ class App(QMainWindow):
         show_keybinds_action.triggered.connect(self.keybinds_dialog.show)
 
         screenshot_action = QAction(
-            qta.icon("fa5s.camera", opacity=0.7, color="gray"), "Save Screenshot", self
+            qta.icon("fa5s.camera", opacity=0.7, color="gray"),
+            "Save Viewer Screenshot",
+            self,
         )
         screenshot_action.setShortcut("Ctrl+P")
         screenshot_action.triggered.connect(
@@ -288,12 +290,21 @@ class App(QMainWindow):
 
         clipboard_action = QAction(
             qta.icon("fa5s.clipboard", opacity=0.7, color="gray"),
-            "Save Screenshot to Clipboard",
+            "Viewer Screenshot to Clipboard",
             self,
         )
         clipboard_action.setShortcut("Ctrl+Shift+C")
         clipboard_action.triggered.connect(
             lambda x: self.export_manager.copy_screenshot_to_clipboard()
+        )
+        clipboard_window_action = QAction(
+            qta.icon("mdi.monitor-screenshot", opacity=0.7, color="gray"),
+            "Window Screenshot to Clipboard",
+            self,
+        )
+        clipboard_window_action.setShortcut("Ctrl+Shift+W")
+        clipboard_window_action.triggered.connect(
+            lambda x: self.export_manager.copy_screenshot_to_clipboard(window=True)
         )
 
         file_menu.addAction(open_file_action)
@@ -301,6 +312,7 @@ class App(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(screenshot_action)
         file_menu.addAction(clipboard_action)
+        file_menu.addAction(clipboard_window_action)
         file_menu.addAction(animation_action)
 
         help_menu.addAction(show_keybinds_action)
