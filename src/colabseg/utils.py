@@ -106,7 +106,7 @@ def connected_components(points, sampling_rate=1, **kwargs):
     list
         List of point clouds, one for each connected component.
     """
-    volume, origin = points_to_volume(points, sampling_rate=sampling_rate)
+    volume = points_to_volume(points, sampling_rate=sampling_rate)
     labels = measure.label(volume.astype(np.int32), background=0, **kwargs)
     return volume_to_points(labels, sampling_rate)
 
