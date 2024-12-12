@@ -349,3 +349,7 @@ class Geometry:
             for vertex_idx in face:
                 self._cells.InsertCellPoint(vertex_idx)
         self._data.Modified()
+
+
+class PointCloud(Geometry):
+    pass

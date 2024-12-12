@@ -1,9 +1,9 @@
 """ Implements geometric surface models for point cloud data. This includes
-    parameteric as well as non-parametric triangular-mesh baed approaches.
+    parameteric as well as non-parametric triangular-mesh based approaches.
 
-    Children of the underlying abstract Parametrization, further define means
-    for equidistant sampling and computation of normal vectors. Furthermore,
-    there are amenable to native python pickling.
+    Children of the underlying abstract Parametrization class, also define
+    means for equidistant sampling and computation of normal vectors.
+    Furthermore, there are amenable to native python pickling.
 
     Copyright (c) 2023-2024 European Molecular Biology Laboratory
 
@@ -819,14 +819,14 @@ class ConvexHull(TriangularMesh):
         ellipsoid = Ellipsoid.fit(positions)
 
         pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(positions)
+        pcd.points = o3d.utility.Vector3dVector(positions.copy())
         pcd.normals = o3d.utility.Vector3dVector(ellipsoid.compute_normal(positions))
         pcd = pcd.voxel_down_sample(voxel_size=2 * voxel_size)
 
-        positions = np.asarray(pcd.points)
-        scale = positions.max(axis=0)
-        pcd.points = o3d.utility.Vector3dVector(positions / scale)
-        pcd.normals = o3d.utility.Vector3dVector(ellipsoid.compute_normal(positions))
+        points = np.asarray(pcd.points)
+        scale = points.max(axis=0)
+        pcd.points = o3d.utility.Vector3dVector(points / scale)
+        pcd.normals = o3d.utility.Vector3dVector(ellipsoid.compute_normal(points))
 
         with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Error):
             mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(
@@ -868,6 +868,10 @@ class ConvexHull(TriangularMesh):
         )
 
         return cls(mesh=to_open3d(out_vs, fs))
+
+
+class FairHull(ConvexHull):
+    pass
 
 
 PARAMETRIZATION_TYPE = {
