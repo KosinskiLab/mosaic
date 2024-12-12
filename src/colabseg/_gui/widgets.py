@@ -51,7 +51,7 @@ class BoundingBoxWidget:
         self.axes_actor.SetTotalLength(20, 20, 20)
         self.axes_actor.SetShaftType(0)
         self.axes_actor.SetAxisLabels(1)
-        self.axes_actor.SetCylinderRadius(0.01)
+        self.axes_actor.SetCylinderRadius(0.02)
         self.axes_actor.SetPosition(0, 0, 0)
 
         # Adjust text properties for axis labels
@@ -60,6 +60,7 @@ class BoundingBoxWidget:
             text_actor = caption_actor.GetTextActor()
             text_actor.SetTextScaleModeToNone()
             text_actor.GetTextProperty().SetFontSize(12)
+            # text_actor.GetTextProperty().SetFontSize(48)
 
         # Create orientation marker widget
         self.orientation_marker = vtk.vtkOrientationMarkerWidget()
@@ -69,6 +70,8 @@ class BoundingBoxWidget:
         self.orientation_marker.SetEnabled(1)
         self.orientation_marker.InteractiveOff()
         self.orientation_marker.SetOutlineColor(0.93, 0.57, 0.13)
+
+        # self.orientation_marker.SetViewport(0.0, 0.0, 0.8, 0.8)
 
         self.renderer.AddActor(self.box_actor)
 

@@ -237,9 +237,15 @@ class ExportManager:
         file_path, _ = QFileDialog.getSaveFileName(
             None, "Save Screenshot", "", "Images (*.png *.jpg)"
         )
-        if file_path:
-            screenshot = self.capture_screenshot()
-            cv2.imwrite(file_path, screenshot)
+        if not file_path:
+            return -1
+
+        transparent_bg = False
+        if file_path.lower().endswith(".png"):
+            transparent_bg = True
+
+        screenshot = self.capture_screenshot(transparent_bg=transparent_bg)
+        cv2.imwrite(file_path, screenshot)
 
     def export_animation(self):
         has_volume = getattr(self.volume_viewer, "volume", None) is not None

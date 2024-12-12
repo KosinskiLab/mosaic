@@ -347,6 +347,7 @@ class ParametrizationTab(QWidget):
         self.display_frame(0)
 
     def display_frame(self, frame_idx: int):
+        print(frame_idx)
         if not self.mesh_trajectory:
             return -1
 

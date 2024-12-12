@@ -63,6 +63,8 @@ def read_txt(filename: str):
     delimiter = None
     if filename.endswith("csv"):
         delimiter = ","
+    elif filename.endswith("txt"):
+        delimiter = "\t"
 
     data = np.loadtxt(filename, delimiter=delimiter)
 
@@ -85,7 +87,13 @@ def read_txt(filename: str):
 
 
 def read_tsv(filename: str):
+    with open(filename, mode="r") as infile:
+        header = infile.readline()
+    if "euler" not in header:
+        return read_txt(filename)
+
     data = [Orientations.from_file(filename).translations]
+
     shape = compute_bounding_box(data)
     return data, shape, (1, 1, 1)
 

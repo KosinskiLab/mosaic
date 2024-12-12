@@ -329,6 +329,7 @@ class ClusterSelectionTab(QWidget):
 
         for filename in filenames:
             points = import_points(filename, **parameters)
+            print(points)
             for point in points:
                 self.cdata._data.add(points=point.astype(np.float32))
 

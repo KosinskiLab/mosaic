@@ -221,12 +221,14 @@ class App(QMainWindow):
             distance = max(self.cdata.shape) * 2.0
 
         if view_key == "z":
+            # view = (0, 0, 0)
             view = (1, 0, 1)
             position = focal_point[0], focal_point[1], focal_point[2] + distance
         elif view_key == "c":
             view = (1, 0, 0)
             position = focal_point[0], focal_point[1] + distance, focal_point[2]
         elif view_key == "x":
+            # view = (0, 0, 1)
             view = (0, 1, 0)
             position = focal_point[0] + distance, focal_point[1], focal_point[2]
 
