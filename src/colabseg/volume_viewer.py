@@ -44,11 +44,11 @@ class VolumeViewer(QWidget):
         self.volume = None
 
         # Create widgets
-        self.tomogram_label = QLabel("Tomogram:")
+        self.volume_label = QLabel("Volume:")
         self.open_button = QPushButton("Open")
-        self.open_button.clicked.connect(self.open_tomogram)
+        self.open_button.clicked.connect(self.open_volume)
         self.close_button = QPushButton("Close")
-        self.close_button.clicked.connect(self.close_tomogram)
+        self.close_button.clicked.connect(self.close_volume)
 
         self.slice_slider = QSlider(Qt.Orientation.Horizontal)
         self.slice_slider.setEnabled(False)
@@ -100,7 +100,7 @@ class VolumeViewer(QWidget):
 
         # Create layout
         controls_layout = QHBoxLayout()
-        controls_layout.addWidget(self.tomogram_label)
+        controls_layout.addWidget(self.volume_label)
         controls_layout.addWidget(self.open_button)
         controls_layout.addWidget(self.close_button)
         controls_layout.addWidget(self.orientation_selector)
@@ -141,21 +141,21 @@ class VolumeViewer(QWidget):
         self._volume = volume
         self.data_changed.emit()
 
-    def open_tomogram(self):
+    def open_volume(self):
         if self.volume is not None:
-            self.close_tomogram()
+            self.close_volume()
 
         file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(self, "Open Tomogram")
+        file_path, _ = file_dialog.getOpenFileName(self, "Open Volume")
         if not file_path:
             return -1
 
         try:
             self.load_volume(file_path)
         except Exception as e:
-            print(f"Error opening tomogram: {e}")
+            print(f"Error opening volume: {e}")
 
-    def close_tomogram(self):
+    def close_volume(self):
         if self.volume is None:
             return -1
 

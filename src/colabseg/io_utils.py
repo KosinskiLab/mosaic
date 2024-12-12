@@ -29,7 +29,7 @@ class VertexDataLoader:
             self._formats[ext] = read_txt
         for ext in ["stl", "obj"]:
             self._formats[ext] = read_mesh
-        for ext in ["mrc", "em", "h5"]:
+        for ext in ["mrc", "em", "map", "h5", "mrc.gz", "em.gz", "map.gz"]:
             self._formats[ext] = read_volume
         for ext in ["q", "tsi"]:
             self._formats[ext] = read_topology_vertices
@@ -39,8 +39,11 @@ class VertexDataLoader:
         return list(self._formats.keys())
 
     def open_file(self, filename: str, *args, **kwargs):
-        extension = splitext(basename(filename))[1][1:]
+        base, extension = splitext(basename(filename))
+        if extension.lower() == ".gz":
+            _, extension = splitext(basename(base))
 
+        extension = extension[1:]
         func = self._formats.get(extension, None)
         if func is None:
             raise ValueError(f"Unknown format with extension '{extension}'.")
