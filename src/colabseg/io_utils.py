@@ -92,7 +92,7 @@ def read_tsv(filename: str):
     if "euler" not in header:
         return read_txt(filename)
 
-    data = [Orientations.from_file(filename).translations]
+    data = [Orientations.from_file(filename).translations[:,::-1]]
 
     shape = compute_bounding_box(data)
     return data, shape, (1, 1, 1)
