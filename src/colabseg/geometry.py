@@ -200,21 +200,10 @@ class Geometry:
     def get_number_of_points(self):
         return self._points.GetNumberOfPoints()
 
-    def _update_colors(self):
-        for i in range(self._points.GetNumberOfPoints()):
-            if i in self._highlighted_points:
-                self._colors.SetTuple3(i, *self._color_to_rgb(self._highlight_color))
-            else:
-                self._colors.SetTuple3(i, *self._color_to_rgb(self._global_color))
-        self._data.GetPointData().SetScalars(self._colors)
-        self._data.Modified()
-
     def color_points(self, point_ids: set, color: Tuple[float]):
         colors = vtk.vtkUnsignedCharArray()
         colors.SetNumberOfComponents(3)
         colors.SetName("Colors")
-
-        default_color = self.actor.GetProperty().GetColor()
 
         color = tuple(int(c * 255) for c in color)
         default_color = tuple(int(c * 255) for c in self._default_color)
@@ -353,3 +342,53 @@ class Geometry:
 
 class PointCloud(Geometry):
     pass
+
+
+class VolumeGeometry(Geometry):
+    def __init__(self, volume: np.ndarray, volume_sampling_rate=np.ones(3), **kwargs):
+        super().__init__(**kwargs)
+        self._volume = vtk.vtkImageData()
+        self._volume.SetSpacing(volume_sampling_rate)
+        self._volume.SetDimensions(volume.shape[::-1])
+        self._volume.AllocateScalars(vtk.VTK_FLOAT, 1)
+        volume_flat = volume.ravel()
+        volume_vtk = numpy_support.numpy_to_vtk(volume_flat, deep=True)
+        self._volume.GetPointData().SetScalars(volume_vtk)
+
+        bounds = [0.0] * 6
+        self._volume.GetBounds(bounds)
+        transform = vtk.vtkTransform()
+        transform.Translate(
+            [-(b[1] - b[0]) * 0.5 for b in zip(bounds[::2], bounds[1::2])]
+        )
+
+        transformFilter = vtk.vtkTransformFilter()
+        transformFilter.SetInputData(self._volume)
+        transformFilter.SetTransform(transform)
+        transformFilter.Update()
+
+        # Render volume isosurface as vtk glpyh object
+        self._surface = vtk.vtkContourFilter()
+        self._surface.SetInputConnection(transformFilter.GetOutputPort())
+        self._surface.GenerateValues(1, volume.min(), volume.max())
+        self._glyph = vtk.vtkGlyph3D()
+        self._glyph.SetInputData(self._data)
+        self._glyph.SetSourceConnection(self._surface.GetOutputPort())
+
+        # Per glyph orientation and coloring
+        self._glyph.SetVectorModeToUseNormal()
+        self._glyph.SetScaleModeToDataScalingOff()
+        self._glyph.SetColorModeToColorByScalar()
+        self._glyph.OrientOn()
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(self._glyph.GetOutputPort())
+        self._actor.SetMapper(mapper)
+
+        self.update_isovalue(0.0005)
+
+    def update_isovalue(self, upper, lower: float = 0):
+        return self._surface.SetValue(lower, upper)
+
+    def change_representation(self, *args, **kwargs) -> int:
+        return -1

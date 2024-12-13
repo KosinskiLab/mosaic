@@ -327,9 +327,36 @@ class ClusterSelectionTab(QWidget):
         if not filenames:
             return -1
 
+        # from tme import Density
+        # from ..geometry import VolumeGeometry
+
+        # filename = filenames[0]
+        # # dens = Density.from_file(filename)
+        # dens = Density.from_file(
+        #     "/home/vmaurer/Documents/hmff/mycoplasma.nosync/matching/emd_17132_resampled.mrc"
+        # )
+        # points = import_points(filename, **parameters)
+
+        # normals = np.random.randint(low=0, high=360, size=(points[0].shape[0], 3))
+        # normals = normals / np.linalg.norm(normals, axis=1)[:, None]
+
+        # volume_geom = VolumeGeometry(
+        #     volume=dens.data * -1,
+        #     volume_sampling_rate=dens.sampling_rate,
+        #     points=points[0].astype(np.float32),
+        #     meta={"filename": filename, "density": dens},
+        #     normals=normals,
+        #     sampling_rate=dens.sampling_rate,
+        # )
+
+        # # Add to data structure
+        # self.cdata._data.data.append(volume_geom)
+        # self.cdata.data.data_changed.emit()
+        # self.cdata.data.render()
+        # return -1
+
         for filename in filenames:
             points = import_points(filename, **parameters)
-            print(points)
             for point in points:
                 self.cdata._data.add(points=point.astype(np.float32))
 
