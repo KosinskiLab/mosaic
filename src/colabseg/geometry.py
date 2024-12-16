@@ -242,7 +242,7 @@ class Geometry:
         self.change_representation(target_representation)
 
     def change_representation(self, representation: str = "pointcloud") -> int:
-        supported = ["pointcloud", "pointcloud_normals", "mesh", "wireframe"]
+        supported = ["pointcloud", "pointcloud_normals", "mesh", "wireframe", "normals"]
         representation = representation.lower()
 
         if representation not in supported:
@@ -260,7 +260,7 @@ class Geometry:
                 return -1
 
         # Gymnastics, because fits are currently still allowed to own samples
-        _save = ["pointcloud", "pointcloud_normals"]
+        _save = ["pointcloud", "pointcloud_normals", "normals"]
         if self._representation in _save and representation not in _save:
             self._original_data = vtk.vtkPolyData()
             self._original_data.DeepCopy(self._data)
@@ -275,36 +275,49 @@ class Geometry:
             self._data.SetPoints(self._points)
             self._data.SetVerts(self._cells)
             self._data.GetPointData().SetNormals(self._normals)
+            self._original_data = None
             delattr(self, "_original_data")
 
-        mapper = self.actor.GetMapper()
-        mapper.SetInputConnection(None)
-        mapper.SetInputData(None)
+        # Consistent normal rendering across representations
+        if representation in ("pointcloud_normals", "normals"):
+            arrow = vtk.vtkArrowSource()
+            arrow.SetTipResolution(6)
+            arrow.SetShaftResolution(6)
+            arrow.SetTipRadius(0.08)
+            arrow.SetShaftRadius(0.02)
 
+            max_pos, min_pos = self.points.max(axis=0), self.points.min(axis=0)
+            bbox_diagonal = np.sqrt(np.sum((max_pos - min_pos) ** 2))
+
+            glyph = vtk.vtkGlyph3D()
+            glyph.SetSourceConnection(arrow.GetOutputPort())
+            glyph.SetVectorModeToUseNormal()
+            glyph.SetScaleFactor(bbox_diagonal * 0.0001)
+            glyph.SetColorModeToColorByScalar()
+            glyph.OrientOn()
+
+        self._actor.SetMapper(None)
         self._actor.SetMapper(vtk.vtkPolyDataMapper())
-        mapper, prop = self.actor.GetMapper(), self._actor.GetProperty()
+        mapper, prop = self._actor.GetMapper(), self._actor.GetProperty()
         if representation == "pointcloud":
-            if hasattr(self, "_glyph_mapper"):
-                delattr(self, "_glyph_mapper")
             prop.SetRepresentationToPoints()
             mapper.SetInputData(self._data)
 
         elif representation == "pointcloud_normals":
-            arrow = vtk.vtkArrowSource()
-            arrow.SetTipResolution(16)
-            arrow.SetShaftResolution(16)
-            arrow.SetTipLength(0.3)
-            arrow.SetTipRadius(0.1)
+            vertex_glyph = vtk.vtkVertexGlyphFilter()
+            vertex_glyph.SetInputData(self._data)
+            vertex_glyph.Update()
 
-            points = self.points
-            scale = np.multiply(np.max(points.max(axis=0) - points.min(axis=0)), 0.0005)
+            glyph.SetInputConnection(vertex_glyph.GetOutputPort())
 
-            glyph = vtk.vtkGlyph3D()
+            append = vtk.vtkAppendPolyData()
+            append.AddInputData(vertex_glyph.GetOutput())
+            append.AddInputConnection(glyph.GetOutputPort())
+            append.Update()
+            mapper.SetInputConnection(append.GetOutputPort())
+
+        elif representation == "normals":
             glyph.SetInputData(self._data)
-            glyph.SetSourceConnection(arrow.GetOutputPort())
-            glyph.SetVectorModeToUseNormal()
-            glyph.SetScaleFactor(scale)
-            glyph.OrientOn()
             mapper.SetInputConnection(glyph.GetOutputPort())
 
         elif representation in ("mesh", "wireframe"):
@@ -326,7 +339,6 @@ class Geometry:
                 prop.SetOpacity(0.3)
 
         self._representation = representation
-        mapper.Update()
         return 0
 
     def add_faces(self, faces):

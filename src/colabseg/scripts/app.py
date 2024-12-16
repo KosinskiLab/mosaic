@@ -241,6 +241,7 @@ class App(QMainWindow):
         self.tab_widget.addTab(ClusterSelectionTab(self.cdata), "Segmentation")
         self.tab_widget.addTab(ParametrizationTab(self.cdata), "Fits")
         self.tab_widget.addTab(DevTab(self.cdata, self.volume_viewer), "Dev")
+
         for tab in self.tab_widget.children():
             if isinstance(tab, QWidget):
                 tab.setSizePolicy(

@@ -265,7 +265,8 @@ class DataContainerInteractor(QObject):
 
         formats = [
             "Pointcloud",
-            # "Pointcloud with Normals",
+            "Normals",
+            "Pointcloud with Normals",
             "Mesh",
             "Wireframe",
         ]
@@ -485,6 +486,15 @@ class DataContainerInteractor(QObject):
             if not self.container._index_ok(index):
                 continue
             geometry = self.container.data[index]
+
+            # BUG: Moving from pointcloud_normals to a different representation and
+            # back breaks glyph rendering. This could be due to incorrect cleanup in
+            # Geometry.change_representation or an issue of vtk 9.3.1. Creating a copy
+            # of the Geometry instance circumvents the issue.
+            if representation in ("pointcloud_normals", "normals"):
+                self.container.data[index] = geometry[...]
+                geometry = self.container.data[index]
+
             geometry.change_representation(representation)
 
         self.render()
