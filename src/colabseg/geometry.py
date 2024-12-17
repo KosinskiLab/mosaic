@@ -37,7 +37,6 @@ class Geometry:
         self._sampling_rate = sampling_rate
 
         self._meta = meta
-        self._default_color = color
         self._representation = "pointcloud"
 
         if points is not None:
@@ -46,8 +45,17 @@ class Geometry:
         if normals is not None:
             self.add_normals(normals)
 
-        # self.change_representation("pointcloud_normals")
-        self.set_appearance(size=8)
+        self._appearance = {
+            "size": 8,
+            "opacity": 1.0,
+            "ambient": 0.3,
+            "diffuse": 0.7,
+            "specular": 0.2,
+            "render_spheres": True,
+            "base_color": color,
+        }
+
+        self.set_appearance(**self._appearance)
         self.set_color(color)
 
     def __getstate__(self):
@@ -57,12 +65,15 @@ class Geometry:
             "sampling_rate": self.sampling_rate,
             "meta": self._meta,
             "visible": self.visible,
+            "appearance": self._appearance,
         }
 
     def __setstate__(self, state):
         visible = state.pop("visible", True)
+        appearance = state.pop("appearance", {})
         self.__init__(**state)
         self.set_visibility(visible)
+        self.set_appearance(**appearance)
 
     def __getitem__(self, idx):
         """
@@ -85,7 +96,7 @@ class Geometry:
         return Geometry(
             points=self.points[idx],
             normals=normals,
-            color=self._default_color,
+            color=self._appearance["base_color"],
             sampling_rate=self._sampling_rate,
             meta=self._meta.copy(),
         )
@@ -157,7 +168,7 @@ class Geometry:
 
     def set_color(self, color: Tuple[int] = None):
         if color is None:
-            color = self._default_color
+            color = self._appearance["base_color"]
         self.color_points(range(self._points.GetNumberOfPoints()), color=color)
 
     def set_visibility(self, visibility: bool = True):
@@ -174,6 +185,8 @@ class Geometry:
         ambient=0.3,
         diffuse=0.7,
         specular=0.2,
+        color: Tuple[float] = (0.7, 0.7, 0.7),
+        **kwargs,
     ):
         prop = self._actor.GetProperty()
 
@@ -188,6 +201,7 @@ class Geometry:
         prop.SetAmbient(ambient)
         prop.SetDiffuse(diffuse)
         prop.SetSpecular(specular)
+        self.set_color(color)
 
     def create_actor(self):
         mapper = vtk.vtkPolyDataMapper()
@@ -206,7 +220,7 @@ class Geometry:
         colors.SetName("Colors")
 
         color = tuple(int(c * 255) for c in color)
-        default_color = tuple(int(c * 255) for c in self._default_color)
+        default_color = tuple(int(c * 255) for c in self._appearance["base_color"])
 
         for i in range(self._points.GetNumberOfPoints()):
             if i in point_ids:

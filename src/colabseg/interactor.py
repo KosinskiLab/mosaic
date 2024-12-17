@@ -32,6 +32,7 @@ from PyQt6.QtGui import QAction, QColor
 
 from .utils import points_to_volume
 from .io_utils import OrientationsWriter, write_density
+from ._gui.dialog import GeometryPropertiesDialog
 
 
 def _cluster_modifier(keep_selection: bool = False):
@@ -75,6 +76,12 @@ class LinkedDataContainerInteractor(QObject):
 
         self.data_list = QListWidget()
         self.data_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
+        self.data_list.setEditTriggers(
+            QListWidget.EditTrigger.DoubleClicked
+            | QListWidget.EditTrigger.SelectedClicked
+            | QListWidget.EditTrigger.EditKeyPressed
+        )
+        self.data_list.itemChanged.connect(self.interactor._on_item_renamed)
         self.data_list.itemSelectionChanged.connect(self._on_cluster_selection_changed)
 
         self._update_list()
@@ -89,7 +96,11 @@ class LinkedDataContainerInteractor(QObject):
         self.data_list.clear()
         for i in range(self.interactor.container.get_cluster_count()):
             visible = self.container.data[i].visible
-            item = QListWidgetItem(f"{self.interactor.prefix} {i}")
+            name = self.container.data[i]._meta.get(
+                "name", f"{self.interactor.prefix} {i}"
+            )
+
+            item = QListWidgetItem(name)
             if not visible:
                 item.setForeground(self.interactor.invisible_color)
             self.data_list.addItem(item)
@@ -121,6 +132,12 @@ class DataContainerInteractor(QObject):
         # Interaction element for the GUI
         self.data_list = QListWidget()
         self.data_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
+        self.data_list.setEditTriggers(
+            QListWidget.EditTrigger.DoubleClicked
+            | QListWidget.EditTrigger.SelectedClicked
+            | QListWidget.EditTrigger.EditKeyPressed
+        )
+        self.data_list.itemChanged.connect(self._on_item_renamed)
         self.data_list.itemSelectionChanged.connect(self._on_cluster_selection_changed)
 
         # We assume its already initialized
@@ -163,6 +180,13 @@ class DataContainerInteractor(QObject):
 
         # Let vtk events pass through
         return super().eventFilter(watched_obj, event)
+
+    def _on_item_renamed(self, item):
+        index = self.data_list.row(item)
+        if self.container._index_ok(index):
+            self.container.data[index]._meta["name"] = item.text()
+        self.data_changed.emit()
+        self.render()
 
     def _add_point(self, point):
         if not self.container._index_ok(self._active_cluster):
@@ -313,6 +337,11 @@ class DataContainerInteractor(QObject):
             export_menu.addAction(action)
 
         context_menu.addMenu(export_menu)
+
+        properties_action = QAction("Properties", self.data_list)
+        properties_action.triggered.connect(self._show_properties_dialog)
+        context_menu.addAction(properties_action)
+
         context_menu.exec(self.data_list.mapToGlobal(position))
 
     def _export_data(self, file_format: str, parameters: List[Tuple]):
@@ -419,6 +448,29 @@ class DataContainerInteractor(QObject):
         orientations = OrientationsWriter(**export_data)
         orientations.to_file(f"{file_path}.{file_format}", file_format=file_format)
 
+    def _show_properties_dialog(self) -> int:
+        indices = self._get_selected_indices()
+        indices = [x for x in indices if self.container._index_ok(x)]
+        if not len(indices):
+            return -1
+
+        base_parameters = self.container.data[indices[0]]._appearance
+
+        dialog = GeometryPropertiesDialog(initial_properties=base_parameters)
+        parameters = dialog.exec_()
+        if parameters is None:
+            return 0
+
+        for index in indices:
+            if not self.container._index_ok(index):
+                continue
+            geometry = self.container.data[index]
+
+            geometry._appearance.update(parameters)
+            geometry.set_appearance(**parameters)
+
+        return self.container.highlight(indices)
+
     def _get_selected_indices(self):
         return [item.row() for item in self.data_list.selectedIndexes()]
 
@@ -452,9 +504,11 @@ class DataContainerInteractor(QObject):
         self.data_list.clear()
         for i in range(self.container.get_cluster_count()):
             visible = self.container.data[i].visible
-            item = QListWidgetItem(f"{self.prefix} {i}")
+            name = self.container.data[i]._meta.get("name", f"{self.prefix} {i}")
+            item = QListWidgetItem(name)
             if not visible:
                 item.setForeground(self.invisible_color)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
             self.data_list.addItem(item)
 
         return self.render_vtk()

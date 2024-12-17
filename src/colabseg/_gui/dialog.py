@@ -35,8 +35,9 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QLineEdit,
+    QColorDialog,
 )
-from PyQt6.QtGui import QDoubleValidator
+from PyQt6.QtGui import QDoubleValidator, QColor
 
 from ..utils import find_closest_points
 
@@ -997,3 +998,145 @@ class DistanceCropDialog(QDialog):
         ]
         self.distance = self.distance_input.value()
         self.accept()
+
+
+class GeometryPropertiesDialog(QDialog):
+    def __init__(self, initial_properties=None, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Geometry Properties")
+        self.parameters = {}
+
+        # Set default colors if not provided
+        self.base_color = (0.7, 0.7, 0.7)
+        self.highlight_color = (0.8, 0.2, 0.2)
+        if initial_properties:
+            self.base_color = initial_properties.get("base_color", self.base_color)
+            self.highlight_color = initial_properties.get(
+                "highlight_color", self.highlight_color
+            )
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+
+        # Appearance Group
+        appearance_group = QGroupBox("Appearance")
+        appearance_layout = QFormLayout()
+
+        # Point Size
+        self.size_spin = QSpinBox()
+        self.size_spin.setRange(1, 50)
+        self.size_spin.setValue(8)
+        appearance_layout.addRow("Point Size:", self.size_spin)
+
+        # Opacity
+        self.opacity_spin = QDoubleSpinBox()
+        self.opacity_spin.setRange(0.0, 1.0)
+        self.opacity_spin.setSingleStep(0.1)
+        self.opacity_spin.setValue(1.0)
+        appearance_layout.addRow("Opacity:", self.opacity_spin)
+
+        # Colors Group
+        colors_group = QGroupBox("Colors")
+        colors_layout = QFormLayout()
+
+        # Base Color
+        self.base_color_button = QPushButton()
+        self.update_color_button(self.base_color_button, self.base_color)
+        self.base_color_button.clicked.connect(lambda: self.choose_color("base"))
+        colors_layout.addRow("Base Color:", self.base_color_button)
+
+        # Highlight Color
+        self.highlight_color_button = QPushButton()
+        self.update_color_button(self.highlight_color_button, self.highlight_color)
+        self.highlight_color_button.clicked.connect(
+            lambda: self.choose_color("highlight")
+        )
+        colors_layout.addRow("Highlight Color:", self.highlight_color_button)
+
+        colors_group.setLayout(colors_layout)
+
+        # Lighting properties
+        self.ambient_spin = QDoubleSpinBox()
+        self.ambient_spin.setRange(0.0, 1.0)
+        self.ambient_spin.setSingleStep(0.1)
+        self.ambient_spin.setValue(0.3)
+        appearance_layout.addRow("Ambient:", self.ambient_spin)
+
+        self.diffuse_spin = QDoubleSpinBox()
+        self.diffuse_spin.setRange(0.0, 1.0)
+        self.diffuse_spin.setSingleStep(0.1)
+        self.diffuse_spin.setValue(0.7)
+        appearance_layout.addRow("Diffuse:", self.diffuse_spin)
+
+        self.specular_spin = QDoubleSpinBox()
+        self.specular_spin.setRange(0.0, 1.0)
+        self.specular_spin.setSingleStep(0.1)
+        self.specular_spin.setValue(0.2)
+        appearance_layout.addRow("Specular:", self.specular_spin)
+
+        appearance_group.setLayout(appearance_layout)
+
+        # Add groups to main layout
+        layout.addWidget(appearance_group)
+        layout.addWidget(colors_group)
+
+        # Dialog buttons
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+    def update_color_button(self, button, color):
+        """Update the color button's appearance"""
+        rgb = [int(c * 255) for c in color]
+        button.setStyleSheet(f"background-color: rgb({rgb[0]}, {rgb[1]}, {rgb[2]})")
+
+    def choose_color(self, color_type):
+        """Handle color selection for both base and highlight colors"""
+        current_color = (
+            self.base_color if color_type == "base" else self.highlight_color
+        )
+        button = (
+            self.base_color_button
+            if color_type == "base"
+            else self.highlight_color_button
+        )
+
+        initial_color = QColor(
+            int(current_color[0] * 255),
+            int(current_color[1] * 255),
+            int(current_color[2] * 255),
+        )
+
+        color = QColorDialog.getColor(initial=initial_color, parent=self)
+        if color.isValid():
+            new_color = (
+                color.red() / 255,
+                color.green() / 255,
+                color.blue() / 255,
+            )
+            if color_type == "base":
+                self.base_color = new_color
+            else:
+                self.highlight_color = new_color
+            self.update_color_button(button, new_color)
+
+    def exec(self) -> dict:
+        """Execute the dialog and return the parameters if accepted"""
+        result = super().exec()
+        if result == QDialog.DialogCode.Accepted:
+            self.parameters = {
+                "size": self.size_spin.value(),
+                "opacity": self.opacity_spin.value(),
+                "ambient": self.ambient_spin.value(),
+                "diffuse": self.diffuse_spin.value(),
+                "specular": self.specular_spin.value(),
+                "base_color": self.base_color,
+                "highlight_color": self.highlight_color,
+            }
+            return self.parameters
+        return None

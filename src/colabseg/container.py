@@ -108,6 +108,8 @@ class DataContainer:
             new_geometry = points
         else:
             new_geometry = Geometry(points, color=color, **kwargs)
+
+        new_geometry._appearance["highlight_color"] = self.highlight_color
         self.data.append(new_geometry)
         return len(self.data) - 1
 
@@ -445,17 +447,19 @@ class DataContainer:
             Indices of clouds to highlight.
         """
         _highlighted = getattr(self, "_highlighted_indices", set())
-        for index, cluster in enumerate(self.data):
+        for index, geometry in enumerate(self.data):
             if not self._index_ok(index):
                 continue
-            color, opacity = self.base_color, 1.0
+
+            appearance = geometry._appearance
+            color = appearance.get("base_color", self.base_color)
             if index in indices:
-                color, opacity = self.highlight_color, 1.0
+                color = appearance.get("highlight_color", self.highlight_color)
+
             elif index not in _highlighted:
                 continue
 
-            cluster.set_color(color)
-            cluster.set_appearance(opacity=opacity)
+            geometry.set_appearance(color=color, **appearance)
 
         self._highlighted_indices = set(indices)
         return None
