@@ -854,8 +854,8 @@ class DistanceStatsDialog(QDialog):
         self.table.setHorizontalHeaderLabels(headers)
         self.table.setVerticalHeaderLabels(self.header)
 
-        for col, (_, points) in enumerate(self.cluster_data):
-            stats = self.calculate_stats(points)
+        for col, (_, geometry) in enumerate(self.cluster_data):
+            stats = self.calculate_stats(geometry.points)
             for row, value in enumerate(stats):
                 if isinstance(value, tuple):
                     text = f"({value[0]:.2f}, {value[1]:.2f}, {value[2]:.2f})"

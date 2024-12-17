@@ -262,12 +262,12 @@ class ClusterSelectionTab(QWidget):
         return ret
 
     def _compute_stats(self):
-        clusters = self._format_clusters()
+        clusters = self._format_datalist(type="data")
         dialog = DistanceStatsDialog(clusters, self)
         return dialog.show()
 
     def _distance_crop(self):
-        clusters = self._format_clusters()
+        clusters = self._format_datalist(type="data")
         dialog = DistanceCropDialog(clusters, self)
         sources, targets, distance = dialog.get_results()
         if sources is None:
