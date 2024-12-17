@@ -574,7 +574,7 @@ class DataContainer:
         int
             Index of new cloud, -1 if creation failed.
         """
-        new_cluster, remove_cluster = [], []
+        new_cluster, remove_cluster, sampling = [], [], 1
         for index, point_ids in selected_point_ids.items():
             if not len(point_ids):
                 continue
@@ -590,6 +590,7 @@ class DataContainer:
             if geometry.points.shape[0] == 0:
                 continue
 
+            sampling = geometry._sampling_rate
             mask = np.zeros(len(geometry.points), dtype=bool)
             try:
                 mask[list(point_ids)] = True
@@ -608,5 +609,5 @@ class DataContainer:
         self.remove(remove_cluster)
 
         if len(new_cluster):
-            return self.add(np.concatenate(new_cluster))
+            return self.add(np.concatenate(new_cluster), sampling_rate=sampling)
         return -1

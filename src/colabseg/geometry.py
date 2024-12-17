@@ -309,7 +309,6 @@ class Geometry:
             vertex_glyph.Update()
 
             glyph.SetInputConnection(vertex_glyph.GetOutputPort())
-
             append = vtk.vtkAppendPolyData()
             append.AddInputData(vertex_glyph.GetOutput())
             append.AddInputConnection(glyph.GetOutputPort())
