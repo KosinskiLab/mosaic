@@ -20,8 +20,8 @@ class Geometry:
         points=None,
         normals=None,
         color=BASE_COLOR,
-        sampling_rate=np.ones(3),
-        meta={},
+        sampling_rate=None,
+        meta=None,
     ):
         self._points = vtk.vtkPoints()
         self._cells = vtk.vtkCellArray()
@@ -35,8 +35,10 @@ class Geometry:
 
         self._actor = self.create_actor()
         self._sampling_rate = sampling_rate
+        if self._sampling_rate is None:
+            self._sampling_rate = np.ones(3)
 
-        self._meta = meta
+        self._meta = {} if meta is None else meta
         self._representation = "pointcloud"
 
         if points is not None:

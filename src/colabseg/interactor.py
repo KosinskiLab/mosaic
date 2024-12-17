@@ -76,12 +76,12 @@ class LinkedDataContainerInteractor(QObject):
 
         self.data_list = QListWidget()
         self.data_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
-        self.data_list.setEditTriggers(
-            QListWidget.EditTrigger.DoubleClicked
-            | QListWidget.EditTrigger.SelectedClicked
-            | QListWidget.EditTrigger.EditKeyPressed
-        )
-        self.data_list.itemChanged.connect(self.interactor._on_item_renamed)
+        # self.data_list.setEditTriggers(
+        #     QListWidget.EditTrigger.DoubleClicked
+        #     | QListWidget.EditTrigger.SelectedClicked
+        #     | QListWidget.EditTrigger.EditKeyPressed
+        # )
+        # self.data_list.itemChanged.connect(self.interactor._on_item_renamed)
         self.data_list.itemSelectionChanged.connect(self._on_cluster_selection_changed)
 
         self._update_list()
@@ -96,13 +96,14 @@ class LinkedDataContainerInteractor(QObject):
         self.data_list.clear()
         for i in range(self.interactor.container.get_cluster_count()):
             visible = self.container.data[i].visible
+
             name = self.container.data[i]._meta.get(
                 "name", f"{self.interactor.prefix} {i}"
             )
-
             item = QListWidgetItem(name)
             if not visible:
                 item.setForeground(self.interactor.invisible_color)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
             self.data_list.addItem(item)
 
     def _on_cluster_selection_changed(self):
@@ -132,11 +133,11 @@ class DataContainerInteractor(QObject):
         # Interaction element for the GUI
         self.data_list = QListWidget()
         self.data_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
-        self.data_list.setEditTriggers(
-            QListWidget.EditTrigger.DoubleClicked
-            | QListWidget.EditTrigger.SelectedClicked
-            | QListWidget.EditTrigger.EditKeyPressed
-        )
+        # self.data_list.setEditTriggers(
+        #     QListWidget.EditTrigger.DoubleClicked
+        #     | QListWidget.EditTrigger.SelectedClicked
+        #     | QListWidget.EditTrigger.EditKeyPressed
+        # )
         self.data_list.itemChanged.connect(self._on_item_renamed)
         self.data_list.itemSelectionChanged.connect(self._on_cluster_selection_changed)
 
@@ -504,7 +505,10 @@ class DataContainerInteractor(QObject):
         self.data_list.clear()
         for i in range(self.container.get_cluster_count()):
             visible = self.container.data[i].visible
-            name = self.container.data[i]._meta.get("name", f"{self.prefix} {i}")
+            name = self.container.data[i]._meta.get("name", None)
+            if name is None:
+                name = f"{self.prefix} {i}"
+
             item = QListWidgetItem(name)
             if not visible:
                 item.setForeground(self.invisible_color)
