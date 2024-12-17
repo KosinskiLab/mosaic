@@ -422,9 +422,10 @@ def _get_distinct_colors(cmap_name, n):
 
 
 class DistanceAnalysisDialog(QDialog):
-    def __init__(self, clusters, parent=None):
+    def __init__(self, clusters, fits=[], parent=None):
         super().__init__(parent)
-        self.clusters = clusters
+        self.clusters, self.fits = clusters, fits
+
         self.setWindowTitle("Distance Analysis")
         self.resize(1200, 800)
 
@@ -461,7 +462,6 @@ class DistanceAnalysisDialog(QDialog):
 
         one_to_all_btn = QPushButton("One → All")
         one_to_all_btn.clicked.connect(self.preset_one_to_all)
-
         all_to_all_btn = QPushButton("All ↔ All")
         all_to_all_btn.clicked.connect(self.preset_all_to_all)
 
@@ -470,7 +470,7 @@ class DistanceAnalysisDialog(QDialog):
         preset_group.setLayout(preset_layout)
         config_layout.addWidget(preset_group)
 
-        source_group = QGroupBox("Select Source Clusters")
+        source_group = QGroupBox("Select Source")
         source_layout = QVBoxLayout()
         self.source_list = QListWidget()
         self.source_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
@@ -482,23 +482,33 @@ class DistanceAnalysisDialog(QDialog):
         source_group.setLayout(source_layout)
         config_layout.addWidget(source_group)
 
-        target_group = QGroupBox("Select Target Clusters")
+        target_group = QGroupBox("Select Target")
         target_layout = QVBoxLayout()
 
-        self.exclude_self_checkbox = QCheckBox("Exclude within-cluster distances")
-        self.exclude_self_checkbox.setChecked(True)
+        target_type_layout = QHBoxLayout()
+        target_type_label = QLabel("Target Type:")
+        self.target_type_combo = QComboBox()
+        self.target_type_combo.addItems(["Clusters", "Fits"])
+        self.target_type_combo.currentTextChanged.connect(self._update_target_list)
+        target_type_layout.addWidget(target_type_label)
+        target_type_layout.addWidget(self.target_type_combo)
+        target_layout.addLayout(target_type_layout)
 
-        self.all_targets_checkbox = QCheckBox("Compare with all other clusters")
+        checkbox_group = QGroupBox("Comparison Options")
+        checkbox_layout = QVBoxLayout()
+        self.all_targets_checkbox = QCheckBox("Compare to All")
         self.all_targets_checkbox.stateChanged.connect(self.toggle_target_list)
-        target_layout.addWidget(self.exclude_self_checkbox)
-        target_layout.addWidget(self.all_targets_checkbox)
+        self.include_self_checkbox = QCheckBox("Include Within-Cluster Distance")
+        self.include_self_checkbox.setChecked(False)
+        checkbox_layout.addWidget(self.all_targets_checkbox)
+        checkbox_layout.addWidget(self.include_self_checkbox)
+        checkbox_group.setLayout(checkbox_layout)
+
+        target_layout.addWidget(checkbox_group)
 
         self.target_list = QListWidget()
         self.target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
-        for name, data in self.clusters:
-            item = QListWidgetItem(name)
-            item.setData(Qt.ItemDataRole.UserRole, data)
-            self.target_list.addItem(item)
+
         target_layout.addWidget(self.target_list)
         target_group.setLayout(target_layout)
         config_layout.addWidget(target_group)
@@ -575,7 +585,29 @@ class DistanceAnalysisDialog(QDialog):
         compute_btn.clicked.connect(self._compute_distances)
         config_layout.addStretch()
         config_layout.addWidget(compute_btn)
+
+        self._update_target_list()
         return config_widget
+
+    def _update_target_list(self):
+        self.target_list.clear()
+
+        self.include_self_checkbox.setEnabled(True)
+        self.neighbor_start.setEnabled(True)
+        self.neighbor_end.setEnabled(True)
+
+        data = self.clusters
+        if self.target_type_combo.currentText() == "Fits":
+            data = self.fits
+            self.include_self_checkbox.setEnabled(False)
+            self.neighbor_start.setEnabled(False)
+            self.neighbor_end.setEnabled(False)
+
+        for name, element in data:
+            item = QListWidgetItem(name)
+            item.setData(Qt.ItemDataRole.UserRole, element)
+            self.target_list.addItem(item)
+        return 0
 
     def _create_histogram_widget(self):
         viz_widget = QWidget()
@@ -620,14 +652,34 @@ class DistanceAnalysisDialog(QDialog):
             return -1
 
         for source in sources:
+            source_name = source.text()
             temp = [x for x in targets if x.text() != source.text()]
-            if not self.exclude_self_checkbox.isChecked():
+            if self.include_self_checkbox.isChecked():
                 temp = [x for x in targets]
 
-            source = source.data(Qt.ItemDataRole.UserRole)
+            if self.target_type_combo.currentText() == "Fits":
+                source = source.data(Qt.ItemDataRole.UserRole).points
+                distances, clusters = [], []
+                for index, target in enumerate(targets):
+                    model = target.data(Qt.ItemDataRole.UserRole)._meta["fit"]
+                    if not hasattr(model, "compute_distance"):
+                        print(f"{model} does not define method compute_distance.")
+                        continue
+
+                    dist = model.compute_distance(source)
+
+                    distances.append(dist)
+                    clusters.append(np.array([target.text()] * dist.size))
+
+                ret.append(
+                    (source_name, np.concatenate(distances), np.concatenate(clusters))
+                )
+                continue
+
+            source = source.data(Qt.ItemDataRole.UserRole).points
             target_data, bins = [], []
             for target_cluster in temp:
-                xdata = target_cluster.data(Qt.ItemDataRole.UserRole)
+                xdata = target_cluster.data(Qt.ItemDataRole.UserRole).points
                 target_data.append(xdata)
                 bins.append(xdata.shape[0])
 
@@ -646,7 +698,7 @@ class DistanceAnalysisDialog(QDialog):
             bins = np.cumsum(bins)
             clusters = np.digitize(indices, bins)
             clusters = np.array([temp[i].text() for i in clusters])
-            ret.append((distances, clusters))
+            ret.append((source_name, distances, clusters))
 
         self.distances = ret
         self._update_plot()
@@ -667,9 +719,9 @@ class DistanceAnalysisDialog(QDialog):
 
         alpha = self.alpha_value.value()
         strat_mode = self.strat_attr_combo.currentText()
-        for idx, (distance, index) in enumerate(distances):
+        for idx, (source, distance, index) in enumerate(distances):
             subplot = self.plot_widget.addPlot(row=idx // n_cols, col=idx % n_cols)
-            subplot.setTitle(sources[idx].text())
+            subplot.setTitle(source)
             subplot.setLabel("left", "Frequency")
             subplot.setLabel("bottom", "Distance")
 
@@ -771,9 +823,10 @@ class DistanceAnalysisDialog(QDialog):
 
         with open(filename, mode="w", encoding="utf-8") as ofile:
             ofile.write("source,distance,target\n")
-            for idx, (distance, index) in enumerate(self.distances):
-                print(index)
-                lines = "\n".join([f"{idx},{d},{i}" for d, i in zip(distance, index)])
+            for idx, (source, distance, index) in enumerate(self.distances):
+                lines = "\n".join(
+                    [f"{source},{d},{i}" for d, i in zip(distance, index)]
+                )
                 ofile.write(lines + "\n")
 
         QMessageBox.information(self, "Success", "Data export successful.")

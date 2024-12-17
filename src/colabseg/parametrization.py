@@ -218,6 +218,10 @@ class Sphere(Parametrization):
         normals /= np.linalg.norm(normals, axis=1)[:, None]
         return normals
 
+    def compute_distance(self, points: np.ndarray) -> np.ndarray:
+        centered = np.linalg.norm(points - self.center, axis=1)
+        return np.abs(centered - self.radius)
+
     def points_per_sampling(self, sampling_density: float) -> int:
         n_points = np.multiply(
             np.square(np.pi),
@@ -365,14 +369,23 @@ class Ellipsoid(Parametrization):
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
         norm_points = (points - self.center).dot(np.linalg.inv(self.orientations.T))
+
         normals = np.divide(np.multiply(norm_points, 2), np.square(self.radii))
         normals = np.dot(normals, self.orientations.T)
         normals /= np.linalg.norm(normals, axis=1)[:, None]
-
         return normals
+
+    def compute_distance(self, points: np.ndarray) -> float:
+        # Approximate as projected deviation from unit sphere
+        norm_points = (points - self.center).dot(np.linalg.inv(self.orientations.T))
+        norm_points /= np.linalg.norm(norm_points / self.radii, axis=1)[:, None]
+        norm_points = np.dot(norm_points, self.orientations.T) + self.center
+        ret = np.linalg.norm(points - norm_points, axis=1)
+        return ret
 
     def points_per_sampling(self, sampling_density: float) -> int:
         area_points = np.pi * np.square(sampling_density)
+
         area_ellipsoid = np.power(self.radii[0] * self.radii[1], 1.6075)
         area_ellipsoid += np.power(self.radii[0] * self.radii[2], 1.6075)
         area_ellipsoid += np.power(self.radii[1] * self.radii[2], 1.6075)
@@ -787,6 +800,15 @@ class TriangularMesh(Parametrization):
         area_per_sample = np.square(sampling_density)
         n_points = np.ceil(np.divide(self.mesh.get_surface_area(), area_per_sample))
         return int(n_points)
+
+    def compute_distance(self, points: np.ndarray) -> np.ndarray:
+        mesh = o3d.t.geometry.TriangleMesh.from_legacy(self.mesh)
+        scene = o3d.t.geometry.RaycastingScene()
+        _ = scene.add_triangles(mesh)
+
+        points = o3d.core.Tensor(points, dtype=o3d.core.Dtype.Float32)
+        ret = scene.compute_distance(points)
+        return ret.numpy()
 
 
 class ConvexHull(TriangularMesh):

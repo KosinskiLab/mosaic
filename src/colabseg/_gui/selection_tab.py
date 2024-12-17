@@ -250,12 +250,16 @@ class ClusterSelectionTab(QWidget):
         operations_layout.addWidget(frame)
         main_layout.addLayout(operations_layout)
 
-    def _format_clusters(self):
-        clusters = []
-        for i in range(self.cdata.data.data_list.count()):
-            list_item = self.cdata.data.data_list.item(i)
-            clusters.append((list_item.text(), self.cdata._data._get_cluster_points(i)))
-        return clusters
+    def _format_datalist(self, type="data"):
+        interactor, container = self.cdata.data, self.cdata._data
+        if type == "models":
+            interactor, container = self.cdata.models, self.cdata._models
+
+        ret = []
+        for i in range(interactor.data_list.count()):
+            list_item = interactor.data_list.item(i)
+            ret.append((list_item.text(), container.data[i]))
+        return ret
 
     def _compute_stats(self):
         clusters = self._format_clusters()
@@ -365,9 +369,10 @@ class ClusterSelectionTab(QWidget):
         return 0
 
     def _analyze_distances(self):
-        clusters = self._format_clusters()
+        fits = self._format_datalist("models")
+        clusters = self._format_datalist("data")
 
-        dialog = DistanceAnalysisDialog(clusters, self)
+        dialog = DistanceAnalysisDialog(clusters, fits=fits, parent=self)
         return dialog.show()
 
 
