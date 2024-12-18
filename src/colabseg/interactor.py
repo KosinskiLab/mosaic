@@ -543,8 +543,7 @@ class DataContainerInteractor(QObject):
         if not len(indices):
             return -1
 
-        representation = representation.lower()
-        representation = representation.replace("with", "_").replace(" ", "")
+        representation = representation.lower().replace("with", "_").replace(" ", "")
         for index in indices:
             if not self.container._index_ok(index):
                 continue

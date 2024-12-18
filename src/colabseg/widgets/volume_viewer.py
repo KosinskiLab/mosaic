@@ -21,7 +21,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from vtkmodules.util import numpy_support
 from matplotlib.pyplot import get_cmap
-import qtawesome as qta
 
 from ..io_utils import load_density
 
@@ -344,12 +343,13 @@ class MultiVolumeViewer(QWidget):
         self.primary.layout().setContentsMargins(
             current_margins.left(), 0, current_margins.right(), 0
         )
+        self.primary_margins = self.primary.layout().contentsMargins()
         self.layout.addWidget(self.primary)
 
-        self.add_viewer_button = QPushButton("+")
-        self.add_viewer_button.setFixedWidth(20)
-        self.add_viewer_button.clicked.connect(self.add_viewer)
-        self.primary.controls_layout.addWidget(self.add_viewer_button)
+        add_button = QPushButton("+")
+        add_button.setFixedWidth(20)
+        add_button.clicked.connect(self.add_viewer)
+        self.primary.controls_layout.addWidget(add_button)
 
         self.additional_viewers = []
         self.primary.data_changed.connect(self._changed_primary)
@@ -357,8 +357,7 @@ class MultiVolumeViewer(QWidget):
     def add_viewer(self):
         """Add a new VolumeViewer instance"""
         new_viewer = VolumeViewer(self.vtk_widget)
-        margins = self.primary.layout().contentsMargins()
-        new_viewer.layout().setContentsMargins(margins)
+        new_viewer.layout().setContentsMargins(self.primary_margins)
 
         remove_button = QPushButton("x")
         remove_button.setFixedWidth(20)

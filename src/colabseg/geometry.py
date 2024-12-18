@@ -77,7 +77,7 @@ class Geometry:
         self.__init__(**state)
         self.set_visibility(visible)
         self.set_appearance(**appearance)
-        self._appearance = appearance
+        self._appearance.update(appearance)
 
     def __getitem__(self, idx):
         """
@@ -97,35 +97,41 @@ class Geometry:
         if self.normals is not None:
             normals = self.normals[idx]
 
-        return Geometry(
+        ret = self.__class__(
             points=self.points[idx],
             normals=normals,
             color=self._appearance["base_color"],
             sampling_rate=self._sampling_rate,
             meta=self._meta.copy(),
         )
+        ret._appearance.update(self._appearance)
+        return ret
 
     @classmethod
-    def merge(cls, clouds):
-        if not len(clouds):
-            raise ValueError("No point clouds provided for merging")
+    def merge(cls, geometries):
+        if not len(geometries):
+            raise ValueError("No geometries provided for merging")
 
         points, normals = [], []
-        has_normals = any(cloud.normals is not None for cloud in clouds)
-        for cloud in clouds:
-            points.append(cloud.points)
+        has_normals = any(geometry.normals is not None for geometry in geometries)
+        for geometry in geometries:
+            points.append(geometry.points)
             if not has_normals:
                 continue
-            normals = cloud.normals
+            normals = geometry.normals
             if normals is None:
-                normals = np.zeros_like(cloud.points)
+                normals = np.zeros_like(geometry.points)
 
         normals = np.concatenate(normals, axis=0) if has_normals else None
-        return cls(
+        ret = cls(
             points=np.concatenate(points, axis=0),
             normals=normals,
-            sampling_rate=clouds[0]._sampling_rate,
+            sampling_rate=geometries[0]._sampling_rate,
+            color=geometries[0]._appearance["base_color"],
+            meta=geometries[0]._meta.copy(),
         )
+        ret._appearance.update(geometries[0]._appearance)
+        return ret
 
     @property
     def actor(self):
@@ -182,32 +188,34 @@ class Geometry:
     def toggle_visibility(self):
         return self.set_visibility(not self.visible)
 
+    def _get(self, name, value=None):
+        if value is not None:
+            return value
+        return self._appearance.get(name, None)
+
     def set_appearance(
         self,
-        size=8,
-        opacity=1.0,
-        render_spheres=True,
-        ambient=0.3,
-        diffuse=0.7,
-        specular=0.2,
-        color: Tuple[float] = (0.7, 0.7, 0.7),
+        size: int = None,
+        opacity: float = None,
+        render_spheres: bool = None,
+        ambient: float = None,
+        diffuse: float = None,
+        specular: float = None,
+        color: Tuple[float] = None,
         **kwargs,
     ):
         prop = self._actor.GetProperty()
 
-        if render_spheres:
-            prop.SetRenderPointsAsSpheres(True)
+        prop.SetRenderPointsAsSpheres(True)
+        if not self._get("render_spheres", render_spheres):
+            prop.SetRenderPointsAsSpheres(False)
 
-        if self._representation in ("mesh", "mesh_edges", "surface"):
-            opacity = 0.3
-
-        prop.SetPointSize(size)
-        prop.SetOpacity(opacity)
-        # prop.SetEdgeOpacity(opacity)
-        prop.SetAmbient(ambient)
-        prop.SetDiffuse(diffuse)
-        prop.SetSpecular(specular)
-        self.set_color(color)
+        prop.SetPointSize(self._get("size", size))
+        prop.SetOpacity(self._get("opacity", opacity))
+        prop.SetAmbient(self._get("ambient", ambient))
+        prop.SetDiffuse(self._get("diffuse", diffuse))
+        prop.SetSpecular(self._get("specular", specular))
+        self.set_color(self._get("base_color", color))
 
     def create_actor(self):
         mapper = vtk.vtkPolyDataMapper()
@@ -327,6 +335,7 @@ class Geometry:
             glyph.SetColorModeToColorByScalar()
             glyph.OrientOn()
 
+        self._appearance["opacity"] = 1
         self._actor.SetMapper(vtk.vtkPolyDataMapper())
         mapper, prop = self._actor.GetMapper(), self._actor.GetProperty()
         if representation == "pointcloud":
@@ -370,6 +379,7 @@ class Geometry:
                 prop.SetRepresentationToSurface()
                 prop.SetEdgeVisibility(representation == "mesh")
                 prop.SetOpacity(0.3)
+                self._appearance["opacity"] = 0.3
 
         self._representation = representation
         return 0
