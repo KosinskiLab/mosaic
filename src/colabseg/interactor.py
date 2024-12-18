@@ -556,6 +556,8 @@ class DataContainerInteractor(QObject):
             # of the Geometry instance circumvents the issue.
             if representation in ("pointcloud_normals", "normals"):
                 self.container.data[index] = geometry[...]
+                if hasattr(geometry, "_original_data"):
+                    self.container.data[index]._original_data = geometry._original_data
                 geometry = self.container.data[index]
 
             geometry.change_representation(representation)

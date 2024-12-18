@@ -29,7 +29,7 @@ class GeometryPropertiesDialog(QDialog):
             "highlight_color", (0.8, 0.2, 0.2)
         )
         self.initial_properties = initial_properties or {}
-        self.volume_path = self.initial_properties.get("volume_path", "")
+        self.volume_path = self.initial_properties.get("volume_path", None)
 
         self.setup_ui()
 

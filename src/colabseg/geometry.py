@@ -293,11 +293,8 @@ class Geometry:
             self._original_data.DeepCopy(self._data)
 
         if self._representation == "surface" and representation != "surface":
-            self._points = self._original_data.GetPoints()
-            self._cells = self._original_data.GetVerts()
-            self._data.SetPoints(self._points)
-            self._data.SetVerts(self._cells)
-            self._data.GetPointData().SetNormals(self._normals)
+            self._data.SetVerts(self._original_verts)
+            self._original_verts = None
 
         if representation in _save and hasattr(self, "_original_data"):
             self._data.Reset()
@@ -330,7 +327,6 @@ class Geometry:
             glyph.SetColorModeToColorByScalar()
             glyph.OrientOn()
 
-        self._actor.SetMapper(None)
         self._actor.SetMapper(vtk.vtkPolyDataMapper())
         mapper, prop = self._actor.GetMapper(), self._actor.GetProperty()
         if representation == "pointcloud":
@@ -364,6 +360,7 @@ class Geometry:
             self._data.SetPolys(self._cells)
 
             if representation == "surface":
+                self._original_verts = self._data.GetVerts()
                 self._data.SetVerts(None)
             mapper.SetInputData(self._data)
 
@@ -399,8 +396,8 @@ class VolumeGeometry(Geometry):
         self._volume.SetSpacing(volume_sampling_rate)
         self._volume.SetDimensions(volume.shape[::-1])
         self._volume.AllocateScalars(vtk.VTK_FLOAT, 1)
-        volume_flat = volume.ravel()
-        volume_vtk = numpy_support.numpy_to_vtk(volume_flat, deep=True)
+        self._raw_volume = volume
+        volume_vtk = numpy_support.numpy_to_vtk(volume.ravel(), deep=True)
         self._volume.GetPointData().SetScalars(volume_vtk)
 
         bounds = [0.0] * 6
@@ -428,7 +425,6 @@ class VolumeGeometry(Geometry):
         self._glyph.SetScaleModeToDataScalingOff()
         self._glyph.SetColorModeToColorByScalar()
         self._glyph.OrientOn()
-
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputConnection(self._glyph.GetOutputPort())
         self._actor.SetMapper(mapper)
@@ -437,6 +433,20 @@ class VolumeGeometry(Geometry):
 
     def update_isovalue(self, upper, lower: float = 0):
         return self._surface.SetValue(lower, upper)
+
+    def update_isovalue_quantile(
+        self, upper_quantile: float, lower_quantile: float = 0.0
+    ):
+        if not (0 <= lower_quantile <= 1 and 0 <= upper_quantile <= 1):
+            raise ValueError("Quantiles must be between 0 and 1")
+
+        if lower_quantile >= upper_quantile:
+            raise ValueError("Upper quantile must be greater than lower quantile")
+
+        lower_value = np.quantile(self._raw_volume, lower_quantile)
+        upper_value = np.quantile(self._raw_volume, upper_quantile)
+
+        return self.update_isovalue(upper_value, lower_value)
 
     def change_representation(self, *args, **kwargs) -> int:
         return -1

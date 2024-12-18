@@ -54,7 +54,7 @@ class FrameWriter:
 class AnimationSettingsDialog(QDialog):
     def __init__(self, volume_viewer, param_tab, formats, parent=None):
         super().__init__(parent)
-        self.volume_viewer = volume_viewer
+        self.viewer = volume_viewer
         self.param_tab = param_tab
         self.formats = formats
         self.setWindowTitle("Animation Settings")
@@ -68,7 +68,7 @@ class AnimationSettingsDialog(QDialog):
         self.trajectory_radio = QRadioButton("Trajectory")
         self.slice_radio = QRadioButton("Slices")
 
-        has_volume = getattr(self.volume_viewer, "volume", None) is not None
+        has_volume = getattr(self.viewer, "primary", None) is not None
         has_trajectory = getattr(self.param_tab, "mesh_trajectory", None) is not None
 
         self.slice_radio.setEnabled(has_volume)
@@ -144,9 +144,9 @@ class AnimationSettingsDialog(QDialog):
         min_frame, max_frame = 0, 0
         if self.trajectory_radio.isChecked() and self.param_tab.mesh_trajectory:
             max_frame = len(self.param_tab.mesh_trajectory) - 1
-        elif self.slice_radio.isChecked() and self.volume_viewer.volume is not None:
-            max_frame = self.volume_viewer.slice_slider.maximum()
-            min_frame = self.volume_viewer.slice_slider.minimum()
+        elif self.slice_radio.isChecked() and self.viewer.primary.volume is not None:
+            max_frame = self.viewer.primary.slice_slider.maximum()
+            min_frame = self.viewer.primary.slice_slider.minimum()
 
         self.start_frame.setRange(min_frame, max_frame)
         self.end_frame.setRange(min_frame, max_frame)
@@ -157,7 +157,7 @@ class AnimationSettingsDialog(QDialog):
 class ExportManager:
     def __init__(self, vtk_widget, volume_viewer, param_tab):
         self.vtk_widget = vtk_widget
-        self.volume_viewer = volume_viewer
+        self.viewer = volume_viewer
         self.param_tab = param_tab
 
         self.format_settings = {
@@ -248,7 +248,7 @@ class ExportManager:
         cv2.imwrite(file_path, screenshot)
 
     def export_animation(self):
-        has_volume = getattr(self.volume_viewer, "volume", None) is not None
+        has_volume = getattr(self.viewer, "primary", None) is not None
         has_trajectory = getattr(self.param_tab, "mesh_trajectory", None) is not None
 
         if not (has_trajectory or has_volume):
@@ -260,7 +260,7 @@ class ExportManager:
             return -1
 
         dialog = AnimationSettingsDialog(
-            self.volume_viewer, self.param_tab, self.format_settings.keys()
+            self.viewer, self.param_tab, self.format_settings.keys()
         )
 
         if dialog.exec():
@@ -278,13 +278,13 @@ class ExportManager:
                 if use_trajectory:
                     self.param_tab.display_frame(frame_idx)
                 else:
-                    self.volume_viewer.slice_slider.setValue(frame_idx)
+                    self.viewer.primary.slice_slider.setValue(frame_idx)
 
             original_frame = 0
             if use_trajectory:
                 original_frame = self.param_tab.current_frame
             else:
-                original_frame = self.volume_viewer.slice_slider.value()
+                original_frame = self.viewer.primary.slice_slider.value()
 
             self._create_animation(
                 update_func=_update,
