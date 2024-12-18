@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QSplitter,
     QFileDialog,
+    QMenu,
 )
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import (
@@ -36,18 +37,15 @@ from PyQt6.QtGui import (
     QPixmap,
     QPainter,
     QPen,
+    QActionGroup,
 )
 import qtawesome as qta
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-from colabseg import ColabsegData, VolumeViewer, ExportManager
-from colabseg._gui import (
-    ClusterSelectionTab,
-    ParametrizationTab,
-    DevTab,
-    BoundingBoxWidget,
-    KeybindsDialog,
-)
+from colabseg import ColabsegData, ExportManager
+from colabseg.tabs import ClusterSelectionTab, ParametrizationTab, DevTab
+from colabseg.dialogs import TiltControlDialog, KeybindsDialog
+from colabseg.widgets import MultiVolumeViewer, BoundingBoxWidget, AxesWidget
 
 
 class Mode(enum.Enum):
@@ -109,8 +107,6 @@ class App(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setup_menu()
-
         # Adapt to screen size
         screen = QGuiApplication.primaryScreen().geometry()
         width = int(screen.width() * 0.5)
@@ -144,7 +140,7 @@ class App(QMainWindow):
         self.tab_widget.resize(1000, 200)
         self.cdata = ColabsegData(self.vtk_widget)
 
-        self.volume_viewer = VolumeViewer(self.vtk_widget)
+        self.volume_viewer = MultiVolumeViewer(self.vtk_widget)
 
         splitter.addWidget(self.tab_widget)
         splitter.addWidget(self.vtk_widget)
@@ -161,6 +157,7 @@ class App(QMainWindow):
         self.setup_tabs()
         self.actor_collection = vtk.vtkActorCollection()
         self.bounding_box = BoundingBoxWidget(self.renderer, self.interactor)
+        self.axes_widget = AxesWidget(self.renderer, self.interactor)
         self.cursor_handler = CursorModeHandler(self.vtk_widget)
 
         self.export_manager = ExportManager(
@@ -168,12 +165,15 @@ class App(QMainWindow):
             self.volume_viewer,
             self.tab_widget.findChild(ParametrizationTab),
         )
+        self.setup_menu()
 
     def on_key_press(self, obj, event):
         key = obj.GetKeyCode()
 
         if key in ["x", "c", "z"]:
             self.set_camera_view(key)
+        elif key == "v":
+            self.swap_camera_view_direction(key)
         elif key in ["d"]:
             current_color = self.renderer.GetBackground()
             self.renderer.SetBackground(*self.renderer_next_background)
@@ -212,7 +212,7 @@ class App(QMainWindow):
 
         return self.cursor_handler.update_mode(new_mode)
 
-    def set_camera_view(self, view_key):
+    def set_camera_view(self, view_key, aligned_direction=True, view_angle=0):
         camera = self.renderer.GetActiveCamera()
         focal_point = camera.GetFocalPoint()
 
@@ -220,22 +220,49 @@ class App(QMainWindow):
         if self.cdata.shape is not None:
             distance = max(self.cdata.shape) * 2.0
 
+        distance = distance if aligned_direction else -distance
         if view_key == "z":
             # view = (0, 0, 0)
             view = (1, 0, 1)
-            position = focal_point[0], focal_point[1], focal_point[2] + distance
+            rotation_axis = (0, 1, 0)
+            position = (0, 0, distance)
         elif view_key == "c":
             view = (1, 0, 0)
-            position = focal_point[0], focal_point[1] + distance, focal_point[2]
+            position = (0, distance, 0)
+            rotation_axis = (0, 0, 1)
         elif view_key == "x":
             # view = (0, 0, 1)
             view = (0, 1, 0)
-            position = focal_point[0] + distance, focal_point[1], focal_point[2]
+            position = (distance, 0, 0)
+            rotation_axis = (0, 0, 1)
+        else:
+            return -1
 
+        if view_angle != 0:
+            rotation_matrix = vtk.vtkTransform()
+            rotation_matrix.Identity()
+            rotation_matrix.RotateWXYZ(view_angle, *rotation_axis)
+
+            view = rotation_matrix.TransformVector(view)
+            position = rotation_matrix.TransformPoint(position)
+
+        position = tuple(sum(x) for x in zip(focal_point, position))
         camera.SetPosition(*position)
         camera.SetViewUp(*view)
+
         self.renderer.ResetCamera()
+        self._camera_view = view_key
+        self._camera_tilt = view_angle
+        self._camera_direction = aligned_direction
         self.vtk_widget.GetRenderWindow().Render()
+
+    def swap_camera_view_direction(self, view_key):
+        view = getattr(self, "_camera_view", None)
+        if view is None:
+            return -1
+
+        direction = getattr(self, "_camera_direction", True)
+        return self.set_camera_view(view, not direction)
 
     def setup_tabs(self):
         self.tab_widget.addTab(ClusterSelectionTab(self.cdata), "Segmentation")
@@ -251,6 +278,7 @@ class App(QMainWindow):
     def setup_menu(self):
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("File")
+        view_menu = menu_bar.addMenu("View")
         help_menu = menu_bar.addMenu("Help")
         toolbar = self.addToolBar("Main")
 
@@ -318,6 +346,84 @@ class App(QMainWindow):
         file_menu.addAction(clipboard_window_action)
         file_menu.addAction(animation_action)
 
+        # Setup axes control menu
+        axes_menu = QMenu("Axes", self)
+        visible_action = QAction("Visible", self)
+        visible_action.setCheckable(True)
+        visible_action.setChecked(self.axes_widget.visible)
+        visible_action.triggered.connect(
+            lambda checked: (
+                self.axes_widget.set_visibility(checked),
+                self.vtk_widget.GetRenderWindow().Render(),
+            )
+        )
+        labels_action = QAction("Labels", self)
+        labels_action.setCheckable(True)
+        labels_action.setChecked(self.axes_widget.labels_visible)
+        labels_action.triggered.connect(
+            lambda checked: (
+                self.axes_widget.set_labels_visible(checked),
+                self.vtk_widget.GetRenderWindow().Render(),
+            )
+        )
+        colored_action = QAction("Colored", self)
+        colored_action.setCheckable(True)
+        colored_action.setChecked(self.axes_widget.colored)
+        colored_action.triggered.connect(
+            lambda checked: (
+                self.axes_widget.set_colored(checked),
+                self.vtk_widget.GetRenderWindow().Render(),
+            )
+        )
+        arrow_action = QAction("Arrows", self)
+        arrow_action.setCheckable(True)
+        arrow_action.setChecked(self.axes_widget.arrow_heads_visible)
+        arrow_action.triggered.connect(
+            lambda checked: (
+                self.axes_widget.set_arrow_heads_visible(checked),
+                self.vtk_widget.GetRenderWindow().Render(),
+            )
+        )
+        axes_menu.addAction(visible_action)
+        axes_menu.addAction(labels_action)
+        axes_menu.addAction(colored_action)
+        axes_menu.addAction(arrow_action)
+        view_menu.addMenu(axes_menu)
+
+        # Handle differnt camera angles
+        tilt_menu = QMenu("Camera Tilt", self)
+        self.tilt_dialog = TiltControlDialog(self)
+        show_tilt_control = QAction(
+            qta.icon("fa5s.sliders-h", opacity=0.7, color="gray"),
+            "Tilt Controls...",
+            self,
+        )
+        show_tilt_control.triggered.connect(self.tilt_dialog.show)
+        tilt_menu.addAction(show_tilt_control)
+
+        tilt_menu.addSeparator()
+        tilt_group = QActionGroup(self)
+        tilt_group.setExclusive(True)
+        for angle in [0, 15, 30, 45, 60, 90]:
+            action = QAction(f"{angle}°", self)
+            action.triggered.connect(
+                lambda checked, a=angle: self.set_camera_view(
+                    getattr(self, "_camera_view", "x"),
+                    getattr(self, "_camera_direction", True),
+                    tilt_angle=a,
+                )
+            )
+            tilt_menu.addAction(action)
+
+        tilt_menu.addSeparator()
+        reset_action = QAction(
+            qta.icon("fa5s.undo", opacity=0.7, color="gray"), "Reset Tilt", self
+        )
+        reset_action.setShortcut("Ctrl+T")
+        reset_action.triggered.connect(self.tilt_dialog.reset_tilt)
+        tilt_menu.addAction(reset_action)
+        view_menu.addMenu(tilt_menu)
+
         help_menu.addAction(show_keybinds_action)
 
         toolbar.addAction(open_file_action)
@@ -344,7 +450,6 @@ class App(QMainWindow):
         self.cdata.models.rendered_actors.clear()
         self.cdata.data.render()
         self.cdata.models.render()
-        self.renderer.AddViewProp(self.volume_viewer.slice)
         self.set_camera_view("x")
 
     def save_file(self):

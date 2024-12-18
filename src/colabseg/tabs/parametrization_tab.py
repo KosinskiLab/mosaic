@@ -34,8 +34,8 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 
-from .widgets import ProgressButton
-from .dialog import HMFFDialog, MeshEquilibrationDialog, make_param, ParameterHandler
+from ..widgets import ProgressButton
+from ..dialogs import HMFFDialog, MeshEquilibrationDialog, make_param, ParameterHandler
 from ..parametrization import TriangularMesh
 from ..io_utils import import_mesh_trajectory, write_topology_file
 from ..meshing.utils import (

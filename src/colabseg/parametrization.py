@@ -791,7 +791,12 @@ class TriangularMesh(Parametrization):
         pcd.points = o3d.utility.Vector3dVector(points)
         pcd.estimate_normals()
         pcd.normalize_normals()
-        pcd.orient_normals_consistent_tangent_plane(k=50)
+        try:
+            pcd.orient_normals_consistent_tangent_plane(k=50)
+        except Exception as e:
+            print(e)
+            print("Failed to consistently orient normals. Try including more points.")
+
         normals = np.asarray(pcd.normals)
         normals /= np.linalg.norm(normals, axis=1)[:, None]
         return normals
@@ -850,10 +855,18 @@ class ConvexHull(TriangularMesh):
         pcd.points = o3d.utility.Vector3dVector(points / scale)
         pcd.normals = o3d.utility.Vector3dVector(ellipsoid.compute_normal(points))
 
-        with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Error):
-            mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(
-                pcd, alpha
-            )
+        try:
+            with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Error):
+                mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(
+                    pcd, alpha
+                )
+        except Exception as e:
+            print(e)
+            print("Falling back to scConvexHull.")
+
+            hull = scConvexHull(positions, qhull_options="Qs")
+            mesh = to_open3d(positions[hull.vertices], hull.simplices)
+            return cls(mesh=mesh)
 
         mesh.vertices = o3d.utility.Vector3dVector(
             np.multiply(np.asarray(mesh.vertices), scale)

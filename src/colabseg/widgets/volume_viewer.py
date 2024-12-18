@@ -21,11 +21,12 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from vtkmodules.util import numpy_support
 from matplotlib.pyplot import get_cmap
+import qtawesome as qta
 
-from .io_utils import load_density
+from ..io_utils import load_density
 
 
-_colormaps = ["gray", "gray_r", "viridis", "magma", "twilight_shifted"]
+_colormaps = ["gray", "gray_r", "viridis", "magma", "twilight_shifted", "none"]
 
 
 class VolumeViewer(QWidget):
@@ -97,25 +98,26 @@ class VolumeViewer(QWidget):
         self.project_actors.setEnabled(False)
         self.project_actors.stateChanged.connect(self.toggle_projection)
         self.clipping_plane = vtk.vtkPlane()
+        self.clipping_plane2 = vtk.vtkPlane()
 
         # Create layout
-        controls_layout = QHBoxLayout()
-        controls_layout.addWidget(self.volume_label)
-        controls_layout.addWidget(self.open_button)
-        controls_layout.addWidget(self.close_button)
-        controls_layout.addWidget(self.orientation_selector)
-        controls_layout.addWidget(self.color_selector)
-        controls_layout.addWidget(QLabel("Slice:"))
-        controls_layout.addWidget(self.slice_slider)
-        controls_layout.addWidget(self.slice_value_label)
-        controls_layout.addWidget(QLabel("Contrast:"))
-        controls_layout.addWidget(self.min_contrast_slider)
-        controls_layout.addWidget(self.max_contrast_slider)
-        controls_layout.addWidget(self.contrast_value_label)
-        controls_layout.addWidget(QLabel("Gamma:"))
-        controls_layout.addWidget(self.gamma_slider)
-        controls_layout.addWidget(self.gamma_value_label)
-        controls_layout.addWidget(self.project_actors)
+        self.controls_layout = QHBoxLayout()
+        self.controls_layout.addWidget(self.volume_label)
+        self.controls_layout.addWidget(self.open_button)
+        self.controls_layout.addWidget(self.close_button)
+        self.controls_layout.addWidget(self.orientation_selector)
+        self.controls_layout.addWidget(self.color_selector)
+        self.controls_layout.addWidget(QLabel("Slice:"))
+        self.controls_layout.addWidget(self.slice_slider)
+        self.controls_layout.addWidget(self.slice_value_label)
+        self.controls_layout.addWidget(QLabel("Contrast:"))
+        self.controls_layout.addWidget(self.min_contrast_slider)
+        self.controls_layout.addWidget(self.max_contrast_slider)
+        self.controls_layout.addWidget(self.contrast_value_label)
+        self.controls_layout.addWidget(QLabel("Gamma:"))
+        self.controls_layout.addWidget(self.gamma_slider)
+        self.controls_layout.addWidget(self.gamma_value_label)
+        self.controls_layout.addWidget(self.project_actors)
 
         self.editable_widgets = [
             self.slice_slider,
@@ -129,7 +131,7 @@ class VolumeViewer(QWidget):
         ]
 
         layout = QVBoxLayout(self)
-        layout.addLayout(controls_layout)
+        layout.addLayout(self.controls_layout)
         self.setLayout(layout)
 
     @property
@@ -191,7 +193,10 @@ class VolumeViewer(QWidget):
             volume.data.ravel(order="F"), deep=True, array_type=vtk.VTK_FLOAT
         )
         self.volume.GetPointData().SetScalars(volume)
+        self.swap_volume(self.volume)
 
+    def swap_volume(self, new_volume):
+        self.volume = new_volume
         self.slice_mapper.SetInputData(self.volume)
         self.slice_mapper.SetOrientationToX()
         self.slice_mapper.SetSliceNumber(0)
@@ -242,7 +247,11 @@ class VolumeViewer(QWidget):
 
     def change_color_palette(self, palette_name):
         self.current_palette = palette_name
-        self.update_contrast_and_gamma()
+
+        self.slice.SetVisibility(self.current_palette != "none")
+        if self.current_palette != "none":
+            self.update_contrast_and_gamma()
+        self.vtk_widget.GetRenderWindow().Render()
 
     def update_contrast_and_gamma(self):
         scalar_range = self.volume.GetScalarRange()
@@ -294,6 +303,11 @@ class VolumeViewer(QWidget):
         self.clipping_plane.SetOrigin(
             *[0 if i != dim else origin + pos * spacing for i in range(3)]
         )
+
+        self.clipping_plane2.SetNormal(*[0 if i != dim else 1 for i in range(3)])
+        self.clipping_plane2.SetOrigin(
+            *[0 if i != dim else origin + (pos - 40) * spacing for i in range(3)]
+        )
         return None
 
     def toggle_projection(self, state):
@@ -307,7 +321,74 @@ class VolumeViewer(QWidget):
             actor = actors.GetNextActor()
             if state == Qt.CheckState.Checked.value:
                 actor.GetMapper().AddClippingPlane(self.clipping_plane)
+                actor.GetMapper().AddClippingPlane(self.clipping_plane2)
             else:
                 actor.GetMapper().RemoveAllClippingPlanes()
 
         self.vtk_widget.GetRenderWindow().Render()
+
+
+class MultiVolumeViewer(QWidget):
+    """Container widget for managing multiple VolumeViewer instances"""
+
+    def __init__(self, vtk_widget, parent=None):
+        super().__init__(parent)
+
+        self.vtk_widget = vtk_widget
+        self.layout = QVBoxLayout(self)
+        self.layout.setSpacing(5)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+
+        self.primary = VolumeViewer(self.vtk_widget)
+        current_margins = self.primary.layout().contentsMargins()
+        self.primary.layout().setContentsMargins(
+            current_margins.left(), 0, current_margins.right(), 0
+        )
+        self.layout.addWidget(self.primary)
+
+        self.add_viewer_button = QPushButton("+")
+        self.add_viewer_button.setFixedWidth(20)
+        self.add_viewer_button.clicked.connect(self.add_viewer)
+        self.primary.controls_layout.addWidget(self.add_viewer_button)
+
+        self.additional_viewers = []
+        self.primary.data_changed.connect(self._changed_primary)
+
+    def add_viewer(self):
+        """Add a new VolumeViewer instance"""
+        new_viewer = VolumeViewer(self.vtk_widget)
+        margins = self.primary.layout().contentsMargins()
+        new_viewer.layout().setContentsMargins(margins)
+
+        remove_button = QPushButton("x")
+        remove_button.setFixedWidth(20)
+        remove_button.clicked.connect(lambda: self.remove_viewer(new_viewer))
+        new_viewer.controls_layout.addWidget(remove_button)
+
+        if self.primary.volume is not None:
+            new_viewer.volume = self.primary.volume
+            new_viewer.change_widget_state(True)
+            new_viewer.change_color_palette("gray")
+            new_viewer.update_contrast_and_gamma()
+
+        self._copy_from_primary(new_viewer)
+        self.additional_viewers.append(new_viewer)
+        self.layout.addWidget(new_viewer)
+
+    def remove_viewer(self, viewer):
+        """Remove a specific viewer"""
+        if viewer in self.additional_viewers:
+            self.additional_viewers.remove(viewer)
+            viewer.close_volume()
+            viewer.deleteLater()
+
+    def _copy_from_primary(self, new_viewer: VolumeViewer) -> int:
+        volume = self.primary.volume
+        if volume is None:
+            new_viewer.change_widget_state(False)
+            return 0
+
+        return new_viewer.swap_volume(volume)
+
+    def _changed_primary(self):
+        return [self._copy_from_primary(x) for x in self.additional_viewers]

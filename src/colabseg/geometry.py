@@ -5,6 +5,7 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import warnings
 from typing import Tuple
 
 import vtk
@@ -22,6 +23,7 @@ class Geometry:
         color=BASE_COLOR,
         sampling_rate=None,
         meta=None,
+        **kwargs,
     ):
         self._points = vtk.vtkPoints()
         self._cells = vtk.vtkCellArray()
@@ -56,7 +58,6 @@ class Geometry:
             "render_spheres": True,
             "base_color": color,
         }
-
         self.set_appearance(**self._appearance)
         self.set_color(color)
 
@@ -76,6 +77,7 @@ class Geometry:
         self.__init__(**state)
         self.set_visibility(visible)
         self.set_appearance(**appearance)
+        self._appearance = appearance
 
     def __getitem__(self, idx):
         """
@@ -159,7 +161,8 @@ class Geometry:
     def add_normals(self, normals):
         normals = np.asarray(normals, dtype=np.float32)
         if normals.shape != self.points.shape:
-            raise ValueError("Number of normals must match number of points.")
+            warnings.warn("Number of normals must match number of points.")
+            return -1
 
         self._normals.Reset()
         for normal in normals:
@@ -195,11 +198,12 @@ class Geometry:
         if render_spheres:
             prop.SetRenderPointsAsSpheres(True)
 
-        if getattr(self, "_representation", None) in ("mesh", "mesh_edges"):
+        if self._representation in ("mesh", "mesh_edges", "surface"):
             opacity = 0.3
 
         prop.SetPointSize(size)
         prop.SetOpacity(opacity)
+        # prop.SetEdgeOpacity(opacity)
         prop.SetAmbient(ambient)
         prop.SetDiffuse(diffuse)
         prop.SetSpecular(specular)
@@ -258,7 +262,14 @@ class Geometry:
         self.change_representation(target_representation)
 
     def change_representation(self, representation: str = "pointcloud") -> int:
-        supported = ["pointcloud", "pointcloud_normals", "mesh", "wireframe", "normals"]
+        supported = [
+            "pointcloud",
+            "pointcloud_normals",
+            "mesh",
+            "wireframe",
+            "normals",
+            "surface",
+        ]
         representation = representation.lower()
 
         if representation not in supported:
@@ -267,7 +278,7 @@ class Geometry:
         if representation == self._representation:
             return 0
 
-        if representation in ["mesh", "wireframe"]:
+        if representation in ["mesh", "wireframe", "surface"]:
             faces = self._meta.get("faces", None)
             if faces is None or "points" not in self._meta:
                 print(
@@ -280,6 +291,13 @@ class Geometry:
         if self._representation in _save and representation not in _save:
             self._original_data = vtk.vtkPolyData()
             self._original_data.DeepCopy(self._data)
+
+        if self._representation == "surface" and representation != "surface":
+            self._points = self._original_data.GetPoints()
+            self._cells = self._original_data.GetVerts()
+            self._data.SetPoints(self._points)
+            self._data.SetVerts(self._cells)
+            self._data.GetPointData().SetNormals(self._normals)
 
         if representation in _save and hasattr(self, "_original_data"):
             self._data.Reset()
@@ -335,7 +353,7 @@ class Geometry:
             glyph.SetInputData(self._data)
             mapper.SetInputConnection(glyph.GetOutputPort())
 
-        elif representation in ("mesh", "wireframe"):
+        elif representation in ("mesh", "wireframe", "surface"):
             self._cells.Reset()
             self._points.Reset()
             self.add_points(self._meta["points"])
@@ -344,13 +362,16 @@ class Geometry:
                 self.add_normals(self._meta["normals"])
 
             self._data.SetPolys(self._cells)
+
+            if representation == "surface":
+                self._data.SetVerts(None)
             mapper.SetInputData(self._data)
 
             if representation == "wireframe":
                 prop.SetRepresentationToWireframe()
             else:
                 prop.SetRepresentationToSurface()
-                prop.SetEdgeVisibility(True)
+                prop.SetEdgeVisibility(representation == "mesh")
                 prop.SetOpacity(0.3)
 
         self._representation = representation

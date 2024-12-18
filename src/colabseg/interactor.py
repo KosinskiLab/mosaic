@@ -31,8 +31,9 @@ from PyQt6.QtCore import (
 from PyQt6.QtGui import QAction, QColor
 
 from .utils import points_to_volume
-from .io_utils import OrientationsWriter, write_density
-from ._gui.dialog import GeometryPropertiesDialog
+from .geometry import VolumeGeometry
+from .io_utils import OrientationsWriter, write_density, load_density
+from .dialogs import GeometryPropertiesDialog, make_param
 
 
 def _cluster_modifier(keep_selection: bool = False):
@@ -76,12 +77,6 @@ class LinkedDataContainerInteractor(QObject):
 
         self.data_list = QListWidget()
         self.data_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
-        # self.data_list.setEditTriggers(
-        #     QListWidget.EditTrigger.DoubleClicked
-        #     | QListWidget.EditTrigger.SelectedClicked
-        #     | QListWidget.EditTrigger.EditKeyPressed
-        # )
-        # self.data_list.itemChanged.connect(self.interactor._on_item_renamed)
         self.data_list.itemSelectionChanged.connect(self._on_cluster_selection_changed)
 
         self._update_list()
@@ -103,7 +98,6 @@ class LinkedDataContainerInteractor(QObject):
             item = QListWidgetItem(name)
             if not visible:
                 item.setForeground(self.interactor.invisible_color)
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
             self.data_list.addItem(item)
 
     def _on_cluster_selection_changed(self):
@@ -133,11 +127,6 @@ class DataContainerInteractor(QObject):
         # Interaction element for the GUI
         self.data_list = QListWidget()
         self.data_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
-        # self.data_list.setEditTriggers(
-        #     QListWidget.EditTrigger.DoubleClicked
-        #     | QListWidget.EditTrigger.SelectedClicked
-        #     | QListWidget.EditTrigger.EditKeyPressed
-        # )
         self.data_list.itemChanged.connect(self._on_item_renamed)
         self.data_list.itemSelectionChanged.connect(self._on_cluster_selection_changed)
 
@@ -269,8 +258,6 @@ class DataContainerInteractor(QObject):
         self.highlight_selected_points(color=(0.8, 0.2, 0.2))
 
     def _show_context_menu(self, position):
-        from ._gui.dialog import make_param
-
         item = self.data_list.itemAt(position)
         if not item:
             return -1
@@ -293,6 +280,7 @@ class DataContainerInteractor(QObject):
             "Normals",
             "Pointcloud with Normals",
             "Mesh",
+            "Surface",
             "Wireframe",
         ]
         representation_menu = QMenu("Representation", context_menu)
@@ -462,15 +450,32 @@ class DataContainerInteractor(QObject):
         if parameters is None:
             return 0
 
+        # This logic needs to be moved into interactor
+        volume = parameters.get("volume_path", None)
+        if volume is not None:
+            volume = load_density(volume)
+
         for index in indices:
             if not self.container._index_ok(index):
                 continue
             geometry = self.container.data[index]
 
+            # TODO: Add a check if its the same volume
+            if volume is not None:
+                state = geometry.__getstate__()
+                scale = parameters.get("scale", 1.0)
+                geometry = VolumeGeometry(
+                    volume=volume.data * scale,
+                    volume_sampling_rate=volume.sampling_rate,
+                    **state,
+                )
+                self.container.data[index] = geometry
+
             geometry._appearance.update(parameters)
             geometry.set_appearance(**parameters)
 
-        return self.container.highlight(indices)
+        self.container.highlight(indices)
+        return self.render()
 
     def _get_selected_indices(self):
         return [item.row() for item in self.data_list.selectedIndexes()]
