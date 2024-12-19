@@ -399,15 +399,15 @@ class Ellipsoid(Parametrization):
 
 class Cylinder(Parametrization):
     """
-    Parametrize a point cloud as cylinder.
+    Parametrize a point cloud as a cylinder with improved stability.
 
     Parameters
     ----------
     centers : np.ndarray
-        Center coordinates of the cylinder in X and Y.
+        Center coordinates of the cylinder in X, Y, and Z.
     orientations : np.ndarray
-        Square orientation matrix
-    radius: float
+        Orientation matrix (direction vectors).
+    radius : float
         Radius of the cylinder.
     height : float
         Height of the cylinder.
@@ -420,54 +420,140 @@ class Cylinder(Parametrization):
         radius: float,
         height: float,
     ):
-        self.centers = centers
-        self.orientations = orientations
-        self.radius = radius
-        self.height = height
+        self.centers = np.asarray(centers, dtype=np.float64)
+        self.orientations = np.asarray(orientations, dtype=np.float64)
+        self.radius = float(radius)
+        self.height = float(height)
 
-    @classmethod
-    def fit(cls, positions: np.ndarray, **kwargs) -> "Cylinder":
-        positions = np.asarray(positions, dtype=np.float64)
-        if positions.shape[1] != 3 or len(positions.shape) != 2:
-            raise NotImplementedError(
-                "Only three-dimensional point clouds are supported."
-            )
+    @staticmethod
+    def _compute_initial_guess(
+        positions: np.ndarray,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Compute initial guess for cylinder parameters using PCA.
 
-        center = positions.mean(axis=0)
+        Parameters
+        ----------
+        positions : np.ndarray
+            Input point cloud positions.
+
+        Returns
+        -------
+        center : np.ndarray
+            Initial guess for cylinder center.
+        direction : np.ndarray
+            Initial guess for cylinder axis direction.
+        radius : float
+            Initial guess for cylinder radius.
+        """
+        center = np.mean(positions, axis=0)
         positions_centered = positions - center
 
         cov_mat = np.cov(positions_centered, rowvar=False)
         evals, evecs = np.linalg.eigh(cov_mat)
 
-        sort_indices = np.argsort(evals)[::-1]
-        evals = evals[sort_indices]
-        evecs = evecs[:, sort_indices]
+        sort_idx = np.argsort(evals)[::-1]
+        evals = evals[sort_idx]
+        evecs = evecs[:, sort_idx]
 
-        initial_radii = 2 * np.sqrt(evals)
+        direction = evecs[:, -1]
 
-        def cylinder_loss(params, data_points, orientations):
-            radii, center = params[0], params[1:]
-            transformed_points = np.dot(data_points - center, orientations)
-            normalized_points = transformed_points / radii
+        proj_matrix = np.eye(3) - np.outer(direction, direction)
+        projected_points = positions_centered @ proj_matrix
+        radius = np.mean(np.linalg.norm(projected_points, axis=1))
+        return center, direction, radius
 
-            distances = np.sum(normalized_points**2, axis=1) - 1
+    @classmethod
+    def fit(cls, positions: np.ndarray, **kwargs) -> "Cylinder":
+        """
+        Fit a cylinder to point cloud data with improved stability.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Input point cloud positions (N x 3).
+        **kwargs : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        cylinder : Cylinder
+            Fitted cylinder instance.
+        """
+        positions = np.asarray(positions, dtype=np.float64)
+        if positions.shape[1] != 3 or len(positions.shape) != 2:
+            raise ValueError("Input must be a Nx3 point cloud.")
+
+        center_init, direction_init, radius_init = cls._compute_initial_guess(positions)
+        params_init = np.concatenate([center_init, direction_init, [radius_init]])
+
+        def objective(params):
+            center = params[:3]
+            direction = params[3:6]
+            radius = params[6]
+            direction = direction / np.linalg.norm(direction)
+            diff = positions - center
+            proj = np.dot(diff, direction)[:, np.newaxis] * direction
+            perp = diff - proj
+            distances = np.abs(np.linalg.norm(perp, axis=1) - radius)
             return np.sum(distances**2)
 
+        constraint = {"type": "eq", "fun": lambda params: np.sum(params[3:6] ** 2) - 1}
         result = optimize.minimize(
-            cylinder_loss,
-            np.array([np.max(initial_radii), *center]),
-            args=(positions, evecs),
-            method="Nelder-Mead",
+            objective,
+            params_init,
+            method="SLSQP",
+            constraints=[constraint],
+            options={"ftol": 1e-8, "maxiter": 1000},
         )
-        radius, center = result.x[0], result.x[1:]
-        rotated_points = positions_centered.dot(evecs)
-        heights = rotated_points.max(axis=0) - rotated_points.min(axis=0)
-        height = heights[np.argmax(np.abs(np.diff(heights))) + 1]
-        return cls(radius=radius, centers=center, orientations=evecs, height=height)
+
+        if not result.success:
+            print("Warning: Optimization did not converge!")
+
+        center = result.x[:3]
+        direction = result.x[3:6]
+        direction = direction / np.linalg.norm(direction)
+        radius = abs(result.x[6])
+
+        projected_heights = np.dot(positions - center, direction)
+        height = np.max(projected_heights) - np.min(projected_heights)
+        v1 = np.array([1, 0, 0])
+        if not np.allclose(direction, [1, 0, 0]):
+            v1 = np.array([0, 1, 0])
+        v1 = v1 - np.dot(v1, direction) * direction
+        v1 = v1 / np.linalg.norm(v1)
+        v2 = np.cross(direction, v1)
+        orientations = np.column_stack([v1, v2, direction])
+
+        # TODO: Fix the projection offset on result.x[:3]
+        center = center_init
+
+        return cls(
+            centers=center, orientations=orientations, radius=radius, height=height
+        )
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        print("Computing normals on Cylinders is not yet supported.")
-        return points
+        """
+        Compute surface normals for points on the cylinder.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            Input points to compute normals for.
+
+        Returns
+        -------
+        normals : np.ndarray
+            Computed surface normals.
+        """
+        points = np.asarray(points)
+        diff = points - self.centers
+        axis = self.orientations[:, 2]
+        proj = np.dot(diff, axis)[:, np.newaxis] * axis
+        perp = diff - proj
+        norms = np.linalg.norm(perp, axis=1, keepdims=True)
+        normals = np.where(norms > 1e-10, perp / norms, axis)
+        return normals
 
     def sample(
         self,

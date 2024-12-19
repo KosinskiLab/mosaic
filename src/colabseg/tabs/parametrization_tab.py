@@ -371,6 +371,14 @@ class ParametrizationTab(QWidget):
 
         self.current_geometry.swap_data(points)
         self.current_geometry._meta.update(meta)
+        if (
+            getattr(self.current_geometry, "_representation", "pointcloud")
+            != "pointcloud"
+        ):
+            self.current_geometry.change_representation(
+                self.current_geometry._representation
+            )
+
         if selected_indices:
             return self.cdata.models.set_selection(selected_indices)
 
@@ -484,10 +492,10 @@ class ParametrizationTab(QWidget):
         makedirs(directory, exist_ok=True)
 
         mesh_base = geometry._meta.get("fit").mesh
-        edge_length = parameters.get("average_edge_length", 40)
-        lower_bound = parameters.pop("lower_bound", (1 - 0.25) * edge_length)
-        upper_bound = parameters.pop("upper_bound", (1 + 0.25) * edge_length)
-        etarget = parameters.get("scaling_lower", 1.0)
+        edge_length = float(parameters.get("average_edge_length", 40))
+        lower_bound = float(parameters.pop("lower_bound", (1 - 0.25) * edge_length))
+        upper_bound = float(parameters.pop("upper_bound", (1 + 0.25) * edge_length))
+        etarget = float(parameters.get("scaling_lower", 1.0))
 
         filename = f"{directory}/mesh"
         with open(f"{filename}.txt", mode="w", encoding="utf-8") as ofile:

@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QMenu,
     QFileDialog,
     QMessageBox,
+    QDialog,
 )
 from PyQt6.QtCore import (
     Qt,
@@ -443,39 +444,18 @@ class DataContainerInteractor(QObject):
         if not len(indices):
             return -1
 
-        base_parameters = self.container.data[indices[0]]._appearance
-
+        base_parameters = self.container.data[indices[0]]._appearance.copy()
         dialog = GeometryPropertiesDialog(initial_properties=base_parameters)
-        parameters = dialog.exec_()
-        if parameters is None:
-            return 0
 
-        # This logic needs to be moved into interactor
-        volume = parameters.get("volume_path", None)
-        if volume is not None:
-            volume = load_density(volume)
+        def on_parameters_changed(parameters):
+            self.container.update_appearance(indices, parameters)
+            return self.render_vtk()
 
-        for index in indices:
-            if not self.container._index_ok(index):
-                continue
-            geometry = self.container.data[index]
+        dialog.parametersChanged.connect(on_parameters_changed)
 
-            # TODO: Add a check if its the same volume
-            if volume is not None:
-                state = geometry.__getstate__()
-                scale = parameters.get("scale", 1.0)
-                geometry = VolumeGeometry(
-                    volume=volume.data * scale,
-                    volume_sampling_rate=volume.sampling_rate,
-                    **state,
-                )
-                self.container.data[index] = geometry
-
-            geometry._appearance.update(parameters)
-            geometry.set_appearance(**parameters)
-
-        self.container.highlight(indices)
-        return self.render()
+        if dialog.exec() == QDialog.DialogCode.Rejected:
+            on_parameters_changed(base_parameters)
+        return 1
 
     def _get_selected_indices(self):
         return [item.row() for item in self.data_list.selectedIndexes()]

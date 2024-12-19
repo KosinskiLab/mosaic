@@ -13,6 +13,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 from sklearn.cluster import KMeans
 
+from .io_utils import load_density
 from .utils import (
     statistical_outlier_removal,
     dbscan_clustering,
@@ -21,7 +22,7 @@ from .utils import (
     com_cluster_points,
     find_closest_points,
 )
-from .geometry import Geometry
+from .geometry import Geometry, VolumeGeometry
 from .parametrization import ConvexHull
 
 
@@ -455,7 +456,6 @@ class DataContainer:
             color = appearance.get("base_color", self.base_color)
             if index in indices:
                 color = appearance.get("highlight_color", self.highlight_color)
-
             elif index not in _highlighted:
                 continue
 
@@ -492,6 +492,29 @@ class DataContainer:
                 continue
             self.data[index].set_visibility(visible)
         return None
+
+    def update_appearance(self, indices: list, parameters: dict) -> None:
+        volume, volume_path = None, parameters.get("volume_path", None)
+        if volume_path is not None:
+            volume = load_density(volume_path)
+
+        for index in indices:
+            if not self._index_ok(index):
+                continue
+
+            geometry = self.data[index]
+            if volume is not None:
+                scale = parameters.get("scale", 1.0)
+                geometry = VolumeGeometry(
+                    volume=volume.data * scale,
+                    volume_sampling_rate=volume.sampling_rate,
+                    **geometry.__getstate__(),
+                )
+                self.data[index] = geometry
+
+            geometry.set_appearance(**parameters)
+
+        self.highlight(indices)
 
     def get_cluster_count(self) -> int:
         """Get number of geometries in container.

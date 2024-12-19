@@ -100,8 +100,8 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
         "continuation_lambda": 1.0,
     }
     default_args.update(kwargs)
-    default_args["lc0"] = lower_bound
-    default_args["lc1"] = upper_bound
+    default_args["lc0"] = upper_bound
+    default_args["lc1"] = lower_bound
 
     if lower_bound > upper_bound:
         raise ValueError("upper_bound needs to be larger than lower_bound.")

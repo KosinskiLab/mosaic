@@ -37,11 +37,6 @@ class BoundingBoxWidget:
 
 class AxesWidget:
     def __init__(self, renderer, interactor):
-        self.visible = True
-        self.colored = True
-        self.labels_visible = True
-        self.arrow_heads_visible = True
-
         self.axes_actor = vtk.vtkAxesActor()
         self.axes_actor.SetTotalLength(20, 20, 20)
         self.axes_actor.SetShaftType(0)
@@ -65,6 +60,11 @@ class AxesWidget:
         self.orientation_marker.SetEnabled(1)
         self.orientation_marker.InteractiveOff()
         self.orientation_marker.SetOutlineColor(0.93, 0.57, 0.13)
+
+        self.visible = True
+        self.colored = True
+        self.set_labels_visible(False)
+        self.arrow_heads_visible = True
 
     def set_visibility(self, visible: bool):
         self.visible = visible

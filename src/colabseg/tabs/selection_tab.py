@@ -33,6 +33,96 @@ from ..dialogs import (
 from ..io_utils import import_points
 from ..plane_trimmer import PlaneTrimmer
 
+import numpy as np
+import vtk
+from vtk.util import numpy_support
+
+from PyQt6.QtWidgets import QPushButton
+from PyQt6.QtCore import Qt
+
+
+class ClusterTransformer:
+    def __init__(self, data):
+        self.data = data
+        self.transform_widget = None
+        self.selected_cluster = None
+
+    def cleanup(self):
+        """Remove the transform widget and clean up resources."""
+        if self.transform_widget:
+            self.data.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer().RemoveViewProp(
+                self.transform_widget
+            )
+            self.transform_widget = None
+            self.selected_cluster = None
+            self.data.vtk_widget.GetRenderWindow().Render()
+
+    def setup_transform_widget(self):
+        """Create and configure the 3D widget for transformations."""
+        if self.transform_widget:
+            return
+
+        self.transform_widget = vtk.vtkBoxWidget()
+        self.transform_widget.SetInteractor(
+            self.data.vtk_widget.GetRenderWindow().GetInteractor()
+        )
+        self.transform_widget.SetRotationEnabled(True)
+        self.transform_widget.SetTranslationEnabled(True)
+        self.transform_widget.SetScalingEnabled(False)
+
+        # Set up the transform callback
+        self.transform_widget.AddObserver("InteractionEvent", self.on_transform)
+
+    def on_transform(self, widget, event):
+        """Handle transformation updates."""
+        if not self.selected_cluster:
+            return
+
+        # Get the transformation matrix
+        t = vtk.vtkTransform()
+        widget.GetTransform(t)
+        matrix = np.array(t.GetMatrix()).reshape(4, 4)
+
+        # Get the cluster points
+        points = self.data._get_cluster_points(self.selected_cluster)
+
+        # Apply transformation to points
+        homogeneous_points = np.ones((len(points), 4))
+        homogeneous_points[:, :3] = points
+
+        # Transform points
+        transformed_points = (matrix @ homogeneous_points.T).T[:, :3]
+
+        # Update cluster points
+        self.data.data[self.selected_cluster].points = transformed_points
+        self.data.render()
+
+    def toggle(self, cluster_index=None):
+        """Toggle the transform widget for a specific cluster."""
+        if self.transform_widget and cluster_index == self.selected_cluster:
+            self.cleanup()
+            return
+
+        self.selected_cluster = cluster_index
+        self.setup_transform_widget()
+
+        if cluster_index is not None:
+            # Get cluster bounds
+            points = self.data._get_cluster_points(cluster_index)
+            bounds = [
+                np.min(points[:, 0]),
+                np.max(points[:, 0]),
+                np.min(points[:, 1]),
+                np.max(points[:, 1]),
+                np.min(points[:, 2]),
+                np.max(points[:, 2]),
+            ]
+
+            # Position the widget around the cluster
+            self.transform_widget.PlaceWidget(bounds)
+            self.transform_widget.On()
+            self.data.vtk_widget.GetRenderWindow().Render()
+
 
 class ClusterSelectionTab(QWidget):
     def __init__(self, cdata):
@@ -43,15 +133,24 @@ class ClusterSelectionTab(QWidget):
 
     def eventFilter(self, obj, event):
         """Handle Escape key to exit trimmer mode."""
-        if not self.plane_trimmer:
-            return super().eventFilter(obj, event)
+        # if not self.plane_trimmer:
+        #     return super().eventFilter(obj, event)
 
         if event.type() == QEvent.Type.KeyPress:
             key = event.key()
             if key == Qt.Key.Key_Escape:
-                self.plane_trimmer.cleanup()
-                self.plane_trimmer = None
+
+                if self.plane_trimmer is not None:
+                    self.plane_trimmer.cleanup()
+                    self.plane_trimmer = None
+
+                if hasattr(self, "transform_widget"):
+                    self.cleanup_transform_widget()
+
                 return True
+
+            if not self.plane_trimmer:
+                return super().eventFilter(obj, event)
 
             if key in (Qt.Key.Key_X, Qt.Key.Key_C, Qt.Key.Key_Z):
                 axis = {Qt.Key.Key_X: "x", Qt.Key.Key_C: "y", Qt.Key.Key_Z: "z"}[key]
@@ -104,6 +203,22 @@ class ClusterSelectionTab(QWidget):
         self.setup_point_editing_operations(editing_layout)
         main_layout.addLayout(editing_layout)
 
+    # def setup_cluster_operations(self, operations_layout):
+    #     self.cluster_buttons = {}
+    #     cluster_ops_frame = QFrame()
+    #     cluster_ops_frame.setFrameStyle(QFrame.Shape.StyledPanel)
+    #     cluster_ops_layout = QVBoxLayout(cluster_ops_frame)
+    #     cluster_ops_mapping = [
+    #         ("Merge Cluster", self.cdata.data.merge_cluster),
+    #         ("Remove Cluster", self.cdata.data.remove_cluster),
+    #     ]
+    #     for button_text, button_method in cluster_ops_mapping:
+    #         button = QPushButton(button_text)
+    #         button.clicked.connect(button_method)
+    #         cluster_ops_layout.addWidget(button)
+    #         self.cluster_buttons[button_text] = button
+    #     operations_layout.addWidget(cluster_ops_frame)
+
     def setup_cluster_operations(self, operations_layout):
         self.cluster_buttons = {}
         cluster_ops_frame = QFrame()
@@ -112,6 +227,7 @@ class ClusterSelectionTab(QWidget):
         cluster_ops_mapping = [
             ("Merge Cluster", self.cdata.data.merge_cluster),
             ("Remove Cluster", self.cdata.data.remove_cluster),
+            ("Transform Cluster", self.toggle_transform_mode),
         ]
         for button_text, button_method in cluster_ops_mapping:
             button = QPushButton(button_text)
@@ -119,6 +235,86 @@ class ClusterSelectionTab(QWidget):
             cluster_ops_layout.addWidget(button)
             self.cluster_buttons[button_text] = button
         operations_layout.addWidget(cluster_ops_frame)
+
+    def toggle_transform_mode(self):
+        """Handle transform mode toggling."""
+        selected_items = self.cdata.data.data_list.selectedItems()
+        if not selected_items:
+            return
+
+        # If widget exists and is enabled, turn it off and clean up
+        if hasattr(self, "transform_widget") and self.transform_widget.GetEnabled():
+            self.transform_widget.Off()
+            self.transform_widget.SetEnabled(0)
+            self.cdata.data.vtk_widget.GetRenderWindow().Render()
+            return
+
+        cluster_index = self.cdata.data.data_list.row(selected_items[0])
+        if not hasattr(self, "transform_widget"):
+            self.transform_widget = vtk.vtkBoxWidget()
+            self.transform_widget.SetInteractor(
+                self.cdata.data.vtk_widget.GetRenderWindow().GetInteractor()
+            )
+            self.transform_widget.HandlesOn()
+            self.transform_widget.SetRotationEnabled(True)
+            self.transform_widget.SetTranslationEnabled(True)
+            self.transform_widget.SetScalingEnabled(False)
+
+            self.transform_widget.AddObserver("InteractionEvent", self.on_transform)
+            self.transform_widget.SetPriority(1.0)
+
+        points = self.cdata._data.data[cluster_index].points
+        mins = np.min(points, axis=0)
+        maxs = np.max(points, axis=0)
+
+        bounds = []
+        padding = np.multiply(maxs - mins, 0.55)
+        for min_val, max_val, pad in zip(mins, maxs, padding):
+            bounds.extend([min_val - pad, max_val + pad])
+
+        self.transform_widget.PlaceWidget(bounds)
+        self.transform_widget.On()
+        self.selected_cluster = cluster_index
+        self.original_points = points.copy()
+        self.cdata.data.render_vtk()
+
+    def on_transform(self, widget, event):
+        """Handle transformation updates."""
+        if not hasattr(self, "selected_cluster") or not hasattr(
+            self, "original_points"
+        ):
+            return
+
+        t = vtk.vtkTransform()
+        widget.GetTransform(t)
+
+        vmatrix = t.GetMatrix()
+        matrix = np.eye(4)
+        vmatrix.DeepCopy(matrix.ravel(), vmatrix)
+
+        rotation = matrix[:3, :3]
+        translation = matrix[:3, 3]
+
+        only_translate = np.allclose(rotation, np.eye(3), rtol=1e-10)
+
+        new_points = self.original_points.copy()
+        if not only_translate:
+            new_points = np.matmul(new_points, rotation.T, out=new_points)
+
+        new_points = np.add(new_points, translation, out=new_points)
+
+        # Update cluster points and render
+        self.cdata._data.data[self.selected_cluster].swap_data(new_points=new_points)
+        self.cdata.data.render()
+
+    def cleanup_transform_widget(self):
+        """Clean up the transform widget."""
+        if hasattr(self, "transform_widget"):
+            self.transform_widget.Off()
+            self.transform_widget.SetEnabled(0)
+            if hasattr(self, "original_points"):
+                del self.original_points
+            self.cdata.data.vtk_widget.GetRenderWindow().Render()
 
     def setup_point_operations(self, operations_layout):
         self.point_buttons = {}

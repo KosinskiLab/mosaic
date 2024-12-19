@@ -97,7 +97,6 @@ class VolumeViewer(QWidget):
         self.project_actors.setEnabled(False)
         self.project_actors.stateChanged.connect(self.toggle_projection)
         self.clipping_plane = vtk.vtkPlane()
-        self.clipping_plane2 = vtk.vtkPlane()
 
         # Create layout
         self.controls_layout = QHBoxLayout()
@@ -303,10 +302,6 @@ class VolumeViewer(QWidget):
             *[0 if i != dim else origin + pos * spacing for i in range(3)]
         )
 
-        self.clipping_plane2.SetNormal(*[0 if i != dim else 1 for i in range(3)])
-        self.clipping_plane2.SetOrigin(
-            *[0 if i != dim else origin + (pos - 40) * spacing for i in range(3)]
-        )
         return None
 
     def toggle_projection(self, state):
@@ -320,7 +315,6 @@ class VolumeViewer(QWidget):
             actor = actors.GetNextActor()
             if state == Qt.CheckState.Checked.value:
                 actor.GetMapper().AddClippingPlane(self.clipping_plane)
-                actor.GetMapper().AddClippingPlane(self.clipping_plane2)
             else:
                 actor.GetMapper().RemoveAllClippingPlanes()
 

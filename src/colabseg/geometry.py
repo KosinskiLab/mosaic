@@ -94,8 +94,9 @@ class Geometry:
             idx = np.where(idx)[0]
 
         normals = None
-        if self.normals is not None:
-            normals = self.normals[idx]
+        if isinstance(self.normals, np.ndarray):
+            if np.max(idx) < self.normals.shape[0]:
+                normals = self.normals[idx]
 
         ret = self.__class__(
             points=self.points[idx],
@@ -188,11 +189,6 @@ class Geometry:
     def toggle_visibility(self):
         return self.set_visibility(not self.visible)
 
-    def _get(self, name, value=None):
-        if value is not None:
-            return value
-        return self._appearance.get(name, None)
-
     def set_appearance(
         self,
         size: int = None,
@@ -204,18 +200,34 @@ class Geometry:
         color: Tuple[float] = None,
         **kwargs,
     ):
+        params = {
+            "size": size,
+            "opacity": opacity,
+            "render_spheres": render_spheres,
+            "ambient": ambient,
+            "diffuse": diffuse,
+            "specular": specular,
+            **kwargs,
+        }
+        self._appearance.update({k: v for k, v in params.items() if v is not None})
+        self._set_appearance()
+
+        if color is None:
+            color = self._appearance.get("base_color", (0.7, 0.7, 0.7))
+        self.set_color(color)
+
+    def _set_appearance(self):
         prop = self._actor.GetProperty()
 
         prop.SetRenderPointsAsSpheres(True)
-        if not self._get("render_spheres", render_spheres):
+        if not self._appearance.get("render_spheres", True):
             prop.SetRenderPointsAsSpheres(False)
 
-        prop.SetPointSize(self._get("size", size))
-        prop.SetOpacity(self._get("opacity", opacity))
-        prop.SetAmbient(self._get("ambient", ambient))
-        prop.SetDiffuse(self._get("diffuse", diffuse))
-        prop.SetSpecular(self._get("specular", specular))
-        self.set_color(self._get("base_color", color))
+        prop.SetPointSize(self._appearance.get("size", 8))
+        prop.SetOpacity(self._appearance.get("opacity", 1.0))
+        prop.SetAmbient(self._appearance.get("ambient", 0.3))
+        prop.SetDiffuse(self._appearance.get("diffuse", 0.7))
+        prop.SetSpecular(self._appearance.get("specular", 0.2))
 
     def create_actor(self):
         mapper = vtk.vtkPolyDataMapper()
