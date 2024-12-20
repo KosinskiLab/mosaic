@@ -59,7 +59,6 @@ class Geometry:
             "base_color": color,
         }
         self.set_appearance(**self._appearance)
-        self.set_color(color)
 
     def __getstate__(self):
         return {

@@ -13,6 +13,7 @@ from typing import Tuple, List
 
 import vtk
 from functools import wraps
+from PyQt6.QtGui import QAction, QColor
 from PyQt6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
@@ -29,12 +30,10 @@ from PyQt6.QtCore import (
     pyqtSignal,
     QEvent,
 )
-from PyQt6.QtGui import QAction, QColor
 
 from .utils import points_to_volume
-from .geometry import VolumeGeometry
-from .io_utils import OrientationsWriter, write_density, load_density
-from .dialogs import GeometryPropertiesDialog, make_param
+from .io_utils import OrientationsWriter, write_density
+from .dialogs import GeometryPropertiesDialog, make_param, OperationDialog
 
 
 def _cluster_modifier(keep_selection: bool = False):
@@ -335,8 +334,6 @@ class DataContainerInteractor(QObject):
         context_menu.exec(self.data_list.mapToGlobal(position))
 
     def _export_data(self, file_format: str, parameters: List[Tuple]):
-        from ._gui.dialog import OperationDialog
-
         kwargs = {}
         if len(parameters):
             dialog = OperationDialog(

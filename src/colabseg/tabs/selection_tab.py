@@ -5,6 +5,7 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import vtk
 import numpy as np
 import qtawesome as qta
 from PyQt6.QtWidgets import (
@@ -32,13 +33,6 @@ from ..dialogs import (
 )
 from ..io_utils import import_points
 from ..plane_trimmer import PlaneTrimmer
-
-import numpy as np
-import vtk
-from vtk.util import numpy_support
-
-from PyQt6.QtWidgets import QPushButton
-from PyQt6.QtCore import Qt
 
 
 class ClusterTransformer:
