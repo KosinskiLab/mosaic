@@ -6,7 +6,7 @@
 """
 
 import warnings
-from typing import Tuple
+from typing import Tuple, List, Dict
 
 import vtk
 from vtk.util import numpy_support
@@ -385,6 +385,7 @@ class Geometry:
             mapper.SetInputData(self._data)
 
             if representation == "wireframe":
+                self._data.SetVerts(None)
                 prop.SetRepresentationToWireframe()
             else:
                 prop.SetRepresentationToSurface()
@@ -471,3 +472,28 @@ class VolumeGeometry(Geometry):
 
     def change_representation(self, *args, **kwargs) -> int:
         return -1
+
+
+class GeometryTrajectory(Geometry):
+    def __init__(self, trajectory: List[Dict], **kwargs):
+        super().__init__(**kwargs)
+        self._trajectory = trajectory
+
+    @property
+    def frames(self):
+        return len(self._trajectory)
+
+    def display_frame(self, frame_idx: int):
+        target_representation = self._representation
+
+        if frame_idx < 0 or frame_idx > self.frames:
+            return None
+
+        meta = self._trajectory[frame_idx]
+
+        self.swap_data(meta["points"])
+        self._meta.update(meta)
+
+        if target_representation != "pointcloud":
+            self.change_representation(target_representation)
+        return None

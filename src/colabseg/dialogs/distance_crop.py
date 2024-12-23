@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QListWidget,
 )
-from .operation import format_tooltip
+from ..widgets.settings import format_tooltip
 
 
 class DistanceCropDialog(QDialog):

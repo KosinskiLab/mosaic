@@ -6,4 +6,5 @@ from .distance_crop import DistanceCropDialog
 from .geometry_properties import GeometryPropertiesDialog
 from .hmff import HMFFDialog
 from .mesh_equilibration import MeshEquilibrationDialog
+from .progress import ProgressDialog
 from .operation import *

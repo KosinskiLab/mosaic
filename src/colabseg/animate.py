@@ -15,6 +15,7 @@ except Exception:
     cv2 = None
 
 import numpy as np
+from PyQt6.QtGui import QImage, QGuiApplication
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
@@ -32,10 +33,14 @@ from PyQt6.QtWidgets import (
     QProgressDialog,
     QApplication,
 )
-from PyQt6.QtGui import QImage, QGuiApplication
-
-from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
 from vtkmodules.util import numpy_support
+from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
+
+from .geometry import GeometryTrajectory
+
+
+def _get_trajectories(geometries):
+    return [x for x in geometries if isinstance(x, GeometryTrajectory)]
 
 
 class FrameWriter:
@@ -52,10 +57,10 @@ class FrameWriter:
 
 
 class AnimationSettingsDialog(QDialog):
-    def __init__(self, volume_viewer, param_tab, formats, parent=None):
+    def __init__(self, volume_viewer, cdata, formats, parent=None):
         super().__init__(parent)
         self.viewer = volume_viewer
-        self.param_tab = param_tab
+        self.cdata = cdata
         self.formats = formats
         self.setWindowTitle("Animation Settings")
         self.setup_ui()
@@ -68,8 +73,8 @@ class AnimationSettingsDialog(QDialog):
         self.trajectory_radio = QRadioButton("Trajectory")
         self.slice_radio = QRadioButton("Slices")
 
-        has_volume = getattr(self.viewer, "primary", None) is not None
-        has_trajectory = getattr(self.param_tab, "mesh_trajectory", None) is not None
+        has_volume = getattr(self.viewer.primary, "volume", None) is not None
+        has_trajectory = len(_get_trajectories(self.cdata._models.data))
 
         self.slice_radio.setEnabled(has_volume)
         self.trajectory_radio.setEnabled(has_trajectory)
@@ -142,8 +147,10 @@ class AnimationSettingsDialog(QDialog):
 
     def update_frame_ranges(self):
         min_frame, max_frame = 0, 0
-        if self.trajectory_radio.isChecked() and self.param_tab.mesh_trajectory:
-            max_frame = len(self.param_tab.mesh_trajectory) - 1
+        if self.trajectory_radio.isChecked():
+            max_frame = max(
+                *[x.frames - 1 for x in _get_trajectories(self.cdata._models.data)], 0
+            )
         elif self.slice_radio.isChecked() and self.viewer.primary.volume is not None:
             max_frame = self.viewer.primary.slice_slider.maximum()
             min_frame = self.viewer.primary.slice_slider.minimum()
@@ -155,10 +162,10 @@ class AnimationSettingsDialog(QDialog):
 
 
 class ExportManager:
-    def __init__(self, vtk_widget, volume_viewer, param_tab):
+    def __init__(self, vtk_widget, volume_viewer, cdata):
         self.vtk_widget = vtk_widget
         self.viewer = volume_viewer
-        self.param_tab = param_tab
+        self.cdata = cdata
 
         self.format_settings = {
             "MP4": {"fourcc": "mp4v", "ext": ".mp4"},
@@ -248,8 +255,8 @@ class ExportManager:
         cv2.imwrite(file_path, screenshot)
 
     def export_animation(self):
-        has_volume = getattr(self.viewer, "primary", None) is not None
-        has_trajectory = getattr(self.param_tab, "mesh_trajectory", None) is not None
+        has_volume = getattr(self.viewer.primary, "volume", None) is not None
+        has_trajectory = len(_get_trajectories(self.cdata._models.data))
 
         if not (has_trajectory or has_volume):
             QMessageBox.warning(
@@ -260,7 +267,7 @@ class ExportManager:
             return -1
 
         dialog = AnimationSettingsDialog(
-            self.viewer, self.param_tab, self.format_settings.keys()
+            self.viewer, self.cdata, self.format_settings.keys()
         )
 
         if dialog.exec():
@@ -276,14 +283,17 @@ class ExportManager:
 
             def _update(frame_idx):
                 if use_trajectory:
-                    self.param_tab.display_frame(frame_idx)
-                else:
-                    self.viewer.primary.slice_slider.setValue(frame_idx)
+                    for geometry in _get_trajectories(self.cdata._models.data):
+                        geometry.display_frame(frame_idx)
+
+                    selected_indices = self.cdata.models._get_selected_indices()
+                    if selected_indices:
+                        return self.cdata.models.set_selection(selected_indices)
+                    return self.cdata.models.render_vtk()
+                return self.viewer.primary.slice_slider.setValue(frame_idx)
 
             original_frame = 0
-            if use_trajectory:
-                original_frame = self.param_tab.current_frame
-            else:
+            if not use_trajectory:
                 original_frame = self.viewer.primary.slice_slider.value()
 
             self._create_animation(

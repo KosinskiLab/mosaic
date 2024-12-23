@@ -5,45 +5,16 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from PyQt6.QtCore import QLocale
 from PyQt6.QtWidgets import (
     QVBoxLayout,
     QDialog,
     QLabel,
     QDialogButtonBox,
-    QSpinBox,
     QComboBox,
     QFormLayout,
-    QCheckBox,
-    QLineEdit,
 )
-from PyQt6.QtGui import QDoubleValidator
 
-
-def format_tooltip(title, description, default_value=None, notes=None):
-    tooltip = f"""
-    <div style='font-family: Arial, sans-serif;'>
-        <b style='color: #2c3e50; font-size: 11pt;'>{title}</b>
-        <p style='margin: 5px 0; color: #34495e;'>{description}</p>
-    """
-
-    if default_value is not None:
-        tooltip += f"""
-        <p style='margin: 5px 0;'>
-            <span style='color: #7f8c8d;'>Default:</span>
-            <span style='color: #2980b9;'>{default_value}</span>
-        </p>
-        """
-
-    if notes:
-        tooltip += f"""
-        <p style='margin: 5px 0; font-style: italic; color: #95a5a6;'>
-            Note: {notes}
-        </p>
-        """
-
-    tooltip += "</div>"
-    return tooltip
+from ..widgets import get_widget_value, create_setting_widget
 
 
 class OperationDialog(QDialog):
@@ -92,33 +63,27 @@ class OperationDialog(QDialog):
 
         for param_info in parameters:
             label, value, min_value, tooltip_info = param_info
-            tooltip = format_tooltip(**tooltip_info)
-            label_widget = QLabel(f"{tooltip_info['title']}:")
-            label_widget.setToolTip(tooltip)
 
+            settings = {
+                "label": tooltip_info.get("title"),
+                "description": tooltip_info.get("description"),
+                "notes": tooltip_info.get("notes"),
+                "default": value,
+                "min": min_value,
+            }
+
+            type = "number"
             if isinstance(value, bool):
-                widget = QCheckBox()
-                widget.setChecked(value)
+                type = "boolean"
             elif isinstance(min_value, list):
-                widget = QComboBox()
-                widget.addItems(min_value)
-                widget.setCurrentText(value)
+                type = "select"
+                settings["options"] = min_value
             elif isinstance(value, float):
-                widget = QLineEdit()
-                if isinstance(min_value, float):
-                    validator = QDoubleValidator()
-                    validator.setLocale(QLocale.c())
-                    validator.setNotation(QDoubleValidator.Notation.StandardNotation)
-                    validator.setBottom(min_value)
-                    widget.setValidator(validator)
-                widget.setText(str(value))
-            else:
-                widget = QSpinBox()
-                widget.setMinimum(int(min_value))
-                widget.setMaximum(2147483647)
-                widget.setValue(value)
+                type = "text"
 
-            widget.setToolTip(tooltip)
+            settings["type"] = type
+            widget = create_setting_widget(settings)
+            label_widget = QLabel(f"{tooltip_info['title']}:")
             self.label_widgets[label] = label_widget
             self.parameter_widgets[label] = widget
             self.params_layout.addRow(label_widget, widget)
@@ -126,18 +91,7 @@ class OperationDialog(QDialog):
     def get_parameters(self):
         ret = {}
         for param_name, widget in self.parameter_widgets.items():
-            if isinstance(widget, QCheckBox):
-                ret[param_name] = widget.isChecked()
-            elif isinstance(widget, QComboBox):
-                ret[param_name] = widget.currentText()
-            elif isinstance(widget, QLineEdit):
-                validator = widget.validator()
-                if validator:
-                    ret[param_name] = float(widget.text())
-                else:
-                    ret[param_name] = widget.text()
-            else:
-                ret[param_name] = widget.value()
+            ret[param_name] = get_widget_value(widget)
         return ret
 
 

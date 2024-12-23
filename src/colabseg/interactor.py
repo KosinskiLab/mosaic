@@ -34,6 +34,7 @@ from PyQt6.QtCore import (
 from .utils import points_to_volume
 from .io_utils import OrientationsWriter, write_density
 from .dialogs import GeometryPropertiesDialog, make_param, OperationDialog
+from .widgets.container_list import ContainerListWidget
 
 
 def _cluster_modifier(keep_selection: bool = False):
@@ -75,7 +76,7 @@ class LinkedDataContainerInteractor(QObject):
         super().__init__()
         self.interactor = interactor
 
-        self.data_list = QListWidget()
+        self.data_list = ContainerListWidget(self.prefix)
         self.data_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         self.data_list.itemSelectionChanged.connect(self._on_cluster_selection_changed)
 
@@ -125,7 +126,7 @@ class DataContainerInteractor(QObject):
         self.vtk_widget, self.container = vtk_widget, container
 
         # Interaction element for the GUI
-        self.data_list = QListWidget()
+        self.data_list = ContainerListWidget(self.prefix)
         self.data_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         self.data_list.itemChanged.connect(self._on_item_renamed)
         self.data_list.itemSelectionChanged.connect(self._on_cluster_selection_changed)
@@ -140,8 +141,12 @@ class DataContainerInteractor(QObject):
         self.area_picker.AddObserver("EndPickEvent", self._on_area_pick)
 
         self.invisible_color = QColor(128, 128, 128)
-        self.data_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.data_list.customContextMenuRequested.connect(self._show_context_menu)
+        self.data_list.list_widget.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self.data_list.list_widget.customContextMenuRequested.connect(
+            self._show_context_menu
+        )
 
         # Functionality to add points
         self._point_mode, self._active_cluster = False, None

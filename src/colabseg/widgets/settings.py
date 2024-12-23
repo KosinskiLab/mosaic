@@ -1,0 +1,103 @@
+from typing import Dict
+
+from PyQt6.QtCore import QLocale
+from PyQt6.QtGui import QDoubleValidator
+from PyQt6.QtWidgets import (
+    QSpinBox,
+    QDoubleSpinBox,
+    QComboBox,
+    QCheckBox,
+    QFormLayout,
+    QLineEdit,
+)
+
+
+def format_tooltip(label, description="", default=None, notes=None, **kwargs):
+    tooltip = f"""
+    <div class="tooltip">
+        <span style='font-size: 11pt; font-weight: 600; color: #2c3e50;'>{label}</span>
+        <p style='margin: 8px 0; color: #34495e;'>{description}</p>
+    """
+    if default is not None:
+        tooltip += f"""
+        <p style='margin: 8px 0;'>
+            <span style='color: #7f8c8d;'>Default:</span>
+            <span style='color: #2980b9;'>{default}</span>
+        </p>
+        """
+    if notes:
+        tooltip += f"""
+        <p style='margin: 8px 0; color: #95a5a6; font-style: italic;'>
+            Note: {notes}
+        </p>
+        """
+    tooltip += "</div>"
+    return tooltip
+
+
+def create_setting_widget(setting: Dict):
+    if setting["type"] == "number":
+        widget = QSpinBox()
+        widget.setRange(setting.get("min", 0), setting.get("max", 1 << 30))
+        widget.setValue(setting.get("default", 0))
+    elif setting["type"] == "float":
+        widget = QDoubleSpinBox()
+        widget.setRange(setting.get("min", 0.0), setting.get("max", 1e32))
+        widget.setValue(setting.get("default", 0.0))
+        widget.setSingleStep(setting.get("step", 1.0))
+    elif setting["type"] == "select":
+        widget = QComboBox()
+        widget.addItems(setting["options"])
+        if "default" in setting:
+            widget.setCurrentText(setting["default"])
+    elif setting["type"] == "boolean":
+        widget = QCheckBox()
+        widget.setChecked(setting.get("default", False))
+    elif setting["type"] == "text":
+        widget = QLineEdit()
+        default_value = setting.get("default", None)
+        if isinstance(default_value, float):
+            validator = QDoubleValidator()
+            validator.setLocale(QLocale.c())
+            validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+            validator.setBottom(float(setting.get("min_value", 0.0)))
+            widget.setValidator(validator)
+        widget.setMinimumWidth(100)
+        widget.setText(str(setting.get("default", 0)))
+    else:
+        raise ValueError(f"Could not create widget from {setting}.")
+
+    widget.setToolTip(format_tooltip(**setting))
+    widget.setProperty("parameter", setting.get("parameter", None))
+    return widget
+
+
+def get_widget_value(widget):
+    if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
+        return widget.value()
+    elif isinstance(widget, QComboBox):
+        return widget.currentText()
+    elif isinstance(widget, QCheckBox):
+        return widget.isChecked()
+    elif isinstance(widget, QLineEdit):
+        validator = widget.validator()
+        if validator:
+            return float(widget.text())
+        else:
+            return widget.text()
+    return None
+
+
+def get_layout_widget_value(layout):
+    ret = {}
+    for i in range(layout.rowCount()):
+        field_item = layout.itemAt(i, QFormLayout.ItemRole.FieldRole)
+        if not (field_item and field_item.widget()):
+            continue
+
+        widget = field_item.widget()
+        parameter = widget.property("parameter")
+        if parameter is None:
+            continue
+        ret[parameter] = get_widget_value(widget)
+    return ret

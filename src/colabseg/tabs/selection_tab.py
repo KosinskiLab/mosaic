@@ -21,9 +21,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QEvent
 
-from ..widgets import HistogramWidget
+from ..widgets import HistogramWidget, format_tooltip
 from ..dialogs import (
-    format_tooltip,
     show_parameter_dialog,
     make_param,
     ParameterHandler,
@@ -221,7 +220,7 @@ class ClusterSelectionTab(QWidget):
         cluster_ops_mapping = [
             ("Merge Cluster", self.cdata.data.merge_cluster),
             ("Remove Cluster", self.cdata.data.remove_cluster),
-            ("Transform Cluster", self.toggle_transform_mode),
+            # ("Transform Cluster", self.toggle_transform_mode),
         ]
         for button_text, button_method in cluster_ops_mapping:
             button = QPushButton(button_text)
@@ -369,7 +368,7 @@ class ClusterSelectionTab(QWidget):
             )
         )
         tooltip = {
-            "title": "DBSCAN Clustering",
+            "label": "DBSCAN Clustering",
             "description": "Cluster points based on density and proximity.",
             "notes": "Useful for finding clusters of arbitrary shape",
         }
@@ -595,12 +594,12 @@ POINT_OPERATIONS = {
 
 POINT_OPERATION_TOOLTIPS = {
     "Remove Outlier": {
-        "title": "Outlier Removal",
+        "label": "Outlier Removal",
         "description": "Remove points that deviate from local distribution.",
         "notes": "Useful for general outliers and noisy edges",
     },
     "Trim Range": {
-        "title": "Trim Range",
+        "label": "Trim Range",
         "description": "Remove points outside specified range along an axis.",
         "notes": "Useful for trimming lamellas",
     },

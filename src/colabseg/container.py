@@ -105,7 +105,7 @@ class DataContainer:
         if color is None:
             color = self.base_color
 
-        if isinstance(points, Geometry):
+        if issubclass(type(points), Geometry):
             new_geometry = points
         else:
             new_geometry = Geometry(points, color=color, **kwargs)

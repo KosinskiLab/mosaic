@@ -363,7 +363,7 @@ class ParametrizationTab(QWidget):
         self.frame_label.setText(f"Frame: {frame_idx:0{n_digits}d}/{n_frames}")
 
         selected_indices = self.cdata.models._get_selected_indices()
-        points, meta = self.mesh_trajectory[frame_idx]
+        points, meta, _ = self.mesh_trajectory[frame_idx]
         if self.current_geometry is None:
             index = self.cdata._models.add(points=points)
             self.current_geometry = self.cdata._models.data[index]

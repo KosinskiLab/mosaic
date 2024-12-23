@@ -18,12 +18,6 @@ from .container import DataContainer
 from .interactor import DataContainerInteractor
 from .parametrization import PARAMETRIZATION_TYPE
 
-AVAILABLE_PARAMETRIZATIONS = PARAMETRIZATION_TYPE
-rbf = PARAMETRIZATION_TYPE.pop("rbf")
-PARAMETRIZATION_TYPE["rbf [xy]"] = rbf
-PARAMETRIZATION_TYPE["rbf [xz]"] = rbf
-PARAMETRIZATION_TYPE["rbf [yz]"] = rbf
-
 
 def _progress_decorator(func: Callable) -> Callable:
     @wraps(func)
@@ -147,7 +141,7 @@ class ColabsegData(QObject):
                 return None
 
             n_samples, kwargs = sampling, {}
-            if sampling_method != "N points":
+            if sampling_method != "N points" and sampling_method != "Points":
                 n_samples = fit.points_per_sampling(sampling)
                 kwargs["mesh_init_factor"] = 5
 

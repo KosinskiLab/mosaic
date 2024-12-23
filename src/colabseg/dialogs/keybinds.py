@@ -58,15 +58,14 @@ class KeybindsDialog(QDialog):
         frame.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Sunken)
 
         section_layout = QVBoxLayout()
-        accent_color = "#314f78"
         title_label = QLabel(
-            f'<span style="color: {accent_color}; font-weight: bold;">{title}</span>'
+            f"<span style='color: #314f78; font-weight: 600;'>{title}</span>"
         )
         section_layout.addWidget(title_label)
 
         grid = QGridLayout()
         for row, (key, description) in enumerate(keybinds):
-            key_label = QLabel(f"<b>{key}</b>")
+            key_label = QLabel(key)
             desc_label = QLabel(description)
             grid.addWidget(key_label, row, 0)
             grid.addWidget(desc_label, row, 1)

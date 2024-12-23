@@ -1,0 +1,381 @@
+from functools import partial
+from os.path import join, exists
+
+import numpy as np
+from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
+
+from ..geometry import GeometryTrajectory
+from ..widgets.ribbon import create_button
+from ..parametrization import TriangularMesh
+from ..io_utils import import_mesh_trajectory
+from ..dialogs import MeshEquilibrationDialog, HMFFDialog, ProgressDialog
+from ..meshing import equilibrate_fit, setup_hmff, to_open3d
+
+
+class FitWorker(QThread):
+    finished = pyqtSignal()
+
+    def __init__(self, cdata, **kwargs):
+        super().__init__()
+        self.cdata = cdata
+        self.kwargs = kwargs
+
+    def run(self):
+        self.cdata.add_fit(**self.kwargs)
+        self.finished.emit()
+
+    def kill(self, timeout=10000):
+        self.quit()
+        if not self.wait(timeout):
+            self.terminate()
+            self.wait()
+
+
+class ModelTab(QWidget):
+    def __init__(self, cdata, ribbon):
+        super().__init__()
+        self.cdata = cdata
+        self.ribbon = ribbon
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(5)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.ribbon)
+
+    def show_ribbon(self):
+        self.ribbon.clear()
+
+        func = self._fit
+        fitting_actions = [
+            create_button("Sphere", "mdi.circle", self, partial(func, "sphere")),
+            create_button("Ellipse", "mdi.ellipse", self, partial(func, "ellipsoid")),
+            create_button("Cylinder", "mdi.hexagon", self, partial(func, "cylinder")),
+            create_button(
+                "RBF", "mdi.grid", self, partial(func, "rbf"), "Fit RBF", RBF_SETTINGS
+            ),
+            create_button(
+                "Mesh", "mdi.vector-polyline", self, func, "Fit Mesh", MESH_SETTINGS
+            ),
+        ]
+        self.ribbon.add_section("Fitting Operations", fitting_actions)
+
+        mesh_actions = [
+            create_button(
+                "Sample",
+                "mdi.chart-scatter-plot",
+                self,
+                self.cdata.sample_fit,
+                "Sample from Fit",
+                SAMPLE_SETTINGS,
+            ),
+            create_button("To Cluster", "mdi.plus", self, self._to_cluster),
+            create_button(
+                "Remove", "fa5s.trash", self, self.cdata.models.remove_cluster
+            ),
+        ]
+        self.ribbon.add_section("Sampling Operations", mesh_actions)
+
+        hmff_actions = [
+            create_button("Equilibrate", "mdi.molecule", self, self._equilibrate_fit),
+            create_button("Export", "mdi.export", self, self._setup_hmff),
+            create_button(
+                "Trajectory",
+                "mdi.chart-line-variant",
+                self,
+                self._import_trajectory,
+                "Import Trajectory",
+                IMPORT_SETTINGS,
+            ),
+        ]
+        self.ribbon.add_section("HMFF Operations", hmff_actions)
+
+    def _fit(self, method: str, **kwargs):
+        _conversion = {"Alpha Shape": "convexhull", "Triangulation": "mesh"}
+
+        method = _conversion.get(method, method)
+        self.fit_worker = FitWorker(self.cdata, method=method, **kwargs)
+        self.fit_worker.finished.connect(self._on_fit_complete)
+        self.fit_worker.start()
+
+    def _on_fit_complete(self):
+        self.fit_worker.deleteLater()
+        self.fit_worker = None
+
+        self.cdata.data.render()
+        self.cdata.models.render()
+
+    def _to_cluster(self, *args, **kwargs):
+        indices = self.cdata.models._get_selected_indices()
+
+        for index in indices:
+            if not self.cdata._models._index_ok(index):
+                continue
+
+            geometry = self.cdata._models.data[index]
+
+            points = geometry.points
+            sampling = geometry._sampling_rate
+            normals = geometry._meta.get("fit", None)
+            if normals is not None:
+                normals = normals.compute_normal(points)
+
+            self.cdata._data.new(points, normals=normals, sampling_rate=sampling)
+        self.cdata.data.data_changed.emit()
+        self.cdata.data.render()
+        return None
+
+    def _equilibrate_fit(self):
+        indices = self.cdata.models._get_selected_indices()
+        if len(indices) != 1:
+            print("Can only equilibrate a single mesh at a time.")
+            return -1
+
+        index = indices[0]
+        geometry = self.cdata._models.data[index]
+        if geometry._meta.get("fit", None) is None:
+            print(f"No parametrization associated with {index}.")
+            return -1
+
+        if not hasattr(geometry._meta.get("fit", None), "mesh"):
+            print(f"{index} is not a triangular mesh.")
+            return -1
+
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "Select or Create Directory",
+            options=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
+        )
+        if not directory:
+            return -1
+
+        dialog = MeshEquilibrationDialog(None)
+        if not dialog.exec():
+            return -1
+
+        return equilibrate_fit(geometry, directory, dialog.get_parameters())
+
+    def _setup_hmff(self):
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "Select Directory with Equilibrated Meshes.",
+            options=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
+        )
+        if not directory:
+            return -1
+
+        mesh_config = join(directory, "mesh.txt")
+        if not exists(mesh_config):
+            print(
+                f"Missing mesh_config at {mesh_config}. Most likely {directory} "
+                "is not a valid directory created by Equilibrate Mesh."
+            )
+            return -1
+
+        with open(mesh_config, mode="r", encoding="utf-8") as infile:
+            data = [x.strip() for x in infile.read().split("\n")]
+            data = [x.split("\t") for x in data if len(x)]
+
+        headers = data.pop(0)
+        ret = {header: list(column) for header, column in zip(headers, zip(*data))}
+
+        if not all(t in ret.keys() for t in ("file", "scale_factor", "offset")):
+            print(
+                "mesh_config is malformated. Expected file, scale_factor, "
+                f"offset columns, got {', '.join(list(ret.keys()))}."
+            )
+            return -1
+
+        dialog = HMFFDialog(None, mesh_options=ret["file"])
+        if not dialog.exec():
+            return -1
+
+        ret = setup_hmff(ret, directory, dialog.get_parameters())
+        QMessageBox.information(self, "Success", "HMFF directory setup successfully.")
+        return ret
+
+    def _import_trajectory(self, scale: float = 1.0, offset: float = 0.0, **kwargs):
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "Select Directory with Point Cloud Series",
+            "",
+            QFileDialog.Option.ShowDirsOnly,
+        )
+        if not directory:
+            return
+
+        ret = []
+        mesh_trajectory = import_mesh_trajectory(directory)
+        progress = ProgressDialog(
+            mesh_trajectory, title="Importing Trajectory", parent=self
+        )
+        for index, data in enumerate(progress):
+            points, faces, filename = data
+
+            faces = faces.astype(int)
+            points = np.divide(np.subtract(points, offset), scale)
+            fit = TriangularMesh(to_open3d(points, faces))
+            meta = {
+                "points": points,
+                "faces": faces,
+                "fit": fit,
+                "normal": fit.compute_normal(points),
+                "filename": filename,
+            }
+            ret.append(meta)
+
+        if len(ret) == 0:
+            print(f"No meshes found at: {directory}.")
+            return None
+
+        trajectory = GeometryTrajectory(
+            points=np.asarray(ret[0]["fit"].mesh.vertices),
+            normals=np.asarray(ret[0]["fit"].mesh.vertices),
+            sampling_rate=1 / scale,
+            meta=ret[0],
+            trajectory=ret,
+        )
+        self.cdata._models.add(trajectory)
+        return self.cdata.models.render()
+
+
+SAMPLE_SETTINGS = {
+    "title": "Sample Fit",
+    "settings": [
+        {
+            "label": "Sampling Method",
+            "parameter": "sampling_method",
+            "type": "select",
+            "options": ["Points", "Distance"],
+            "default": "Points",
+            "notes": "Number of points or average distance between points.",
+        },
+        {
+            "label": "Sampling",
+            "parameter": "sampling",
+            "type": "float",
+            "min": 1,
+            "default": 1000,
+            "notes": "Numerical value for sampling method.",
+        },
+        {
+            "label": "Offset",
+            "parameter": "normal_offset",
+            "type": "float",
+            "default": 0,
+            "notes": "Points are shifted by n times normal vector for particle picking.",
+        },
+    ],
+}
+
+RBF_SETTINGS = {
+    "title": "RBF Settings",
+    "settings": [
+        {
+            "label": "Direction",
+            "parameter": "direction",
+            "type": "select",
+            "options": ["xy", "xz", "yz"],
+            "default": "xy",
+            "description": "Coordinate plane to fit RBF in.",
+        },
+    ],
+}
+MESH_SETTINGS = {
+    "title": "Mesh Settings",
+    "settings": [
+        {
+            "label": "Method",
+            "parameter": "method",
+            "type": "select",
+            "options": ["Alpha Shape", "Triangulation"],
+            "default": "Alpha Shape",
+        },
+        {
+            "label": "Elastic Weight",
+            "parameter": "elastic_weight",
+            "type": "float",
+            "default": 0.0,
+            "description": "Control mesh smoothness and elasticity.",
+            "notes": "0 - strong anchoring, 1 - no anchoring, > 1 repulsion.",
+        },
+        {
+            "label": "Curvature Weight",
+            "parameter": "curvature_weight",
+            "type": "float",
+            "default": 0.0,
+            "description": "Controls propagation of mesh curvature.",
+        },
+        {
+            "label": "Volume Weight",
+            "parameter": "volume_weight",
+            "type": "float",
+            "default": 0.0,
+            "description": "Controls internal pressure of mesh.",
+        },
+        {
+            "label": "Boundary Ring",
+            "parameter": "boundary_ring",
+            "type": "number",
+            "default": 0,
+            "description": "Also optimize n-ring vertices for ill-defined boundaries.",
+        },
+    ],
+    "method_settings": {
+        "Alpha Shape": [
+            {
+                "label": "Alpha",
+                "parameter": "alpha",
+                "type": "float",
+                "default": 1.0,
+                "description": "Alpha-shape parameter.",
+                "notes": "Large values yield coarser features.",
+            },
+        ],
+        "Triangulation": [
+            {
+                "label": "Hole Size",
+                "parameter": "hole_size",
+                "type": "float",
+                "min": -1.0,
+                "default": -1.0,
+                "description": "Maximum surface area of holes considered for triangulation.",
+            },
+            {
+                "label": "Downsample",
+                "parameter": "downsample_input",
+                "type": "boolean",
+                "default": True,
+                "description": "Thin input point cloud to core.",
+            },
+            {
+                "label": "Smoothing Steps",
+                "parameter": "smoothing_steps",
+                "type": "number",
+                "default": 5,
+                "description": "Pre-smoothing steps before fairing.",
+                "notes": "Improves repair but less impactful for topolgoy than weights.",
+            },
+        ],
+    },
+}
+
+IMPORT_SETTINGS = {
+    "title": "Trajectory Import",
+    "settings": [
+        {
+            "label": "Scale",
+            "parameter": "scale",
+            "type": "text",
+            "default": 1.0,
+            "description": "Scale imported points by 1 / scale.",
+        },
+        {
+            "label": "Offset",
+            "parameter": "offset",
+            "type": "text",
+            "default": 0.0,
+            "description": "Add offset as (points - offset) / scale ",
+        },
+    ],
+}

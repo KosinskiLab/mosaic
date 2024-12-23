@@ -331,6 +331,6 @@ def import_mesh_trajectory(path: str) -> List[List[np.ndarray]]:
     ret = []
     for file in files:
         data = read_topology_file(file)
-        ret.append((data["vertices"][:, 1:4], data["faces"][:, 1:4]))
+        ret.append((data["vertices"][:, 1:4], data["faces"][:, 1:4], file))
 
     return ret
