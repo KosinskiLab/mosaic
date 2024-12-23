@@ -36,7 +36,8 @@ KEYBIND_REGISTRY = {
         ("Right Mouse", "Deselect Cluster or Points"),
     ],
     "File Operations": [
-        ("Ctrl+O", "Open File"),
+        ("Ctrl+N", "New Session"),
+        ("Ctrl+O", "Import Files"),
         ("Ctrl+S", "Save Session"),
         ("Ctrl+P", "Save Screenshot"),
         ("Shift+Ctrl+P", "Save Screenshot to Clipboard"),

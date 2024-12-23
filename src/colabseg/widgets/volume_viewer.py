@@ -18,6 +18,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QCheckBox,
 )
+import qtawesome as qta
+
 from PyQt6.QtCore import Qt, pyqtSignal
 from vtkmodules.util import numpy_support
 from matplotlib.pyplot import get_cmap
@@ -43,8 +45,125 @@ class VolumeViewer(QWidget):
         self.slice = vtk.vtkImageSlice()
         self.volume = None
 
+        self.setStyleSheet(
+            """
+            QWidget {
+                font-size: 13px;
+            }
+            QPushButton {
+                border: 1px solid #e5e7eb;
+                border-radius: 4px;
+                padding: 4px 12px;
+            }
+            QPushButton:hover {
+                background-color: #f3f4f6;
+            }
+            QPushButton:disabled {
+                opacity: 0.5;
+            }
+            QComboBox {
+                border: 1px solid #e5e7eb;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            QComboBox:hover {
+                border-color: #d1d5db;
+            }
+            QComboBox:disabled {
+                opacity: 0.5;
+            }
+            QComboBox::drop-down {
+                border-left: 1px solid #e5e7eb;
+                width: 25px;
+            }
+            QComboBox::drop-down:disabled {
+                opacity: 0.5;
+            }
+            QComboBox::down-arrow {
+                width: 6px;
+                height: 6px;
+                background: none;
+                border-bottom: 2px solid currentColor;
+                border-right: 2px solid currentColor;
+                margin-top: -2px;
+            }
+            QComboBox::down-arrow:disabled {
+                opacity: 0.7;
+            }
+            QComboBox::menu-button {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::menu-button:hover {
+                background: transparent;
+            }
+            QSlider {
+                height: 24px;
+            }
+            QSlider:disabled {
+                opacity: 0.5;
+            }
+            QSlider::groove:horizontal {
+                height: 4px;
+                background: #e5e7eb;
+                border-radius: 2px;
+            }
+            QSlider::groove:horizontal:disabled {
+                opacity: 0.5;
+                background: #e5e7eb;
+            }
+            QSlider::handle:horizontal {
+                background: #ffffff;
+                border: 2px solid #3b82f6;
+                width: 16px;
+                height: 16px;
+                margin: -6px 0;
+                border-radius: 8px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #2563eb;
+                border-color: #2563eb;
+            }
+            QSlider::handle:horizontal:disabled {
+                opacity: 0.5;
+                border: 2px solid #e5e7eb;
+            }
+            QLabel {
+                padding: 0 4px;
+            }
+            QLabel:disabled {
+                opacity: 0.5;
+            }
+            QCheckBox {
+                spacing: 8px;
+            }
+            QCheckBox:disabled {
+                opacity: 0.5;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border: 1px solid #e5e7eb;
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #3b82f6;
+                border-color: #3b82f6;
+            }
+            QCheckBox::indicator:hover {
+                border-color: #3b82f6;
+            }
+            QCheckBox::indicator:disabled {
+                background-color: #f3f4f6;
+                border-color: #e5e7eb;
+            }
+            QCheckBox::indicator:checked:disabled {
+                opacity: 0.5;
+            }
+        """
+        )
+
         # Create widgets
-        self.volume_label = QLabel("Volume:")
         self.open_button = QPushButton("Open")
         self.open_button.clicked.connect(self.open_volume)
         self.close_button = QPushButton("Close")
@@ -100,7 +219,6 @@ class VolumeViewer(QWidget):
 
         # Create layout
         self.controls_layout = QHBoxLayout()
-        self.controls_layout.addWidget(self.volume_label)
         self.controls_layout.addWidget(self.open_button)
         self.controls_layout.addWidget(self.close_button)
         self.controls_layout.addWidget(self.orientation_selector)
@@ -328,6 +446,20 @@ class MultiVolumeViewer(QWidget):
         super().__init__(parent)
 
         self.vtk_widget = vtk_widget
+
+        self.setStyleSheet(
+            """
+            QPushButton {
+                border: 1px solid #e5e7eb;
+                border-radius: 4px;
+                padding: 4px;
+            }
+            QPushButton:hover {
+                background-color: #f3f4f6;
+            }
+        """
+        )
+
         self.layout = QVBoxLayout(self)
         self.layout.setSpacing(5)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -340,7 +472,8 @@ class MultiVolumeViewer(QWidget):
         self.primary_margins = self.primary.layout().contentsMargins()
         self.layout.addWidget(self.primary)
 
-        add_button = QPushButton("+")
+        add_button = QPushButton()
+        add_button.setIcon(qta.icon("fa5s.plus", color="#374151"))
         add_button.setFixedWidth(20)
         add_button.clicked.connect(self.add_viewer)
         self.primary.controls_layout.addWidget(add_button)
@@ -353,7 +486,8 @@ class MultiVolumeViewer(QWidget):
         new_viewer = VolumeViewer(self.vtk_widget)
         new_viewer.layout().setContentsMargins(self.primary_margins)
 
-        remove_button = QPushButton("x")
+        remove_button = QPushButton()
+        remove_button.setIcon(qta.icon("fa5s.trash", color="#374151"))
         remove_button.setFixedWidth(20)
         remove_button.clicked.connect(lambda: self.remove_viewer(new_viewer))
         new_viewer.controls_layout.addWidget(remove_button)

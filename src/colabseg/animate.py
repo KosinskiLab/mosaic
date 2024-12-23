@@ -36,6 +36,7 @@ from PyQt6.QtWidgets import (
 from vtkmodules.util import numpy_support
 from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
 
+from .dialogs import ProgressDialog
 from .geometry import GeometryTrajectory
 
 
@@ -54,111 +55,6 @@ class FrameWriter:
 
     def release(self):
         self.index = 0
-
-
-class AnimationSettingsDialog(QDialog):
-    def __init__(self, volume_viewer, cdata, formats, parent=None):
-        super().__init__(parent)
-        self.viewer = volume_viewer
-        self.cdata = cdata
-        self.formats = formats
-        self.setWindowTitle("Animation Settings")
-        self.setup_ui()
-
-    def setup_ui(self):
-        layout = QVBoxLayout(self)
-
-        type_group = QGroupBox("Animation Type")
-        type_layout = QVBoxLayout()
-        self.trajectory_radio = QRadioButton("Trajectory")
-        self.slice_radio = QRadioButton("Slices")
-
-        has_volume = getattr(self.viewer.primary, "volume", None) is not None
-        has_trajectory = len(_get_trajectories(self.cdata._models.data))
-
-        self.slice_radio.setEnabled(has_volume)
-        self.trajectory_radio.setEnabled(has_trajectory)
-        if has_trajectory:
-            self.trajectory_radio.setChecked(True)
-        elif has_volume:
-            self.slice_radio.setChecked(True)
-
-        self.trajectory_radio.toggled.connect(self.update_frame_ranges)
-        self.slice_radio.toggled.connect(self.update_frame_ranges)
-        type_layout.addWidget(self.trajectory_radio)
-        type_layout.addWidget(self.slice_radio)
-        type_group.setLayout(type_layout)
-        layout.addWidget(type_group)
-
-        export_format_group = QGroupBox("Export Settings")
-        export_format_grid = QGridLayout()
-        export_format_grid.addWidget(QLabel("Format:"), 0, 0)
-        self.format_combo = QComboBox()
-        self.format_combo.addItems(self.formats)
-        export_format_grid.addWidget(self.format_combo, 0, 1)
-        export_format_grid.addWidget(QLabel("Quality:"), 1, 0)
-        self.quality = QSpinBox()
-        self.quality.setRange(0, 100)
-        self.quality.setValue(80)
-        self.quality.setSuffix("%")
-        export_format_grid.addWidget(self.quality, 1, 1)
-        export_format_group.setLayout(export_format_grid)
-        layout.addWidget(export_format_group)
-
-        # Frame settings
-        frame_group = QGroupBox("Frame Settings")
-        frame_grid = QGridLayout()
-
-        frame_grid.addWidget(QLabel("Rate (fps):"), 0, 0)
-        self.frame_rate = QSpinBox()
-        self.frame_rate.setRange(1, 60)
-        self.frame_rate.setValue(30)
-        frame_grid.addWidget(self.frame_rate, 0, 1)
-
-        frame_grid.addWidget(QLabel("Stride:"), 1, 0)
-        self.frame_stride = QSpinBox()
-        self.frame_stride.setRange(1, 100)
-        self.frame_stride.setValue(1)
-        frame_grid.addWidget(self.frame_stride, 1, 1)
-
-        frame_grid.addWidget(QLabel("Window:"), 2, 0)
-        range_layout = QHBoxLayout()
-        self.start_frame = QSpinBox()
-        self.end_frame = QSpinBox()
-        self.start_frame.setFixedWidth(70)
-        self.end_frame.setFixedWidth(70)
-        range_layout.addWidget(self.start_frame)
-        range_layout.addWidget(self.end_frame)
-        frame_grid.addLayout(range_layout, 2, 1)
-
-        frame_group.setLayout(frame_grid)
-        layout.addWidget(frame_group)
-
-        button_layout = QHBoxLayout()
-        ok_button = QPushButton("OK")
-        cancel_button = QPushButton("Cancel")
-        ok_button.clicked.connect(self.accept)
-        cancel_button.clicked.connect(self.reject)
-        button_layout.addWidget(ok_button)
-        button_layout.addWidget(cancel_button)
-        layout.addLayout(button_layout)
-
-        self.update_frame_ranges()
-
-    def update_frame_ranges(self):
-        min_frame, max_frame = 0, 0
-        if self.trajectory_radio.isChecked():
-            max_frame = max(
-                *[x.frames - 1 for x in _get_trajectories(self.cdata._models.data)], 0
-            )
-        elif self.slice_radio.isChecked() and self.viewer.primary.volume is not None:
-            max_frame = self.viewer.primary.slice_slider.maximum()
-            min_frame = self.viewer.primary.slice_slider.minimum()
-
-        self.start_frame.setRange(min_frame, max_frame)
-        self.end_frame.setRange(min_frame, max_frame)
-        self.start_frame.setValue(min_frame)
-        self.end_frame.setValue(max_frame)
 
 
 class ExportManager:
@@ -258,53 +154,55 @@ class ExportManager:
         has_volume = getattr(self.viewer.primary, "volume", None) is not None
         has_trajectory = len(_get_trajectories(self.cdata._models.data))
 
-        if not (has_trajectory or has_volume):
-            QMessageBox.warning(
-                None,
-                "Export Error",
-                "No data available for animation. Please load a trajectory or volume.",
-            )
-            return -1
-
         dialog = AnimationSettingsDialog(
             self.viewer, self.cdata, self.format_settings.keys()
         )
 
-        if dialog.exec():
-            use_trajectory = dialog.trajectory_radio.isChecked()
+        if not dialog.exec():
+            return -1
 
-            if dialog.start_frame.value() > dialog.end_frame.value():
-                QMessageBox.warning(
-                    None,
-                    "Export Error",
-                    "Start frame larger than stop frame.",
-                )
-                return -1
+        use_trajectory = dialog.trajectory_radio.isChecked()
 
-            def _update(frame_idx):
-                if use_trajectory:
-                    for geometry in _get_trajectories(self.cdata._models.data):
-                        geometry.display_frame(frame_idx)
-
-                    selected_indices = self.cdata.models._get_selected_indices()
-                    if selected_indices:
-                        return self.cdata.models.set_selection(selected_indices)
-                    return self.cdata.models.render_vtk()
-                return self.viewer.primary.slice_slider.setValue(frame_idx)
-
-            original_frame = 0
-            if not use_trajectory:
-                original_frame = self.viewer.primary.slice_slider.value()
-
-            self._create_animation(
-                update_func=_update,
-                original_frame=original_frame,
-                fps=dialog.frame_rate.value(),
-                stride=dialog.frame_stride.value(),
-                start_frame=dialog.start_frame.value(),
-                end_frame=dialog.end_frame.value(),
-                format_settings=self.format_settings[dialog.format_combo.currentText()],
+        if dialog.start_frame.value() > dialog.end_frame.value():
+            QMessageBox.warning(
+                None,
+                "Export Error",
+                "Start frame larger than stop frame.",
             )
+            return -1
+
+        if not (has_trajectory or has_volume):
+            QMessageBox.warning(
+                None,
+                "Export Error",
+                "Please load a trajectory or volume to animate.",
+            )
+            return -1
+
+        def _update(frame_idx):
+            if use_trajectory:
+                for geometry in _get_trajectories(self.cdata._models.data):
+                    geometry.display_frame(frame_idx)
+
+                selected_indices = self.cdata.models._get_selected_indices()
+                if selected_indices:
+                    return self.cdata.models.set_selection(selected_indices)
+                return self.cdata.models.render_vtk()
+            return self.viewer.primary.slice_slider.setValue(frame_idx)
+
+        original_frame = 0
+        if not use_trajectory:
+            original_frame = self.viewer.primary.slice_slider.value()
+
+        self._create_animation(
+            update_func=_update,
+            original_frame=original_frame,
+            fps=dialog.frame_rate.value(),
+            stride=dialog.frame_stride.value(),
+            start_frame=dialog.start_frame.value(),
+            end_frame=dialog.end_frame.value(),
+            format_settings=self.format_settings[dialog.format_combo.currentText()],
+        )
 
     def _create_animation(
         self,
@@ -345,25 +243,123 @@ class ExportManager:
             if format_settings["fourcc"] in ["mp4v", "MJPG"]:
                 writer.set(cv2.VIDEOWRITER_PROP_QUALITY, quality)
 
-        progress = QProgressDialog()
-        progress.setWindowTitle("Animation")
-        progress.setLabelText("Processing frames...")
-        progress.setWindowModality(Qt.WindowModal)
-        progress.setMinimumDuration(0)
-        progress.setMaximum(end_frame)
-        progress.setCancelButton(None)
-
-        for frame_idx in range(start_frame, end_frame + 1, stride):
+        progress = ProgressDialog(
+            range(start_frame, end_frame + 1, stride), title="Processing Frames"
+        )
+        for frame_idx in progress:
             update_func(frame_idx)
             renderer.Render()
             writer.write(self.capture_screenshot(not is_video))
 
-            progress.setValue(frame_idx)
             QApplication.processEvents()
 
         writer.release()
-        progress.close()
 
         renderer.SetOffScreenRendering(0)
         if original_frame is not None:
             update_func(original_frame)
+
+
+class AnimationSettingsDialog(QDialog):
+    def __init__(self, volume_viewer, cdata, formats, parent=None):
+        super().__init__(parent)
+        self.viewer = volume_viewer
+        self.cdata = cdata
+        self.formats = formats
+        self.setWindowTitle("Animation Settings")
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+
+        type_group = QGroupBox("Animation Type")
+        type_layout = QVBoxLayout()
+        self.trajectory_radio = QRadioButton("Trajectory")
+        self.slice_radio = QRadioButton("Slices")
+
+        has_volume = getattr(self.viewer.primary, "volume", None) is not None
+        has_trajectory = len(_get_trajectories(self.cdata._models.data))
+
+        self.slice_radio.setEnabled(has_volume)
+        self.trajectory_radio.setEnabled(has_trajectory)
+        if has_trajectory:
+            self.trajectory_radio.setChecked(True)
+        elif has_volume:
+            self.slice_radio.setChecked(True)
+
+        self.trajectory_radio.toggled.connect(self.update_frame_ranges)
+        self.slice_radio.toggled.connect(self.update_frame_ranges)
+        type_layout.addWidget(self.trajectory_radio)
+        type_layout.addWidget(self.slice_radio)
+        type_group.setLayout(type_layout)
+        layout.addWidget(type_group)
+
+        export_format_group = QGroupBox("Export Settings")
+        export_format_grid = QGridLayout()
+        export_format_grid.addWidget(QLabel("Format:"), 0, 0)
+        self.format_combo = QComboBox()
+        self.format_combo.addItems(self.formats)
+        export_format_grid.addWidget(self.format_combo, 0, 1)
+        export_format_grid.addWidget(QLabel("Quality:"), 1, 0)
+        self.quality = QSpinBox()
+        self.quality.setRange(0, 100)
+        self.quality.setValue(80)
+        self.quality.setSuffix("%")
+        export_format_grid.addWidget(self.quality, 1, 1)
+        export_format_group.setLayout(export_format_grid)
+        layout.addWidget(export_format_group)
+
+        # Frame settings
+        frame_group = QGroupBox("Frame Settings")
+        frame_grid = QGridLayout()
+
+        frame_grid.addWidget(QLabel("Rate (fps):"), 0, 0)
+        self.frame_rate = QSpinBox()
+        self.frame_rate.setRange(1, 1 << 30)
+        self.frame_rate.setValue(30)
+        frame_grid.addWidget(self.frame_rate, 0, 1)
+
+        frame_grid.addWidget(QLabel("Stride:"), 1, 0)
+        self.frame_stride = QSpinBox()
+        self.frame_stride.setRange(1, 1 << 30)
+        self.frame_stride.setValue(1)
+        frame_grid.addWidget(self.frame_stride, 1, 1)
+
+        frame_grid.addWidget(QLabel("Window:"), 2, 0)
+        range_layout = QHBoxLayout()
+        self.start_frame = QSpinBox()
+        self.start_frame.setFixedWidth(70)
+        self.end_frame = QSpinBox()
+        self.end_frame.setFixedWidth(70)
+        range_layout.addWidget(self.start_frame)
+        range_layout.addWidget(self.end_frame)
+        frame_grid.addLayout(range_layout, 2, 1)
+
+        frame_group.setLayout(frame_grid)
+        layout.addWidget(frame_group)
+
+        button_layout = QHBoxLayout()
+        ok_button = QPushButton("OK")
+        cancel_button = QPushButton("Cancel")
+        ok_button.clicked.connect(self.accept)
+        cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+        layout.addLayout(button_layout)
+
+        self.update_frame_ranges()
+
+    def update_frame_ranges(self):
+        min_frame, max_frame = 0, 0
+        if self.trajectory_radio.isChecked():
+            max_frame = max(
+                *[x.frames - 1 for x in _get_trajectories(self.cdata._models.data)], 0
+            )
+        elif self.slice_radio.isChecked() and self.viewer.primary.volume is not None:
+            max_frame = self.viewer.primary.slice_slider.maximum()
+            min_frame = self.viewer.primary.slice_slider.minimum()
+
+        self.start_frame.setRange(min_frame, max_frame)
+        self.end_frame.setRange(min_frame, max_frame)
+        self.start_frame.setValue(min_frame)
+        self.end_frame.setValue(max_frame)

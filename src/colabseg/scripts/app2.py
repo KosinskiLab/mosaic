@@ -16,6 +16,7 @@ import enum
 from importlib_resources import files
 
 import vtk
+import numpy as np
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -27,6 +28,7 @@ from PyQt6.QtWidgets import (
     QMenu,
     QHBoxLayout,
     QPushButton,
+    QDockWidget,
 )
 from PyQt6.QtCore import Qt, QPoint, QEvent
 from PyQt6.QtGui import (
@@ -48,9 +50,12 @@ from colabseg.tabs.segmentation_tab import SegmentationTab
 from colabseg.tabs.development_tab import DevelopmentTab
 from colabseg.tabs.model_tab import ModelTab
 
+from colabseg.dialogs.import_data import ImportDataDialog
+from colabseg.io_utils import import_points
 from colabseg.dialogs import TiltControlDialog, KeybindsDialog
 from colabseg.widgets import MultiVolumeViewer, BoundingBoxWidget, AxesWidget
 from colabseg.widgets.ribbon import RibbonToolBar
+from colabseg.widgets.trajectory_player import TrajectoryPlayer
 
 
 class Mode(enum.Enum):
@@ -115,7 +120,7 @@ class App(QMainWindow):
         # Adapt to screen size
         screen = QGuiApplication.primaryScreen().geometry()
         width = int(screen.width() * 0.5)
-        height = int(screen.height() * 1.0)
+        height = int(screen.height() * 0.9)
         self.resize(width, height)
         self.move((screen.width() - width) // 2, (screen.height() - height) // 2)
         self.setWindowTitle("Colabseg")
@@ -146,6 +151,7 @@ class App(QMainWindow):
         self.interactor.AddObserver("KeyPressEvent", self.on_key_press)
 
         self.cdata = ColabsegData(self.vtk_widget)
+        self.volume_dock = None
         self.volume_viewer = MultiVolumeViewer(self.vtk_widget)
 
         self.tab_bar = QWidget()
@@ -216,10 +222,15 @@ class App(QMainWindow):
         splitter.addWidget(self.vtk_widget)
         splitter.setSizes([150, self.width() - 150])
 
+        # v_splitter = QSplitter(Qt.Orientation.Vertical)
+        # v_splitter.addWidget(splitter)
+        # v_splitter.addWidget(self.volume_viewer)
+        # v_splitter.setSizes([self.height(), 50])
+        # layout.addWidget(v_splitter)
+
         v_splitter = QSplitter(Qt.Orientation.Vertical)
         v_splitter.addWidget(splitter)
-        v_splitter.addWidget(self.volume_viewer)
-        v_splitter.setSizes([self.height(), 50])
+        v_splitter.setSizes([self.height()])
         layout.addWidget(v_splitter)
 
         self.actor_collection = vtk.vtkActorCollection()
@@ -230,6 +241,7 @@ class App(QMainWindow):
         self.export_manager = ExportManager(
             self.vtk_widget, self.volume_viewer, self.cdata
         )
+        self.trajectory_player = TrajectoryPlayer(self.cdata)
         self.setup_menu()
 
     def on_tab_clicked(self):
@@ -381,12 +393,16 @@ class App(QMainWindow):
         help_menu = menu_bar.addMenu("Help")
 
         # File menu actions
-        open_file_action = QAction("Open File", self)
-        open_file_action.triggered.connect(self.open_file)
-        open_file_action.setShortcut("Ctrl+O")
+        new_session_action = QAction("New Session", self)
+        new_session_action.triggered.connect(self.open_session)
+        new_session_action.setShortcut("Ctrl+N")
+
+        add_file_action = QAction("Import Files", self)
+        add_file_action.triggered.connect(self.open_file)
+        add_file_action.setShortcut("Ctrl+O")
 
         save_file_action = QAction("Save Session", self)
-        save_file_action.triggered.connect(self.save_file)
+        save_file_action.triggered.connect(self.save_session)
         save_file_action.setShortcut("Ctrl+S")
 
         screenshot_action = QAction("Save Viewer Screenshot", self)
@@ -488,6 +504,20 @@ class App(QMainWindow):
         reset_action.triggered.connect(self.tilt_dialog.reset_tilt)
         tilt_menu.addAction(reset_action)
 
+        self.volume_action = QAction("Volume Viewer", self)
+        self.volume_action.setCheckable(True)
+        self.volume_action.setChecked(False)
+        self.volume_action.triggered.connect(
+            lambda checked: self._set_volume_viewer(checked)
+        )
+
+        self.trajectory_action = QAction("Trajectory Player", self)
+        self.trajectory_action.setCheckable(True)
+        self.trajectory_action.setChecked(False)
+        self.trajectory_action.triggered.connect(
+            lambda checked: (self._set_trajectory_player(checked),)
+        )
+
         # Help menu
         show_keybinds_action = QAction("Keybinds", self)
         self.keybinds_dialog = KeybindsDialog(self)
@@ -495,7 +525,8 @@ class App(QMainWindow):
         show_keybinds_action.setShortcut("Ctrl+H")
 
         # Add actions to menus
-        file_menu.addAction(open_file_action)
+        file_menu.addAction(new_session_action)
+        file_menu.addAction(add_file_action)
         file_menu.addAction(save_file_action)
         file_menu.addSeparator()
         file_menu.addAction(screenshot_action)
@@ -505,10 +536,47 @@ class App(QMainWindow):
 
         view_menu.addMenu(axes_menu)
         view_menu.addMenu(tilt_menu)
+        view_menu.addAction(self.volume_action)
+        view_menu.addAction(self.trajectory_action)
 
         help_menu.addAction(show_keybinds_action)
 
-    def open_file(self):
+    def _setup_volume_viewer(self):
+        self.volume_dock = QDockWidget(self)
+        self.volume_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
+        self.volume_dock.setTitleBarWidget(QWidget())
+
+        self.volume_dock.setWidget(self.volume_viewer)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.volume_dock)
+        self.volume_dock.hide()
+
+    def _set_volume_viewer(self, visible):
+        if visible:
+            if self.volume_dock is None:
+                self._setup_volume_viewer()
+            self.volume_dock.setVisible(visible)
+        elif self.volume_dock is not None:
+            self.volume_dock.hide()
+
+    def _setup_trajectory_player(self):
+        self.trajectory_dock = QDockWidget(self)
+        self.trajectory_dock.setFeatures(
+            QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
+        )
+        self.trajectory_dock.setTitleBarWidget(QWidget())
+
+        self.trajectory_player = TrajectoryPlayer(self.cdata)
+        self.trajectory_dock.setWidget(self.trajectory_player)
+
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.trajectory_dock)
+        self.trajectory_dock.hide()
+
+    def _set_trajectory_player(self, visible):
+        if visible:
+            self._setup_trajectory_player()
+        self.trajectory_dock.setVisible(visible)
+
+    def open_session(self):
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getOpenFileName(self, "Open File")
         if not file_path:
@@ -529,7 +597,30 @@ class App(QMainWindow):
         self.cdata.models.render()
         self.set_camera_view("x")
 
-    def save_file(self):
+    def open_file(self):
+        filenames, _ = QFileDialog.getOpenFileNames(self, "Import Files")
+
+        if not filenames:
+            return -1
+
+        dialog = ImportDataDialog(self)
+        dialog.set_files(filenames)
+
+        if not dialog.exec():
+            return -1
+
+        file_parameters = dialog.get_all_parameters()
+        for filename in filenames:
+            parameters = file_parameters[filename]
+            points = import_points(filename, **parameters)
+            for point in points:
+                self.cdata._data.add(points=point.astype(np.float32))
+
+        self.cdata.data.data_changed.emit()
+        self.cdata.data.render()
+        return 0
+
+    def save_session(self):
         file_dialog = QFileDialog()
         file_dialog.setDefaultSuffix("pickle")
         file_path, _ = file_dialog.getSaveFileName(
