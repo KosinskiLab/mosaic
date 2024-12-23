@@ -164,6 +164,7 @@ class VolumeViewer(QWidget):
         )
 
         # Create widgets
+        self.label = QLabel("Volume")
         self.open_button = QPushButton("Open")
         self.open_button.clicked.connect(self.open_volume)
         self.close_button = QPushButton("Close")
@@ -219,6 +220,7 @@ class VolumeViewer(QWidget):
 
         # Create layout
         self.controls_layout = QHBoxLayout()
+        self.controls_layout.addWidget(self.label)
         self.controls_layout.addWidget(self.open_button)
         self.controls_layout.addWidget(self.close_button)
         self.controls_layout.addWidget(self.orientation_selector)
