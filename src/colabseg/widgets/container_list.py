@@ -92,7 +92,6 @@ class ContainerListWidget(QFrame):
         self.updateStyleSheet()
 
     def updateStyleSheet(self):
-
         self.setStyleSheet(
             """
             QFrame {

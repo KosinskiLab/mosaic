@@ -100,9 +100,6 @@ class SettingsMenu(QMenu):
                 font-weight: 600;
                 min-width: 100px;
             }
-            QCheckBox {
-                color: #374151;
-            }
         """
         )
 

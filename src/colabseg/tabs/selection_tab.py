@@ -132,7 +132,6 @@ class ClusterSelectionTab(QWidget):
         if event.type() == QEvent.Type.KeyPress:
             key = event.key()
             if key == Qt.Key.Key_Escape:
-
                 if self.plane_trimmer is not None:
                     self.plane_trimmer.cleanup()
                     self.plane_trimmer = None

@@ -2,7 +2,6 @@ from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QDockWidget,
     QPushButton,
     QSlider,
     QLabel,
@@ -11,7 +10,6 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QPalette, QColor, QPainter
 
 from ..geometry import GeometryTrajectory
 

@@ -51,51 +51,11 @@ class VolumeViewer(QWidget):
                 font-size: 13px;
             }
             QPushButton {
-                border: 1px solid #e5e7eb;
                 border-radius: 4px;
                 padding: 4px 12px;
             }
             QPushButton:hover {
                 background-color: #f3f4f6;
-            }
-            QPushButton:disabled {
-                opacity: 0.5;
-            }
-            QComboBox {
-                border: 1px solid #e5e7eb;
-                border-radius: 4px;
-                padding: 4px 8px;
-            }
-            QComboBox:hover {
-                border-color: #d1d5db;
-            }
-            QComboBox:disabled {
-                opacity: 0.5;
-            }
-            QComboBox::drop-down {
-                border-left: 1px solid #e5e7eb;
-                width: 25px;
-            }
-            QComboBox::drop-down:disabled {
-                opacity: 0.5;
-            }
-            QComboBox::down-arrow {
-                width: 6px;
-                height: 6px;
-                background: none;
-                border-bottom: 2px solid currentColor;
-                border-right: 2px solid currentColor;
-                margin-top: -2px;
-            }
-            QComboBox::down-arrow:disabled {
-                opacity: 0.7;
-            }
-            QComboBox::menu-button {
-                border: none;
-                width: 20px;
-            }
-            QComboBox::menu-button:hover {
-                background: transparent;
             }
             QSlider {
                 height: 24px;
@@ -105,12 +65,12 @@ class VolumeViewer(QWidget):
             }
             QSlider::groove:horizontal {
                 height: 4px;
-                background: #e5e7eb;
+                background: #6b7280;
                 border-radius: 2px;
             }
             QSlider::groove:horizontal:disabled {
                 opacity: 0.5;
-                background: #e5e7eb;
+                background: #6b7280;
             }
             QSlider::handle:horizontal {
                 background: #ffffff;
@@ -126,39 +86,10 @@ class VolumeViewer(QWidget):
             }
             QSlider::handle:horizontal:disabled {
                 opacity: 0.5;
-                border: 2px solid #e5e7eb;
-            }
-            QLabel {
-                padding: 0 4px;
+                border: 2px solid #6b7280;
             }
             QLabel:disabled {
-                opacity: 0.5;
-            }
-            QCheckBox {
-                spacing: 8px;
-            }
-            QCheckBox:disabled {
-                opacity: 0.5;
-            }
-            QCheckBox::indicator {
-                width: 16px;
-                height: 16px;
-                border: 1px solid #e5e7eb;
-                border-radius: 3px;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #3b82f6;
-                border-color: #3b82f6;
-            }
-            QCheckBox::indicator:hover {
-                border-color: #3b82f6;
-            }
-            QCheckBox::indicator:disabled {
-                background-color: #f3f4f6;
-                border-color: #e5e7eb;
-            }
-            QCheckBox::indicator:checked:disabled {
-                opacity: 0.5;
+                opacity: 0.1;
             }
         """
         )
@@ -185,18 +116,19 @@ class VolumeViewer(QWidget):
         self.color_selector.currentTextChanged.connect(self.change_color_palette)
         self.color_selector.setEnabled(False)
 
+        self.contrast_label = QLabel("Contrast:")
         self.min_contrast_slider = QSlider(Qt.Orientation.Horizontal)
         self.min_contrast_slider.setRange(0, 100)
         self.min_contrast_slider.setValue(0)
         self.min_contrast_slider.valueChanged.connect(self.update_contrast_and_gamma)
         self.min_contrast_slider.setEnabled(False)
-
         self.max_contrast_slider = QSlider(Qt.Orientation.Horizontal)
         self.max_contrast_slider.setRange(0, 100)
         self.max_contrast_slider.setValue(100)
         self.max_contrast_slider.valueChanged.connect(self.update_contrast_and_gamma)
         self.max_contrast_slider.setEnabled(False)
 
+        self.gamma_label = QLabel("Gamma:")
         self.gamma_slider = QSlider(Qt.Orientation.Horizontal)
         self.gamma_slider.setRange(1, 300)
         self.gamma_slider.setValue(100)
@@ -204,13 +136,14 @@ class VolumeViewer(QWidget):
         self.gamma_slider.setEnabled(False)
 
         # Create labels for current values
+        self.slice_label = QLabel("Slice:")
         self.slice_value_label = QLabel("0")
         self.contrast_value_label = QLabel("0 - 100")
         self.gamma_value_label = QLabel("1.00")
 
         self.slice_value_label.setFixedWidth(30)
         self.contrast_value_label.setFixedWidth(80)
-        self.gamma_value_label.setFixedWidth(30)
+        self.gamma_value_label.setFixedWidth(40)
 
         # Project 3D geometries on 2D slice
         self.project_actors = QCheckBox("Project")
@@ -225,14 +158,14 @@ class VolumeViewer(QWidget):
         self.controls_layout.addWidget(self.close_button)
         self.controls_layout.addWidget(self.orientation_selector)
         self.controls_layout.addWidget(self.color_selector)
-        self.controls_layout.addWidget(QLabel("Slice:"))
+        self.controls_layout.addWidget(self.slice_label)
         self.controls_layout.addWidget(self.slice_slider)
         self.controls_layout.addWidget(self.slice_value_label)
-        self.controls_layout.addWidget(QLabel("Contrast:"))
+        self.controls_layout.addWidget(self.contrast_label)
         self.controls_layout.addWidget(self.min_contrast_slider)
         self.controls_layout.addWidget(self.max_contrast_slider)
         self.controls_layout.addWidget(self.contrast_value_label)
-        self.controls_layout.addWidget(QLabel("Gamma:"))
+        self.controls_layout.addWidget(self.gamma_label)
         self.controls_layout.addWidget(self.gamma_slider)
         self.controls_layout.addWidget(self.gamma_value_label)
         self.controls_layout.addWidget(self.project_actors)
@@ -246,7 +179,14 @@ class VolumeViewer(QWidget):
             self.gamma_slider,
             self.close_button,
             self.project_actors,
+            self.contrast_value_label,
+            self.slice_value_label,
+            self.gamma_value_label,
+            self.slice_label,
+            self.contrast_label,
+            self.gamma_label,
         ]
+        self.change_widget_state(False)
 
         layout = QVBoxLayout(self)
         layout.addLayout(self.controls_layout)
@@ -452,7 +392,7 @@ class MultiVolumeViewer(QWidget):
         self.setStyleSheet(
             """
             QPushButton {
-                border: 1px solid #e5e7eb;
+                border: 1px solid #6b7280;
                 border-radius: 4px;
                 padding: 4px;
             }
@@ -521,3 +461,31 @@ class MultiVolumeViewer(QWidget):
 
     def _changed_primary(self):
         return [self._copy_from_primary(x) for x in self.additional_viewers]
+
+        #     QCheckBox {
+        #         spacing: 8px;
+        #     }
+        #     QCheckBox:disabled {
+        #         opacity: 0.5;
+        #     }
+        #     QCheckBox::indicator {
+        #         width: 16px;
+        #         height: 16px;
+        #         border: 1px solid #6b7280;
+        #         border-radius: 3px;
+        #         image: fromTheme::dialog-ok;
+        #     }
+        #     QCheckBox::indicator:checked {
+        #         border-color: #3b82f6;
+        #     }
+        #     QCheckBox::indicator:hover {
+        #         border-color: #3b82f6;
+        #     }
+        #     QCheckBox::indicator:disabled {
+        #         border-color: #6b7280;
+        #     }
+        #     QCheckBox::indicator:checked:disabled {
+        #         opacity: 0.5;
+        #     }
+
+        # image: url(:/qt-project.org/styles/commonstyle/images/standardbutton-open-32.png);

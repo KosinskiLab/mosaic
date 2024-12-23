@@ -119,7 +119,7 @@ class App(QMainWindow):
 
         # Adapt to screen size
         screen = QGuiApplication.primaryScreen().geometry()
-        width = int(screen.width() * 0.5)
+        width = int(screen.width() * 0.7)
         height = int(screen.height() * 0.9)
         self.resize(width, height)
         self.move((screen.width() - width) // 2, (screen.height() - height) // 2)
@@ -538,6 +538,7 @@ class App(QMainWindow):
         view_menu.addMenu(tilt_menu)
         view_menu.addAction(self.volume_action)
         view_menu.addAction(self.trajectory_action)
+        view_menu.addSeparator()
 
         help_menu.addAction(show_keybinds_action)
 
