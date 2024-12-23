@@ -50,10 +50,6 @@ class VolumeViewer(QWidget):
             QWidget {
                 font-size: 13px;
             }
-            QPushButton {
-                border-radius: 4px;
-                padding: 4px 12px;
-            }
             QPushButton:hover {
                 background-color: #f3f4f6;
             }
@@ -391,11 +387,6 @@ class MultiVolumeViewer(QWidget):
 
         self.setStyleSheet(
             """
-            QPushButton {
-                border: 1px solid #6b7280;
-                border-radius: 4px;
-                padding: 4px;
-            }
             QPushButton:hover {
                 background-color: #f3f4f6;
             }
@@ -404,7 +395,7 @@ class MultiVolumeViewer(QWidget):
 
         self.layout = QVBoxLayout(self)
         self.layout.setSpacing(5)
-        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setContentsMargins(0, 0, 0, 5)
 
         self.primary = VolumeViewer(self.vtk_widget)
         current_margins = self.primary.layout().contentsMargins()
@@ -461,31 +452,3 @@ class MultiVolumeViewer(QWidget):
 
     def _changed_primary(self):
         return [self._copy_from_primary(x) for x in self.additional_viewers]
-
-        #     QCheckBox {
-        #         spacing: 8px;
-        #     }
-        #     QCheckBox:disabled {
-        #         opacity: 0.5;
-        #     }
-        #     QCheckBox::indicator {
-        #         width: 16px;
-        #         height: 16px;
-        #         border: 1px solid #6b7280;
-        #         border-radius: 3px;
-        #         image: fromTheme::dialog-ok;
-        #     }
-        #     QCheckBox::indicator:checked {
-        #         border-color: #3b82f6;
-        #     }
-        #     QCheckBox::indicator:hover {
-        #         border-color: #3b82f6;
-        #     }
-        #     QCheckBox::indicator:disabled {
-        #         border-color: #6b7280;
-        #     }
-        #     QCheckBox::indicator:checked:disabled {
-        #         opacity: 0.5;
-        #     }
-
-        # image: url(:/qt-project.org/styles/commonstyle/images/standardbutton-open-32.png);
