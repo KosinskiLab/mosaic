@@ -179,6 +179,7 @@ class App(QMainWindow):
             btn.setProperty("tab_id", index)
             btn.setCheckable(True)
             btn.clicked.connect(self.on_tab_clicked)
+            # Used to be #2563eb;
             btn.setStyleSheet(
                 """
                 QPushButton {
@@ -188,11 +189,11 @@ class App(QMainWindow):
                     font-size: 13px;
                 }
                 QPushButton:hover {
-                    color: #374151;
+                    color: #696c6f;
                 }
                 QPushButton:checked {
-                    color: #2563eb;
-                    border-bottom: 2px solid #2563eb;
+                    color: rgba(99, 102, 241, 1.0);
+                    border-bottom: 2px solid rgba(99, 102, 241, 1.0);
                 }
             """
             )

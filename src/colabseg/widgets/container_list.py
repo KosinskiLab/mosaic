@@ -58,11 +58,10 @@ class ContainerListWidget(QFrame):
                 font-size: 11px;
             }
             QListWidget::item:hover {
-                background-color: rgba(243, 244, 246, 0.8);
+                background-color: rgba(0, 0, 0, 0.10);
             }
             QListWidget::item:selected {
-                background-color: rgba(229, 231, 235, 0.9);
-                color: #111827;
+                background-color: rgba(99, 102, 241, 0.3);
                 font-weight: 500;
             }
             QScrollBar:vertical {
@@ -92,7 +91,7 @@ class ContainerListWidget(QFrame):
         self.updateStyleSheet()
 
     def updateStyleSheet(self):
-        self.setStyleSheet(
+        return self.setStyleSheet(
             """
             QFrame {
                 background-color: transparent;

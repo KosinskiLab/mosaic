@@ -89,10 +89,6 @@ class PaywallDialog(QDialog):
     def handle_subscribe(self):
         import webbrowser
 
-        QMessageBox.information(
-            self, "Payment Processing", "Redirecting to secure payment gateway..."
-        )
-
         webbrowser.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         self.accept()
 

@@ -25,7 +25,7 @@ class SettingsToolButton(QToolButton):
         super().__init__(parent)
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         self.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
-        self.setIcon(qta.icon(icon_name, color="#374151"))
+        self.setIcon(qta.icon(icon_name, color="#696c6f"))
         self.setText(text)
 
         self.callback = callback
@@ -45,11 +45,10 @@ class SettingsToolButton(QToolButton):
                 min-width: 60px;
                 padding: 6px 4px;
                 border-radius: 4px;
-                color: #6b7280;
                 font-size: 11px;
             }
             QToolButton:hover {
-                background: #f3f4f6;
+                background: #1a000000;
             }
             QToolButton::menu-indicator {
                 image: url(none);
@@ -216,11 +215,10 @@ class RibbonToolBar(QToolBar):
                 min-width: 60px;
                 padding: 6px 4px;
                 border-radius: 4px;
-                color: #6b7280;
                 font-size: 11px;
             }
             QToolButton:hover {
-                background: #f3f4f6;
+                background: #1a000000;
             }
         """
         )
@@ -231,7 +229,7 @@ class RibbonToolBar(QToolBar):
             separator.setFixedWidth(1)
             separator.setStyleSheet(
                 """
-                background-color: #374151;
+                background-color: #696c6f;
                 margin-top: 4px;
                 margin-bottom: 4px;
             """
@@ -246,7 +244,6 @@ class RibbonToolBar(QToolBar):
         label = QLabel(title)
         label.setStyleSheet(
             """
-            color: #6b7280;
             font-size: 11px;
             margin-bottom: 2px;
         """
@@ -273,7 +270,7 @@ def create_button(
             text, icon_name, settings_config, parent=parent, callback=callback
         )
     else:
-        action = QAction(qta.icon(icon_name, color="#374151"), text, parent)
+        action = QAction(qta.icon(icon_name, color="#696c6f"), text, parent)
         button = QToolButton()
         button.setDefaultAction(action)
         button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
