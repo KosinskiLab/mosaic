@@ -23,6 +23,7 @@ class Geometry:
         color=BASE_COLOR,
         sampling_rate=None,
         meta=None,
+        vtk_actor=None,
         **kwargs,
     ):
         self._points = vtk.vtkPoints()
@@ -35,7 +36,7 @@ class Geometry:
         self._data.SetPoints(self._points)
         self._data.SetVerts(self._cells)
 
-        self._actor = self.create_actor()
+        self._actor = self.create_actor(vtk_actor)
         self._sampling_rate = sampling_rate
         if self._sampling_rate is None:
             self._sampling_rate = np.ones(3)
@@ -228,11 +229,13 @@ class Geometry:
         prop.SetDiffuse(self._appearance.get("diffuse", 0.7))
         prop.SetSpecular(self._appearance.get("specular", 0.2))
 
-    def create_actor(self):
+    def create_actor(self, actor=None):
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(self._data)
 
-        actor = vtk.vtkActor()
+        if actor is None:
+            actor = vtk.vtkActor()
+
         actor.SetMapper(mapper)
         return actor
 
@@ -452,6 +455,16 @@ class VolumeGeometry(Geometry):
         self._actor.SetMapper(mapper)
 
         self.update_isovalue(0.0005)
+
+    def create_actor2(self, actor=None):
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(self._glyph.GetOutputPort())
+
+        if actor is None:
+            actor = vtk.vtkActor()
+
+        actor.SetMapper(mapper)
+        return actor
 
     def update_isovalue(self, upper, lower: float = 0):
         return self._surface.SetValue(lower, upper)

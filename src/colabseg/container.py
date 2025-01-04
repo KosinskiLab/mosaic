@@ -508,6 +508,7 @@ class DataContainer:
                 geometry = VolumeGeometry(
                     volume=volume.data * scale,
                     volume_sampling_rate=volume.sampling_rate,
+                    vtk_actor=self.data[index]._actor,
                     **geometry.__getstate__(),
                 )
                 self.data[index] = geometry

@@ -451,7 +451,9 @@ class DataContainerInteractor(QObject):
 
         def on_parameters_changed(parameters):
             self.container.update_appearance(indices, parameters)
+            # TODO: Reuse old geometry actors for VolumeGeometry
             return self.render_vtk()
+            # return self.render()
 
         dialog.parametersChanged.connect(on_parameters_changed)
 

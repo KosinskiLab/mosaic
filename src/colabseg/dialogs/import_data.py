@@ -1,15 +1,16 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QLocale
+from PyQt6.QtGui import QDoubleValidator
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QDoubleSpinBox,
     QPushButton,
     QFrame,
     QGridLayout,
+    QSizePolicy,
+    QLineEdit,
 )
-from PyQt6.QtWidgets import QSizePolicy
 
 
 class ImportDataDialog(QDialog):
@@ -41,10 +42,13 @@ class ImportDataDialog(QDialog):
         grid_layout.addWidget(self.filename_label, 1, 0, 1, 2)
 
         scale_label = QLabel("Scale Factor:")
-        self.scale_input = QDoubleSpinBox()
-        self.scale_input.setRange(0.000001, 1000000)
-        self.scale_input.setValue(1.0)
-        self.scale_input.setDecimals(6)
+        self.scale_input = QLineEdit()
+        validator = QDoubleValidator()
+        validator.setLocale(QLocale.c())
+        validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+        validator.setBottom(1e-6)
+        self.scale_input.setValidator(validator)
+        self.scale_input.setText(str(1.0))
         self.scale_input.setMinimumWidth(150)
         self.scale_input.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
@@ -53,10 +57,13 @@ class ImportDataDialog(QDialog):
         grid_layout.addWidget(self.scale_input, 2, 1)
 
         offset_label = QLabel("Offset:")
-        self.offset_input = QDoubleSpinBox()
-        self.offset_input.setRange(-1000000, 1000000)
-        self.offset_input.setValue(0.0)
-        self.offset_input.setDecimals(6)
+        self.offset_input = QLineEdit()
+        validator = QDoubleValidator()
+        validator.setLocale(QLocale.c())
+        validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+        self.offset_input.setValidator(validator)
+        self.offset_input.setText(str(0.0))
+
         self.offset_input.setMinimumWidth(150)
         self.offset_input.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
@@ -81,6 +88,7 @@ class ImportDataDialog(QDialog):
         self.next_button = QPushButton("Next →")
         self.apply_all_button = QPushButton("Apply to All")
         self.accept_button = QPushButton("Accept")
+        self.accept_button.setDefault(True)
 
         self.prev_button.clicked.connect(self.previous_file)
         self.next_button.clicked.connect(self.next_file)
@@ -128,7 +136,7 @@ class ImportDataDialog(QDialog):
         if self.filenames:
             current_file = self.filenames[self.current_file_index]
             self.file_parameters[current_file] = {
-                "scale": self.scale_input.value(),
+                "scale": float(self.scale_input.text()),
                 "offset": self.offset_input.value(),
             }
 
@@ -155,7 +163,7 @@ class ImportDataDialog(QDialog):
             self.update_navigation_buttons()
 
     def apply_to_all_clicked(self):
-        current_scale = self.scale_input.value()
+        current_scale = float(self.scale_input.text())
         current_offset = self.offset_input.value()
 
         # Apply to current and all following files
