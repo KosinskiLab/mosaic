@@ -16,18 +16,21 @@ import enum
 from importlib_resources import files
 
 import vtk
+import numpy as np
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
     QSizePolicy,
     QSplitter,
     QFileDialog,
     QMenu,
+    QHBoxLayout,
+    QPushButton,
+    QDockWidget,
 )
-from PyQt6.QtCore import Qt, QPoint
+from PyQt6.QtCore import Qt, QPoint, QEvent
 from PyQt6.QtGui import (
     QAction,
     QGuiApplication,
@@ -42,10 +45,17 @@ from PyQt6.QtGui import (
 import qtawesome as qta
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
+from colabseg.io_utils import import_points
 from colabseg import ColabsegData, ExportManager
-from colabseg.tabs import ClusterSelectionTab, ParametrizationTab, DevTab
-from colabseg.dialogs import TiltControlDialog, KeybindsDialog
-from colabseg.widgets import MultiVolumeViewer, BoundingBoxWidget, AxesWidget
+from colabseg.tabs import SegmentationTab, ModelTab, DevelopmentTab
+from colabseg.dialogs import TiltControlDialog, KeybindsDialog, ImportDataDialog
+from colabseg.widgets import (
+    MultiVolumeViewer,
+    BoundingBoxWidget,
+    AxesWidget,
+    RibbonToolBar,
+    TrajectoryPlayer,
+)
 
 
 class Mode(enum.Enum):
@@ -109,21 +119,20 @@ class App(QMainWindow):
 
         # Adapt to screen size
         screen = QGuiApplication.primaryScreen().geometry()
-        width = int(screen.width() * 0.5)
-        height = int(screen.height() * 1.0)
+        width = int(screen.width() * 0.7)
+        height = int(screen.height() * 0.9)
         self.resize(width, height)
         self.move((screen.width() - width) // 2, (screen.height() - height) // 2)
         self.setWindowTitle("Colabseg")
 
-        frame = QWidget()
-        self.setCentralWidget(frame)
-
-        # Widget and option tab setup
-        layout = QVBoxLayout(frame)
-        splitter = QSplitter(Qt.Orientation.Vertical)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout(central_widget)
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         # Render Block
-        self.vtk_widget = QVTKRenderWindowInteractor(frame)
+        self.vtk_widget = QVTKRenderWindowInteractor()
         self.renderer = vtk.vtkRenderer()
         self.renderer.SetBackground(0.1, 0.1, 0.1)
         self.renderer_next_background = (1.0, 1.0, 1.0)
@@ -133,20 +142,7 @@ class App(QMainWindow):
         self.renderer.SetUseDepthPeeling(1)
         self.renderer.SetOcclusionRatio(0.0)
         self.renderer.SetMaximumNumberOfPeels(4)
-
         self.vtk_widget.GetRenderWindow().AddRenderer(self.renderer)
-
-        self.tab_widget = QTabWidget()
-        self.tab_widget.resize(1000, 200)
-        self.cdata = ColabsegData(self.vtk_widget)
-
-        self.volume_viewer = MultiVolumeViewer(self.vtk_widget)
-
-        splitter.addWidget(self.tab_widget)
-        splitter.addWidget(self.vtk_widget)
-        splitter.addWidget(self.volume_viewer)
-        splitter.setSizes([250, 1200, 50])
-        layout.addWidget(splitter)
 
         # Setup GUI interactions
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
@@ -154,18 +150,105 @@ class App(QMainWindow):
         self.interactor.AddObserver("RightButtonPressEvent", self.on_right_click)
         self.interactor.AddObserver("KeyPressEvent", self.on_key_press)
 
-        self.setup_tabs()
+        self.cdata = ColabsegData(self.vtk_widget)
+        self.volume_dock = None
+        self.volume_viewer = MultiVolumeViewer(self.vtk_widget)
+
+        self.tab_bar = QWidget()
+        self.tab_bar.setFixedHeight(40)
+        self.tab_bar.setStyleSheet(
+            """
+            QWidget {
+                border-bottom: 1px solid #6b7280;
+            }
+        """
+        )
+        tab_layout = QHBoxLayout(self.tab_bar)
+        tab_layout.setContentsMargins(16, 0, 16, 0)
+        tab_layout.setSpacing(4)
+
+        self.tab_buttons = {}
+        self.tab_ribbon = RibbonToolBar(self)
+        self.tabs = [
+            (SegmentationTab(self.cdata, self.tab_ribbon), "Segmentation"),
+            (ModelTab(self.cdata, self.tab_ribbon), "Parametrization"),
+            (DevelopmentTab(self.cdata, self.tab_ribbon), "Development"),
+        ]
+        for index, (tab, name) in enumerate(self.tabs):
+            btn = QPushButton(name)
+            btn.setProperty("tab_id", index)
+            btn.setCheckable(True)
+            btn.clicked.connect(self.on_tab_clicked)
+            # Used to be #2563eb;
+            btn.setStyleSheet(
+                """
+                QPushButton {
+                    border: none;
+                    border-bottom: 2px solid transparent;
+                    padding: 12px 24px;
+                    font-size: 13px;
+                }
+                QPushButton:hover {
+                    color: #696c6f;
+                }
+                QPushButton:checked {
+                    color: rgba(99, 102, 241, 1.0);
+                    border-bottom: 2px solid rgba(99, 102, 241, 1.0);
+                }
+            """
+            )
+            tab_layout.addWidget(btn)
+            self.tab_buttons[index] = btn
+        tab_layout.addStretch()
+        self.tab_buttons[0].setChecked(True)
+        self.tabs[0][0].show_ribbon()
+
+        layout.addWidget(self.tab_bar)
+        layout.addWidget(self.tab_ribbon)
+
+        lists_widget = QWidget()
+        lists_widget.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding
+        )
+        lists_layout = QVBoxLayout(lists_widget)
+        lists_layout.setContentsMargins(0, 0, 0, 0)
+        lists_layout.setSpacing(0)
+        lists_widget.setMinimumWidth(100)
+
+        lists_layout.addWidget(self.cdata.data.data_list)
+        lists_layout.addWidget(self.cdata.models.data_list)
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.addWidget(lists_widget)
+        splitter.addWidget(self.vtk_widget)
+        splitter.setSizes([150, self.width() - 150])
+
+        v_splitter = QSplitter(Qt.Orientation.Vertical)
+        v_splitter.addWidget(splitter)
+        v_splitter.setSizes([self.height()])
+        layout.addWidget(v_splitter)
+
         self.actor_collection = vtk.vtkActorCollection()
         self.bounding_box = BoundingBoxWidget(self.renderer, self.interactor)
         self.axes_widget = AxesWidget(self.renderer, self.interactor)
         self.cursor_handler = CursorModeHandler(self.vtk_widget)
 
         self.export_manager = ExportManager(
-            self.vtk_widget,
-            self.volume_viewer,
-            self.tab_widget.findChild(ParametrizationTab),
+            self.vtk_widget, self.volume_viewer, self.cdata
         )
+        self.trajectory_player = TrajectoryPlayer(self.cdata)
         self.setup_menu()
+
+    def on_tab_clicked(self):
+        # Uncheck all other buttons
+        sender = self.sender()
+        tab_id = sender.property("tab_id")
+
+        for btn in self.tab_buttons.values():
+            if btn != sender:
+                btn.setChecked(False)
+
+        self.tabs[tab_id][0].show_ribbon()
 
     def on_key_press(self, obj, event):
         key = obj.GetKeyCode()
@@ -264,88 +347,83 @@ class App(QMainWindow):
         direction = getattr(self, "_camera_direction", True)
         return self.set_camera_view(view, not direction)
 
-    def setup_tabs(self):
-        self.tab_widget.addTab(ClusterSelectionTab(self.cdata), "Segmentation")
-        self.tab_widget.addTab(ParametrizationTab(self.cdata), "Fits")
-        self.tab_widget.addTab(DevTab(self.cdata, self.volume_viewer), "Dev")
+    def _update_style(self):
+        # This also sets the style of the list widgets
+        self.setStyleSheet(
+            """
+            QMenuBar {
+                border-bottom: 1px solid #6b7280;
+            }
+            QMenuBar::item {
+                padding: 4px 8px;
+            }
+            QMenuBar::item:selected {
+                background-color: #1a000000;
+                border-radius: 4px;
+            }
+            QMenu {
+                border-radius: 4px;
+                padding: 4px;
+            }
+            QMenu::item {
+                padding: 4px 24px 4px 8px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #1a000000;
+            }
+        """
+        )
 
-        for tab in self.tab_widget.children():
-            if isinstance(tab, QWidget):
-                tab.setSizePolicy(
-                    QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-                )
+    def changeEvent(self, event):
+        if event.type() == QEvent.Type.PaletteChange:
+            self._update_style()
+        super().changeEvent(event)
 
     def setup_menu(self):
+        self._update_style()
+
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("File")
         view_menu = menu_bar.addMenu("View")
         help_menu = menu_bar.addMenu("Help")
-        toolbar = self.addToolBar("Main")
 
-        open_file_action = QAction(
-            qta.icon("fa5s.folder-open", opacity=0.7, color="gray"), "Open File", self
-        )
-        open_file_action.setShortcut("Ctrl+O")
-        open_file_action.triggered.connect(self.open_file)
+        # File menu actions
+        new_session_action = QAction("New Session", self)
+        new_session_action.triggered.connect(self.open_session)
+        new_session_action.setShortcut("Ctrl+N")
 
-        save_file_action = QAction(
-            qta.icon("fa5s.save", opacity=0.7, color="gray"), "Save Session", self
-        )
+        add_file_action = QAction("Import Files", self)
+        add_file_action.triggered.connect(self.open_file)
+        add_file_action.setShortcut("Ctrl+O")
+
+        save_file_action = QAction("Save Session", self)
+        save_file_action.triggered.connect(self.save_session)
         save_file_action.setShortcut("Ctrl+S")
-        save_file_action.triggered.connect(self.save_file)
 
-        self.keybinds_dialog = KeybindsDialog(self)
-        show_keybinds_action = QAction(
-            qta.icon("fa5s.keyboard", opacity=0.7, color="gray"), "Keybinds", self
-        )
-        show_keybinds_action.setShortcut("Ctrl+H")
-        show_keybinds_action.triggered.connect(self.keybinds_dialog.show)
-
-        screenshot_action = QAction(
-            qta.icon("fa5s.camera", opacity=0.7, color="gray"),
-            "Save Viewer Screenshot",
-            self,
-        )
-        screenshot_action.setShortcut("Ctrl+P")
+        screenshot_action = QAction("Save Viewer Screenshot", self)
         screenshot_action.triggered.connect(
             lambda x: self.export_manager.save_screenshot()
         )
+        screenshot_action.setShortcut("Ctrl+P")
 
-        animation_action = QAction(
-            qta.icon("fa5s.film", opacity=0.7, color="gray"), "Export Animation", self
-        )
-        animation_action.setShortcut("Ctrl+E")
+        animation_action = QAction("Export Animation", self)
         animation_action.triggered.connect(
             lambda x: self.export_manager.export_animation()
         )
+        animation_action.setShortcut("Ctrl+E")
 
-        clipboard_action = QAction(
-            qta.icon("fa5s.clipboard", opacity=0.7, color="gray"),
-            "Viewer Screenshot to Clipboard",
-            self,
-        )
-        clipboard_action.setShortcut("Ctrl+Shift+C")
+        clipboard_action = QAction("Viewer Screenshot to Clipboard", self)
         clipboard_action.triggered.connect(
             lambda x: self.export_manager.copy_screenshot_to_clipboard()
         )
-        clipboard_window_action = QAction(
-            qta.icon("mdi.monitor-screenshot", opacity=0.7, color="gray"),
-            "Window Screenshot to Clipboard",
-            self,
-        )
-        clipboard_window_action.setShortcut("Ctrl+Shift+W")
+        clipboard_action.setShortcut("Ctrl+Shift+C")
+
+        clipboard_window_action = QAction("Window Screenshot to Clipboard", self)
         clipboard_window_action.triggered.connect(
             lambda x: self.export_manager.copy_screenshot_to_clipboard(window=True)
         )
-
-        file_menu.addAction(open_file_action)
-        file_menu.addAction(save_file_action)
-        file_menu.addSeparator()
-        file_menu.addAction(screenshot_action)
-        file_menu.addAction(clipboard_action)
-        file_menu.addAction(clipboard_window_action)
-        file_menu.addAction(animation_action)
-
+        clipboard_window_action.setShortcut("Ctrl+Shift+W")
         # Setup axes control menu
         axes_menu = QMenu("Axes", self)
         visible_action = QAction("Visible", self)
@@ -388,7 +466,6 @@ class App(QMainWindow):
         axes_menu.addAction(labels_action)
         axes_menu.addAction(colored_action)
         axes_menu.addAction(arrow_action)
-        view_menu.addMenu(axes_menu)
 
         # Handle differnt camera angles
         tilt_menu = QMenu("Camera Tilt", self)
@@ -422,16 +499,81 @@ class App(QMainWindow):
         reset_action.setShortcut("Ctrl+T")
         reset_action.triggered.connect(self.tilt_dialog.reset_tilt)
         tilt_menu.addAction(reset_action)
+
+        self.volume_action = QAction("Volume Viewer", self)
+        self.volume_action.setCheckable(True)
+        self.volume_action.setChecked(False)
+        self.volume_action.triggered.connect(
+            lambda checked: self._set_volume_viewer(checked)
+        )
+
+        self.trajectory_action = QAction("Trajectory Player", self)
+        self.trajectory_action.setCheckable(True)
+        self.trajectory_action.setChecked(False)
+        self.trajectory_action.triggered.connect(
+            lambda checked: (self._set_trajectory_player(checked),)
+        )
+
+        # Help menu
+        show_keybinds_action = QAction("Keybinds", self)
+        self.keybinds_dialog = KeybindsDialog(self)
+        show_keybinds_action.triggered.connect(self.keybinds_dialog.show)
+        show_keybinds_action.setShortcut("Ctrl+H")
+
+        # Add actions to menus
+        file_menu.addAction(new_session_action)
+        file_menu.addAction(add_file_action)
+        file_menu.addAction(save_file_action)
+        file_menu.addSeparator()
+        file_menu.addAction(screenshot_action)
+        file_menu.addAction(clipboard_action)
+        file_menu.addAction(clipboard_window_action)
+        file_menu.addAction(animation_action)
+
+        view_menu.addMenu(axes_menu)
         view_menu.addMenu(tilt_menu)
+        view_menu.addAction(self.volume_action)
+        view_menu.addAction(self.trajectory_action)
+        view_menu.addSeparator()
 
         help_menu.addAction(show_keybinds_action)
 
-        toolbar.addAction(open_file_action)
-        toolbar.addAction(save_file_action)
-        toolbar.addSeparator()
-        toolbar.addAction(show_keybinds_action)
+    def _setup_volume_viewer(self):
+        self.volume_dock = QDockWidget(self)
+        self.volume_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
+        self.volume_dock.setTitleBarWidget(QWidget())
 
-    def open_file(self):
+        self.volume_dock.setWidget(self.volume_viewer)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.volume_dock)
+        self.volume_dock.hide()
+
+    def _set_volume_viewer(self, visible):
+        if visible:
+            if self.volume_dock is None:
+                self._setup_volume_viewer()
+            self.volume_dock.setVisible(visible)
+        elif self.volume_dock is not None:
+            self.volume_dock.hide()
+
+    def _setup_trajectory_player(self):
+        self.trajectory_dock = QDockWidget(self)
+        self.trajectory_dock.setFeatures(
+            QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
+        )
+        self.trajectory_dock.setTitleBarWidget(QWidget())
+
+        self.trajectory_player = TrajectoryPlayer(self.cdata)
+        self.trajectory_dock.setWidget(self.trajectory_player)
+
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.trajectory_dock)
+        self.trajectory_dock.hide()
+
+    def _set_trajectory_player(self, visible):
+        if visible:
+            self._setup_trajectory_player()
+        self.trajectory_dock.setVisible(visible)
+
+    def open_session(self):
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getOpenFileName(self, "Open File")
         if not file_path:
@@ -452,7 +594,30 @@ class App(QMainWindow):
         self.cdata.models.render()
         self.set_camera_view("x")
 
-    def save_file(self):
+    def open_file(self):
+        filenames, _ = QFileDialog.getOpenFileNames(self, "Import Files")
+
+        if not filenames:
+            return -1
+
+        dialog = ImportDataDialog(self)
+        dialog.set_files(filenames)
+
+        if not dialog.exec():
+            return -1
+
+        file_parameters = dialog.get_all_parameters()
+        for filename in filenames:
+            parameters = file_parameters[filename]
+            points = import_points(filename, **parameters)
+            for point in points:
+                self.cdata._data.add(points=point.astype(np.float32))
+
+        self.cdata.data.data_changed.emit()
+        self.cdata.data.render()
+        return 0
+
+    def save_session(self):
         file_dialog = QFileDialog()
         file_dialog.setDefaultSuffix("pickle")
         file_path, _ = file_dialog.getSaveFileName(

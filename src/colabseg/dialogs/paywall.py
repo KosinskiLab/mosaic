@@ -4,7 +4,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QHBoxLayout,
     QPushButton,
-    QMessageBox,
     QVBoxLayout,
 )
 import qtawesome as qta

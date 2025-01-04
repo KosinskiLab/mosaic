@@ -1,3 +1,10 @@
+""" Implements TiltControlDialog for controling camera view angles.
+
+    Copyright (c) 2024 European Molecular Biology Laboratory
+
+    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QVBoxLayout,

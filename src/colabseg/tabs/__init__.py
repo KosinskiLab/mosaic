@@ -1,3 +1,3 @@
-from .selection_tab import ClusterSelectionTab
-from .parametrization_tab import ParametrizationTab
-from .dev_tab import DevTab
+from .model_tab import ModelTab
+from .development_tab import DevelopmentTab
+from .segmentation_tab import SegmentationTab

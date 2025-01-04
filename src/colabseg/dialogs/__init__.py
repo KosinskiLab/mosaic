@@ -7,4 +7,5 @@ from .geometry_properties import GeometryPropertiesDialog
 from .hmff import HMFFDialog
 from .mesh_equilibration import MeshEquilibrationDialog
 from .progress import ProgressDialog
+from .import_data import ImportDataDialog
 from .operation import *

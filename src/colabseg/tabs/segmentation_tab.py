@@ -534,10 +534,3 @@ OUTLIER_SETTINGS = {
         },
     ],
 }
-
-IMPORT_OPERATIONS = {
-    "Import Points": [
-        make_param("scale", 1.0, 0.0, "Scale imported points by 1 / scale."),
-        make_param("offset", 0.0, -1e32, "Add offset as (points - offset) / scale "),
-    ],
-}
