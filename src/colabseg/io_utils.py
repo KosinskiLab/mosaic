@@ -15,7 +15,6 @@ import numpy as np
 import open3d as o3d
 from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
-
 from tme import Density, Orientations
 from tme.matching_utils import rotation_aligning_vectors
 
@@ -53,8 +52,12 @@ class VertexDataLoader:
 def read_star(filename):
     data = Orientations.from_file(filename)
     ret = [data.translations[:, ::-1]]
+    angles = Rotation.from_euler(
+        angles=data.rotations[:, ::-1], seq="zyx", degrees=True
+    )
+    normals = [angles.inv().as_matrix() @ np.array((1, 0, 0))]
     shape = compute_bounding_box(ret)
-    return ret, shape, (1, 1, 1)
+    return ret, normals, shape, (1, 1, 1)
 
 
 def read_txt(filename: str):
@@ -83,7 +86,7 @@ def read_txt(filename: str):
             ret.append(data[keep, :3])
 
     shape = compute_bounding_box(ret)
-    return ret, shape, (1, 1, 1)
+    return ret, [np.zeros_like(x) for x in ret], shape, (1, 1, 1)
 
 
 def read_tsv(filename: str):
@@ -92,17 +95,22 @@ def read_tsv(filename: str):
     if "euler" not in header:
         return read_txt(filename)
 
-    data = [Orientations.from_file(filename).translations[:, ::-1]]
+    orientations = Orientations.from_file(filename)
+    data = [orientations.translations[:, ::-1]]
+    angles = Rotation.from_euler(
+        angles=orientations.rotations[:, ::-1], seq="zyx", degrees=True
+    )
+    normals = [angles.inv().as_matrix() @ np.array((1, 0, 0))]
 
     shape = compute_bounding_box(data)
-    return data, shape, (1, 1, 1)
+    return data, normals, shape, (1, 1, 1)
 
 
 def read_topology_vertices(filename: str):
     data = read_topology_file(filename)
     ret = [data["vertices"][:, 1:4]]
     shape = compute_bounding_box(ret)
-    return ret, shape, (1, 1, 1)
+    return ret, [np.zeros_like(x) for x in ret], shape, (1, 1, 1)
 
 
 def read_volume(filename: str):
@@ -110,15 +118,18 @@ def read_volume(filename: str):
 
     ret = volume_to_points(volume.data, volume.sampling_rate)
     shape = np.multiply(volume.shape, volume.sampling_rate)
-    return ret, shape, volume.sampling_rate
+    return ret, [np.zeros_like(x) for x in ret], shape, volume.sampling_rate
 
 
 def read_mesh(filename: str):
+    from .parametrization import TriangularMesh
+
     mesh = o3d.io.read_triangle_mesh(filename)
-    ret = [np.asarray(mesh.vertices)]
+    mesh = TriangularMesh(mesh)
+    ret = [np.asarray(mesh.mesh.vertices)]
 
     shape = compute_bounding_box(ret)
-    return ret, shape, (1, 1, 1)
+    return ret, [mesh.compute_normal(x) for x in ret], shape, (1, 1, 1)
 
 
 class OrientationsWriter:
@@ -314,10 +325,10 @@ def import_points(filename, scale=1, offset=1) -> List[NDArray]:
     if isinstance(ret, np.ndarray):
         data = [ret]
 
-    if len(ret) == 3:
-        data, shape, sampling_rate = ret
+    if len(ret) == 4:
+        data, normals, shape, sampling_rate = ret
 
-    return [np.divide(np.subtract(x, offset), scale) for x in data]
+    return [np.divide(np.subtract(x, offset), scale) for x in data], normals
 
 
 def import_mesh_trajectory(path: str) -> List[List[np.ndarray]]:

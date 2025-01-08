@@ -32,6 +32,7 @@ from PyQt6.QtCore import (
 )
 
 from .utils import points_to_volume
+from .geometry import VolumeGeometry
 from .widgets import ContainerListWidget
 from .io_utils import OrientationsWriter, write_density
 from .dialogs import GeometryPropertiesDialog, make_param, OperationDialog
@@ -446,14 +447,15 @@ class DataContainerInteractor(QObject):
         if not len(indices):
             return -1
 
-        base_parameters = self.container.data[indices[0]]._appearance.copy()
+        base_container = self.container.data[indices[0]]
+        base_parameters = base_container._appearance.copy()
+        if isinstance(base_container, VolumeGeometry):
+            base_parameters["volume"] = base_container._raw_volume
         dialog = GeometryPropertiesDialog(initial_properties=base_parameters)
 
         def on_parameters_changed(parameters):
             self.container.update_appearance(indices, parameters)
-            # TODO: Reuse old geometry actors for VolumeGeometry
             return self.render_vtk()
-            # return self.render()
 
         dialog.parametersChanged.connect(on_parameters_changed)
 

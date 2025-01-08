@@ -5,7 +5,6 @@ from PyQt6.QtCore import Qt, QEvent
 from PyQt6.QtWidgets import QWidget, QVBoxLayout
 
 from ..dialogs import (
-    make_param,
     DistanceAnalysisDialog,
     DistanceStatsDialog,
     DistanceCropDialog,

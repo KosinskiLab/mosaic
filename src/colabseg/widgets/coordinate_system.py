@@ -17,14 +17,23 @@ class BoundingBoxWidget:
         self.box_actor = None
         self.setup()
 
-    def setup(self, shape: Tuple[int] = None):
+    def setup(self, shape: Tuple[int] = None, offset: Tuple[int] = None):
         box_mapper = vtk.vtkPolyDataMapper()
         if shape is not None:
+            offset = (
+                [
+                    0,
+                ]
+                * len(shape)
+                if offset is None
+                else offset
+            )
+
             box_source = vtk.vtkCubeSource()
             box_source.SetXLength(shape[0])
             box_source.SetYLength(shape[1])
             box_source.SetZLength(shape[2])
-            box_source.SetCenter(*(x // 2 for x in shape))
+            box_source.SetCenter(*(y + x // 2 for x, y in zip(shape, offset)))
             box_mapper.SetInputConnection(box_source.GetOutputPort())
 
         self.box_actor = vtk.vtkActor()

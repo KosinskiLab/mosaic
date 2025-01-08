@@ -459,7 +459,7 @@ class DataContainer:
             elif index not in _highlighted:
                 continue
 
-            geometry.set_appearance(color=color, **appearance)
+            geometry.set_color(color=color)
 
         self._highlighted_indices = set(indices)
         return None
@@ -494,16 +494,20 @@ class DataContainer:
         return None
 
     def update_appearance(self, indices: list, parameters: dict) -> None:
-        volume, volume_path = None, parameters.get("volume_path", None)
+        volume = parameters.get("volume", None)
+        volume_path = parameters.get("volume_path", None)
         if volume_path is not None:
             volume = load_density(volume_path)
 
+        parameters["isovalue_percentile"] = (
+            parameters.get("isovalue_percentile", 99) / 100
+        )
         for index in indices:
             if not self._index_ok(index):
                 continue
 
             geometry = self.data[index]
-            if volume is not None:
+            if volume is not None and not isinstance(geometry, VolumeGeometry):
                 scale = parameters.get("scale", 1.0)
                 geometry = VolumeGeometry(
                     volume=volume.data * scale,

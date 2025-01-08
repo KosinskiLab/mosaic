@@ -45,10 +45,10 @@ class Geometry:
         self._representation = "pointcloud"
 
         if points is not None:
-            self.add_points(points)
+            self.add_points(np.asarray(points, dtype=np.float32))
 
         if normals is not None:
-            self.add_normals(normals)
+            self.add_normals(np.asarray(normals, dtype=np.float32))
 
         self._appearance = {
             "size": 8,
@@ -415,8 +415,12 @@ class PointCloud(Geometry):
 
 
 class VolumeGeometry(Geometry):
-    def __init__(self, volume: np.ndarray, volume_sampling_rate=np.ones(3), **kwargs):
+    def __init__(
+        self, volume: np.ndarray = None, volume_sampling_rate=np.ones(3), **kwargs
+    ):
         super().__init__(**kwargs)
+        if volume is None:
+            return None
         self._volume = vtk.vtkImageData()
         self._volume.SetSpacing(volume_sampling_rate)
         self._volume.SetDimensions(volume.shape[::-1])
@@ -467,7 +471,7 @@ class VolumeGeometry(Geometry):
         return actor
 
     def update_isovalue(self, upper, lower: float = 0):
-        return self._surface.SetValue(lower, upper)
+        return self._surface.SetValue(int(lower), upper)
 
     def update_isovalue_quantile(
         self, upper_quantile: float, lower_quantile: float = 0.0
@@ -480,11 +484,15 @@ class VolumeGeometry(Geometry):
 
         lower_value = np.quantile(self._raw_volume, lower_quantile)
         upper_value = np.quantile(self._raw_volume, upper_quantile)
-
         return self.update_isovalue(upper_value, lower_value)
 
     def change_representation(self, *args, **kwargs) -> int:
         return -1
+
+    def set_appearance(self, isovalue_percentile=0.99, **kwargs):
+        if hasattr(self, "_raw_volume"):
+            self.update_isovalue_quantile(upper_quantile=isovalue_percentile)
+        super().set_appearance(**kwargs)
 
 
 class GeometryTrajectory(Geometry):

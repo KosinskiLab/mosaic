@@ -69,10 +69,10 @@ class ColabsegData(QObject):
             if ret is None:
                 return -1
 
-            data, shape, sampling = ret
+            data, normals, (shape, offset), sampling = ret
             point_manager, model_manager = DataContainer(), DataContainer()
-            for x in data:
-                point_manager.add(points=x.astype(np.float32), sampling_rate=sampling)
+            for x, y in zip(data, normals):
+                point_manager.add(points=x, normals=y, sampling_rate=sampling)
 
         metadata = {"shape": self.shape, "sampling_rate": sampling}
 

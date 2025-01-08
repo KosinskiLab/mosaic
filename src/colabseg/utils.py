@@ -256,4 +256,4 @@ def compute_bounding_box(points: List[np.ndarray]) -> List[float]:
         starts = np.minimum(starts, starts_inner)
         stops = np.maximum(stops, stops_inner)
 
-    return stops - starts
+    return stops - starts, starts

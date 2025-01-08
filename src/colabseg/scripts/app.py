@@ -609,9 +609,10 @@ class App(QMainWindow):
         file_parameters = dialog.get_all_parameters()
         for filename in filenames:
             parameters = file_parameters[filename]
-            points = import_points(filename, **parameters)
-            for point in points:
-                self.cdata._data.add(points=point.astype(np.float32))
+            points, normals, *_ = import_points(filename, **parameters)
+            sampling = np.repeat(1 / parameters.get("scale", 1), 3)
+            for x, y in zip(points, normals):
+                self.cdata._data.add(points=x, normals=y, sampling_rate=sampling)
 
         self.cdata.data.data_changed.emit()
         self.cdata.data.render()

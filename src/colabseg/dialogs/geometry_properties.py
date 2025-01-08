@@ -135,6 +135,11 @@ class GeometryPropertiesDialog(QDialog):
         self.isovalue_spin.setEnabled(False)
         model_layout.addRow("Isovalue:", self.isovalue_spin)
 
+        volume = self.initial_properties.get("volume", None)
+        if volume is not None:
+            self.scale_widget.setEnabled(True)
+            self.isovalue_spin.setEnabled(True)
+
         model_group.setLayout(model_layout)
 
         layout.addWidget(appearance_group)
