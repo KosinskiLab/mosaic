@@ -487,7 +487,7 @@ class App(QMainWindow):
                 lambda checked, a=angle: self.set_camera_view(
                     getattr(self, "_camera_view", "x"),
                     getattr(self, "_camera_direction", True),
-                    tilt_angle=a,
+                    view_angle=a,
                 )
             )
             tilt_menu.addAction(action)

@@ -137,7 +137,7 @@ class ImportDataDialog(QDialog):
             current_file = self.filenames[self.current_file_index]
             self.file_parameters[current_file] = {
                 "scale": float(self.scale_input.text()),
-                "offset": self.offset_input.value(),
+                "offset": float(self.offset_input.text()),
             }
 
     def load_file_parameters(self, filename):
@@ -164,7 +164,7 @@ class ImportDataDialog(QDialog):
 
     def apply_to_all_clicked(self):
         current_scale = float(self.scale_input.text())
-        current_offset = self.offset_input.value()
+        current_offset = float(self.offset_input.text())
 
         # Apply to current and all following files
         for idx in range(self.current_file_index, len(self.filenames)):
