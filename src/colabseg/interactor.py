@@ -32,9 +32,9 @@ from PyQt6.QtCore import (
 )
 
 from .utils import points_to_volume
+from .widgets import ContainerListWidget
 from .io_utils import OrientationsWriter, write_density
 from .dialogs import GeometryPropertiesDialog, make_param, OperationDialog
-from .widgets.container_list import ContainerListWidget
 
 
 def _cluster_modifier(keep_selection: bool = False):

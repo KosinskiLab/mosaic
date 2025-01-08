@@ -90,7 +90,6 @@ class VolumeViewer(QWidget):
         """
         )
 
-        # Create widgets
         self.label = QLabel("Volume")
         self.open_button = QPushButton("Open")
         self.open_button.clicked.connect(self.open_volume)

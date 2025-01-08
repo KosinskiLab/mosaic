@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QFrame,
     QFormLayout,
+    QSizePolicy,
 )
 import qtawesome as qta
 
@@ -203,6 +204,8 @@ class RibbonToolBar(QToolBar):
         self.setIconSize(QSize(20, 20))
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         self.setFixedHeight(85)
+
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
 
         self.setStyleSheet(
             """
