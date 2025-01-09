@@ -116,6 +116,12 @@ class ImportDataDialog(QDialog):
         self.update_file_display()
         self.update_navigation_buttons()
 
+        for file in filenames:
+            self.file_parameters[file] = {
+                "scale": float(self.scale_input.text()),
+                "offset": float(self.offset_input.text()),
+            }
+
     def update_file_display(self):
         if not self.filenames:
             self.filename_label.setText("No files selected")
@@ -143,8 +149,8 @@ class ImportDataDialog(QDialog):
     def load_file_parameters(self, filename):
         if filename in self.file_parameters:
             params = self.file_parameters[filename]
-            self.scale_input.setValue(params["scale"])
-            self.offset_input.setValue(params["offset"])
+            self.scale_input.setText(str(params["scale"]))
+            self.offset_input.setText(str(params["offset"]))
 
     def next_file(self):
         self.save_current_parameters()

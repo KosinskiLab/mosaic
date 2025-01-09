@@ -5,6 +5,8 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from PyQt6.QtGui import QColor
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QVBoxLayout,
     QDialog,
@@ -19,9 +21,8 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QHBoxLayout,
     QWidget,
+    QSlider,
 )
-from PyQt6.QtGui import QColor
-from PyQt6.QtCore import pyqtSignal
 import qtawesome as qta
 
 
@@ -125,6 +126,9 @@ class GeometryPropertiesDialog(QDialog):
         scale_layout.addWidget(self.scale_negative)
         self.scale_widget.setEnabled(False)
         model_layout.addRow("Scaling:", self.scale_widget)
+
+        # self.isovalue_spin = QSlider(Qt.Orientation.Horizontal)
+        # self.isovalue_spin.setRange(0, 100)
 
         self.isovalue_spin = QDoubleSpinBox()
         self.isovalue_spin.setRange(0.0, 100.0)

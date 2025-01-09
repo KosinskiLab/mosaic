@@ -96,9 +96,10 @@ class Geometry:
         normals = None
         if isinstance(self.normals, np.ndarray):
             if np.max(idx) < self.normals.shape[0]:
-                normals = self.normals[idx]
+                normals = self.normals[idx].copy()
 
-        ret = self.__class__(
+        # ret = self.__class__(
+        ret = Geometry(
             points=self.points[idx],
             normals=normals,
             color=self._appearance["base_color"],
@@ -339,8 +340,9 @@ class Geometry:
             arrow.SetTipRadius(0.08)
             arrow.SetShaftRadius(0.02)
 
-            max_pos, min_pos = self.points.max(axis=0), self.points.min(axis=0)
-            bbox_diagonal = np.sqrt(np.sum((max_pos - min_pos) ** 2))
+            # max_pos, min_pos = self.points.max(axis=0), self.points.min(axis=0)
+            # bbox_diagonal = np.sqrt(np.sum((max_pos - min_pos) ** 2))
+            bbox_diagonal = 1000 * np.max(self._sampling_rate)
 
             glyph = vtk.vtkGlyph3D()
             glyph.SetSourceConnection(arrow.GetOutputPort())
@@ -395,8 +397,122 @@ class Geometry:
                 prop.SetEdgeVisibility(representation == "mesh")
                 prop.SetOpacity(0.3)
                 self._appearance["opacity"] = 0.3
+            self._representation = "surface"
+            self.compute_curvature(curvature_type="gaussian")
 
         self._representation = representation
+        return 0
+
+    def compute_curvature(self, curvature_type="gaussian", color_map=None):
+        """
+        Compute and visualize curvature of the polydata surface.
+
+        Parameters:
+        -----------
+        curvature_type : str
+            Type of curvature to compute. Options are:
+            - 'gaussian': Gaussian curvature
+            - 'mean': Mean curvature
+            - 'maximum': Maximum curvature
+            - 'minimum': Minimum curvature
+        color_map : tuple
+            Optional color map range (min, max) for curvature visualization.
+            If None, automatically computed from data range.
+
+        Returns:
+        --------
+        int
+            0 if successful, -1 if failed
+        """
+        if self._representation not in ["mesh", "surface"]:
+            print("Curvature computation requires mesh or surface representation")
+            return -1
+
+        triangulate = vtk.vtkTriangleFilter()
+        triangulate.SetInputData(self._data)
+        triangulate.Update()
+
+        normals = vtk.vtkPolyDataNormals()
+        normals.SetInputData(triangulate.GetOutput())
+        normals.ComputePointNormalsOn()
+        normals.ComputeCellNormalsOn()
+        normals.SplittingOff()
+        normals.ConsistencyOn()
+        normals.Update()
+
+        curv_filter = vtk.vtkCurvatures()
+        if curvature_type.lower() == "gaussian":
+            curv_filter = vtk.vtkCurvatures()
+            curv_filter.SetCurvatureTypeToGaussian()
+        elif curvature_type.lower() == "mean":
+            curv_filter = vtk.vtkCurvatures()
+            curv_filter.SetCurvatureTypeToMean()
+        elif curvature_type.lower() == "maximum":
+            curv_filter = vtk.vtkCurvatures()
+            curv_filter.SetCurvatureTypeToMaximum()
+        elif curvature_type.lower() == "minimum":
+            curv_filter = vtk.vtkCurvatures()
+            curv_filter.SetCurvatureTypeToMinimum()
+        else:
+            print(f"Unsupported curvature type: {curvature_type}")
+            return -1
+
+        # Compute curvature
+        curv_filter.SetInputConnection(normals.GetOutputPort())
+        curv_filter.Update()
+
+        # Get the output polydata with curvature scalars
+        output = curv_filter.GetOutput()
+
+        # Verify we have scalar data
+        scalars = output.GetPointData().GetScalars()
+        if scalars is None:
+            print("No scalar data computed. Curvature calculation failed.")
+            return -1
+
+        print(f"Curvature range: {scalars.GetRange()}")
+
+        # Update the mapper to show curvature
+        mapper = self._actor.GetMapper()
+        mapper.SetInputData(output)
+
+        # Configure color mapping
+        if color_map is None:
+            curv_range = scalars.GetRange()
+        else:
+            curv_range = color_map
+
+        # Create a lookup table for better visualization
+        lut = vtk.vtkLookupTable()
+        lut.SetHueRange(0.667, 0.0)  # Blue to Red
+        lut.SetSaturationRange(1.0, 1.0)
+        lut.SetValueRange(1.0, 1.0)
+        lut.SetNumberOfColors(256)
+        lut.Build()
+
+        # Set the mapper to use the lookup table
+        mapper.SetLookupTable(lut)
+        mapper.SetScalarRange(curv_range)
+        mapper.SetScalarModeToUsePointData()
+        mapper.ScalarVisibilityOn()
+
+        # Force the actor property to use the mapper's colors
+        self._actor.GetProperty().SetColor(1.0, 1.0, 1.0)  # Reset base color
+
+        # Update the data
+        self._data.DeepCopy(output)
+        self._data.Modified()
+
+        return 0
+
+    def reset_curvature_coloring(self):
+        """
+        Reset the coloring back to the original appearance settings.
+        """
+        mapper = self._actor.GetMapper()
+        mapper.ScalarVisibilityOff()
+        self._actor.GetProperty().SetColor(*self._appearance["base_color"])
+        self._data.Modified()
         return 0
 
     def add_faces(self, faces):
@@ -421,6 +537,7 @@ class VolumeGeometry(Geometry):
         super().__init__(**kwargs)
         if volume is None:
             return None
+
         self._volume = vtk.vtkImageData()
         self._volume.SetSpacing(volume_sampling_rate)
         self._volume.SetDimensions(volume.shape[::-1])
@@ -445,30 +562,19 @@ class VolumeGeometry(Geometry):
         self._surface = vtk.vtkContourFilter()
         self._surface.SetInputConnection(transformFilter.GetOutputPort())
         self._surface.GenerateValues(1, volume.min(), volume.max())
+
+        # Per glyph orientation and coloring
         self._glyph = vtk.vtkGlyph3D()
         self._glyph.SetInputData(self._data)
         self._glyph.SetSourceConnection(self._surface.GetOutputPort())
-
-        # Per glyph orientation and coloring
         self._glyph.SetVectorModeToUseNormal()
         self._glyph.SetScaleModeToDataScalingOff()
         self._glyph.SetColorModeToColorByScalar()
         self._glyph.OrientOn()
+
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputConnection(self._glyph.GetOutputPort())
         self._actor.SetMapper(mapper)
-
-        self.update_isovalue(0.0005)
-
-    def create_actor2(self, actor=None):
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputConnection(self._glyph.GetOutputPort())
-
-        if actor is None:
-            actor = vtk.vtkActor()
-
-        actor.SetMapper(mapper)
-        return actor
 
     def update_isovalue(self, upper, lower: float = 0):
         return self._surface.SetValue(int(lower), upper)
