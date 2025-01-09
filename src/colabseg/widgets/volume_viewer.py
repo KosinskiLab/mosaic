@@ -16,7 +16,6 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QFileDialog,
     QLabel,
-    QCheckBox,
 )
 import qtawesome as qta
 
@@ -27,7 +26,15 @@ from matplotlib.pyplot import get_cmap
 from ..io_utils import load_density
 
 
-_colormaps = ["gray", "gray_r", "viridis", "magma", "twilight_shifted", "none"]
+_colormaps = [
+    "gray",
+    "gray_r",
+    "viridis",
+    "magma",
+    "twilight_shifted",
+    "coolwarm",
+    "none",
+]
 
 
 class VolumeViewer(QWidget):
@@ -141,10 +148,12 @@ class VolumeViewer(QWidget):
         self.gamma_value_label.setFixedWidth(40)
 
         # Project 3D geometries on 2D slice
-        self.project_actors = QCheckBox("Project")
-        self.project_actors.setEnabled(False)
-        self.project_actors.stateChanged.connect(self.toggle_projection)
+        self.project_selector = QComboBox()
+        self.project_selector.addItems(["Off", "Project +", "Project -"])
+        self.project_selector.setEnabled(False)
+        self.project_selector.currentTextChanged.connect(self.handle_projection_change)
         self.clipping_plane = vtk.vtkPlane()
+        self.clipping_direction = 1
 
         # Create layout
         self.controls_layout = QHBoxLayout()
@@ -163,7 +172,7 @@ class VolumeViewer(QWidget):
         self.controls_layout.addWidget(self.gamma_label)
         self.controls_layout.addWidget(self.gamma_slider)
         self.controls_layout.addWidget(self.gamma_value_label)
-        self.controls_layout.addWidget(self.project_actors)
+        self.controls_layout.addWidget(self.project_selector)
 
         self.editable_widgets = [
             self.slice_slider,
@@ -173,7 +182,7 @@ class VolumeViewer(QWidget):
             self.max_contrast_slider,
             self.gamma_slider,
             self.close_button,
-            self.project_actors,
+            self.project_selector,
             self.contrast_value_label,
             self.slice_value_label,
             self.gamma_value_label,
@@ -219,8 +228,8 @@ class VolumeViewer(QWidget):
         self.gamma_slider.setValue(100)
         self.orientation_selector.setCurrentIndex(0)
 
-        if self.project_actors.isChecked():
-            self.toggle_projection(False)
+        if self.project_selector.currentText() != "Off":
+            self.handle_projection_change("Off")
 
         self.volume = None
         self.renderer.RemoveViewProp(self.slice)
@@ -345,21 +354,22 @@ class VolumeViewer(QWidget):
         self.vtk_widget.GetRenderWindow().Render()
 
     def update_clipping_plane(self):
-        if self.volume is None or not self.project_actors.isChecked():
+        if self.volume is None or self.project_selector.currentText() == "Off":
             return None
 
         dim = self._orientation_mapping.get(self.orientation_selector.currentText(), 0)
 
         pos = self.slice_slider.value()
         origin, spacing = self.volume.GetOrigin()[dim], self.volume.GetSpacing()[dim]
-        self.clipping_plane.SetNormal(*[0 if i != dim else -1 for i in range(3)])
+        normal = [0 if i != dim else self.clipping_direction for i in range(3)]
+        self.clipping_plane.SetNormal(*normal)
         self.clipping_plane.SetOrigin(
             *[0 if i != dim else origin + pos * spacing for i in range(3)]
         )
 
         return None
 
-    def toggle_projection(self, state):
+    def handle_projection_change(self, state):
         if self.volume is None:
             return
 
@@ -368,10 +378,12 @@ class VolumeViewer(QWidget):
 
         for i in range(actors.GetNumberOfItems()):
             actor = actors.GetNextActor()
-            if state == Qt.CheckState.Checked.value:
-                actor.GetMapper().AddClippingPlane(self.clipping_plane)
-            else:
+            if state == "Off":
                 actor.GetMapper().RemoveAllClippingPlanes()
+            else:
+                self.clipping_direction = 1 if state == "Project +" else -1
+                self.update_clipping_plane()
+                actor.GetMapper().AddClippingPlane(self.clipping_plane)
 
         self.vtk_widget.GetRenderWindow().Render()
 

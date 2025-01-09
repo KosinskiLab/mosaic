@@ -796,7 +796,6 @@ class TriangularMesh(Parametrization):
             pcd.normals = o3d.utility.Vector3dVector(
                 ellipsoid.compute_normal(positions)
             )
-            pcd = pcd.voxel_down_sample(voxel_size=2 * voxel_size)
 
         pcd.estimate_normals(
             search_param=o3d.geometry.KDTreeSearchParamHybrid(
@@ -839,11 +838,9 @@ class TriangularMesh(Parametrization):
             beta=curvature_weight,
             gamma=volume_weight,
         )
-        mesh = o3d.geometry.TriangleMesh()
-        mesh.vertices = o3d.utility.Vector3dVector(new_vs.astype(np.float64))
-        mesh.triangles = o3d.utility.Vector3iVector(new_fs.astype(np.int32))
+        mesh = to_open3d(new_vs, new_fs)
         mesh = mesh.remove_degenerate_triangles()
-        mesh = mesh.filter_smooth_taubin(number_of_iterations=5)
+        mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
         mesh = mesh.compute_vertex_normals()
         return cls(mesh=mesh)
 

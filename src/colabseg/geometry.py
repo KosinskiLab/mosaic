@@ -397,8 +397,8 @@ class Geometry:
                 prop.SetEdgeVisibility(representation == "mesh")
                 prop.SetOpacity(0.3)
                 self._appearance["opacity"] = 0.3
-            self._representation = "surface"
-            self.compute_curvature(curvature_type="gaussian")
+            # self._representation = "surface"
+            # self.compute_curvature(curvature_type="gaussian")
 
         self._representation = representation
         return 0
