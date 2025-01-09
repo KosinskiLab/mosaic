@@ -91,7 +91,11 @@ class ModelTab(QWidget):
         self.ribbon.add_section("HMFF Operations", hmff_actions)
 
     def _fit(self, method: str, **kwargs):
-        _conversion = {"Alpha Shape": "convexhull", "Triangulation": "mesh"}
+        _conversion = {
+            "Alpha Shape": "convexhull",
+            "Ball Pivoting": "mesh",
+            "Poisson Reconstruction": "poissonmesh",
+        }
 
         method = _conversion.get(method, method)
         self.fit_worker = FitWorker(self.cdata, method=method, **kwargs)
@@ -288,7 +292,7 @@ MESH_SETTINGS = {
             "label": "Method",
             "parameter": "method",
             "type": "select",
-            "options": ["Alpha Shape", "Triangulation"],
+            "options": ["Alpha Shape", "Ball Pivoting", "Poisson Reconstruction"],
             "default": "Alpha Shape",
         },
         {
@@ -332,7 +336,7 @@ MESH_SETTINGS = {
                 "notes": "Large values yield coarser features.",
             },
         ],
-        "Triangulation": [
+        "Ball Pivoting": [
             {
                 "label": "Hole Size",
                 "parameter": "hole_size",

@@ -899,6 +899,118 @@ class TriangularMesh(Parametrization):
         return ret.numpy()
 
 
+class PoissonMesh(TriangularMesh):
+
+    @classmethod
+    def fit(
+        cls,
+        positions: np.ndarray,
+        voxel_size: float = None,
+        alpha: float = 1,
+        elastic_weight: float = 0,
+        curvature_weight: float = 0,
+        volume_weight: float = 0,
+        boundary_ring: int = 0,
+        depth: int = 9,
+        **kwargs,
+    ):
+        voxel_size = 1 if voxel_size is None else voxel_size
+        voxel_size = np.max(voxel_size)
+
+        # Surface reconstruction normal estimation
+        positions = np.asarray(positions, dtype=np.float64)
+        from pymeshlab import MeshSet, Mesh
+
+        # pcd = o3d.geometry.PointCloud()
+        # pcd.points = o3d.utility.Vector3dVector(positions.copy())
+        # pcd.estimate_normals(
+        #     search_param=o3d.geometry.KDTreeSearchParamHybrid(
+        #         radius=10 * voxel_size, max_nn=30
+        #     )
+        # )
+        # with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Error):
+        #     mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
+        #         pcd, 9
+        #     )
+        # return cls(mesh = mesh)
+
+        ms = MeshSet()
+        ms.add_mesh(Mesh(positions))
+        pointweight = 0.1
+        simplify = False
+        num_faces = 150000
+        k_neighbors = 500
+        deldist = 1.5
+        smooth_iter = 1
+        depth = 9
+        ultrafine = True
+        remesh_sampling = 0.2
+        ms.compute_normal_for_point_clouds(k=k_neighbors, smoothiter=smooth_iter)
+        ms.generate_surface_reconstruction_screened_poisson(
+            depth=depth,
+            pointweight=pointweight,
+            samplespernode=5.0,
+            iters=10,
+            scale=1.2,
+        )
+        mesh = ms.current_mesh()
+        return cls(mesh=to_open3d(mesh.vertex_matrix(), mesh.face_matrix()))
+
+
+# def xyz_to_ply(xyzfile, plyfile, pointweight=0.1, simplify=False, num_faces=150000, k_neighbors=500, deldist=1.5, smooth_iter=1, depth=9, ultrafine=True, remesh_sampling=0.2):
+#     """Convert an xyz file to a ply file using pymeshlab
+
+#     Arguments:
+#     xyzfile {str} -- Input xyz filename
+#     plyfile {str} -- Output ply filename
+#     ultrafine {bool} -- If True, will use a new routine to generate finer, higher quality meshes. Default True.
+#     simplify {bool} -- If True, will simplify the mesh to a set number of faces. Default False. Leave False for ultrafine meshes.
+#     num_faces {int} -- Maximal number of allowed faces after decimation. Default 150000, use more for finer sampling but with greater computational cost.
+#     depth {int} -- Depth of screened poisson octree. Higher numbers mean more complex meshes but can incorporate stepping artifacts. Default 9.
+#     pointweight {float} -- Screening weight (0 for max smoothness, 1 to 4 for beter fit to points). Default 0.7.
+#     k_neighbors {int} -- Number of neighbors for point cloud normal estimation - default 500
+#     deldist {int} -- Max distance to extrapolate. Default 1.5; distances are in the point cloud distance unit (default nm).
+#     smooth_iter {int} -- Number of smoothing iterations. Default 1.
+#     simplify {bool} -- If True, will simplify the mesh to a set number of faces. Default True.
+#     remesh_sampling {float} -- The percentage of the total size of the mesh to do uniform resampling on. Lower values mean more triangles. Default 0.2.
+#     """
+#     print(f"Processing {xyzfile} into {plyfile}")
+#     ms = pm.MeshSet()
+#     ms.load_new_mesh(xyzfile)
+#     ms.compute_normal_for_point_clouds(k=k_neighbors, smoothiter=smooth_iter) # Predict smooth normals
+#     ms.generate_surface_reconstruction_screened_poisson(depth=depth, pointweight=pointweight, samplespernode=5.,iters=10, scale=1.2) # Screened Poisson
+#     if ultrafine:
+#         ms.meshing_surface_subdivision_loop(iterations=18)
+#         ms.generate_resampled_uniform_mesh(cellsize=pm.PercentageValue(0.05))
+#         ms.meshing_surface_subdivision_loop(iterations=6)
+#         ms.compute_scalar_by_distance_from_another_mesh_per_vertex(measuremesh=2, refmesh=0, maxdist = pm.PercentageValue(remesh_sampling), signeddist=False)
+#     else:
+#         ms.compute_scalar_by_distance_from_another_mesh_per_vertex(measuremesh = 1, refmesh=0 , maxdist=pm.PercentageValue(remesh_sampling), signeddist=False) # Delete points that are too far from the reference mesh
+#     ms.compute_selection_by_condition_per_vertex(condselect = f'(q>{deldist})') # Select only the best quality vertices
+#     ms.compute_selection_by_condition_per_face(condselect = f'(q0>{deldist} || q1>{deldist} || q2>{deldist})') # Select only the best quality vertices
+#     ms.meshing_remove_selected_vertices_and_faces()
+#     if simplify:
+#         ms.meshing_decimation_quadric_edge_collapse(targetfacenum=num_faces, qualitythr=0.6, preserveboundary=True, preservenormal=True, optimalplacement=True, planarquadric=True) # Simplify
+#     ms.save_current_mesh(plyfile)
+#     ms.clear()
+#     return 0
+
+# @click.command()
+# @click.argument('xyzfile', type=str)
+# @click.argument('plyfile', type=str)
+# @click.option('--pointweight', type=float, default=1)
+# @click.option('--simplify', type=bool, default=False)
+# @click.option('--ultrafine', type=bool, default=True)
+# @click.option('--num_faces', type=int, default=300000)
+# @click.option('--k_neighbors', type=int, default=40)
+# @click.option('--deldist', type=int, default=1)
+# @click.option('--smooth_iter', type=int, default=1)
+# @click.option('--depth', type=int, default=9)
+# def xyz_to_ply_from_CLI(xyzfile, plyfile, pointweight, ultrafine, simplify, num_faces, k_neighbors, deldist, smooth_iter, depth):
+#     """Click wrapper for xyz_to_ply"""
+#     xyz_to_ply(xyzfile, plyfile, pointweight=pointweight, simplify=simplify, num_faces=num_faces, k_neighbors=k_neighbors, deldist=deldist, smooth_iter=smooth_iter, depth=depth)
+
+
 class ConvexHull(TriangularMesh):
     """
     Represent a point cloud as triangular mesh.
@@ -997,6 +1109,7 @@ PARAMETRIZATION_TYPE = {
     "ellipsoid": Ellipsoid,
     "cylinder": Cylinder,
     "mesh": TriangularMesh,
+    "poissonmesh": PoissonMesh,
     "rbf": RBF,
     "convexhull": ConvexHull,
 }
