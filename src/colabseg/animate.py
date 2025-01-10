@@ -16,7 +16,6 @@ except Exception:
 
 import numpy as np
 from PyQt6.QtGui import QImage, QGuiApplication
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -30,7 +29,6 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QGridLayout,
-    QProgressDialog,
     QApplication,
 )
 from vtkmodules.util import numpy_support
@@ -73,7 +71,7 @@ class ExportManager:
         screenshot = self.capture_screenshot(transparent_bg=True)
         if window:
             screenshot = self.capture_window_screenshot(transparent_bg=True)
-        screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2RGBA)
+        # screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2RGBA)
 
         height, width, channel = screenshot.shape
         q_image = QImage(

@@ -7,6 +7,7 @@
 
 import re
 import warnings
+import xml.etree.ElementTree as ET
 from os import listdir
 from typing import List, Dict
 from os.path import basename, splitext, isdir, join
@@ -32,6 +33,8 @@ class VertexDataLoader:
             self._formats[ext] = read_volume
         for ext in ["q", "tsi"]:
             self._formats[ext] = read_topology_vertices
+        for ext in ["vtu"]:
+            self._formats[ext] = read_vtu_vertices
 
     @property
     def supported_formats(self) -> List[str]:
@@ -109,6 +112,13 @@ def read_tsv(filename: str):
 def read_topology_vertices(filename: str):
     data = read_topology_file(filename)
     ret = [data["vertices"][:, 1:4]]
+    shape = compute_bounding_box(ret)
+    return ret, [np.zeros_like(x) for x in ret], shape, (1, 1, 1)
+
+
+def read_vtu_vertices(filename: str):
+    data = read_vtu_file(filename)
+    ret = [data["points"].astype(np.float32)]
     shape = compute_bounding_box(ret)
     return ret, [np.zeros_like(x) for x in ret], shape, (1, 1, 1)
 
@@ -256,6 +266,69 @@ def read_topology_file(file_path: str) -> Dict:
     return ret
 
 
+def _parse_data_array(data_array: ET.Element, dtype: type = float) -> np.ndarray:
+    """Parse a DataArray element into a numpy array."""
+    rows = [row.strip() for row in data_array.text.strip().split("\n") if row.strip()]
+    parsed_rows = [[dtype(x) for x in row.split()] for row in rows]
+    data = np.array(parsed_rows)
+    return np.squeeze(data)
+
+
+def _parse_dtype(xml_element) -> object:
+    data_type = float if xml_element.get("type", "").startswith("Float") else int
+    return data_type
+
+
+def read_vtu_file(file_path: str) -> Dict:
+    """
+    Parse a VTK XML file into a dictionary of numpy arrays.
+
+    Parameters
+    ----------
+    file_path : str
+        The path to the topology file to be parsed.
+
+    Returns
+    -------
+    Dict
+        Topology file content.
+    """
+    with open(file_path, mode="r") as ifile:
+        data = ifile.read()
+
+    root = ET.fromstring(data)
+    piece = root.find(".//Piece")
+
+    result = {
+        "num_points": int(piece.get("NumberOfPoints")),
+        "num_cells": int(piece.get("NumberOfCells")),
+        "point_data": {},
+        "points": None,
+        "connectivity": None,
+        "offsets": None,
+        "types": None,
+    }
+
+    # Parse point data arrays
+    if (point_data := piece.find("PointData")) is not None:
+        for array in point_data.findall("DataArray"):
+            data_type = _parse_dtype(array)
+            result["point_data"][array.get("Name")] = _parse_data_array(
+                array, data_type
+            )
+
+    if (points_array := piece.find(".//Points/DataArray")) is not None:
+        data_type = _parse_dtype(array)
+        result["points"] = _parse_data_array(points_array, data_type)
+
+    if (cells := piece.find("Cells")) is not None:
+        for array in cells.findall("DataArray"):
+            data_type = _parse_dtype(array)
+            result[array.get("Name")] = _parse_data_array(array, float)
+
+    return result
+
+
 def load_density(filename: str) -> Density:
     volume = Density.from_file(filename)
     volume.data = np.swapaxes(volume.data, 0, 2)
@@ -336,12 +409,18 @@ def import_mesh_trajectory(path: str) -> List[List[np.ndarray]]:
     if isdir(path):
         files = [join(path, x) for x in listdir(path)]
 
-    files = [x for x in files if x.endswith(".tsi")]
+    files = [x for x in files if x.endswith(".tsi") or x.endswith(".vtu")]
     files = sorted(files, key=lambda x: int(re.findall(r"\d+", basename(x))[0]))
 
     ret = []
     for file in files:
-        data = read_topology_file(file)
-        ret.append((data["vertices"][:, 1:4], data["faces"][:, 1:4], file))
+        if file.endswith(".tsi"):
+            data = read_topology_file(file)
+            ret.append((data["vertices"][:, 1:4], data["faces"][:, 1:4], file))
+        else:
+            data = read_vtu_file(file)
+            vertices = data["points"].astype(np.float32)
+            faces = data["connectivity"].astype(int)
+            ret.append((vertices, faces, file))
 
     return ret
