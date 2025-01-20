@@ -19,7 +19,8 @@ class DistanceCropDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
-        layout = QHBoxLayout()
+        main_layout = QVBoxLayout()
+        lists_layout = QHBoxLayout()
 
         source_layout = QVBoxLayout()
         label = QLabel("Source Clusters")
@@ -45,7 +46,10 @@ class DistanceCropDialog(QDialog):
             self.source_list.addItem(name)
             self.target_list.addItem(name)
 
-        param_layout = QVBoxLayout()
+        lists_layout.addLayout(source_layout)
+        lists_layout.addLayout(target_layout)
+
+        bottom_layout = QVBoxLayout()
         dist_layout = QHBoxLayout()
         label = QLabel("Distance:")
         tooltip = format_tooltip(
@@ -59,18 +63,17 @@ class DistanceCropDialog(QDialog):
         self.distance_input.setMinimumWidth(100)
         self.distance_input.setDecimals(2)
         dist_layout.addWidget(self.distance_input)
+        dist_layout.addStretch()
 
         apply_btn = QPushButton("Apply Crop")
         apply_btn.clicked.connect(self.apply_crop)
 
-        param_layout.addLayout(dist_layout)
-        param_layout.addWidget(apply_btn)
-        param_layout.addStretch()
+        bottom_layout.addLayout(dist_layout)
+        bottom_layout.addWidget(apply_btn)
+        main_layout.addLayout(lists_layout)
+        main_layout.addLayout(bottom_layout)
 
-        layout.addLayout(source_layout)
-        layout.addLayout(target_layout)
-        layout.addLayout(param_layout)
-        self.setLayout(layout)
+        self.setLayout(main_layout)
 
     def get_results(self):
         if self.exec() == QDialog.DialogCode.Accepted:

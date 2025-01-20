@@ -171,19 +171,19 @@ class SegmentationTab(QWidget):
         self.histogram_widget.update_histogram(self.cdata._data.get_cluster_size())
 
     def _show_distance_dialog(self):
-        fits = self._format_datalist("models")
-        clusters = self._format_datalist("data")
+        fits = self.cdata.format_datalist("models")
+        clusters = self.cdata.format_datalist("data")
 
         dialog = DistanceAnalysisDialog(clusters, fits=fits, parent=self)
         return dialog.show()
 
     def _show_stats_dialog(self):
-        clusters = self._format_datalist(type="data")
+        clusters = self.cdata.format_datalist(type="data")
         dialog = DistanceStatsDialog(clusters, self)
         return dialog.show()
 
     def _distance_crop(self):
-        clusters = self._format_datalist(type="data")
+        clusters = self.cdata.format_datalist(type="data")
         dialog = DistanceCropDialog(clusters, self)
         sources, targets, distance = dialog.get_results()
         if sources is None:
@@ -201,17 +201,6 @@ class SegmentationTab(QWidget):
             self.cdata._data.crop(indices=[source], distance=distance)
             _ = self.cdata._data.data[source]._meta.pop("points")
         self.cdata.data.render()
-
-    def _format_datalist(self, type="data"):
-        interactor, container = self.cdata.data, self.cdata._data
-        if type == "models":
-            interactor, container = self.cdata.models, self.cdata._models
-
-        ret = []
-        for i in range(interactor.data_list.count()):
-            list_item = interactor.data_list.item(i)
-            ret.append((list_item.text(), container.data[i]))
-        return ret
 
 
 class ClusterTransformer:

@@ -900,7 +900,6 @@ class TriangularMesh(Parametrization):
 
 
 class PoissonMesh(TriangularMesh):
-
     @classmethod
     def fit(
         cls,

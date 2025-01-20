@@ -76,14 +76,13 @@ class CursorModeHandler:
         }
 
         self.cursors = {
-            Mode.VIEWING: Qt.CursorShape.ArrowCursor,
-            Mode.SELECTION: self._create_custom_cursor(
-                self.cursor_colors[Mode.SELECTION]
-            ),
-            Mode.DRAWING: self._create_custom_cursor(self.cursor_colors[Mode.DRAWING]),
+            k: self._create_custom_cursor(v) for k, v in self.cursor_colors.items()
         }
 
     def _create_custom_cursor(self, color: QColor, size: int = 16) -> QCursor:
+        if color is None:
+            return Qt.CursorShape.ArrowCursor
+
         pixmap = QPixmap(size, size)
         pixmap.fill(Qt.GlobalColor.transparent)
 
@@ -194,6 +193,9 @@ class App(QMainWindow):
                 QPushButton:checked {
                     color: rgba(99, 102, 241, 1.0);
                     border-bottom: 2px solid rgba(99, 102, 241, 1.0);
+                }
+                QPushButton:focus {
+                    outline: none;
                 }
             """
             )

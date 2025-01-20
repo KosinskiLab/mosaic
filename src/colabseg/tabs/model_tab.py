@@ -9,8 +9,13 @@ from ..geometry import GeometryTrajectory
 from ..widgets.ribbon import create_button
 from ..parametrization import TriangularMesh
 from ..io_utils import import_mesh_trajectory
-from ..dialogs import MeshEquilibrationDialog, HMFFDialog, ProgressDialog
-from ..meshing import equilibrate_fit, setup_hmff, to_open3d
+from ..meshing import equilibrate_fit, setup_hmff, to_open3d, remesh
+from ..dialogs import (
+    MeshEquilibrationDialog,
+    HMFFDialog,
+    ProgressDialog,
+    MeshMappingDialog,
+)
 
 
 class FitWorker(QThread):
@@ -87,6 +92,7 @@ class ModelTab(QWidget):
                 "Import Trajectory",
                 IMPORT_SETTINGS,
             ),
+            create_button("Integrate", "mdi.set-merge", self, self._map_fit),
         ]
         self.ribbon.add_section("HMFF Operations", hmff_actions)
 
@@ -198,6 +204,23 @@ class ModelTab(QWidget):
         QMessageBox.information(self, "Success", "HMFF directory setup successfully.")
         return ret
 
+    def _map_fit(self):
+        fits = self.cdata.format_datalist("models")
+        clusters = self.cdata.format_datalist("data")
+        dialog = MeshMappingDialog(fits=fits, clusters=clusters)
+        if not dialog.exec():
+            return -1
+
+        fit, edge_length, mappings = dialog.get_mapping_data()
+        print(mappings)
+        save_dir = dialog.get_save_directory()
+        if not save_dir:
+            return -1
+
+        # Remesh to edge length
+        # Map proteins to vertices
+        # Create output files for ts2cg
+
     def _import_trajectory(self, scale: float = 1.0, offset: float = 0.0, **kwargs):
         directory = QFileDialog.getExistingDirectory(
             self,
@@ -206,7 +229,7 @@ class ModelTab(QWidget):
             QFileDialog.Option.ShowDirsOnly,
         )
         if not directory:
-            return
+            return -1
 
         ret = []
         mesh_trajectory = import_mesh_trajectory(directory)
@@ -240,6 +263,7 @@ class ModelTab(QWidget):
             trajectory=ret,
         )
         self.cdata._models.add(trajectory)
+        self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
 
 

@@ -342,6 +342,9 @@ class Geometry:
 
             # max_pos, min_pos = self.points.max(axis=0), self.points.min(axis=0)
             # bbox_diagonal = np.sqrt(np.sum((max_pos - min_pos) ** 2))
+
+            # TODO: When importing files, make sure to use the actual sampling
+            # rate not 1/scale; The same applies for importing meshes
             bbox_diagonal = 1000 * np.max(self._sampling_rate)
 
             glyph = vtk.vtkGlyph3D()
@@ -354,6 +357,7 @@ class Geometry:
         self._appearance["opacity"] = 1
         self._actor.SetMapper(vtk.vtkPolyDataMapper())
         mapper, prop = self._actor.GetMapper(), self._actor.GetProperty()
+        prop.SetOpacity(self._appearance["opacity"])
         if representation == "pointcloud":
             prop.SetRepresentationToPoints()
             mapper.SetInputData(self._data)
@@ -395,8 +399,9 @@ class Geometry:
             else:
                 prop.SetRepresentationToSurface()
                 prop.SetEdgeVisibility(representation == "mesh")
-                prop.SetOpacity(0.3)
                 self._appearance["opacity"] = 0.3
+                prop.SetOpacity(self._appearance["opacity"])
+
             # self._representation = "surface"
             # self.compute_curvature(curvature_type="gaussian")
 
@@ -457,14 +462,10 @@ class Geometry:
             print(f"Unsupported curvature type: {curvature_type}")
             return -1
 
-        # Compute curvature
         curv_filter.SetInputConnection(normals.GetOutputPort())
         curv_filter.Update()
-
-        # Get the output polydata with curvature scalars
         output = curv_filter.GetOutput()
 
-        # Verify we have scalar data
         scalars = output.GetPointData().GetScalars()
         if scalars is None:
             print("No scalar data computed. Curvature calculation failed.")
@@ -472,34 +473,28 @@ class Geometry:
 
         print(f"Curvature range: {scalars.GetRange()}")
 
-        # Update the mapper to show curvature
         mapper = self._actor.GetMapper()
         mapper.SetInputData(output)
 
-        # Configure color mapping
         if color_map is None:
             curv_range = scalars.GetRange()
         else:
             curv_range = color_map
 
-        # Create a lookup table for better visualization
+        # Blue to Red
         lut = vtk.vtkLookupTable()
-        lut.SetHueRange(0.667, 0.0)  # Blue to Red
+        lut.SetHueRange(0.667, 0.0)
         lut.SetSaturationRange(1.0, 1.0)
         lut.SetValueRange(1.0, 1.0)
         lut.SetNumberOfColors(256)
         lut.Build()
 
-        # Set the mapper to use the lookup table
         mapper.SetLookupTable(lut)
         mapper.SetScalarRange(curv_range)
         mapper.SetScalarModeToUsePointData()
         mapper.ScalarVisibilityOn()
 
-        # Force the actor property to use the mapper's colors
-        self._actor.GetProperty().SetColor(1.0, 1.0, 1.0)  # Reset base color
-
-        # Update the data
+        self._actor.GetProperty().SetColor(1.0, 1.0, 1.0)
         self._data.DeepCopy(output)
         self._data.Modified()
 

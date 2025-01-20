@@ -58,7 +58,7 @@ class VolumeViewer(QWidget):
                 font-size: 13px;
             }
             QPushButton:hover {
-                background-color: #f3f4f6;
+                color: #696c6f;
             }
             QSlider {
                 height: 24px;

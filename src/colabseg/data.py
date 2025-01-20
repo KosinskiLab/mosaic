@@ -157,3 +157,14 @@ class ColabsegData(QObject):
 
         self.data.data_changed.emit()
         self.data.render()
+
+    def format_datalist(self, type="data"):
+        interactor, container = self.data, self._data
+        if type == "models":
+            interactor, container = self.models, self._models
+
+        ret = []
+        for i in range(interactor.data_list.count()):
+            list_item = interactor.data_list.item(i)
+            ret.append((list_item.text(), container.data[i]))
+        return ret
