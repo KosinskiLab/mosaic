@@ -546,7 +546,7 @@ class App(QMainWindow):
         self.volume_dock.setTitleBarWidget(QWidget())
 
         self.volume_dock.setWidget(self.volume_viewer)
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.volume_dock)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.volume_dock, Qt.Orientation.Vertical)
         self.volume_dock.hide()
 
     def _set_volume_viewer(self, visible):
@@ -566,8 +566,7 @@ class App(QMainWindow):
 
         self.trajectory_player = TrajectoryPlayer(self.cdata)
         self.trajectory_dock.setWidget(self.trajectory_player)
-
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.trajectory_dock)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.trajectory_dock, Qt.Orientation.Vertical)
         self.trajectory_dock.hide()
 
     def _set_trajectory_player(self, visible):
