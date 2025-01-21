@@ -78,7 +78,7 @@ class OperationDialog(QDialog):
             elif isinstance(min_value, list):
                 type = "select"
                 settings["options"] = min_value
-            elif isinstance(value, float):
+            elif isinstance(value, (float, str)):
                 type = "text"
 
             settings["type"] = type

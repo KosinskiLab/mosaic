@@ -79,9 +79,7 @@ class TimelineBar(QWidget):
         """Set the width of the timeline relative to the maximum number of frames."""
         if max_frames > 0:
             ratio = frames / max_frames
-            # Get the full width available for the timeline
             total_width = self.width()
-            # Set the width of the slider container
             self.slider_container.setFixedWidth(int(total_width * ratio))
 
 
@@ -140,8 +138,6 @@ class TrajectoryRow(QFrame):
 
         self.current_frame = frame_idx
         self.frame_label.setText(f"{frame_idx}/{self.trajectory.frames-1}")
-
-        # Update the display using the trajectory's method
         self.trajectory.display_frame(frame_idx)
         self.frameChanged.emit(frame_idx)
 

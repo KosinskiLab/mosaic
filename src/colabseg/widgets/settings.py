@@ -38,7 +38,7 @@ def format_tooltip(label, description="", default=None, notes=None, **kwargs):
 def create_setting_widget(setting: Dict):
     if setting["type"] == "number":
         widget = QSpinBox()
-        widget.setRange(setting.get("min", 0), setting.get("max", 1 << 30))
+        widget.setRange(int(setting.get("min", 0)), int(setting.get("max", 1 << 30)))
         widget.setValue(setting.get("default", 0))
     elif setting["type"] == "float":
         widget = QDoubleSpinBox()

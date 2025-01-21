@@ -9,7 +9,7 @@ from ..geometry import GeometryTrajectory
 from ..widgets.ribbon import create_button
 from ..parametrization import TriangularMesh
 from ..io_utils import import_mesh_trajectory
-from ..meshing import equilibrate_fit, setup_hmff, to_open3d, remesh
+from ..meshing import equilibrate_fit, setup_hmff, to_open3d
 from ..dialogs import (
     MeshEquilibrationDialog,
     HMFFDialog,
@@ -83,7 +83,7 @@ class ModelTab(QWidget):
 
         hmff_actions = [
             create_button("Equilibrate", "mdi.molecule", self, self._equilibrate_fit),
-            create_button("Export", "mdi.export", self, self._setup_hmff),
+            create_button("Setup", "mdi.export", self, self._setup_hmff),
             create_button(
                 "Trajectory",
                 "mdi.chart-line-variant",
@@ -100,7 +100,7 @@ class ModelTab(QWidget):
         _conversion = {
             "Alpha Shape": "convexhull",
             "Ball Pivoting": "mesh",
-            "Poisson Reconstruction": "poissonmesh",
+            "Poisson": "poissonmesh",
         }
 
         method = _conversion.get(method, method)
@@ -256,10 +256,10 @@ class ModelTab(QWidget):
             return None
 
         trajectory = GeometryTrajectory(
-            points=np.asarray(ret[0]["fit"].mesh.vertices),
-            normals=np.asarray(ret[0]["fit"].mesh.vertices),
+            points=np.asarray(ret[0]["fit"].mesh.vertices).copy(),
+            normals=np.asarray(ret[0]["fit"].mesh.vertices).copy(),
             sampling_rate=1 / scale,
-            meta=ret[0],
+            meta=ret[0].copy(),
             trajectory=ret,
         )
         self.cdata._models.add(trajectory)
@@ -316,7 +316,7 @@ MESH_SETTINGS = {
             "label": "Method",
             "parameter": "method",
             "type": "select",
-            "options": ["Alpha Shape", "Ball Pivoting", "Poisson Reconstruction"],
+            "options": ["Alpha Shape", "Ball Pivoting", "Poisson"],
             "default": "Alpha Shape",
         },
         {
