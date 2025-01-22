@@ -884,6 +884,10 @@ class TriangularMesh(Parametrization):
         normals /= np.linalg.norm(normals, axis=1)[:, None]
         return normals
 
+    def compute_vertex_normals(self) -> np.ndarray:
+        self.mesh.compute_vertex_normals()
+        return np.asarray(self.mesh.vertex_normals)
+
     def points_per_sampling(self, sampling_density: float) -> int:
         area_per_sample = np.square(sampling_density)
         n_points = np.ceil(np.divide(self.mesh.get_surface_area(), area_per_sample))
@@ -1033,8 +1037,10 @@ class ConvexHull(TriangularMesh):
         distances, indices = find_closest_points(positions, vs)
 
         vids = np.where(distances > 6 * voxel_size)[0]
-        vids = np.asarray(list(get_ring_vertices(vs, fs, vids, boundary_ring)))
+        if len(vids) == 0:
+            return cls(mesh=to_open3d(vs, fs))
 
+        vids = np.asarray(list(get_ring_vertices(vs, fs, vids, boundary_ring)))
         out_vs = fair_mesh(
             vs,
             fs,

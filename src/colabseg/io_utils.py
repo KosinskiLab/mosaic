@@ -404,6 +404,23 @@ def import_points(filename, scale=1, offset=1) -> List[NDArray]:
     return [np.divide(np.subtract(x, offset), scale) for x in data], normals
 
 
+def import_mesh(file: str) -> o3d.geometry.TriangleMesh:
+    if file.endswith(".tsi"):
+        data = read_topology_file(file)
+        vertices = data["vertices"][:, 1:4]
+        faces = data["faces"][:, 1:4]
+    elif file.endswith(".vtu"):
+        data = read_vtu_file(file)
+        vertices = data["points"].astype(np.float32)
+        faces = data["connectivity"].astype(int)
+    else:
+        data = o3d.io.read_triangle_mesh(file)
+        vertices = np.asarray(data.vertices).astype(np.float32)
+        faces = np.asarray(data.triangles).astype(int)
+
+    return vertices, faces
+
+
 def import_mesh_trajectory(path: str) -> List[List[np.ndarray]]:
     files = [path]
     if isdir(path):
@@ -414,13 +431,7 @@ def import_mesh_trajectory(path: str) -> List[List[np.ndarray]]:
 
     ret = []
     for file in files:
-        if file.endswith(".tsi"):
-            data = read_topology_file(file)
-            ret.append((data["vertices"][:, 1:4], data["faces"][:, 1:4], file))
-        else:
-            data = read_vtu_file(file)
-            vertices = data["points"].astype(np.float32)
-            faces = data["connectivity"].astype(int)
-            ret.append((vertices, faces, file))
+        vertices, faces = import_mesh(file)
+        ret.append((vertices, faces, file))
 
     return ret

@@ -22,12 +22,13 @@ class ProgressDialog:
         self.iterator = iter(iterable)
 
         self.current = 0
-        self.dialog = QDialog()
+        self.dialog = QDialog(parent)
         self.dialog.setWindowTitle(title)
         self.dialog.setWindowFlags(
             Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint
         )
         self.dialog.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+
         self.setup_ui()
         self.dialog.show()
 

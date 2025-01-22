@@ -234,6 +234,9 @@ class Geometry:
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(self._data)
 
+        mapper.SetScalarModeToDefault()
+        mapper.SetResolveCoincidentTopologyToPolygonOffset()
+
         if actor is None:
             actor = vtk.vtkActor()
 

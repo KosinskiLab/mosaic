@@ -524,6 +524,9 @@ class DataContainerInteractor(QObject):
             self.container.highlight_points(cluster_index, point_ids, color)
         self.vtk_widget.GetRenderWindow().Render()
 
+    def highlight_clusters_from_selected_points(self):
+        return self.set_selection(list(self.point_selection.keys()))
+
     def change_representation(self, representation: str):
         indices = self._get_selected_indices()
         if not len(indices):

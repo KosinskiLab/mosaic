@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 from ..geometry import GeometryTrajectory
 from ..widgets.ribbon import create_button
 from ..parametrization import TriangularMesh
-from ..io_utils import import_mesh_trajectory
+from ..io_utils import import_mesh_trajectory, import_mesh
 from ..meshing import equilibrate_fit, setup_hmff, to_open3d
 from ..dialogs import (
     MeshEquilibrationDialog,
@@ -80,6 +80,13 @@ class ModelTab(QWidget):
             ),
         ]
         self.ribbon.add_section("Sampling Operations", mesh_actions)
+
+        mesh_actions = [
+            create_button("Import", "mdi.import", self, self._import_meshes),
+            create_button("Volume", "mdi.cube-outline", self, self._mesh_volume),
+            create_button("Curvature", "mdi.vector-curve", self, self._mesh_volume),
+        ]
+        self.ribbon.add_section("Mesh Operations", mesh_actions)
 
         hmff_actions = [
             create_button("Equilibrate", "mdi.molecule", self, self._equilibrate_fit),
@@ -221,6 +228,57 @@ class ModelTab(QWidget):
         # Map proteins to vertices
         # Create output files for ts2cg
 
+    def _import_meshes(self):
+        filenames, _ = QFileDialog.getOpenFileNames(self, "Select Meshes")
+        progress = ProgressDialog(filenames, title="Importing Meshes", parent=None)
+        for filename in progress:
+            try:
+                vertices, faces = import_mesh(filename)
+                fit = TriangularMesh(to_open3d(vertices, faces))
+
+                meta = {
+                    "fit": fit,
+                    "points": np.asarray(fit.mesh.vertices),
+                    "faces": np.asarray(fit.mesh.triangles),
+                    "normals": fit.compute_vertex_normals(),
+                }
+                self.cdata._models.add(
+                    points=meta["points"],
+                    normals=meta["normals"],
+                    meta=meta,
+                )
+            except Exception as e:
+                print(e)
+
+        self.cdata.models.data_changed.emit()
+        return self.cdata.models.render()
+
+    def _mesh_volume(self):
+        filename, _ = QFileDialog.getOpenFileName(self, "Select Meshes")
+        from ..meshing import marching_cubes
+        from ..io_utils import load_density
+
+        dens = load_density(filename)
+        meshes = marching_cubes(dens.data, dens.sampling_rate)
+        for mesh in meshes:
+            fit = TriangularMesh(mesh)
+            meta = {
+                "fit": fit,
+                "points": np.asarray(fit.mesh.vertices),
+                "faces": np.asarray(fit.mesh.triangles),
+                "normals": fit.compute_vertex_normals(),
+            }
+
+            self.cdata._models.add(
+                points=meta["points"],
+                normals=meta["normals"],
+                meta=meta,
+                sampling_rate=dens.sampling_rate,
+            )
+
+        self.cdata.models.data_changed.emit()
+        return self.cdata.models.render()
+
     def _import_trajectory(self, scale: float = 1.0, offset: float = 0.0, **kwargs):
         directory = QFileDialog.getExistingDirectory(
             self,
@@ -234,7 +292,7 @@ class ModelTab(QWidget):
         ret = []
         mesh_trajectory = import_mesh_trajectory(directory)
         progress = ProgressDialog(
-            mesh_trajectory, title="Importing Trajectory", parent=self
+            mesh_trajectory, title="Importing Trajectory", parent=None
         )
         for index, data in enumerate(progress):
             points, faces, filename = data

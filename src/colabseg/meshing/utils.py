@@ -7,6 +7,8 @@
 
 import h5py
 import textwrap
+import multiprocessing as mp
+from typing import List
 from subprocess import run
 from platform import system
 from tempfile import NamedTemporaryFile
@@ -14,10 +16,9 @@ from tempfile import NamedTemporaryFile
 import numpy as np
 import open3d as o3d
 from scipy.spatial.distance import pdist
-import multiprocessing as mp
 
 
-def to_open3d(vertices, faces):
+def to_open3d(vertices, faces) -> o3d.geometry.TriangleMesh:
     ret = o3d.geometry.TriangleMesh()
     ret.vertices = o3d.utility.Vector3dVector(np.asarray(vertices, dtype=np.float64))
     ret.triangles = o3d.utility.Vector3iVector(np.asarray(faces, dtype=np.float32))
@@ -256,3 +257,46 @@ def center_mesh(mesh, center: bool = True, margin=20):
         "faces": triangles,
     }
     return data, offset
+
+
+def marching_cubes(
+    volume,
+    sampling_rate,
+    reduction_factor: float = 100,
+    max_error: float = 40,
+    close: bool = True,
+    voxel_centered: bool = False,
+    simplify: bool = False,
+) -> List[o3d.geometry.TriangleMesh]:
+    from zmesh import Mesher
+
+    mesher = Mesher(sampling_rate)
+    mesher.mesh(volume, close=close)
+
+    if len(mesher.ids()) == 0:
+        raise ValueError("No meshes were generated from the volume data")
+
+    ret = []
+    for obj_id in mesher.ids():
+        mesh = mesher.get(
+            obj_id,
+            normals=False,
+            reduction_factor=reduction_factor,
+            max_error=max_error,
+            voxel_centered=voxel_centered,
+        )
+
+        if simplify:
+            mesh = mesher.simplify(
+                mesh,
+                reduction_factor=reduction_factor,
+                max_error=max_error,
+                compute_normals=False,
+            )
+
+        ret.append(to_open3d(np.asarray(mesh.vertices), np.asarray(mesh.faces)))
+        mesher.erase(obj_id)
+
+    mesher.clear()
+
+    return ret

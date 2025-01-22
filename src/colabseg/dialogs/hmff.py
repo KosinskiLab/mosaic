@@ -23,7 +23,7 @@ class HMFFDialog(OperationDialog):
     def __init__(self, parent=None, mesh_options=[""]):
         self._operations = [
             make_param("mesh", mesh_options[0], mesh_options, "Mesh to simulate."),
-            make_param("volume_path", "", "", "Path to HMFF potential file."),
+            make_param("volume_path", "0.0", "", "Path to HMFF potential file."),
             make_param(
                 "lowpass_cutoff", 140.0, 0.0, "Resolution to lowpass filter to [Å]."
             ),

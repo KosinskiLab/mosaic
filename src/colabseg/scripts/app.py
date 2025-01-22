@@ -141,7 +141,14 @@ class App(QMainWindow):
         self.renderer.SetUseDepthPeeling(1)
         self.renderer.SetOcclusionRatio(0.0)
         self.renderer.SetMaximumNumberOfPeels(4)
-        self.vtk_widget.GetRenderWindow().AddRenderer(self.renderer)
+        self.renderer.SetUseFXAA(True)
+
+        render_window = self.vtk_widget.GetRenderWindow()
+        render_window.AddRenderer(self.renderer)
+        render_window.SetMultiSamples(0)
+        render_window.SetPointSmoothing(False)
+        render_window.SetLineSmoothing(False)
+        render_window.SetPolygonSmoothing(False)
 
         # Setup GUI interactions
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
@@ -272,6 +279,8 @@ class App(QMainWindow):
             new_cluster = self.cdata.data.merge_cluster()
             point_cluster = self.cdata.data.cluster_points()
             self.cdata.data.merge_cluster(indices=(new_cluster, point_cluster))
+        elif key == "e":
+            self.cdata.data.highlight_clusters_from_selected_points()
         elif key == "h":
             self.cdata.data.toggle_visibility()
         elif key == "a":
