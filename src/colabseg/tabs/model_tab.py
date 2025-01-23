@@ -8,8 +8,8 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 from ..geometry import GeometryTrajectory
 from ..widgets.ribbon import create_button
 from ..parametrization import TriangularMesh
-from ..io_utils import import_mesh_trajectory, import_mesh
-from ..meshing import equilibrate_fit, setup_hmff, to_open3d
+from ..io_utils import import_mesh_trajectory, import_mesh, load_density
+from ..meshing import equilibrate_fit, setup_hmff, to_open3d, marching_cubes
 from ..dialogs import (
     MeshEquilibrationDialog,
     HMFFDialog,
@@ -230,6 +230,9 @@ class ModelTab(QWidget):
 
     def _import_meshes(self):
         filenames, _ = QFileDialog.getOpenFileNames(self, "Select Meshes")
+        if not filenames:
+            return -1
+
         progress = ProgressDialog(filenames, title="Importing Meshes", parent=None)
         for filename in progress:
             try:
@@ -255,8 +258,8 @@ class ModelTab(QWidget):
 
     def _mesh_volume(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Select Meshes")
-        from ..meshing import marching_cubes
-        from ..io_utils import load_density
+        if not filename:
+            return -1
 
         dens = load_density(filename)
         meshes = marching_cubes(dens.data, dens.sampling_rate)

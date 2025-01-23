@@ -402,7 +402,6 @@ class Geometry:
             else:
                 prop.SetRepresentationToSurface()
                 prop.SetEdgeVisibility(representation == "mesh")
-                self._appearance["opacity"] = 0.3
                 prop.SetOpacity(self._appearance["opacity"])
 
             # self._representation = "surface"
