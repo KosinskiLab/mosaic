@@ -179,7 +179,7 @@ class SegmentationTab(QWidget):
 
     def _show_stats_dialog(self):
         clusters = self.cdata.format_datalist(type="data")
-        dialog = DistanceStatsDialog(clusters, self)
+        dialog = DistanceStatsDialog(clusters, parent=self)
         return dialog.show()
 
     def _distance_crop(self):

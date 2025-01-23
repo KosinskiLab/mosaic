@@ -2,7 +2,7 @@
     merging of submeshes and simplification using quadratic edge collapse.
 
     This loosely follows the approach taken in igneous (github.com/seung-lab/igneous)
-    but is more focused on simplifying local meshing of large volumes.
+    but is focused on simplifying local meshing of large volumes.
 
     Copyright (c) 2024 European Molecular Biology Laboratory
 
@@ -279,3 +279,32 @@ def mesh_volume(
     _ = process_map(_execute, tasks, max_workers=num_workers)
 
     return None
+
+
+# import h5py
+# from fibsem_tools import read_xarray
+
+# def unnest_dict(attrs, prefix : str = ""):
+#     ret = {}
+#     for k, v in attrs.items():
+#         if isinstance(v, dict):
+#             ret.update(unnest_dict(v, prefix = f"{k}_"))
+#         else:
+#             ret[f"{prefix}{k}"] = v
+#     return ret
+
+# def xarray_to_hdf5(arr, output_path : str):
+#     arr.to_netcdf(output_path, engine='h5netcdf', encoding={arr.name: {'dtype': 'uint16'}})
+#     with h5py.File(output_path, mode = 'r+') as f:
+#         f.create_dataset("origin", data = (0,0,0))
+#         f.create_dataset("sampling_rate", data = arr.attrs["pixelResolution_dimensions"])
+#         for key, value in arr.attrs.items():
+#             f.attrs[key] = value
+#     return None
+
+# group_url = 's3://janelia-cosem-datasets/jrc_sum159-1/jrc_sum159-1.n5/em/fibsem-uint16/'
+# array = read_xarray(group_url + '/s2', storage_options={'anon': True})
+# array.attrs = unnest_dict(array.attrs)
+# array.name = "data"
+
+# xarray_to_hdf5(array, "test.h5")
