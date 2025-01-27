@@ -1,3 +1,4 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -7,12 +8,12 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QWidget,
     QDoubleSpinBox,
-    QFileDialog,
     QScrollArea,
     QGroupBox,
     QFrame,
     QLineEdit,
     QMessageBox,
+    QCompleter,
 )
 import qtawesome as qta
 
@@ -33,12 +34,18 @@ class MeshMappingRow(QWidget):
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText("Protein Name")
 
-        self.cluster_combo = QComboBox()
+        self.cluster_combo, names = QComboBox(), []
         for name, data in self.clusters:
+            names.append(name)
             self.cluster_combo.addItem(name, data)
 
         self.name_edit.setText(self.cluster_combo.currentText())
         self.cluster_combo.currentTextChanged.connect(self.name_edit.setText)
+
+        completer = QCompleter(names)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.cluster_combo.setEditable(True)
+        self.cluster_combo.setCompleter(completer)
 
         self.toggle_btn = QPushButton()
         self.toggle_btn.setFixedWidth(20)
@@ -60,7 +67,7 @@ class MeshMappingRow(QWidget):
         if self.dialog and hasattr(self.dialog, "add_mapping_row"):
             self.dialog.add_mapping_row()
 
-    def get_mapping_data(self):
+    def get_parameters(self):
         return {
             "name": self.name_edit.text().strip(),
             "data": self.cluster_combo.currentData(),
@@ -76,7 +83,7 @@ class MeshMappingDialog(QDialog):
         self.fits = fits
         self.clusters = clusters
 
-        self.setWindowTitle("Cluster Mapping")
+        self.setWindowTitle("Backmapping")
         self.resize(500, 400)
         self.setup_ui()
 
@@ -173,7 +180,7 @@ class MeshMappingDialog(QDialog):
         )
         self.mapping_layout.insertWidget(self.mapping_layout.count() - 1, new_row)
 
-    def get_mapping_data(self):
+    def get_parameters(self):
         selected_fit = self.fit_combo.currentData()
         edge_length = self.edge_length.value()
 
@@ -181,12 +188,6 @@ class MeshMappingDialog(QDialog):
         for i in range(self.mapping_layout.count() - 1):
             widget = self.mapping_layout.itemAt(i).widget()
             if isinstance(widget, MeshMappingRow):
-                mappings.append(widget.get_mapping_data())
+                mappings.append(widget.get_parameters())
 
         return selected_fit, edge_length, mappings
-
-    @staticmethod
-    def get_save_directory(parent=None):
-        return QFileDialog.getExistingDirectory(
-            parent, "Select Save Directory", "", QFileDialog.Option.ShowDirsOnly
-        )

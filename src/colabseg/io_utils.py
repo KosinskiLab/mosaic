@@ -127,6 +127,14 @@ def read_volume(filename: str):
     volume = load_density(filename)
 
     ret = volume_to_points(volume.data, volume.sampling_rate)
+
+    # Issue with jrc_macrophage-2/nucleus_seg
+    # print(volume.sampling_rate)
+    # if volume.sampling_rate[-1] == 64:
+    # 64 * 30 instead of 64 * 30  - 53.76 * 25.2 ...
+    # offset = np.array([0,0,1920])
+    # ret = [x - offset for x in ret]
+
     shape = np.multiply(volume.shape, volume.sampling_rate)
     return ret, [np.zeros_like(x) for x in ret], shape, volume.sampling_rate
 
@@ -134,12 +142,11 @@ def read_volume(filename: str):
 def read_mesh(filename: str):
     from .parametrization import TriangularMesh
 
-    mesh = o3d.io.read_triangle_mesh(filename)
-    mesh = TriangularMesh(mesh)
+    mesh = TriangularMesh(o3d.io.read_triangle_mesh(filename))
     ret = [np.asarray(mesh.mesh.vertices)]
 
     shape = compute_bounding_box(ret)
-    return ret, [mesh.compute_normal(x) for x in ret], shape, (1, 1, 1)
+    return ret, [mesh.compute_vertex_normals(x) for x in ret], shape, (1, 1, 1)
 
 
 class OrientationsWriter:
@@ -331,8 +338,11 @@ def read_vtu_file(file_path: str) -> Dict:
 
 def load_density(filename: str) -> Density:
     volume = Density.from_file(filename)
-    volume.data = np.swapaxes(volume.data, 0, 2)
-    volume.sampling_rate = volume.sampling_rate[::-1]
+
+    fname = filename.lower()
+    if fname.endswith((".mrc", ".map", ".rec", "mrc.gz", "map.gz", "rec.gz")):
+        volume.data = np.swapaxes(volume.data, 0, 2)
+        volume.sampling_rate = volume.sampling_rate[::-1]
 
     if np.allclose(volume.sampling_rate, 0):
         warnings.warn(
@@ -384,12 +394,20 @@ def write_topology_file(file_path: str, data: Dict) -> None:
         face.append("")
         face_string += "  ".join(face) + "\n"
 
+    inclusion_string = ""
+    inclusions = data.get("inclusions", None)
+    if inclusions is not None:
+        inclusion_string = f"inclusions {inclusions.shape[0]}\n"
+        for i in range(data["inclusions"].shape[0]):
+            inclusion_string += f"{'   '.join([f'{x}' for x in inclusions[i]])}   \n"
+
     with open(file_path, mode="w", encoding="utf-8") as ofile:
         ofile.write(f"{'   '.join([f'{x:<.10f}' for x in data['box']])}   \n")
         ofile.write(f"{data['n_vertices']}\n")
         ofile.write(vertex_string)
         ofile.write(f"{data['n_faces']}\n")
         ofile.write(face_string)
+        ofile.write(inclusion_string)
 
 
 def import_points(filename, scale=1, offset=1) -> List[NDArray]:

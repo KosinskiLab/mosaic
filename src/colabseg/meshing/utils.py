@@ -229,34 +229,40 @@ def compute_scale_factor_lower(mesh, lower_bound=1.05):
 def center_mesh(mesh, center: bool = True, margin=20):
     vertices = np.asarray(mesh.vertices)
 
-    box_size = np.max(np.ceil(vertices.max(axis=0) + margin).astype(int))
-
     offset = 0
     if center:
         offset = np.min(vertices.min(axis=0)) - margin
         offset = np.sign(offset) * np.ceil(np.abs(offset))
         vertices -= offset
         print("Mesh offset", offset)
-        box_size = np.max(np.ceil(vertices.max(axis=0) + margin).astype(int))
 
-    edges = np.zeros((vertices.shape[0], 5))
-    edges[:, 0] = np.arange(edges.shape[0])
-    edges[:, 1:4] = vertices
+    data = to_tsi(vertices, mesh.triangles, margin=margin)
+    return data, offset
 
-    faces = np.asarray(mesh.triangles)
-    triangles = np.zeros((faces.shape[0], 5))
-    triangles[:, 0] = np.arange(faces.shape[0])
-    triangles[:, 1:4] = faces
+
+def to_tsi(vertices, faces, margin: int = 0):
+    vertices = np.asarray(vertices)
+    faces = np.asarray(faces)
+
+    box_size = np.max(np.ceil(vertices.max(axis=0) + margin).astype(int))
+
+    _vertices = np.zeros((vertices.shape[0], 5))
+    _vertices[:, 0] = np.arange(_vertices.shape[0])
+    _vertices[:, 1:4] = vertices
+
+    _faces = np.zeros((faces.shape[0], 5))
+    _faces[:, 0] = np.arange(faces.shape[0])
+    _faces[:, 1:4] = faces
 
     data = {
         "version": "1.0a",
         "box": tuple(int(box_size) for _ in range(3)),
-        "n_vertices": edges.shape[0],
-        "vertices": edges,
-        "n_faces": triangles.shape[0],
-        "faces": triangles,
+        "n_vertices": _vertices.shape[0],
+        "vertices": _vertices,
+        "n_faces": _faces.shape[0],
+        "faces": _faces,
     }
-    return data, offset
+    return data
 
 
 def marching_cubes(

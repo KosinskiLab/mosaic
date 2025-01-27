@@ -9,7 +9,7 @@ from ..geometry import GeometryTrajectory
 from ..widgets.ribbon import create_button
 from ..parametrization import TriangularMesh
 from ..io_utils import import_mesh_trajectory, import_mesh, load_density
-from ..meshing import equilibrate_fit, setup_hmff, to_open3d, marching_cubes
+from ..meshing import equilibrate_fit, setup_hmff, to_open3d, marching_cubes, mesh_to_cg
 from ..dialogs import (
     MeshEquilibrationDialog,
     HMFFDialog,
@@ -99,7 +99,7 @@ class ModelTab(QWidget):
                 "Import Trajectory",
                 IMPORT_SETTINGS,
             ),
-            create_button("Integrate", "mdi.set-merge", self, self._map_fit),
+            create_button("Backmapping", "mdi.set-merge", self, self._map_fit),
         ]
         self.ribbon.add_section("HMFF Operations", hmff_actions)
 
@@ -212,21 +212,31 @@ class ModelTab(QWidget):
         return ret
 
     def _map_fit(self):
+        save_dir = QFileDialog.getExistingDirectory(
+            self,
+            "Select Save Directory",
+            "",
+            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
+        )
+        if not save_dir:
+            return -1
+
         fits = self.cdata.format_datalist("models")
+        fits = [x for x in fits if isinstance(x[1]._meta.get("fit"), TriangularMesh)]
         clusters = self.cdata.format_datalist("data")
         dialog = MeshMappingDialog(fits=fits, clusters=clusters)
         if not dialog.exec():
             return -1
 
-        fit, edge_length, mappings = dialog.get_mapping_data()
-        print(mappings)
-        save_dir = dialog.get_save_directory()
-        if not save_dir:
-            return -1
-
-        # Remesh to edge length
-        # Map proteins to vertices
-        # Create output files for ts2cg
+        fit, edge_length, mappings = dialog.get_parameters()
+        ret = mesh_to_cg(
+            mesh=fit._meta["fit"].mesh,
+            edge_length=edge_length,
+            output_directory=save_dir,
+            inclusions=mappings,
+        )
+        QMessageBox.information(self, "Success", "Coarse-graining successful.")
+        return ret
 
     def _import_meshes(self):
         filenames, _ = QFileDialog.getOpenFileNames(self, "Select Meshes")
