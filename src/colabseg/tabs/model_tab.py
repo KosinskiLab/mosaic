@@ -235,7 +235,7 @@ class ModelTab(QWidget):
             output_directory=save_dir,
             inclusions=mappings,
         )
-        QMessageBox.information(self, "Success", "Coarse-graining successful.")
+        QMessageBox.information(self, "Success", "Export successful.")
         return ret
 
     def _import_meshes(self):

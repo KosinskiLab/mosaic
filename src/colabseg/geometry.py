@@ -98,7 +98,6 @@ class Geometry:
             if np.max(idx) < self.normals.shape[0]:
                 normals = self.normals[idx].copy()
 
-        # ret = self.__class__(
         ret = Geometry(
             points=self.points[idx],
             normals=normals,
@@ -604,6 +603,17 @@ class GeometryTrajectory(Geometry):
     def __init__(self, trajectory: List[Dict], **kwargs):
         super().__init__(**kwargs)
         self._trajectory = trajectory
+
+    def __getstate__(self):
+        return {
+            "points": self.points,
+            "normals": self.normals,
+            "sampling_rate": self.sampling_rate,
+            "meta": self._meta,
+            "visible": self.visible,
+            "appearance": self._appearance,
+            "trajectory": self._trajectory,
+        }
 
     @property
     def frames(self):

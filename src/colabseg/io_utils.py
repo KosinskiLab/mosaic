@@ -416,9 +416,9 @@ def write_topology_file(file_path: str, data: Dict, tsi_format: bool = False) ->
         face_string += "  ".join(face) + "\n"
 
     inclusion_string = ""
-    inclusions = data.get("inclusion", None)
+    inclusions = data.get("inclusions", None)
     if inclusions is not None:
-        inclusion_string = f"inclusions {inclusions.shape[0]}\n"
+        inclusion_string = f"inclusion {inclusions.shape[0]}\n"
         for i in range(data["inclusions"].shape[0]):
             inclusion_string += f"{'   '.join([f'{x}' for x in inclusions[i]])}   \n"
 
