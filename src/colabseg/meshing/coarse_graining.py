@@ -55,8 +55,8 @@ def mesh_to_cg(
     _inclusions[:, 1:5] = np.asarray(inclusion_list)
     data["inclusions"] = _inclusions.astype(int)
 
-    mesh_path = join(output_directory, "mesh.q")
-    write_topology_file(file_path=mesh_path, data=data)
+    mesh_path = join(output_directory, "mesh.tsi")
+    write_topology_file(file_path=mesh_path, data=data, tsi_format=True)
 
     scale_path = join(output_directory, "scales.txt")
     with open(scale_path, mode="w", encoding="utf-8") as ofile:
@@ -81,14 +81,14 @@ def mesh_to_cg(
     with open(plm_path, mode="w", encoding="utf-8") as ofile:
         ofile.write("#!/bin/bash\n")
         ofile.write(
-            "TS2CG PLM -TSfile mesh.q -bilayerThickness 3.8  -rescalefactor 4 4 4"
+            f"TS2CG PLM -TSfile {mesh_path} -bilayerThickness 3.8  -rescalefactor 4 4 4"
         )
 
     pcg_path = join(output_directory, "pcg.sh")
     with open(pcg_path, mode="w", encoding="utf-8") as ofile:
         ofile.write("#!/bin/bash\n")
         ofile.write(
-            "TS2CG PCG -str input.str -Bondlength 0.2 -LLIB ./files/Martini3.LIB -defout system"
+            f"TS2CG PCG -str {str_path} -Bondlength 0.2 -LLIB Martini3.LIB -defout system"
         )
 
     return True

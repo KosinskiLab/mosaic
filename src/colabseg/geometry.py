@@ -407,7 +407,9 @@ class Geometry:
         self._representation = representation
         return 0
 
-    def compute_curvature(self, curvature_type="mean", color_map=None):
+    def compute_curvature(
+        self, curvature_type="mean", color_map=None, smoothing_iterations=1
+    ):
         """
         Compute and visualize curvature of the polydata surface.
 
@@ -432,9 +434,17 @@ class Geometry:
             print("Curvature computation requires mesh or surface representation")
             return -1
 
+        curvature_type = curvature_type.lower()
         triangulate = vtk.vtkTriangleFilter()
         triangulate.SetInputData(self._data)
         triangulate.Update()
+
+        smoother = vtk.vtkWindowedSincPolyDataFilter()
+        smoother.SetInputConnection(triangulate.GetOutputPort())
+        smoother.SetNumberOfIterations(smoothing_iterations)
+        smoother.BoundarySmoothingOff()
+        smoother.FeatureEdgeSmoothingOff()
+        smoother.Update()
 
         normals = vtk.vtkPolyDataNormals()
         normals.SetInputData(triangulate.GetOutput())
@@ -445,21 +455,18 @@ class Geometry:
         normals.Update()
 
         curv_filter = vtk.vtkCurvatures()
-        if curvature_type.lower() == "gaussian":
-            curv_filter = vtk.vtkCurvatures()
-            curv_filter.SetCurvatureTypeToGaussian()
-        elif curvature_type.lower() == "mean":
-            curv_filter = vtk.vtkCurvatures()
-            curv_filter.SetCurvatureTypeToMean()
-        elif curvature_type.lower() == "maximum":
-            curv_filter = vtk.vtkCurvatures()
-            curv_filter.SetCurvatureTypeToMaximum()
-        elif curvature_type.lower() == "minimum":
-            curv_filter = vtk.vtkCurvatures()
-            curv_filter.SetCurvatureTypeToMinimum()
-        else:
+        curvature_types = {
+            "gaussian": curv_filter.SetCurvatureTypeToGaussian,
+            "mean": curv_filter.SetCurvatureTypeToMean,
+            "maximum": curv_filter.SetCurvatureTypeToMaximum,
+            "minimum": curv_filter.SetCurvatureTypeToMinimum,
+        }
+        set_curvature = curvature_types.get(curvature_type, None)
+        if set_curvature is None:
             print(f"Unsupported curvature type: {curvature_type}")
-            return -1
+            return None
+
+        set_curvature()
 
         curv_filter.SetInputConnection(normals.GetOutputPort())
         curv_filter.Update()
@@ -471,7 +478,6 @@ class Geometry:
             return -1
 
         print(f"Curvature range: {scalars.GetRange()}")
-
         mapper = self._actor.GetMapper()
         mapper.SetInputData(output)
 
@@ -480,7 +486,6 @@ class Geometry:
         else:
             curv_range = color_map
 
-        # Blue to Red
         lut = vtk.vtkLookupTable()
         lut.SetHueRange(0.667, 0.0)
         lut.SetSaturationRange(1.0, 1.0)

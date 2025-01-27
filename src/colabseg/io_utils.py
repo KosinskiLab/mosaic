@@ -16,7 +16,7 @@ import numpy as np
 import open3d as o3d
 from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
-from tme import Density, Orientations
+from tme import Density, Structure, Orientations
 from tme.matching_utils import rotation_aligning_vectors
 
 from .utils import volume_to_points, compute_bounding_box
@@ -35,6 +35,8 @@ class VertexDataLoader:
             self._formats[ext] = read_topology_vertices
         for ext in ["vtu"]:
             self._formats[ext] = read_vtu_vertices
+        for ext in ["pdb", "cif"]:
+            self._formats[ext] = read_structure_vertices
 
     @property
     def supported_formats(self) -> List[str]:
@@ -119,6 +121,13 @@ def read_topology_vertices(filename: str):
 def read_vtu_vertices(filename: str):
     data = read_vtu_file(filename)
     ret = [data["points"].astype(np.float32)]
+    shape = compute_bounding_box(ret)
+    return ret, [np.zeros_like(x) for x in ret], shape, (1, 1, 1)
+
+
+def read_structure_vertices(filename: str):
+    data = Structure.from_file(filename)
+    ret = [data.atom_coordinate]
     shape = compute_bounding_box(ret)
     return ret, [np.zeros_like(x) for x in ret], shape, (1, 1, 1)
 
@@ -363,7 +372,7 @@ def write_density(
     return dens.to_file(filename)
 
 
-def write_topology_file(file_path: str, data: Dict) -> None:
+def write_topology_file(file_path: str, data: Dict, tsi_format: bool = False) -> None:
     """
     Write a topology file [1]_.
 
@@ -371,41 +380,55 @@ def write_topology_file(file_path: str, data: Dict) -> None:
     ----------
     file_path : str
         The path to the output file.
-    data : Dict
+    data : dict
         Topology file data as per :py:meth:`read_topology_file`.
+    tsi_format : bool, optional
+        Whether to use the '.q' or '.tsi' file, defaults to '.q'.
 
     References
     ----------
     .. [1] https://github.com/weria-pezeshkian/FreeDTS/wiki/Manual-for-version-1
     """
+    vertex_string = f"{data['vertices'].shape[0]}\n"
+    if tsi_format:
+        vertex_string = f"vertex {vertex_string}"
 
-    vertex_string = ""
     stop = data["vertices"].shape[1] - 1
     for i in range(data["vertices"].shape[0]):
         vertex_string += f"{int(data['vertices'][i, 0])}  "
         vertex_string += "  ".join([f"{x:<.10f}" for x in data["vertices"][i, 1:stop]])
-        vertex_string += f"  {int(data['vertices'][i, stop])}\n"
 
-    face_string = ""
-    stop = data["faces"].shape[1] - 1
+        if not tsi_format:
+            vertex_string += f"  {int(data['vertices'][i, stop])}"
+        vertex_string += "\n"
+
+    face_string = f"{data['faces'].shape[0]}\n"
+    if tsi_format:
+        face_string = f"triangle {face_string}"
+
+    stop = data["faces"].shape[1]
+    if tsi_format:
+        stop = stop - 1
     for i in range(data["faces"].shape[0]):
-        face = [f"{int(x):d}" for x in data["faces"][i]]
+        face = [f"{int(x):d}" for x in data["faces"][i, :stop]]
         face[1] += " "
         face.append("")
         face_string += "  ".join(face) + "\n"
 
     inclusion_string = ""
-    inclusions = data.get("inclusions", None)
+    inclusions = data.get("inclusion", None)
     if inclusions is not None:
         inclusion_string = f"inclusions {inclusions.shape[0]}\n"
         for i in range(data["inclusions"].shape[0]):
             inclusion_string += f"{'   '.join([f'{x}' for x in inclusions[i]])}   \n"
 
+    box_string = f"{'   '.join([f'{x:<.10f}' for x in data['box']])}   \n"
+    if tsi_format:
+        box_string = f"version 1.1\nbox   {box_string}"
+
     with open(file_path, mode="w", encoding="utf-8") as ofile:
-        ofile.write(f"{'   '.join([f'{x:<.10f}' for x in data['box']])}   \n")
-        ofile.write(f"{data['n_vertices']}\n")
+        ofile.write(box_string)
         ofile.write(vertex_string)
-        ofile.write(f"{data['n_faces']}\n")
         ofile.write(face_string)
         ofile.write(inclusion_string)
 

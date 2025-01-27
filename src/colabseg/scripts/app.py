@@ -185,7 +185,6 @@ class App(QMainWindow):
             btn.setProperty("tab_id", index)
             btn.setCheckable(True)
             btn.clicked.connect(self.on_tab_clicked)
-            # Used to be #2563eb;
             btn.setStyleSheet(
                 """
                 QPushButton {
