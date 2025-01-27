@@ -423,7 +423,7 @@ def import_points(filename, scale=1, offset=1) -> List[NDArray]:
 
 
 def import_mesh(file: str) -> o3d.geometry.TriangleMesh:
-    if file.endswith(".tsi"):
+    if file.endswith((".tsi", ".q")):
         data = read_topology_file(file)
         vertices = data["vertices"][:, 1:4]
         faces = data["faces"][:, 1:4]

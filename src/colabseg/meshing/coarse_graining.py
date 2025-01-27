@@ -81,14 +81,14 @@ def mesh_to_cg(
     with open(plm_path, mode="w", encoding="utf-8") as ofile:
         ofile.write("#!/bin/bash\n")
         ofile.write(
-            f"TS2CG PLM -TSfile {mesh_path} -bilayerThickness 3.8  -rescalefactor 4 4 4"
+            "TS2CG PLM -TSfile mesh.q -bilayerThickness 3.8  -rescalefactor 4 4 4"
         )
 
     pcg_path = join(output_directory, "pcg.sh")
     with open(pcg_path, mode="w", encoding="utf-8") as ofile:
         ofile.write("#!/bin/bash\n")
         ofile.write(
-            f"TS2CG PCG -str {str_path} -Bondlength 0.2 -LLIB ./files/Martini3.LIB -defout system"
+            "TS2CG PCG -str input.str -Bondlength 0.2 -LLIB ./files/Martini3.LIB -defout system"
         )
 
     return True

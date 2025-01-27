@@ -84,7 +84,7 @@ class ModelTab(QWidget):
         mesh_actions = [
             create_button("Import", "mdi.import", self, self._import_meshes),
             create_button("Volume", "mdi.cube-outline", self, self._mesh_volume),
-            create_button("Curvature", "mdi.vector-curve", self, self._mesh_volume),
+            create_button("Curvature", "mdi.vector-curve", self, self._color_curvature),
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
 
@@ -290,6 +290,11 @@ class ModelTab(QWidget):
             )
 
         self.cdata.models.data_changed.emit()
+        return self.cdata.models.render()
+
+    def _color_curvature(self):
+        for index in self.cdata.models._get_selected_indices():
+            self.cdata._models.data[index].compute_curvature()
         return self.cdata.models.render()
 
     def _import_trajectory(self, scale: float = 1.0, offset: float = 0.0, **kwargs):

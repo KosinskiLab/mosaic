@@ -404,13 +404,10 @@ class Geometry:
                 prop.SetEdgeVisibility(representation == "mesh")
                 prop.SetOpacity(self._appearance["opacity"])
 
-            # self._representation = "surface"
-            # self.compute_curvature(curvature_type="gaussian")
-
         self._representation = representation
         return 0
 
-    def compute_curvature(self, curvature_type="gaussian", color_map=None):
+    def compute_curvature(self, curvature_type="mean", color_map=None):
         """
         Compute and visualize curvature of the polydata surface.
 
