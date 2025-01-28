@@ -52,9 +52,16 @@ def create_setting_widget(setting: Dict):
         widget.addItems(setting["options"])
         if "default" in setting:
             widget.setCurrentText(setting["default"])
+    elif setting["type"] == "MappedComboBox":
+        from . import MappedComboBox
+
+        widget = MappedComboBox(choices=setting["mapping"])
+        if "default" in setting:
+            widget.setCurrentText(setting["default"])
     elif setting["type"] == "boolean":
         widget = QCheckBox()
         widget.setChecked(setting.get("default", False))
+        widget.setMinimumHeight(25)
     elif setting["type"] == "text":
         widget = QLineEdit()
         default_value = setting.get("default", None)
@@ -64,8 +71,8 @@ def create_setting_widget(setting: Dict):
             validator.setNotation(QDoubleValidator.Notation.StandardNotation)
             validator.setBottom(float(setting.get("min", 0.0)))
             widget.setValidator(validator)
-        widget.setMinimumWidth(100)
         widget.setText(str(setting.get("default", 0)))
+        widget.setMinimumWidth(100)
     else:
         raise ValueError(f"Could not create widget from {setting}.")
 

@@ -98,7 +98,10 @@ class SettingsMenu(QMenu):
             }
             QLabel {
                 font-weight: 600;
-                min-width: 100px;
+                min-width: 150px;
+            }
+            QFormLayout {
+                spacing: 10px;
             }
         """
         )
@@ -128,15 +131,14 @@ class SettingsMenu(QMenu):
         self.general_form = QFormLayout()
         self.general_form.setSpacing(8)
         self.general_form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.general_form.setFormAlignment(Qt.AlignmentFlag.AlignLeft)
 
         # Check wheter settings differentiate between different methods
         offset, self.method_combo = 0, None
         base_settings = self.config["settings"][0]
         if "options" in base_settings:
             offset = 1
-            self.method_combo = QComboBox()
-            self.method_combo.addItems(base_settings["options"])
-            self.method_combo.setCurrentText(base_settings["default"])
+            self.method_combo = create_setting_widget(base_settings)
             self.method_combo.currentTextChanged.connect(self.update_method_settings)
             self.method_combo.setProperty(
                 "parameter", base_settings.get("parameter", "method")
@@ -164,6 +166,7 @@ class SettingsMenu(QMenu):
             self.method_layout = QFormLayout(self.method_container)
             self.method_layout.setSpacing(8)
             self.method_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+            self.method_layout.setFormAlignment(Qt.AlignmentFlag.AlignLeft)
 
             self.main_layout.addWidget(self.method_container)
             self.main_layout.addStretch()
@@ -189,8 +192,8 @@ class SettingsMenu(QMenu):
             self.method_layout.addRow(f"{setting['label']}:", widget)
             self.current_method_widgets.append(widget)
 
-        self.method_container.updateGeometry()
-        # self.adjustSize()
+        # self.method_container.updateGeometry()
+        self.adjustSize()
 
     def apply_settings(self):
         settings = self.get_current_settings()

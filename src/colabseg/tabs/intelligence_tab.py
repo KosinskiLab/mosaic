@@ -2,13 +2,14 @@ import numpy as np
 from PyQt6.QtWidgets import QWidget, QVBoxLayout
 
 from ..widgets.ribbon import create_button
+from ..segmentation import MEMBRAIN_SETTINGS
 
 
 def noop(*args, **kwargs):
     return None
 
 
-class DevelopmentTab(QWidget):
+class IntelligenceTab(QWidget):
     def __init__(self, cdata, ribbon):
         super().__init__()
         self.cdata = cdata
@@ -21,12 +22,21 @@ class DevelopmentTab(QWidget):
 
     def show_ribbon(self):
         self.ribbon.clear()
-        cluster_actions = [
+
+        segmentation_actions = [
             create_button(
                 "Add", "mdi.plus", self, self.add_cloud, "Merge selected clusters"
             ),
+            create_button(
+                "Membrane",
+                "mdi.border-all-variant",
+                self,
+                self.add_cloud,
+                "Segment membranes using Membrain-seg",
+                MEMBRAIN_SETTINGS,
+            ),
         ]
-        self.ribbon.add_section("Base Operations", cluster_actions)
+        self.ribbon.add_section("Segmentation Operations", segmentation_actions)
 
     def add_cloud(self, *args):
         num_points = 1000

@@ -47,7 +47,7 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from colabseg.io_utils import import_points
 from colabseg import ColabsegData, ExportManager
-from colabseg.tabs import SegmentationTab, ModelTab, DevelopmentTab
+from colabseg.tabs import SegmentationTab, ModelTab, DevelopmentTab, IntelligenceTab
 from colabseg.dialogs import TiltControlDialog, KeybindsDialog, ImportDataDialog
 from colabseg.widgets import (
     MultiVolumeViewer,
@@ -178,6 +178,7 @@ class App(QMainWindow):
         self.tabs = [
             (SegmentationTab(self.cdata, self.tab_ribbon), "Segmentation"),
             (ModelTab(self.cdata, self.tab_ribbon), "Parametrization"),
+            (IntelligenceTab(self.cdata, self.tab_ribbon), "Intelligence"),
             (DevelopmentTab(self.cdata, self.tab_ribbon), "Development"),
         ]
         for index, (tab, name) in enumerate(self.tabs):
