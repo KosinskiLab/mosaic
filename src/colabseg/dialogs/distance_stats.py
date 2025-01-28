@@ -40,9 +40,9 @@ class DistanceStatsDialog(QDialog):
                     text = str(value)
                 self.table.setItem(row, col, QTableWidgetItem(text))
 
-        header = self.table.horizontalHeader()
-        for i in range(self.table.columnCount()):
-            header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
 
         export_btn = QPushButton("Export Statistics")
         export_btn.clicked.connect(self.export_stats)

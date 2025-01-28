@@ -52,7 +52,7 @@ def points_to_volume(points, sampling_rate=1, shape=None, weight=1, out=None):
     return out
 
 
-def volume_to_points(volume, sampling_rate):
+def volume_to_points(volume, sampling_rate, reverse_order: bool = False):
     """
     Convert volumetric representation back to point clouds.
 
@@ -69,10 +69,11 @@ def volume_to_points(volume, sampling_rate):
         List of point clouds, one for each unique cluster label.
         Returns None if more than 10k clusters are found.
     """
+
     points = np.where(volume > 0)
     points_cluster = volume[points]
 
-    points = np.multiply(np.array(points).T, sampling_rate)
+    points = np.array(points, dtype=int).T
     unique_clusters = np.unique(points_cluster)
     if unique_clusters.size > 10000:
         warnings.warn(
@@ -83,7 +84,16 @@ def volume_to_points(volume, sampling_rate):
     ret = []
     for cluster in unique_clusters:
         indices = np.where(points_cluster == cluster)
-        ret.append(points[indices])
+        cluster_points = points[indices]
+
+        if reverse_order:
+            indices = np.ravel_multi_index(
+                cluster_points[:, ::-1].T, volume.shape[::-1]
+            )
+            cluster_points = cluster_points[np.argsort(indices)]
+
+        cluster_points = np.multiply(cluster_points, sampling_rate)
+        ret.append(cluster_points)
 
     return ret
 

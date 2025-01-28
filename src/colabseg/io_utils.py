@@ -135,7 +135,7 @@ def read_structure_vertices(filename: str):
 def read_volume(filename: str):
     volume = load_density(filename)
 
-    ret = volume_to_points(volume.data, volume.sampling_rate)
+    ret = volume_to_points(volume.data, volume.sampling_rate, reverse_order=True)
 
     # Issue with jrc_macrophage-2/nucleus_seg
     # print(volume.sampling_rate)

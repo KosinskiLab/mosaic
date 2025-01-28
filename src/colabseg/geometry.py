@@ -356,10 +356,11 @@ class Geometry:
             glyph.SetColorModeToColorByScalar()
             glyph.OrientOn()
 
-        self._appearance["opacity"] = 1
+        self._appearance.update({"opacity": 1, "size": 8})
         self._actor.SetMapper(vtk.vtkPolyDataMapper())
         mapper, prop = self._actor.GetMapper(), self._actor.GetProperty()
         prop.SetOpacity(self._appearance["opacity"])
+        prop.SetPointSize(self._appearance["size"])
         if representation == "pointcloud":
             prop.SetRepresentationToPoints()
             mapper.SetInputData(self._data)

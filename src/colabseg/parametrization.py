@@ -914,46 +914,21 @@ class PoissonMesh(TriangularMesh):
         cls,
         positions: np.ndarray,
         voxel_size: float = None,
-        alpha: float = 1,
-        elastic_weight: float = 0,
-        curvature_weight: float = 0,
-        volume_weight: float = 0,
-        boundary_ring: int = 0,
         depth: int = 9,
+        k_neighbors=500,
+        smooth_iter=1,
+        pointweight=0.1,
+        remesh_sampling=0.2,
+        deldist=1.5,
         **kwargs,
     ):
+        from pymeshlab import PercentageValue, MeshSet, Mesh
+
         voxel_size = 1 if voxel_size is None else voxel_size
-        voxel_size = np.max(voxel_size)
-
-        positions = np.asarray(positions, dtype=np.float64)
-        from pymeshlab import MeshSet, Mesh
-
-        # pcd = o3d.geometry.PointCloud()
-        # pcd.points = o3d.utility.Vector3dVector(positions.copy())
-        # pcd.estimate_normals(
-        #     search_param=o3d.geometry.KDTreeSearchParamHybrid(
-        #         radius=10 * voxel_size, max_nn=30
-        #     )
-        # )
-        # with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Error):
-        #     mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
-        #         pcd, 9
-        #     )
-        # return cls(mesh = mesh)
+        positions = np.divide(np.asarray(positions, dtype=np.float64), voxel_size)
 
         ms = MeshSet()
         ms.add_mesh(Mesh(positions))
-        pointweight = 0.1
-        simplify = False
-        num_faces = 150000
-        k_neighbors = 500
-        deldist = 1.5
-        smooth_iter = 1
-        depth = 9
-        ultrafine = True
-        remesh_sampling = 0.2
-
-        # pointweight=0
         ms.compute_normal_for_point_clouds(k=k_neighbors, smoothiter=smooth_iter)
         ms.generate_surface_reconstruction_screened_poisson(
             depth=depth,
@@ -961,9 +936,25 @@ class PoissonMesh(TriangularMesh):
             samplespernode=5.0,
             iters=10,
             scale=1.2,
+            preclean=True,
         )
+        if deldist > 0:
+            ms.compute_scalar_by_distance_from_another_mesh_per_vertex(
+                measuremesh=1,
+                refmesh=0,
+                maxdist=PercentageValue(remesh_sampling),
+                signeddist=False,
+            )
+            ms.compute_selection_by_condition_per_vertex(condselect=f"(q>{deldist})")
+            ms.compute_selection_by_condition_per_face(
+                condselect=f"(q0>{deldist} || q1>{deldist} || q2>{deldist})"
+            )
+            ms.meshing_remove_selected_vertices_and_faces()
+
         mesh = ms.current_mesh()
-        return cls(mesh=to_open3d(mesh.vertex_matrix(), mesh.face_matrix()))
+        return cls(
+            mesh=to_open3d(mesh.vertex_matrix() * voxel_size, mesh.face_matrix())
+        )
 
 
 class ConvexHull(TriangularMesh):
@@ -995,9 +986,9 @@ class ConvexHull(TriangularMesh):
 
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(positions.copy())
-        # pcd = pcd.voxel_down_sample(voxel_size=2 * voxel_size)
+        pcd = pcd.voxel_down_sample(voxel_size=2 * voxel_size)
 
-        points = np.asarray(pcd.points)
+        points = np.asarray(pcd.points).copy()
         scale = points.max(axis=0)
         pcd.points = o3d.utility.Vector3dVector(points / scale)
 
