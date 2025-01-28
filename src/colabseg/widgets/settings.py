@@ -18,18 +18,19 @@ def format_tooltip(label=None, description="", default=None, notes=None, **kwarg
     tooltip = f"""
     <div class="tooltip">
         <span style='font-size: 11pt; font-weight: 600; color: #2c3e50;'>{label}</span>
-        <p style='margin: 8px 0; color: #34495e;'>{description}</p>
+        <p style='margin: 6px 0; color: #34495e;'>{description}</p>
     """
     if default is not None:
         tooltip += f"""
-        <p style='margin: 8px 0;'>
-            <span style='color: #7f8c8d;'>Default:</span>
-            <span style='color: #2980b9;'>{default}</span>
+        <p style='margin: 6px 0;'>
+            <span style='color: #6b7280;'>Default:</span>
+            <span style='color: rgba(99, 102, 241, 1.0);'>{default}</span>
         </p>
         """
+
     if notes:
         tooltip += f"""
-        <p style='margin: 8px 0; color: #95a5a6; font-style: italic;'>
+        <p style='margin: 6px 0; color: #95a5a6; font-style: italic;'>
             Note: {notes}
         </p>
         """

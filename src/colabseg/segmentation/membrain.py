@@ -71,7 +71,7 @@ MEMBRAIN_SETTINGS = {
 }
 
 
-def _path_stem(path: str) -> str:
+def _stem(path: str) -> str:
     return splitext(basename(path))[0]
 
 
@@ -123,12 +123,10 @@ def run_membrainseg(
         cmd.extend(["--in-pixel-size", f"{input_sampling_rate}"])
 
     ret = run([str(x) for x in cmd])
-
-    out_name = (
-        f"{_path_stem(tomogram_path)}_{_path_stem(model_path)}.ckpt_segmented.mrc"
+    out_path = join(
+        out_folder, f"{_stem(tomogram_path)}_{_stem(model_path)}.ckpt_segmented.mrc"
     )
 
-    out_path = join(out_folder, out_name)
     if ret.stderr:
         print(ret.stdout)
         print(ret.stderr)
