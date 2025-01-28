@@ -114,7 +114,7 @@ class ColabsegData(QObject):
                 if hasattr(fit, "mesh"):
                     meta["points"] = np.asarray(fit.mesh.vertices)
                     meta["faces"] = np.asarray(fit.mesh.triangles)
-                    meta["normals"] = fit.compute_normal(meta["points"])
+                    meta["normals"] = fit.compute_vertex_normals()
 
                 new_points = fit.sample(n_samples=1000)
                 self._models.add(

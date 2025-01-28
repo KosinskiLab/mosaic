@@ -60,7 +60,7 @@ def create_setting_widget(setting: Dict):
             validator = QDoubleValidator()
             validator.setLocale(QLocale.c())
             validator.setNotation(QDoubleValidator.Notation.StandardNotation)
-            validator.setBottom(float(setting.get("min_value", 0.0)))
+            validator.setBottom(float(setting.get("min", 0.0)))
             widget.setValidator(validator)
         widget.setMinimumWidth(100)
         widget.setText(str(setting.get("default", 0)))

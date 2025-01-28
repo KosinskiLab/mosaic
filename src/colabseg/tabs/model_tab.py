@@ -85,6 +85,7 @@ class ModelTab(QWidget):
             create_button("Import", "mdi.import", self, self._import_meshes),
             create_button("Volume", "mdi.cube-outline", self, self._mesh_volume),
             create_button("Curvature", "mdi.vector-curve", self, self._color_curvature),
+            create_button("Repair", "mdi.auto-fix", self, self._repair_mesh),
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
 
@@ -266,6 +267,37 @@ class ModelTab(QWidget):
         self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
 
+    def _repair_mesh(self):
+        for index in self.cdata.models._get_selected_indices():
+            fit = self.cdata._models.data[index]._meta.get("fit", None)
+            if not isinstance(fit, TriangularMesh):
+                continue
+
+            from ..meshing import triangulate_refine_fair, to_open3d
+
+            mesh = fit.mesh
+            vs, fs = triangulate_refine_fair(
+                vs=np.asarray(mesh.vertices), fs=np.asarray(mesh.triangles), alpha=0
+            )
+
+            fit = TriangularMesh(to_open3d(vs, fs))
+            meta = {
+                "fit": fit,
+                "points": np.asarray(fit.mesh.vertices),
+                "faces": np.asarray(fit.mesh.triangles),
+                "normals": fit.compute_vertex_normals(),
+            }
+
+            self.cdata._models.add(
+                points=meta["points"],
+                normals=meta["normals"],
+                meta=meta,
+                sampling_rate=self.cdata._models.data[index].sampling_rate,
+            )
+
+        self.cdata.models.data_changed.emit()
+        return self.cdata.models.render()
+
     def _mesh_volume(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Select Meshes")
         if not filename:
@@ -294,6 +326,10 @@ class ModelTab(QWidget):
 
     def _color_curvature(self):
         for index in self.cdata.models._get_selected_indices():
+            if not isinstance(
+                self.cdata._models.data[index]._meta["fit"], TriangularMesh
+            ):
+                continue
             self.cdata._models.data[index].compute_curvature()
         return self.cdata.models.render()
 

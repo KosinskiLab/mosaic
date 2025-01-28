@@ -797,11 +797,16 @@ class TriangularMesh(Parametrization):
                 ellipsoid.compute_normal(positions)
             )
 
-        pcd.estimate_normals(
-            search_param=o3d.geometry.KDTreeSearchParamHybrid(
-                radius=10 * voxel_size, max_nn=30
-            )
-        )
+        # pcd.estimate_normals(
+        #     search_param=o3d.geometry.KDTreeSearchParamHybrid(
+        #         radius=10 * voxel_size, max_nn=30
+        #     )
+        # )
+
+        pcd.estimate_normals()
+        pcd.normalize_normals()
+        pcd.orient_normals_consistent_tangent_plane(k=50)
+
         mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
             pcd, o3d.utility.DoubleVector([5 * voxel_size])
         )
@@ -920,7 +925,6 @@ class PoissonMesh(TriangularMesh):
         voxel_size = 1 if voxel_size is None else voxel_size
         voxel_size = np.max(voxel_size)
 
-        # Surface reconstruction normal estimation
         positions = np.asarray(positions, dtype=np.float64)
         from pymeshlab import MeshSet, Mesh
 
@@ -987,19 +991,19 @@ class ConvexHull(TriangularMesh):
         voxel_size = 1 if voxel_size is None else voxel_size
         voxel_size = np.max(voxel_size)
 
-        # Surface reconstruction normal estimation
         positions = np.asarray(positions, dtype=np.float64)
-        ellipsoid = Ellipsoid.fit(positions)
 
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(positions.copy())
-        pcd.normals = o3d.utility.Vector3dVector(ellipsoid.compute_normal(positions))
-        pcd = pcd.voxel_down_sample(voxel_size=2 * voxel_size)
+        # pcd = pcd.voxel_down_sample(voxel_size=2 * voxel_size)
 
         points = np.asarray(pcd.points)
         scale = points.max(axis=0)
         pcd.points = o3d.utility.Vector3dVector(points / scale)
-        pcd.normals = o3d.utility.Vector3dVector(ellipsoid.compute_normal(points))
+
+        pcd.estimate_normals()
+        pcd.normalize_normals()
+        pcd.orient_normals_consistent_tangent_plane(k=50)
 
         try:
             with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Error):
@@ -1024,9 +1028,10 @@ class ConvexHull(TriangularMesh):
         mesh = mesh.remove_duplicated_vertices()
 
         # Better compression and guaranteed to be watertight
-        mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
-        mesh = mesh.compute_convex_hull()
-        mesh = mesh.to_legacy()
+        if alpha == 1:
+            mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
+            mesh = mesh.compute_convex_hull()
+            mesh = mesh.to_legacy()
 
         if elastic_weight == curvature_weight == volume_weight == 0:
             return cls(mesh=mesh)
@@ -1049,7 +1054,6 @@ class ConvexHull(TriangularMesh):
             beta=curvature_weight,
             gamma=volume_weight,
         )
-
         return cls(mesh=to_open3d(out_vs, fs))
 
 

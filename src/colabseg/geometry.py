@@ -9,8 +9,8 @@ import warnings
 from typing import Tuple, List, Dict
 
 import vtk
-from vtk.util import numpy_support
 import numpy as np
+from vtk.util import numpy_support
 
 BASE_COLOR = (0.7, 0.7, 0.7)
 
@@ -401,13 +401,15 @@ class Geometry:
             else:
                 prop.SetRepresentationToSurface()
                 prop.SetEdgeVisibility(representation == "mesh")
-                prop.SetOpacity(self._appearance["opacity"])
+
+                self._appearance["size"] = 2
+                prop.SetPointSize(self._appearance["size"])
 
         self._representation = representation
         return 0
 
     def compute_curvature(
-        self, curvature_type="mean", color_map=None, smoothing_iterations=1
+        self, curvature_type="gaussian", color_map=None, smoothing_iterations=1
     ):
         """
         Compute and visualize curvature of the polydata surface.

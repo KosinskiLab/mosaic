@@ -269,15 +269,18 @@ def marching_cubes(
     volume,
     sampling_rate,
     reduction_factor: float = 100,
-    max_error: float = 40,
+    max_error: float = None,
     close: bool = True,
     voxel_centered: bool = False,
-    simplify: bool = False,
+    simplify: bool = True,
 ) -> List[o3d.geometry.TriangleMesh]:
     from zmesh import Mesher
 
     mesher = Mesher(sampling_rate)
     mesher.mesh(volume, close=close)
+
+    if max_error is None:
+        max_error = np.min(np.divide(sampling_rate, 2))
 
     if len(mesher.ids()) == 0:
         raise ValueError("No meshes were generated from the volume data")
@@ -300,7 +303,7 @@ def marching_cubes(
                 compute_normals=False,
             )
 
-        ret.append(to_open3d(np.asarray(mesh.vertices), np.asarray(mesh.faces)))
+        ret.append(to_open3d(mesh.vertices, mesh.faces))
         mesher.erase(obj_id)
 
     mesher.clear()
