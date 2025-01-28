@@ -37,9 +37,12 @@ class Geometry:
         self._data.SetVerts(self._cells)
 
         self._actor = self.create_actor(vtk_actor)
+
+        if sampling_rate is None:
+            sampling_rate = np.ones(3)
+        sampling_rate = np.asarray(sampling_rate)
+        sampling_rate = np.repeat(sampling_rate, 3 // sampling_rate.size)
         self._sampling_rate = sampling_rate
-        if self._sampling_rate is None:
-            self._sampling_rate = np.ones(3)
 
         self._meta = {} if meta is None else meta
         self._representation = "pointcloud"
@@ -60,6 +63,18 @@ class Geometry:
             "base_color": color,
         }
         self.set_appearance(**self._appearance)
+
+    @property
+    def sampling_rate(self):
+        return self._sampling_rate
+
+    @sampling_rate.setter
+    def sampling_rate(self, sampling_rate):
+        if sampling_rate is None:
+            self._sampling_rate = np.ones(3)
+        sampling_rate = np.asarray(sampling_rate)
+        sampling_rate = np.repeat(sampling_rate, 3 // sampling_rate.size)
+        self._sampling_rate = sampling_rate
 
     def __getstate__(self):
         return {

@@ -12,7 +12,9 @@ from PyQt6.QtWidgets import (
 )
 
 
-def format_tooltip(label, description="", default=None, notes=None, **kwargs):
+def format_tooltip(label=None, description="", default=None, notes=None, **kwargs):
+    if label is None:
+        return ""
     tooltip = f"""
     <div class="tooltip">
         <span style='font-size: 11pt; font-weight: 600; color: #2c3e50;'>{label}</span>

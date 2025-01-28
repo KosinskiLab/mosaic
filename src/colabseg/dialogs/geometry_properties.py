@@ -6,7 +6,7 @@
 """
 
 from PyQt6.QtGui import QColor
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
     QVBoxLayout,
     QDialog,
@@ -21,13 +21,15 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QHBoxLayout,
     QWidget,
-    QSlider,
+    QStackedWidget,
 )
 import qtawesome as qta
 
+from ..widgets.ribbon import RibbonToolBar, create_button
+from ..widgets.settings import create_setting_widget, get_widget_value
+
 
 class GeometryPropertiesDialog(QDialog):
-    # Signal to notify parent of parameter changes
     parametersChanged = pyqtSignal(dict)
 
     def __init__(self, initial_properties=None, parent=None):
@@ -35,7 +37,6 @@ class GeometryPropertiesDialog(QDialog):
         self.setWindowTitle("Geometry Properties")
         self.parameters = {}
 
-        # Set default colors if not provided
         self.base_color = initial_properties.get("base_color", (0.7, 0.7, 0.7))
         self.highlight_color = initial_properties.get(
             "highlight_color", (0.8, 0.2, 0.2)
@@ -47,36 +48,84 @@ class GeometryPropertiesDialog(QDialog):
         self.connect_signals()
 
     def setup_ui(self):
-        layout = QVBoxLayout(self)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 8, 8)
 
-        # Appearance Group
-        appearance_group = QGroupBox("Appearance")
+        ribbon = RibbonToolBar()
+        self.stacked_widget = QStackedWidget()
+        pages = (
+            self.setup_appearance_page(),
+            self.setup_volume_page(),
+            self.setup_sampling_page(),
+        )
+        for page in pages:
+            self.stacked_widget.addWidget(page)
+
+        appearance_btn = create_button(
+            "Appearance",
+            "fa5s.palette",
+            callback=lambda: self.stacked_widget.setCurrentIndex(0),
+        )
+        volume_btn = create_button(
+            "Volume",
+            "fa5s.cube",
+            callback=lambda: self.stacked_widget.setCurrentIndex(1),
+        )
+        sampling_btn = create_button(
+            "Sampling",
+            "fa5s.compress-arrows-alt",
+            callback=lambda: self.stacked_widget.setCurrentIndex(2),
+        )
+
+        ribbon.add_section("Properties", [appearance_btn])
+        ribbon.add_section("", [volume_btn])
+        ribbon.add_section("", [sampling_btn])
+
+        main_layout.addWidget(ribbon)
+        main_layout.addWidget(self.stacked_widget)
+
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        main_layout.addWidget(button_box)
+
+    def setup_appearance_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        appearance_group = QGroupBox("Display")
         appearance_layout = QFormLayout()
 
-        # Point Size
-        self.size_spin = QSpinBox()
-        self.size_spin.setRange(1, 50)
-        self.size_spin.setValue(self.initial_properties.get("size", 8))
+        self.size_spin = create_setting_widget(
+            {
+                "type": "number",
+                "min": 0,
+                "max": 50,
+                "default": self.initial_properties.get("size", 8),
+            }
+        )
         appearance_layout.addRow("Point Size:", self.size_spin)
 
-        # Opacity
-        self.opacity_spin = QDoubleSpinBox()
-        self.opacity_spin.setRange(0.0, 1.0)
-        self.opacity_spin.setSingleStep(0.1)
-        self.opacity_spin.setValue(self.initial_properties.get("opacity", 1.0))
+        base_settings = {"type": "float", "min": 0.0, "max": 1.0, "step": 0.1}
+        self.opacity_spin = create_setting_widget(
+            base_settings | {"default": self.initial_properties.get("opacity", 0.3)}
+        )
         appearance_layout.addRow("Opacity:", self.opacity_spin)
+
+        appearance_group.setLayout(appearance_layout)
+        layout.addWidget(appearance_group)
 
         # Colors Group
         colors_group = QGroupBox("Colors")
         colors_layout = QFormLayout()
 
-        # Base Color
         self.base_color_button = QPushButton()
         self.update_color_button(self.base_color_button, self.base_color)
         self.base_color_button.clicked.connect(lambda: self.choose_color("base"))
         colors_layout.addRow("Base Color:", self.base_color_button)
 
-        # Highlight Color
         self.highlight_color_button = QPushButton()
         self.update_color_button(self.highlight_color_button, self.highlight_color)
         self.highlight_color_button.clicked.connect(
@@ -85,36 +134,45 @@ class GeometryPropertiesDialog(QDialog):
         colors_layout.addRow("Highlight Color:", self.highlight_color_button)
 
         colors_group.setLayout(colors_layout)
+        layout.addWidget(colors_group)
 
-        # Lighting properties
-        self.ambient_spin = QDoubleSpinBox()
-        self.ambient_spin.setRange(0.0, 1.0)
-        self.ambient_spin.setSingleStep(0.1)
-        self.ambient_spin.setValue(self.initial_properties.get("ambient", 0.3))
-        appearance_layout.addRow("Ambient:", self.ambient_spin)
+        # Lighting Group
+        lighting_group = QGroupBox("Lighting")
+        lighting_layout = QFormLayout()
 
-        self.diffuse_spin = QDoubleSpinBox()
-        self.diffuse_spin.setRange(0.0, 1.0)
-        self.diffuse_spin.setSingleStep(0.1)
-        self.diffuse_spin.setValue(self.initial_properties.get("diffuse", 0.7))
-        appearance_layout.addRow("Diffuse:", self.diffuse_spin)
+        self.ambient_spin = create_setting_widget(
+            base_settings | {"default": self.initial_properties.get("ambient", 0.3)}
+        )
+        lighting_layout.addRow("Ambient:", self.ambient_spin)
 
-        self.specular_spin = QDoubleSpinBox()
-        self.specular_spin.setRange(0.0, 1.0)
-        self.specular_spin.setSingleStep(0.1)
-        self.specular_spin.setValue(self.initial_properties.get("specular", 0.2))
-        appearance_layout.addRow("Specular:", self.specular_spin)
+        self.diffuse_spin = create_setting_widget(
+            base_settings | {"default": self.initial_properties.get("diffuse", 0.3)}
+        )
+        lighting_layout.addRow("Diffuse:", self.diffuse_spin)
 
-        appearance_group.setLayout(appearance_layout)
+        self.specular_spin = create_setting_widget(
+            base_settings | {"default": self.initial_properties.get("specular", 0.3)}
+        )
+        lighting_layout.addRow("Specular:", self.specular_spin)
 
-        # Model Group
-        model_group = QGroupBox("Model")
-        model_layout = QFormLayout()
+        lighting_group.setLayout(lighting_layout)
+        layout.addWidget(lighting_group)
+
+        layout.addStretch()
+        return page
+
+    def setup_volume_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        # Volume Group
+        volume_group = QGroupBox("Volume Settings")
+        volume_layout = QFormLayout()
 
         self.browse_button = QPushButton()
         self.browse_button.setIcon(qta.icon("fa5s.folder-open"))
         self.browse_button.clicked.connect(self.browse_volume)
-        model_layout.addRow("Volume:", self.browse_button)
+        volume_layout.addRow("Volume:", self.browse_button)
 
         self.scale_widget = QWidget()
         scale_layout = QHBoxLayout(self.scale_widget)
@@ -125,60 +183,77 @@ class GeometryPropertiesDialog(QDialog):
         scale_layout.addWidget(self.scale_positive)
         scale_layout.addWidget(self.scale_negative)
         self.scale_widget.setEnabled(False)
-        model_layout.addRow("Scaling:", self.scale_widget)
-
-        # self.isovalue_spin = QSlider(Qt.Orientation.Horizontal)
-        # self.isovalue_spin.setRange(0, 100)
+        volume_layout.addRow("Scaling:", self.scale_widget)
 
         self.isovalue_spin = QDoubleSpinBox()
         self.isovalue_spin.setRange(0.0, 100.0)
         self.isovalue_spin.setSingleStep(1.0)
         self.isovalue_spin.setDecimals(1)
-        default_percentile = self.initial_properties.get("isovalue_percentile", 99.5)
-        self.isovalue_spin.setValue(default_percentile)
+        self.isovalue_spin.setValue(
+            self.initial_properties.get("isovalue_percentile", 99.5)
+        )
         self.isovalue_spin.setEnabled(False)
-        model_layout.addRow("Isovalue:", self.isovalue_spin)
+        volume_layout.addRow("Isovalue:", self.isovalue_spin)
 
         volume = self.initial_properties.get("volume", None)
         if volume is not None:
             self.scale_widget.setEnabled(True)
             self.isovalue_spin.setEnabled(True)
 
-        model_group.setLayout(model_layout)
+        volume_group.setLayout(volume_layout)
+        layout.addWidget(volume_group)
+        layout.addStretch()
+        return page
 
-        layout.addWidget(appearance_group)
-        layout.addWidget(colors_group)
-        layout.addWidget(model_group)
+    def setup_sampling_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
 
-        # Keep both OK and Cancel buttons
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        sampling_rate = self.initial_properties.get("sampling_rate", (1, 1, 1))
+
+        # Sampling Group
+        sampling_group = QGroupBox("Sampling Rates")
+        sampling_layout = QFormLayout()
+
+        self.sampling_x = create_setting_widget(
+            {"type": "text", "default": sampling_rate[0], "min": 0}
         )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
+        sampling_layout.addRow("X Sampling:", self.sampling_x)
+
+        self.sampling_y = create_setting_widget(
+            {"type": "text", "default": sampling_rate[1], "min": 0}
+        )
+        sampling_layout.addRow("Y Sampling:", self.sampling_y)
+
+        self.sampling_z = create_setting_widget(
+            {"type": "text", "default": sampling_rate[2], "min": 0}
+        )
+        sampling_layout.addRow("Z Sampling:", self.sampling_z)
+
+        sampling_group.setLayout(sampling_layout)
+        layout.addWidget(sampling_group)
+        layout.addStretch()
+        return page
 
     def connect_signals(self):
         """Connect all widget signals to update parameters"""
-        # Connect all spinboxes
         self.size_spin.valueChanged.connect(self.emit_parameters)
         self.opacity_spin.valueChanged.connect(self.emit_parameters)
         self.ambient_spin.valueChanged.connect(self.emit_parameters)
         self.diffuse_spin.valueChanged.connect(self.emit_parameters)
         self.specular_spin.valueChanged.connect(self.emit_parameters)
         self.isovalue_spin.valueChanged.connect(self.emit_parameters)
-
-        # Connect radio buttons
         self.scale_positive.toggled.connect(self.emit_parameters)
         self.scale_negative.toggled.connect(self.emit_parameters)
+        self.sampling_x.textChanged.connect(self.emit_parameters)
+        self.sampling_y.textChanged.connect(self.emit_parameters)
+        self.sampling_z.textChanged.connect(self.emit_parameters)
 
-    def emit_parameters(self, *args):
-        """Gather current parameters and emit signal"""
+    def emit_parameters(self):
         parameters = self.get_parameters()
         self.parametersChanged.emit(parameters)
 
     def browse_volume(self):
-        """Open file dialog to select volume file"""
         file_name, _ = QFileDialog.getOpenFileName(
             self, "Select Volume File", "", "MRC Files (*.mrc);;All Files (*.*)"
         )
@@ -226,14 +301,19 @@ class GeometryPropertiesDialog(QDialog):
     def get_parameters(self) -> dict:
         """Return current parameters"""
         return {
-            "size": self.size_spin.value(),
-            "opacity": self.opacity_spin.value(),
-            "ambient": self.ambient_spin.value(),
-            "diffuse": self.diffuse_spin.value(),
-            "specular": self.specular_spin.value(),
+            "size": get_widget_value(self.size_spin),
+            "opacity": get_widget_value(self.opacity_spin),
+            "ambient": get_widget_value(self.ambient_spin),
+            "diffuse": get_widget_value(self.diffuse_spin),
+            "specular": get_widget_value(self.specular_spin),
             "base_color": self.base_color,
             "highlight_color": self.highlight_color,
             "scale": -1 if self.scale_negative.isChecked() else 1,
             "isovalue_percentile": self.isovalue_spin.value(),
             "volume_path": self.volume_path,
+            "sampling_rate": (
+                get_widget_value(self.sampling_x),
+                get_widget_value(self.sampling_y),
+                get_widget_value(self.sampling_z),
+            ),
         }

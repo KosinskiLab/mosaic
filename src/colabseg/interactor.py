@@ -449,12 +449,16 @@ class DataContainerInteractor(QObject):
 
         base_container = self.container.data[indices[0]]
         base_parameters = base_container._appearance.copy()
+        base_parameters["sampling_rate"] = base_container._sampling_rate
         if isinstance(base_container, VolumeGeometry):
             base_parameters["volume"] = base_container._raw_volume
         dialog = GeometryPropertiesDialog(initial_properties=base_parameters)
 
         def on_parameters_changed(parameters):
+            sampling_rate = parameters.pop("sampling_rate")
             self.container.update_appearance(indices, parameters)
+            for index in indices:
+                self.container.data[index]._sampling_rate = sampling_rate
             return self.render_vtk()
 
         dialog.parametersChanged.connect(on_parameters_changed)

@@ -256,11 +256,13 @@ class ModelTab(QWidget):
                     "faces": np.asarray(fit.mesh.triangles),
                     "normals": fit.compute_vertex_normals(),
                 }
-                self.cdata._models.add(
+                index = self.cdata._models.add(
                     points=meta["points"],
                     normals=meta["normals"],
                     meta=meta,
                 )
+                self.cdata._models.data[index].change_representation("surface")
+
             except Exception as e:
                 print(e)
 
