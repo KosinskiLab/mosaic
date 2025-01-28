@@ -477,7 +477,10 @@ class DataContainer:
             RGB color for highlighting.
         """
         if self._index_ok(index):
-            self.data[index].color_points(point_ids, color)
+            geometry = self.data[index]
+            if color is None:
+                color = geometry._appearance.get("highlight_color", (0.8, 0.2, 0.2))
+            geometry.color_points(point_ids, color)
 
     def change_visibility(self, indices: Tuple[int], visible, **kwargs):
         """Change visibility of specified geometries.

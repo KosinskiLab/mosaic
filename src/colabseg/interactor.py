@@ -132,15 +132,6 @@ class DataContainerInteractor(QObject):
         self.data_list.itemChanged.connect(self._on_item_renamed)
         self.data_list.itemSelectionChanged.connect(self._on_cluster_selection_changed)
 
-        # We assume its already initialized
-        self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
-        self.area_picker = vtk.vtkAreaPicker()
-        style = vtk.vtkInteractorStyleRubberBandPick()
-
-        self.interactor.SetPicker(self.area_picker)
-        self.interactor.SetInteractorStyle(style)
-        self.area_picker.AddObserver("EndPickEvent", self._on_area_pick)
-
         self.invisible_color = QColor(128, 128, 128)
         self.data_list.list_widget.setContextMenuPolicy(
             Qt.ContextMenuPolicy.CustomContextMenu
@@ -153,6 +144,18 @@ class DataContainerInteractor(QObject):
         self._point_mode, self._active_cluster = False, None
         self.point_picker = vtk.vtkWorldPointPicker()
         self.vtk_widget.installEventFilter(self)
+
+    def attach_area_picker(self):
+        self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
+        if self.interactor is None:
+            print("Initialize an Interactor first.")
+            return None
+        self.area_picker = vtk.vtkAreaPicker()
+        style = vtk.vtkInteractorStyleRubberBandPick()
+
+        self.interactor.SetPicker(self.area_picker)
+        self.interactor.SetInteractorStyle(style)
+        self.area_picker.AddObserver("EndPickEvent", self._on_area_pick)
 
     def eventFilter(self, watched_obj, event):
         # VTK camera also observes left-click, so duplicate calls need to be handled
@@ -261,7 +264,7 @@ class DataContainerInteractor(QObject):
                     selected_ids.GetValue(j)
                     for j in range(selected_ids.GetNumberOfTuples())
                 )
-        self.highlight_selected_points(color=(0.8, 0.2, 0.2))
+        self.highlight_selected_points(color=None)
 
     def _show_context_menu(self, position):
         item = self.data_list.itemAt(position)

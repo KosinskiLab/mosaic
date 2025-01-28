@@ -690,7 +690,7 @@ class RBF(Parametrization):
         grid = ((np.min(X), np.max(X)), (np.min(Y), np.max(Y)))
         return cls(rbf=rbf, direction=direction, grid=grid)
 
-    def sample(self, n_samples: int) -> np.ndarray:
+    def sample(self, n_samples: int, **kwargs) -> np.ndarray:
         (xmin, xmax), (ymin, ymax) = self.grid
 
         n_samples = int(np.ceil(np.sqrt(n_samples)))

@@ -29,10 +29,12 @@ KEYBIND_REGISTRY = {
         ("D", "Toggle Renderer Background Color"),
         ("H", "Toggle Visibility of Selected Clusters"),
     ],
-    "Cluster Operations": [
+    "Selection Operations": [
         ("M", "Merge Selected Cluster or Points"),
         ("Delete", "Remove Selected Cluster or Points"),
         ("R", "Bring up Point Selector"),
+        ("S", "Swap Selector to Fits"),
+        ("E", "Expand Selection"),
         ("Right Mouse", "Deselect Cluster or Points"),
     ],
     "File Operations": [

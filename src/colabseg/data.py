@@ -45,9 +45,11 @@ class ColabsegData(QObject):
         self._data = DataContainer()
         self._models = DataContainer(highlight_color=(0.2, 0.4, 0.8))
 
-        self.models = DataContainerInteractor(self._models, vtk_widget, prefix="Fit")
-        # Swapped for now because of exclusive area picker
         self.data = DataContainerInteractor(self._data, vtk_widget)
+        self.models = DataContainerInteractor(self._models, vtk_widget, prefix="Fit")
+
+        self.data.attach_area_picker()
+        self.active_picker = "data"
 
     def to_file(self, filename: str):
         state = {"shape": self.shape, "_data": self._data, "_models": self._models}
@@ -82,6 +84,25 @@ class ColabsegData(QObject):
         self.shape = shape
         self.data.update(point_manager)
         self.models.update(model_manager)
+
+    def _get_active_container(self):
+        if self.active_picker == "data":
+            return self.data
+        return self.models
+
+    def remove_selection(self):
+        obj = self._get_active_container()
+        obj.remove_cluster()
+        obj.remove_points()
+
+    def swap_area_picker(self):
+        self.active_picker = "data" if self.active_picker != "data" else "models"
+        container = self._get_active_container()
+        return container.attach_area_picker()
+
+    def highlight_clusters_from_selected_points(self):
+        obj = self._get_active_container()
+        return obj.highlight_clusters_from_selected_points()
 
     @_progress_decorator
     def add_fit(self, method: str, **kwargs):

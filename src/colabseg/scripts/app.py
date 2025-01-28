@@ -271,15 +271,17 @@ class App(QMainWindow):
             self.renderer_next_background = current_color
             self.vtk_widget.GetRenderWindow().Render()
         elif key in ["\x7f", "\x08"]:
-            self.cdata.data.remove_cluster()
-            self.cdata.data.remove_points()
+            self.cdata.remove_selection()
         elif key == "m":
             # In case both clusters and points are selected
             new_cluster = self.cdata.data.merge_cluster()
             point_cluster = self.cdata.data.cluster_points()
             self.cdata.data.merge_cluster(indices=(new_cluster, point_cluster))
         elif key == "e":
-            self.cdata.data.highlight_clusters_from_selected_points()
+            self.cdata.highlight_clusters_from_selected_points()
+        elif key == "s":
+            self._transition_modes(Mode.VIEWING)
+            self.cdata.swap_area_picker()
         elif key == "h":
             self.cdata.data.toggle_visibility()
         elif key == "a":

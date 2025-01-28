@@ -11,8 +11,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QDialog,
     QDialogButtonBox,
-    QSpinBox,
-    QDoubleSpinBox,
     QFormLayout,
     QPushButton,
     QGroupBox,
@@ -34,7 +32,7 @@ class GeometryPropertiesDialog(QDialog):
 
     def __init__(self, initial_properties=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Geometry Properties")
+        self.setWindowTitle("Properties")
         self.parameters = {}
 
         self.base_color = initial_properties.get("base_color", (0.7, 0.7, 0.7))
@@ -52,12 +50,12 @@ class GeometryPropertiesDialog(QDialog):
         main_layout.setContentsMargins(0, 0, 8, 8)
 
         ribbon = RibbonToolBar()
-        self.stacked_widget = QStackedWidget()
         pages = (
             self.setup_appearance_page(),
             self.setup_volume_page(),
             self.setup_sampling_page(),
         )
+        self.stacked_widget = QStackedWidget()
         for page in pages:
             self.stacked_widget.addWidget(page)
 
@@ -67,7 +65,7 @@ class GeometryPropertiesDialog(QDialog):
             callback=lambda: self.stacked_widget.setCurrentIndex(0),
         )
         volume_btn = create_button(
-            "Volume",
+            "Model",
             "fa5s.cube",
             callback=lambda: self.stacked_widget.setCurrentIndex(1),
         )
@@ -185,13 +183,16 @@ class GeometryPropertiesDialog(QDialog):
         self.scale_widget.setEnabled(False)
         volume_layout.addRow("Scaling:", self.scale_widget)
 
-        self.isovalue_spin = QDoubleSpinBox()
-        self.isovalue_spin.setRange(0.0, 100.0)
-        self.isovalue_spin.setSingleStep(1.0)
-        self.isovalue_spin.setDecimals(1)
-        self.isovalue_spin.setValue(
-            self.initial_properties.get("isovalue_percentile", 99.5)
+        self.isovalue_spin = create_setting_widget(
+            {
+                "type": "float",
+                "min": 0.0,
+                "max": 100.0,
+                "step": 1.0,
+                "default": self.initial_properties.get("isovalue_percentile", 99.5),
+            }
         )
+        self.isovalue_spin.setDecimals(8)
         self.isovalue_spin.setEnabled(False)
         volume_layout.addRow("Isovalue:", self.isovalue_spin)
 
@@ -209,25 +210,20 @@ class GeometryPropertiesDialog(QDialog):
         page = QWidget()
         layout = QVBoxLayout(page)
 
-        sampling_rate = self.initial_properties.get("sampling_rate", (1, 1, 1))
+        sampling_rate = self.initial_properties.get("sampling_rate", (1.0, 1.0, 1.0))
 
         # Sampling Group
         sampling_group = QGroupBox("Sampling Rates")
         sampling_layout = QFormLayout()
 
-        self.sampling_x = create_setting_widget(
-            {"type": "text", "default": sampling_rate[0], "min": 0}
-        )
+        base = {"type": "text", "min": 0}
+        self.sampling_x = create_setting_widget(base | {"default": sampling_rate[0]})
         sampling_layout.addRow("X Sampling:", self.sampling_x)
 
-        self.sampling_y = create_setting_widget(
-            {"type": "text", "default": sampling_rate[1], "min": 0}
-        )
+        self.sampling_y = create_setting_widget(base | {"default": sampling_rate[1]})
         sampling_layout.addRow("Y Sampling:", self.sampling_y)
 
-        self.sampling_z = create_setting_widget(
-            {"type": "text", "default": sampling_rate[2], "min": 0}
-        )
+        self.sampling_z = create_setting_widget(base | {"default": sampling_rate[2]})
         sampling_layout.addRow("Z Sampling:", self.sampling_z)
 
         sampling_group.setLayout(sampling_layout)
@@ -309,7 +305,7 @@ class GeometryPropertiesDialog(QDialog):
             "base_color": self.base_color,
             "highlight_color": self.highlight_color,
             "scale": -1 if self.scale_negative.isChecked() else 1,
-            "isovalue_percentile": self.isovalue_spin.value(),
+            "isovalue_percentile": get_widget_value(self.isovalue_spin),
             "volume_path": self.volume_path,
             "sampling_rate": (
                 get_widget_value(self.sampling_x),
