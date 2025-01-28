@@ -55,7 +55,7 @@ def create_setting_widget(setting: Dict):
     elif setting["type"] == "MappedComboBox":
         from . import MappedComboBox
 
-        widget = MappedComboBox(choices=setting["mapping"])
+        widget = MappedComboBox(choices=setting["choices"])
         if "default" in setting:
             widget.setCurrentText(setting["default"])
     elif setting["type"] == "boolean":

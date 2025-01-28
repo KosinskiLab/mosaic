@@ -28,7 +28,7 @@ class MappedComboBox(QComboBox):
             )
 
             if file_path:
-                display_name = f"Custom: {file_path.split('/')[-1]}"
+                display_name = file_path
                 self.predefined_models[display_name] = file_path
 
                 self.blockSignals(True)

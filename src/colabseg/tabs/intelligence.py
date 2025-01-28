@@ -1,8 +1,9 @@
 import numpy as np
-from PyQt6.QtWidgets import QWidget, QVBoxLayout
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
+from ..io_utils import VertexDataLoader
 from ..widgets.ribbon import create_button
-from ..segmentation import MEMBRAIN_SETTINGS
+from ..segmentation import MEMBRAIN_SETTINGS, run_membrainseg
 
 
 def noop(*args, **kwargs):
@@ -31,12 +32,38 @@ class IntelligenceTab(QWidget):
                 "Membrane",
                 "mdi.border-all-variant",
                 self,
-                self.add_cloud,
+                self._run_membrain,
                 "Segment membranes using Membrain-seg",
                 MEMBRAIN_SETTINGS,
             ),
         ]
         self.ribbon.add_section("Segmentation Operations", segmentation_actions)
+
+    def _run_membrain(self, **kwargs):
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, "Select Tomogram", "", "MRC Files (*.mrc);;All Files (*.*)"
+        )
+        if not file_name:
+            return None
+
+        if kwargs.get("model_path", "") == "":
+            print("Missing path to membrain model.")
+            return None
+
+        output_name = run_membrainseg(tomogram_path=file_name, **kwargs)
+        if output_name is None:
+            return None
+
+        ret = VertexDataLoader().open_file(output_name)
+
+        if ret is None:
+            return -1
+
+        data, normals, shape, sampling = ret
+        for x, y in zip(data, normals):
+            self.cdata._data.add(points=x, normals=y, sampling_rate=sampling)
+        self.cdata.data.data_changed.emit()
+        return self.cdata.data.render()
 
     def add_cloud(self, *args):
         num_points = 1000

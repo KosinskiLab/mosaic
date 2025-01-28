@@ -7,7 +7,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QHBoxLayout,
     QToolButton,
-    QComboBox,
     QMenu,
     QPushButton,
     QFrame,
