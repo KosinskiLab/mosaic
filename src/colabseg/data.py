@@ -90,11 +90,6 @@ class ColabsegData(QObject):
             return self.data
         return self.models
 
-    def remove_selection(self):
-        obj = self._get_active_container()
-        obj.remove_cluster()
-        obj.remove_points()
-
     def swap_area_picker(self):
         self.active_picker = "data" if self.active_picker != "data" else "models"
         container = self._get_active_container()

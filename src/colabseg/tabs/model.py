@@ -110,8 +110,15 @@ class ModelTab(QWidget):
             "Ball Pivoting": "mesh",
             "Poisson": "poissonmesh",
         }
-
         method = _conversion.get(method, method)
+
+        if method == "mesh":
+            radii = kwargs.get("radii", None)
+            try:
+                kwargs["radii"] = [float(x) for x in radii.split(",")]
+            except Exception as e:
+                raise ValueError(f"Incorrect radius specification {radii}.") from e
+
         self.fit_worker = FitWorker(self.cdata, method=method, **kwargs)
         self.fit_worker.finished.connect(self._on_fit_complete)
         self.fit_worker.start()
@@ -462,6 +469,15 @@ MESH_SETTINGS = {
             "default": 0,
             "description": "Also optimize n-ring vertices for ill-defined boundaries.",
         },
+        {
+            "label": "Neighbors",
+            "parameter": "k_neighbors",
+            "type": "number",
+            "min": 1,
+            "default": 50,
+            "description": "Number of neighbors for normal estimations.",
+            "notes": "Consider decreasing this value for small point clouds.",
+        },
     ],
     "method_settings": {
         "Alpha Shape": [
@@ -476,6 +492,14 @@ MESH_SETTINGS = {
         ],
         "Ball Pivoting": [
             {
+                "label": "Radii",
+                "parameter": "radii",
+                "type": "text",
+                "default": "5",
+                "description": "Voxel size ball radii used for surface reconstruction.",
+                "notes": "Use commas to specify multiple radii, e.g. '5,3.5,1.0'.",
+            },
+            {
                 "label": "Hole Size",
                 "parameter": "hole_size",
                 "type": "float",
@@ -487,7 +511,7 @@ MESH_SETTINGS = {
                 "label": "Downsample",
                 "parameter": "downsample_input",
                 "type": "boolean",
-                "default": True,
+                "default": False,
                 "description": "Thin input point cloud to core.",
             },
             {
@@ -497,6 +521,57 @@ MESH_SETTINGS = {
                 "default": 5,
                 "description": "Pre-smoothing steps before fairing.",
                 "notes": "Improves repair but less impactful for topolgoy than weights.",
+            },
+        ],
+        "Poisson": [
+            {
+                "label": "Depth",
+                "parameter": "depth",
+                "type": "number",
+                "min": 1,
+                "default": 9,
+                "description": "Depth of the Octree for surface reconstruction.",
+            },
+            {
+                "label": "Samples",
+                "parameter": "samplespernode",
+                "type": "float",
+                "min": 0,
+                "default": 5.0,
+                "description": "Minimum number of points per octree node.",
+            },
+            {
+                "label": "Smooth Iter",
+                "parameter": "smooth_iter",
+                "type": "number",
+                "min": 1,
+                "default": 1,
+                "description": "Number of smoothing iterations for normal estimation.",
+            },
+            {
+                "label": "Pointweight",
+                "parameter": "pointweight",
+                "type": "float",
+                "min": 0,
+                "default": 0.1,
+                "description": "Interpolation weight of point samples.",
+            },
+            {
+                "label": "Scale",
+                "parameter": "scale",
+                "type": "float",
+                "min": 0,
+                "default": 1.2,
+                "description": "Ratio between reconstruction and sample cube.",
+            },
+            {
+                "label": "Distance",
+                "parameter": "deldist",
+                "type": "float",
+                "min": -1.0,
+                "default": -1.0,
+                "description": "Drop vertices distant from input sample points.",
+                "notes": "This is post-normalization by the sampling rate.",
             },
         ],
     },

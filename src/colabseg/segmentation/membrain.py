@@ -16,7 +16,7 @@ MODEL_PATHS = {
 }
 
 MEMBRAIN_SETTINGS = {
-    "title": "Segmentation Settings",
+    "title": "Membrain Settings",
     "settings": [
         {
             "type": "MappedComboBox",

@@ -413,7 +413,10 @@ class DataContainer:
         ndarray
             Clustered points.
         """
-        return dbscan_clustering(geometry.points, eps=distance, min_points=min_points)
+        ret = dbscan_clustering(geometry.points, eps=distance, min_points=min_points)
+        for component in ret:
+            self.add(component, sampling_rate=geometry._sampling_rate)
+        return None
 
     @apply_over_indices
     def remove_outliers(self, geometry, method="statistical", **kwargs):

@@ -88,7 +88,7 @@ class PaywallDialog(QDialog):
     def handle_subscribe(self):
         import webbrowser
 
-        webbrowser.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        webbrowser.open("https://www.youtube.com/shorts/SXHMnicI6Pg")
         self.accept()
 
     @staticmethod

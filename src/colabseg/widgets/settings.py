@@ -48,6 +48,7 @@ def create_setting_widget(setting: Dict):
         widget.setRange(setting.get("min", 0.0), setting.get("max", 1e32))
         widget.setValue(setting.get("default", 0.0))
         widget.setSingleStep(setting.get("step", 1.0))
+        widget.setDecimals(4)
     elif setting["type"] == "select":
         widget = QComboBox()
         widget.addItems(setting["options"])

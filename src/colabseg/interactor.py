@@ -436,7 +436,7 @@ class DataContainerInteractor(QObject):
         if file_format == "xyz":
             for index, points in enumerate(export_data["points"]):
                 fname = f"{file_path}_{index}.{file_format}"
-                np.savetxt(fname, points, header="x y z", comments="")
+                np.savetxt(fname, points, comments="")
 
         if file_format not in ("tsv", "star"):
             return -1
@@ -558,6 +558,15 @@ class DataContainerInteractor(QObject):
             geometry.change_representation(representation)
 
         self.render()
+
+    def merge(self):
+        new_cluster = self.merge_cluster()
+        point_cluster = self.cluster_points()
+        self.merge_cluster(indices=(new_cluster, point_cluster))
+
+    def remove(self):
+        self.remove_cluster()
+        self.remove_points()
 
     @_cluster_modifier()
     def change_visibility(self, **kwargs):

@@ -69,14 +69,14 @@ class SegmentationTab(QWidget):
                 "Merge",
                 "mdi.merge",
                 self,
-                self.cdata.data.merge_cluster,
+                self.cdata.data.merge,
                 "Merge selected clusters",
             ),
             create_button(
                 "Remove",
                 "fa5s.trash",
                 self,
-                self.cdata.data.remove_cluster,
+                self.cdata.data.remove,
                 "Remove selected clusters",
             ),
             create_button(

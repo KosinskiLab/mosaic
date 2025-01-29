@@ -772,43 +772,38 @@ class TriangularMesh(Parametrization):
     def fit(
         cls,
         positions: np.ndarray,
+        radii: Tuple[float] = (5.0,),
         voxel_size: float = 10,
         max_hole_size: float = -1,
-        downsample_input: bool = True,
+        downsample_input: bool = False,
         elastic_weight: float = 1.0,
         curvature_weight: float = 0.0,
         volume_weight: float = 0.0,
         n_smoothing: int = 5,
+        k_neighbors=50,
         **kwargs,
     ):
+        radii = np.asarray(radii).reshape(-1)
+        radii = radii[np.argsort(radii)[::-1]]
+        radii = radii[radii > 0]
+
         # Surface reconstruction normal estimation
         positions = np.asarray(positions, dtype=np.float64)
-        ellipsoid = Ellipsoid.fit(positions)
 
         # Reduce membrane thickness
         voxel_size = np.max(voxel_size)
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(positions)
-        pcd.normals = o3d.utility.Vector3dVector(ellipsoid.compute_normal(positions))
         if downsample_input:
             positions = com_cluster_points(positions, cutoff=4 * voxel_size)
             pcd.points = o3d.utility.Vector3dVector(positions)
-            pcd.normals = o3d.utility.Vector3dVector(
-                ellipsoid.compute_normal(positions)
-            )
-
-        # pcd.estimate_normals(
-        #     search_param=o3d.geometry.KDTreeSearchParamHybrid(
-        #         radius=10 * voxel_size, max_nn=30
-        #     )
-        # )
 
         pcd.estimate_normals()
         pcd.normalize_normals()
-        pcd.orient_normals_consistent_tangent_plane(k=50)
+        pcd.orient_normals_consistent_tangent_plane(k=k_neighbors)
 
         mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
-            pcd, o3d.utility.DoubleVector([5 * voxel_size])
+            pcd, o3d.utility.DoubleVector(np.multiply(radii, voxel_size))
         )
 
         # Remove noisy small meshes
@@ -915,14 +910,15 @@ class PoissonMesh(TriangularMesh):
         positions: np.ndarray,
         voxel_size: float = None,
         depth: int = 9,
-        k_neighbors=500,
+        k_neighbors=50,
         smooth_iter=1,
         pointweight=0.1,
-        remesh_sampling=0.2,
         deldist=1.5,
+        scale=1.2,
+        samplespernode=5.0,
         **kwargs,
     ):
-        from pymeshlab import PercentageValue, MeshSet, Mesh
+        from pymeshlab import MeshSet, Mesh
 
         voxel_size = 1 if voxel_size is None else voxel_size
         positions = np.divide(np.asarray(positions, dtype=np.float64), voxel_size)
@@ -933,16 +929,14 @@ class PoissonMesh(TriangularMesh):
         ms.generate_surface_reconstruction_screened_poisson(
             depth=depth,
             pointweight=pointweight,
-            samplespernode=5.0,
+            samplespernode=samplespernode,
             iters=10,
-            scale=1.2,
-            preclean=True,
+            scale=scale,
         )
         if deldist > 0:
             ms.compute_scalar_by_distance_from_another_mesh_per_vertex(
                 measuremesh=1,
                 refmesh=0,
-                maxdist=PercentageValue(remesh_sampling),
                 signeddist=False,
             )
             ms.compute_selection_by_condition_per_vertex(condselect=f"(q>{deldist})")
@@ -977,6 +971,7 @@ class ConvexHull(TriangularMesh):
         curvature_weight: float = 0,
         volume_weight: float = 0,
         boundary_ring: int = 0,
+        k_neighbors=50,
         **kwargs,
     ):
         voxel_size = 1 if voxel_size is None else voxel_size
@@ -994,7 +989,7 @@ class ConvexHull(TriangularMesh):
 
         pcd.estimate_normals()
         pcd.normalize_normals()
-        pcd.orient_normals_consistent_tangent_plane(k=50)
+        pcd.orient_normals_consistent_tangent_plane(k=k_neighbors)
 
         try:
             with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Error):

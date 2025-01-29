@@ -152,7 +152,7 @@ def dbscan_clustering(points, eps=0.02, min_points=10):
             continue
         new_cluster.append(positions_to_write)
 
-    return np.squeeze(np.array(new_cluster))
+    return new_cluster
 
 
 def eigenvalue_outlier_removal(points, k_neighbors=300, thresh=0.05):
