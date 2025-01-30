@@ -70,53 +70,6 @@ def _cluster_modifier(keep_selection: bool = False):
     return decorator
 
 
-class LinkedDataContainerInteractor(QObject):
-    selectionChanged = pyqtSignal()
-
-    def __init__(self, interactor):
-        super().__init__()
-        self.interactor = interactor
-
-        self.data_list = ContainerListWidget(self.prefix)
-        self.data_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
-        self.data_list.itemSelectionChanged.connect(self._on_cluster_selection_changed)
-
-        self._update_list()
-
-        self.interactor.data_changed.connect(self._update_list)
-        self.data_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.data_list.customContextMenuRequested.connect(
-            self.interactor._show_context_menu
-        )
-
-    def _update_list(self):
-        self.data_list.clear()
-        for i in range(self.interactor.container.get_cluster_count()):
-            visible = self.container.data[i].visible
-
-            name = self.container.data[i]._meta.get(
-                "name", f"{self.interactor.prefix} {i}"
-            )
-            item = QListWidgetItem(name)
-            if not visible:
-                item.setForeground(self.interactor.invisible_color)
-            self.data_list.addItem(item)
-
-    def _on_cluster_selection_changed(self):
-        selected_indices = self._get_selected_indices()
-        self.interactor.set_selection(selected_indices)
-        self.selectionChanged.emit()
-
-    def _get_selected_indices(self):
-        return [item.row() for item in self.data_list.selectedIndexes()]
-
-    def deselect(self):
-        self.data_list.clearSelection()
-
-    def __getattr__(self, name):
-        return getattr(self.interactor, name)
-
-
 class DataContainerInteractor(QObject):
     data_changed = pyqtSignal()
 
@@ -141,7 +94,7 @@ class DataContainerInteractor(QObject):
         )
 
         # Functionality to add points
-        self._point_mode, self._active_cluster = False, None
+        self._interaction_mode, self._active_cluster = False, None
         self.point_picker = vtk.vtkWorldPointPicker()
         self.vtk_widget.installEventFilter(self)
 
@@ -157,24 +110,35 @@ class DataContainerInteractor(QObject):
         self.interactor.SetInteractorStyle(style)
         self.area_picker.AddObserver("EndPickEvent", self._on_area_pick)
 
+    def _get_event_position(self, event):
+        # Avoid DPI/scaling issue on MacOS Retina displays
+        position = event.pos()
+        dpr = self.vtk_widget.devicePixelRatio()
+
+        y = (self.vtk_widget.height() - position.y()) * dpr
+        r = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
+        self.point_picker.Pick(position.x() * dpr, y, 0, r)
+        world_position = self.point_picker.GetPickPosition()
+
+        # Projection onto current camera plane
+        camera = r.GetActiveCamera()
+        camera_plane = vtk.vtkPlane()
+        camera_plane.SetNormal(camera.GetDirectionOfProjection())
+        camera_plane.SetOrigin(world_position)
+
+        t = vtk.mutable(0.0)
+        x = [0, 0, 0]
+        camera_plane.IntersectWithLine(camera.GetPosition(), world_position, t, x)
+        return x
+
     def eventFilter(self, watched_obj, event):
         # VTK camera also observes left-click, so duplicate calls need to be handled
-        if self._point_mode and event.type() in [
+        if self._interaction_mode == "draw" and event.type() in [
             QEvent.Type.MouseButtonPress,
             QEvent.Type.MouseMove,
         ]:
             if event.buttons() & Qt.MouseButton.LeftButton:
-                position = event.pos()
-
-                # Avoid DPI/scaling issue on MacOS Retina displays
-                dpr = self.vtk_widget.devicePixelRatio()
-
-                y = (self.vtk_widget.height() - position.y()) * dpr
-                r = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
-                self.point_picker.Pick(position.x() * dpr, y, 0, r)
-
-                world_position = self.point_picker.GetPickPosition()
-                self._add_point(world_position)
+                self._add_point(self._get_event_position(event))
                 return True
 
         # Let vtk events pass through
@@ -197,26 +161,30 @@ class DataContainerInteractor(QObject):
         self.render()
         return 0
 
+    def _toggle_mode(self, mode):
+        return mode if self._interaction_mode != mode else None
+
     def deactivate_drawing_mode(self):
-        if self._point_mode:
+        if self._interaction_mode == "draw":
             return self.toggle_drawing_mode()
         return None
 
     def toggle_drawing_mode(self):
-        self._point_mode = not self._point_mode
         self._active_cluster = None
-        if self._point_mode:
-            active_clusters = list(set(self._get_selected_indices()))
-            if len(active_clusters) > 1:
-                print("Can only add points if a single cluster is selected.")
-                return -1
-            elif len(active_clusters) == 0:
-                new_cluster = self.container.add(
-                    points=np.empty((0, 3), dtype=np.float32)
-                )
-                active_clusters = [new_cluster]
+        self._interaction_mode = self._toggle_mode("draw")
 
-            self._active_cluster = active_clusters[0]
+        if self._interaction_mode != "draw":
+            return None
+
+        active_clusters = list(set(self._get_selected_indices()))
+        if len(active_clusters) > 1:
+            print("Can only add points if a single cluster is selected.")
+            return -1
+        elif len(active_clusters) == 0:
+            new_cluster = self.container.add(points=np.empty((0, 3), dtype=np.float32))
+            active_clusters = [new_cluster]
+
+        self._active_cluster = active_clusters[0]
 
     def set_selection(self, selected_indices):
         selection = QItemSelection()

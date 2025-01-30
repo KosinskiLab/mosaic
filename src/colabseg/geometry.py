@@ -261,20 +261,45 @@ class Geometry:
         return self._points.GetNumberOfPoints()
 
     def color_points(self, point_ids: set, color: Tuple[float]):
-        colors = vtk.vtkUnsignedCharArray()
-        colors.SetNumberOfComponents(3)
-        colors.SetName("Colors")
+        """
+        Color specific points in the geometry.
 
-        color = tuple(int(c * 255) for c in color)
-        default_color = tuple(int(c * 255) for c in self._appearance["base_color"])
+        Parameters:
+        -----------
+        point_ids : set
+            Set of point indices to color
+        color : tuple of float
+            RGB color values (0-1) to apply to selected points
+        """
+        n_points = self._points.GetNumberOfPoints()
+        colors = np.full(
+            (n_points, 3), self._appearance["base_color"], dtype=np.float32
+        )
+        colors[list(point_ids)] = color
+        return self.set_point_colors(colors)
 
-        for i in range(self._points.GetNumberOfPoints()):
-            if i in point_ids:
-                colors.InsertNextTuple3(*color)
-            else:
-                colors.InsertNextTuple3(*default_color)
+    def set_point_colors(self, colors):
+        """
+        Set individual colors for each point in the geometry.
 
-        self._data.GetPointData().SetScalars(colors)
+        Parameters:
+        -----------
+        colors : array-like
+            RGB colors for each point. Shape should be (n_points, 3) with values 0-1
+        """
+        if len(colors) != self._points.GetNumberOfPoints():
+            raise ValueError("Number of colors must match number of points")
+
+        colors_vtk = vtk.util.numpy_support.numpy_to_vtk(
+            (np.asarray(colors) * 255).astype(np.uint8),
+            deep=True,
+            array_type=vtk.VTK_UNSIGNED_CHAR,
+        )
+
+        colors_vtk.SetName("Colors")
+        colors_vtk.SetNumberOfComponents(3)
+
+        self._data.GetPointData().SetScalars(colors_vtk)
         self._data.Modified()
 
     def subset(self, indices):

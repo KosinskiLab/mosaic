@@ -285,7 +285,7 @@ class DataContainer:
         return self.add(points, sampling_rate=geometry._sampling_rate)
 
     @apply_over_indices
-    def crop(self, geometry, distance: float):
+    def crop(self, geometry, distance: float, keep_smaller: bool = True):
         """Crop points based on distance criteria.
 
         Parameters
@@ -309,7 +309,13 @@ class DataContainer:
         tree = cKDTree(points)
         indices = tree.query_ball_point(cloud_points, distance)
         unique_indices = np.unique(np.concatenate(indices)).astype(int)
-        return points[unique_indices]
+
+        if keep_smaller:
+            return points[unique_indices]
+
+        mask = np.ones(len(points), dtype=bool)
+        mask[unique_indices] = False
+        return points[mask]
 
     @apply_over_indices
     def sample(self, geometry, sampling: float, method: str):

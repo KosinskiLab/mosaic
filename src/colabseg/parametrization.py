@@ -784,7 +784,6 @@ class TriangularMesh(Parametrization):
         **kwargs,
     ):
         radii = np.asarray(radii).reshape(-1)
-        radii = radii[np.argsort(radii)[::-1]]
         radii = radii[radii > 0]
 
         # Surface reconstruction normal estimation
@@ -951,6 +950,49 @@ class PoissonMesh(TriangularMesh):
         )
 
 
+class ClusteredBallPivotingMesh(TriangularMesh):
+    @classmethod
+    def fit(
+        cls,
+        positions: np.ndarray,
+        voxel_size: float = None,
+        radius: int = 0,
+        k_neighbors=50,
+        smooth_iter=1,
+        deldist=1.5,
+        creasethr=90,
+        **kwargs,
+    ):
+        from pymeshlab import MeshSet, Mesh, PercentageValue
+
+        voxel_size = 1 if voxel_size is None else voxel_size
+        positions = np.divide(np.asarray(positions, dtype=np.float64), voxel_size)
+
+        ms = MeshSet()
+        ms.add_mesh(Mesh(positions))
+        ms.compute_normal_for_point_clouds(k=k_neighbors, smoothiter=smooth_iter)
+        ms.generate_surface_reconstruction_ball_pivoting(
+            ballradius=PercentageValue(radius),
+            creasethr=creasethr,
+        )
+        if deldist > 0:
+            ms.compute_scalar_by_distance_from_another_mesh_per_vertex(
+                measuremesh=1,
+                refmesh=0,
+                signeddist=False,
+            )
+            ms.compute_selection_by_condition_per_vertex(condselect=f"(q>{deldist})")
+            ms.compute_selection_by_condition_per_face(
+                condselect=f"(q0>{deldist} || q1>{deldist} || q2>{deldist})"
+            )
+            ms.meshing_remove_selected_vertices_and_faces()
+
+        mesh = ms.current_mesh()
+        return cls(
+            mesh=to_open3d(mesh.vertex_matrix() * voxel_size, mesh.face_matrix())
+        )
+
+
 class ConvexHull(TriangularMesh):
     """
     Represent a point cloud as triangular mesh.
@@ -1047,11 +1089,120 @@ class FairHull(ConvexHull):
     pass
 
 
+class SplineCurve(Parametrization):
+    """
+    Parametrize a point cloud as a spline curve.
+
+    Parameters
+    ----------
+    control_points : np.ndarray
+        Control points defining the spline curve
+    """
+
+    def __init__(self, control_points: np.ndarray):
+        self.control_points = np.asarray(control_points, dtype=np.float64)
+
+        self._params = self._compute_params()
+        self._splines = [
+            interpolate.CubicSpline(self._params, self.control_points[:, i])
+            for i in range(self.control_points.shape[1])
+        ]
+
+    def _compute_params(self) -> np.ndarray:
+        diff = np.diff(self.control_points, axis=0)
+        chord_lengths = np.linalg.norm(diff, axis=1)
+        cumulative = np.concatenate(([0], np.cumsum(chord_lengths)))
+        return cumulative / cumulative[-1]
+
+    @classmethod
+    def fit(cls, positions: np.ndarray, **kwargs) -> "SplineCurve":
+        """
+        Fit a spline curve to the given positions.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Points to fit the spline through
+
+        Returns
+        -------
+        SplineCurve
+            Fitted spline curve
+        """
+        positions = np.asarray(positions, dtype=np.float64)
+        return cls(control_points=positions)
+
+    def sample(self, n_samples: int, **kwargs) -> np.ndarray:
+        """
+        Sample points along the spline curve.
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of samples to draw
+
+        Returns
+        -------
+        np.ndarray
+            Sampled points along the curve
+        """
+        t = np.linspace(0, 1, n_samples)
+        return np.column_stack([spline(t) for spline in self._splines])
+
+    def compute_normal(self, points: np.ndarray) -> np.ndarray:
+        """
+        Compute normals at given points along the curve.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            Points to compute normals at
+
+        Returns
+        -------
+        np.ndarray
+            Normal vectors at the given points
+        """
+        params = np.linspace(0, 1, len(points))
+        tangents = np.column_stack(
+            [spline.derivative()(params) for spline in self._splines]
+        )
+        tangents /= np.linalg.norm(tangents, axis=1)[:, np.newaxis]
+        normals = np.zeros_like(tangents)
+        normals[:, 0] = -tangents[:, 1]
+        normals[:, 1] = tangents[:, 0]
+        return normals
+
+    def points_per_sampling(self, sampling_density: float) -> int:
+        """
+        Compute number of points needed for given sampling density.
+
+        Parameters
+        ----------
+        sampling_density : float
+            Desired sampling density
+
+        Returns
+        -------
+        int
+            Number of points needed
+        """
+        curve_points = self.sample(1000)
+        segments = curve_points[1:] - curve_points[:-1]
+        length = np.sum(np.linalg.norm(segments, axis=1))
+        n_points = int(np.ceil(length / sampling_density))
+        return n_points
+
+    def compute_distance(self, points: np.ndarray) -> np.ndarray:
+        return np.full_like(points, fill_value=-1)
+
+
 PARAMETRIZATION_TYPE = {
     "sphere": Sphere,
     "ellipsoid": Ellipsoid,
     "cylinder": Cylinder,
     "mesh": TriangularMesh,
+    "clusterballpivoting": ClusteredBallPivotingMesh,
     "poissonmesh": PoissonMesh,
     "rbf": RBF,
     "convexhull": ConvexHull,

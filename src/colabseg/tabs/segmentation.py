@@ -147,6 +147,13 @@ class SegmentationTab(QWidget):
                 "Analyse Distance Distributions",
             ),
             create_button(
+                "Localization",
+                "mdi.format-color-fill",
+                self,
+                self._show_distance_dialog,
+                "Color Points By Localization",
+            ),
+            create_button(
                 "Statistics",
                 "fa5s.calculator",
                 self,
@@ -185,20 +192,24 @@ class SegmentationTab(QWidget):
     def _distance_crop(self):
         clusters = self.cdata.format_datalist(type="data")
         dialog = DistanceCropDialog(clusters, self)
-        sources, targets, distance = dialog.get_results()
+        sources, targets, distance, keep_smaller = dialog.get_results()
         if sources is None:
             return -1
 
         # Build points attribute first to avoid synchronization issues
         for source in sources:
             temp_targets = [x for x in targets if x != source]
+            if len(temp_targets) == 0:
+                continue
             target_points = np.concatenate(
                 [self.cdata._data._get_cluster_points(x) for x in temp_targets]
             )
             self.cdata._data.data[source]._meta["points"] = target_points
 
         for source in sources:
-            self.cdata._data.crop(indices=[source], distance=distance)
+            self.cdata._data.crop(
+                indices=[source], distance=distance, keep_smaller=keep_smaller
+            )
             _ = self.cdata._data.data[source]._meta.pop("points")
         self.cdata.data.render()
 

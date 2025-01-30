@@ -168,7 +168,7 @@ class DistanceAnalysisDialog(QDialog):
         alpha_label = QLabel("Blend Alpha:")
         self.alpha_value = QSpinBox()
         self.alpha_value.setRange(0, 255)
-        self.alpha_value.setValue(255)
+        self.alpha_value.setValue(127)
         alpha_layout.addWidget(alpha_label)
         alpha_layout.addWidget(self.alpha_value)
         self.alpha_value.valueChanged.connect(self._update_plot)

@@ -20,6 +20,8 @@ import numpy as np
 from tme import Density
 from tqdm.contrib.concurrent import process_map
 
+from .utils import merge_meshes
+
 
 class MeshCreator:
     def __init__(
@@ -165,12 +167,8 @@ class MeshMerger:
     def execute(self):
         meshes = [trimesh.load(x) for x in self._get_submeshes()]
 
-        vertex_ct = np.zeros(len(meshes) + 1, np.uint32)
-        vertex_ct[1:] = np.cumsum([len(mesh.vertices) for mesh in meshes])
-
-        vertices = np.concatenate([mesh.vertices for mesh in meshes])
-        faces = np.concatenate(
-            [mesh.faces + vertex_ct[i] for i, mesh in enumerate(meshes)]
+        vertices, faces = merge_meshes(
+            [mesh.vertices for mesh in meshes], [mesh.faces for mesh in meshes]
         )
 
         # trimesh.Trimesh constructor removes duplicated overlapping boundary vertices

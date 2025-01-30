@@ -85,6 +85,18 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
     return to_open3d(*ret)
 
 
+def merge_meshes(vertices: List[np.ndarray], faces: List[np.ndarray]):
+    if len(vertices) != len(faces):
+        raise ValueError("Length of vertex and face list needs to match.")
+
+    vertex_ct = np.zeros(len(vertices) + 1, np.uint32)
+    vertex_ct[1:] = np.cumsum([len(x) for x in vertices])
+
+    vertices = np.concatenate([x for x in vertices])
+    faces = np.concatenate([face + vertex_ct[i] for i, face in enumerate(faces)])
+    return vertices, faces
+
+
 def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
     default_args = {
         "bond_r": 2,
