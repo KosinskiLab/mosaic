@@ -1,13 +1,17 @@
 from typing import List, Tuple, Literal
-import numpy as np
-import vtk
-from PyQt6.QtCore import Qt, QEvent
-from PyQt6.QtWidgets import QWidget, QVBoxLayout
 
+import vtk
+import numpy as np
+from matplotlib.pyplot import get_cmap
+from PyQt6.QtCore import Qt, QEvent
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QDialog
+
+from ..utils import find_closest_points
 from ..dialogs import (
     DistanceAnalysisDialog,
     DistanceStatsDialog,
     DistanceCropDialog,
+    LocalizationDialog,
 )
 from ..dialogs.paywall import PaywallDialog
 from ..widgets import HistogramWidget
@@ -150,7 +154,7 @@ class SegmentationTab(QWidget):
                 "Localization",
                 "mdi.format-color-fill",
                 self,
-                self._show_distance_dialog,
+                self._show_localization_dialog,
                 "Color Points By Localization",
             ),
             create_button(
@@ -183,6 +187,93 @@ class SegmentationTab(QWidget):
 
         dialog = DistanceAnalysisDialog(clusters, fits=fits, parent=self)
         return dialog.show()
+
+    def _show_localization_dialog(self):
+        fits = self.cdata.format_datalist("models")
+        clusters = self.cdata.format_datalist("data")
+
+        dialog = LocalizationDialog(clusters, fits=fits, parent=self)
+
+        vtk_widget = self.cdata.data.vtk_widget
+        renderer = vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
+        camera_pos = np.array(renderer.GetActiveCamera().GetPosition())
+
+        def _handle_selection(parameters):
+            geometries = parameters.get("objects", [])
+            if len(geometries) == 0:
+                return None
+
+            if (colormap := parameters.get("color_map", None)) is None:
+                return None
+
+            colormap = colormap.lower()
+            if parameters.get("reverse", False):
+                colormap = f"{colormap}_r"
+
+            colormap = get_cmap(colormap)
+            target = parameters.get("target", None)
+            distances, color_by = [], parameters.get("color_by", "Identity")
+
+            if target is None and color_by not in ("Camera Distance", "Identity"):
+                return None
+
+            identity = np.linspace(0, 255, len(geometries))
+            for index, geometry in enumerate(geometries):
+                points = geometry.points
+                if color_by == "Camera Distance":
+                    dist = np.linalg.norm(points - camera_pos, axis=1)
+                elif color_by == "Cluster Distance":
+                    dist = find_closest_points(target.points, points, k=1)[0]
+                elif color_by == "Fit Distance":
+                    model = target._meta["fit"]
+                    if hasattr(model, "compute_distance"):
+                        dist = model.compute_distance(points)
+                    else:
+                        dist = find_closest_points(target.points, points, k=1)[0]
+                else:
+                    dist = np.full(points.shape[0], fill_value=identity[index])
+
+                distances.append(dist)
+
+            if parameters.get("normalize_per_object", False):
+                distances = [(x - x.min()) / (x.max() - x.min()) for x in distances]
+
+            max_value = np.max([x.max() for x in distances])
+            min_value = np.min([x.min() for x in distances])
+            value_range = max_value - min_value
+
+            color_transfer_function = vtk.vtkColorTransferFunction()
+            for i in range(256):
+                if color_by == "Identity":
+                    color_transfer_function.AddRGBPoint(i, *colormap(i / 255)[0:3])
+                    continue
+
+                data_value = min_value + (i / 255.0) * value_range
+
+                x = (data_value - min_value) / (max_value - min_value)
+                x = max(0, min(1, x))
+
+                color_transfer_function.AddRGBPoint(data_value, *colormap(x)[0:3])
+
+            from vtkmodules.util import numpy_support
+
+            for index, geometry in enumerate(geometries):
+                vtk_scalars = numpy_support.numpy_to_vtk(distances[index])
+                geometry.actor.GetMapper().GetInput().GetPointData().SetScalars(
+                    vtk_scalars
+                )
+                geometry.actor.GetMapper().SetLookupTable(color_transfer_function)
+                geometry.actor.GetMapper().SetScalarRange(min_value, max_value)
+                geometry.actor.GetMapper().ScalarVisibilityOn()
+                geometry.actor.Modified()
+
+            self.cdata.data.render_vtk()
+
+        dialog.previewRequested.connect(_handle_selection)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            return _handle_selection(dialog.get_settings())
+
+        return None
 
     def _show_stats_dialog(self):
         clusters = self.cdata.format_datalist(type="data")

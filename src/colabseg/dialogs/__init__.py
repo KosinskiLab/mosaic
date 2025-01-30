@@ -4,6 +4,7 @@ from .progress import ProgressDialog
 from .import_data import ImportDataDialog
 from .mesh_mapping import MeshMappingDialog
 from .tilt_control import TiltControlDialog
+from .localization import LocalizationDialog
 from .distance_crop import DistanceCropDialog
 from .distance_stats import DistanceStatsDialog
 from .distance_analysis import DistanceAnalysisDialog
