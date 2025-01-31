@@ -110,7 +110,7 @@ class DataContainerInteractor(QObject):
         self.interactor.SetInteractorStyle(style)
         self.area_picker.AddObserver("EndPickEvent", self._on_area_pick)
 
-    def _get_event_position(self, event):
+    def _get_event_position(self, event, return_event_position: bool = True):
         # Avoid DPI/scaling issue on MacOS Retina displays
         position = event.pos()
         dpr = self.vtk_widget.devicePixelRatio()
@@ -129,16 +129,22 @@ class DataContainerInteractor(QObject):
         t = vtk.mutable(0.0)
         x = [0, 0, 0]
         camera_plane.IntersectWithLine(camera.GetPosition(), world_position, t, x)
+        if return_event_position:
+            return x, (position.x() * dpr, y, 0)
         return x
 
     def eventFilter(self, watched_obj, event):
         # VTK camera also observes left-click, so duplicate calls need to be handled
-        if self._interaction_mode == "draw" and event.type() in [
+        if self._interaction_mode in ("draw", "pick") and event.type() in [
             QEvent.Type.MouseButtonPress,
             QEvent.Type.MouseMove,
         ]:
             if event.buttons() & Qt.MouseButton.LeftButton:
-                self._add_point(self._get_event_position(event))
+                world_position, event_position = self._get_event_position(event, True)
+                if self._interaction_mode == "draw":
+                    self._add_point(world_position)
+                elif self._interaction_mode == "pick":
+                    self._pick_prop(event_position)
                 return True
 
         # Let vtk events pass through
@@ -164,9 +170,11 @@ class DataContainerInteractor(QObject):
     def _toggle_mode(self, mode):
         return mode if self._interaction_mode != mode else None
 
-    def deactivate_drawing_mode(self):
+    def activate_viewing_mode(self):
         if self._interaction_mode == "draw":
             return self.toggle_drawing_mode()
+        elif self._interaction_mode == "pick":
+            return self.toggle_picking_mode()
         return None
 
     def toggle_drawing_mode(self):
@@ -185,6 +193,9 @@ class DataContainerInteractor(QObject):
             active_clusters = [new_cluster]
 
         self._active_cluster = active_clusters[0]
+
+    def toggle_picking_mode(self):
+        self._interaction_mode = self._toggle_mode("pick")
 
     def set_selection(self, selected_indices):
         selection = QItemSelection()
@@ -234,6 +245,19 @@ class DataContainerInteractor(QObject):
                 )
         self.highlight_selected_points(color=None)
 
+    def _pick_prop(self, event_pos):
+        picker = vtk.vtkPropPicker()
+        r = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
+        picker.Pick(*event_pos, r)
+
+        picked_actor = picker.GetActor()
+        actors = self.container.get_actors()
+        if picked_actor in actors:
+            index = actors.index(picked_actor)
+            selected_indices = self._get_selected_indices()
+            self.set_selection([index, *selected_indices])
+        return None
+
     def _show_context_menu(self, position):
         item = self.data_list.itemAt(position)
         if not item:
@@ -251,6 +275,9 @@ class DataContainerInteractor(QObject):
         duplicate_action = QAction("Duplicate", self.data_list)
         duplicate_action.triggered.connect(self.duplicate)
         context_menu.addAction(duplicate_action)
+        remove_action = QAction("Remove", self.data_list)
+        remove_action.triggered.connect(self.remove_cluster)
+        context_menu.addAction(remove_action)
 
         formats = [
             "Pointcloud",

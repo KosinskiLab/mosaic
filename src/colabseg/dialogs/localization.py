@@ -13,6 +13,8 @@ from PyQt6.QtWidgets import (
     QListWidgetItem,
 )
 
+__all__ = ["LocalizationDialog"]
+
 _colormaps = sorted(
     [
         "viridis",
@@ -198,26 +200,3 @@ class LocalizationDialog(QDialog):
             "normalize_per_object": self.normalize_checkbox.isChecked(),
             "target": target,
         }
-
-
-if __name__ == "__main__":
-    from PyQt6.QtWidgets import QApplication
-    import sys
-
-    app = QApplication(sys.argv)
-    object_list = [("Object1", 1), ("Object2", 2), ("MembraneA", 3), ("MembraneB", 4)]
-    fits_list = [
-        ("Fit1", None),
-        ("Fit2", None),
-    ]
-
-    dialog = LocalizationDialog(object_list, fits_list)
-
-    # Example of handling preview updates
-    def handle_preview_update(settings):
-        print("Preview update:", settings)
-
-    dialog.previewRequested.connect(handle_preview_update)
-
-    if dialog.exec() == QDialog.DialogCode.Accepted:
-        print("Final settings:", dialog.get_settings())

@@ -32,7 +32,8 @@ KEYBIND_REGISTRY = {
     "Selection Operations": [
         ("M", "Merge Selected Cluster or Points"),
         ("Delete", "Remove Selected Cluster or Points"),
-        ("R", "Bring up Point Selector"),
+        ("R", "Toggle Area Selector"),
+        ("P", "Toggle Picking Mode"),
         ("S", "Swap Selector to Fits"),
         ("E", "Expand Selection"),
         ("Right Mouse", "Deselect Cluster or Points"),

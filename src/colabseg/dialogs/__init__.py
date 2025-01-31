@@ -2,12 +2,12 @@ from .hmff import HMFFDialog
 from .keybinds import KeybindsDialog
 from .progress import ProgressDialog
 from .import_data import ImportDataDialog
-from .mesh_mapping import MeshMappingDialog
+from .backmapping import MeshMappingDialog
 from .tilt_control import TiltControlDialog
 from .localization import LocalizationDialog
 from .distance_crop import DistanceCropDialog
 from .distance_stats import DistanceStatsDialog
+from .properties import GeometryPropertiesDialog
+from .equilibration import MeshEquilibrationDialog
 from .distance_analysis import DistanceAnalysisDialog
-from .mesh_equilibration import MeshEquilibrationDialog
-from .geometry_properties import GeometryPropertiesDialog
 from .operation import *

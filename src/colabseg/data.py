@@ -92,12 +92,18 @@ class ColabsegData(QObject):
 
     def swap_area_picker(self):
         self.active_picker = "data" if self.active_picker != "data" else "models"
+        self.data.activate_viewing_mode()
+        self.models.activate_viewing_mode()
         container = self._get_active_container()
         return container.attach_area_picker()
 
     def highlight_clusters_from_selected_points(self):
         obj = self._get_active_container()
         return obj.highlight_clusters_from_selected_points()
+
+    def toggle_picking_mode(self):
+        obj = self._get_active_container()
+        return obj.toggle_picking_mode()
 
     @_progress_decorator
     def add_fit(self, method: str, **kwargs):

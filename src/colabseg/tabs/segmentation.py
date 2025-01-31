@@ -222,7 +222,6 @@ class SegmentationTab(QWidget):
                 points = geometry.points
                 if color_by == "Camera Distance":
                     dist = np.linalg.norm(points - camera_pos, axis=1)
-                    print(dist)
                 elif color_by == "Cluster Distance":
                     dist = find_closest_points(target.points, points, k=1)[0]
                 elif color_by == "Fit Distance":
@@ -243,9 +242,14 @@ class SegmentationTab(QWidget):
                         continue
                     distances[index] = (distances[index] - x_min) / (x_max - x_min)
 
-            max_value = np.max([x.max() for x in distances])
-            min_value = np.min([x.min() for x in distances])
+            max_value = np.max([x.max() for x in distances]) + 1e-8
+            min_value = np.min([x.min() for x in distances]) - 1e-8
             value_range = max_value - min_value
+
+            # Extend color map beyond data range to avoid wrapping
+            offset = value_range / 255.0
+            min_value -= offset
+            max_value += offset
 
             color_transfer_function = vtk.vtkColorTransferFunction()
             for i in range(256):
@@ -253,8 +257,7 @@ class SegmentationTab(QWidget):
                     color_transfer_function.AddRGBPoint(i, *colormap(i / 255)[0:3])
                     continue
 
-                data_value = min_value + (i / 255.0) * value_range
-
+                data_value = min_value + i * offset
                 x = (data_value - min_value) / (max_value - min_value)
                 x = max(0, min(1, x))
 

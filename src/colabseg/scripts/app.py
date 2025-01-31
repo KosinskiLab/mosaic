@@ -62,6 +62,7 @@ class Mode(enum.Enum):
     VIEWING = "Viewing"
     SELECTION = "Selection"
     DRAWING = "Drawing"
+    PICKING = "Picking"
 
 
 class CursorModeHandler:
@@ -73,6 +74,7 @@ class CursorModeHandler:
             Mode.VIEWING: None,
             Mode.SELECTION: QColor("#2196F3"),
             Mode.DRAWING: QColor("#FFC107"),
+            Mode.PICKING: QColor("#9C27B0"),
         }
 
         self.cursors = {
@@ -285,6 +287,9 @@ class App(QMainWindow):
         elif key == "a":
             self.cdata.data.toggle_drawing_mode()
             self._transition_modes(Mode.DRAWING)
+        elif key == "p":
+            self.cdata.toggle_picking_mode()
+            self._transition_modes(Mode.PICKING)
         elif key == "r":
             self._transition_modes(Mode.SELECTION)
 
@@ -299,7 +304,7 @@ class App(QMainWindow):
             return self.cursor_handler.update_mode(Mode.VIEWING)
 
         if current_mode == Mode.DRAWING:
-            self.cdata.data.deactivate_drawing_mode()
+            self.cdata.data.activate_viewing_mode()
         elif current_mode == Mode.SELECTION:
             self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleRubberBandPick())
 
@@ -592,7 +597,7 @@ class App(QMainWindow):
 
     def open_session(self):
         file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(self, "Open File")
+        file_path, _ = file_dialog.getOpenFileName(self, "Open Session")
         if not file_path:
             return -1
 
