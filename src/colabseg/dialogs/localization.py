@@ -182,6 +182,11 @@ class LocalizationDialog(QDialog):
         self.previewRequested.emit(self.get_settings())
 
     def get_settings(self):
+        target = None
+        if self.target_combo.isVisible():
+            index = self.target_combo.currentIndex()
+            target = self.fits[index][1]
+
         return {
             "objects": [
                 item.data(Qt.ItemDataRole.UserRole)
@@ -191,11 +196,7 @@ class LocalizationDialog(QDialog):
             "color_map": self.color_map_combo.currentText(),
             "reverse": self.reverse_checkbox.isChecked(),
             "normalize_per_object": self.normalize_checkbox.isChecked(),
-            "target": (
-                self.target_combo.currentText()
-                if self.target_combo.isVisible()
-                else None
-            ),
+            "target": target,
         }
 
 

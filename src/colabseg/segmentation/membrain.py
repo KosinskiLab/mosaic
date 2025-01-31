@@ -85,7 +85,6 @@ def run_membrainseg(
     output_sampling_rate: Tuple[float] = -1.0,
     test_time_augmentation: bool = True,
 ):
-
     if out_folder is None:
         out_folder = str(Path.home().joinpath("mosaic/segmentations/membrain"))
 

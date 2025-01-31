@@ -222,6 +222,7 @@ class SegmentationTab(QWidget):
                 points = geometry.points
                 if color_by == "Camera Distance":
                     dist = np.linalg.norm(points - camera_pos, axis=1)
+                    print(dist)
                 elif color_by == "Cluster Distance":
                     dist = find_closest_points(target.points, points, k=1)[0]
                 elif color_by == "Fit Distance":
@@ -236,7 +237,11 @@ class SegmentationTab(QWidget):
                 distances.append(dist)
 
             if parameters.get("normalize_per_object", False):
-                distances = [(x - x.min()) / (x.max() - x.min()) for x in distances]
+                for index in range(len(distances)):
+                    x_min, x_max = distances[index].min(), distances[index].max()
+                    if (x_max - x_min) < 1e-6:
+                        continue
+                    distances[index] = (distances[index] - x_min) / (x_max - x_min)
 
             max_value = np.max([x.max() for x in distances])
             min_value = np.min([x.min() for x in distances])
