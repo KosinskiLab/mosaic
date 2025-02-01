@@ -1,6 +1,5 @@
 import numpy as np
 
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QVBoxLayout,
     QDialog,
@@ -51,6 +50,10 @@ class DistanceStatsDialog(QDialog):
         self.setLayout(layout)
 
     def calculate_stats(self, points):
+        if len(points) == 0:
+            default = (0, 0, 0)
+            return 0, default, default, default, default, 0
+
         mins = np.min(points, axis=0)
         maxs = np.max(points, axis=0)
         volume = np.prod(maxs - mins)

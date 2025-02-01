@@ -379,12 +379,11 @@ class VolumeViewer(QWidget):
 
         for i in range(actors.GetNumberOfItems()):
             actor = actors.GetNextActor()
-            if state == "Off":
-                actor.GetMapper().RemoveAllClippingPlanes()
-            else:
-                self.clipping_direction = 1 if state == "Project +" else -1
-                self.update_clipping_plane()
-                actor.GetMapper().AddClippingPlane(self.clipping_plane)
+            actor.GetMapper().RemoveAllClippingPlanes()
+
+            self.clipping_direction = 1 if state == "Project +" else -1
+            self.update_clipping_plane()
+            actor.GetMapper().AddClippingPlane(self.clipping_plane)
 
         self.vtk_widget.GetRenderWindow().Render()
 

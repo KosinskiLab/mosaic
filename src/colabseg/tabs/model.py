@@ -765,35 +765,29 @@ class SplineBuilder(QObject):
         if not is_move:
             return super().eventFilter(watched_obj, event)
 
-        position = self.model_tab.cdata.data._get_event_position(event)
+        position, event_position = self.model_tab.cdata.data._get_event_position(
+            event, True
+        )
         if position is None:
             return super().eventFilter(watched_obj, event)
 
+        is_left = event.buttons() & Qt.MouseButton.LeftButton
         if self.selected_actor is not None:
-            if event.buttons() & Qt.MouseButton.LeftButton:
+            if is_left:
                 self.update_point_position(self.selected_actor, position)
                 return True
             return super().eventFilter(watched_obj, event)
 
         # Check how it feels letting camera events pass
-        if (
-            event.type() == QEvent.Type.MouseButtonPress
-            and event.buttons() & Qt.MouseButton.LeftButton
-        ):
-            self._handle_spline_interaction(position, event.pos())
+        if event.type() == QEvent.Type.MouseButtonPress and is_left:
+            self._handle_spline_interaction(position, event_position)
 
         return super().eventFilter(watched_obj, event)
 
-    def _handle_spline_interaction(self, world_pos, screen_pos):
+    def _handle_spline_interaction(self, world_pos, event_pos):
         """Handle spline interaction events"""
         picker = vtk.vtkPropPicker()
-        picker.Pick(
-            screen_pos.x() * self.vtk_widget.devicePixelRatio(),
-            (self.vtk_widget.height() - screen_pos.y())
-            * self.vtk_widget.devicePixelRatio(),
-            0,
-            self.renderer,
-        )
+        picker.Pick(*event_pos, self.renderer)
 
         picked_actor = picker.GetActor()
         if picked_actor in self.actors:

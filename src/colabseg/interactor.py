@@ -116,8 +116,9 @@ class DataContainerInteractor(QObject):
         dpr = self.vtk_widget.devicePixelRatio()
 
         y = (self.vtk_widget.height() - position.y()) * dpr
+        event_position = (position.x() * dpr, y, 0)
         r = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
-        self.point_picker.Pick(position.x() * dpr, y, 0, r)
+        self.point_picker.Pick(*event_position, r)
         world_position = self.point_picker.GetPickPosition()
 
         # Projection onto current camera plane
@@ -130,7 +131,7 @@ class DataContainerInteractor(QObject):
         x = [0, 0, 0]
         camera_plane.IntersectWithLine(camera.GetPosition(), world_position, t, x)
         if return_event_position:
-            return x, (position.x() * dpr, y, 0)
+            return x, event_position
         return x
 
     def eventFilter(self, watched_obj, event):
