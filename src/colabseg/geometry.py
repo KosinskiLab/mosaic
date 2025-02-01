@@ -272,10 +272,11 @@ class Geometry:
             RGB color values (0-1) to apply to selected points
         """
         n_points = self._points.GetNumberOfPoints()
+        point_ids = [x for x in point_ids if x < n_points]
         colors = np.full(
             (n_points, 3), self._appearance["base_color"], dtype=np.float32
         )
-        colors[list(point_ids)] = color
+        colors[point_ids] = color
         return self.set_point_colors(colors)
 
     def set_point_colors(self, colors):

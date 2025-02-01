@@ -69,9 +69,9 @@ class ExportManager:
 
     def copy_screenshot_to_clipboard(self, window: bool = False):
         screenshot = self.capture_screenshot(transparent_bg=True)
+        screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2RGBA)
         if window:
             screenshot = self.capture_window_screenshot(transparent_bg=True)
-        # screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2RGBA)
 
         height, width, channel = screenshot.shape
         q_image = QImage(
@@ -102,10 +102,10 @@ class ExportManager:
         ret = numpy_support.vtk_to_numpy(vtk_image.GetPointData().GetScalars())
 
         ret_format = cv2.COLOR_RGBA2BGRA
-        ret = ret.reshape(height, width, -1)
         if not transparent_bg:
             ret_format = cv2.COLOR_RGB2BGR
 
+        ret = ret.reshape(height, width, -1)
         return cv2.cvtColor(ret[::-1], ret_format)
 
     def capture_window_screenshot(self, transparent_bg: bool = False):

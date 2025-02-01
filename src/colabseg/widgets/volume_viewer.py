@@ -227,6 +227,7 @@ class VolumeViewer(QWidget):
         self.max_contrast_slider.setValue(100)
         self.gamma_slider.setValue(100)
         self.orientation_selector.setCurrentIndex(0)
+        self.color_selector.setCurrentText("gray")
 
         if self.project_selector.currentText() != "Off":
             self.handle_projection_change("Off")
