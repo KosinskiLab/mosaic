@@ -703,8 +703,6 @@ class SplineBuilder(QObject):
         self.points = []
         self.actors = []
         self.selected_actor = None
-        self.has_start = False
-        self.has_stop = False
         self.current_connection = None
         self._base_size = 8
 
@@ -736,8 +734,6 @@ class SplineBuilder(QObject):
         self.points = []
         self.actors = []
         self.selected_actor = None
-        self.has_start = False
-        self.has_stop = False
         self.current_connection = None
 
     def cleanup(self):
@@ -839,16 +835,6 @@ class SplineBuilder(QObject):
 
     def add_point(self, position, is_boundary=False):
         """Add a control point to the spline"""
-        if self.has_start and self.has_stop:
-            return None
-
-        if not is_boundary and not self.has_start:
-            return None
-        elif is_boundary and not self.has_start:
-            self.has_start = True
-        elif is_boundary and self.has_start:
-            self.has_stop = True
-
         position = np.array(position)
         self.points.append(position)
 

@@ -380,6 +380,8 @@ class VolumeViewer(QWidget):
         for i in range(actors.GetNumberOfItems()):
             actor = actors.GetNextActor()
             actor.GetMapper().RemoveAllClippingPlanes()
+            if state == "Off":
+                continue
 
             self.clipping_direction = 1 if state == "Project +" else -1
             self.update_clipping_plane()

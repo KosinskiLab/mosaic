@@ -285,10 +285,8 @@ class App(QMainWindow):
         elif key == "h":
             self.cdata.data.toggle_visibility()
         elif key == "a":
-            self.cdata.data.toggle_drawing_mode()
             self._transition_modes(Mode.DRAWING)
         elif key == "p":
-            self.cdata.toggle_picking_mode()
             self._transition_modes(Mode.PICKING)
         elif key == "r":
             self._transition_modes(Mode.SELECTION)
@@ -300,13 +298,16 @@ class App(QMainWindow):
     def _transition_modes(self, new_mode):
         current_mode = self.cursor_handler.current_mode
 
+        self.cdata.activate_viewing_mode()
         if current_mode == new_mode:
             return self.cursor_handler.update_mode(Mode.VIEWING)
 
-        if current_mode == Mode.DRAWING:
-            self.cdata.data.activate_viewing_mode()
-        elif current_mode == Mode.SELECTION:
+        if new_mode == Mode.DRAWING:
+            self.cdata.data.toggle_drawing_mode()
+        elif new_mode == Mode.SELECTION:
             self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleRubberBandPick())
+        elif new_mode == Mode.PICKING:
+            self.cdata.toggle_picking_mode()
 
         return self.cursor_handler.update_mode(new_mode)
 

@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import Tuple
 from subprocess import run
@@ -85,6 +86,11 @@ def run_membrainseg(
     output_sampling_rate: Tuple[float] = -1.0,
     test_time_augmentation: bool = True,
 ):
+    warnings.warn(
+        "Running MemBrain - Corresponding Citation: "
+        "[1] Lamm, L. et al. 2024. bioRxiv, https://doi.org/10.1101/2024.01.05.574336"
+    )
+
     if out_folder is None:
         out_folder = str(Path.home().joinpath("mosaic/segmentations/membrain"))
 

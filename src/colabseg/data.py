@@ -97,6 +97,9 @@ class ColabsegData(QObject):
         container = self._get_active_container()
         return container.attach_area_picker()
 
+    def activate_viewing_mode(self):
+        return self._get_active_container().activate_viewing_mode()
+
     def highlight_clusters_from_selected_points(self):
         obj = self._get_active_container()
         return obj.highlight_clusters_from_selected_points()

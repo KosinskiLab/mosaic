@@ -1099,14 +1099,20 @@ class SplineCurve(Parametrization):
         Control points defining the spline curve
     """
 
-    def __init__(self, control_points: np.ndarray):
+    def __init__(self, control_points: np.ndarray, order: int = 1):
         self.control_points = np.asarray(control_points, dtype=np.float64)
 
-        self._params = self._compute_params()
-        self._splines = [
-            interpolate.CubicSpline(self._params, self.control_points[:, i])
-            for i in range(self.control_points.shape[1])
-        ]
+        params = self._compute_params()
+        if order == 3:
+            self._splines = [
+                interpolate.CubicSpline(params, self.control_points[:, i])
+                for i in range(self.control_points.shape[1])
+            ]
+        else:
+            self._splines = [
+                interpolate.UnivariateSpline(params, self.control_points[:, i], k=order)
+                for i in range(self.control_points.shape[1])
+            ]
 
     def _compute_params(self) -> np.ndarray:
         diff = np.diff(self.control_points, axis=0)

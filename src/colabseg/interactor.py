@@ -173,9 +173,9 @@ class DataContainerInteractor(QObject):
 
     def activate_viewing_mode(self):
         if self._interaction_mode == "draw":
-            return self.toggle_drawing_mode()
+            self.toggle_drawing_mode()
         elif self._interaction_mode == "pick":
-            return self.toggle_picking_mode()
+            self.toggle_picking_mode()
         return None
 
     def toggle_drawing_mode(self):
