@@ -336,6 +336,9 @@ class VolumeViewer(QWidget):
         adjusted_min = min_value + min_contrast * value_range
         adjusted_max = min_value + max_contrast * value_range
 
+        if self.current_palette == "none":
+            return None
+
         cmap = get_cmap(self.current_palette)
         for i in range(256):
             data_value = min_value + (i / 255.0) * value_range
@@ -454,6 +457,11 @@ class MultiVolumeViewer(QWidget):
             self.additional_viewers.remove(viewer)
             viewer.close_volume()
             viewer.deleteLater()
+
+    def close(self):
+        for viewer in self.additional_viewers:
+            viewer.close_volume()
+        self.primary.close_volume()
 
     def _copy_from_primary(self, new_viewer: VolumeViewer) -> int:
         volume = self.primary.volume

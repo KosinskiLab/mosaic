@@ -63,6 +63,7 @@ class Mode(enum.Enum):
     SELECTION = "Selection"
     DRAWING = "Drawing"
     PICKING = "Picking"
+    MESH_EDIT = "MeshEdit"
 
 
 class CursorModeHandler:
@@ -75,6 +76,7 @@ class CursorModeHandler:
             Mode.SELECTION: QColor("#2196F3"),
             Mode.DRAWING: QColor("#FFC107"),
             Mode.PICKING: QColor("#9C27B0"),
+            Mode.MESH_EDIT: QColor("#9C27B0"),
         }
 
         self.cursors = {
@@ -288,6 +290,7 @@ class App(QMainWindow):
             self._transition_modes(Mode.DRAWING)
         elif key == "p":
             self._transition_modes(Mode.PICKING)
+            # self._transition_modes(Mode.MESH_EDIT)
         elif key == "r":
             self._transition_modes(Mode.SELECTION)
 
@@ -308,6 +311,11 @@ class App(QMainWindow):
             self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleRubberBandPick())
         elif new_mode == Mode.PICKING:
             self.cdata.toggle_picking_mode()
+        # elif new_mode == Mode.MESH_EDIT:
+        #     style = MeshEditInteractorStyle(self)
+        #     self.interactor.SetInteractorStyle(style)
+        #     style.SetDefaultRenderer(self.renderer)
+        #     style.toggle_add_face_mode()
 
         return self.cursor_handler.update_mode(new_mode)
 
@@ -609,6 +617,7 @@ class App(QMainWindow):
             return -1
 
         self.renderer.RemoveAllViewProps()
+        self.volume_viewer.close()
         self.bounding_box.setup(shape=self.cdata.shape)
         self.renderer.AddActor(self.bounding_box.box_actor)
         self.cdata.data.rendered_actors.clear()
