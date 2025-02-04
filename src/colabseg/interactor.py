@@ -479,6 +479,7 @@ class DataContainerInteractor(QObject):
 
     def cluster_points(self):
         ret = self.container.add_selection(self.point_selection)
+        self.deselect_points()
         self.render()
         return ret
 
