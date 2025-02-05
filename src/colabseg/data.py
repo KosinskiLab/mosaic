@@ -108,6 +108,30 @@ class ColabsegData(QObject):
         obj = self._get_active_container()
         return obj.toggle_picking_mode()
 
+    def _add_fit(self, fit, points, sampling_rate=None):
+        meta = {"fit": fit, "points": points, "faces": None}
+
+        if hasattr(fit, "mesh"):
+            meta["points"] = np.asarray(fit.mesh.vertices)
+            meta["faces"] = np.asarray(fit.mesh.triangles)
+            meta["normals"] = fit.compute_vertex_normals()
+            new_points, normals = meta["points"].copy(), meta["normals"].copy()
+        else:
+            new_points = fit.sample(n_samples=1000)
+            normals = fit.compute_normal(new_points)
+
+        index = self._models.add(
+            points=new_points,
+            normals=normals,
+            sampling_rate=sampling_rate,
+            meta=meta,
+        )
+        if hasattr(fit, "mesh"):
+            self._models.data[index].change_representation("surface")
+        self.models.data_changed.emit()
+
+        return index
+
     @_progress_decorator
     def add_fit(self, method: str, **kwargs):
         method = method.lower()
@@ -135,19 +159,10 @@ class ColabsegData(QObject):
                 if fit is None:
                     continue
 
-                meta = {"fit": fit, "points": cloud.points, "faces": None}
-                if hasattr(fit, "mesh"):
-                    meta["points"] = np.asarray(fit.mesh.vertices)
-                    meta["faces"] = np.asarray(fit.mesh.triangles)
-                    meta["normals"] = fit.compute_vertex_normals()
-
-                new_points = fit.sample(n_samples=1000)
-                self._models.add(
-                    points=new_points,
-                    normals=fit.compute_normal(new_points),
-                    sampling_rate=cloud._sampling_rate,
-                    meta=meta,
+                self._add_fit(
+                    fit=fit, points=cloud.points, sampling_rate=cloud._sampling_rate
                 )
+
             except Exception as e:
                 print(e)
                 continue

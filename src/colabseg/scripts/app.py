@@ -47,6 +47,7 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from colabseg.io_utils import import_points
 from colabseg import ColabsegData, ExportManager
+from colabseg.styles import MeshEditInteractorStyle
 from colabseg.tabs import SegmentationTab, ModelTab, DevelopmentTab, IntelligenceTab
 from colabseg.dialogs import TiltControlDialog, KeybindsDialog, ImportDataDialog
 from colabseg.widgets import (
@@ -63,7 +64,8 @@ class Mode(enum.Enum):
     SELECTION = "Selection"
     DRAWING = "Drawing"
     PICKING = "Picking"
-    MESH_EDIT = "MeshEdit"
+    MESH_DELETE = "MeshEdit"
+    MESH_ADD = "MeshAdd"
 
 
 class CursorModeHandler:
@@ -76,7 +78,8 @@ class CursorModeHandler:
             Mode.SELECTION: QColor("#2196F3"),
             Mode.DRAWING: QColor("#FFC107"),
             Mode.PICKING: QColor("#9C27B0"),
-            Mode.MESH_EDIT: QColor("#9C27B0"),
+            Mode.MESH_DELETE: QColor("#FFFFFF"),
+            Mode.MESH_ADD: QColor("#CACACA"),
         }
 
         self.cursors = {
@@ -126,7 +129,7 @@ class App(QMainWindow):
         height = int(screen.height() * 0.9)
         self.resize(width, height)
         self.move((screen.width() - width) // 2, (screen.height() - height) // 2)
-        self.setWindowTitle("Colabseg")
+        self.setWindowTitle("Mosaic")
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -290,7 +293,10 @@ class App(QMainWindow):
             self._transition_modes(Mode.DRAWING)
         elif key == "p":
             self._transition_modes(Mode.PICKING)
-            # self._transition_modes(Mode.MESH_EDIT)
+        elif key == "w":
+            self._transition_modes(Mode.MESH_DELETE)
+        elif key == "W":
+            self._transition_modes(Mode.MESH_ADD)
         elif key == "r":
             self._transition_modes(Mode.SELECTION)
 
@@ -300,6 +306,10 @@ class App(QMainWindow):
 
     def _transition_modes(self, new_mode):
         current_mode = self.cursor_handler.current_mode
+
+        if current_mode in (Mode.MESH_ADD, Mode.MESH_DELETE):
+            self.cdata.swap_area_picker()
+            self.cdata.swap_area_picker()
 
         self.cdata.activate_viewing_mode()
         if current_mode == new_mode:
@@ -311,11 +321,12 @@ class App(QMainWindow):
             self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleRubberBandPick())
         elif new_mode == Mode.PICKING:
             self.cdata.toggle_picking_mode()
-        # elif new_mode == Mode.MESH_EDIT:
-        #     style = MeshEditInteractorStyle(self)
-        #     self.interactor.SetInteractorStyle(style)
-        #     style.SetDefaultRenderer(self.renderer)
-        #     style.toggle_add_face_mode()
+        elif new_mode in (Mode.MESH_ADD, Mode.MESH_DELETE):
+            style = MeshEditInteractorStyle(self, self.cdata)
+            self.interactor.SetInteractorStyle(style)
+            style.SetDefaultRenderer(self.renderer)
+            if new_mode == Mode.MESH_ADD:
+                style.toggle_add_face_mode()
 
         return self.cursor_handler.update_mode(new_mode)
 
@@ -664,8 +675,8 @@ class App(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    app.setApplicationName("Colabseg")
-    app.setApplicationDisplayName("Colabseg")
+    app.setApplicationName("Mosaic")
+    app.setApplicationDisplayName("Mosaic")
 
     icon = QIcon(str(files("colabseg.data").joinpath("data/logo.png")))
     app.setWindowIcon(icon)

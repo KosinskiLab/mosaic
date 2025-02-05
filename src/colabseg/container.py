@@ -125,10 +125,10 @@ class DataContainer:
         if isinstance(indices, int):
             indices = [indices]
 
+        indices = [x for x in indices if self._index_ok(x)]
+
         # Reverse order to avoid potential shift issue
         for index in sorted(indices, reverse=True):
-            if not self._index_ok(index):
-                continue
             self.data.pop(index)
 
     def new(self, data: Union[np.ndarray, List[int]], *args, **kwargs) -> int:
@@ -567,6 +567,11 @@ class DataContainer:
         bool
             True if index is valid.
         """
+        try:
+            index = int(index)
+        except Exception:
+            return False
+
         if 0 <= index < len(self.data):
             return True
         return False

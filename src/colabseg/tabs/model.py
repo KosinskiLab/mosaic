@@ -274,19 +274,9 @@ class ModelTab(QWidget):
                 vertices, faces = import_mesh(filename)
                 fit = TriangularMesh(to_open3d(vertices, faces))
 
-                meta = {
-                    "fit": fit,
-                    "points": np.asarray(fit.mesh.vertices),
-                    "faces": np.asarray(fit.mesh.triangles),
-                    "normals": fit.compute_vertex_normals(),
-                }
-                index = self.cdata._models.add(
-                    points=meta["points"],
-                    normals=meta["normals"],
-                    meta=meta,
+                self.cdata._add_fit(
+                    fit=fit, points=np.asarray(fit.mesh.vertices), sampling_rate=None
                 )
-                self.cdata._models.data[index].change_representation("surface")
-
             except Exception as e:
                 print(e)
 
@@ -343,17 +333,9 @@ class ModelTab(QWidget):
             faces=[np.asarray(x.triangles) for x in meshes],
         )
         fit = TriangularMesh(to_open3d(vertices, faces))
-        meta = {
-            "fit": fit,
-            "points": np.asarray(fit.mesh.vertices),
-            "faces": np.asarray(fit.mesh.triangles),
-            "normals": fit.compute_vertex_normals(),
-        }
-
-        self.cdata._models.add(
-            points=meta["points"],
-            normals=meta["normals"],
-            meta=meta,
+        self.cdata._add_fit(
+            fit=fit,
+            points=np.asarray(fit.mesh.vertices),
             sampling_rate=self.cdata._models.data[index].sampling_rate,
         )
         self.cdata._models.remove(selected_meshes)
@@ -370,17 +352,9 @@ class ModelTab(QWidget):
         meshes = marching_cubes(dens.data, dens.sampling_rate)
         for mesh in meshes:
             fit = TriangularMesh(mesh)
-            meta = {
-                "fit": fit,
-                "points": np.asarray(fit.mesh.vertices),
-                "faces": np.asarray(fit.mesh.triangles),
-                "normals": fit.compute_vertex_normals(),
-            }
-
-            self.cdata._models.add(
-                points=meta["points"],
-                normals=meta["normals"],
-                meta=meta,
+            self.cdata._add_fit(
+                fit=fit,
+                points=np.asarray(fit.mesh.vertices),
                 sampling_rate=dens.sampling_rate,
             )
 
