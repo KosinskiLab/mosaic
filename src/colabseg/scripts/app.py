@@ -293,9 +293,9 @@ class App(QMainWindow):
             self._transition_modes(Mode.DRAWING)
         elif key == "p":
             self._transition_modes(Mode.PICKING)
-        elif key == "w":
+        elif key == "q":
             self._transition_modes(Mode.MESH_DELETE)
-        elif key == "W":
+        elif key == "Q":
             self._transition_modes(Mode.MESH_ADD)
         elif key == "r":
             self._transition_modes(Mode.SELECTION)
@@ -308,6 +308,12 @@ class App(QMainWindow):
         current_mode = self.cursor_handler.current_mode
 
         if current_mode in (Mode.MESH_ADD, Mode.MESH_DELETE):
+            current_style = self.interactor.GetInteractorStyle()
+            if isinstance(current_style, MeshEditInteractorStyle):
+                if current_style.selected_actor:
+                    self.renderer.RemoveActor(current_style.selected_actor)
+                    self.vtk_widget.GetRenderWindow().Render()
+
             self.cdata.swap_area_picker()
             self.cdata.swap_area_picker()
 

@@ -36,7 +36,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         self.OnLeftButtonDown()
 
-    def _get_actor_index(self, actor, container="cluster"):
+    def _get_actor_index(self, actor, container="model"):
         # We use this order to promote extending existing meshes
         data = self.cdata._models
         if container == "cluster":
@@ -91,6 +91,9 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         if geometry is None:
             return None
 
+        if point_id > geometry.points.shape[0]:
+            return None
+
         self.selected_points.append((geometry, point_id))
         self._highlight_selected_points()
 
@@ -120,35 +123,37 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     def create_new_face(self):
         unique_geometries = self._selection_to_geometry()
 
-        points, meshes = [], []
+        sampling, appearance, points, meshes = 1, {}, [], []
         for index, (geometry, point_ids) in unique_geometries.items():
             geometry.color_points(
                 point_ids, geometry._appearance.get("base_color", (0.7, 0.7, 0.7))
             )
-            points.append(geometry.points[point_ids])
+            points.append(geometry.points[point_ids].copy())
             fit = geometry._meta.get("fit", None)
             if hasattr(fit, "mesh"):
                 meshes.append((fit.mesh, index))
+                sampling = geometry._sampling_rate
+                appearance.update(geometry._appearance)
 
         vertices = np.concatenate(points).reshape(-1, 3)
         faces = np.arange(vertices.size).reshape(-1, 3)
-        meshes.append((to_open3d(vertices, faces), None))
+        # meshes.append((to_open3d(vertices, faces), None))
 
-        vertices, faces = merge_meshes(
-            vertices=[np.asarray(x.vertices) for (x, _) in meshes],
-            faces=[np.asarray(x.triangles) for (x, _) in meshes],
-        )
+        # vertices, faces = merge_meshes(
+        #     vertices=[np.asarray(x.vertices) for (x, _) in meshes],
+        #     faces=[np.asarray(x.triangles) for (x, _) in meshes],
+        # )
+
         fit = TriangularMesh(to_open3d(vertices, faces))
+        index = self.cdata._add_fit(fit=fit, points=vertices, sampling_rate=sampling)
+        if self.cdata._models._index_ok(index):
+            geometry = self.cdata._models.data[index]
+            geometry.change_representation("mesh")
+            geometry.set_appearance(**appearance)
 
-        self.cdata._add_fit(
-            fit=fit,
-            points=np.asarray(fit.mesh.vertices),
-            sampling_rate=1,
-        )
-        self.cdata._models.remove([index for (_, index) in meshes])
+        # self.cdata._models.remove([index for (_, index) in meshes])
         self.cdata.models.data_changed.emit()
-
-        self.cdata.models.render()
+        return self.cdata.models.render()
 
     def highlight_selected_face(self, geometry, cell_id):
         ids = vtk.vtkIdTypeArray()
@@ -172,10 +177,23 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         selected.ShallowCopy(extract_selection.GetOutput())
 
         self.selected_mapper.SetInputData(selected)
+        self.selected_mapper.SetResolveCoincidentTopology(True)
+
+        self.selected_mapper.SetRelativeCoincidentTopologyLineOffsetParameters(0, -1)
+        self.selected_mapper.SetRelativeCoincidentTopologyPolygonOffsetParameters(0, -1)
+        self.selected_mapper.SetRelativeCoincidentTopologyPointOffsetParameter(0)
+
         self.selected_actor.SetMapper(self.selected_mapper)
-        self.selected_actor.GetProperty().EdgeVisibilityOn()
-        self.selected_actor.GetProperty().SetColor(1.0, 0.0, 0.0)
-        self.selected_actor.GetProperty().SetLineWidth(3)
+        self.selected_actor.ForceOpaqueOn()
+        self.selected_actor.SetPickable(False)
+
+        prop = self.selected_actor.GetProperty()
+        prop.SetOpacity(1.0)
+        prop.SetAmbient(1.0)
+        prop.SetDiffuse(0.0)
+        prop.SetLineWidth(2)
+        prop.EdgeVisibilityOn()
+        prop.SetColor(1.0, 0.0, 0.0)
 
         self.parent.renderer.AddActor(self.selected_actor)
         self.parent.vtk_widget.GetRenderWindow().Render()

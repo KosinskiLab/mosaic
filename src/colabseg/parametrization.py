@@ -885,7 +885,7 @@ class TriangularMesh(Parametrization):
 
     def compute_vertex_normals(self) -> np.ndarray:
         self.mesh.compute_vertex_normals()
-        return np.asarray(self.mesh.vertex_normals)
+        return np.asarray(self.mesh.vertex_normals).copy()
 
     def points_per_sampling(self, sampling_density: float) -> int:
         area_per_sample = np.square(sampling_density)
