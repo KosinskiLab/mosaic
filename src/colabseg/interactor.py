@@ -110,13 +110,18 @@ class DataContainerInteractor(QObject):
         self.interactor.SetInteractorStyle(style)
         self.area_picker.AddObserver("EndPickEvent", self._on_area_pick)
 
-    def _get_event_position(self, event, return_event_position: bool = True):
+    def get_event_position(self, event, return_event_position: bool = True):
+        pos = event.pos()
+        return self._get_event_position(
+            (pos.x(), pos.y(), 0), return_event_position=return_event_position
+        )
+
+    def _get_event_position(self, position, return_event_position: bool = True):
         # Avoid DPI/scaling issue on MacOS Retina displays
-        position = event.pos()
         dpr = self.vtk_widget.devicePixelRatio()
 
-        y = (self.vtk_widget.height() - position.y()) * dpr
-        event_position = (position.x() * dpr, y, 0)
+        y = (self.vtk_widget.height() - position[1]) * dpr
+        event_position = (position[0] * dpr, y, 0)
         r = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
         self.point_picker.Pick(*event_position, r)
         world_position = self.point_picker.GetPickPosition()
@@ -141,7 +146,7 @@ class DataContainerInteractor(QObject):
             QEvent.Type.MouseMove,
         ]:
             if event.buttons() & Qt.MouseButton.LeftButton:
-                world_position, event_position = self._get_event_position(event, True)
+                world_position, event_position = self.get_event_position(event, True)
                 if self._interaction_mode == "draw":
                     self._add_point(world_position)
                 elif self._interaction_mode == "pick":

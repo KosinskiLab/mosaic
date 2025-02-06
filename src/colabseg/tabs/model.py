@@ -1,9 +1,8 @@
 from functools import partial
 from os.path import join, exists
 
-import vtk
 import numpy as np
-from PyQt6.QtCore import QThread, pyqtSignal, QEvent, Qt, QObject
+from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 
 from ..geometry import GeometryTrajectory
@@ -71,7 +70,14 @@ class ModelTab(QWidget):
             create_button(
                 "Mesh", "mdi.vector-polyline", self, func, "Fit Mesh", MESH_SETTINGS
             ),
-            create_button("Curve", "mdi.chart-bell-curve", self, self._fit_spline),
+            create_button(
+                "Curve",
+                "mdi.chart-bell-curve",
+                self,
+                partial(func, "spline"),
+                "Fit Spline",
+                SPLINE_SETTINGS,
+            ),
         ]
         self.ribbon.add_section("Fitting Operations", fitting_actions)
 
@@ -141,11 +147,6 @@ class ModelTab(QWidget):
 
         self.cdata.data.render()
         self.cdata.models.render()
-
-    def _fit_spline(self):
-        if self.spline_builder is None:
-            self.spline_builder = SplineBuilder(self)
-        self.spline_builder.start_interaction()
 
     def _to_cluster(self, *args, **kwargs):
         indices = self.cdata.models._get_selected_indices()
@@ -459,6 +460,22 @@ RBF_SETTINGS = {
         },
     ],
 }
+
+SPLINE_SETTINGS = {
+    "title": "Curve Settings",
+    "settings": [
+        {
+            "label": "Order",
+            "parameter": "order",
+            "type": "number",
+            "default": 3,
+            "min": 1,
+            "max": 5,
+            "description": "Spline order to fit to control points.",
+        },
+    ],
+}
+
 MESH_SETTINGS = {
     "title": "Mesh Settings",
     "settings": [
@@ -667,227 +684,3 @@ IMPORT_SETTINGS = {
         },
     ],
 }
-
-
-class SplineBuilder(QObject):
-    """Handles spline creation and interaction with its own event handling."""
-
-    def __init__(self, model_tab):
-        super().__init__()
-        self.model_tab = model_tab
-        self.points = []
-        self.actors = []
-        self.selected_actor = None
-        self.current_connection = None
-        self._base_size = 8
-
-        # Get the renderer from the VTK widget
-        self.vtk_widget = self.model_tab.cdata.data.vtk_widget
-        self.renderer = (
-            self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
-        )
-
-        # Setup point picker
-        self.point_picker = vtk.vtkWorldPointPicker()
-
-    def start_interaction(self):
-        """Start spline creation mode"""
-        self.vtk_widget.installEventFilter(self)
-        self.vtk_widget.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.vtk_widget.setFocus()
-        self.reset()
-
-    def stop_interaction(self):
-        """Stop spline creation mode and create parametrization if valid"""
-        self.vtk_widget.removeEventFilter(self)
-        if len(self.points) >= 2:
-            self._create_spline_parametrization()
-        self.cleanup()
-
-    def reset(self):
-        """Reset the spline builder state"""
-        self.points = []
-        self.actors = []
-        self.selected_actor = None
-        self.current_connection = None
-
-    def cleanup(self):
-        """Remove all temporary visualization actors"""
-        for actor in self.actors:
-            self.renderer.RemoveActor(actor)
-        if self.current_connection:
-            self.renderer.RemoveActor(self.current_connection)
-        self.reset()
-        self.vtk_widget.GetRenderWindow().Render()
-
-    def eventFilter(self, watched_obj, event):
-        """Handle all spline-related events"""
-        if event.type() == QEvent.Type.KeyPress:
-            if event.key() == Qt.Key.Key_Escape:
-                self.stop_interaction()
-                return True
-            return super().eventFilter(watched_obj, event)
-
-        if event.type() == QEvent.Type.MouseButtonRelease:
-            self.selected_actor = None
-            return super().eventFilter(watched_obj, event)
-
-        is_move = event.type() in [QEvent.Type.MouseButtonPress, QEvent.Type.MouseMove]
-        if not is_move:
-            return super().eventFilter(watched_obj, event)
-
-        position, event_position = self.model_tab.cdata.data._get_event_position(
-            event, True
-        )
-        if position is None:
-            return super().eventFilter(watched_obj, event)
-
-        is_left = event.buttons() & Qt.MouseButton.LeftButton
-        if self.selected_actor is not None:
-            if is_left:
-                self.update_point_position(self.selected_actor, position)
-                return True
-            return super().eventFilter(watched_obj, event)
-
-        # Check how it feels letting camera events pass
-        if event.type() == QEvent.Type.MouseButtonPress and is_left:
-            self._handle_spline_interaction(position, event_position)
-
-        return super().eventFilter(watched_obj, event)
-
-    def _handle_spline_interaction(self, world_pos, event_pos):
-        """Handle spline interaction events"""
-        picker = vtk.vtkPropPicker()
-        picker.Pick(*event_pos, self.renderer)
-
-        picked_actor = picker.GetActor()
-        if picked_actor in self.actors:
-            self.selected_actor = picked_actor
-            self.update_point_position(picked_actor, world_pos)
-            return None
-
-        index = self.model_tab.cdata.data.container._get_cluster_index(picked_actor)
-        if index is not None:
-            point_locator = vtk.vtkPointLocator()
-            point_locator.SetDataSet(picked_actor.GetMapper().GetInput())
-            point_locator.BuildLocator()
-
-            closest_point_id = point_locator.FindClosestPoint(world_pos)
-            closest_point = (
-                picked_actor.GetMapper()
-                .GetInput()
-                .GetPoints()
-                .GetPoint(closest_point_id)
-            )
-            world_pos = closest_point
-
-        self.add_point(world_pos, index is not None)
-
-    def _create_point_actor(self, position):
-        """Create a VTK actor for a control point"""
-        point_data = vtk.vtkPoints()
-        point_data.InsertNextPoint(position)
-
-        vertices = vtk.vtkCellArray()
-        vertices.InsertNextCell(1)
-        vertices.InsertCellPoint(0)
-
-        poly_data = vtk.vtkPolyData()
-        poly_data.SetPoints(point_data)
-        poly_data.SetVerts(vertices)
-
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputData(poly_data)
-        mapper.SetResolveCoincidentTopologyToPolygonOffset()
-
-        actor = vtk.vtkActor()
-        actor.SetMapper(mapper)
-        actor.GetProperty().SetColor(0, 1, 1)
-        actor.GetProperty().SetPointSize(self._base_size)
-        actor.GetProperty().SetRenderPointsAsSpheres(True)
-
-        return actor
-
-    def add_point(self, position, is_boundary=False):
-        """Add a control point to the spline"""
-        position = np.array(position)
-        self.points.append(position)
-
-        actor = self._create_point_actor(position)
-        self.actors.append(actor)
-        self.renderer.AddActor(actor)
-        self._update_visualization()
-
-    def update_point_position(self, actor, new_position):
-        """Update the position of a control point"""
-        try:
-            index = self.actors.index(actor)
-        except ValueError:
-            return None
-
-        self.points[index] = np.array(new_position)
-        point_data = actor.GetMapper().GetInput().GetPoints()
-        point_data.SetPoint(0, new_position)
-        point_data.Modified()
-        self._update_visualization()
-
-    def _update_visualization(self):
-        """Update the spline visualization"""
-        if len(self.points) < 2:
-            return None
-
-        if self.current_connection:
-            self.renderer.RemoveActor(self.current_connection)
-
-        vtkPoints = vtk.vtkPoints()
-        for point in self.points:
-            vtkPoints.InsertNextPoint(point)
-
-        spline = vtk.vtkParametricSpline()
-        spline.SetPoints(vtkPoints)
-        spline.SetParameterizeByLength(1)
-        spline.SetClosed(0)
-
-        curve_source = vtk.vtkParametricFunctionSource()
-        curve_source.SetParametricFunction(spline)
-        curve_source.SetUResolution(200)
-        curve_source.Update()
-
-        tube_filter = vtk.vtkTubeFilter()
-        tube_filter.SetInputConnection(curve_source.GetOutputPort())
-        tube_filter.SetRadius(self._base_size * 0.05)
-        tube_filter.SetNumberOfSides(8)
-        tube_filter.SetVaryRadiusToVaryRadiusOff()
-        tube_filter.Update()
-
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputConnection(tube_filter.GetOutputPort())
-        mapper.SetResolveCoincidentTopologyToPolygonOffset()
-        mapper.SetScalarVisibility(False)
-
-        self.current_connection = vtk.vtkActor()
-        self.current_connection.SetMapper(mapper)
-        self.current_connection.GetProperty().SetColor(1, 1, 0)
-        self.renderer.AddActor(self.current_connection)
-        self.vtk_widget.GetRenderWindow().Render()
-
-    def _create_spline_parametrization(self):
-        from ..parametrization import SplineCurve
-
-        spline_param = SplineCurve(self.points)
-
-        meta = {
-            "fit": spline_param,
-            "points": self.points,
-            "normals": spline_param.compute_normal(self.points),
-        }
-
-        self.model_tab.cdata._models.add(
-            points=meta["points"],
-            normals=meta["normals"],
-            meta=meta,
-            sampling_rate=1.0,
-        )
-
-        self.model_tab.cdata.models.data_changed.emit()
-        self.model_tab.cdata.models.render()

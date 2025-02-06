@@ -151,7 +151,7 @@ class ColabsegData(QObject):
             kwargs["voxel_size"] = np.max(cloud._sampling_rate)
 
             n = cloud.points.shape[0]
-            if n < 50 and method != "convexhull":
+            if n < 50 and method not in ["convexhull", "spline"]:
                 print(f"Cluster {index} contains insufficient points for fit ({n}<50).")
                 continue
 

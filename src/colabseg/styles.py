@@ -24,6 +24,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.AddObserver("KeyPressEvent", self.on_key_press)
 
     def cleanup(self):
+        self.current_selection = None
         if self.selected_actor is None:
             return None
 
@@ -236,57 +237,107 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             to_open3d(geometry._meta["points"], geometry._meta["faces"])
         )
 
-        self.current_selection = None
-        self.parent.renderer.RemoveActor(self.selected_actor)
-        self.cdata.models.render_vtk()
+        self.cleanup()
 
     def on_key_press(self, obj, event):
-        key = self.GetInteractor().GetKeySym()
-        if key == "Delete" or key == "BackSpace":
+        key = self.GetInteractor().GetKeySym().lower()
+        if key in ["return", "enter", "delete"]:
             self.delete_selected_face()
-        elif key == "a":
-            self.toggle_add_face_mode()
-        elif key == "Escape":
-            self.clear_point_selection()
+        return self.OnKeyPress()
 
 
-class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
+class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
+    """VTK interactor style for building spline curves."""
+
     def __init__(self, parent, cdata):
+        """Initialize the interactor style.
+
+        Args:
+            parent: Parent widget containing the VTK widget
+            cdata: Data container object
+        """
         super().__init__()
         self.parent = parent
         self.cdata = cdata
 
-        # Picking tools
-        self.point_picker = vtk.vtkPointPicker()
-        self.prop_picker = vtk.vtkPropPicker()
-
-        # State management
         self.points = []
-        self.point_actors = []
-        self.selected_point_actor = None
-        self.spline_actor = None
+        self.actors = []
+        self.selected_actor = None
+        self.current_connection = None
         self._base_size = 8
 
-        # Add observers
+        self.prop_picker = vtk.vtkPropPicker()
+        self.world_picker = vtk.vtkWorldPointPicker()
+
+        self.renderer = self.parent.renderer
         self.AddObserver("LeftButtonPressEvent", self.on_left_button_down)
         self.AddObserver("MouseMoveEvent", self.on_mouse_move)
-        self.AddObserver("LeftButtonReleaseEvent", self.on_left_button_up)
+        self.AddObserver("LeftButtonReleaseEvent", self.on_left_button_release)
+        self.AddObserver("KeyPressEvent", self.on_key_press)
+
+    def _event_to_worldposition(self, position):
+        dpr = self.parent.vtk_widget.devicePixelRatio()
+
+        event_position = (position[0] * dpr, position[1], 0)
+        r = self.parent.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
+        self.world_picker.Pick(*event_position, r)
+        world_position = self.world_picker.GetPickPosition()
+
+        camera = r.GetActiveCamera()
+        camera_plane = vtk.vtkPlane()
+        camera_plane.SetNormal(camera.GetDirectionOfProjection())
+        camera_plane.SetOrigin(world_position)
+
+        t = vtk.mutable(0.0)
+        x = [0, 0, 0]
+        camera_plane.IntersectWithLine(camera.GetPosition(), world_position, t, x)
+        return x
+
+    def on_left_button_down(self, obj, event):
+        """Handle left button press events"""
+        event_position = [*self.GetInteractor().GetEventPosition(), 0]
+
+        self.prop_picker.Pick(*event_position, self.renderer)
+        picked_actor = self.prop_picker.GetActor()
+
+        world_position = self._event_to_worldposition(event_position)
+
+        func = self._handle_spline_interaction
+        if picked_actor in self.actors:
+            self.selected_actor = picked_actor
+            func = self._update_point_position
+
+        func(position=world_position, actor=picked_actor)
+        return self.OnLeftButtonDown()
+
+    def on_left_button_release(self, obj, event):
+        self.selected_actor = None
+        return self.OnLeftButtonUp()
+
+    def on_mouse_move(self, obj, event):
+        """Handle mouse move events"""
+        if self.selected_actor is None:
+            return self.OnMouseMove()
+
+        click_pos = [*self.GetInteractor().GetEventPosition(), 0]
+        world_position = self._event_to_worldposition(click_pos)
+        return self._update_point_position(position=world_position)
 
     def cleanup(self):
         """Remove all temporary visualization actors"""
-        for actor in self.point_actors:
-            self.parent.renderer.RemoveActor(actor)
-        if self.spline_actor:
-            self.parent.renderer.RemoveActor(self.spline_actor)
+        for actor in self.actors:
+            self.renderer.RemoveActor(actor)
+        if self.current_connection:
+            self.renderer.RemoveActor(self.current_connection)
         self.reset()
         self.parent.vtk_widget.GetRenderWindow().Render()
 
     def reset(self):
-        """Reset the spline state"""
+        """Reset the builder state"""
         self.points = []
-        self.point_actors = []
-        self.selected_point_actor = None
-        self.spline_actor = None
+        self.actors = []
+        self.selected_actor = None
+        self.current_connection = None
 
     def _create_point_actor(self, position):
         """Create a VTK actor for a control point"""
@@ -313,39 +364,51 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         return actor
 
-    def add_point(self, position, is_boundary=False):
-        """Add a control point to the spline"""
-        position = np.array(position)
+    def _handle_spline_interaction(self, position, actor):
+        """Handle spline interaction events"""
+        try:
+            index = self.cdata.data.container._get_cluster_index(actor)
+        except Exception:
+            index = None
+
+        if index is not None:
+            point_locator = vtk.vtkPointLocator()
+            point_locator.SetDataSet(actor.GetMapper().GetInput())
+            point_locator.BuildLocator()
+
+            closest_point_id = point_locator.FindClosestPoint(position)
+            closest_point = (
+                actor.GetMapper().GetInput().GetPoints().GetPoint(closest_point_id)
+            )
+            position = closest_point
+
         self.points.append(position)
 
         actor = self._create_point_actor(position)
-        self.point_actors.append(actor)
-        self.parent.renderer.AddActor(actor)
-        self._update_spline_visualization()
+        self.actors.append(actor)
+        self.renderer.AddActor(actor)
+        self._update_visualization()
 
-    def update_point_position(self, actor, new_position):
+    def _update_point_position(self, position, **kwargs):
         """Update the position of a control point"""
         try:
-            index = self.point_actors.index(actor)
+            index = self.actors.index(self.selected_actor)
         except ValueError:
             return None
 
-        self.points[index] = np.array(new_position)
-        point_data = actor.GetMapper().GetInput().GetPoints()
-        point_data.SetPoint(0, new_position)
+        self.points[index] = np.array(position)
+        point_data = self.selected_actor.GetMapper().GetInput().GetPoints()
+        point_data.SetPoint(0, position)
         point_data.Modified()
-        self._update_spline_visualization()
+        self._update_visualization()
 
-    def _update_spline_visualization(self):
+    def _update_visualization(self):
         """Update the spline visualization"""
         if len(self.points) < 2:
-            if self.spline_actor:
-                self.parent.renderer.RemoveActor(self.spline_actor)
-                self.spline_actor = None
-            return
+            return None
 
-        if self.spline_actor:
-            self.parent.renderer.RemoveActor(self.spline_actor)
+        if self.current_connection:
+            self.renderer.RemoveActor(self.current_connection)
 
         vtkPoints = vtk.vtkPoints()
         for point in self.points:
@@ -373,83 +436,22 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         mapper.SetResolveCoincidentTopologyToPolygonOffset()
         mapper.SetScalarVisibility(False)
 
-        self.spline_actor = vtk.vtkActor()
-        self.spline_actor.SetMapper(mapper)
-        self.spline_actor.GetProperty().SetColor(1, 1, 0)
-        self.parent.renderer.AddActor(self.spline_actor)
+        self.current_connection = vtk.vtkActor()
+        self.current_connection.SetMapper(mapper)
+        self.current_connection.GetProperty().SetColor(1, 1, 0)
+        self.renderer.AddActor(self.current_connection)
         self.parent.vtk_widget.GetRenderWindow().Render()
 
-    def on_left_button_down(self, obj, event):
-        """Handle left button click events"""
-        click_pos = self.GetInteractor().GetEventPosition()
-
-        self.prop_picker.Pick(click_pos[0], click_pos[1], 0, self.parent.renderer)
-        picked_actor = self.prop_picker.GetActor()
-
-        if picked_actor in self.point_actors:
-            self.selected_point_actor = picked_actor
-            return
-
-        self.point_picker.Pick(click_pos[0], click_pos[1], 0, self.parent.renderer)
-        position = self.point_picker.GetPickPosition()
-
-        picked_actor = self.point_picker.GetActor()
-        if picked_actor:
-            index = self.cdata.data.container._get_cluster_index(picked_actor)
-            if index is not None:
-                point_locator = vtk.vtkPointLocator()
-                point_locator.SetDataSet(picked_actor.GetMapper().GetInput())
-                point_locator.BuildLocator()
-
-                closest_point_id = point_locator.FindClosestPoint(position)
-                position = (
-                    picked_actor.GetMapper()
-                    .GetInput()
-                    .GetPoints()
-                    .GetPoint(closest_point_id)
-                )
-
-        self.add_point(position, index is not None)
-        self.OnLeftButtonDown()
-
-    def on_mouse_move(self, obj, event):
-        """Handle mouse movement for dragging points"""
-        if not self.selected_point_actor:
-            return self.OnMouseMove()
-
-        # When dragging a point, don't allow camera movement
-        button = self.GetInteractor().GetEventPosition()
-        self.point_picker.Pick(button[0], button[1], 0, self.parent.renderer)
-        position = self.point_picker.GetPickPosition()
-
-        self.update_point_position(self.selected_point_actor, position)
-
-    def on_left_button_up(self, obj, event):
-        """Handle left button release"""
-        self.selected_point_actor = None
-        self.OnLeftButtonUp()
-
-    def create_spline_parametrization(self):
+    def _add_points(self):
         """Create the final spline parametrization"""
-        if len(self.points) < 2:
-            return
+        self.cdata._data.add(points=self.points, sampling_rate=1.0)
+        self.cdata.data.data_changed.emit()
+        return self.cdata.data.render()
 
-        from ..parametrization import SplineCurve
+    def on_key_press(self, obj, event):
+        key = self.GetInteractor().GetKeySym().lower()
+        if key in ["return", "enter", "delete"]:
+            self._add_points()
+            self.cleanup()
 
-        spline_param = SplineCurve(self.points)
-        meta = {
-            "fit": spline_param,
-            "points": self.points,
-            "normals": spline_param.compute_normal(self.points),
-        }
-
-        self.cdata._models.add(
-            points=meta["points"],
-            normals=meta["normals"],
-            meta=meta,
-            sampling_rate=1.0,
-        )
-
-        self.cdata.models.data_changed.emit()
-        self.cleanup()
-        self.cdata.models.render()
+        return self.OnKeyPress()

@@ -1095,80 +1095,40 @@ class SplineCurve(Parametrization):
 
     Parameters
     ----------
-    control_points : np.ndarray
+    positions : np.ndarray
         Control points defining the spline curve
     """
 
-    def __init__(self, control_points: np.ndarray, order: int = 1):
-        self.control_points = np.asarray(control_points, dtype=np.float64)
+    def __init__(self, positions: np.ndarray, order: int = 1, **kwargs):
+        self.positions = np.asarray(positions)
 
         params = self._compute_params()
         if order == 3:
             self._splines = [
-                interpolate.CubicSpline(params, self.control_points[:, i])
-                for i in range(self.control_points.shape[1])
+                interpolate.CubicSpline(params, self.positions[:, i])
+                for i in range(self.positions.shape[1])
             ]
         else:
             self._splines = [
-                interpolate.UnivariateSpline(params, self.control_points[:, i], k=order)
-                for i in range(self.control_points.shape[1])
+                interpolate.UnivariateSpline(params, self.positions[:, i], k=order)
+                for i in range(self.positions.shape[1])
             ]
 
     def _compute_params(self) -> np.ndarray:
-        diff = np.diff(self.control_points, axis=0)
+        diff = np.diff(self.positions, axis=0)
         chord_lengths = np.linalg.norm(diff, axis=1)
         cumulative = np.concatenate(([0], np.cumsum(chord_lengths)))
         return cumulative / cumulative[-1]
 
     @classmethod
     def fit(cls, positions: np.ndarray, **kwargs) -> "SplineCurve":
-        """
-        Fit a spline curve to the given positions.
-
-        Parameters
-        ----------
-        positions : np.ndarray
-            Points to fit the spline through
-
-        Returns
-        -------
-        SplineCurve
-            Fitted spline curve
-        """
-        positions = np.asarray(positions, dtype=np.float64)
-        return cls(control_points=positions)
+        return cls(positions=np.asarray(positions, dtype=np.float64), **kwargs)
 
     def sample(self, n_samples: int, **kwargs) -> np.ndarray:
-        """
-        Sample points along the spline curve.
-
-        Parameters
-        ----------
-        n_samples : int
-            Number of samples to draw
-
-        Returns
-        -------
-        np.ndarray
-            Sampled points along the curve
-        """
         t = np.linspace(0, 1, n_samples)
         return np.column_stack([spline(t) for spline in self._splines])
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        """
-        Compute normals at given points along the curve.
-
-        Parameters
-        ----------
-        points : np.ndarray
-            Points to compute normals at
-
-        Returns
-        -------
-        np.ndarray
-            Normal vectors at the given points
-        """
         params = np.linspace(0, 1, len(points))
         tangents = np.column_stack(
             [spline.derivative()(params) for spline in self._splines]
@@ -1180,19 +1140,6 @@ class SplineCurve(Parametrization):
         return normals
 
     def points_per_sampling(self, sampling_density: float) -> int:
-        """
-        Compute number of points needed for given sampling density.
-
-        Parameters
-        ----------
-        sampling_density : float
-            Desired sampling density
-
-        Returns
-        -------
-        int
-            Number of points needed
-        """
         curve_points = self.sample(1000)
         segments = curve_points[1:] - curve_points[:-1]
         length = np.sum(np.linalg.norm(segments, axis=1))
@@ -1212,4 +1159,5 @@ PARAMETRIZATION_TYPE = {
     "poissonmesh": PoissonMesh,
     "rbf": RBF,
     "convexhull": ConvexHull,
+    "spline": SplineCurve,
 }
