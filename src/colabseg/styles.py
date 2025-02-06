@@ -1,3 +1,10 @@
+""" Style classes facilitating unique interactions with the vtk viewer.
+
+    Copyright (c) 2025 European Molecular Biology Laboratory
+
+    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
+
 import vtk
 import numpy as np
 
@@ -442,7 +449,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
         self.renderer.AddActor(self.current_connection)
         self.parent.vtk_widget.GetRenderWindow().Render()
 
-    def _add_points(self):
+    def _add_points_to_cluster(self):
         """Create the final spline parametrization"""
         self.cdata._data.add(points=self.points, sampling_rate=1.0)
         self.cdata.data.data_changed.emit()
@@ -451,7 +458,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
     def on_key_press(self, obj, event):
         key = self.GetInteractor().GetKeySym().lower()
         if key in ["return", "enter", "delete"]:
-            self._add_points()
+            self._add_points_to_cluster()
             self.cleanup()
 
         return self.OnKeyPress()

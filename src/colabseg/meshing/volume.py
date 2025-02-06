@@ -168,7 +168,7 @@ class MeshMerger:
         meshes = [o3d.io.read_triangle_mesh(x) for x in self._get_submeshes()]
 
         vertices, faces = merge_meshes(
-            [mesh.vertices for mesh in meshes], [mesh.faces for mesh in meshes]
+            [mesh.vertices for mesh in meshes], [mesh.triangles for mesh in meshes]
         )
         mesh = to_open3d(vertices, faces)
         o3d.io.write_triangle_mesh(join(self.output_dir, f"{self.seq_id}.obj"), mesh)
@@ -208,10 +208,10 @@ class MeshSimplifier:
         mesh = o3d.io.read_triangle_mesh(self.mesh_path)
 
         simplifier = pyfqmr.Simplify()
-        simplifier.setMesh(np.asarray(mesh.vertices), np.asarray(mesh.faces))
+        simplifier.setMesh(np.asarray(mesh.vertices), np.asarray(mesh.triangles))
         simplifier.simplify_mesh(
             target_count=max(
-                int(len(mesh.faces) / (self.decimation_factor**self.lod)), 4
+                int(len(mesh.triangles) / (self.decimation_factor**self.lod)), 4
             ),
             aggressiveness=self.aggressiveness,
             preserve_border=True,
