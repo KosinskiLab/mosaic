@@ -114,11 +114,7 @@ class ColabsegData(QObject):
         if hasattr(fit, "mesh"):
             meta["points"] = np.asarray(fit.mesh.vertices)
             meta["faces"] = np.asarray(fit.mesh.triangles)
-            meta["normals"] = np.zeros_like(meta["points"])
-
-            # Open3D 0.18.0 struggles computing normals for meshes with few vertices
-            if meta["points"].shape[0] > 30:
-                meta["normals"] = fit.compute_vertex_normals()
+            meta["normals"] = fit.compute_vertex_normals()
 
             new_points, normals = meta["points"].copy(), meta["normals"].copy()
         else:

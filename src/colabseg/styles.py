@@ -135,14 +135,15 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
                 sampling = geometry._sampling_rate
                 appearance.update(geometry._appearance)
 
-        vertices = np.concatenate(points).reshape(-1, 3)
-        faces = np.arange(vertices.size).reshape(-1, 3)
-        # meshes.append((to_open3d(vertices, faces), None))
+        shape = (-1, 3)
+        vertices = np.concatenate(points).reshape(*shape)
+        faces = np.arange(vertices.size // shape[1]).reshape(*shape)
+        meshes.append((to_open3d(vertices, faces), None))
 
-        # vertices, faces = merge_meshes(
-        #     vertices=[np.asarray(x.vertices) for (x, _) in meshes],
-        #     faces=[np.asarray(x.triangles) for (x, _) in meshes],
-        # )
+        vertices, faces = merge_meshes(
+            vertices=[np.asarray(x.vertices) for (x, _) in meshes],
+            faces=[np.asarray(x.triangles) for (x, _) in meshes],
+        )
 
         fit = TriangularMesh(to_open3d(vertices, faces))
         index = self.cdata._add_fit(fit=fit, points=vertices, sampling_rate=sampling)
@@ -151,7 +152,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             geometry.change_representation("mesh")
             geometry.set_appearance(**appearance)
 
-        # self.cdata._models.remove([index for (_, index) in meshes])
+        self.cdata._models.remove([index for (_, index) in meshes])
         self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
 
@@ -177,8 +178,8 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         selected.ShallowCopy(extract_selection.GetOutput())
 
         self.selected_mapper.SetInputData(selected)
+        self.selected_mapper.SetScalarVisibility(False)
         self.selected_mapper.SetResolveCoincidentTopology(True)
-
         self.selected_mapper.SetRelativeCoincidentTopologyLineOffsetParameters(0, -1)
         self.selected_mapper.SetRelativeCoincidentTopologyPolygonOffsetParameters(0, -1)
         self.selected_mapper.SetRelativeCoincidentTopologyPointOffsetParameter(0)
@@ -188,12 +189,12 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.selected_actor.SetPickable(False)
 
         prop = self.selected_actor.GetProperty()
-        prop.SetOpacity(1.0)
+        prop.SetOpacity(0.3)
         prop.SetAmbient(1.0)
         prop.SetDiffuse(0.0)
         prop.SetLineWidth(2)
         prop.EdgeVisibilityOn()
-        prop.SetColor(1.0, 0.0, 0.0)
+        prop.SetColor(0.388, 0.400, 0.945)
 
         self.parent.renderer.AddActor(self.selected_actor)
         self.parent.vtk_widget.GetRenderWindow().Render()
@@ -204,24 +205,32 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         geometry = self.current_selection["geometry"]
         cell_id = self.current_selection["cell_id"]
+        cell_id = cell_id - geometry._data.GetVerts().GetNumberOfCells()
 
-        cells = geometry._data.GetPolys()
+        if cell_id < 0:
+            return None
+
         new_cells = vtk.vtkCellArray()
+        cells = geometry._data.GetPolys()
 
         cells.InitTraversal()
-        idList = vtk.vtkIdList()
-        current_id = 0
-        while cells.GetNextCell(idList):
+        current_id, id_list = 0, vtk.vtkIdList()
+        while cells.GetNextCell(id_list):
             if current_id != cell_id:
-                new_cells.InsertNextCell(idList)
+                new_cells.InsertNextCell(id_list)
             current_id += 1
 
         geometry._data.SetPolys(new_cells)
         geometry._data.Modified()
 
-        self.parent.renderer.RemoveActor(self.selected_actor)
+        faces = vtk.util.numpy_support.vtk_to_numpy(new_cells.GetConnectivityArray())
+        geometry._meta["faces"] = faces.reshape(-1, 3)
+        geometry._meta["fit"] = TriangularMesh(
+            to_open3d(geometry._meta["points"], geometry._meta["faces"])
+        )
+
         self.current_selection = None
-        self.parent.vtk_widget.GetRenderWindow().Render()
+        self.parent.renderer.RemoveActor(self.selected_actor)
         self.cdata.models.render_vtk()
 
     def on_key_press(self, obj, event):

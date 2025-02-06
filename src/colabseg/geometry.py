@@ -174,10 +174,17 @@ class Geometry:
 
     def add_points(self, points):
         points = np.asarray(points, dtype=np.float32)
-        for i in range(points.shape[0]):
-            point_id = self._points.InsertNextPoint(points[i])
-            self._cells.InsertNextCell(1)
-            self._cells.InsertCellPoint(point_id)
+        if points.shape[1] != 3:
+            warnings.warn("Only 3D point clouds are supported.")
+            return -1
+
+        vertex_cells = vtk.vtkCellArray()
+        idx = np.arange(points.shape[0], dtype=int)
+        cells = np.column_stack((np.ones(idx.size, dtype=int), idx)).flatten()
+        vertex_cells.SetCells(idx.size, numpy_support.numpy_to_vtkIdTypeArray(cells))
+
+        self._points.SetData(numpy_support.numpy_to_vtk(points, deep=True))
+        self._data.SetVerts(vertex_cells)
         self._data.Modified()
 
     def add_normals(self, normals):
@@ -186,11 +193,25 @@ class Geometry:
             warnings.warn("Number of normals must match number of points.")
             return -1
 
-        self._normals.Reset()
-        for normal in normals:
-            self._normals.InsertNextTuple3(*normal)
+        normals_vtk = numpy_support.numpy_to_vtk(normals, deep=True)
+        normals_vtk.SetName("Normals")
+        self._data.GetPointData().SetNormals(normals_vtk)
+        self._data.Modified()
 
-        self._data.GetPointData().SetNormals(self._normals)
+    def add_faces(self, faces):
+        faces = np.asarray(faces)
+        if faces.shape[1] != 3:
+            warnings.warn("Only triangular faces are supported.")
+            return -1
+
+        faces = np.concatenate(
+            (np.full((faces.shape[0], 1), fill_value=3), faces), axis=1, dtype=int
+        )
+        poly_cells = vtk.vtkCellArray()
+        poly_cells.SetCells(
+            faces.shape[0], numpy_support.numpy_to_vtkIdTypeArray(faces.ravel())
+        )
+        self._data.SetPolys(poly_cells)
         self._data.Modified()
 
     def set_color(self, color: Tuple[int] = None):
@@ -274,9 +295,11 @@ class Geometry:
         n_points = self._points.GetNumberOfPoints()
         point_ids = [x for x in point_ids if x < n_points]
         colors = np.full(
-            (n_points, 3), self._appearance["base_color"], dtype=np.float32
+            (n_points, 3),
+            fill_value=[x * 255 for x in self._appearance["base_color"]],
+            dtype=np.float32,
         )
-        colors[point_ids] = color
+        colors[point_ids] = [x * 255 for x in color]
         return self.set_point_colors(colors)
 
     def set_point_colors(self, colors):
@@ -286,14 +309,14 @@ class Geometry:
         Parameters:
         -----------
         colors : array-like
-            RGB colors for each point. Shape should be (n_points, 3) with values 0-1
+            RGB colors for each point. Shape should be (n_points, 3) with values 0-255
         """
         if len(colors) != self._points.GetNumberOfPoints():
             raise ValueError("Number of colors must match number of points")
 
         colors_vtk = vtk.util.numpy_support.numpy_to_vtk(
-            (np.asarray(colors) * 255).astype(np.uint8),
-            deep=True,
+            colors,
+            deep=False,
             array_type=vtk.VTK_UNSIGNED_CHAR,
         )
 
@@ -430,8 +453,6 @@ class Geometry:
             if "normals" in self._meta:
                 self.add_normals(self._meta["normals"])
 
-            self._data.SetPolys(self._cells)
-
             if representation == "surface":
                 self._original_verts = self._data.GetVerts()
                 self._data.SetVerts(None)
@@ -556,16 +577,6 @@ class Geometry:
         self._actor.GetProperty().SetColor(*self._appearance["base_color"])
         self._data.Modified()
         return 0
-
-    def add_faces(self, faces):
-        if faces.shape[1] != 3:
-            raise ValueError("Only triangular faces are supported")
-
-        for face in faces:
-            self._cells.InsertNextCell(3)
-            for vertex_idx in face:
-                self._cells.InsertCellPoint(vertex_idx)
-        self._data.Modified()
 
 
 class PointCloud(Geometry):

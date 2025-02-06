@@ -15,12 +15,12 @@ from os.path import join, basename
 
 import zmesh
 import pyfqmr
-import trimesh
 import numpy as np
+import open3d as o3d
 from tme import Density
 from tqdm.contrib.concurrent import process_map
 
-from .utils import merge_meshes
+from .utils import merge_meshes, to_open3d
 
 
 class MeshCreator:
@@ -165,16 +165,13 @@ class MeshMerger:
         self.output_dir = output_dir
 
     def execute(self):
-        meshes = [trimesh.load(x) for x in self._get_submeshes()]
+        meshes = [o3d.io.read_triangle_mesh(x) for x in self._get_submeshes()]
 
         vertices, faces = merge_meshes(
             [mesh.vertices for mesh in meshes], [mesh.faces for mesh in meshes]
         )
-
-        # trimesh.Trimesh constructor removes duplicated overlapping boundary vertices
-        mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=True)
-        mesh.export(join(self.output_dir, f"{self.seq_id}.obj"))
-
+        mesh = to_open3d(vertices, faces)
+        o3d.io.write_triangle_mesh(join(self.output_dir, f"{self.seq_id}.obj"), mesh)
         return None
 
     def _get_submeshes(self):
@@ -208,10 +205,10 @@ class MeshSimplifier:
         self.lod = lod
 
     def execute(self):
-        mesh = trimesh.load(self.mesh_path)
+        mesh = o3d.io.read_triangle_mesh(self.mesh_path)
 
         simplifier = pyfqmr.Simplify()
-        simplifier.setMesh(mesh.vertices, mesh.faces)
+        simplifier.setMesh(np.asarray(mesh.vertices), np.asarray(mesh.faces))
         simplifier.simplify_mesh(
             target_count=max(
                 int(len(mesh.faces) / (self.decimation_factor**self.lod)), 4
@@ -222,9 +219,10 @@ class MeshSimplifier:
         )
 
         vertices, faces, normals = simplifier.getMesh()
-        mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
-        mesh.export(join(self.output_dir, basename(self.mesh_path)))
-
+        mesh = to_open3d(vertices, faces)
+        o3d.io.write_triangle_mesh(
+            join(self.output_dir, basename(self.mesh_path)), mesh
+        )
         return None
 
 
