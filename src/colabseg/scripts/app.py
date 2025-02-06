@@ -47,7 +47,7 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from colabseg.io_utils import import_points
 from colabseg import ColabsegData, ExportManager
-from colabseg.styles import MeshEditInteractorStyle
+from colabseg.styles import MeshEditInteractorStyle, CurveBuilderInteractorStyle
 from colabseg.tabs import SegmentationTab, ModelTab, DevelopmentTab, IntelligenceTab
 from colabseg.dialogs import TiltControlDialog, KeybindsDialog, ImportDataDialog
 from colabseg.widgets import (
@@ -66,6 +66,7 @@ class Mode(enum.Enum):
     PICKING = "Picking"
     MESH_DELETE = "MeshEdit"
     MESH_ADD = "MeshAdd"
+    CURVE = "CURVE"
 
 
 class CursorModeHandler:
@@ -80,6 +81,7 @@ class CursorModeHandler:
             Mode.PICKING: QColor("#9C27B0"),
             Mode.MESH_DELETE: QColor("#FFFFFF"),
             Mode.MESH_ADD: QColor("#CACACA"),
+            Mode.CURVE: QColor("#ABABAB"),
         }
 
         self.cursors = {
@@ -287,12 +289,14 @@ class App(QMainWindow):
         elif key == "s":
             self._transition_modes(Mode.VIEWING)
             self.cdata.swap_area_picker()
+        elif key == "S":
+            self._transition_modes(Mode.PICKING)
         elif key == "h":
             self.cdata.data.toggle_visibility()
         elif key == "a":
             self._transition_modes(Mode.DRAWING)
-        elif key == "p":
-            self._transition_modes(Mode.PICKING)
+        elif key == "A":
+            self._transition_modes(Mode.CURVE)
         elif key == "q":
             self._transition_modes(Mode.MESH_DELETE)
         elif key == "Q":
@@ -307,12 +311,10 @@ class App(QMainWindow):
     def _transition_modes(self, new_mode):
         current_mode = self.cursor_handler.current_mode
 
-        if current_mode in (Mode.MESH_ADD, Mode.MESH_DELETE):
+        if current_mode in (Mode.MESH_ADD, Mode.MESH_DELETE, Mode.CURVE):
             current_style = self.interactor.GetInteractorStyle()
-            if isinstance(current_style, MeshEditInteractorStyle):
-                if current_style.selected_actor:
-                    self.renderer.RemoveActor(current_style.selected_actor)
-                    self.vtk_widget.GetRenderWindow().Render()
+            if hasattr(current_style, "cleanup"):
+                current_style.cleanup()
 
             self.cdata.swap_area_picker()
             self.cdata.swap_area_picker()
@@ -323,6 +325,10 @@ class App(QMainWindow):
 
         if new_mode == Mode.DRAWING:
             self.cdata.data.toggle_drawing_mode()
+        elif new_mode == Mode.CURVE:
+            style = CurveBuilderInteractorStyle(self, self.cdata)
+            self.interactor.SetInteractorStyle(style)
+            style.SetDefaultRenderer(self.renderer)
         elif new_mode == Mode.SELECTION:
             self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleRubberBandPick())
         elif new_mode == Mode.PICKING:
