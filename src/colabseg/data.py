@@ -71,8 +71,7 @@ class ColabsegData(QObject):
             shape = container.shape
             sampling = container.sampling
             point_manager, model_manager = DataContainer(), DataContainer()
-            for index in range(len(container)):
-                data = container[index]
+            for data in container:
                 point_manager.add(
                     points=data.vertices, normals=data.normals, sampling_rate=sampling
                 )

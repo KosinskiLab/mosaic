@@ -698,14 +698,13 @@ class App(QMainWindow):
         for filename in progress:
             self._add_file_to_recent(filename)
             parameters = file_parameters[filename]
-            container = open_file(filename)
 
             offset = parameters.get("offset", 0)
             scale = parameters.get("scale", 1)
             sampling = parameters.get("sampling_rate", 1)
 
-            for index in range(len(container)):
-                data = container[index]
+            container = open_file(filename)
+            for data in container:
                 data.vertices = np.divide(np.subtract(data.vertices, offset), scale)
 
                 if data.faces is None:

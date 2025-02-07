@@ -73,6 +73,9 @@ class GeometryDataContainer:
     def __len__(self):
         return len(self.vertices)
 
+    def __iter__(self):
+        yield from [self[i] for i in range(len(self))]
+
     def __getitem__(self, index: int) -> GeometryData:
         return GeometryData(
             vertices=self.vertices[index],
