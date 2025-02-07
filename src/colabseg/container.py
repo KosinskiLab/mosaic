@@ -13,7 +13,9 @@ import numpy as np
 from scipy.spatial import cKDTree
 from sklearn.cluster import KMeans
 
-from .io_utils import load_density
+from .parametrization import ConvexHull
+from .formats.parser import load_density
+from .geometry import Geometry, VolumeGeometry
 from .utils import (
     statistical_outlier_removal,
     dbscan_clustering,
@@ -22,8 +24,6 @@ from .utils import (
     com_cluster_points,
     find_closest_points,
 )
-from .geometry import Geometry, VolumeGeometry
-from .parametrization import ConvexHull
 
 
 def apply_over_indices(func: Callable) -> Callable:

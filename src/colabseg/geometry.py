@@ -96,8 +96,7 @@ class Geometry:
 
     def __getitem__(self, idx):
         """
-        Array-like indexing of geometry using integer, slice or boolean/interger
-        numpy array.
+        Array-like indexing of geometry using int/bool numpy arrays or slices.
         """
         if isinstance(idx, (int, np.integer)):
             idx = [idx]

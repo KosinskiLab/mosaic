@@ -1,5 +1,7 @@
+import re
+from os import listdir
 from functools import partial
-from os.path import join, exists
+from os.path import join, exists, basename
 
 import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -7,9 +9,9 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 
 from ..utils import cmap_to_vtkctf
 from ..geometry import GeometryTrajectory
+from ..formats.parser import load_density
 from ..widgets.ribbon import create_button
 from ..parametrization import TriangularMesh
-from ..io_utils import import_mesh_trajectory, import_mesh, load_density
 from ..meshing import (
     equilibrate_fit,
     setup_hmff,
@@ -24,6 +26,7 @@ from ..dialogs import (
     ProgressDialog,
     MeshMappingDialog,
 )
+from ..formats import open_file
 
 
 class FitWorker(QThread):
@@ -99,7 +102,6 @@ class ModelTab(QWidget):
         self.ribbon.add_section("Sampling Operations", mesh_actions)
 
         mesh_actions = [
-            create_button("Import", "mdi.import", self, self._import_meshes),
             create_button("Volume", "mdi.cube-outline", self, self._mesh_volume),
             create_button(
                 "Curvature",
@@ -272,26 +274,6 @@ class ModelTab(QWidget):
         QMessageBox.information(self, "Success", "Export successful.")
         return ret
 
-    def _import_meshes(self):
-        filenames, _ = QFileDialog.getOpenFileNames(self, "Select Meshes")
-        if not filenames:
-            return -1
-
-        progress = ProgressDialog(filenames, title="Importing Meshes", parent=None)
-        for filename in progress:
-            try:
-                vertices, faces = import_mesh(filename)
-                fit = TriangularMesh(to_open3d(vertices, faces))
-
-                self.cdata._add_fit(
-                    fit=fit, points=np.asarray(fit.mesh.vertices), sampling_rate=None
-                )
-            except Exception as e:
-                print(e)
-
-        self.cdata.models.data_changed.emit()
-        return self.cdata.models.render()
-
     def _get_selected_meshes(self):
         ret = []
         for index in self.cdata.models._get_selected_indices():
@@ -382,16 +364,16 @@ class ModelTab(QWidget):
             selected_meshes.append(index)
             curvatures.append(fit.compute_curvature(curvature=curvature, radius=radius))
 
+        if len(selected_meshes) == 0:
+            print("No mesh was selected for curvature computation.")
+            return None
+
         all_curvatures = np.concatenate([c.flatten() for c in curvatures])
         valid_curvatures = all_curvatures[~np.isnan(all_curvatures)]
 
         n_bins = max(valid_curvatures.size // 10, 100)
         bins = np.percentile(valid_curvatures, np.linspace(0, 100, n_bins + 1))
         curvatures = [np.digitize(curv, bins) - 1 for curv in curvatures]
-
-        if len(selected_meshes) == 0:
-            print("No mesh was selected for curvature computation.")
-            return None
 
         self.cdata.models.set_selection([])
         lut, lut_range = cmap_to_vtkctf(
@@ -415,15 +397,16 @@ class ModelTab(QWidget):
             return -1
 
         ret = []
-        mesh_trajectory = import_mesh_trajectory(directory)
-        progress = ProgressDialog(
-            mesh_trajectory, title="Importing Trajectory", parent=None
-        )
-        for index, data in enumerate(progress):
-            points, faces, filename = data
+        files = [join(directory, x) for x in listdir(directory)]
+        files = [x for x in files if x.endswith(".tsi") or x.endswith(".vtu")]
+        files = sorted(files, key=lambda x: int(re.findall(r"\d+", basename(x))[0]))
 
-            faces = faces.astype(int)
-            points = np.divide(np.subtract(points, offset), scale)
+        progress = ProgressDialog(files, title="Importing Trajectory", parent=None)
+        for index, filename in enumerate(progress):
+            container = open_file(filename)[0]
+            faces = container.faces.astype(int)
+            points = np.divide(np.subtract(container.vertices, offset), scale)
+
             fit = TriangularMesh(to_open3d(points, faces))
             meta = {
                 "points": points,

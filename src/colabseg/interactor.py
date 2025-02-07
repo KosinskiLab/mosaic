@@ -34,7 +34,7 @@ from PyQt6.QtCore import (
 from .utils import points_to_volume
 from .geometry import VolumeGeometry
 from .widgets import ContainerListWidget
-from .io_utils import OrientationsWriter, write_density
+from .formats import OrientationsWriter, write_density
 from .dialogs import GeometryPropertiesDialog, make_param, OperationDialog
 
 

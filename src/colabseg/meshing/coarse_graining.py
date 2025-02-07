@@ -4,7 +4,7 @@ from typing import Dict, List
 import numpy as np
 
 from . import remesh, center_mesh, compute_scale_factor_lower, scale
-from ..io_utils import write_topology_file
+from ..formats.writer import write_topology_file
 from ..utils import find_closest_points
 
 

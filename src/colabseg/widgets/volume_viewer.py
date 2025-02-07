@@ -23,7 +23,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from vtkmodules.util import numpy_support
 from matplotlib.pyplot import get_cmap
 
-from ..io_utils import load_density
+from ..formats.parser import load_density
 
 
 _colormaps = [

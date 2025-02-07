@@ -13,7 +13,7 @@ from functools import wraps
 from typing import Callable
 from PyQt6.QtCore import pyqtSignal, QObject
 
-from .io_utils import VertexDataLoader
+from .formats import open_file
 from .container import DataContainer
 from .interactor import DataContainerInteractor
 from .parametrization import PARAMETRIZATION_TYPE
@@ -56,7 +56,7 @@ class ColabsegData(QObject):
         with open(filename, "wb") as ofile:
             pickle.dump(state, ofile)
 
-    def open_file(self, filename):
+    def load_session(self, filename):
         sampling = 1
         if filename.endswith("pickle"):
             with open(filename, "rb") as ifile:
@@ -66,15 +66,16 @@ class ColabsegData(QObject):
             point_manager, model_manager = data["_data"], data["_models"]
 
         else:
-            ret = VertexDataLoader().open_file(filename)
+            container = open_file(filename)
 
-            if ret is None:
-                return -1
-
-            data, normals, shape, sampling = ret
+            shape = container.shape
+            sampling = container.sampling
             point_manager, model_manager = DataContainer(), DataContainer()
-            for x, y in zip(data, normals):
-                point_manager.add(points=x, normals=y, sampling_rate=sampling)
+            for index in range(len(container)):
+                data = container[index]
+                point_manager.add(
+                    points=data.vertices, normals=data.normals, sampling_rate=sampling
+                )
 
         metadata = {"shape": self.shape, "sampling_rate": sampling}
 

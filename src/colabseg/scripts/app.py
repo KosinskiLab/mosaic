@@ -46,11 +46,18 @@ from PyQt6.QtGui import (
 import qtawesome as qta
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-from colabseg.io_utils import import_points
+from colabseg.formats import open_file
+from colabseg.meshing import to_open3d
 from colabseg import ColabsegData, ExportManager
+from colabseg.parametrization import TriangularMesh
 from colabseg.styles import MeshEditInteractorStyle, CurveBuilderInteractorStyle
 from colabseg.tabs import SegmentationTab, ModelTab, DevelopmentTab, IntelligenceTab
-from colabseg.dialogs import TiltControlDialog, KeybindsDialog, ImportDataDialog
+from colabseg.dialogs import (
+    TiltControlDialog,
+    KeybindsDialog,
+    ImportDataDialog,
+    ProgressDialog,
+)
 from colabseg.widgets import (
     MultiVolumeViewer,
     BoundingBoxWidget,
@@ -658,7 +665,7 @@ class App(QMainWindow):
             return -1
 
         try:
-            self.cdata.open_files(file_path)
+            self.cdata.load_session(file_path)
         except ValueError as e:
             print(f"Error opening file: {e}")
             return -1
@@ -687,16 +694,37 @@ class App(QMainWindow):
             return -1
 
         file_parameters = dialog.get_all_parameters()
-        for filename in filenames:
+        progress = ProgressDialog(filenames, title="Reading Files", parent=None)
+        for filename in progress:
             self._add_file_to_recent(filename)
             parameters = file_parameters[filename]
-            points, normals, *_ = import_points(filename, **parameters)
-            sampling = np.repeat(1 / parameters.get("scale", 1), 3)
-            for x, y in zip(points, normals):
-                self.cdata._data.add(points=x, normals=y, sampling_rate=sampling)
+            container = open_file(filename)
+
+            offset = parameters.get("offset", 0)
+            scale = parameters.get("scale", 1)
+            sampling = parameters.get("sampling_rate", 1)
+
+            for index in range(len(container)):
+                data = container[index]
+                data.vertices = np.divide(np.subtract(data.vertices, offset), scale)
+
+                if data.faces is None:
+                    self.cdata._data.add(
+                        points=data.vertices,
+                        normals=data.normals,
+                        sampling_rate=sampling,
+                    )
+                else:
+                    self.cdata._add_fit(
+                        fit=TriangularMesh(to_open3d(data.vertices, data.faces)),
+                        points=None,
+                        sampling_rate=sampling,
+                    )
 
         self.cdata.data.data_changed.emit()
+        self.cdata.models.data_changed.emit()
         self.cdata.data.render()
+        self.cdata.models.render()
         return 0
 
     def open_files(self):

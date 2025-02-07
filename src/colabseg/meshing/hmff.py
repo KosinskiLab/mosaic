@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from tme import Density
 from tme.preprocessing import BandPassFilter
 
-from ..io_utils import write_topology_file
+from ..formats.writer import write_topology_file
 from ..meshing.utils import (
     equilibrate_edges,
     remesh,

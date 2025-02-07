@@ -1,7 +1,7 @@
 import numpy as np
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
-from ..io_utils import VertexDataLoader
+from ..formats import open_file
 from ..widgets.ribbon import create_button
 from ..segmentation import MEMBRAIN_SETTINGS, run_membrainseg
 
@@ -54,14 +54,12 @@ class IntelligenceTab(QWidget):
         if output_name is None:
             return None
 
-        ret = VertexDataLoader().open_file(output_name)
-
-        if ret is None:
-            return -1
-
-        data, normals, shape, sampling = ret
-        for x, y in zip(data, normals):
-            self.cdata._data.add(points=x, normals=y, sampling_rate=sampling)
+        container = open_file(output_name)
+        for index in range(len(container)):
+            data = container[index]
+            self.cdata._data.add(
+                points=data.vertices, normals=data.normals, sampling_rate=data.sampling
+            )
         self.cdata.data.data_changed.emit()
         return self.cdata.data.render()
 
