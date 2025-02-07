@@ -13,6 +13,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 import sys
 import enum
+from typing import List
 from importlib_resources import files
 
 import vtk
@@ -30,7 +31,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QDockWidget,
 )
-from PyQt6.QtCore import Qt, QPoint, QEvent
+from PyQt6.QtCore import Qt, QPoint, QEvent, QSettings
 from PyQt6.QtGui import (
     QAction,
     QGuiApplication,
@@ -124,6 +125,10 @@ class CursorModeHandler:
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
+
+        self.max_recent_files = 10
+        self.recent_file_actions = []
+        self.recent_files = self.load_recent_files()
 
         # Adapt to screen size
         screen = QGuiApplication.primaryScreen().geometry()
@@ -436,17 +441,31 @@ class App(QMainWindow):
         help_menu = menu_bar.addMenu("Help")
 
         # File menu actions
-        new_session_action = QAction("Open Session", self)
-        new_session_action.triggered.connect(self.open_session)
+        new_session_action = QAction("Load Session", self)
+        new_session_action.triggered.connect(self.load_session)
         new_session_action.setShortcut("Ctrl+N")
 
-        add_file_action = QAction("Import Files", self)
-        add_file_action.triggered.connect(self.open_file)
+        add_file_action = QAction("Open", self)
+        add_file_action.triggered.connect(self.open_files)
         add_file_action.setShortcut("Ctrl+O")
 
         save_file_action = QAction("Save Session", self)
         save_file_action.triggered.connect(self.save_session)
         save_file_action.setShortcut("Ctrl+S")
+
+        self.recent_menu = QMenu("Recent Files", self)
+        for i in range(self.max_recent_files):
+            action = QAction(self)
+            action.setVisible(False)
+            action.triggered.connect(self._open_recent_file)
+            self.recent_file_actions.append(action)
+            self.recent_menu.addAction(action)
+
+        self.update_recent_files_menu()
+
+        quit_action = QAction("Quit", self)
+        quit_action.setShortcut("Ctrl+Q")
+        quit_action.triggered.connect(self.close)
 
         screenshot_action = QAction("Save Viewer Screenshot", self)
         screenshot_action.triggered.connect(
@@ -568,14 +587,19 @@ class App(QMainWindow):
         show_keybinds_action.setShortcut("Ctrl+H")
 
         # Add actions to menus
-        file_menu.addAction(new_session_action)
         file_menu.addAction(add_file_action)
+        file_menu.addMenu(self.recent_menu)
+        file_menu.addSeparator()
+        file_menu.addAction(new_session_action)
         file_menu.addAction(save_file_action)
+
         file_menu.addSeparator()
         file_menu.addAction(screenshot_action)
         file_menu.addAction(clipboard_action)
         file_menu.addAction(clipboard_window_action)
         file_menu.addAction(animation_action)
+        file_menu.addSeparator()
+        file_menu.addAction(quit_action)
 
         view_menu.addMenu(axes_menu)
         view_menu.addMenu(tilt_menu)
@@ -627,18 +651,19 @@ class App(QMainWindow):
             self._setup_trajectory_player()
         self.trajectory_dock.setVisible(visible)
 
-    def open_session(self):
+    def load_session(self):
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getOpenFileName(self, "Open Session")
         if not file_path:
             return -1
 
         try:
-            self.cdata.open_file(file_path)
+            self.cdata.open_files(file_path)
         except ValueError as e:
             print(f"Error opening file: {e}")
             return -1
 
+        self._add_file_to_recent(file_path)
         self.renderer.RemoveAllViewProps()
         self.volume_viewer.close()
         self.bounding_box.setup(shape=self.cdata.shape)
@@ -649,11 +674,11 @@ class App(QMainWindow):
         self.cdata.models.render()
         self.set_camera_view("x")
 
-    def open_file(self):
-        filenames, _ = QFileDialog.getOpenFileNames(self, "Import Files")
-
-        if not filenames:
-            return -1
+    def _open_files(self, filenames: List[str]):
+        if isinstance(filenames, str):
+            filenames = [
+                filenames,
+            ]
 
         dialog = ImportDataDialog(self)
         dialog.set_files(filenames)
@@ -663,6 +688,7 @@ class App(QMainWindow):
 
         file_parameters = dialog.get_all_parameters()
         for filename in filenames:
+            self._add_file_to_recent(filename)
             parameters = file_parameters[filename]
             points, normals, *_ = import_points(filename, **parameters)
             sampling = np.repeat(1 / parameters.get("scale", 1), 3)
@@ -672,6 +698,13 @@ class App(QMainWindow):
         self.cdata.data.data_changed.emit()
         self.cdata.data.render()
         return 0
+
+    def open_files(self):
+        filenames, _ = QFileDialog.getOpenFileNames(self, "Import Files")
+        if not filenames:
+            return -1
+
+        return self._open_files(filenames)
 
     def save_session(self):
         file_dialog = QFileDialog()
@@ -683,6 +716,52 @@ class App(QMainWindow):
             return -1
 
         self.cdata.to_file(file_path)
+
+    def load_recent_files(self):
+        settings = QSettings("Mosaic")
+        files = settings.value("recentFiles", [])
+        return files if files else []
+
+    def save_recent_files(self):
+        settings = QSettings("Mosaic")
+        settings.setValue("recentFiles", self.recent_files)
+
+    def update_recent_files_menu(self):
+        files_to_show = self.recent_files[: self.max_recent_files]
+
+        for i, file_path in enumerate(files_to_show):
+            text = f"&{i + 1} {os.path.basename(file_path)}"
+            self.recent_file_actions[i].setText(text)
+            self.recent_file_actions[i].setData(file_path)
+            self.recent_file_actions[i].setVisible(True)
+
+        for j in range(len(files_to_show), self.max_recent_files):
+            self.recent_file_actions[j].setVisible(False)
+
+        self.recent_menu.setEnabled(len(files_to_show) > 0)
+
+    def _add_file_to_recent(self, file_path):
+        if file_path in self.recent_files:
+            self.recent_files.remove(file_path)
+        self.recent_files.insert(0, file_path)
+
+        while len(self.recent_files) > self.max_recent_files:
+            self.recent_files.pop()
+
+        self.save_recent_files()
+        self.update_recent_files_menu()
+
+    def _open_recent_file(self):
+        action = self.sender()
+        if not action:
+            return None
+
+        file_path = action.data()
+        if os.path.exists(file_path):
+            return self._open_files([file_path])
+        self.recent_files.remove(file_path)
+        self.save_recent_files()
+        self.update_recent_files_menu()
 
 
 def main():

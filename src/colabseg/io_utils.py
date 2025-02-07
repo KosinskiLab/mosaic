@@ -136,14 +136,6 @@ def read_volume(filename: str):
     volume = load_density(filename)
 
     ret = volume_to_points(volume.data, volume.sampling_rate, reverse_order=True)
-
-    # Issue with jrc_macrophage-2/nucleus_seg
-    # print(volume.sampling_rate)
-    # if volume.sampling_rate[-1] == 64:
-    # 64 * 30 instead of 64 * 30  - 53.76 * 25.2 ...
-    # offset = np.array([0,0,1920])
-    # ret = [x - offset for x in ret]
-
     shape = np.multiply(volume.shape, volume.sampling_rate)
     return ret, [np.zeros_like(x) for x in ret], shape, volume.sampling_rate
 
@@ -155,7 +147,7 @@ def read_mesh(filename: str):
     ret = [np.asarray(mesh.mesh.vertices)]
 
     shape = compute_bounding_box(ret)
-    return ret, [mesh.compute_vertex_normals(x) for x in ret], shape, (1, 1, 1)
+    return ret, [mesh.compute_vertex_normals()], shape, (1, 1, 1)
 
 
 class OrientationsWriter:
@@ -433,7 +425,7 @@ def write_topology_file(file_path: str, data: Dict, tsi_format: bool = False) ->
         ofile.write(inclusion_string)
 
 
-def import_points(filename, scale=1, offset=1) -> List[NDArray]:
+def import_points(filename, scale=1, offset=1, **kwargs) -> List[NDArray]:
     ret = VertexDataLoader().open_file(filename=filename)
 
     if isinstance(ret, np.ndarray):

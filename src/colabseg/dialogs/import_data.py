@@ -63,13 +63,27 @@ class ImportDataDialog(QDialog):
         validator.setNotation(QDoubleValidator.Notation.StandardNotation)
         self.offset_input.setValidator(validator)
         self.offset_input.setText(str(0.0))
-
         self.offset_input.setMinimumWidth(150)
         self.offset_input.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
         grid_layout.addWidget(offset_label, 3, 0)
         grid_layout.addWidget(self.offset_input, 3, 1)
+
+        sampling_label = QLabel("Sampling Rate:")
+        self.sampling_input = QLineEdit()
+        validator = QDoubleValidator()
+        validator.setLocale(QLocale.c())
+        validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+        validator.setBottom(0.0)
+        self.sampling_input.setValidator(validator)
+        self.sampling_input.setText(str(1.0))
+        self.sampling_input.setMinimumWidth(150)
+        self.sampling_input.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        grid_layout.addWidget(sampling_label, 4, 0)
+        grid_layout.addWidget(self.sampling_input, 4, 1)
 
         frame = QFrame()
         frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
@@ -106,8 +120,16 @@ class ImportDataDialog(QDialog):
 
         layout.addLayout(button_layout)
         self.setLayout(layout)
-        scale_label.setFixedWidth(scale_label.sizeHint().width())
-        offset_label.setFixedWidth(scale_label.sizeHint().width())
+
+        # Set fixed widths for labels
+        max_label_width = max(
+            scale_label.sizeHint().width(),
+            offset_label.sizeHint().width(),
+            sampling_label.sizeHint().width(),
+        )
+        scale_label.setFixedWidth(max_label_width)
+        offset_label.setFixedWidth(max_label_width)
+        sampling_label.setFixedWidth(max_label_width)
 
     def set_files(self, filenames):
         self.filenames = filenames
@@ -120,6 +142,7 @@ class ImportDataDialog(QDialog):
             self.file_parameters[file] = {
                 "scale": float(self.scale_input.text()),
                 "offset": float(self.offset_input.text()),
+                "sampling_rate": float(self.sampling_input.text()),
             }
 
     def update_file_display(self):
@@ -144,6 +167,7 @@ class ImportDataDialog(QDialog):
             self.file_parameters[current_file] = {
                 "scale": float(self.scale_input.text()),
                 "offset": float(self.offset_input.text()),
+                "sampling_rate": float(self.sampling_input.text()),
             }
 
     def load_file_parameters(self, filename):
@@ -151,6 +175,7 @@ class ImportDataDialog(QDialog):
             params = self.file_parameters[filename]
             self.scale_input.setText(str(params["scale"]))
             self.offset_input.setText(str(params["offset"]))
+            self.sampling_input.setText(str(params["sampling_rate"]))
 
     def next_file(self):
         self.save_current_parameters()
@@ -171,12 +196,13 @@ class ImportDataDialog(QDialog):
     def apply_to_all_clicked(self):
         current_scale = float(self.scale_input.text())
         current_offset = float(self.offset_input.text())
+        current_sampling_rate = float(self.sampling_input.text())
 
-        # Apply to current and all following files
         for idx in range(self.current_file_index, len(self.filenames)):
             self.file_parameters[self.filenames[idx]] = {
                 "scale": current_scale,
                 "offset": current_offset,
+                "sampling_rate": current_sampling_rate,
             }
 
     def get_all_parameters(self):
