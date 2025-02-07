@@ -93,12 +93,10 @@ class MeshCreator:
                 data, data_bounds_min, data_bounds_max, self._volume.shape
             )
 
-        # Igneus incldues dust removal before this step
+        # Igneus includes dust removal before this step
         mesher = zmesh.Mesher(volume.sampling_rate)
         mesher.mesh(data)
-
         data = None
-        del data
 
         meshes = {}
         for obj_id in mesher.ids():

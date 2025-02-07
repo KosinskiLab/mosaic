@@ -271,7 +271,6 @@ def fair_mesh(
     if n_ring > 0:
         vids = np.asarray(list(get_ring_vertices(vs, fs, vids, n=n_ring)))
 
-    print(vids.size)
     L, M = _robust_laplacian(vs, fs)
     Q2 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)
     Q4 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 3)
