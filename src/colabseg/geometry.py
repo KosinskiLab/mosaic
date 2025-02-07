@@ -174,31 +174,22 @@ class Geometry:
 
     def add_points(self, points):
         points = np.asarray(points, dtype=np.float32)
-        for i in range(points.shape[0]):
-            point_id = self._points.InsertNextPoint(points[i])
-            self._cells.InsertNextCell(1)
-            self._cells.InsertCellPoint(point_id)
+        if points.shape[1] != 3:
+            warnings.warn("Only 3D point clouds are supported.")
+            return -1
+
+        if self.points.shape[0] != 0:
+            points = np.concatenate((self.points, points))
+
+        vertex_cells = vtk.vtkCellArray()
+        idx = np.arange(points.shape[0], dtype=int)
+        cells = np.column_stack((np.ones(idx.size, dtype=int), idx)).flatten()
+        vertex_cells.SetCells(idx.size, numpy_support.numpy_to_vtkIdTypeArray(cells))
+
+        self._points.SetData(numpy_support.numpy_to_vtk(points, deep=True))
+        self._data.SetVerts(vertex_cells)
         self._data.SetPoints(self._points)
         self._data.Modified()
-
-    # def add_points(self, points):
-    #     points = np.asarray(points, dtype=np.float32)
-    #     if points.shape[1] != 3:
-    #         warnings.warn("Only 3D point clouds are supported.")
-    #         return -1
-
-    #     if self.points.shape[0] != 0:
-    #         points = np.concatenate((self.points, points))
-
-    #     print(points.shape, self.points.shape)
-    #     vertex_cells = vtk.vtkCellArray()
-    #     idx = np.arange(points.shape[0], dtype=int)
-    #     cells = np.column_stack((np.ones(idx.size, dtype=int), idx)).flatten()
-    #     vertex_cells.SetCells(idx.size, numpy_support.numpy_to_vtkIdTypeArray(cells))
-
-    #     self._points.SetData(numpy_support.numpy_to_vtk(points, deep=True))
-    #     self._data.SetVerts(vertex_cells)
-    #     self._data.Modified()
 
     def add_normals(self, normals):
         normals = np.asarray(normals, dtype=np.float32)
@@ -370,11 +361,6 @@ class Geometry:
         self.add_points(new_points)
         if normals is not None:
             self.add_normals(normals)
-
-        # TODO: Make compliant with add_points, add_faces
-        # self._data.SetPoints(self._points)
-        # self._data.SetVerts(self._cells)
-        self._data.Modified()
 
         self.set_color()
         self.change_representation(target_representation)
