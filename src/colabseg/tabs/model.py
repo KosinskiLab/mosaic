@@ -5,6 +5,7 @@ import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 
+from ..utils import cmap_to_vtkctf
 from ..geometry import GeometryTrajectory
 from ..widgets.ribbon import create_button
 from ..parametrization import TriangularMesh
@@ -100,7 +101,14 @@ class ModelTab(QWidget):
         mesh_actions = [
             create_button("Import", "mdi.import", self, self._import_meshes),
             create_button("Volume", "mdi.cube-outline", self, self._mesh_volume),
-            create_button("Curvature", "mdi.vector-curve", self, self._color_curvature),
+            create_button(
+                "Curvature",
+                "mdi.vector-curve",
+                self,
+                self._color_curvature,
+                "Compute Curvature",
+                CURVATURE_SETTINGS,
+            ),
             create_button("Repair", "mdi.auto-fix", self, self._repair_mesh),
             create_button("Merge", "mdi.merge", self, self._merge_meshes),
         ]
@@ -362,14 +370,39 @@ class ModelTab(QWidget):
         self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
 
-    def _color_curvature(self):
+    def _color_curvature(
+        self, cmap="viridis", curvature="gaussian", radius: int = 3, **kwargs
+    ):
+        selected_meshes, curvatures = [], []
         for index in self.cdata.models._get_selected_indices():
-            if not isinstance(
-                self.cdata._models.data[index]._meta["fit"], TriangularMesh
-            ):
+            fit = self.cdata._models.data[index]._meta.get("fit")
+            if not isinstance(fit, TriangularMesh):
                 continue
-            self.cdata._models.data[index].compute_curvature()
-        return self.cdata.models.render()
+
+            selected_meshes.append(index)
+            curvatures.append(fit.compute_curvature(curvature=curvature, radius=radius))
+
+        all_curvatures = np.concatenate([c.flatten() for c in curvatures])
+        valid_curvatures = all_curvatures[~np.isnan(all_curvatures)]
+
+        n_bins = max(valid_curvatures.size // 10, 100)
+        bins = np.percentile(valid_curvatures, np.linspace(0, 100, n_bins + 1))
+        curvatures = [np.digitize(curv, bins) - 1 for curv in curvatures]
+
+        if len(selected_meshes) == 0:
+            print("No mesh was selected for curvature computation.")
+            return None
+
+        self.cdata.models.set_selection([])
+        lut, lut_range = cmap_to_vtkctf(
+            cmap=cmap,
+            max_value=np.nanmax([np.nanmax(x) for x in curvatures]),
+            min_value=np.nanmin([np.nanmin(x) for x in curvatures]),
+        )
+        for index, k in zip(selected_meshes, curvatures):
+            self.cdata._models.data[index].set_scalars(k, lut, lut_range)
+
+        return self.cdata.models.render_vtk()
 
     def _import_trajectory(self, scale: float = 1.0, offset: float = 0.0, **kwargs):
         directory = QFileDialog.getExistingDirectory(
@@ -681,6 +714,36 @@ IMPORT_SETTINGS = {
             "type": "text",
             "default": 0.0,
             "description": "Add offset as (points - offset) / scale ",
+        },
+    ],
+}
+
+CURVATURE_SETTINGS = {
+    "title": "Curvature Settings",
+    "settings": [
+        {
+            "label": "Curvature",
+            "parameter": "curvature_type",
+            "type": "select",
+            "options": ["gaussian", "mean"],
+            "default": "gaussian",
+            "description": "Curvature type to compute on the mesh.",
+        },
+        {
+            "label": "Radius",
+            "parameter": "radius",
+            "type": "number",
+            "default": 3,
+            "min": 1,
+            "description": "Number of neighbor vertices considered during computation.",
+        },
+        {
+            "label": "Colormap",
+            "parameter": "cmap",
+            "type": "select",
+            "options": ["viridis", "plasma", "inferno", "turbo", "jet", "cool"],
+            "default": "viridis",
+            "description": "Colormap to apply to curvature estimates.",
         },
     ],
 }

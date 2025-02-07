@@ -8,11 +8,13 @@
 import warnings
 from typing import List
 
+import vtk
 import numpy as np
 import open3d as o3d
 from scipy import spatial
 from skimage import measure
 from scipy.spatial import cKDTree
+from matplotlib.pyplot import get_cmap
 
 
 def points_to_volume(points, sampling_rate=1, shape=None, weight=1, out=None):
@@ -267,3 +269,25 @@ def compute_bounding_box(points: List[np.ndarray]) -> List[float]:
         stops = np.maximum(stops, stops_inner)
 
     return stops - starts, starts
+
+
+def cmap_to_vtkctf(cmap, max_value, min_value):
+    colormap = get_cmap(cmap)
+    max_value = max_value + 1e-8
+    min_value = min_value - 1e-8
+    value_range = max_value - min_value
+
+    # Extend color map beyond data range to avoid wrapping
+    offset = value_range / 255.0
+    min_value -= offset
+    max_value += offset
+
+    color_transfer_function = vtk.vtkColorTransferFunction()
+    for i in range(256):
+        data_value = min_value + i * offset
+        x = (data_value - min_value) / (max_value - min_value)
+        x = max(0, min(1, x))
+
+        color_transfer_function.AddRGBPoint(data_value, *colormap(x)[0:3])
+
+    return color_transfer_function, (min_value, max_value)

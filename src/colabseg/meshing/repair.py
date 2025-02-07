@@ -263,8 +263,6 @@ def fair_mesh(
     """
     bbox = vs.max(axis=0) - vs.min(axis=0)
     mesh_scale = np.linalg.norm(bbox)
-
-    # vids = list(get_ring2_vertices(vs, fs, vids))
     beta = beta * (mesh_scale**2)
 
     L, M = _robust_laplacian(vs, fs)

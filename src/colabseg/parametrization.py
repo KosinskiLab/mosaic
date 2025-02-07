@@ -13,10 +13,11 @@
 from typing import Tuple
 from abc import ABC, abstractmethod
 
+import igl
 import numpy as np
 import open3d as o3d
+from scipy import optimize, interpolate, sparse
 from scipy.spatial import ConvexHull as scConvexHull
-from scipy import optimize, interpolate
 
 from .utils import find_closest_points, com_cluster_points
 from .meshing import (
@@ -882,6 +883,26 @@ class TriangularMesh(Parametrization):
         normals = np.asarray(pcd.normals)
         normals /= np.linalg.norm(normals, axis=1)[:, None]
         return normals
+
+    def compute_curvature(
+        self, curvature: str = "gaussian", radius: int = 3
+    ) -> np.ndarray:
+        vertices = np.asarray(self.mesh.vertices)
+        faces = np.asarray(self.mesh.triangles)
+
+        use_k_ring = True
+        if radius < 2:
+            radius, use_k_ring = 2, False
+
+        pd1, pd2, pv1, pv2 = igl.principal_curvature(
+            vertices, faces, radius=radius, use_k_ring=use_k_ring
+        )
+        if curvature == "gaussian":
+            return pv1 * pv2
+        elif curvature == "mean":
+            return (pv1 + pv2) / 2
+        else:
+            raise ValueError("Only 'gaussian' and 'mean' curvature supported.")
 
     def compute_vertex_normals(self) -> np.ndarray:
         self.mesh.compute_vertex_normals()

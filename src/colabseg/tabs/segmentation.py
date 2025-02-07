@@ -2,11 +2,10 @@ from typing import List, Tuple, Literal
 
 import vtk
 import numpy as np
-from matplotlib.pyplot import get_cmap
 from PyQt6.QtCore import Qt, QEvent
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QDialog
 
-from ..utils import find_closest_points
+from ..utils import find_closest_points, cmap_to_vtkctf
 from ..dialogs import (
     DistanceAnalysisDialog,
     DistanceStatsDialog,
@@ -210,7 +209,7 @@ class SegmentationTab(QWidget):
             if parameters.get("reverse", False):
                 colormap = f"{colormap}_r"
 
-            colormap = get_cmap(colormap)
+            # colormap = get_cmap(colormap)
             target = parameters.get("target", None)
             distances, color_by = [], parameters.get("color_by", "Identity")
 
@@ -242,31 +241,13 @@ class SegmentationTab(QWidget):
                         continue
                     distances[index] = (distances[index] - x_min) / (x_max - x_min)
 
-            max_value = np.max([x.max() for x in distances]) + 1e-8
-            min_value = np.min([x.min() for x in distances]) - 1e-8
-            value_range = max_value - min_value
-
-            # Extend color map beyond data range to avoid wrapping
-            offset = value_range / 255.0
-            min_value -= offset
-            max_value += offset
-
-            color_transfer_function = vtk.vtkColorTransferFunction()
-            for i in range(256):
-                if color_by == "Identity":
-                    color_transfer_function.AddRGBPoint(i, *colormap(i / 255)[0:3])
-                    continue
-
-                data_value = min_value + i * offset
-                x = (data_value - min_value) / (max_value - min_value)
-                x = max(0, min(1, x))
-
-                color_transfer_function.AddRGBPoint(data_value, *colormap(x)[0:3])
-
+            lut, lut_range = cmap_to_vtkctf(
+                cmap=colormap,
+                max_value=np.max([x.max() for x in distances]),
+                min_value=np.min([x.min() for x in distances]),
+            )
             for index, geometry in enumerate(geometries):
-                geometry.set_scalars(
-                    distances[index], color_transfer_function, (min_value, max_value)
-                )
+                geometry.set_scalars(distances[index], lut, lut_range)
 
             self.cdata.data.render_vtk()
 
