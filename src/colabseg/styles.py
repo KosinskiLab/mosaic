@@ -33,8 +33,9 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     def cleanup(self):
         self.current_selection = None
         if self.selected_actor is None:
-            return None
+            return SetNumberOfComponents
 
+        self.clear_point_selection()
         self.parent.renderer.RemoveActor(self.selected_actor)
         return self.cdata.models.render_vtk()
 
@@ -336,15 +337,12 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
             self.renderer.RemoveActor(actor)
         if self.current_connection:
             self.renderer.RemoveActor(self.current_connection)
-        self.reset()
-        self.parent.vtk_widget.GetRenderWindow().Render()
 
-    def reset(self):
-        """Reset the builder state"""
-        self.points = []
-        self.actors = []
+        self.points.clear()
+        self.actors.clear()
         self.selected_actor = None
         self.current_connection = None
+        self.parent.vtk_widget.GetRenderWindow().Render()
 
     def _create_point_actor(self, position):
         """Create a VTK actor for a control point"""
@@ -451,7 +449,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
 
     def _add_points_to_cluster(self):
         """Create the final spline parametrization"""
-        self.cdata._data.add(points=self.points, sampling_rate=1.0)
+        self.cdata._data.add(points=self.points)
         self.cdata.data.data_changed.emit()
         return self.cdata.data.render()
 

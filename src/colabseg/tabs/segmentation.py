@@ -263,17 +263,10 @@ class SegmentationTab(QWidget):
 
                 color_transfer_function.AddRGBPoint(data_value, *colormap(x)[0:3])
 
-            from vtkmodules.util import numpy_support
-
             for index, geometry in enumerate(geometries):
-                vtk_scalars = numpy_support.numpy_to_vtk(distances[index])
-                geometry.actor.GetMapper().GetInput().GetPointData().SetScalars(
-                    vtk_scalars
+                geometry.set_scalars(
+                    distances[index], color_transfer_function, (min_value, max_value)
                 )
-                geometry.actor.GetMapper().SetLookupTable(color_transfer_function)
-                geometry.actor.GetMapper().SetScalarRange(min_value, max_value)
-                geometry.actor.GetMapper().ScalarVisibilityOn()
-                geometry.actor.Modified()
 
             self.cdata.data.render_vtk()
 

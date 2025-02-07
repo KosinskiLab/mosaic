@@ -294,6 +294,21 @@ class Geometry:
     def get_number_of_points(self):
         return self._points.GetNumberOfPoints()
 
+    def set_scalars(self, scalars, color_lut, scalar_range=None, use_point=False):
+        if isinstance(scalars, np.ndarray):
+            scalars = numpy_support.numpy_to_vtk(scalars)
+
+        mapper = self._actor.GetMapper()
+        mapper.GetInput().GetPointData().SetScalars(scalars)
+        mapper.SetLookupTable(color_lut)
+        if scalar_range is not None:
+            mapper.SetScalarRange(*scalar_range)
+        mapper.ScalarVisibilityOn()
+        if use_point:
+            mapper.SetScalarModeToUsePointData()
+
+        return self._actor.Modified()
+
     def color_points(self, point_ids: set, color: Tuple[float]):
         """
         Color specific points in the geometry.
@@ -556,8 +571,6 @@ class Geometry:
             return -1
 
         print(f"Curvature range: {scalars.GetRange()}")
-        mapper = self._actor.GetMapper()
-        mapper.SetInputData(output)
 
         if color_map is None:
             curv_range = scalars.GetRange()
@@ -571,16 +584,12 @@ class Geometry:
         lut.SetNumberOfColors(256)
         lut.Build()
 
-        mapper.SetLookupTable(lut)
-        mapper.SetScalarRange(curv_range)
-        mapper.SetScalarModeToUsePointData()
-        mapper.ScalarVisibilityOn()
-
-        self._actor.GetProperty().SetColor(1.0, 1.0, 1.0)
-        self._data.DeepCopy(output)
-        self._data.Modified()
-
-        return 0
+        self.set_scalars(
+            scalars=scalars, color_lut=lut, scalar_range=curv_range, use_point=True
+        )
+        mapper = self._actor.GetMapper()
+        mapper.SetInputData(output)
+        return self._data.Modified()
 
     def reset_curvature_coloring(self):
         """
