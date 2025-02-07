@@ -19,6 +19,7 @@ from ..meshing import (
     marching_cubes,
     mesh_to_cg,
     merge_meshes,
+    remesh,
 )
 from ..dialogs import (
     MeshEquilibrationDialog,
@@ -111,7 +112,22 @@ class ModelTab(QWidget):
                 "Compute Curvature",
                 CURVATURE_SETTINGS,
             ),
-            create_button("Repair", "mdi.auto-fix", self, self._repair_mesh),
+            create_button(
+                "Repair",
+                "mdi.auto-fix",
+                self,
+                self._repair_mesh,
+                "Repair Mesh",
+                REPAIR_SETTINGS,
+            ),
+            create_button(
+                "Remesh",
+                "mdi.repeat",
+                self,
+                self._remesh_meshes,
+                "Remesh Mesh",
+                REMESH_SETTINGS,
+            ),
             create_button("Merge", "mdi.merge", self, self._merge_meshes),
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
@@ -283,13 +299,27 @@ class ModelTab(QWidget):
             ret.append(index)
         return ret
 
-    def _repair_mesh(self):
+    def _repair_mesh(
+        self,
+        hole_size=-1,
+        elastic_weight=0,
+        curvature_weight=0,
+        volume_weight=0,
+        boundary_ring=0,
+        **kwargs,
+    ):
         from ..meshing import triangulate_refine_fair, to_open3d
 
         for index in self._get_selected_meshes():
             mesh = self.cdata._models.data[index]._meta.get("fit", None).mesh
             vs, fs = triangulate_refine_fair(
-                vs=np.asarray(mesh.vertices), fs=np.asarray(mesh.triangles), alpha=0
+                vs=np.asarray(mesh.vertices),
+                fs=np.asarray(mesh.triangles),
+                alpha=elastic_weight,
+                beta=curvature_weight,
+                gamma=volume_weight,
+                hole_len_thr=hole_size,
+                n_ring=boundary_ring,
             )
 
             fit = TriangularMesh(to_open3d(vs, fs))
@@ -307,6 +337,28 @@ class ModelTab(QWidget):
                 sampling_rate=self.cdata._models.data[index].sampling_rate,
             )
 
+        self.cdata.models.data_changed.emit()
+        return self.cdata.models.render()
+
+    def _remesh_meshes(self, edge_length, n_iter=100, featuredeg=30):
+        selected_meshes = self._get_selected_meshes()
+        if len(selected_meshes) == 0:
+            return None
+
+        for index in selected_meshes:
+            mesh = remesh(
+                mesh=self.cdata._models.data[index]._meta.get("fit", None).mesh,
+                target_edge_length=edge_length,
+                n_iter=n_iter,
+                featuredeg=featuredeg,
+            )
+            fit = TriangularMesh(mesh)
+            self.cdata._add_fit(
+                fit=fit,
+                points=np.asarray(fit.mesh.vertices),
+                sampling_rate=self.cdata._models.data[index].sampling_rate,
+            )
+        self.cdata._models.remove(selected_meshes)
         self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
 
@@ -492,21 +544,9 @@ SPLINE_SETTINGS = {
     ],
 }
 
-MESH_SETTINGS = {
-    "title": "Mesh Settings",
+REPAIR_SETTINGS = {
+    "title": "Repair Settings",
     "settings": [
-        {
-            "label": "Method",
-            "parameter": "method",
-            "type": "select",
-            "options": [
-                "Alpha Shape",
-                "Ball Pivoting",
-                "Cluster Ball Pivoting",
-                "Poisson",
-            ],
-            "default": "Alpha Shape",
-        },
         {
             "label": "Elastic Weight",
             "parameter": "elastic_weight",
@@ -537,6 +577,65 @@ MESH_SETTINGS = {
             "description": "Also optimize n-ring vertices for ill-defined boundaries.",
         },
         {
+            "label": "Hole Size",
+            "parameter": "hole_size",
+            "type": "float",
+            "min": -1.0,
+            "default": -1.0,
+            "description": "Maximum surface area of holes considered for triangulation.",
+        },
+    ],
+}
+
+
+REMESH_SETTINGS = {
+    "title": "Remesh Settings",
+    "settings": [
+        {
+            "label": "Edge Length",
+            "parameter": "edge_length",
+            "type": "float",
+            "default": 40.0,
+            "min": 1e-6,
+            "description": "Average edge length to remesh to.",
+        },
+        {
+            "label": "Iterations",
+            "parameter": "n_iter",
+            "type": "number",
+            "default": 100,
+            "min": 1,
+            "description": "Number of remeshing operations to repeat on the mesh.",
+        },
+        {
+            "label": "Mesh Angle",
+            "parameter": "featuredeg",
+            "type": "float",
+            "default": 30.0,
+            "min": 0.0,
+            "description": "Minimum angle between faces to preserve the edge feature.",
+        },
+    ],
+}
+
+
+MESH_SETTINGS = {
+    "title": "Mesh Settings",
+    "settings": [
+        {
+            "label": "Method",
+            "parameter": "method",
+            "type": "select",
+            "options": [
+                "Alpha Shape",
+                "Ball Pivoting",
+                "Cluster Ball Pivoting",
+                "Poisson",
+            ],
+            "default": "Alpha Shape",
+        },
+        *REPAIR_SETTINGS["settings"][:4],
+        {
             "label": "Neighbors",
             "parameter": "k_neighbors",
             "type": "number",
@@ -566,14 +665,7 @@ MESH_SETTINGS = {
                 "description": "Voxel size ball radii used for surface reconstruction.",
                 "notes": "Use commas to specify multiple radii, e.g. '5,3.5,1.0'.",
             },
-            {
-                "label": "Hole Size",
-                "parameter": "hole_size",
-                "type": "float",
-                "min": -1.0,
-                "default": -1.0,
-                "description": "Maximum surface area of holes considered for triangulation.",
-            },
+            REPAIR_SETTINGS["settings"][-1],
             {
                 "label": "Downsample",
                 "parameter": "downsample_input",

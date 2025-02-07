@@ -18,6 +18,7 @@ from importlib_resources import files
 
 import vtk
 import numpy as np
+from PyQt6.QtCore import Qt, QPoint, QEvent, QSettings
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -31,7 +32,6 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QDockWidget,
 )
-from PyQt6.QtCore import Qt, QPoint, QEvent, QSettings
 from PyQt6.QtGui import (
     QAction,
     QGuiApplication,

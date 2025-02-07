@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 import igl
 import numpy as np
 import open3d as o3d
-from scipy import optimize, interpolate, sparse
+from scipy import optimize, interpolate
 from scipy.spatial import ConvexHull as scConvexHull
 
 from .utils import find_closest_points, com_cluster_points
@@ -980,7 +980,7 @@ class ClusteredBallPivotingMesh(TriangularMesh):
         radius: int = 0,
         k_neighbors=50,
         smooth_iter=1,
-        deldist=1.5,
+        deldist=-1.0,
         creasethr=90,
         **kwargs,
     ):

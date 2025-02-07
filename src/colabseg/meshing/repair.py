@@ -242,6 +242,7 @@ def fair_mesh(
     alpha=1,
     beta=0.0,
     gamma=0.0,
+    n_ring=0,
 ):
     """
     Minimizes vertex displacement and polyharmonic energy of a mesh at vids.
@@ -254,17 +255,23 @@ def fair_mesh(
         Face indices.
     vids: ndarray (k)
         Vertices to optimize
-    alpha : float
+    alpha : float, optional
         k2 polyharmonic weighting factor.
-    beta : float
+    beta : float, optional
         k3 polyharmonic weighting factor.
-    gamma : float
+    gamma : float, optional
         Internal mesh pressure.
+    n_ring : int, optional
+        n_ring vertices around vids to consider for fairing.
     """
     bbox = vs.max(axis=0) - vs.min(axis=0)
     mesh_scale = np.linalg.norm(bbox)
     beta = beta * (mesh_scale**2)
 
+    if n_ring > 0:
+        vids = np.asarray(list(get_ring_vertices(vs, fs, vids, n=n_ring)))
+
+    print(vids.size)
     L, M = _robust_laplacian(vs, fs)
     Q2 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)
     Q4 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 3)
@@ -461,6 +468,7 @@ def triangulate_refine_fair(
     alpha=0.05,
     beta=0.0,
     gamma=0,
+    n_ring: int = 0,
 ):
     """
     Fill and fair holes in triangular meshes.
@@ -483,6 +491,8 @@ def triangulate_refine_fair(
         Weight for curvature energy. Default is 0.
     gamma : float, optional
         Volume pressure. Default is 0.
+    n_ring : int, optional
+        Also refine n_ring vertices for filled in vertices. Default is 0.
 
     Returns
     -------
@@ -495,11 +505,9 @@ def triangulate_refine_fair(
     add_fids = np.arange(len(fs), len(out_fs))
 
     nv = len(vs)
-    out_vs, out_fs, FI = _triangulation_refine_leipa(
-        vs, out_fs, add_fids, density_factor
-    )
-    add_vids = np.arange(nv, len(out_vs))
+    vs, fs, FI = _triangulation_refine_leipa(vs, out_fs, add_fids, density_factor)
+    vids = np.arange(nv, len(vs))
 
     # Fair selected parts of the mesh
-    out_vs = fair_mesh(out_vs, out_fs, add_vids, alpha=alpha, beta=beta, gamma=gamma)
-    return out_vs, out_fs
+    vs = fair_mesh(vs, fs, vids, alpha=alpha, beta=beta, gamma=gamma, n_ring=n_ring)
+    return vs, fs
