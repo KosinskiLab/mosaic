@@ -583,7 +583,7 @@ class App(QMainWindow):
         reset_action.triggered.connect(self.tilt_dialog.reset_tilt)
         tilt_menu.addAction(reset_action)
 
-        scalar_bar_menu = QMenu("Legend", self)
+        legend_bar_menu = QMenu("Legend", self)
         legend_bar = QAction("Show", self)
         legend_bar.setCheckable(True)
         legend_bar.setChecked(False)
@@ -599,8 +599,8 @@ class App(QMainWindow):
 
         orientation_menu.addAction(vertical)
         orientation_menu.addAction(horizontal)
-        scalar_bar_menu.addAction(legend_bar)
-        scalar_bar_menu.addMenu(orientation_menu)
+        legend_bar_menu.addAction(legend_bar)
+        legend_bar_menu.addMenu(orientation_menu)
 
         self.volume_action = QAction("Volume Viewer", self)
         self.volume_action.setCheckable(True)
@@ -637,19 +637,17 @@ class App(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(quit_action)
 
-        scale_bar_menu = QMenu("Scale Bar", self)
-        show_scale_bar = QAction("Show", self)
+        show_scale_bar = QAction("Scale Bar", self)
         show_scale_bar.setCheckable(True)
         show_scale_bar.setChecked(False)
         show_scale_bar.triggered.connect(
             lambda checked: self.scale_bar.show() if checked else self.scale_bar.hide()
         )
-        scale_bar_menu.addAction(show_scale_bar)
 
         view_menu.addMenu(axes_menu)
         view_menu.addMenu(tilt_menu)
-        view_menu.addMenu(scalar_bar_menu)
-        view_menu.addMenu(scale_bar_menu)
+        view_menu.addMenu(legend_bar_menu)
+        view_menu.addAction(show_scale_bar)
         view_menu.addSeparator()
         view_menu.addAction(self.volume_action)
         view_menu.addAction(self.trajectory_action)

@@ -5,6 +5,9 @@ import numpy as np
 from PyQt6.QtCore import Qt, QEvent
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QDialog
 
+from ..widgets import HistogramWidget
+from ..widgets.ribbon import create_button
+from ..dialogs.paywall import PaywallDialog
 from ..utils import find_closest_points, cmap_to_vtkctf
 from ..dialogs import (
     DistanceAnalysisDialog,
@@ -12,9 +15,6 @@ from ..dialogs import (
     DistanceCropDialog,
     LocalizationDialog,
 )
-from ..dialogs.paywall import PaywallDialog
-from ..widgets import HistogramWidget
-from ..widgets.ribbon import create_button
 
 
 class SegmentationTab(QWidget):

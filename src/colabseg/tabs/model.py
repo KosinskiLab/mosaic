@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 from ..utils import cmap_to_vtkctf
 from ..formats.parser import load_density
 from ..widgets.ribbon import create_button
+from ..dialogs import MeshPropertiesDialog
 from ..parametrization import TriangularMesh
 from ..meshing import (
     to_open3d,
@@ -121,6 +122,13 @@ class ModelTab(QWidget):
                 self._remesh_meshes,
                 "Remesh Mesh",
                 REMESH_SETTINGS,
+            ),
+            create_button(
+                "Statistics",
+                "fa5s.calculator",
+                self,
+                self._show_mesh_dialog,
+                "Compute Mesh Statistics",
             ),
             create_button("Merge", "mdi.merge", self, self._merge_meshes),
         ]
@@ -284,6 +292,13 @@ class ModelTab(QWidget):
 
         self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
+
+    def _show_mesh_dialog(self):
+        fits = self.cdata.format_datalist("models")
+        fits = [(x[0], x[1]._meta.get("fit", None)) for x in fits]
+        fits = [(x[0], x[1]) for x in fits if isinstance(x[1], TriangularMesh)]
+        dialog = MeshPropertiesDialog(fits=fits, parent=self)
+        return dialog.show()
 
     def _color_curvature(
         self, cmap="viridis", curvature="gaussian", radius: int = 3, **kwargs

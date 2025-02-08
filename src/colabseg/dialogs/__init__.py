@@ -7,6 +7,7 @@ from .backmapping import MeshMappingDialog
 from .statistics import DistanceStatsDialog
 from .tilt_control import TiltControlDialog
 from .localization import LocalizationDialog
+from .mesh_analysis import MeshPropertiesDialog
 from .properties import GeometryPropertiesDialog
 from .equilibration import MeshEquilibrationDialog
 from .distance_analysis import DistanceAnalysisDialog
