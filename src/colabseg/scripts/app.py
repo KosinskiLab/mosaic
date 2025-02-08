@@ -180,8 +180,6 @@ class App(QMainWindow):
         self.interactor.AddObserver("KeyPressEvent", self.on_key_press)
 
         self.cdata = ColabsegData(self.vtk_widget)
-        self.volume_dock = None
-        self.volume_viewer = MultiVolumeViewer(self.vtk_widget)
 
         self.tab_bar = QWidget()
         self.tab_bar.setFixedHeight(40)
@@ -436,11 +434,15 @@ class App(QMainWindow):
         super().changeEvent(event)
 
     def setup_widgets(self):
+        self.legend = LegendWidget(self.renderer, self.interactor)
+
+        self.volume_dock = None
+        self.volume_viewer = MultiVolumeViewer(self.vtk_widget, legend=self.legend)
+
         self.cursor_handler = CursorModeHandler(self.vtk_widget)
         self.axes_widget = AxesWidget(self.renderer, self.interactor)
         self.bounding_box = BoundingBoxWidget(self.renderer, self.interactor)
         self.trajectory_player = TrajectoryPlayer(self.cdata)
-        self.legend = LegendWidget(self.renderer, self.interactor)
         self.scale_bar = ScaleBarWidget(self.renderer, self.interactor)
         self.export_manager = ExportManager(
             self.vtk_widget, self.volume_viewer, self.cdata

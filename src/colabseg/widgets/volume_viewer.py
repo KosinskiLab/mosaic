@@ -21,8 +21,8 @@ import qtawesome as qta
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from vtkmodules.util import numpy_support
-from matplotlib.pyplot import get_cmap
 
+from ..utils import cmap_to_vtkctf
 from ..formats.parser import load_density
 
 
@@ -40,9 +40,10 @@ _colormaps = [
 class VolumeViewer(QWidget):
     data_changed = pyqtSignal()
 
-    def __init__(self, vtk_widget, parent=None):
+    def __init__(self, vtk_widget, legend=None, parent=None):
         super().__init__(parent)
         self.vtk_widget = vtk_widget
+        self.legend = legend
 
         self.renderer = (
             self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
@@ -331,7 +332,7 @@ class VolumeViewer(QWidget):
         self.gamma_value_label.setText(f"{gamma:.2f}")
         self.contrast_value_label.setText(f"{min_contrast:.2f} - {max_contrast:.2f}")
 
-        color_transfer_function = vtk.vtkColorTransferFunction()
+        # color_transfer_function = vtk.vtkColorTransferFunction()
 
         adjusted_min = min_value + min_contrast * value_range
         adjusted_max = min_value + max_contrast * value_range
@@ -339,17 +340,13 @@ class VolumeViewer(QWidget):
         if self.current_palette == "none":
             return None
 
-        cmap = get_cmap(self.current_palette)
-        for i in range(256):
-            data_value = min_value + (i / 255.0) * value_range
+        ctf, _ = cmap_to_vtkctf(
+            self.current_palette, adjusted_max, adjusted_min, gamma=gamma
+        )
+        if self.legend is not None:
+            self.legend.set_lookup_table(ctf, "Volume")
 
-            x = (data_value - adjusted_min) / (adjusted_max - adjusted_min)
-            x = max(0, min(1, x))
-            x = x ** (1 / gamma)
-
-            color_transfer_function.AddRGBPoint(data_value, *cmap(x)[0:3])
-
-        self.slice.GetProperty().SetLookupTable(color_transfer_function)
+        self.slice.GetProperty().SetLookupTable(ctf)
         self.slice.GetProperty().SetUseLookupTableScalarRange(True)
 
         self.slice.GetProperty().SetColorWindow(value_range)
@@ -396,10 +393,11 @@ class VolumeViewer(QWidget):
 class MultiVolumeViewer(QWidget):
     """Container widget for managing multiple VolumeViewer instances"""
 
-    def __init__(self, vtk_widget, parent=None):
+    def __init__(self, vtk_widget, legend=None, parent=None):
         super().__init__(parent)
 
         self.vtk_widget = vtk_widget
+        self.legend = legend
 
         self.setStyleSheet(
             """
@@ -413,7 +411,7 @@ class MultiVolumeViewer(QWidget):
         self.layout.setSpacing(5)
         self.layout.setContentsMargins(0, 0, 0, 5)
 
-        self.primary = VolumeViewer(self.vtk_widget)
+        self.primary = VolumeViewer(self.vtk_widget, self.legend)
         current_margins = self.primary.layout().contentsMargins()
         self.primary.layout().setContentsMargins(
             current_margins.left(), 0, current_margins.right(), 0
@@ -432,7 +430,7 @@ class MultiVolumeViewer(QWidget):
 
     def add_viewer(self):
         """Add a new VolumeViewer instance"""
-        new_viewer = VolumeViewer(self.vtk_widget)
+        new_viewer = VolumeViewer(self.vtk_widget, self.legend)
         new_viewer.layout().setContentsMargins(self.primary_margins)
 
         remove_button = QPushButton()

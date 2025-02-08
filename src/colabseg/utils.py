@@ -271,7 +271,7 @@ def compute_bounding_box(points: List[np.ndarray]) -> List[float]:
     return stops - starts, starts
 
 
-def cmap_to_vtkctf(cmap, max_value, min_value):
+def cmap_to_vtkctf(cmap, max_value, min_value, gamma: float = 1.0):
     colormap = get_cmap(cmap)
     value_range = max_value - min_value
 
@@ -284,6 +284,7 @@ def cmap_to_vtkctf(cmap, max_value, min_value):
         data_value = min_value + i * offset
         x = (data_value - min_value) / (max_value - min_value)
         x = max(0, min(1, x))
+        x = x ** (1 / gamma)
 
         color_transfer_function.AddRGBPoint(data_value, *colormap(x)[0:3])
 
