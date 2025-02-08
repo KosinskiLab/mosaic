@@ -18,6 +18,8 @@ class ScaleBarWidget:
 
         self.scale_actor = vtk.vtkLegendScaleActor()
         self.scale_actor.AllAxesOff()
+
+        # self.scale_actor.BottomAxisVisibilityOn()
         self.scale_actor.LegendVisibilityOn()
 
         color = (0.41, 0.42, 0.435)
