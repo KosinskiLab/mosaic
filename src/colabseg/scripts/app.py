@@ -64,6 +64,8 @@ from colabseg.widgets import (
     AxesWidget,
     RibbonToolBar,
     TrajectoryPlayer,
+    LegendWidget,
+    ScaleBarWidget,
 )
 
 
@@ -263,6 +265,7 @@ class App(QMainWindow):
         self.axes_widget = AxesWidget(self.renderer, self.interactor)
         self.cursor_handler = CursorModeHandler(self.vtk_widget)
 
+        self.legend = LegendWidget(self.renderer, self.interactor)
         self.export_manager = ExportManager(
             self.vtk_widget, self.volume_viewer, self.cdata
         )
@@ -541,7 +544,7 @@ class App(QMainWindow):
         axes_menu.addAction(arrow_action)
 
         # Handle differnt camera angles
-        tilt_menu = QMenu("Camera Tilt", self)
+        tilt_menu = QMenu("Camera", self)
         self.tilt_dialog = TiltControlDialog(self)
         show_tilt_control = QAction(
             qta.icon("fa5s.sliders-h", opacity=0.7, color="gray"),
@@ -572,6 +575,25 @@ class App(QMainWindow):
         reset_action.setShortcut("Ctrl+T")
         reset_action.triggered.connect(self.tilt_dialog.reset_tilt)
         tilt_menu.addAction(reset_action)
+
+        scalar_bar_menu = QMenu("Legend", self)
+        legend_bar = QAction("Show", self)
+        legend_bar.setCheckable(True)
+        legend_bar.setChecked(False)
+        legend_bar.triggered.connect(
+            lambda checked: self.legend.show() if checked else self.legend.hide()
+        )
+
+        orientation_menu = QMenu("Orientation", self)
+        vertical = QAction("Vertical", self)
+        vertical.triggered.connect(lambda: self.legend.set_orientation("vertical"))
+        horizontal = QAction("Horizontal", self)
+        horizontal.triggered.connect(lambda: self.legend.set_orientation("horizontal"))
+
+        orientation_menu.addAction(vertical)
+        orientation_menu.addAction(horizontal)
+        scalar_bar_menu.addAction(legend_bar)
+        scalar_bar_menu.addMenu(orientation_menu)
 
         self.volume_action = QAction("Volume Viewer", self)
         self.volume_action.setCheckable(True)
@@ -608,11 +630,23 @@ class App(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(quit_action)
 
+        self.scale_bar = ScaleBarWidget(self.renderer, self.interactor)
+        scale_bar_menu = QMenu("Scale Bar", self)
+        show_scale_bar = QAction("Show", self)
+        show_scale_bar.setCheckable(True)
+        show_scale_bar.setChecked(False)
+        show_scale_bar.triggered.connect(
+            lambda checked: self.scale_bar.show() if checked else self.scale_bar.hide()
+        )
+        scale_bar_menu.addAction(show_scale_bar)
+
         view_menu.addMenu(axes_menu)
         view_menu.addMenu(tilt_menu)
+        view_menu.addMenu(scalar_bar_menu)
+        view_menu.addMenu(scale_bar_menu)
+        view_menu.addSeparator()
         view_menu.addAction(self.volume_action)
         view_menu.addAction(self.trajectory_action)
-        view_menu.addSeparator()
 
         help_menu.addAction(show_keybinds_action)
 
