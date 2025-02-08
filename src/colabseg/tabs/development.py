@@ -9,7 +9,7 @@ def noop(*args, **kwargs):
 
 
 class DevelopmentTab(QWidget):
-    def __init__(self, cdata, ribbon):
+    def __init__(self, cdata, ribbon, **kwargs):
         super().__init__()
         self.cdata = cdata
         self.ribbon = ribbon

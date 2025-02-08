@@ -18,10 +18,11 @@ from ..widgets.ribbon import create_button
 
 
 class SegmentationTab(QWidget):
-    def __init__(self, cdata, ribbon):
+    def __init__(self, cdata, ribbon, legend, **kwargs):
         super().__init__()
         self.cdata = cdata
         self.ribbon = ribbon
+        self.legend = legend
 
         self.trimmer = PlaneTrimmer(self.cdata.data)
         self.transfomer = ClusterTransformer(self.cdata.data)
@@ -249,6 +250,7 @@ class SegmentationTab(QWidget):
             for index, geometry in enumerate(geometries):
                 geometry.set_scalars(distances[index], lut, lut_range)
 
+            self.legend.set_lookup_table(lut, "Distance")
             self.cdata.data.render_vtk()
 
         dialog.previewRequested.connect(_handle_selection)

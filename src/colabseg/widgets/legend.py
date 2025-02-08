@@ -17,7 +17,7 @@ class LegendWidget:
         self.scalar_bar.SetBarRatio(0.07)
 
         self.scalar_bar.SetDrawFrame(False)
-        self.scalar_bar.SetLabelFormat("%.2g")
+        self.scalar_bar.SetLabelFormat("%.3g")
         self.scalar_bar.SetDrawBackground(False)
         self.scalar_bar.UnconstrainedFontSizeOn()
         self.scalar_bar.SetMaximumNumberOfColors(256)
@@ -26,11 +26,10 @@ class LegendWidget:
         label_property = self.scalar_bar.GetLabelTextProperty()
         label_property.SetColor(*color)
         label_property.SetShadow(0)
-        label_property.SetVerticalJustificationToCentered()
 
         title_property = self.scalar_bar.GetTitleTextProperty()
         title_property.SetColor(*color)
-        title_property.SetVerticalJustificationToCentered()
+        title_property.SetShadow(0)
 
         self.widget = vtk.vtkScalarBarWidget()
         self.widget.SetInteractor(self.interactor)
@@ -55,7 +54,7 @@ class LegendWidget:
     def set_lookup_table(self, lut, title=""):
         self.title = title
         self.scalar_bar.SetLookupTable(lut)
-        self._set_title()
+        self.scalar_bar.SetTitle(title)
 
         return self.interactor.Render()
 
@@ -73,17 +72,7 @@ class LegendWidget:
             self.scalar_bar.SetTextPositionToSucceedScalarBar()
             self.scalar_bar.SetTextPad(0)
 
-        self._set_title()
         self.interactor.Render()
-
-    def _set_title(self):
-        title = self.title
-        if title is None:
-            return None
-
-        if self.orientation == "vertical":
-            title = " " * 50 + title
-        self.scalar_bar.SetTitle(title)
 
     def show(self):
         if self.visible:

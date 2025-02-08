@@ -273,13 +273,10 @@ def compute_bounding_box(points: List[np.ndarray]) -> List[float]:
 
 def cmap_to_vtkctf(cmap, max_value, min_value):
     colormap = get_cmap(cmap)
-    max_value = max_value + 1e-8
-    min_value = min_value - 1e-8
     value_range = max_value - min_value
 
     # Extend color map beyond data range to avoid wrapping
     offset = value_range / 255.0
-    min_value -= offset
     max_value += offset
 
     color_transfer_function = vtk.vtkColorTransferFunction()

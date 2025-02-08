@@ -196,13 +196,15 @@ class App(QMainWindow):
         tab_layout.setContentsMargins(16, 0, 16, 0)
         tab_layout.setSpacing(4)
 
+        self.setup_widgets()
         self.tab_buttons = {}
         self.tab_ribbon = RibbonToolBar(self)
+        data = {"cdata": self.cdata, "ribbon": self.tab_ribbon, "legend": self.legend}
         self.tabs = [
-            (SegmentationTab(self.cdata, self.tab_ribbon), "Segmentation"),
-            (ModelTab(self.cdata, self.tab_ribbon), "Parametrization"),
-            (IntelligenceTab(self.cdata, self.tab_ribbon), "Intelligence"),
-            (DevelopmentTab(self.cdata, self.tab_ribbon), "Development"),
+            (SegmentationTab(**data), "Segmentation"),
+            (ModelTab(**data), "Parametrization"),
+            (IntelligenceTab(**data), "Intelligence"),
+            (DevelopmentTab(**data), "Development"),
         ]
         for index, (tab, name) in enumerate(self.tabs):
             btn = QPushButton(name)
@@ -261,15 +263,6 @@ class App(QMainWindow):
         layout.addWidget(v_splitter)
 
         self.actor_collection = vtk.vtkActorCollection()
-        self.bounding_box = BoundingBoxWidget(self.renderer, self.interactor)
-        self.axes_widget = AxesWidget(self.renderer, self.interactor)
-        self.cursor_handler = CursorModeHandler(self.vtk_widget)
-
-        self.legend = LegendWidget(self.renderer, self.interactor)
-        self.export_manager = ExportManager(
-            self.vtk_widget, self.volume_viewer, self.cdata
-        )
-        self.trajectory_player = TrajectoryPlayer(self.cdata)
         self.setup_menu()
 
     def on_tab_clicked(self):
@@ -442,6 +435,17 @@ class App(QMainWindow):
             self._update_style()
         super().changeEvent(event)
 
+    def setup_widgets(self):
+        self.cursor_handler = CursorModeHandler(self.vtk_widget)
+        self.axes_widget = AxesWidget(self.renderer, self.interactor)
+        self.bounding_box = BoundingBoxWidget(self.renderer, self.interactor)
+        self.trajectory_player = TrajectoryPlayer(self.cdata)
+        self.legend = LegendWidget(self.renderer, self.interactor)
+        self.scale_bar = ScaleBarWidget(self.renderer, self.interactor)
+        self.export_manager = ExportManager(
+            self.vtk_widget, self.volume_viewer, self.cdata
+        )
+
     def setup_menu(self):
         self._update_style()
 
@@ -500,6 +504,7 @@ class App(QMainWindow):
             lambda x: self.export_manager.copy_screenshot_to_clipboard(window=True)
         )
         clipboard_window_action.setShortcut("Ctrl+Shift+W")
+
         # Setup axes control menu
         axes_menu = QMenu("Axes", self)
         visible_action = QAction("Visible", self)
@@ -630,7 +635,6 @@ class App(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(quit_action)
 
-        self.scale_bar = ScaleBarWidget(self.renderer, self.interactor)
         scale_bar_menu = QMenu("Scale Bar", self)
         show_scale_bar = QAction("Show", self)
         show_scale_bar.setCheckable(True)

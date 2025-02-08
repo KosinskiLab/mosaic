@@ -37,10 +37,11 @@ class FitWorker(QThread):
 
 
 class ModelTab(QWidget):
-    def __init__(self, cdata, ribbon):
+    def __init__(self, cdata, ribbon, legend, **kwargs):
         super().__init__()
         self.cdata = cdata
         self.ribbon = ribbon
+        self.legend = legend
 
         layout = QVBoxLayout(self)
         layout.setSpacing(5)
@@ -303,19 +304,16 @@ class ModelTab(QWidget):
         all_curvatures = np.concatenate([c.flatten() for c in curvatures])
         valid_curvatures = all_curvatures[~np.isnan(all_curvatures)]
 
-        n_bins = max(valid_curvatures.size // 10, 100)
+        n_bins = min(valid_curvatures.size // 10, 100)
         bins = np.percentile(valid_curvatures, np.linspace(0, 100, n_bins + 1))
         curvatures = [np.digitize(curv, bins) - 1 for curv in curvatures]
 
         self.cdata.models.set_selection([])
-        lut, lut_range = cmap_to_vtkctf(
-            cmap=cmap,
-            max_value=np.nanmax([np.nanmax(x) for x in curvatures]),
-            min_value=np.nanmin([np.nanmin(x) for x in curvatures]),
-        )
+        lut, lut_range = cmap_to_vtkctf(cmap=cmap, max_value=n_bins, min_value=0)
         for index, k in zip(selected_meshes, curvatures):
             self.cdata._models.data[index].set_scalars(k, lut, lut_range)
 
+        self.legend.set_lookup_table(lut, f"{curvature.title()} curvature")
         return self.cdata.models.render_vtk()
 
 
