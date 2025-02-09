@@ -124,11 +124,11 @@ class ModelTab(QWidget):
                 REMESH_SETTINGS,
             ),
             create_button(
-                "Statistics",
-                "fa5s.calculator",
+                "Analyze",
+                "mdi.poll",
                 self,
                 self._show_mesh_dialog,
-                "Compute Mesh Statistics",
+                "Analyze Mesh",
             ),
             create_button("Merge", "mdi.merge", self, self._merge_meshes),
         ]

@@ -39,7 +39,7 @@ class MeshPropertiesDialog(QDialog):
         self.fits = fits
 
         self.setWindowTitle("Mesh Properties Analysis")
-        self.resize(1200, 800)
+        self.resize(900, 600)
 
         self.properties_data = []
 
@@ -91,10 +91,12 @@ class MeshPropertiesDialog(QDialog):
 
         config_layout.addWidget(source_group)
 
-        metric_group = QGroupBox("Select Metric")
-        metric_layout = QVBoxLayout()
+        metric_group = QGroupBox("Metric Options")
+        metric_layout = QHBoxLayout()
+        self.metric_combo_label = QLabel("Select Metric:")
         self.metric_combo = QComboBox()
         self.metric_combo.addItems(["Curvature", "Area", "Volume"])
+        metric_layout.addWidget(self.metric_combo_label)
         metric_layout.addWidget(self.metric_combo)
         metric_group.setLayout(metric_layout)
         config_layout.addWidget(metric_group)
@@ -195,10 +197,10 @@ class MeshPropertiesDialog(QDialog):
             if metric == "curvature":
                 values = fit.compute_curvature()
             elif metric == "area":
-                values = fit.mesh.get_surface_area()
+                values = np.array([fit.mesh.get_surface_area()])
             else:
                 try:
-                    values = fit.mesh.get_volume()
+                    values = np.array([fit.mesh.get_volume()])
                 except Exception:
                     print(f"{source_name} is not watertight, cannot compute volume.")
                     values = 0
@@ -216,56 +218,113 @@ class MeshPropertiesDialog(QDialog):
         alpha = self.alpha_value.value()
         metric = self.metric_combo.currentText()
 
+        is_distribution = metric.lower() == "curvature"
+
         if plot_type == "Combined":
-            # Create single plot with all data
             plot = self.plot_widget.addPlot(row=0, col=0)
-            plot.setTitle(f"{metric} Distribution")
-            plot.setLabel("left", "Frequency")
+            plot.setTitle(f"{metric} {'Distribution' if is_distribution else 'Values'}")
+            plot.setLabel("left", "Density" if is_distribution else "Value")
             plot.setLabel("bottom", metric)
 
-            # Find global bins for consistent comparison
-            all_values = np.concatenate([values for _, values in self.properties_data])
-            bins = np.histogram_bin_edges(all_values, bins="auto")
+            if is_distribution:
+                from scipy.stats import gaussian_kde
 
-            colors = _get_distinct_colors(
-                self.palette_combo.currentText(), len(self.properties_data)
-            )
-
-            legend = plot.addLegend(offset=(-10, 10))
-            legend.setPos(plot.getViewBox().screenGeometry().width() - 20, 0)
-
-            for idx, (name, values) in enumerate(self.properties_data):
-                self._create_histogram(
-                    plot, values, colors[idx], bins=bins, name=name, alpha=alpha
+                all_values = np.concatenate(
+                    [values for _, values in self.properties_data]
                 )
+                x_min, x_max = np.min(all_values), np.max(all_values)
+                x_range = np.linspace(x_min, x_max, 200)
+
+                colors = _get_distinct_colors(
+                    self.palette_combo.currentText(), len(self.properties_data)
+                )
+
+                legend = plot.addLegend(offset=(-10, 10))
+                legend.setPos(plot.getViewBox().screenGeometry().width() - 20, 0)
+
+                for idx, (name, values) in enumerate(self.properties_data):
+                    kde = gaussian_kde(values)
+                    density = kde(x_range)
+
+                    color = colors[idx]
+                    color.setAlpha(alpha)
+                    curve = pg.PlotDataItem(
+                        x_range,
+                        density,
+                        pen=pg.mkPen(color, width=2),
+                        fillLevel=0,
+                        fillBrush=color,
+                        name=name,
+                    )
+                    plot.addItem(curve)
+
+            else:
+                names = [name for name, _ in self.properties_data]
+                values = [float(val) for _, val in self.properties_data]
+
+                x = np.arange(len(names))
+                bargraph = pg.BarGraphItem(
+                    x=x,
+                    height=values,
+                    width=0.8,
+                    brush=pg.mkColor(70, 130, 180, alpha),
+                    pen=pg.mkPen("k", width=1),
+                )
+                plot.addItem(bargraph)
+
+                ax = plot.getAxis("bottom")
+                ax.setTicks([[(i, name) for i, name in enumerate(names)]])
         else:
-            # Create separate plots for each source
             n_sources = len(self.properties_data)
             n_cols = min(2, n_sources)
 
             for idx, (name, values) in enumerate(self.properties_data):
                 subplot = self.plot_widget.addPlot(row=idx // n_cols, col=idx % n_cols)
                 subplot.setTitle(name)
-                subplot.setLabel("left", "Frequency")
-                subplot.setLabel("bottom", metric)
 
-                bins = np.histogram_bin_edges(values, bins="auto")
-                self._create_histogram(
-                    subplot,
-                    values,
-                    pg.mkColor(70, 130, 180, 200),
-                    bins=bins,
-                    alpha=alpha,
-                )
+                if is_distribution:
+                    subplot.setLabel("left", "Density")
+                    subplot.setLabel("bottom", metric)
+                    bins = np.histogram_bin_edges(values, bins="auto")
+                    self._create_histogram(
+                        subplot,
+                        values,
+                        pg.mkColor(70, 130, 180, 200),
+                        bins=bins,
+                        alpha=alpha,
+                        normalize=True,
+                    )
+                else:
+                    subplot.setLabel("left", "Value")
+                    subplot.setLabel("bottom", metric)
+                    bargraph = pg.BarGraphItem(
+                        x=[0],
+                        height=[float(values[0])],
+                        width=0.8,
+                        brush=pg.mkColor(70, 130, 180, alpha),
+                        pen=pg.mkPen("k", width=1),
+                    )
+                    subplot.addItem(bargraph)
+                    subplot.getAxis("bottom").setTicks([[(0, name)]])
 
     def _create_histogram(
-        self, subplot, values, color, bins, width=None, name=None, y0=None, alpha=255
+        self,
+        subplot,
+        values,
+        color,
+        bins,
+        width=None,
+        name=None,
+        y0=None,
+        alpha=255,
+        normalize=False,
     ):
         if width is None:
             width = (bins[1] - bins[0]) * 0.8
 
-        hist, _ = np.histogram(values, bins=bins)
+        hist, _ = np.histogram(values, bins=bins, density=normalize)
         bin_centers = (bins[:-1] + bins[1:]) / 2
+
         color.setAlpha(alpha)
         bargraph = pg.BarGraphItem(
             x=bin_centers,
