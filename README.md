@@ -1,15 +1,15 @@
-# Colabseg
+# Mosaic
 
-Colabseg is a Python-based tool for interactive processing, analysis, and parametrization of membrane segmentations.
+Mosaic is a Python-based tool for interactive processing, analysis, and parametrization of membrane segmentations.
 
 ## Installation
 
-To install colabseg within a virtual environment
+To install mosaic within a virtual environment
 
 ```
-python3 -m venv colabseg
-source colabseg/bin/colabseg
-pip install git+https://github.com/maurerv/colabseg
+python3 -m venv mosaic
+source mosaic/bin/mosaic
+pip install git+https://github.com/maurerv/mosaic
 ```
 
 ## Start Processing
@@ -17,5 +17,5 @@ pip install git+https://github.com/maurerv/colabseg
 Launch the graphical user interface from the command line using
 
 ```
-colabseg
+mosaic
 ```

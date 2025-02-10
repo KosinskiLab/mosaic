@@ -3,12 +3,12 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "colabseg"
+name = "mosaic"
 authors = [
   { name = "Valentin Maurer", email = "valentin.maurer@embl-hamburg.de" },
 ]
 version = "1.0.0"
-description = "Colabseg"
+description = "mosaic"
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.22.2,<2.0",
@@ -31,10 +31,10 @@ classifiers = [
 ]
 
 [project.gui-scripts]
-colabseg = "colabseg.scripts.app:main"
+mosaic = "mosaic.scripts.app:main"
 
 [project.urls]
-"Homepage" = "https://github.com/KosinskiLab/colabseg"
+"Homepage" = "https://github.com/KosinskiLab/mosaic"
 
 [tool.setuptools]
 include-package-data = true
@@ -42,10 +42,10 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["colabseg*"]
+include = ["mosaic*"]
 
 [tool.setuptools.package-data]
-"colabseg.data" = ["*.png"]
+"mosaic.data" = ["*.png"]
 
 [tool.pytest.ini_options]
 addopts = [
