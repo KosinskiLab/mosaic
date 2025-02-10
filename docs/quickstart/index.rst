@@ -20,12 +20,6 @@ Quickstart
 
 
 .. toctree::
-   :caption: Postprocessing
-
-   integrations
-
-
-.. toctree::
    :caption: Miscellaneous
 
    contribution

@@ -5,32 +5,26 @@ API
 .. toctree::
    :caption: Data Structures
 
-   data_structures/density
-   data_structures/structure
-   data_structures/matching_data
+   data_structures/data
+   data_structures/container
+   data_structures/geometry
 
 .. toctree::
    :caption: Preprocessing
 
-   preprocessing/preprocessor
-   preprocessing/composable_filters
+   data_structures/data
 
 .. toctree::
    :caption: Template Matching
 
-   template_matching/matching_exhaustive
-   template_matching/matching_optimization
-   template_matching/analyzer
-   template_matching/memory
-   template_matching/matching_utils
+   data_structures/data
 
 .. toctree::
    :caption: Flexible Backends
 
-   backends
+   data_structures/data
 
 .. toctree::
    :caption: Miscellaneous
 
-   orientations
-   utilities
+   data_structures/data
