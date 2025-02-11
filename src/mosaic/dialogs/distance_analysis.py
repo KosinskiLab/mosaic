@@ -104,7 +104,7 @@ class DistanceAnalysisDialog(QDialog):
         target_type_layout = QHBoxLayout()
         target_type_label = QLabel("Target Type:")
         self.target_type_combo = QComboBox()
-        self.target_type_combo.addItems(["Clusters", "Fits"])
+        self.target_type_combo.addItems(["Clusters", "Fits", "Both"])
         self.target_type_combo.currentTextChanged.connect(self._update_target_list)
         target_type_layout.addWidget(target_type_label)
         target_type_layout.addWidget(self.target_type_combo)
@@ -213,8 +213,10 @@ class DistanceAnalysisDialog(QDialog):
         self.neighbor_end.setEnabled(True)
 
         data = self.clusters
-        if self.target_type_combo.currentText() == "Fits":
+        if self.target_type_combo.currentText() in ["Fits", "Both"]:
             data = self.fits
+            if self.target_type_combo.currentText() == "Both":
+                data = [*self.clusters, *self.fits]
             self.include_self_checkbox.setEnabled(False)
             self.neighbor_start.setEnabled(False)
             self.neighbor_end.setEnabled(False)
@@ -248,6 +250,49 @@ class DistanceAnalysisDialog(QDialog):
 
         return viz_widget
 
+    def _get_distances(self, source, targets, k, k_start):
+        source_name = source.text()
+        query_points = source.data(Qt.ItemDataRole.UserRole).points
+
+        target_data, bins = [], []
+        if self.target_type_combo.currentText() in ["Fits", "Both"]:
+            for index, target in enumerate(targets):
+                target_data = target.data(Qt.ItemDataRole.UserRole)
+
+                model = target_data._meta.get("fit", None)
+                if model is None:
+                    dist, _ = find_closest_points(target_data.points, query_points, k=1)
+                elif not hasattr(model, "compute_distance"):
+                    print(f"{model} does not define method compute_distance.")
+                    continue
+                else:
+                    dist = model.compute_distance(query_points)
+
+                target_data.append(dist)
+                bins.append(np.array([target.text()] * dist.size))
+
+            return (source_name, np.concatenate(target_data), np.concatenate(bins))
+
+        target_data, bins = [], []
+        for target_cluster in targets:
+            xdata = target_cluster.data(Qt.ItemDataRole.UserRole).points
+            target_data.append(xdata)
+            bins.append(xdata.shape[0])
+
+        if not len(target_data):
+            return -1
+
+        target_data = np.concatenate(target_data)
+        distances, indices = find_closest_points(target_data, query_points, k=k)
+        if k > 1:
+            k_slice = (slice(None), slice(k_start, k))
+            distances, indices = distances[k_slice].ravel(), indices[k_slice].ravel()
+
+        bins = np.cumsum(bins)
+        clusters = np.digitize(indices, bins)
+        clusters = np.array([targets[i].text() for i in clusters])
+        return (source_name, distances, clusters)
+
     def _compute_distances(self):
         sources = self.source_list.selectedItems()
 
@@ -261,60 +306,18 @@ class DistanceAnalysisDialog(QDialog):
             QMessageBox.critical(self, "Error", "Sources and targets are required.")
             return -1
 
-        ret = []
         k = int(self.neighbor_end.value())
         k_start = max(int(self.neighbor_start.value()) - 1, 0)
         if k <= k_start:
             return -1
 
+        ret = []
         for source in sources:
-            source_name = source.text()
             temp = [x for x in targets if x.text() != source.text()]
             if self.include_self_checkbox.isChecked():
                 temp = [x for x in targets]
 
-            if self.target_type_combo.currentText() == "Fits":
-                source = source.data(Qt.ItemDataRole.UserRole).points
-                distances, clusters = [], []
-                for index, target in enumerate(targets):
-                    model = target.data(Qt.ItemDataRole.UserRole)._meta["fit"]
-                    if not hasattr(model, "compute_distance"):
-                        print(f"{model} does not define method compute_distance.")
-                        continue
-
-                    dist = model.compute_distance(source)
-
-                    distances.append(dist)
-                    clusters.append(np.array([target.text()] * dist.size))
-
-                ret.append(
-                    (source_name, np.concatenate(distances), np.concatenate(clusters))
-                )
-                continue
-
-            source = source.data(Qt.ItemDataRole.UserRole).points
-            target_data, bins = [], []
-            for target_cluster in temp:
-                xdata = target_cluster.data(Qt.ItemDataRole.UserRole).points
-                target_data.append(xdata)
-                bins.append(xdata.shape[0])
-
-            if not len(target_data):
-                return -1
-
-            target_data = np.concatenate(target_data)
-            distances, indices = find_closest_points(target_data, source, k=k)
-            if k > 1:
-                k_slice = (slice(None), slice(k_start, k))
-                distances, indices = (
-                    distances[k_slice].ravel(),
-                    indices[k_slice].ravel(),
-                )
-
-            bins = np.cumsum(bins)
-            clusters = np.digitize(indices, bins)
-            clusters = np.array([temp[i].text() for i in clusters])
-            ret.append((source_name, distances, clusters))
+            ret.append(self._get_distances(source, temp, k, k_start))
 
         self.distances = ret
         self._update_plot()
