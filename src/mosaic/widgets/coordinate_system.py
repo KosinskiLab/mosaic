@@ -39,7 +39,10 @@ class BoundingBoxWidget:
         self.box_actor = vtk.vtkActor()
         self.box_actor.SetMapper(box_mapper)
         self.box_actor.GetProperty().SetColor(0.5, 0.5, 0.5)
-        self.box_actor.GetProperty().SetOpacity(0.3)
+
+        # Perhaps expose this settings and this actor in general
+        # self.box_actor.GetProperty().SetOpacity(0.3)
+        self.box_actor.GetProperty().SetOpacity(1)
         self.box_actor.GetProperty().SetRepresentationToWireframe()
         self.box_actor.PickableOff()
         self.renderer.AddActor(self.box_actor)

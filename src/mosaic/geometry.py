@@ -84,6 +84,7 @@ class Geometry:
             "meta": self._meta,
             "visible": self.visible,
             "appearance": self._appearance,
+            "representation": self._representation,
         }
 
     def __setstate__(self, state):
@@ -91,8 +92,12 @@ class Geometry:
         appearance = state.pop("appearance", {})
         self.__init__(**state)
         self.set_visibility(visible)
+
+        representation = state.get("representation", False)
+        if representation:
+            self.change_representation(representation)
+
         self.set_appearance(**appearance)
-        self._appearance.update(appearance)
 
     def __getitem__(self, idx):
         """
@@ -348,7 +353,7 @@ class Geometry:
         subset = self[indices]
         return self.swap_data(subset.points, normals=subset.normals)
 
-    def swap_data(self, new_points, normals=None):
+    def swap_data(self, new_points, normals=None, faces=None):
         target_representation = self._representation
         if self._representation != "pointcloud":
             self.change_representation("pointcloud")
@@ -360,6 +365,9 @@ class Geometry:
         self.add_points(new_points)
         if normals is not None:
             self.add_normals(normals)
+
+        if faces is not None:
+            self.add_faces(faces)
 
         self.set_color()
         self.change_representation(target_representation)
@@ -567,15 +575,9 @@ class GeometryTrajectory(Geometry):
         self._trajectory = trajectory
 
     def __getstate__(self):
-        return {
-            "points": self.points,
-            "normals": self.normals,
-            "sampling_rate": self.sampling_rate,
-            "meta": self._meta,
-            "visible": self.visible,
-            "appearance": self._appearance,
-            "trajectory": self._trajectory,
-        }
+        state = super().__getstate__()
+        state.update({"trajectory": self._trajectory})
+        return state
 
     @property
     def frames(self):
@@ -587,11 +589,13 @@ class GeometryTrajectory(Geometry):
         if frame_idx < 0 or frame_idx > self.frames:
             return None
 
+        # TODO: Properly propagate appearance when changing representation
+        appearance = self._appearance.copy()
         meta = self._trajectory[frame_idx]
-
-        self.swap_data(meta["points"])
+        self.swap_data(meta["points"], normals=meta["normals"], faces=meta["faces"])
         self._meta.update(meta)
 
         if target_representation != "pointcloud":
             self.change_representation(target_representation)
+        self.set_appearance(**appearance)
         return None
