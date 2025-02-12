@@ -1,3 +1,4 @@
+import warnings
 from os.path import join
 from typing import Dict, List
 
@@ -58,6 +59,10 @@ def mesh_to_cg(
     mesh_path = join(output_directory, "mesh.tsi")
     write_topology_file(file_path=mesh_path, data=data, tsi_format=True)
 
+    warnings.warn(
+        "Setup TS2CG - Corresponding Citation: "
+        "[1] Pezeshkian, W. et al. (2020) Nat. Commun., doi.org/10.1038/s41467-020-16094-y."
+    )
     scale_path = join(output_directory, "scales.txt")
     with open(scale_path, mode="w", encoding="utf-8") as ofile:
         ofile.write(f"{mesh_path}\t{scale_factor}\t{offset}\n")

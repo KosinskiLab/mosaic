@@ -88,9 +88,8 @@ def run_membrainseg(
 ):
     warnings.warn(
         "Running MemBrain - Corresponding Citation: "
-        "[1] Lamm, L. et al. 2024. bioRxiv, https://doi.org/10.1101/2024.01.05.574336"
+        "[1] Lamm, L. et al. (2024) bioRxiv, doi.org/10.1101/2024.01.05.574336."
     )
-
     if out_folder is None:
         out_folder = str(Path.home().joinpath("mosaic/segmentations/membrain"))
 

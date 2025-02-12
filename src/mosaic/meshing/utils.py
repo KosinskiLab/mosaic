@@ -6,6 +6,7 @@
 """
 
 import h5py
+import warnings
 import textwrap
 import multiprocessing as mp
 from typing import List
@@ -176,6 +177,10 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
     )
     config = config.strip()
 
+    warnings.warn(
+        "Running Trimem - Corresponding Citation: "
+        "[1] Siggel, M. et al. (2022) J. Chem. Phys, doi.org/10.1063/5.0101118."
+    )
     with NamedTemporaryFile(mode="w", suffix=".conf", delete=False) as tfile:
         tfile.write(config)
         tfile.flush()
@@ -196,10 +201,7 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
             print("Skipping calibration. Check trimem installation validity.")
             return mesh
 
-    ret = o3d.geometry.TriangleMesh()
-    ret.vertices = o3d.utility.Vector3dVector(vertices)
-    ret.triangles = o3d.utility.Vector3iVector(faces)
-
+    ret = to_open3d(vertices, faces)
     edge_lengths = compute_edge_lengths(ret)
     print(f"Total edges {edge_lengths.size}")
     print(f"Mean edge length {np.mean(edge_lengths)} [+/- {np.std(edge_lengths)}]")

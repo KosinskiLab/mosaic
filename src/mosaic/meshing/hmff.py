@@ -1,3 +1,4 @@
+import warnings
 import textwrap
 from os import makedirs
 from typing import Dict
@@ -131,6 +132,10 @@ def setup_hmff(ret, directory, parameters):
     dpath = join(directory, "density.mrc")
     Density(data, origin=origin, sampling_rate=sampling).to_file(dpath)
 
+    warnings.warn(
+        "Setup FreeDTS - Corresponding Citation: "
+        "[1] Pezeshkian, W. et al. (2024) Nat. Commun., doi.org/10.1038/s41467-024-44819-w."
+    )
     integrator = "MetropolisAlgorithm"
     if parameters["threads"] != 1:
         integrator = "MetropolisAlgorithmOpenMP"
