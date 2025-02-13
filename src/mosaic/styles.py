@@ -250,9 +250,310 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
     def on_key_press(self, obj, event):
         key = self.GetInteractor().GetKeySym().lower()
-        if key in ["return", "enter", "delete"]:
+        if key in ["return", "enter", "delete", "backspace"]:
             self.delete_selected_face()
         return self.OnKeyPress()
+
+
+# class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
+#     def __init__(self, parent, cdata):
+#         super().__init__()
+#         self.parent = parent
+#         self.cdata = cdata
+#         self.cell_picker = vtk.vtkCellPicker()
+#         self.point_picker = vtk.vtkPointPicker()
+
+#         self.selected_mapper = vtk.vtkDataSetMapper()
+#         self.selected_actor = vtk.vtkActor()
+#         self.current_selection = None
+#         self.selected_faces = []  # List to store multiple selected faces
+
+#         self.is_dragging = False  # Track drag state
+#         self.last_picked_actor = None  # Track last picked actor for consistent selection
+
+#         self.add_face_mode = False
+#         self.selected_points = []
+
+#         self.AddObserver("LeftButtonPressEvent", self.on_left_button_down)
+#         self.AddObserver("LeftButtonReleaseEvent", self.on_left_button_up)
+#         self.AddObserver("MouseMoveEvent", self.on_mouse_move)
+#         self.AddObserver("KeyPressEvent", self.on_key_press)
+
+#     def cleanup(self):
+#         self.clear_point_selection()
+#         self.clear_face_selection()
+
+#         if self.selected_actor is not None:
+#             self.parent.renderer.RemoveActor(self.selected_actor)
+#         return self.cdata.models.render_vtk()
+
+#     def clear_face_selection(self):
+#         self.selected_faces = []
+#         self.current_selection = None
+#         self.last_picked_actor = None
+#         self.is_dragging = False
+
+#     def toggle_add_face_mode(self):
+#         self.add_face_mode = not self.add_face_mode
+#         if not self.add_face_mode:
+#             self.clear_point_selection()
+
+#     def on_left_button_down(self, obj, event):
+#         if self.add_face_mode:
+#             self.handle_point_selection()
+#         else:
+#             # Start potential drag and disable camera interaction
+#             self.is_dragging = True
+#             self.clear_face_selection()  # Clear any existing selection
+#             self.handle_face_selection()
+#             self.is_dragging = True
+
+#         # Only call parent if we're not starting a drag
+#         if not self.is_dragging:
+#             self.OnLeftButtonDown()
+
+#     def on_left_button_up(self, obj, event):
+#         self.is_dragging = False
+#         # Re-enable camera interaction
+#         self.OnLeftButtonUp()
+
+#     def on_mouse_move(self, obj, event):
+#         print(self.is_dragging, self.add_face_mode)
+#         if self.is_dragging and not self.add_face_mode:
+#             self.handle_face_selection()
+#             # Skip camera interaction during drag selection
+#             return
+#         self.OnMouseMove()
+
+#     def _get_actor_index(self, actor, container="model"):
+#         # We use this order to promote extending existing meshes
+#         data = self.cdata._models
+#         if container == "cluster":
+#             data = self.cdata._data
+
+#         try:
+#             index = data.get_actors().index(actor)
+#         except Exception:
+#             index = None
+#         finally:
+#             return index
+
+#     def _get_data_from_actor(self, actor):
+#         index = self._get_actor_index(actor, "model")
+#         if index is not None:
+#             return self.cdata._models.data[index], index
+#         index = self._get_actor_index(actor, "cluster")
+#         if index is not None:
+#             return self.cdata._data.data[index], index
+#         return None, None
+
+#     def _selection_to_geometry(self):
+#         unique_geometries = {}
+#         for geometry, point_id in self.selected_points:
+#             _, index = self._get_data_from_actor(geometry._actor)
+#             if index not in unique_geometries:
+#                 unique_geometries[index] = [geometry, []]
+#             unique_geometries[index][1].append(point_id)
+#         return unique_geometries
+
+#     def _highlight_selected_points(self):
+#         if len(self.selected_points) == 0:
+#             return None
+
+#         unique_geometries = self._selection_to_geometry()
+#         for geometry, point_ids in unique_geometries.values():
+#             geometry.color_points(
+#                 point_ids, geometry._appearance.get("highlight_color", (0.7, 0.7, 0.7))
+#             )
+#         return None
+
+#     def handle_point_selection(self):
+#         click_pos = self.GetInteractor().GetEventPosition()
+#         self.point_picker.Pick(click_pos[0], click_pos[1], 0, self.parent.renderer)
+
+#         point_id = self.point_picker.GetPointId()
+#         if point_id == -1:
+#             return None
+
+#         picked_actor = self.point_picker.GetActor()
+#         geometry, _ = self._get_data_from_actor(picked_actor)
+#         if geometry is None:
+#             return None
+
+#         if point_id > geometry.points.shape[0]:
+#             return None
+
+#         self.selected_points.append((geometry, point_id))
+#         self._highlight_selected_points()
+
+#         if len(self.selected_points) == 3:
+#             self.create_new_face()
+#             self.clear_point_selection()
+
+#     def handle_face_selection(self):
+#         click_pos = self.GetInteractor().GetEventPosition()
+
+#         self.cell_picker.Pick(click_pos[0], click_pos[1], 0, self.parent.renderer)
+#         cell_id = self.cell_picker.GetCellId()
+
+#         if cell_id == -1:
+#             return None
+
+#         picked_actor = self.cell_picker.GetActor()
+#         geometry, _ = self._get_data_from_actor(picked_actor)
+
+#         if geometry is None:
+#             return None
+
+#         selection = {"geometry": geometry, "cell_id": cell_id}
+
+#         # Single click behavior - only one face selected
+#         if not self.is_dragging:
+#             self.clear_face_selection()
+#             self.selected_faces = [selection]
+#             self.current_selection = selection
+#         # Drag behavior - multiple faces
+#         else:
+#             if self.last_picked_actor != picked_actor:
+#                 self.last_picked_actor = picked_actor
+#             if selection not in self.selected_faces:
+#                 self.selected_faces.append(selection)
+#                 self.current_selection = selection
+
+#         self.highlight_selected_faces()
+
+#     def clear_point_selection(self):
+#         return self.selected_points.clear()
+
+#     def create_new_face(self):
+#         unique_geometries = self._selection_to_geometry()
+
+#         sampling, appearance, points, meshes = 1, {}, [], []
+#         for index, (geometry, point_ids) in unique_geometries.items():
+#             geometry.color_points(
+#                 point_ids, geometry._appearance.get("base_color", (0.7, 0.7, 0.7))
+#             )
+#             points.append(geometry.points[point_ids].copy())
+#             fit = geometry._meta.get("fit", None)
+#             if hasattr(fit, "mesh"):
+#                 meshes.append((fit.mesh, index))
+#                 sampling = geometry._sampling_rate
+#                 appearance.update(geometry._appearance)
+
+#         shape = (-1, 3)
+#         vertices = np.concatenate(points).reshape(*shape)
+#         faces = np.arange(vertices.size // shape[1]).reshape(*shape)
+#         meshes.append((to_open3d(vertices, faces), None))
+
+#         vertices, faces = merge_meshes(
+#             vertices=[np.asarray(x.vertices) for (x, _) in meshes],
+#             faces=[np.asarray(x.triangles) for (x, _) in meshes],
+#         )
+
+#         fit = TriangularMesh(to_open3d(vertices, faces))
+#         index = self.cdata._add_fit(fit=fit, points=vertices, sampling_rate=sampling)
+#         if self.cdata._models._index_ok(index):
+#             geometry = self.cdata._models.data[index]
+#             geometry.change_representation("mesh")
+#             geometry.set_appearance(**appearance)
+
+#         self.cdata._models.remove([index for (_, index) in meshes])
+#         self.cdata.models.data_changed.emit()
+#         return self.cdata.models.render()
+
+#     def highlight_selected_faces(self):
+#         if not self.selected_faces:
+#             return
+
+#         # Create a selection for all selected faces
+#         ids = vtk.vtkIdTypeArray()
+#         ids.SetNumberOfComponents(1)
+
+#         # Add all selected cell IDs to the selection
+#         for selection in self.selected_faces:
+#             ids.InsertNextValue(selection["cell_id"])
+
+#         selection_node = vtk.vtkSelectionNode()
+#         selection_node.SetFieldType(vtk.vtkSelectionNode.CELL)
+#         selection_node.SetContentType(vtk.vtkSelectionNode.INDICES)
+#         selection_node.SetSelectionList(ids)
+
+#         selection = vtk.vtkSelection()
+#         selection.AddNode(selection_node)
+
+#         # Use the geometry from the last selected face
+#         geometry = self.selected_faces[-1]["geometry"]
+
+#         extract_selection = vtk.vtkExtractSelection()
+#         extract_selection.SetInputData(0, geometry._data)
+#         extract_selection.SetInputData(1, selection)
+#         extract_selection.Update()
+
+#         selected = vtk.vtkUnstructuredGrid()
+#         selected.ShallowCopy(extract_selection.GetOutput())
+
+#         self.selected_mapper.SetInputData(selected)
+#         self.selected_mapper.SetScalarVisibility(False)
+#         self.selected_mapper.SetResolveCoincidentTopology(True)
+#         self.selected_mapper.SetRelativeCoincidentTopologyLineOffsetParameters(0, -1)
+#         self.selected_mapper.SetRelativeCoincidentTopologyPolygonOffsetParameters(0, -1)
+#         self.selected_mapper.SetRelativeCoincidentTopologyPointOffsetParameter(0)
+
+#         self.selected_actor.SetMapper(self.selected_mapper)
+#         self.selected_actor.ForceOpaqueOn()
+#         self.selected_actor.SetPickable(False)
+
+#         prop = self.selected_actor.GetProperty()
+#         prop.SetOpacity(0.3)
+#         prop.SetAmbient(1.0)
+#         prop.SetDiffuse(0.0)
+#         prop.SetLineWidth(2)
+#         prop.EdgeVisibilityOn()
+#         prop.SetColor(0.388, 0.400, 0.945)
+
+#         self.parent.renderer.AddActor(self.selected_actor)
+#         self.parent.vtk_widget.GetRenderWindow().Render()
+
+#     def delete_selected_faces(self):
+#         if not self.selected_faces:
+#             return
+
+#         # Get the geometry from the first selected face (assuming all faces are from the same geometry)
+#         geometry = self.selected_faces[0]["geometry"]
+
+#         # Get all cell IDs to delete
+#         cell_ids_to_delete = set()
+#         for selection in self.selected_faces:
+#             cell_id = selection["cell_id"] - geometry._data.GetVerts().GetNumberOfCells()
+#             if cell_id >= 0:
+#                 cell_ids_to_delete.add(cell_id)
+
+#         new_cells = vtk.vtkCellArray()
+#         cells = geometry._data.GetPolys()
+
+#         cells.InitTraversal()
+#         current_id, id_list = 0, vtk.vtkIdList()
+#         while cells.GetNextCell(id_list):
+#             if current_id not in cell_ids_to_delete:
+#                 new_cells.InsertNextCell(id_list)
+#             current_id += 1
+
+#         geometry._data.SetPolys(new_cells)
+#         geometry._data.Modified()
+
+#         faces = vtk.util.numpy_support.vtk_to_numpy(new_cells.GetConnectivityArray())
+#         geometry._meta["faces"] = faces.reshape(-1, 3)
+#         geometry._meta["fit"] = TriangularMesh(
+#             to_open3d(geometry._meta["points"], geometry._meta["faces"])
+#         )
+
+#         self.cleanup()
+
+#     def on_key_press(self, obj, event):
+#         key = self.GetInteractor().GetKeySym().lower()
+#         if key in ["return", "enter", "delete", "backspace"]:
+#             self.delete_selected_faces()
+#         return self.OnKeyPress()
 
 
 class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):

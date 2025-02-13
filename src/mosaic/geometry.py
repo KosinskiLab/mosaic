@@ -66,7 +66,7 @@ class Geometry:
 
     @property
     def sampling_rate(self):
-        return self._sampling_rate
+        return np.asarray(self._sampling_rate).astype(np.float32)
 
     @sampling_rate.setter
     def sampling_rate(self, sampling_rate):
