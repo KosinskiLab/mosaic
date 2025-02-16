@@ -347,7 +347,7 @@ class App(QMainWindow):
 
         return self.cursor_handler.update_mode(new_mode)
 
-    def set_camera_view(self, view_key, aligned_direction=True, view_angle=0):
+    def set_camera_view(self, view_key, aligned_direction=True, elevation=0, azimuth=0):
         camera = self.renderer.GetActiveCamera()
         focal_point = camera.GetFocalPoint()
 
@@ -357,29 +357,36 @@ class App(QMainWindow):
 
         distance = distance if aligned_direction else -distance
         if view_key == "z":
-            # view = (0, 0, 0)
             view = (1, 0, 1)
             rotation_axis = (0, 1, 0)
+            second_rotation_axis = (1, 0, 0)
             position = (0, 0, distance)
         elif view_key == "c":
             view = (1, 0, 0)
             position = (0, distance, 0)
             rotation_axis = (0, 0, 1)
+            second_rotation_axis = (1, 0, 0)
         elif view_key == "x":
-            # view = (0, 0, 1)
             view = (0, 1, 0)
             position = (distance, 0, 0)
             rotation_axis = (0, 0, 1)
+            second_rotation_axis = (0, 1, 0)
         else:
             return -1
 
-        if view_angle != 0:
+        if elevation != 0:
             rotation_matrix = vtk.vtkTransform()
             rotation_matrix.Identity()
-            rotation_matrix.RotateWXYZ(view_angle, *rotation_axis)
-
+            rotation_matrix.RotateWXYZ(elevation, *rotation_axis)
             view = rotation_matrix.TransformVector(view)
             position = rotation_matrix.TransformPoint(position)
+
+        if azimuth != 0:
+            second_rotation = vtk.vtkTransform()
+            second_rotation.Identity()
+            second_rotation.RotateWXYZ(azimuth, *second_rotation_axis)
+            view = second_rotation.TransformVector(view)
+            position = second_rotation.TransformPoint(position)
 
         position = tuple(sum(x) for x in zip(focal_point, position))
         camera.SetPosition(*position)
@@ -387,7 +394,8 @@ class App(QMainWindow):
 
         self.renderer.ResetCamera()
         self._camera_view = view_key
-        self._camera_tilt = view_angle
+        self._camera_elevation = elevation
+        self._camera_azimuth = azimuth
         self._camera_direction = aligned_direction
         self.vtk_widget.GetRenderWindow().Render()
 

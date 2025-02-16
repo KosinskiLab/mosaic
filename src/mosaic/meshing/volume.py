@@ -23,6 +23,20 @@ from tqdm.contrib.concurrent import process_map
 from .utils import merge_meshes, to_open3d
 
 
+def simplify_mesh(mesh, aggressiveness=5.5, decimation_factor=2, lod=1):
+    simplifier = pyfqmr.Simplify()
+    simplifier.setMesh(np.asarray(mesh.vertices), np.asarray(mesh.triangles))
+    simplifier.simplify_mesh(
+        target_count=max(int(len(mesh.triangles) / (decimation_factor**lod)), 4),
+        aggressiveness=aggressiveness,
+        preserve_border=True,
+        verbose=False,
+    )
+
+    vertices, faces, normals = simplifier.getMesh()
+    return to_open3d(vertices, faces)
+
+
 class MeshCreator:
     def __init__(
         self,
@@ -204,20 +218,12 @@ class MeshSimplifier:
 
     def execute(self):
         mesh = o3d.io.read_triangle_mesh(self.mesh_path)
-
-        simplifier = pyfqmr.Simplify()
-        simplifier.setMesh(np.asarray(mesh.vertices), np.asarray(mesh.triangles))
-        simplifier.simplify_mesh(
-            target_count=max(
-                int(len(mesh.triangles) / (self.decimation_factor**self.lod)), 4
-            ),
+        mesh = simplify_mesh(
+            mesh,
+            decimation_factor=self.decimation_factor,
             aggressiveness=self.aggressiveness,
-            preserve_border=True,
-            verbose=False,
+            lod=self.lod,
         )
-
-        vertices, faces, normals = simplifier.getMesh()
-        mesh = to_open3d(vertices, faces)
         o3d.io.write_triangle_mesh(
             join(self.output_dir, basename(self.mesh_path)), mesh
         )
