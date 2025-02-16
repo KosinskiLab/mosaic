@@ -5,7 +5,7 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Callable
+from typing import Callable, Tuple
 from os.path import splitext
 
 try:
@@ -159,6 +159,7 @@ class ExportManager:
         if not dialog.exec():
             return -1
 
+        use_reveal = dialog.reveal_radio.isChecked()
         use_trajectory = dialog.trajectory_radio.isChecked()
 
         if dialog.start_frame.value() > dialog.end_frame.value():
@@ -177,6 +178,32 @@ class ExportManager:
             )
             return -1
 
+        actors = (
+            self.vtk_widget.GetRenderWindow()
+            .GetRenderers()
+            .GetFirstRenderer()
+            .GetActors()
+        )
+        actors_visible = []
+        actors.InitTraversal()
+        for _ in range(actors.GetNumberOfItems()):
+            actor = actors.GetNextActor()
+            if actor:
+                actors_visible.append(actor.GetVisibility())
+
+        original_frame = 0
+        if not use_trajectory:
+            original_frame = self.viewer.primary.slice_slider.value()
+
+        stride = dialog.frame_stride.value()
+        start, end = dialog.start_frame.value(), dialog.end_frame.value()
+        frames = tuple(range(start, end, stride))
+        if use_reveal:
+            frames = (*frames, None, *list(range(end, start, -stride)))
+            actors.InitTraversal()
+            for _ in range(actors.GetNumberOfItems()):
+                actors.GetNextActor().SetVisibility(0)
+
         def _update(frame_idx):
             if use_trajectory:
                 for geometry in _get_trajectories(self.cdata._models.data):
@@ -186,19 +213,21 @@ class ExportManager:
                 if selected_indices:
                     return self.cdata.models.set_selection(selected_indices)
                 return self.cdata.models.render_vtk()
-            return self.viewer.primary.slice_slider.setValue(frame_idx)
 
-        original_frame = 0
-        if not use_trajectory:
-            original_frame = self.viewer.primary.slice_slider.value()
+            if use_reveal and frame_idx is None:
+                actors.InitTraversal()
+                for visible in actors_visible:
+                    actors.GetNextActor().SetVisibility(visible)
+                return None
+
+            if frame_idx is not None:
+                return self.viewer.primary.slice_slider.setValue(frame_idx)
 
         self._create_animation(
             update_func=_update,
             original_frame=original_frame,
             fps=dialog.frame_rate.value(),
-            stride=dialog.frame_stride.value(),
-            start_frame=dialog.start_frame.value(),
-            end_frame=dialog.end_frame.value(),
+            frames=frames,
             format_settings=self.format_settings[dialog.format_combo.currentText()],
         )
 
@@ -206,9 +235,7 @@ class ExportManager:
         self,
         update_func: Callable,
         fps: int,
-        stride: int,
-        start_frame: int,
-        end_frame: int,
+        frames: Tuple[int],
         format_settings: dict,
         original_frame: int = None,
         quality: int = 80,
@@ -217,7 +244,7 @@ class ExportManager:
         filename, _ = QFileDialog.getSaveFileName(
             None, "Save Animation", "", f"Video (*{format_settings['ext']})"
         )
-        if filename is None or len(filename) == 0:
+        if filename is None or len(filename) == 0 or len(frames) == 0:
             return -1
 
         renderer = self.vtk_widget.GetRenderWindow()
@@ -225,7 +252,7 @@ class ExportManager:
 
         is_video = not format_settings.get("frame_series", False)
 
-        update_func(start_frame)
+        update_func(frames[0])
         renderer.Render()
         height, width = self.capture_screenshot(not is_video).shape[:2]
 
@@ -241,11 +268,11 @@ class ExportManager:
             if format_settings["fourcc"] in ["mp4v", "MJPG"]:
                 writer.set(cv2.VIDEOWRITER_PROP_QUALITY, quality)
 
-        progress = ProgressDialog(
-            range(start_frame, end_frame + 1, stride), title="Processing Frames"
-        )
+        progress = ProgressDialog(frames, title="Processing Frames")
         for frame_idx in progress:
             update_func(frame_idx)
+            if frame_idx is None:
+                continue
             renderer.Render()
             writer.write(self.capture_screenshot(not is_video))
 
@@ -274,11 +301,13 @@ class AnimationSettingsDialog(QDialog):
         type_layout = QVBoxLayout()
         self.trajectory_radio = QRadioButton("Trajectory")
         self.slice_radio = QRadioButton("Slices")
+        self.reveal_radio = QRadioButton("Reveal Flythrough")
 
         has_volume = getattr(self.viewer.primary, "volume", None) is not None
         has_trajectory = len(_get_trajectories(self.cdata._models.data))
 
         self.slice_radio.setEnabled(has_volume)
+        self.reveal_radio.setEnabled(has_volume)
         self.trajectory_radio.setEnabled(has_trajectory)
         if has_trajectory:
             self.trajectory_radio.setChecked(True)
@@ -287,8 +316,10 @@ class AnimationSettingsDialog(QDialog):
 
         self.trajectory_radio.toggled.connect(self.update_frame_ranges)
         self.slice_radio.toggled.connect(self.update_frame_ranges)
+        self.reveal_radio.toggled.connect(self.update_frame_ranges)
         type_layout.addWidget(self.trajectory_radio)
         type_layout.addWidget(self.slice_radio)
+        type_layout.addWidget(self.reveal_radio)
         type_group.setLayout(type_layout)
         layout.addWidget(type_group)
 
@@ -353,9 +384,10 @@ class AnimationSettingsDialog(QDialog):
             max_frame = max(
                 *[x.frames - 1 for x in _get_trajectories(self.cdata._models.data)], 0
             )
-        elif self.slice_radio.isChecked() and self.viewer.primary.volume is not None:
-            max_frame = self.viewer.primary.slice_slider.maximum()
-            min_frame = self.viewer.primary.slice_slider.minimum()
+        elif self.slice_radio.isChecked() or self.reveal_radio.isChecked():
+            if self.viewer.primary.volume is not None:
+                max_frame = self.viewer.primary.slice_slider.maximum()
+                min_frame = self.viewer.primary.slice_slider.minimum()
 
         self.start_frame.setRange(min_frame, max_frame)
         self.end_frame.setRange(min_frame, max_frame)
