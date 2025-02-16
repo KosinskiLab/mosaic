@@ -740,7 +740,14 @@ class App(QMainWindow):
             scale = parameters.get("scale", 1)
             sampling = parameters.get("sampling_rate", 1)
 
-            container = open_file(filename)
+            try:
+                container = open_file(filename)
+            except ValueError as e:
+                print(e)
+                if filename.endswith(".pickle"):
+                    print("Use Load Session to open session files.")
+                continue
+
             for data in container:
                 data.vertices = np.multiply(np.subtract(data.vertices, offset), scale)
 

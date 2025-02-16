@@ -23,6 +23,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.point_picker = vtk.vtkPointPicker()
         self.selected_mapper = vtk.vtkDataSetMapper()
 
+        self.is_dragging = False
         self.selected_faces = []
         self.selected_points = []
         self.add_face_mode = False
@@ -35,6 +36,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.AddObserver("LeftButtonReleaseEvent", self.on_left_button_up)
 
     def cleanup(self):
+        self.is_dragging = False
         self.clear_point_selection()
         self.clear_face_selection()
 
@@ -281,8 +283,8 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         faces = vtk.util.numpy_support.vtk_to_numpy(new_cells.GetConnectivityArray())
 
         mesh = to_open3d(geometry._meta["points"], faces.reshape(-1, 3))
-        mesh = mesh.remove_unreferenced_vertices()
-        mesh = mesh.remove_degenerate_triangles()
+        # mesh = mesh.remove_unreferenced_vertices()
+        # mesh = mesh.remove_degenerate_triangles()
 
         fit = TriangularMesh(mesh)
         geometry._meta["fit"] = fit

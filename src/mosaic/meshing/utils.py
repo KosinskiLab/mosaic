@@ -73,6 +73,10 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
     On Darwin platforms this function will spawn a new process to avoid
     instabilities from colabseg's Qt6 and pymeshlab's Qt5.
     """
+    mesh = mesh.remove_duplicated_vertices()
+    mesh = mesh.remove_unreferenced_vertices()
+    mesh = mesh.remove_degenerate_triangles()
+
     vertices = np.asarray(mesh.vertices)
     triangles = np.asarray(mesh.triangles)
 

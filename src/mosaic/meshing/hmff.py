@@ -23,6 +23,11 @@ from ..meshing.utils import (
 def equilibrate_fit(geometry, directory: str, parameters: Dict):
     makedirs(directory, exist_ok=True)
     mesh_base = geometry._meta.get("fit").mesh
+
+    mesh_base = mesh_base.remove_duplicated_vertices()
+    mesh_base = mesh_base.remove_unreferenced_vertices()
+    mesh_base = mesh_base.remove_degenerate_triangles()
+
     edge_length = float(parameters.get("average_edge_length", 40))
     lower_bound = float(parameters.pop("lower_bound", (1 - 0.25) * edge_length))
     upper_bound = float(parameters.pop("upper_bound", (1 + 0.25) * edge_length))

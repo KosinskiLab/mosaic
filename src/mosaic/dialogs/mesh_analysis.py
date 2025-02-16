@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QWidget,
     QSplitter,
 )
+from ..meshing.utils import compute_edge_lengths
 
 
 def _get_distinct_colors(cmap_name, n):
@@ -95,7 +96,7 @@ class MeshPropertiesDialog(QDialog):
         metric_layout = QHBoxLayout()
         self.metric_combo_label = QLabel("Select Metric:")
         self.metric_combo = QComboBox()
-        self.metric_combo.addItems(["Curvature", "Area", "Volume"])
+        self.metric_combo.addItems(["Curvature", "Area", "Volume", "Edge Length"])
         metric_layout.addWidget(self.metric_combo_label)
         metric_layout.addWidget(self.metric_combo)
         metric_group.setLayout(metric_layout)
@@ -196,6 +197,8 @@ class MeshPropertiesDialog(QDialog):
 
             if metric == "curvature":
                 values = fit.compute_curvature()
+            elif metric == "edge length":
+                values = compute_edge_lengths(fit.mesh)
             elif metric == "area":
                 values = np.array([fit.mesh.get_surface_area()])
             else:
@@ -218,7 +221,7 @@ class MeshPropertiesDialog(QDialog):
         alpha = self.alpha_value.value()
         metric = self.metric_combo.currentText()
 
-        is_distribution = metric.lower() == "curvature"
+        is_distribution = metric.lower() in ("curvature", "edge length")
 
         if plot_type == "Combined":
             plot = self.plot_widget.addPlot(row=0, col=0)

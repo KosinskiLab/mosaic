@@ -41,6 +41,6 @@ def open_file(filename: str, *args, **kwargs) -> GeometryDataContainer:
         func = reader_func
 
     if func is None:
-        supported = ",".join([x for t in FORMAT_MAPPING.values() for x in t])
+        supported = ", ".join([f"'{x}'" for t in FORMAT_MAPPING.values() for x in t])
         raise ValueError(f"Unknown extension '{extension}', supported are {supported}.")
     return func(filename, *args, **kwargs)

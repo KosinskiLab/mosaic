@@ -29,11 +29,13 @@ class BoundingBoxWidget:
                 else offset
             )
 
+            # TODO: Fix odd even box offset
+            shape = tuple(x - 1 for x in shape)
             box_source = vtk.vtkCubeSource()
             box_source.SetXLength(shape[0])
             box_source.SetYLength(shape[1])
             box_source.SetZLength(shape[2])
-            box_source.SetCenter(*(y + x // 2 for x, y in zip(shape, offset)))
+            box_source.SetCenter(*(y + x / 2 for x, y in zip(shape, offset)))
             box_mapper.SetInputConnection(box_source.GetOutputPort())
 
         self.box_actor = vtk.vtkActor()
