@@ -354,10 +354,6 @@ class Geometry:
         return self.swap_data(subset.points, normals=subset.normals)
 
     def swap_data(self, new_points, normals=None, faces=None):
-        target_representation = self._representation
-        if self._representation != "pointcloud":
-            self.change_representation("pointcloud")
-
         self._points.Reset()
         self._cells.Reset()
         self._normals.Reset()
@@ -370,7 +366,7 @@ class Geometry:
             self.add_faces(faces)
 
         self.set_color()
-        self.change_representation(target_representation)
+        return self.change_representation(self._representation)
 
     def change_representation(self, representation: str = "pointcloud") -> int:
         supported = [
@@ -584,18 +580,11 @@ class GeometryTrajectory(Geometry):
         return len(self._trajectory)
 
     def display_frame(self, frame_idx: int):
-        target_representation = self._representation
-
         if frame_idx < 0 or frame_idx > self.frames:
             return None
 
-        # TODO: Properly propagate appearance when changing representation
         appearance = self._appearance.copy()
         meta = self._trajectory[frame_idx]
         self.swap_data(meta["points"], normals=meta["normals"], faces=meta["faces"])
         self._meta.update(meta)
-
-        if target_representation != "pointcloud":
-            self.change_representation(target_representation)
-        self.set_appearance(**appearance)
-        return None
+        return self.set_appearance(**appearance)

@@ -31,54 +31,57 @@ class TiltControlDialog(QDialog):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(8)
-        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(4)
+        layout.setContentsMargins(4, 4, 4, 4)
 
-        elevation_frame = QFrame()
-        elevation_frame.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Sunken)
-        elevation_layout = QVBoxLayout(elevation_frame)
-        elevation_layout.setContentsMargins(8, 8, 8, 8)
-        elevation_layout.setSpacing(4)
-        elevation_title = QLabel("Elevation")
-        elevation_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        def create_angle_frame(title, value_label, slider):
+            frame = QFrame()
+            frame.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Sunken)
+
+            frame_layout = QVBoxLayout(frame)
+            frame_layout.setContentsMargins(4, 4, 4, 4)
+            frame_layout.setSpacing(2)
+
+            # Title
+            title_label = QLabel(title)
+            title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+            # Value label
+            value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            slider.setOrientation(Qt.Orientation.Horizontal)
+            slider.setMinimum(-180)
+            slider.setMaximum(180)
+            slider.setValue(0)
+            slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+            slider.setTickInterval(30)
+
+            frame_layout.addWidget(title_label)
+            frame_layout.addWidget(value_label)
+            frame_layout.addWidget(slider)
+
+            return frame
 
         self.elevation_value_label = QLabel("0°")
-        self.elevation_value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.elevation_slider = QSlider(Qt.Orientation.Horizontal)
-        self.elevation_slider.setMinimum(-180)
-        self.elevation_slider.setMaximum(180)
-        self.elevation_slider.setValue(0)
-        self.elevation_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.elevation_slider.setTickInterval(15)
+        self.elevation_slider = QSlider()
         self.elevation_slider.valueChanged.connect(self.on_elevation_slider_changed)
-
-        elevation_layout.addWidget(elevation_title)
-        elevation_layout.addWidget(self.elevation_value_label)
-        elevation_layout.addWidget(self.elevation_slider)
-
-        azimuth_frame = QFrame()
-        azimuth_frame.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Sunken)
-        azimuth_layout = QVBoxLayout(azimuth_frame)
-        azimuth_layout.setContentsMargins(8, 8, 8, 8)
-        azimuth_layout.setSpacing(4)
-        azimuth_title = QLabel("Azimuth")
-        azimuth_title.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        elevation_frame = create_angle_frame(
+            "Elevation", self.elevation_value_label, self.elevation_slider
+        )
 
         self.azimuth_value_label = QLabel("0°")
-        self.azimuth_value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.azimuth_slider = QSlider(Qt.Orientation.Horizontal)
-        self.azimuth_slider.setMinimum(-180)
-        self.azimuth_slider.setMaximum(180)
-        self.azimuth_slider.setValue(0)
-        self.azimuth_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.azimuth_slider.setTickInterval(15)
+        self.azimuth_slider = QSlider()
         self.azimuth_slider.valueChanged.connect(self.on_azimuth_slider_changed)
+        azimuth_frame = create_angle_frame(
+            "Azimuth", self.azimuth_value_label, self.azimuth_slider
+        )
 
-        azimuth_layout.addWidget(azimuth_title)
-        azimuth_layout.addWidget(self.azimuth_value_label)
-        azimuth_layout.addWidget(self.azimuth_slider)
+        self.pitch_value_label = QLabel("0°")
+        self.pitch_slider = QSlider()
+        self.pitch_slider.valueChanged.connect(self.on_pitch_slider_changed)
+        pitch_frame = create_angle_frame(
+            "Pitch", self.pitch_value_label, self.pitch_slider
+        )
 
         reset_button = QPushButton(
             qta.icon("fa5s.undo", opacity=0.7, color="gray"), "Reset"
@@ -87,9 +90,10 @@ class TiltControlDialog(QDialog):
 
         layout.addWidget(elevation_frame)
         layout.addWidget(azimuth_frame)
+        layout.addWidget(pitch_frame)
         layout.addWidget(reset_button)
 
-        self.setFixedSize(300, 240)
+        self.setFixedSize(280, 280)
 
     def on_elevation_slider_changed(self, value):
         self.elevation_value_label.setText(f"{value}°")
@@ -100,6 +104,7 @@ class TiltControlDialog(QDialog):
             self.main_window._camera_direction,
             value,
             self.azimuth_slider.value(),
+            self.pitch_slider.value(),
         )
 
     def on_azimuth_slider_changed(self, value):
@@ -111,20 +116,35 @@ class TiltControlDialog(QDialog):
             self.main_window._camera_direction,
             self.elevation_slider.value(),
             value,
+            self.pitch_slider.value(),
+        )
+
+    def on_pitch_slider_changed(self, value):
+        self.pitch_value_label.setText(f"{value}°")
+        if not hasattr(self.main_window, "_camera_view"):
+            return -1
+        self.main_window.set_camera_view(
+            self.main_window._camera_view,
+            self.main_window._camera_direction,
+            self.elevation_slider.value(),
+            self.azimuth_slider.value(),
+            value,
         )
 
     def show(self):
-        self.elevation_slider.setValue(getattr(self.main_window, "_camera_tilt", 0))
-        self.azimuth_slider.setValue(
-            getattr(self.main_window, "_camera_second_tilt", 0)
+        self.elevation_slider.setValue(
+            getattr(self.main_window, "_camera_elevation", 0)
         )
+        self.azimuth_slider.setValue(getattr(self.main_window, "_camera_azimuth", 0))
+        self.pitch_slider.setValue(getattr(self.main_window, "_camera_pitch", 0))
         super().show()
 
     def reset_tilt(self):
         self.elevation_slider.setValue(0)
         self.azimuth_slider.setValue(0)
+        self.pitch_slider.setValue(0)
 
-    def update_value(self, elevation_value, azimuth_value=None):
+    def update_value(self, elevation_value, azimuth_value=None, pitch_value=None):
         self.elevation_slider.blockSignals(True)
         self.elevation_slider.setValue(elevation_value)
         self.elevation_value_label.setText(f"{elevation_value}°")
@@ -135,3 +155,9 @@ class TiltControlDialog(QDialog):
             self.azimuth_slider.setValue(azimuth_value)
             self.azimuth_value_label.setText(f"{azimuth_value}°")
             self.azimuth_slider.blockSignals(False)
+
+        if pitch_value is not None:
+            self.pitch_slider.blockSignals(True)
+            self.pitch_slider.setValue(pitch_value)
+            self.pitch_value_label.setText(f"{pitch_value}°")
+            self.pitch_slider.blockSignals(False)

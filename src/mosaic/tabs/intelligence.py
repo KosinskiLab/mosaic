@@ -144,12 +144,20 @@ class IntelligenceTab(QWidget):
 
         ret = []
         files = [join(directory, x) for x in listdir(directory)]
-        files = [x for x in files if x.endswith(".tsi") or x.endswith(".vtu")]
+        files = [
+            x
+            for x in files
+            if x.endswith(".tsi") or x.endswith(".vtu") and x != "conf-1.vtu"
+        ]
         files = sorted(files, key=lambda x: int(re.findall(r"\d+", basename(x))[0]))
 
         progress = ProgressDialog(files, title="Importing Trajectory", parent=None)
         for index, filename in enumerate(progress):
-            container = open_file(filename)[0]
+            try:
+                container = open_file(filename)[0]
+            except Exception as e:
+                print(e)
+                continue
             faces = container.faces.astype(int)
             points = np.divide(np.subtract(container.vertices, offset), scale)
 
@@ -174,6 +182,7 @@ class IntelligenceTab(QWidget):
             meta=ret[0].copy(),
             trajectory=ret,
         )
+        trajectory.change_representation("mesh")
         self.cdata._models.add(trajectory)
         self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
