@@ -106,56 +106,78 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
         plt.close()
 
 
-def setup_hmff(ret, directory, parameters):
+def setup_hmff(
+    mesh_conf: Dict,
+    directory: str,
+    mesh: str,
+    volume_path: str,
+    use_filters: bool = False,
+    lowpass_cutoff: float = None,
+    highpass_cutoff: float = None,
+    plane_norm: str = None,
+    threads: int = 1,
+    gradient_step_size: float = 0.0,
+    xi: float = 0.0,
+    invert_contrast: bool = False,
+    kappa: float = 30.0,
+    steps: int = 10000,
+):
     makedirs(directory, exist_ok=True)
-    mesh_index = ret["file"].index(parameters["mesh"])
-    mesh_offset = -float(ret["offset"][mesh_index])
-    mesh_scale = ret["scale_factor"][mesh_index]
+    mesh_index = mesh_conf["file"].index(mesh)
+    mesh_offset = -float(mesh_conf["offset"][mesh_index])
+    mesh_scale = mesh_conf["scale_factor"][mesh_index]
 
-    data = Density.from_file(parameters["volume_path"])
-    if np.allclose(data.sampling_rate, 1):
-        print(
-            f"Sampling of {parameters['volume_path']} is 1 along all axes."
-            "If thats not intended, please adapt the respective files."
+    if use_filters:
+        data = Density.from_file(volume_path)
+        if np.allclose(data.sampling_rate, 1):
+            print(
+                f"Sampling of {volume_path} is 1 along all axes."
+                "If thats not intended, please adapt the respective files."
+            )
+
+        sampling, origin = data.sampling_rate, data.origin
+        bpf = BandPassFilter(
+            lowpass=lowpass_cutoff,
+            highpass=highpass_cutoff,
+            sampling_rate=np.max(sampling),
+            use_gaussian=True,
+            shape_is_real_fourier=True,
+            return_real_fourier=True,
         )
+        template_ft = np.fft.rfftn(data.data, s=data.shape)
 
-    sampling, origin = data.sampling_rate, data.origin
-    bpf = BandPassFilter(
-        lowpass=parameters["lowpass_cutoff"],
-        highpass=parameters["highpass_cutoff"],
-        sampling_rate=np.max(sampling),
-        use_gaussian=True,
-        shape_is_real_fourier=True,
-        return_real_fourier=True,
-    )
-    template_ft = np.fft.rfftn(data.data, s=data.shape)
+        mask = bpf(shape=template_ft.shape)["data"]
+        np.multiply(template_ft, mask, out=template_ft)
+        data = np.fft.irfftn(template_ft, s=data.shape).real
 
-    mask = bpf(shape=template_ft.shape)["data"]
-    np.multiply(template_ft, mask, out=template_ft)
-    data = np.fft.irfftn(template_ft, s=data.shape).real
+        axis_map = {"x": 2, "y": 1, "z": 0}
+        axis = axis_map.get(plane_norm, None)
+        if axis is not None:
+            axis = tuple(i for i in range(data.ndim) if i != axis)
+            data = data / data.max(axis=axis, keepdims=True)
 
-    dpath = join(directory, "density.mrc")
-    Density(data, origin=origin, sampling_rate=sampling).to_file(dpath)
+        volume_path = join(directory, "density.mrc")
+        Density(data, origin=origin, sampling_rate=sampling).to_file(volume_path)
 
     warnings.warn(
         "Setup FreeDTS - Corresponding Citation: "
         "[1] Pezeshkian, W. et al. (2024) Nat. Commun., doi.org/10.1038/s41467-024-44819-w."
     )
     integrator = "MetropolisAlgorithm"
-    if parameters["threads"] != 1:
+    if "threads" != 1:
         integrator = "MetropolisAlgorithmOpenMP"
     dts_config = textwrap.dedent(
         f"""
-        EnergyMethod             = FreeDTS1.0_MDFF {parameters['volume_path']} {parameters['xi']} 0 \
-        {mesh_scale} {mesh_offset} {int(parameters['invert_contrast'])} \
-        {parameters['gradient_step_size']}
+        EnergyMethod             = FreeDTS1.0_MDFF {volume_path} {xi} 0 \
+        {mesh_scale} {mesh_offset} {int(invert_contrast)} \
+        {gradient_step_size}
         Integrator_Type          = MC_Simulation
         VertexPositionIntegrator = {integrator} 1 1 0.05
         AlexanderMove            = {integrator} 1
         InclusionPoseIntegrator  = MetropolisAlgorithm 1 1
-        VisualizationFormat      = VTUFileFormat VTU_F 100
+        VisualizationFormat      = VTUFileFormat VTU_F 1000
         NonbinaryTrajectory      = TSI TrajTSI 1000
-        Kappa                    = {parameters['kappa']} 0 0
+        Kappa                    = {kappa} 0 0
         Temperature              = 1 0
         Set_Steps                = 1 5000
         Min_Max_Lenghts          = 1 8
@@ -173,19 +195,19 @@ def setup_hmff(ret, directory, parameters):
 
     topol_path = join(directory, "topol.top")
     with open(topol_path, mode="w", encoding="utf-8") as ofile:
-        ofile.write(f"{parameters['mesh']} 1\n")
+        ofile.write(f"{mesh} 1\n")
 
     run_config = textwrap.dedent(
         f"""
         #!/bin/bash
         rm -rf VTU_F TrajTSI
         mkdir -p  {directory}/TrajTSI
-        ln -s {parameters['mesh']} {directory}/TrajTSI/dts0.tsi
+        ln -s {mesh} {directory}/TrajTSI/dts0.tsi
 
         DTS -in {dts_config_path} \\
             -top {topol_path} \\
-            -e {parameters['steps']} \\
-            -nt {parameters['threads']} \\
+            -e {steps} \\
+            -nt {threads} \\
             -seed 76532
     """
     )

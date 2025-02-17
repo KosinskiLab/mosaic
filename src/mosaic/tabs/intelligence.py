@@ -128,7 +128,7 @@ class IntelligenceTab(QWidget):
         if not dialog.exec():
             return -1
 
-        ret = setup_hmff(ret, directory, dialog.get_parameters())
+        ret = setup_hmff(mesh_conf=ret, directory=directory, **dialog.get_parameters())
         QMessageBox.information(self, "Success", "HMFF directory setup successfully.")
         return ret
 

@@ -37,6 +37,40 @@ class FitWorker(QThread):
             self.wait()
 
 
+def get_dense_skeleton(skel, samples_per_edge=10):
+    segments = skel.get_segments()
+    dense_points = []
+    vertices = skel.vertices
+
+    for seg in segments:
+        # Get points for this segment
+        seg_points = vertices[seg]
+
+        # Calculate total segment length to distribute points evenly
+        segment_length = np.sum(
+            np.sqrt(np.sum(np.diff(seg_points, axis=0) ** 2, axis=1))
+        )
+
+        # Create parameter space based on cumulative distance
+        distances = np.cumsum(np.sqrt(np.sum(np.diff(seg_points, axis=0) ** 2, axis=1)))
+        distances = np.insert(distances, 0, 0)  # Add starting point
+
+        # Normalize distances to [0,1]
+        distances = distances / distances[-1]
+
+        # Create evenly spaced points
+        t = np.linspace(0, 1, samples_per_edge)
+
+        # Interpolate each dimension
+        x = np.interp(t, distances, seg_points[:, 0])
+        y = np.interp(t, distances, seg_points[:, 1])
+        z = np.interp(t, distances, seg_points[:, 2])
+
+        dense_points.extend(np.column_stack([x, y, z]))
+
+    return np.array(dense_points)
+
+
 class ModelTab(QWidget):
     def __init__(self, cdata, ribbon, legend, **kwargs):
         super().__init__()
@@ -131,6 +165,7 @@ class ModelTab(QWidget):
                 "Analyze Mesh",
             ),
             create_button("Merge", "mdi.merge", self, self._merge_meshes),
+            create_button("Skeleton", "mdi.merge", self, self._sceleton),
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
 
@@ -274,6 +309,28 @@ class ModelTab(QWidget):
 
         self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
+
+    def _sceleton(self):
+        selected_meshes = self._get_selected_meshes()
+
+        if len(selected_meshes) == 0:
+            return None
+
+        for index in selected_meshes:
+            import trimesh
+            import skeletor as sk
+
+            mesh = self.cdata._models.data[index]._meta.get("fit", None).mesh
+            mesh = trimesh.Trimesh(mesh.vertices, mesh.triangles)
+            mesh = sk.pre.fix_mesh(mesh)
+            skel = sk.skeletonize.by_wavefront(mesh, waves=5, step_size=1)
+            from ..utils import com_cluster_points
+
+            vertices = com_cluster_points(skel.vertices, 100)
+            self.cdata._data.add(vertices)
+
+        self.cdata.data.data_changed.emit()
+        return self.cdata.data.render()
 
     def _mesh_volume(self, **kwargs):
         filename, _ = QFileDialog.getOpenFileName(self, "Select Meshes")
