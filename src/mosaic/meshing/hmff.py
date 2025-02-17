@@ -41,6 +41,8 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
         scale_factor = compute_scale_factor_lower(mesh_base, lower_bound=etarget)
         mesh_scale = scale(mesh_base, scale_factor)
         mesh_data, offset = center_mesh(mesh_scale)
+        offset = ",".join([str(-float(x)) for x in offset])
+
         fname = f"{filename}_base.q"
         write_topology_file(file_path=fname, data=mesh_data)
         ofile.write(f"{fname}\t{scale_factor}\t{offset}\n")
@@ -51,6 +53,8 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
         scale_factor = compute_scale_factor_lower(mesh, lower_bound=etarget)
         mesh_scale = scale(mesh, scale_factor)
         mesh_data, offset = center_mesh(mesh_scale)
+        offset = ",".join([str(-float(x)) for x in offset])
+
         fname = f"{filename}_remeshed.q"
         write_topology_file(file_path=fname, data=mesh_data)
         ofile.write(f"{fname}\t{scale_factor}\t{offset}\n")
@@ -63,6 +67,8 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
         scale_factor = compute_scale_factor_lower(ret, lower_bound=etarget)
         mesh_scale = scale(ret, scale_factor)
         mesh_data, offset = center_mesh(mesh_scale)
+        offset = ",".join([str(-float(x)) for x in offset])
+
         fname = f"{filename}_equilibrated.q"
         write_topology_file(file_path=fname, data=mesh_data)
         ofile.write(f"{fname}\t{scale_factor}\t{offset}\n")
@@ -124,7 +130,7 @@ def setup_hmff(
 ):
     makedirs(directory, exist_ok=True)
     mesh_index = mesh_conf["file"].index(mesh)
-    mesh_offset = -float(mesh_conf["offset"][mesh_index])
+    mesh_offset = mesh_conf["offset"][mesh_index]
     mesh_scale = mesh_conf["scale_factor"][mesh_index]
 
     if use_filters:

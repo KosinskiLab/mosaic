@@ -257,7 +257,7 @@ def center_mesh(mesh, center: bool = True, margin=20):
 
     offset = 0
     if center:
-        offset = np.min(vertices.min(axis=0)) - margin
+        offset = vertices.min(axis=0) - margin
         offset = np.sign(offset) * np.ceil(np.abs(offset))
         vertices -= offset
         print("Mesh offset", offset)
@@ -270,7 +270,7 @@ def to_tsi(vertices, faces, margin: int = 0):
     vertices = np.asarray(vertices)
     faces = np.asarray(faces)
 
-    box_size = np.max(np.ceil(vertices.max(axis=0) + margin).astype(int))
+    box_size = tuple(int(x) for x in np.ceil(vertices.max(axis=0) + margin))
 
     _vertices = np.zeros((vertices.shape[0], 5))
     _vertices[:, 0] = np.arange(_vertices.shape[0])
@@ -282,7 +282,7 @@ def to_tsi(vertices, faces, margin: int = 0):
 
     data = {
         "version": "1.0a",
-        "box": tuple(int(box_size) for _ in range(3)),
+        "box": box_size,
         "n_vertices": _vertices.shape[0],
         "vertices": _vertices,
         "n_faces": _faces.shape[0],
