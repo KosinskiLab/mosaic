@@ -97,7 +97,15 @@ class MeshPropertiesDialog(QDialog):
         self.metric_combo_label = QLabel("Select Metric:")
         self.metric_combo = QComboBox()
         self.metric_combo.addItems(
-            ["Curvature", "Area", "Volume", "Edge Length", "Vertices", "Triangles"]
+            [
+                "Curvature",
+                "Area",
+                "Volume",
+                "Edge Length",
+                "Vertices",
+                "Triangles",
+                "Triangle Area",
+            ]
         )
         metric_layout.addWidget(self.metric_combo_label)
         metric_layout.addWidget(self.metric_combo)
@@ -207,6 +215,14 @@ class MeshPropertiesDialog(QDialog):
                 values = np.array([np.asarray(fit.mesh.vertices).shape[0]])
             elif metric == "triangles":
                 values = np.array([np.asarray(fit.mesh.triangles).shape[0]])
+            elif metric == "triangle area":
+                vertices = np.asarray(fit.mesh.vertices)
+                triangles = np.asarray(fit.mesh.triangles)
+
+                v0 = vertices[triangles[:, 0]]
+                v1 = vertices[triangles[:, 1]]
+                v2 = vertices[triangles[:, 2]]
+                values = np.linalg.norm(np.cross(v1 - v0, v2 - v0), axis=1) / 2
             else:
                 try:
                     values = np.array([fit.mesh.get_volume()])
@@ -227,7 +243,11 @@ class MeshPropertiesDialog(QDialog):
         alpha = self.alpha_value.value()
         metric = self.metric_combo.currentText()
 
-        is_distribution = metric.lower() in ("curvature", "edge length")
+        is_distribution = metric.lower() in (
+            "curvature",
+            "edge length",
+            "triangle area",
+        )
 
         if plot_type == "Combined":
             plot = self.plot_widget.addPlot(row=0, col=0)
