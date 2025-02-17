@@ -264,25 +264,42 @@ class ModelTab(QWidget):
         self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
 
-    def _remesh_meshes(self, edge_length, n_iter=100, featuredeg=30):
+    def _remesh_meshes(self, method, **kwargs):
         selected_meshes = self._get_selected_meshes()
         if len(selected_meshes) == 0:
             return None
 
+        method = method.lower()
+        supported = (
+            "edge length",
+            "vertex clustering",
+            "quadratic decimation",
+            "subdivide",
+        )
+        if method not in (supported):
+            raise ValueError(f"{method} is not supported, chose one of {supported}.")
+
         for index in selected_meshes:
-            mesh = remesh(
-                mesh=self.cdata._models.data[index]._meta.get("fit", None).mesh,
-                target_edge_length=edge_length,
-                n_iter=n_iter,
-                featuredeg=featuredeg,
-            )
+            mesh = self.cdata._models.data[index]._meta.get("fit", None).mesh
+            if method == "edge length":
+                mesh = remesh(mesh=mesh, **kwargs)
+            elif method == "vertex clustering":
+                mesh = mesh.simplify_vertex_clustering(**kwargs)
+            elif method == "subdivide":
+                func = mesh.subdivide_midpoint
+                smooth = kwargs.pop("smooth", False)
+                if smooth:
+                    func = mesh.subdivide_loop
+                mesh = func(**kwargs)
+            else:
+                mesh = mesh.simplify_quadric_decimation(**kwargs)
+
             fit = TriangularMesh(mesh)
             self.cdata._add_fit(
                 fit=fit,
                 points=np.asarray(fit.mesh.vertices),
                 sampling_rate=self.cdata._models.data[index].sampling_rate,
             )
-        self.cdata._models.remove(selected_meshes)
         self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
 
@@ -496,32 +513,85 @@ REMESH_SETTINGS = {
     "title": "Remesh Settings",
     "settings": [
         {
-            "label": "Edge Length",
-            "parameter": "edge_length",
-            "type": "float",
-            "default": 40.0,
-            "min": 1e-6,
-            "description": "Average edge length to remesh to.",
-        },
-        {
-            "label": "Iterations",
-            "parameter": "n_iter",
-            "type": "number",
-            "default": 100,
-            "min": 1,
-            "description": "Number of remeshing operations to repeat on the mesh.",
-        },
-        {
-            "label": "Mesh Angle",
-            "parameter": "featuredeg",
-            "type": "float",
-            "default": 30.0,
-            "min": 0.0,
-            "description": "Minimum angle between faces to preserve the edge feature.",
+            "label": "Method",
+            "parameter": "method",
+            "type": "select",
+            "options": [
+                "Edge Length",
+                "Vertex Clustering",
+                "Quadratic Decimation",
+                "Subdivide",
+            ],
+            "default": "Edge Length",
         },
     ],
+    "method_settings": {
+        "Edge Length": [
+            {
+                "label": "Edge Length",
+                "parameter": "target_edge_length",
+                "type": "float",
+                "default": 40.0,
+                "min": 1e-6,
+                "description": "Average edge length to remesh to.",
+            },
+            {
+                "label": "Iterations",
+                "parameter": "n_iter",
+                "type": "number",
+                "default": 100,
+                "min": 1,
+                "description": "Number of remeshing operations to repeat on the mesh.",
+            },
+            {
+                "label": "Mesh Angle",
+                "parameter": "featuredeg",
+                "type": "float",
+                "default": 30.0,
+                "min": 0.0,
+                "description": "Minimum angle between faces to preserve the edge feature.",
+            },
+        ],
+        "Vertex Clustering": [
+            {
+                "label": "Radius",
+                "parameter": "voxel_size",
+                "type": "float",
+                "default": 40.0,
+                "min": 1e-6,
+                "description": "Radius within which vertices are clustered.",
+            },
+        ],
+        "Quadratic Decimation": [
+            {
+                "label": "Triangles",
+                "parameter": "target_number_of_triangles",
+                "type": "number",
+                "default": 1000,
+                "min": 1,
+                "description": "Target number of triangles.",
+            },
+        ],
+        "Subdivide": [
+            {
+                "label": "Iterations",
+                "parameter": "number_of_iterations",
+                "type": "number",
+                "default": 1,
+                "min": 1,
+                "description": "Number of iterations.",
+                "notes": "A single iteration splits each triangle into four triangles.",
+            },
+            {
+                "label": "Smooth",
+                "parameter": "smooth",
+                "type": "boolean",
+                "default": True,
+                "description": "Perform smooth midpoint division.",
+            },
+        ],
+    },
 }
-
 
 MESH_SETTINGS = {
     "title": "Mesh Settings",

@@ -96,7 +96,9 @@ class MeshPropertiesDialog(QDialog):
         metric_layout = QHBoxLayout()
         self.metric_combo_label = QLabel("Select Metric:")
         self.metric_combo = QComboBox()
-        self.metric_combo.addItems(["Curvature", "Area", "Volume", "Edge Length"])
+        self.metric_combo.addItems(
+            ["Curvature", "Area", "Volume", "Edge Length", "Vertices", "Triangles"]
+        )
         metric_layout.addWidget(self.metric_combo_label)
         metric_layout.addWidget(self.metric_combo)
         metric_group.setLayout(metric_layout)
@@ -201,6 +203,10 @@ class MeshPropertiesDialog(QDialog):
                 values = compute_edge_lengths(fit.mesh)
             elif metric == "area":
                 values = np.array([fit.mesh.get_surface_area()])
+            elif metric == "vertices":
+                values = np.array([np.asarray(fit.mesh.vertices).shape[0]])
+            elif metric == "triangles":
+                values = np.array([np.asarray(fit.mesh.triangles).shape[0]])
             else:
                 try:
                     values = np.array([fit.mesh.get_volume()])
