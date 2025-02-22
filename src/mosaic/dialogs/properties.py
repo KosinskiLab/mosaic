@@ -308,8 +308,8 @@ class GeometryPropertiesDialog(QDialog):
             "isovalue_percentile": get_widget_value(self.isovalue_spin),
             "volume_path": self.volume_path,
             "sampling_rate": (
-                get_widget_value(self.sampling_x),
-                get_widget_value(self.sampling_y),
-                get_widget_value(self.sampling_z),
+                float(get_widget_value(self.sampling_x)),
+                float(get_widget_value(self.sampling_y)),
+                float(get_widget_value(self.sampling_z)),
             ),
         }

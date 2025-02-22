@@ -207,7 +207,7 @@ class MosaicData(QObject):
             cloud = self._data.data[index]
             if cloud._sampling_rate is None:
                 cloud._sampling_rate = 10
-            kwargs["voxel_size"] = np.max(cloud._sampling_rate)
+            kwargs["voxel_size"] = np.max(cloud.sampling_rate)
 
             n = cloud.points.shape[0]
             if n < 50 and method not in ["convexhull", "spline"]:

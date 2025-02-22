@@ -13,7 +13,7 @@ MODEL_PATHS = {
     "": "",
     # "MemBrain_seg_v9": "/path/to/model_a.ckpt",
     # "MemBrain_seg_v9b": "/path/to/model_b.ckpt",
-    # "MemBrain_seg_v10": "/path/to/model_b.ckpt",
+    "MemBrain_seg_v10": "/home/vmaurer/Documents/segmentation/MemBrain_seg_v10_alpha.ckpt",
 }
 
 MEMBRAIN_SETTINGS = {
@@ -136,4 +136,7 @@ def run_membrainseg(
         print(ret.stderr)
         out_path = None
 
+    # from time import sleep
+    # sleep(3)
+    # out_path = "/home/vmaurer/mosaic/segmentations/membrain/emd_11075_MemBrain_seg_v10_alpha.ckpt_segmented.mrc"
     return out_path
