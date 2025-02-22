@@ -453,7 +453,7 @@ class DataContainerInteractor(QObject):
 
         base_container = self.container.data[indices[0]]
         base_parameters = base_container._appearance.copy()
-        base_parameters["sampling_rate"] = base_container._sampling_rate
+        base_parameters["sampling_rate"] = base_container.sampling_rate
         if isinstance(base_container, VolumeGeometry):
             base_parameters["volume"] = base_container._raw_volume
         dialog = GeometryPropertiesDialog(initial_properties=base_parameters)

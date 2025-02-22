@@ -10,35 +10,34 @@
 
 **Date**: |today| **Version**: |release|
 
-|project| is a Python-based tool for interactive processing, analysis, and parametrization of membrane segmentations.
-
+|project| is a GUI application that aims to make 3D microscopy data to physical simulations.
 
 .. grid:: 2
 
     .. grid-item-card::
        :img-top: _static/index_getting_started.svg
 
-       User Guide
-       ^^^^^^^^^^
+       Tutorial
+       ^^^^^^^^
 
-       Here you can find tutorials on key data structures and the command line interface.
+       Tutorials for using the |project| GUI.
 
        +++
 
-       .. button-ref:: quickstart/index
+       .. button-ref:: tutorial/index
              :expand:
              :color: secondary
              :click-parent:
 
-             To the user guide
+             To the tutorial
 
     .. grid-item-card::
        :img-top: _static/index_api.svg
 
-       API reference
-       ^^^^^^^^^^^^^
+       API
+       ^^^
 
-       The reference contains a detailed description of |project|'s API.
+       Detailed documentation of |project|'s API.
 
        +++
 
@@ -47,13 +46,13 @@
              :color: secondary
              :click-parent:
 
-             To the api reference
+             To the documentation
 
 .. toctree::
    :maxdepth: 1
    :hidden:
    :titlesonly:
 
-   User Guide <quickstart/index>
+   Tutorial <tutorial/index>
    API <reference/index>
    Index <genindex>

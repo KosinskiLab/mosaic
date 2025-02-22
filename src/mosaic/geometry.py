@@ -71,8 +71,8 @@ class Geometry:
     @sampling_rate.setter
     def sampling_rate(self, sampling_rate):
         if sampling_rate is None:
-            self._sampling_rate = np.ones(3)
-        sampling_rate = np.asarray(sampling_rate)
+            self._sampling_rate = np.ones(3, dtype=np.float32)
+        sampling_rate = np.asarray(sampling_rate, dtype=np.float32)
         sampling_rate = np.repeat(sampling_rate, 3 // sampling_rate.size)
         self._sampling_rate = sampling_rate
 
@@ -160,10 +160,6 @@ class Geometry:
     @property
     def visible(self):
         return self.actor.GetVisibility()
-
-    @property
-    def sampling_rate(self):
-        return self._sampling_rate
 
     @property
     def points(self):
@@ -315,6 +311,12 @@ class Geometry:
         color : tuple of float
             RGB color values (0-1) to apply to selected points
         """
+        if self._representation in ("normals", "pointcloud_normals"):
+            mapper = self._actor.GetMapper()
+            mapper.ScalarVisibilityOff()
+            prop = self._actor.GetProperty()
+            return prop.SetColor(*color)
+
         n_points = self._points.GetNumberOfPoints()
         point_ids = [x for x in point_ids if x < n_points]
         colors = np.full(
@@ -429,7 +431,7 @@ class Geometry:
 
             # TODO: When importing files, make sure to use the actual sampling
             # rate not 1/scale; The same applies for importing meshes
-            bbox_diagonal = 1000 * np.max(self._sampling_rate)
+            bbox_diagonal = 1000 * np.max(self.sampling_rate)
 
             glyph = vtk.vtkGlyph3D()
             glyph.SetSourceConnection(arrow.GetOutputPort())

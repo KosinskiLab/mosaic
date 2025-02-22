@@ -8,9 +8,10 @@
 """
 
 import pickle
-import numpy as np
 from functools import wraps
-from typing import Callable, Any
+from typing import Callable, Any, Union
+
+import numpy as np
 from PyQt6.QtCore import pyqtSignal, QObject
 
 from .formats import open_file
@@ -46,6 +47,13 @@ class MosaicData(QObject):
     progress = pyqtSignal(float)
 
     def __init__(self, vtk_widget):
+        """Initialize MosaicData instance for managing application state.
+
+        Parameters
+        ----------
+        vtk_widget : VTKWidget
+            VTK widget instance for 3D visualization
+        """
         super().__init__()
         # Data containers and GUI interaction elements
         self.shape = None
@@ -59,11 +67,25 @@ class MosaicData(QObject):
         self.active_picker = "data"
 
     def to_file(self, filename: str):
+        """Save current application state to file.
+
+        Parameters
+        ----------
+        filename : str
+            Path to save the application state.
+        """
         state = {"shape": self.shape, "_data": self._data, "_models": self._models}
         with open(filename, "wb") as ofile:
             pickle.dump(state, ofile)
 
-    def load_session(self, filename):
+    def load_session(self, filename: str):
+        """Load application state from file.
+
+        Parameters
+        ----------
+        filename : str
+            Path to the saved session file (.pickle).
+        """
         sampling = 1
         if filename.endswith("pickle"):
             with open(filename, "rb") as ifile:
@@ -99,6 +121,7 @@ class MosaicData(QObject):
         return self.models
 
     def swap_area_picker(self):
+        """Toggle area picker between data and models containers."""
         self.active_picker = "data" if self.active_picker != "data" else "models"
         self.data.activate_viewing_mode()
         self.models.activate_viewing_mode()
@@ -106,9 +129,23 @@ class MosaicData(QObject):
         return container.attach_area_picker()
 
     def activate_viewing_mode(self):
+        """Activate viewing mode for current active container.
+
+        Returns
+        -------
+        bool
+            Success status of mode activation
+        """
         return self._get_active_container().activate_viewing_mode()
 
     def highlight_clusters_from_selected_points(self):
+        """Highlight clusters containing currently selected points.
+
+        Returns
+        -------
+        bool
+            Success status of highlighting operation
+        """
         obj = self._get_active_container()
         return obj.highlight_clusters_from_selected_points()
 
@@ -143,6 +180,20 @@ class MosaicData(QObject):
 
     @_progress_decorator
     def add_fit(self, method: str, **kwargs):
+        """Add parametric fit to selected data points.
+
+        Parameters
+        ----------
+        method : str
+            Name of the fitting method to use
+        **kwargs
+            Additional parameters for the fitting method
+
+        Returns
+        -------
+        int
+            Index of added fit, -1 if method not found
+        """
         method = method.lower()
         cluster_indices = self.data._get_selected_indices()
         if method not in PARAMETRIZATION_TYPE:
@@ -178,7 +229,26 @@ class MosaicData(QObject):
 
             self.progress.emit((index + 1) / len(cluster_indices))
 
-    def sample_fit(self, sampling, sampling_method, normal_offset=0, **kwargs):
+    def sample_fit(
+        self,
+        sampling: Union[int, float],
+        sampling_method: str,
+        normal_offset: float = 0.0,
+        **kwargs,
+    ):
+        """Sample points from selected parametric fits.
+
+        Parameters
+        ----------
+        sampling : int or float
+            Number of points or sampling density
+        sampling_method : str
+            Method for sampling ('N points', 'Points', or density-based)
+        normal_offset : float, optional
+            Offset along surface normal, by default 0
+        **kwargs
+            Additional sampling parameters
+        """
         fit_indices = self.models._get_selected_indices()
         for index in fit_indices:
             if not self._models._index_ok(index):
@@ -208,6 +278,18 @@ class MosaicData(QObject):
         self.data.render()
 
     def format_datalist(self, type="data"):
+        """Format data list for dialog display.
+
+        Parameters
+        ----------
+        type : str, optional
+            Type of data to format ('data' or 'models'), by default 'data'
+
+        Returns
+        -------
+        list
+            List of tuples containing (item_text, data_object) pairs
+        """
         interactor, container = self.data, self._data
         if type == "models":
             interactor, container = self.models, self._models

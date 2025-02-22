@@ -1,5 +1,6 @@
 from typing import Dict
 
+import numpy as np
 from PyQt6.QtCore import QLocale
 from PyQt6.QtGui import QDoubleValidator
 from PyQt6.QtWidgets import (
@@ -67,7 +68,7 @@ def create_setting_widget(setting: Dict):
     elif setting["type"] == "text":
         widget = QLineEdit()
         default_value = setting.get("default", None)
-        if isinstance(default_value, float):
+        if isinstance(default_value, (float, np.float32)):
             validator = QDoubleValidator()
             validator.setLocale(QLocale.c())
             validator.setNotation(QDoubleValidator.Notation.StandardNotation)
@@ -93,7 +94,7 @@ def get_widget_value(widget):
     elif isinstance(widget, QLineEdit):
         validator = widget.validator()
         if validator:
-            return float(widget.text())
+            return float(widget.text().replace(",", "."))
         else:
             return widget.text()
     return None

@@ -8,13 +8,10 @@
 from typing import Callable, Tuple
 from os.path import splitext
 
-try:
-    import cv2
-except Exception:
-    print("Run: 'pip install opencv-python' for export functionality.")
-    cv2 = None
 
+import imageio
 import numpy as np
+from PIL import Image
 from PyQt6.QtGui import QImage, QGuiApplication
 from PyQt6.QtWidgets import (
     QDialog,
@@ -47,8 +44,9 @@ class FrameWriter:
         self.index = 0
         self.filename, self.ext = splitext(filename)
 
-    def write(self, img):
-        cv2.imwrite(f"{self.filename}_{self.index}{self.ext}", img)
+    def append_data(self, img: np.ndarray):
+        image = Image.fromarray(np.asarray(img))
+        image.save(f"{self.filename}_{self.index}{self.ext}")
         self.index += 1
 
     def release(self):
@@ -62,23 +60,24 @@ class ExportManager:
         self.cdata = cdata
 
         self.format_settings = {
-            "MP4": {"fourcc": "mp4v", "ext": ".mp4"},
-            "AVI": {"fourcc": "MJPG", "ext": ".avi"},
+            "MP4": {"ext": ".mp4"},
+            "AVI": {"ext": ".avi"},
             "RGBA": {"frame_series": True, "ext": ".png"},
         }
 
     def copy_screenshot_to_clipboard(self, window: bool = False):
         screenshot = self.capture_screenshot(transparent_bg=True)
-        screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2RGBA)
         if window:
             screenshot = self.capture_window_screenshot(transparent_bg=True)
 
-        height, width, channel = screenshot.shape
+        screenshot = np.array(screenshot)
+        height, width = screenshot.shape[:2]
+
         q_image = QImage(
             screenshot.data,
             width,
             height,
-            channel * width,
+            width * 4,
             QImage.Format.Format_RGBA8888,
         )
 
@@ -99,14 +98,13 @@ class ExportManager:
         vtk_image = window_to_image.GetOutput()
         width, height, _ = vtk_image.GetDimensions()
 
-        ret = numpy_support.vtk_to_numpy(vtk_image.GetPointData().GetScalars())
+        arr = numpy_support.vtk_to_numpy(vtk_image.GetPointData().GetScalars())
+        arr = arr.reshape(height, width, -1)[::-1]
 
-        ret_format = cv2.COLOR_RGBA2BGRA
-        if not transparent_bg:
-            ret_format = cv2.COLOR_RGB2BGR
-
-        ret = ret.reshape(height, width, -1)
-        return cv2.cvtColor(ret[::-1], ret_format)
+        ret = Image.fromarray(arr, "RGBA")
+        if transparent_bg:
+            return ret
+        return ret.convert("RGB")
 
     def capture_window_screenshot(self, transparent_bg: bool = False):
         """Capture a screenshot of the entire PyQt window application."""
@@ -128,11 +126,11 @@ class ExportManager:
         ptr = image.constBits()
         ptr.setsize(height * width * 4)
 
-        ret_format = cv2.COLOR_RGBA2BGRA
-        if not transparent_bg:
-            ret_format = cv2.COLOR_RGB2BGR
         arr = np.frombuffer(ptr, np.uint8).reshape(height, width, -1)
-        return cv2.cvtColor(arr, ret_format)
+        ret = Image.fromarray(arr, "BGRA")
+        if transparent_bg:
+            return ret
+        return ret.convert("RGB")
 
     def save_screenshot(self):
         file_path, _ = QFileDialog.getSaveFileName(
@@ -141,12 +139,9 @@ class ExportManager:
         if not file_path:
             return -1
 
-        transparent_bg = False
-        if file_path.lower().endswith(".png"):
-            transparent_bg = True
-
+        transparent_bg = file_path.lower().endswith(".png")
         screenshot = self.capture_screenshot(transparent_bg=transparent_bg)
-        cv2.imwrite(file_path, screenshot)
+        screenshot.save(file_path)
 
     def export_animation(self):
         has_volume = getattr(self.viewer.primary, "volume", None) is not None
@@ -254,19 +249,15 @@ class ExportManager:
 
         update_func(frames[0])
         renderer.Render()
-        height, width = self.capture_screenshot(not is_video).shape[:2]
+        screenshot = self.capture_screenshot(not is_video)
+        height, width = np.array(screenshot).shape[:2]
 
         writer = FrameWriter(filename=filename)
+        quality = max(min(quality / 10.0, 10), 1) if quality else None
         if is_video:
-            writer = cv2.VideoWriter(
-                filename,
-                cv2.VideoWriter_fourcc(*format_settings["fourcc"]),
-                fps,
-                (width, height),
-                isColor=True,
+            writer = imageio.get_writer(
+                filename, mode="I", fps=fps, quality=quality, macro_block_size=None
             )
-            if format_settings["fourcc"] in ["mp4v", "MJPG"]:
-                writer.set(cv2.VIDEOWRITER_PROP_QUALITY, quality)
 
         progress = ProgressDialog(frames, title="Processing Frames")
         for frame_idx in progress:
@@ -274,11 +265,11 @@ class ExportManager:
             if frame_idx is None:
                 continue
             renderer.Render()
-            writer.write(self.capture_screenshot(not is_video))
-
+            frame = np.asarray(self.capture_screenshot(not is_video))
+            writer.append_data(frame)
             QApplication.processEvents()
 
-        writer.release()
+        writer.close()
 
         renderer.SetOffScreenRendering(0)
         if original_frame is not None:

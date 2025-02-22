@@ -1,0 +1,6 @@
+MosaicData.format\_datalist
+======================================
+
+.. currentmodule:: mosaic.data
+
+.. automethod:: MosaicData.format_datalist

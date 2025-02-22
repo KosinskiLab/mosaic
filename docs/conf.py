@@ -37,7 +37,7 @@ numpydoc_show_inherited_class_members = False
 
 autodoc_default_options = {
     "show-inheritance": True,
-    "inherited_members": True,
+    "inherited_members": False,
 }
 
 autodoc_inherit_docstrings = True
@@ -59,12 +59,13 @@ html_context = {
     "doc_path": "docs",
 }
 
+html_favicon = "../src/mosaic/data/logo.png"
 html_theme_options = {
     "logo": {
         "text": "mosaic",
         "image_light": "../src/mosaic/data/logo.png",
         "image_dark": "../src/mosaic/data/logo.png",
-        "width": "100px",
+        "width": "50px",
     },
     "header_links_before_dropdown": 4,
     "icon_links": [

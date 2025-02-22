@@ -1,0 +1,6 @@
+DataContainer.highlight\_points
+===============================================
+
+.. currentmodule:: mosaic.container
+
+.. automethod:: DataContainer.highlight_points

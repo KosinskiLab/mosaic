@@ -19,10 +19,14 @@ dependencies = [
     "pytme>=0.2.5",
     "open3d>=0.18.0",
     "libigl==2.5.1",
-    "importlib_resources",
+    "pymeshlab",
     "qtawesome",
     "matplotlib",
-    "opencv-python"
+    "opencv-python",
+    "imageio",
+    "imageio-ffmpeg",
+    "PIL",
+    "importlib_resources",
 ]
 license = {text = "Proprietary"}
 classifiers = [
