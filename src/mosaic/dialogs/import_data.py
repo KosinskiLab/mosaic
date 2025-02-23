@@ -1,6 +1,6 @@
-from PyQt6.QtCore import Qt, QLocale
-from PyQt6.QtGui import QDoubleValidator
-from PyQt6.QtWidgets import (
+from qtpy.QtCore import Qt, QLocale
+from qtpy.QtGui import QDoubleValidator
+from qtpy.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,

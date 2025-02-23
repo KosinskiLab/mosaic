@@ -5,8 +5,8 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import (
     QVBoxLayout,
     QFrame,
     QProgressBar,

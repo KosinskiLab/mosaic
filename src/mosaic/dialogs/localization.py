@@ -1,5 +1,5 @@
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import (
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QLabel,
@@ -30,7 +30,7 @@ _colormaps = sorted(
 
 
 class LocalizationDialog(QDialog):
-    previewRequested = pyqtSignal(dict)
+    previewRequested = Signal(dict)
 
     def __init__(self, clusters, fits=[], parent=None):
         super().__init__(parent)

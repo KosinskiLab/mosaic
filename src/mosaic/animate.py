@@ -12,8 +12,8 @@ from os.path import splitext
 import imageio
 import numpy as np
 from PIL import Image
-from PyQt6.QtGui import QImage, QGuiApplication
-from PyQt6.QtWidgets import (
+from qtpy.QtGui import QImage, QGuiApplication
+from qtpy.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,

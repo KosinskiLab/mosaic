@@ -5,7 +5,7 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from PyQt6.QtWidgets import QComboBox
+from qtpy.QtWidgets import QComboBox
 
 from .operation import OperationDialog, make_param
 

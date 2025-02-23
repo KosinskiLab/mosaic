@@ -2,8 +2,8 @@ from typing import List, Tuple, Literal
 
 import vtk
 import numpy as np
-from PyQt6.QtCore import Qt, QEvent
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QDialog
+from qtpy.QtCore import Qt, QEvent
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QDialog
 
 from ..widgets import HistogramWidget
 from ..widgets.ribbon import create_button

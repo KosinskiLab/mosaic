@@ -12,7 +12,7 @@ from functools import wraps
 from typing import Callable, Any, Union
 
 import numpy as np
-from PyQt6.QtCore import pyqtSignal, QObject
+from qtpy.QtCore import Signal, QObject
 
 from .formats import open_file
 from .container import DataContainer
@@ -44,7 +44,7 @@ class CompatibilityUnpickler(pickle.Unpickler):
 
 
 class MosaicData(QObject):
-    progress = pyqtSignal(float)
+    progress = Signal(float)
 
     def __init__(self, vtk_widget):
         """Initialize MosaicData instance for managing application state.

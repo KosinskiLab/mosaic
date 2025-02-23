@@ -1,10 +1,10 @@
 from typing import Dict
-from PyQt6.QtWidgets import QFileDialog, QComboBox
-from PyQt6.QtCore import pyqtSignal
+from qtpy.QtWidgets import QFileDialog, QComboBox
+from qtpy.QtCore import Signal
 
 
 class MappedComboBox(QComboBox):
-    customPathSelected = pyqtSignal(str)
+    customPathSelected = Signal(str)
 
     def __init__(self, parent=None, choices: Dict = {}):
         super().__init__(parent)

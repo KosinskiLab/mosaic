@@ -7,7 +7,7 @@
 """
 
 import vtk
-from PyQt6.QtWidgets import (
+from qtpy.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QWidget,
@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
 )
 import qtawesome as qta
 
-from PyQt6.QtCore import Qt, pyqtSignal
+from qtpy.QtCore import Qt, Signal
 from vtkmodules.util import numpy_support
 
 from ..utils import cmap_to_vtkctf
@@ -38,7 +38,7 @@ _colormaps = [
 
 
 class VolumeViewer(QWidget):
-    data_changed = pyqtSignal()
+    data_changed = Signal()
 
     def __init__(self, vtk_widget, legend=None, parent=None):
         super().__init__(parent)

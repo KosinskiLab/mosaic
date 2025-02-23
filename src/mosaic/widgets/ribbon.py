@@ -1,6 +1,6 @@
-from PyQt6.QtGui import QAction
-from PyQt6.QtCore import Qt, QSize, pyqtSignal
-from PyQt6.QtWidgets import (
+from qtpy.QtGui import QAction
+from qtpy.QtCore import Qt, QSize, Signal
+from qtpy.QtWidgets import (
     QToolBar,
     QWidget,
     QVBoxLayout,
@@ -77,7 +77,7 @@ class SettingsToolButton(QToolButton):
 
 
 class SettingsMenu(QMenu):
-    settings_applied = pyqtSignal(dict)
+    settings_applied = Signal(dict)
 
     def __init__(self, config, parent=None):
         super().__init__(parent)

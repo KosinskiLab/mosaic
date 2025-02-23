@@ -1,9 +1,9 @@
 from typing import Dict
 
 import numpy as np
-from PyQt6.QtCore import QLocale
-from PyQt6.QtGui import QDoubleValidator
-from PyQt6.QtWidgets import (
+from qtpy.QtCore import QLocale
+from qtpy.QtGui import QDoubleValidator
+from qtpy.QtWidgets import (
     QSpinBox,
     QDoubleSpinBox,
     QComboBox,

@@ -13,8 +13,8 @@ from typing import Tuple, List
 
 import vtk
 from functools import wraps
-from PyQt6.QtGui import QAction, QColor
-from PyQt6.QtWidgets import (
+from qtpy.QtGui import QAction, QColor
+from qtpy.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMenu,
@@ -22,12 +22,12 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QDialog,
 )
-from PyQt6.QtCore import (
+from qtpy.QtCore import (
     Qt,
     QObject,
     QItemSelection,
     QItemSelectionModel,
-    pyqtSignal,
+    Signal,
     QEvent,
 )
 
@@ -71,7 +71,7 @@ def _cluster_modifier(keep_selection: bool = False):
 
 
 class DataContainerInteractor(QObject):
-    data_changed = pyqtSignal()
+    data_changed = Signal()
 
     def __init__(self, container, vtk_widget, prefix="Cluster"):
         super().__init__()

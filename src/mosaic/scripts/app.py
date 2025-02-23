@@ -10,6 +10,7 @@ import os
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["QT_API"] = "pyqt5"
 
 import sys
 import enum
@@ -18,8 +19,8 @@ from importlib_resources import files
 
 import vtk
 import numpy as np
-from PyQt6.QtCore import Qt, QPoint, QEvent, QSettings
-from PyQt6.QtWidgets import (
+from qtpy.QtCore import Qt, QPoint, QEvent, QSettings
+from qtpy.QtWidgets import (
     QApplication,
     QMainWindow,
     QVBoxLayout,
@@ -32,7 +33,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QDockWidget,
 )
-from PyQt6.QtGui import (
+from qtpy.QtGui import (
     QAction,
     QGuiApplication,
     QIcon,

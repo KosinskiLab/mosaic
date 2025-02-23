@@ -5,9 +5,9 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from PyQt6.QtGui import QColor
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import (
+from qtpy.QtGui import QColor
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import (
     QVBoxLayout,
     QDialog,
     QDialogButtonBox,
@@ -28,7 +28,7 @@ from ..widgets.settings import create_setting_widget, get_widget_value
 
 
 class GeometryPropertiesDialog(QDialog):
-    parametersChanged = pyqtSignal(dict)
+    parametersChanged = Signal(dict)
 
     def __init__(self, initial_properties=None, parent=None):
         super().__init__(parent)

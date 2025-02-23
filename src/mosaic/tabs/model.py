@@ -1,8 +1,8 @@
 from functools import partial
 
 import numpy as np
-from PyQt6.QtCore import QThread, pyqtSignal
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QFileDialog
+from qtpy.QtCore import QThread, Signal
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
 from ..utils import cmap_to_vtkctf
 from ..formats.parser import load_density
@@ -19,7 +19,7 @@ from ..meshing import (
 
 
 class FitWorker(QThread):
-    finished = pyqtSignal()
+    finished = Signal()
 
     def __init__(self, cdata, **kwargs):
         super().__init__()

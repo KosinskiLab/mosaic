@@ -5,8 +5,8 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import (
     QVBoxLayout,
     QLabel,
     QSlider,
@@ -23,11 +23,17 @@ class TiltControlDialog(QDialog):
         self.main_window = parent
         self.setWindowTitle("Camera Controls")
         self.setup_ui()
-        self.setWindowFlags(
-            Qt.WindowType.Dialog
-            | Qt.WindowType.WindowStaysOnTopHint
-            & ~Qt.WindowType.WindowContextHelpButtonHint
-        )
+        try:
+            self.setWindowFlags(
+                Qt.WindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint)
+                & ~Qt.WindowContextHelpButtonHint
+            )
+        except AttributeError:
+            self.setWindowFlags(
+                Qt.WindowType.Dialog
+                | Qt.WindowType.WindowStaysOnTopHint
+                & ~Qt.WindowType.WindowContextHelpButtonHint
+            )
 
     def setup_ui(self):
         layout = QVBoxLayout(self)

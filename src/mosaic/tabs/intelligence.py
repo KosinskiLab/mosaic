@@ -3,7 +3,7 @@ from os import listdir
 from os.path import join, exists, basename
 
 import numpy as np
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 
 from ..formats import open_file
 from ..geometry import GeometryTrajectory

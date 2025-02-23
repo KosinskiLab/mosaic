@@ -7,18 +7,18 @@
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtWidgets import (
+from qtpy.QtWidgets import (
     QWidget,
     QHBoxLayout,
     QVBoxLayout,
     QSlider,
 )
-from PyQt6.QtGui import QColor
-from PyQt6.QtCore import Qt, pyqtSignal
+from qtpy.QtGui import QColor
+from qtpy.QtCore import Qt, Signal
 
 
 class HistogramWidget(QWidget):
-    cutoff_changed = pyqtSignal(float)
+    cutoff_changed = Signal(float)
 
     def __init__(self, parent=None):
         super().__init__(parent)

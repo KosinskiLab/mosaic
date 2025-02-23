@@ -5,13 +5,13 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from PyQt6.QtWidgets import QPushButton
-from PyQt6.QtGui import QPainter, QColor
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, pyqtProperty, pyqtSignal
+from qtpy.QtWidgets import QPushButton
+from qtpy.QtGui import QPainter, QColor
+from qtpy.QtCore import Qt, QTimer, QPropertyAnimation, Property, Signal
 
 
 class ProgressButton(QPushButton):
-    cancel = pyqtSignal()
+    cancel = Signal()
 
     def __init__(self, text, parent=None):
         super().__init__(text, parent)
@@ -44,7 +44,7 @@ class ProgressButton(QPushButton):
         if self._cancel_button:
             self._cancel_button.setGeometry(self.rect())
 
-    @pyqtProperty(float)
+    @Property(float)
     def fadeOpacity(self):
         return self._fade_opacity
 

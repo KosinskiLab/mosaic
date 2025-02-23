@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import (
+from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QStyle,
     QSizePolicy,
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from qtpy.QtCore import Qt, QTimer, Signal
 
 from ..geometry import GeometryTrajectory
 
@@ -17,7 +17,7 @@ from ..geometry import GeometryTrajectory
 class TimelineBar(QWidget):
     """A custom widget that combines a slider with a visual timeline bar."""
 
-    valueChanged = pyqtSignal(int)
+    valueChanged = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -86,7 +86,7 @@ class TimelineBar(QWidget):
 class TrajectoryRow(QFrame):
     """Represents a single trajectory row with integrated timeline."""
 
-    frameChanged = pyqtSignal(int)
+    frameChanged = Signal(int)
 
     def __init__(self, trajectory, max_frames, parent=None):
         super().__init__(parent)

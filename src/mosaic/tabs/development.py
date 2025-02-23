@@ -1,5 +1,5 @@
 import numpy as np
-from PyQt6.QtWidgets import QWidget, QVBoxLayout
+from qtpy.QtWidgets import QWidget, QVBoxLayout
 
 from ..widgets.ribbon import create_button
 
