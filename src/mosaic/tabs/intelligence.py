@@ -151,25 +151,21 @@ class IntelligenceTab(QWidget):
         ]
         files = sorted(files, key=lambda x: int(re.findall(r"\d+", basename(x))[0]))
 
-        progress = ProgressDialog(files, title="Importing Trajectory", parent=None)
-        for index, filename in enumerate(progress):
-            try:
+        with ProgressDialog(files, title="Importing Trajectory", parent=None) as pbar:
+            for index, filename in enumerate(pbar):
                 container = open_file(filename)[0]
-            except Exception as e:
-                print(e)
-                continue
-            faces = container.faces.astype(int)
-            points = np.divide(np.subtract(container.vertices, offset), scale)
+                faces = container.faces.astype(int)
+                points = np.divide(np.subtract(container.vertices, offset), scale)
 
-            fit = TriangularMesh(to_open3d(points, faces))
-            meta = {
-                "points": points,
-                "faces": faces,
-                "fit": fit,
-                "normals": fit.compute_vertex_normals(),
-                "filename": filename,
-            }
-            ret.append(meta)
+                fit = TriangularMesh(to_open3d(points, faces))
+                meta = {
+                    "points": points,
+                    "faces": faces,
+                    "fit": fit,
+                    "normals": fit.compute_vertex_normals(),
+                    "filename": filename,
+                }
+                ret.append(meta)
 
         if len(ret) == 0:
             print(f"No meshes found at: {directory}.")

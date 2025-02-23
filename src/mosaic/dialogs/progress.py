@@ -101,3 +101,9 @@ class ProgressDialog:
         except StopIteration:
             self.dialog.close()
             raise
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return self.dialog.close()

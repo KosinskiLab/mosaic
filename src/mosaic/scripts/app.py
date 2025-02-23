@@ -732,38 +732,40 @@ class App(QMainWindow):
             return -1
 
         file_parameters = dialog.get_all_parameters()
-        progress = ProgressDialog(filenames, title="Reading Files", parent=None)
-        for filename in progress:
-            self._add_file_to_recent(filename)
-            parameters = file_parameters[filename]
+        with ProgressDialog(filenames, title="Reading Files", parent=None) as pbar:
+            for filename in pbar:
+                self._add_file_to_recent(filename)
+                parameters = file_parameters[filename]
 
-            offset = parameters.get("offset", 0)
-            scale = parameters.get("scale", 1)
-            sampling = parameters.get("sampling_rate", 1)
+                offset = parameters.get("offset", 0)
+                scale = parameters.get("scale", 1)
+                sampling = parameters.get("sampling_rate", 1)
 
-            try:
-                container = open_file(filename)
-            except ValueError as e:
-                print(e)
-                if filename.endswith(".pickle"):
-                    print("Use Load Session to open session files.")
-                continue
+                try:
+                    container = open_file(filename)
+                except ValueError as e:
+                    print(e)
+                    if filename.endswith(".pickle"):
+                        print("Use Load Session to open session files.")
+                    continue
 
-            for data in container:
-                data.vertices = np.multiply(np.subtract(data.vertices, offset), scale)
-
-                if data.faces is None:
-                    self.cdata._data.add(
-                        points=data.vertices,
-                        normals=data.normals,
-                        sampling_rate=sampling,
+                for data in container:
+                    data.vertices = np.multiply(
+                        np.subtract(data.vertices, offset), scale
                     )
-                else:
-                    self.cdata._add_fit(
-                        fit=TriangularMesh(to_open3d(data.vertices, data.faces)),
-                        points=None,
-                        sampling_rate=sampling,
-                    )
+
+                    if data.faces is None:
+                        self.cdata._data.add(
+                            points=data.vertices,
+                            normals=data.normals,
+                            sampling_rate=sampling,
+                        )
+                    else:
+                        self.cdata._add_fit(
+                            fit=TriangularMesh(to_open3d(data.vertices, data.faces)),
+                            points=None,
+                            sampling_rate=sampling,
+                        )
 
         self.cdata.data.data_changed.emit()
         self.cdata.models.data_changed.emit()

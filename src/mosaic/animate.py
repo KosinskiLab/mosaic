@@ -126,8 +126,9 @@ class ExportManager:
         ptr = image.constBits()
         ptr.setsize(height * width * 4)
 
-        arr = np.frombuffer(ptr, np.uint8).reshape(height, width, -1)
-        ret = Image.fromarray(arr, "BGRA")
+        arr = np.frombuffer(ptr, np.uint8).reshape(height, width, -1).copy()
+        arr[:, :, [0, 2]] = arr[:, :, [2, 0]]
+        ret = Image.fromarray(arr, "RGBA")
         if transparent_bg:
             return ret
         return ret.convert("RGB")
