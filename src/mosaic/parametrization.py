@@ -26,6 +26,7 @@ from .meshing import (
     remesh,
     to_open3d,
     get_ring_vertices,
+    poisson_mesh,
 )
 
 
@@ -938,37 +939,18 @@ class PoissonMesh(TriangularMesh):
         samplespernode=5.0,
         **kwargs,
     ):
-        from pymeshlab import MeshSet, Mesh
-
-        voxel_size = 1 if voxel_size is None else voxel_size
-        positions = np.divide(np.asarray(positions, dtype=np.float64), voxel_size)
-
-        ms = MeshSet()
-        ms.add_mesh(Mesh(positions))
-        ms.compute_normal_for_point_clouds(k=k_neighbors, smoothiter=smooth_iter)
-        ms.generate_surface_reconstruction_screened_poisson(
+        mesh = poisson_mesh(
+            positions=positions,
+            voxel_size=voxel_size,
             depth=depth,
+            k_neighbors=k_neighbors,
+            smooth_iter=smooth_iter,
             pointweight=pointweight,
-            samplespernode=samplespernode,
-            iters=10,
+            deldist=deldist,
             scale=scale,
+            samplespernode=samplespernode,
         )
-        if deldist > 0:
-            ms.compute_scalar_by_distance_from_another_mesh_per_vertex(
-                measuremesh=1,
-                refmesh=0,
-                signeddist=False,
-            )
-            ms.compute_selection_by_condition_per_vertex(condselect=f"(q>{deldist})")
-            ms.compute_selection_by_condition_per_face(
-                condselect=f"(q0>{deldist} || q1>{deldist} || q2>{deldist})"
-            )
-            ms.meshing_remove_selected_vertices_and_faces()
-
-        mesh = ms.current_mesh()
-        return cls(
-            mesh=to_open3d(mesh.vertex_matrix() * voxel_size, mesh.face_matrix())
-        )
+        return cls(mesh=mesh)
 
 
 class ClusteredBallPivotingMesh(TriangularMesh):

@@ -5,6 +5,7 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import sys
 import h5py
 import warnings
 import textwrap
@@ -12,7 +13,8 @@ import multiprocessing as mp
 from typing import List
 from subprocess import run
 from platform import system
-from tempfile import NamedTemporaryFile
+from os.path import join, exists
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import numpy as np
 import open3d as o3d
@@ -65,13 +67,57 @@ def _remesh(
     return remeshed.vertex_matrix(), remeshed.face_matrix()
 
 
+def _poisson_mesh(
+    positions: np.ndarray,
+    voxel_size: float = None,
+    depth: int = 9,
+    k_neighbors=50,
+    smooth_iter=1,
+    pointweight=0.1,
+    deldist=1.5,
+    scale=1.2,
+    samplespernode=5.0,
+    **kwargs,
+):
+    from pymeshlab import MeshSet, Mesh
+
+    voxel_size = 1 if voxel_size is None else voxel_size
+    positions = np.divide(np.asarray(positions, dtype=np.float64), voxel_size)
+
+    ms = MeshSet()
+    ms.add_mesh(Mesh(positions))
+    ms.compute_normal_for_point_clouds(k=k_neighbors, smoothiter=smooth_iter)
+    ms.generate_surface_reconstruction_screened_poisson(
+        depth=depth,
+        pointweight=pointweight,
+        samplespernode=samplespernode,
+        iters=10,
+        scale=scale,
+    )
+    if deldist > 0:
+        ms.compute_scalar_by_distance_from_another_mesh_per_vertex(
+            measuremesh=1,
+            refmesh=0,
+            signeddist=False,
+        )
+        ms.compute_selection_by_condition_per_vertex(condselect=f"(q>{deldist})")
+        ms.compute_selection_by_condition_per_face(
+            condselect=f"(q0>{deldist} || q1>{deldist} || q2>{deldist})"
+        )
+        ms.meshing_remove_selected_vertices_and_faces()
+
+    mesh = ms.current_mesh()
+    return mesh.vertex_matrix() * voxel_size, mesh.face_matrix()
+
+
 def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
-    """Remesh to target edge length
+    """
+    Remesh to target edge length
 
     Notes
     -----
     On Darwin platforms this function will spawn a new process to avoid
-    instabilities from colabseg's Qt6 and pymeshlab's Qt5.
+    instabilities from mosaic's Qt6 and pymeshlab's Qt5.
     """
     mesh = mesh.remove_duplicated_vertices()
     mesh = mesh.remove_unreferenced_vertices()
@@ -80,12 +126,122 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
     vertices = np.asarray(mesh.vertices)
     triangles = np.asarray(mesh.triangles)
 
-    args = (vertices, triangles, target_edge_length, n_iter, featuredeg)
-    if system() == "Darwin":
-        with mp.Pool(1) as pool:
-            ret = pool.apply(_remesh, args=args, kwds=kwargs)
-    else:
+    if system() != "Darwin":
+        args = (vertices, triangles, target_edge_length, n_iter, featuredeg)
         ret = _remesh(*args, **kwargs)
+    else:
+        with TemporaryDirectory() as temp_dir:
+            input_path = join(temp_dir, "input_mesh.ply")
+            output_path = join(temp_dir, "output_mesh.ply")
+            o3d.io.write_triangle_mesh(input_path, mesh)
+
+            script_path = join(temp_dir, "run_remesh.py")
+            script_content = textwrap.dedent(
+                f"""
+                import numpy as np
+                import open3d as o3d
+                from mosaic.meshing.utils import _remesh, to_open3d
+
+                mesh = o3d.io.read_triangle_mesh('{input_path}')
+                new_vertices, new_triangles = _remesh(
+                    np.asarray(mesh.vertices),
+                    np.asarray(mesh.triangles),
+                    target_edge_length={target_edge_length},
+                    n_iter={n_iter},
+                    featuredeg={featuredeg}
+                )
+                mesh = to_open3d(new_vertices, new_triangles)
+                o3d.io.write_triangle_mesh('{output_path}', mesh)
+            """
+            )
+
+            with open(script_path, "w") as f:
+                f.write(script_content)
+
+            ret = run([sys.executable, script_path], check=True)
+            if ret.stderr:
+                print(ret.stdout)
+                print(ret.stderr)
+                return None
+
+            mesh = o3d.io.read_triangle_mesh(output_path)
+            ret = (mesh.vertices, mesh.triangles)
+
+    return to_open3d(*ret)
+
+
+def poisson_mesh(
+    positions: np.ndarray,
+    voxel_size: float = None,
+    depth: int = 9,
+    k_neighbors=50,
+    smooth_iter=1,
+    pointweight=0.1,
+    deldist=1.5,
+    scale=1.2,
+    samplespernode=5.0,
+):
+    """
+    Triangulate positions using Poisson reconstruction.
+
+    Notes
+    -----
+    On Darwin platforms this function will spawn a new process to avoid
+    instabilities from mosaic's Qt6 and pymeshlab's Qt5.
+    """
+    if system() != "Darwin":
+        ret = _poisson_mesh(
+            positions=positions,
+            voxel_size=voxel_size,
+            depth=depth,
+            k_neighbors=k_neighbors,
+            smooth_iter=smooth_iter,
+            pointweight=pointweight,
+            deldist=deldist,
+            scale=scale,
+            samplespernode=samplespernode,
+        )
+    else:
+        with TemporaryDirectory() as temp_dir:
+            input_path = join(temp_dir, "input_pc.npy")
+            output_path = join(temp_dir, "output_mesh.ply")
+            np.save(input_path, positions)
+
+            script_path = join(temp_dir, "run_remesh.py")
+            script_content = textwrap.dedent(
+                f"""
+                import numpy as np
+                import open3d as o3d
+                from mosaic.meshing.utils import _poisson_mesh, to_open3d
+
+                positions = np.load('{input_path}')
+                new_vertices, new_triangles = _poisson_mesh(
+                    positions=positions,
+                    voxel_size={voxel_size},
+                    depth={depth},
+                    k_neighbors={k_neighbors},
+                    smooth_iter={smooth_iter},
+                    pointweight={pointweight},
+                    deldist={deldist},
+                    scale={scale},
+                    samplespernode={samplespernode},
+                )
+                mesh = to_open3d(new_vertices, new_triangles)
+                o3d.io.write_triangle_mesh('{output_path}', mesh)
+            """
+            )
+
+            with open(script_path, "w") as f:
+                f.write(script_content)
+
+            ret = run([sys.executable, script_path], check=True)
+            if ret.stderr:
+                print(ret.stdout)
+                print(ret.stderr)
+                return None
+
+            mesh = o3d.io.read_triangle_mesh(output_path)
+            ret = (mesh.vertices, mesh.triangles)
 
     return to_open3d(*ret)
 

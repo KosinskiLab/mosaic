@@ -697,7 +697,7 @@ class App(QMainWindow):
             self._setup_trajectory_player()
         self.trajectory_dock.setVisible(visible)
 
-    def _load_session(self, file_path : str):
+    def _load_session(self, file_path: str):
         try:
             self.cdata.load_session(file_path)
         except ValueError as e:
