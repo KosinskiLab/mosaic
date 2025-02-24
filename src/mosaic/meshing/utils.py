@@ -123,12 +123,14 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
     mesh = mesh.remove_unreferenced_vertices()
     mesh = mesh.remove_degenerate_triangles()
 
-    vertices = np.asarray(mesh.vertices)
-    triangles = np.asarray(mesh.triangles)
-
     if system() != "Darwin":
-        args = (vertices, triangles, target_edge_length, n_iter, featuredeg)
-        ret = _remesh(*args, **kwargs)
+        ret = _remesh(
+            np.asarray(mesh.vertices),
+            np.asarray(mesh.triangles),
+            target_edge_length=target_edge_length,
+            n_iter=n_iter,
+            featuredeg=featuredeg,
+        )
     else:
         with TemporaryDirectory() as temp_dir:
             input_path = join(temp_dir, "input_mesh.ply")
