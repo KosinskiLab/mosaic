@@ -55,7 +55,7 @@ class ContainerListWidget(QFrame):
                 border-radius: 6px;
                 padding: 0px 12px;
                 margin: 2px 8px;
-                font-size: 11px;
+                font-size: 14px;
             }
             QListWidget::item:hover {
                 background-color: rgba(0, 0, 0, 0.10);

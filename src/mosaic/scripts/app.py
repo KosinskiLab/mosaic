@@ -10,7 +10,7 @@ import os
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
-os.environ["QT_API"] = "pyqt5"
+os.environ["QT_API"] = os.environ.get("QT_API", "pyqt6")
 
 import sys
 import enum
@@ -213,9 +213,9 @@ class App(QMainWindow):
                 """
                 QPushButton {
                     border: none;
-                    border-bottom: 2px solid transparent;
-                    padding: 12px 24px;
+                    padding: 11px 24px;
                     font-size: 13px;
+                    border-bottom: 2px solid transparent;
                 }
                 QPushButton:hover {
                     color: #696c6f;
@@ -697,12 +697,7 @@ class App(QMainWindow):
             self._setup_trajectory_player()
         self.trajectory_dock.setVisible(visible)
 
-    def load_session(self):
-        file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(self, "Open Session")
-        if not file_path:
-            return -1
-
+    def _load_session(self, file_path : str):
         try:
             self.cdata.load_session(file_path)
         except ValueError as e:
@@ -719,6 +714,14 @@ class App(QMainWindow):
         self.cdata.data.render()
         self.cdata.models.render()
         self.set_camera_view("x")
+
+    def load_session(self):
+        file_dialog = QFileDialog()
+        file_path, _ = file_dialog.getOpenFileName(self, "Open Session")
+        if not file_path:
+            return -1
+
+        return self._load_session(file_path)
 
     def _open_files(self, filenames: List[str]):
         if isinstance(filenames, str):
@@ -832,7 +835,12 @@ class App(QMainWindow):
             return None
 
         file_path = action.data()
-        if os.path.exists(file_path):
+        if not os.path.exists(file_path):
+            return None
+
+        if file_path.endswith(".pickle"):
+            self._load_session(file_path)
+        else:
             return self._open_files([file_path])
         self.recent_files.remove(file_path)
         self.save_recent_files()
