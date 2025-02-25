@@ -300,7 +300,7 @@ class DataContainer:
         ndarray
             Remaining points after cropping.
         """
-        cloud_points = geometry._meta.get("points", None)
+        cloud_points = geometry.points
         if cloud_points is None:
             return None
 

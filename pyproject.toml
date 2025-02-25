@@ -22,7 +22,6 @@ dependencies = [
     "pymeshlab",
     "qtawesome",
     "matplotlib",
-    "opencv-python",
     "imageio",
     "imageio-ffmpeg",
     "PIL",

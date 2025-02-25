@@ -9,11 +9,11 @@ import sys
 import h5py
 import warnings
 import textwrap
-import multiprocessing as mp
-from typing import List
+
+from os.path import join
 from subprocess import run
 from platform import system
-from os.path import join, exists
+from typing import List, Dict
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import numpy as np
@@ -33,7 +33,7 @@ def _compute_edge_lengths(filename):
     return compute_edge_lengths(mesh)
 
 
-def compute_edge_lengths(mesh):
+def compute_edge_lengths(mesh: o3d.geometry.TriangleMesh) -> np.ndarray:
     vertices = np.asarray(mesh.vertices)
     faces = np.asarray(mesh.triangles)
 
@@ -424,7 +424,7 @@ def center_mesh(mesh, center: bool = True, margin=20):
     return data, offset
 
 
-def to_tsi(vertices, faces, margin: int = 0):
+def to_tsi(vertices, faces, margin: int = 0) -> Dict:
     vertices = np.asarray(vertices)
     faces = np.asarray(faces)
 
@@ -438,7 +438,7 @@ def to_tsi(vertices, faces, margin: int = 0):
     _faces[:, 0] = np.arange(faces.shape[0])
     _faces[:, 1:4] = faces
 
-    data = {
+    return {
         "version": "1.0a",
         "box": box_size,
         "n_vertices": _vertices.shape[0],
@@ -446,7 +446,6 @@ def to_tsi(vertices, faces, margin: int = 0):
         "n_faces": _faces.shape[0],
         "faces": _faces,
     }
-    return data
 
 
 def marching_cubes(

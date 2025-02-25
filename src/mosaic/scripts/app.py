@@ -836,15 +836,13 @@ class App(QMainWindow):
 
         file_path = action.data()
         if not os.path.exists(file_path):
-            return None
+            self.recent_files.remove(file_path)
+            self.save_recent_files()
+            return self.update_recent_files_menu()
 
         if file_path.endswith(".pickle"):
-            self._load_session(file_path)
-        else:
-            return self._open_files([file_path])
-        self.recent_files.remove(file_path)
-        self.save_recent_files()
-        self.update_recent_files_menu()
+            return self._load_session(file_path)
+        return self._open_files([file_path])
 
 
 def main():

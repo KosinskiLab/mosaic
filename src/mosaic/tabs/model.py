@@ -205,11 +205,15 @@ class ModelTab(QWidget):
 
             geometry = self.cdata._models.data[index]
 
-            points = geometry.points
-            sampling = geometry._sampling_rate
-            normals = geometry._meta.get("fit", None)
-            if normals is not None:
-                normals = normals.compute_normal(points)
+            fit = geometry._meta.get("fit", None)
+            normals, sampling = None, geometry._sampling_rate
+            if hasattr(fit, "mesh"):
+                points = fit.vertices
+                normals = fit.compute_vertex_normals()
+            else:
+                points = geometry.points
+                if fit is not None:
+                    normals = fit.compute_normal(points)
 
             self.cdata._data.new(points, normals=normals, sampling_rate=sampling)
         self.cdata.data.data_changed.emit()

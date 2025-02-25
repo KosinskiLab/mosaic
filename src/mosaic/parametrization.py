@@ -770,6 +770,14 @@ class TriangularMesh(Parametrization):
 
         self.mesh = mesh
 
+    @property
+    def vertices(self):
+        return np.asarray(self.mesh.vertices)
+
+    @property
+    def triangles(self):
+        return np.asarray(self.mesh.triangles)
+
     @classmethod
     def fit(
         cls,

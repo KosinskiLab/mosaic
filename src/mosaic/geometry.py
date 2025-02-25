@@ -355,12 +355,12 @@ class Geometry:
         subset = self[indices]
         return self.swap_data(subset.points, normals=subset.normals)
 
-    def swap_data(self, new_points, normals=None, faces=None):
+    def swap_data(self, points, normals=None, faces=None):
         self._points.Reset()
         self._cells.Reset()
         self._normals.Reset()
 
-        self.add_points(new_points)
+        self.add_points(points)
         if normals is not None:
             self.add_normals(normals)
 
@@ -388,8 +388,9 @@ class Geometry:
             return 0
 
         if representation in ["mesh", "wireframe", "surface"]:
-            faces = self._meta.get("faces", None)
-            if faces is None or "points" not in self._meta:
+            is_mesh = hasattr(self._meta.get("fit", None), "mesh")
+            is_surface = self._meta.get("faces") is None or "points" not in self._meta
+            if not is_mesh and not is_surface:
                 print(
                     "Points and face data required for surface/wireframe representation."
                 )
@@ -426,17 +427,12 @@ class Geometry:
             arrow.SetTipRadius(0.08)
             arrow.SetShaftRadius(0.02)
 
-            # max_pos, min_pos = self.points.max(axis=0), self.points.min(axis=0)
-            # bbox_diagonal = np.sqrt(np.sum((max_pos - min_pos) ** 2))
-
-            # TODO: When importing files, make sure to use the actual sampling
-            # rate not 1/scale; The same applies for importing meshes
-            bbox_diagonal = 1000 * np.max(self.sampling_rate)
+            normal_scale = 0.1 * np.max(self.sampling_rate)
 
             glyph = vtk.vtkGlyph3D()
             glyph.SetSourceConnection(arrow.GetOutputPort())
             glyph.SetVectorModeToUseNormal()
-            glyph.SetScaleFactor(bbox_diagonal * 0.0001)
+            glyph.SetScaleFactor(normal_scale)
             glyph.SetColorModeToColorByScalar()
             glyph.OrientOn()
 
@@ -468,10 +464,13 @@ class Geometry:
         elif representation in ("mesh", "wireframe", "surface"):
             self._cells.Reset()
             self._points.Reset()
-            self.add_points(self._meta["points"])
-            self.add_faces(self._meta["faces"])
-            if "normals" in self._meta:
-                self.add_normals(self._meta["normals"])
+
+            mesh = self._meta.get("fit", None)
+            if not hasattr(mesh, "vertices"):
+                return None
+            self.add_points(mesh.vertices)
+            self.add_faces(mesh.triangles)
+            self.add_normals(mesh.compute_vertex_normals())
 
             if representation == "surface":
                 self._original_verts = self._data.GetVerts()
@@ -587,6 +586,11 @@ class GeometryTrajectory(Geometry):
 
         appearance = self._appearance.copy()
         meta = self._trajectory[frame_idx]
-        self.swap_data(meta["points"], normals=meta["normals"], faces=meta["faces"])
+
+        mesh = meta.get("fit", None)
+        if not hasattr(mesh, "mesh"):
+            return None
+
+        self.swap_data(mesh.vertices, mesh.triangles, mesh.compute_vertex_normals())
         self._meta.update(meta)
         return self.set_appearance(**appearance)

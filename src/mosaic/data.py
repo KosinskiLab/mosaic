@@ -154,14 +154,10 @@ class MosaicData(QObject):
         return obj.toggle_picking_mode()
 
     def _add_fit(self, fit, points, sampling_rate=None):
-        meta = {"fit": fit, "points": points, "faces": None}
 
         if hasattr(fit, "mesh"):
-            meta["points"] = np.asarray(fit.mesh.vertices)
-            meta["faces"] = np.asarray(fit.mesh.triangles)
-            meta["normals"] = fit.compute_vertex_normals()
-
-            new_points, normals = meta["points"].copy(), meta["normals"].copy()
+            new_points = fit.vertices
+            normals = fit.compute_vertex_normals()
         else:
             new_points = fit.sample(n_samples=1000)
             normals = fit.compute_normal(new_points)
@@ -170,7 +166,7 @@ class MosaicData(QObject):
             points=new_points,
             normals=normals,
             sampling_rate=sampling_rate,
-            meta=meta,
+            meta={"fit": fit},
         )
         if hasattr(fit, "mesh"):
             self._models.data[index].change_representation("surface")
