@@ -37,40 +37,6 @@ class FitWorker(QThread):
             self.wait()
 
 
-def get_dense_skeleton(skel, samples_per_edge=10):
-    segments = skel.get_segments()
-    dense_points = []
-    vertices = skel.vertices
-
-    for seg in segments:
-        # Get points for this segment
-        seg_points = vertices[seg]
-
-        # Calculate total segment length to distribute points evenly
-        segment_length = np.sum(
-            np.sqrt(np.sum(np.diff(seg_points, axis=0) ** 2, axis=1))
-        )
-
-        # Create parameter space based on cumulative distance
-        distances = np.cumsum(np.sqrt(np.sum(np.diff(seg_points, axis=0) ** 2, axis=1)))
-        distances = np.insert(distances, 0, 0)  # Add starting point
-
-        # Normalize distances to [0,1]
-        distances = distances / distances[-1]
-
-        # Create evenly spaced points
-        t = np.linspace(0, 1, samples_per_edge)
-
-        # Interpolate each dimension
-        x = np.interp(t, distances, seg_points[:, 0])
-        y = np.interp(t, distances, seg_points[:, 1])
-        z = np.interp(t, distances, seg_points[:, 2])
-
-        dense_points.extend(np.column_stack([x, y, z]))
-
-    return np.array(dense_points)
-
-
 class ModelTab(QWidget):
     def __init__(self, cdata, ribbon, legend, **kwargs):
         super().__init__()
@@ -165,7 +131,7 @@ class ModelTab(QWidget):
                 "Analyze Mesh",
             ),
             create_button("Merge", "mdi.merge", self, self._merge_meshes),
-            create_button("Skeleton", "mdi.merge", self, self._sceleton),
+            # create_button("Skeleton", "mdi.merge", self, self._sceleton),
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
 
@@ -239,33 +205,23 @@ class ModelTab(QWidget):
         **kwargs,
     ):
         for index in self._get_selected_meshes():
-            mesh = self.cdata._models.data[index]._meta.get("fit", None).mesh
+            fit = self.cdata._models.data[index]._meta.get("fit", None)
+            if not hasattr(fit, "vertices"):
+                continue
             vs, fs = triangulate_refine_fair(
-                vs=np.asarray(mesh.vertices),
-                fs=np.asarray(mesh.triangles),
+                vs=fit.vertices,
+                fs=fit.triangles,
                 alpha=elastic_weight,
                 beta=curvature_weight,
                 gamma=volume_weight,
                 hole_len_thr=hole_size,
                 n_ring=boundary_ring,
             )
-
-            fit = TriangularMesh(to_open3d(vs, fs))
-            meta = {
-                "fit": fit,
-                "points": np.asarray(fit.mesh.vertices),
-                "faces": np.asarray(fit.mesh.triangles),
-                "normals": fit.compute_vertex_normals(),
-            }
-
-            self.cdata._models.add(
-                points=meta["points"],
-                normals=meta["normals"],
-                meta=meta,
+            self.cdata._add_fit(
+                fit=TriangularMesh(to_open3d(vs, fs)),
                 sampling_rate=self.cdata._models.data[index].sampling_rate,
             )
 
-        self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
 
     def _remesh_meshes(self, method, **kwargs):
@@ -298,10 +254,8 @@ class ModelTab(QWidget):
             else:
                 mesh = mesh.simplify_quadric_decimation(**kwargs)
 
-            fit = TriangularMesh(mesh)
             self.cdata._add_fit(
-                fit=fit,
-                points=np.asarray(fit.mesh.vertices),
+                fit=TriangularMesh(mesh),
                 sampling_rate=self.cdata._models.data[index].sampling_rate,
             )
         self.cdata.models.data_changed.emit()
@@ -314,16 +268,14 @@ class ModelTab(QWidget):
             return None
 
         for index in selected_meshes:
-            meshes.append(self.cdata._models.data[index]._meta.get("fit", None).mesh)
+            meshes.append(self.cdata._models.data[index]._meta.get("fit"))
 
         vertices, faces = merge_meshes(
-            vertices=[np.asarray(x.vertices) for x in meshes],
-            faces=[np.asarray(x.triangles) for x in meshes],
+            vertices=[x.vertices for x in meshes],
+            faces=[x.triangles for x in meshes],
         )
-        fit = TriangularMesh(to_open3d(vertices, faces))
         self.cdata._add_fit(
-            fit=fit,
-            points=np.asarray(fit.mesh.vertices),
+            fit=TriangularMesh(to_open3d(vertices, faces)),
             sampling_rate=self.cdata._models.data[index].sampling_rate,
         )
         self.cdata._models.remove(selected_meshes)
@@ -341,13 +293,14 @@ class ModelTab(QWidget):
             import trimesh
             import skeletor as sk
 
-            mesh = self.cdata._models.data[index]._meta.get("fit", None).mesh
+            mesh = self.cdata._models.data[index]._meta.get("fit", None)
             mesh = trimesh.Trimesh(mesh.vertices, mesh.triangles)
             mesh = sk.pre.fix_mesh(mesh)
             skel = sk.skeletonize.by_wavefront(mesh, waves=5, step_size=1)
-            from ..utils import com_cluster_points
+            # from ..utils import com_cluster_points
 
-            vertices = com_cluster_points(skel.vertices, 100)
+            # vertices = com_cluster_points(skel.vertices, 100)
+            vertices = skel.vertices
             self.cdata._data.add(vertices)
 
         self.cdata.data.data_changed.emit()
@@ -361,10 +314,8 @@ class ModelTab(QWidget):
         dens = load_density(filename)
         meshes = marching_cubes(dens.data, dens.sampling_rate, **kwargs)
         for mesh in meshes:
-            fit = TriangularMesh(mesh)
             self.cdata._add_fit(
-                fit=fit,
-                points=np.asarray(fit.mesh.vertices),
+                fit=TriangularMesh(mesh),
                 sampling_rate=dens.sampling_rate,
             )
 

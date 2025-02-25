@@ -83,7 +83,14 @@ class LocalizationDialog(QDialog):
         criteria_label = QLabel("Color Based On:")
         self.color_criteria_combo = QComboBox()
         self.color_criteria_combo.addItems(
-            ["Identity", "Camera Distance", "Cluster Distance", "Fit Distance"]
+            [
+                "Identity",
+                "Camera Distance",
+                "Cluster Distance",
+                "Fit Distance",
+                "Volume",
+                "Segments",
+            ]
         )
         self.color_criteria_combo.currentTextChanged.connect(
             self.update_target_selection
@@ -150,16 +157,13 @@ class LocalizationDialog(QDialog):
         self.target_combo.setVisible(True)
         self.normalize_checkbox.setEnabled(criteria != "Identity")
 
-        if criteria == "Identity":
-            self.target_label.setVisible(False)
-            self.target_combo.setVisible(False)
-        elif criteria == "Camera Distance":
-            self.target_label.setVisible(False)
-            self.target_combo.setVisible(False)
-        elif criteria == "Cluster Distance":
+        if criteria == "Cluster Distance":
             self.target_combo.addItems([name for name, _ in self.clusters])
         elif criteria == "Fit Distance":
             self.target_combo.addItems([name for name, _ in self.fits])
+        else:
+            self.target_label.setVisible(False)
+            self.target_combo.setVisible(False)
 
         completer = self.target_combo.completer()
         completer.setModel(self.target_combo.model())

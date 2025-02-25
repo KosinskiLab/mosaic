@@ -5,9 +5,11 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import pickle
 import warnings
-from typing import List, Dict
+
 from dataclasses import dataclass
+from typing import List, Dict, Any
 import xml.etree.ElementTree as ET
 
 import numpy as np
@@ -291,3 +293,10 @@ def load_density(filename: str) -> Density:
         volume.sampling_rate = 1
 
     return volume
+
+
+class CompatibilityUnpickler(pickle.Unpickler):
+    def find_class(self, module: str, name: str) -> Any:
+        if module.startswith("colabseg"):
+            module = "mosaic" + module[len("colabseg") :]
+        return super().find_class(module, name)

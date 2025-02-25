@@ -105,6 +105,7 @@ class MeshPropertiesDialog(QDialog):
                 "Vertices",
                 "Triangles",
                 "Triangle Area",
+                "Triangle Volume",
             ]
         )
         metric_layout.addWidget(self.metric_combo_label)
@@ -205,6 +206,9 @@ class MeshPropertiesDialog(QDialog):
             source_name = source.text()
             fit = source.data(Qt.ItemDataRole.UserRole)
 
+            vertices = fit.vertices
+            triangles = fit.triangles
+
             if metric == "curvature":
                 values = fit.compute_curvature()
             elif metric == "edge length":
@@ -212,17 +216,20 @@ class MeshPropertiesDialog(QDialog):
             elif metric == "area":
                 values = np.array([fit.mesh.get_surface_area()])
             elif metric == "vertices":
-                values = np.array([np.asarray(fit.mesh.vertices).shape[0]])
+                values = np.array([fit.vertices.shape[0]])
             elif metric == "triangles":
-                values = np.array([np.asarray(fit.mesh.triangles).shape[0]])
+                values = np.array([fit.triangles.shape[0]])
             elif metric == "triangle area":
-                vertices = np.asarray(fit.mesh.vertices)
-                triangles = np.asarray(fit.mesh.triangles)
-
                 v0 = vertices[triangles[:, 0]]
                 v1 = vertices[triangles[:, 1]]
                 v2 = vertices[triangles[:, 2]]
                 values = np.linalg.norm(np.cross(v1 - v0, v2 - v0), axis=1) / 2
+            elif metric == "triangle volume":
+                v0 = vertices[triangles[:, 0]]
+                v1 = vertices[triangles[:, 1]]
+                v2 = vertices[triangles[:, 2]]
+                face_volumes = np.sum(np.cross(v0, v1) * v2, axis=1) / 6.0
+                values = np.array([np.sum(np.abs(face_volumes))])
             else:
                 try:
                     values = np.array([fit.mesh.get_volume()])

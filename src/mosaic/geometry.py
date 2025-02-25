@@ -198,7 +198,7 @@ class Geometry:
         self._data.Modified()
 
     def add_faces(self, faces):
-        faces = np.asarray(faces)
+        faces = np.asarray(faces, dtype=int)
         if faces.shape[1] != 3:
             warnings.warn("Only triangular faces are supported.")
             return -1
@@ -588,6 +588,8 @@ class GeometryTrajectory(Geometry):
         if not hasattr(mesh, "mesh"):
             return None
 
-        self.swap_data(mesh.vertices, mesh.triangles, mesh.compute_vertex_normals())
+        self.swap_data(
+            mesh.vertices, faces=mesh.triangles, normals=mesh.compute_vertex_normals()
+        )
         self._meta.update(meta)
         return self.set_appearance(**appearance)

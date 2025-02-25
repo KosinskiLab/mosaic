@@ -744,10 +744,7 @@ class TriangularMesh(Parametrization):
         o3d.io.write_triangle_mesh(file_path, self.mesh)
 
     def __getstate__(self):
-        state = {
-            "vertices": np.asarray(self.mesh.vertices),
-            "triangles": np.asarray(self.mesh.triangles),
-        }
+        state = {"vertices": self.vertices, "triangles": self.triangles}
 
         if self.mesh.has_vertex_normals():
             state["vertex_normals"] = np.asarray(self.mesh.vertex_normals)
@@ -758,10 +755,7 @@ class TriangularMesh(Parametrization):
         return state
 
     def __setstate__(self, state):
-        mesh = o3d.geometry.TriangleMesh()
-        mesh.vertices = o3d.utility.Vector3dVector(state["vertices"])
-        mesh.triangles = o3d.utility.Vector3iVector(state["triangles"])
-
+        mesh = to_open3d(state["vertices"], state["triangles"])
         attrs = ("vertex_normals", "vertex_colors", "triangle_normals")
         for attr in attrs:
             if attr not in state:

@@ -214,7 +214,7 @@ class SegmentationTab(QWidget):
             target = parameters.get("target", None)
             distances, color_by = [], parameters.get("color_by", "Identity")
 
-            if target is None and color_by not in ("Camera Distance", "Identity"):
+            if target is None and color_by in ("Fit Distance", "Cluster Distance"):
                 return None
 
             identity = np.linspace(0, 255, len(geometries))

@@ -1,3 +1,4 @@
+from typing import Dict
 from os.path import splitext, basename
 
 from .parser import (
@@ -10,6 +11,7 @@ from .parser import (
     read_vtu,
     read_structure,
     GeometryDataContainer,
+    CompatibilityUnpickler,
 )
 
 FORMAT_MAPPING = {
@@ -44,3 +46,10 @@ def open_file(filename: str, *args, **kwargs) -> GeometryDataContainer:
         supported = ", ".join([f"'{x}'" for t in FORMAT_MAPPING.values() for x in t])
         raise ValueError(f"Unknown extension '{extension}', supported are {supported}.")
     return func(filename, *args, **kwargs)
+
+
+def open_session(filename: str, *args, **kwargs) -> Dict:
+    with open(filename, "rb") as ifile:
+        unpickler = CompatibilityUnpickler(ifile)
+        data = unpickler.load()
+    return data

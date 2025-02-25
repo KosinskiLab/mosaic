@@ -9,12 +9,12 @@
 
 import pickle
 from functools import wraps
-from typing import Callable, Any, Union
+from typing import Callable, Union
 
 import numpy as np
 from qtpy.QtCore import Signal, QObject
 
-from .formats import open_file
+from .formats import open_file, open_session
 from .container import DataContainer
 from .interactor import DataContainerInteractor
 from .parametrization import PARAMETRIZATION_TYPE
@@ -34,13 +34,6 @@ def _progress_decorator(func: Callable) -> Callable:
         return ret
 
     return wrapper
-
-
-class CompatibilityUnpickler(pickle.Unpickler):
-    def find_class(self, module: str, name: str) -> Any:
-        if module.startswith("colabseg"):
-            module = "mosaic" + module[len("colabseg") :]
-        return super().find_class(module, name)
 
 
 class MosaicData(QObject):
@@ -88,10 +81,7 @@ class MosaicData(QObject):
         """
         sampling = 1
         if filename.endswith("pickle"):
-            with open(filename, "rb") as ifile:
-                unpickler = CompatibilityUnpickler(ifile)
-                data = unpickler.load()
-
+            data = open_session(filename)
             shape = data["shape"]
             point_manager, model_manager = data["_data"], data["_models"]
 
@@ -153,7 +143,7 @@ class MosaicData(QObject):
         obj = self._get_active_container()
         return obj.toggle_picking_mode()
 
-    def _add_fit(self, fit, points, sampling_rate=None):
+    def _add_fit(self, fit, sampling_rate=None, **kwargs):
 
         if hasattr(fit, "mesh"):
             new_points = fit.vertices
@@ -215,9 +205,7 @@ class MosaicData(QObject):
                 if fit is None:
                     continue
 
-                self._add_fit(
-                    fit=fit, points=cloud.points, sampling_rate=cloud._sampling_rate
-                )
+                self._add_fit(fit=fit, sampling_rate=cloud._sampling_rate)
 
             except Exception as e:
                 print(e)

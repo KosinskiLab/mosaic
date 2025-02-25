@@ -158,22 +158,16 @@ class IntelligenceTab(QWidget):
                 points = np.divide(np.subtract(container.vertices, offset), scale)
 
                 fit = TriangularMesh(to_open3d(points, faces))
-                meta = {
-                    "points": points,
-                    "faces": faces,
-                    "fit": fit,
-                    "normals": fit.compute_vertex_normals(),
-                    "filename": filename,
-                }
-                ret.append(meta)
+                ret.append({"fit": fit, "filename": filename})
 
         if len(ret) == 0:
             print(f"No meshes found at: {directory}.")
             return None
 
+        base = ret[0]["fit"]
         trajectory = GeometryTrajectory(
-            points=np.asarray(ret[0]["fit"].mesh.vertices).copy(),
-            normals=ret[0]["normals"].copy(),
+            points=base.vertices.copy(),
+            normals=base.compute_vertex_normals().copy(),
             sampling_rate=1 / scale,
             meta=ret[0].copy(),
             trajectory=ret,
