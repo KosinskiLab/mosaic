@@ -353,39 +353,45 @@ class App(QMainWindow):
     ):
         camera = self.renderer.GetActiveCamera()
         focal_point = camera.GetFocalPoint()
+        position = camera.GetPosition()
 
-        distance = 1000
-        if self.cdata.shape is not None:
-            distance = max(self.cdata.shape) * 2.0
-
+        distance = np.linalg.norm(np.subtract(position, focal_point))
         distance = distance if aligned_direction else -distance
         if view_key == "z":
             view = (1, 0, 1)
-            position = (0, 0, distance)
+            position_vec = (0, 0, 1)
         elif view_key == "c":
             view = (1, 0, 0)
-            position = (0, distance, 0)
+            position_vec = (0, 1, 0)
         elif view_key == "x":
             view = (0, 1, 0)
-            position = (distance, 0, 0)
+            position_vec = (1, 0, 0)
         else:
             return -1
 
         transform = vtk.vtkTransform()
-
         transform.Identity()
         transform.RotateWXYZ(elevation, *(0, 0, 1))
         transform.RotateWXYZ(azimuth, *(0, 1, 0))
         transform.RotateWXYZ(pitch, *(1, 0, 0))
 
         view = transform.TransformVector(view)
-        position = transform.TransformPoint(position)
+        position_vec = np.array(transform.TransformVector(position_vec))
+        position_vec /= np.linalg.norm(position_vec)
+        position_vec *= distance
 
-        position = tuple(sum(x) for x in zip(focal_point, position))
+        position = np.add(focal_point, position_vec)
+        current_view = getattr(self, "_camera_view", None)
+        if current_view != view_key:
+            focal_point = (0, 0, 0)
+            position = position_vec
+
         camera.SetPosition(*position)
         camera.SetViewUp(*view)
+        camera.SetFocalPoint(*focal_point)
+        if current_view != view_key:
+            self.renderer.ResetCamera()
 
-        self.renderer.ResetCamera()
         self._camera_view = view_key
         self._camera_elevation = elevation
         self._camera_azimuth = azimuth

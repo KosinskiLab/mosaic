@@ -38,20 +38,15 @@ class Geometry:
 
         self._actor = self.create_actor(vtk_actor)
 
-        if sampling_rate is None:
-            sampling_rate = np.ones(3)
-        sampling_rate = np.asarray(sampling_rate)
-        sampling_rate = np.repeat(sampling_rate, 3 // sampling_rate.size)
-        self._sampling_rate = sampling_rate
-
+        self.sampling_rate = sampling_rate
         self._meta = {} if meta is None else meta
         self._representation = "pointcloud"
 
         if points is not None:
-            self.add_points(np.asarray(points, dtype=np.float32))
+            self.add_points(points)
 
         if normals is not None:
-            self.add_normals(np.asarray(normals, dtype=np.float32))
+            self.add_normals(normals)
 
         self._appearance = {
             "size": 8,
@@ -311,12 +306,14 @@ class Geometry:
         color : tuple of float
             RGB color values (0-1) to apply to selected points
         """
+        mapper = self._actor.GetMapper()
+        prop = self._actor.GetProperty()
         if self._representation in ("normals", "pointcloud_normals"):
-            mapper = self._actor.GetMapper()
             mapper.ScalarVisibilityOff()
-            prop = self._actor.GetProperty()
             return prop.SetColor(*color)
 
+        # Remove highlight_color hue when switching back from modes above
+        prop.SetColor(*self._appearance["base_color"])
         n_points = self._points.GetNumberOfPoints()
         point_ids = [x for x in point_ids if x < n_points]
         colors = np.full(
