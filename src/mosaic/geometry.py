@@ -66,7 +66,7 @@ class Geometry:
     @sampling_rate.setter
     def sampling_rate(self, sampling_rate):
         if sampling_rate is None:
-            self._sampling_rate = np.ones(3, dtype=np.float32)
+            sampling_rate = np.ones(3, dtype=np.float32)
         sampling_rate = np.asarray(sampling_rate, dtype=np.float32)
         sampling_rate = np.repeat(sampling_rate, 3 // sampling_rate.size)
         self._sampling_rate = sampling_rate

@@ -37,24 +37,20 @@ def _get_distinct_colors(cmap_name, n):
 class MeshPropertiesDialog(QDialog):
     def __init__(self, fits=[], parent=None):
         super().__init__(parent)
-        self.fits = fits
-
         self.setWindowTitle("Mesh Properties Analysis")
         self.resize(900, 600)
 
         self.properties_data = []
 
         self.setWindowFlags(Qt.WindowType.Window)
-        self.setup_ui()
 
-    def setup_ui(self):
         layout = QHBoxLayout(self)
 
         default_btn = QPushButton(self)
         default_btn.setDefault(True)
         default_btn.setFixedSize(0, 0)
 
-        config_widget = self._create_config_widget()
+        config_widget = self._create_config_widget(fits=fits)
         viz_widget = self._create_histogram_widget()
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -64,7 +60,38 @@ class MeshPropertiesDialog(QDialog):
 
         layout.addWidget(splitter)
 
-    def _create_config_widget(self):
+    def update_fits(self, new_fits):
+        """
+        Update scroll list with new_fits while maintaining selection and scroll position.
+        """
+        if new_fits is None:
+            return None
+
+        selected_indices = [
+            self.source_list.row(item) for item in self.source_list.selectedItems()
+        ]
+
+        scroll_pos = 0
+        if self.source_list.verticalScrollBar():
+            scroll_pos = self.source_list.verticalScrollBar().value()
+
+        self.source_list.clear()
+        for name, fit in new_fits:
+            item = QListWidgetItem(name)
+            item.setData(Qt.ItemDataRole.UserRole, fit)
+            self.source_list.addItem(item)
+
+        for idx in selected_indices:
+            if idx < self.source_list.count():
+                self.source_list.item(idx).setSelected(True)
+
+        if self.source_list.verticalScrollBar():
+            self.source_list.verticalScrollBar().setValue(scroll_pos)
+
+        # if getattr(self, 'properties_data', None) and len(new_fits):
+        #     self._compute_properties()
+
+    def _create_config_widget(self, fits):
         config_widget = QWidget()
         config_layout = QVBoxLayout(config_widget)
 
@@ -72,10 +99,8 @@ class MeshPropertiesDialog(QDialog):
         source_layout = QVBoxLayout()
         self.source_list = QListWidget()
         self.source_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
-        for name, fit in self.fits:
-            item = QListWidgetItem(name)
-            item.setData(Qt.ItemDataRole.UserRole, fit)
-            self.source_list.addItem(item)
+        self.update_fits(new_fits=fits)
+
         source_layout.addWidget(self.source_list)
         source_group.setLayout(source_layout)
 

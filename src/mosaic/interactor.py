@@ -72,6 +72,7 @@ def _cluster_modifier(keep_selection: bool = False):
 
 class DataContainerInteractor(QObject):
     data_changed = Signal()
+    render_update = Signal()
 
     def __init__(self, container, vtk_widget, prefix="Cluster"):
         super().__init__()
@@ -162,6 +163,9 @@ class DataContainerInteractor(QObject):
             self.container.data[index]._meta["name"] = item.text()
         self.data_changed.emit()
         self.render()
+
+    def add(self, *args, **kwargs):
+        return self.container.add(*args, **kwargs)
 
     def _add_point(self, point):
         if not self.container._index_ok(self._active_cluster):
@@ -515,7 +519,8 @@ class DataContainerInteractor(QObject):
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
             self.data_list.addItem(item)
 
-        return self.render_vtk()
+        self.render_vtk()
+        return self.render_update.emit()
 
     def render_vtk(self):
         self.vtk_widget.GetRenderWindow().Render()

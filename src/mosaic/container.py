@@ -64,6 +64,40 @@ class DataContainer:
         self.base_color = base_color
         self.highlight_color = highlight_color
 
+    def __getitem__(self, idx):
+        """
+        Get a subset of the DataContainer.
+
+        Parameters
+        ----------
+        idx : int, slice, or list-like
+            Index, slice, or list of indices to retrieve.
+
+        Returns
+        -------
+        DataContainer
+            A new DataContainer containing the specified geometries.
+        """
+        indices = []
+        if isinstance(idx, int):
+            indices = [idx]
+        elif isinstance(idx, slice) or idx is ...:
+            indices = np.arange(len(self.data))[idx]
+        elif hasattr(idx, "__iter__"):
+            indices = list(idx)
+        elif isinstance(idx, np.ndarray):
+            if idx.dtype == bool:
+                indices = np.where(idx)
+        else:
+            raise TypeError(f"Invalid index type: {type(idx)}")
+
+        result = DataContainer(
+            base_color=self.base_color, highlight_color=self.highlight_color
+        )
+        result.metadata = self.metadata.copy()
+        result.data = [self.data[i] for i in indices if self._index_ok(i)]
+        return result
+
     def update(self, other: "DataContainer"):
         """Update current class instance with data from another container.
 

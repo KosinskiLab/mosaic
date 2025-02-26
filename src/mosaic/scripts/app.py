@@ -16,6 +16,7 @@ import sys
 import enum
 from typing import List
 from importlib_resources import files
+from os.path import splitext, basename
 
 import vtk
 import numpy as np
@@ -759,23 +760,27 @@ class App(QMainWindow):
                         print("Use Load Session to open session files.")
                     continue
 
-                for data in container:
+                base, _ = splitext(basename(filename))
+                use_index = len(container) > 1
+                for index, data in enumerate(container):
                     data.vertices = np.multiply(
                         np.subtract(data.vertices, offset), scale
                     )
 
+                    name = base if not use_index else f"{index}_base"
                     if data.faces is None:
-                        self.cdata._data.add(
+                        index = self.cdata.data.add(
                             points=data.vertices,
                             normals=data.normals,
                             sampling_rate=sampling,
                         )
+                        self.cdata._data.data[index]._meta["name"] = name
                     else:
-                        self.cdata._add_fit(
+                        index = self.cdata._add_fit(
                             fit=TriangularMesh(to_open3d(data.vertices, data.faces)),
-                            points=None,
                             sampling_rate=sampling,
                         )
+                        self.cdata._models.data[index]._meta["name"] = name
 
         self.cdata.data.data_changed.emit()
         self.cdata.models.data_changed.emit()

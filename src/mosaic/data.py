@@ -152,7 +152,7 @@ class MosaicData(QObject):
             new_points = fit.sample(n_samples=1000)
             normals = fit.compute_normal(new_points)
 
-        index = self._models.add(
+        index = self.models.add(
             points=new_points,
             normals=normals,
             sampling_rate=sampling_rate,

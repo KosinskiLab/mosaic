@@ -1,5 +1,6 @@
 import re
 from os import listdir
+from typing import Union
 from os.path import join, exists, basename
 
 import numpy as np
@@ -132,7 +133,9 @@ class IntelligenceTab(QWidget):
         QMessageBox.information(self, "Success", "HMFF directory setup successfully.")
         return ret
 
-    def _import_trajectory(self, scale: float = 1.0, offset: float = 0.0, **kwargs):
+    def _import_trajectory(
+        self, scale: float = 1.0, offset: Union[str, float] = 0.0, **kwargs
+    ):
         directory = QFileDialog.getExistingDirectory(
             self,
             "Select Directory with Point Cloud Series",
@@ -150,6 +153,14 @@ class IntelligenceTab(QWidget):
             if x.endswith(".tsi") or x.endswith(".vtu") and x != "conf-1.vtu"
         ]
         files = sorted(files, key=lambda x: int(re.findall(r"\d+", basename(x))[0]))
+
+        if isinstance(offset, str):
+            try:
+                offset = np.array([float(x) for x in offset.split(",")])
+            except Exception as e:
+                raise ValueError(
+                    "Offset should be a single or three comma-separated floats."
+                ) from e
 
         with ProgressDialog(files, title="Importing Trajectory", parent=None) as pbar:
             for index, filename in enumerate(pbar):
@@ -250,7 +261,7 @@ IMPORT_SETTINGS = {
             "label": "Offset",
             "parameter": "offset",
             "type": "text",
-            "default": 0.0,
+            "default": "0.0",
             "description": "Add offset as (points - offset) / scale ",
         },
     ],

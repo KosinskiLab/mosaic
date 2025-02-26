@@ -326,7 +326,19 @@ class ModelTab(QWidget):
         fits = self.cdata.format_datalist("models")
         fits = [(x[0], x[1]._meta.get("fit", None)) for x in fits]
         fits = [(x[0], x[1]) for x in fits if isinstance(x[1], TriangularMesh)]
+
         dialog = MeshPropertiesDialog(fits=fits, parent=self)
+
+        def _update_dialog():
+            if not dialog or not dialog.isVisible():
+                return
+
+            fits = self.cdata.format_datalist("models")
+            fits = [(x[0], x[1]._meta.get("fit", None)) for x in fits]
+            fits = [(x[0], x[1]) for x in fits if isinstance(x[1], TriangularMesh)]
+            dialog.update_fits(fits)
+
+        self.cdata.models.render_update.connect(_update_dialog)
         return dialog.show()
 
     def _color_curvature(
