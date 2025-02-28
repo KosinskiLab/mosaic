@@ -154,6 +154,8 @@ class IntelligenceTab(QWidget):
         ]
         files = sorted(files, key=lambda x: int(re.findall(r"\d+", basename(x))[0]))
 
+        #offset = "-260.0,-109.0,-639.0"
+        #scale = 0.027697784943034733
         if isinstance(offset, str):
             try:
                 offset = np.array([float(x) for x in offset.split(",")])

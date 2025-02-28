@@ -24,7 +24,7 @@ dependencies = [
     "matplotlib",
     "imageio",
     "imageio-ffmpeg",
-    "PIL",
+    "Pillow",
     "importlib_resources",
 ]
 license = {text = "Proprietary"}

@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 from tme import Orientations, Density
@@ -7,7 +7,7 @@ from tme.matching_utils import rotation_aligning_vectors
 
 
 class OrientationsWriter:
-    def __init__(self, points: np.ndarray, normals: np.ndarray):
+    def __init__(self, points: List[np.ndarray], normals: List[np.ndarray]):
         self.entities = np.concatenate(
             [np.full(x.shape[0], fill_value=i) for i, x in enumerate(points)]
         )

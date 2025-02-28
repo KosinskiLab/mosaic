@@ -88,14 +88,19 @@ class GeometryDataContainer:
         )
 
 
-def read_star(filename):
+def _read_orientations(filename):
     data = Orientations.from_file(filename)
-    ret = [data.translations[:, ::-1]]
+    vertices = [data.translations[:, ::-1]]
     angles = Rotation.from_euler(
         angles=data.rotations[:, ::-1], seq="zyx", degrees=True
     )
-    normals = [angles.inv().as_matrix() @ np.array((1, 0, 0))]
-    return GeometryDataContainer(vertices=ret, normals=normals)
+    normals = [angles.inv().apply((1, 0, 0))]
+    return vertices, normals
+
+
+def read_star(filename):
+    vertices, normals = _read_orientations(filename)
+    return GeometryDataContainer(vertices=vertices, normals=normals)
 
 
 def read_txt(filename: str):
@@ -132,13 +137,8 @@ def read_tsv(filename: str) -> GeometryDataContainer:
     if "euler" not in header:
         return read_txt(filename)
 
-    orientations = Orientations.from_file(filename)
-    data = [orientations.translations[:, ::-1]]
-    angles = Rotation.from_euler(
-        angles=orientations.rotations[:, ::-1], seq="zyx", degrees=True
-    )
-    normals = [angles.inv().as_matrix() @ np.array((1, 0, 0))]
-    return GeometryDataContainer(vertices=data, normals=normals)
+    vertices, normals = _read_orientations(filename)
+    return GeometryDataContainer(vertices=vertices, normals=normals)
 
 
 def read_tsi(filename: str) -> GeometryDataContainer:
