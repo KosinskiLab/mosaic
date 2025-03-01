@@ -254,7 +254,7 @@ class DistanceAnalysisDialog(QDialog):
         source_name = source.text()
         query_points = source.data(Qt.ItemDataRole.UserRole).points
 
-        target_data, bins = [], []
+        distances, bins = [], []
         if self.target_type_combo.currentText() in ["Fits", "Both"]:
             for index, target in enumerate(targets):
                 target_data = target.data(Qt.ItemDataRole.UserRole)
@@ -268,10 +268,10 @@ class DistanceAnalysisDialog(QDialog):
                 else:
                     dist = model.compute_distance(query_points)
 
-                target_data.append(dist)
+                distances.append(dist)
                 bins.append(np.array([target.text()] * dist.size))
 
-            return (source_name, np.concatenate(target_data), np.concatenate(bins))
+            return (source_name, np.concatenate(distances), np.concatenate(bins))
 
         target_data, bins = [], []
         for target_cluster in targets:

@@ -544,7 +544,7 @@ class DataContainer:
         volume_path = parameters.get("volume_path", None)
         if volume_path is not None:
             volume = load_density(volume_path)
-            volume.data = np.swapaxes(volume.data, 0, 2)
+            # volume.data = np.swapaxes(volume.data, 0, 2)
 
         parameters["isovalue_percentile"] = (
             parameters.get("isovalue_percentile", 99) / 100

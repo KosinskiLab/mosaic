@@ -1,6 +1,6 @@
 from typing import Dict
-from os.path import splitext, basename
 
+from ._utils import get_extension, CompatibilityUnpickler
 from .parser import (
     read_star,
     read_tsv,
@@ -11,7 +11,6 @@ from .parser import (
     read_vtu,
     read_structure,
     GeometryDataContainer,
-    CompatibilityUnpickler,
 )
 
 FORMAT_MAPPING = {
@@ -26,15 +25,8 @@ FORMAT_MAPPING = {
 }
 
 
-def _get_extension(filename: str) -> str:
-    base, extension = splitext(basename(filename))
-    if extension.lower() == ".gz":
-        _, extension = splitext(basename(base))
-    return extension
-
-
 def open_file(filename: str, *args, **kwargs) -> GeometryDataContainer:
-    extension = _get_extension(filename)[1:]
+    extension = get_extension(filename)[1:]
 
     func = None
     for reader_func, reader_formats in FORMAT_MAPPING.items():

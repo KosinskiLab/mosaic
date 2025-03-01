@@ -5,20 +5,19 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import pickle
 import warnings
 
+from typing import List, Dict
 from dataclasses import dataclass
-from typing import List, Dict, Any
 import xml.etree.ElementTree as ET
 
 import numpy as np
 import open3d as o3d
-from scipy.spatial.transform import Rotation
 from tme import Density, Structure, Orientations
 
-from ..parametrization import TriangularMesh
+from ._utils import NORMAL_REFERENCE
 from ..meshing.utils import to_open3d
+from ..parametrization import TriangularMesh
 from ..utils import volume_to_points, compute_bounding_box
 
 
@@ -61,6 +60,14 @@ class GeometryDataContainer:
     def __post_init__(self):
         if self.normals is None:
             self.normals = [np.zeros_like(x) for x in self.vertices]
+            self.normals[:, 0] = 1
+
+        for i in range(len(self.normals)):
+            norm = np.linalg.norm(self.normals[i], axis=1)
+            mask = norm < 1e-12
+            norm[mask] = 1
+            self.normals[i][mask] = (1, 0, 0)
+            self.normals[i] = self.normals[i] / norm[:, None]
 
         if self.shape is None:
             self.shape, _ = compute_bounding_box(self.vertices)
@@ -90,12 +97,7 @@ class GeometryDataContainer:
 
 def _read_orientations(filename):
     data = Orientations.from_file(filename)
-    vertices = [data.translations[:, ::-1]]
-    angles = Rotation.from_euler(
-        angles=data.rotations[:, ::-1], seq="zyx", degrees=True
-    )
-    normals = [angles.inv().apply((1, 0, 0))]
-    return vertices, normals
+    return [data.translations], [data.compute_normals(NORMAL_REFERENCE)]
 
 
 def read_star(filename):
@@ -280,11 +282,6 @@ def _read_vtu_file(file_path: str) -> Dict:
 def load_density(filename: str) -> Density:
     volume = Density.from_file(filename)
 
-    fname = filename.lower()
-    if fname.endswith((".mrc", ".map", ".rec", "mrc.gz", "map.gz", "rec.gz")):
-        volume.data = np.swapaxes(volume.data, 0, 2)
-        volume.sampling_rate = volume.sampling_rate[::-1]
-
     if np.allclose(volume.sampling_rate, 0):
         warnings.warn(
             "All sampling rates are 0 - Setting them to 1 for now. Some functions might"
@@ -293,10 +290,3 @@ def load_density(filename: str) -> Density:
         volume.sampling_rate = 1
 
     return volume
-
-
-class CompatibilityUnpickler(pickle.Unpickler):
-    def find_class(self, module: str, name: str) -> Any:
-        if module.startswith("colabseg"):
-            module = "mosaic" + module[len("colabseg") :]
-        return super().find_class(module, name)

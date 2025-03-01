@@ -16,7 +16,7 @@ dependencies = [
     "vtk>=9.3.1",
     "PyQt6>=6.7.1",
     "pyqtgraph>=0.13.3",
-    "pytme>=0.2.5",
+    "pytme>=0.2.6",
     "open3d>=0.18.0",
     "libigl==2.5.1",
     "pymeshlab",

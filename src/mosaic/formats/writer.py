@@ -2,8 +2,9 @@ from typing import Dict, List
 
 import numpy as np
 from tme import Orientations, Density
-from scipy.spatial.transform import Rotation
-from tme.matching_utils import rotation_aligning_vectors
+from tme.rotations import align_vectors
+
+from ._utils import get_extension, NORMAL_REFERENCE
 
 
 class OrientationsWriter:
@@ -11,17 +12,20 @@ class OrientationsWriter:
         self.entities = np.concatenate(
             [np.full(x.shape[0], fill_value=i) for i, x in enumerate(points)]
         )
-        self.points, self.normals = np.concatenate(points), np.concatenate(normals)
+        self.points, normals = np.concatenate(points), np.concatenate(normals)
 
+        self.normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
         self.rotations = np.zeros_like(self.normals)
         for i in range(self.normals.shape[0]):
-            self.rotations[i] = rotation_aligning_vectors(
-                self.normals[i], target_vector=(1, 0, 0), convention="zyz"
+            self.rotations[i] = align_vectors(
+                base=NORMAL_REFERENCE, target=self.normals[i], seq="zyz"
             )
 
-    def to_file(self, file_path, file_format):
+    def to_file(self, file_path, file_format: str = None, **kwargs):
         _supported_formats = {"tsv": self._to_txt, "star": self._to_star}
 
+        if file_format is None:
+            file_format = get_extension(file_path)[1:]
         func = _supported_formats.get(file_format, None)
         if func is None:
             formats = ", ".join([str(x) for x in _supported_formats.keys()])
@@ -30,10 +34,9 @@ class OrientationsWriter:
         return func(file_path)
 
     def _to_txt(self, file_path):
-        rotations = Rotation.from_euler(angles=self.rotations, seq="zyz", degrees=True)
         orientations = Orientations(
-            translations=self.points[:, ::-1],
-            rotations=rotations.as_euler(seq="zyx", degrees=True)[:, ::-1],
+            translations=self.points,
+            rotations=self.rotations,
             scores=np.zeros(self.rotations.shape[0]),
             details=self.entities,
         )
@@ -50,7 +53,7 @@ class OrientationsWriter:
             "_rlnAngleRot",
             "_rlnAngleTilt",
             "_rlnAnglePsi",
-            "_colabsegGroup",
+            "_mosaicGroup",
         ]
 
         with open(file_path, "w") as f:
@@ -59,7 +62,7 @@ class OrientationsWriter:
             for i in range(self.points.shape[0]):
                 x, y, z = self.points[i]
                 rot, tilt, psi = self.rotations[i]
-                colabseg_group = self.entities[i]
+                mosaic_group = self.entities[i]
 
                 particle_data = [
                     f"{x:.6f}",
@@ -68,7 +71,7 @@ class OrientationsWriter:
                     f"{rot:.6f}",
                     f"{tilt:.6f}",
                     f"{psi:.6f}",
-                    f"{colabseg_group}",
+                    f"{mosaic_group}",
                 ]
                 f.write("\t".join(particle_data) + "\n")
 

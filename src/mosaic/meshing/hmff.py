@@ -7,11 +7,7 @@ from os.path import join
 import numpy as np
 import matplotlib.pyplot as plt
 from tme import Density
-
-try:
-    from tme.preprocessing import BandPassFilter
-except Exception:
-    from tme.filters import BandPassFilter
+from tme.filters import BandPassFilter
 
 from ..formats.writer import write_topology_file
 from ..meshing.utils import (
