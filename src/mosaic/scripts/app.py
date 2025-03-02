@@ -6,12 +6,6 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 import os
-
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["NUMEXPR_NUM_THREADS"] = "1"
-os.environ["QT_API"] = os.environ.get("QT_API", "pyqt6")
-
 import sys
 import enum
 from typing import List

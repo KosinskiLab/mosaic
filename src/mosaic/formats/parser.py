@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 import open3d as o3d
+from scipy.spatial.transform import Rotation
 from tme import Density, Structure, Orientations
 
 from ._utils import NORMAL_REFERENCE
@@ -97,7 +98,9 @@ class GeometryDataContainer:
 
 def _read_orientations(filename):
     data = Orientations.from_file(filename)
-    return [data.translations], [data.compute_normals(NORMAL_REFERENCE)]
+    angles = Rotation.from_euler("zyz", data.rotations, degrees=True)
+    normals = angles.apply(NORMAL_REFERENCE)
+    return [data.translations], [normals]
 
 
 def read_star(filename):

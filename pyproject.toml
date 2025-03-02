@@ -59,3 +59,10 @@ addopts = [
 omit = [
     "tests/*"
 ]
+
+[tool.pyright.defineConstant]
+PYQT5 = false
+PYSIDE2 = false
+PYQT6 = true
+PYSIDE6 = false
+
