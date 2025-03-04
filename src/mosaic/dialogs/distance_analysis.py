@@ -259,14 +259,7 @@ class DistanceAnalysisDialog(QDialog):
             for index, target in enumerate(targets):
                 target_data = target.data(Qt.ItemDataRole.UserRole)
 
-                model = target_data._meta.get("fit", None)
-                if model is None:
-                    dist, _ = find_closest_points(target_data.points, query_points, k=1)
-                elif not hasattr(model, "compute_distance"):
-                    print(f"{model} does not define method compute_distance.")
-                    continue
-                else:
-                    dist = model.compute_distance(query_points)
+                dist = target_data.compute_distance(query_points)
 
                 distances.append(dist)
                 bins.append(np.array([target.text()] * dist.size))

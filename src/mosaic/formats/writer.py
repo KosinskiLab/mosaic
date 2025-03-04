@@ -4,7 +4,8 @@ import numpy as np
 from tme import Orientations, Density
 from tme.rotations import align_vectors
 
-from ._utils import get_extension, NORMAL_REFERENCE
+from ._utils import get_extension
+from ..utils import NORMAL_REFERENCE
 
 
 class OrientationsWriter:

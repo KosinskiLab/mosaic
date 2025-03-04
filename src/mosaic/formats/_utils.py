@@ -3,8 +3,6 @@ import pickle
 from typing import Any
 from os.path import splitext, basename
 
-NORMAL_REFERENCE = (0, 0, 1)
-
 
 class CompatibilityUnpickler(pickle.Unpickler):
     def find_class(self, module: str, name: str) -> Any:

@@ -32,7 +32,6 @@ from qtpy.QtCore import (
 )
 
 from .utils import points_to_volume
-from .geometry import VolumeGeometry
 from .widgets import ContainerListWidget
 from .formats import OrientationsWriter, write_density
 from .dialogs import GeometryPropertiesDialog, make_param, OperationDialog
@@ -458,7 +457,8 @@ class DataContainerInteractor(QObject):
         base_container = self.container.data[indices[0]]
         base_parameters = base_container._appearance.copy()
         base_parameters["sampling_rate"] = base_container.sampling_rate
-        if isinstance(base_container, VolumeGeometry):
+
+        if getattr(base_container, "_raw_volume", None) is not None:
             base_parameters["volume"] = base_container._raw_volume
         dialog = GeometryPropertiesDialog(initial_properties=base_parameters)
 
@@ -574,6 +574,11 @@ class DataContainerInteractor(QObject):
     def remove(self):
         self.remove_cluster()
         self.remove_points()
+
+    def get_geometry(self, index: int):
+        if not self.container._index_ok(index):
+            return None
+        return self.container.data[index]
 
     @_cluster_modifier()
     def change_visibility(self, **kwargs):

@@ -265,27 +265,28 @@ class SegmentationTab(QWidget):
         return dialog.show()
 
     def _distance_crop(self):
-        clusters = self.cdata.format_datalist(type="data")
-        dialog = DistanceCropDialog(clusters, self)
+        fits = self.cdata.format_datalist("models")
+        clusters = self.cdata.format_datalist("data")
+
+        dialog = DistanceCropDialog(clusters=clusters, fits=fits, parent=self)
         sources, targets, distance, keep_smaller = dialog.get_results()
         if sources is None:
             return -1
 
-        # Build points attribute first to avoid synchronization issues
         for source in sources:
-            temp_targets = [x for x in targets if x != source]
-            if len(temp_targets) == 0:
-                continue
-            target_points = np.concatenate(
-                [self.cdata._data._get_cluster_points(x) for x in temp_targets]
-            )
-            self.cdata._data.data[source]._meta["points"] = target_points
+            dist = None
+            for target in targets:
+                curdist = target.compute_distance(source.points, distance)
+                if dist is None:
+                    dist = curdist
+                dist = np.minimum(dist, curdist)
 
-        for source in sources:
-            self.cdata._data.crop(
-                indices=[source], distance=distance, keep_smaller=keep_smaller
-            )
-            _ = self.cdata._data.data[source]._meta.pop("points")
+            mask = dist >= distance
+            if keep_smaller:
+                mask = dist < distance
+
+            self.cdata.data.add(source[mask])
+
         self.cdata.data.render()
 
 
@@ -321,17 +322,22 @@ class ClusterTransformer:
         self.setup()
         self.selected_cluster = self.data.data_list.row(selected_items[0])
 
-        points = self.data.container._get_cluster_points(self.selected_cluster)
+        geometry = self.data.get_geometry(self.selected_cluster)
+
+        points = geometry.points
         mins = np.min(points, axis=0)
         maxs = np.max(points, axis=0)
 
         bounds = []
-        padding = np.multiply(maxs - mins, 0.55)
+        padding = np.maximum(
+            np.multiply(maxs - mins, 0.55), 20 * geometry.sampling_rate
+        )
         for min_val, max_val, pad in zip(mins, maxs, padding):
             bounds.extend([min_val - pad, max_val + pad])
 
         # Transforms are w.r.t baseline orientation
-        self.original_points = points.copy()
+        self.points = points.copy()
+        self.normals = geometry.normals.copy()
         self.transform_widget.PlaceWidget(bounds)
         self.transform_widget.On()
         self.data.vtk_widget.GetRenderWindow().Render()
@@ -365,12 +371,16 @@ class ClusterTransformer:
         rotation, translation = matrix[:3, :3], matrix[:3, 3]
         only_translate = np.allclose(rotation, np.eye(3), rtol=1e-10)
 
-        new_points = self.original_points.copy()
+        new_points = self.points.copy()
+        new_normals = self.normals.copy()
         if not only_translate:
             new_points = np.matmul(new_points, rotation.T, out=new_points)
+            new_normals = np.matmul(new_normals, rotation.T, out=new_normals)
 
         new_points = np.add(new_points, translation, out=new_points)
-        self.data.container.data[self.selected_cluster].swap_data(new_points=new_points)
+        self.data.container.data[self.selected_cluster].swap_data(
+            new_points, normals=new_normals
+        )
         self.data.render()
 
 

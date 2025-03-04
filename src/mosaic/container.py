@@ -10,7 +10,6 @@ from typing import List, Tuple, Union, Dict, Callable
 
 import vtk
 import numpy as np
-from scipy.spatial import cKDTree
 from sklearn.cluster import KMeans
 
 from .parametrization import ConvexHull
@@ -183,7 +182,10 @@ class DataContainer:
         if not isinstance(data, np.ndarray):
             if "sampling_rate" not in kwargs:
                 kwargs["sampling_rate"] = self.data[data[0]]._sampling_rate
-            data = np.concatenate([self._get_cluster_points(i) for i in data])
+
+            geometries = [self.data[i] for i in data]
+            data = np.concatenate([x.points for x in geometries])
+            kwargs["normals"] = np.concatenate([x.normals for x in geometries])
 
         return self.add(data, *args, **kwargs)
 
@@ -267,7 +269,7 @@ class DataContainer:
 
         Parameters
         ----------
-        geometry : :py:class:`colabseg.geometry.Geometry`
+        geometry : :py:class:`mosaic.geometry.Geometry`
             Cloud to decimate.
         method : str
             Method to use. Options are:
@@ -319,13 +321,17 @@ class DataContainer:
         return self.add(points, sampling_rate=geometry._sampling_rate)
 
     @apply_over_indices
-    def crop(self, geometry, distance: float, keep_smaller: bool = True):
-        """Crop points based on distance criteria.
+    def crop(
+        self, geometry, distance: float, query: np.ndarray, keep_smaller: bool = True
+    ):
+        """Crop geometry based on distance to query points.
 
         Parameters
         ----------
-        geometry : :py:class:`colabseg.geometry.Geometry`
+        geometry : :py:class:`mosaic.geometry.Geometry`
             Cloud to crop.
+        query : np.ndarray
+            Points to compute distances to.
         distance : float
             Distance threshold for cropping.
 
@@ -334,22 +340,10 @@ class DataContainer:
         ndarray
             Remaining points after cropping.
         """
-        cloud_points = geometry.points
-        if cloud_points is None:
-            return None
-
-        points = geometry.points
-
-        tree = cKDTree(points)
-        indices = tree.query_ball_point(cloud_points, distance)
-        unique_indices = np.unique(np.concatenate(indices)).astype(int)
-
+        dist = geometry.compute_distance(query_points=query, cutoff=distance)
         if keep_smaller:
-            return points[unique_indices]
-
-        mask = np.ones(len(points), dtype=bool)
-        mask[unique_indices] = False
-        return points[mask]
+            return geometry.points[dist < distance]
+        return geometry.points[dist >= distance]
 
     @apply_over_indices
     def sample(self, geometry, sampling: float, method: str):
@@ -357,7 +351,7 @@ class DataContainer:
 
         Parameters
         ----------
-        geometry : :py:class:`colabseg.geometry.Geometry`
+        geometry : :py:class:`mosaic.geometry.Geometry`
             Cloud to sample from.
         sampling : float
             Sampling rate or number of points.
@@ -386,7 +380,7 @@ class DataContainer:
 
         Parameters
         ----------
-        geometry : :py:class:`colabseg.geometry.Geometry`
+        geometry : :py:class:`mosaic.geometry.Geometry`
             Cloud to trim.
         min_value : float
             Minimum bound value.
@@ -426,7 +420,7 @@ class DataContainer:
 
         Parameters
         ----------
-        geometry : :py:class:`colabseg.geometry.Geometry`
+        geometry : :py:class:`mosaic.geometry.Geometry`
             Cloud to cluster.
         """
         sampling = geometry._sampling_rate
@@ -441,7 +435,7 @@ class DataContainer:
 
         Parameters
         ----------
-        geometry : :py:class:`colabseg.geometry.Geometry`
+        geometry : :py:class:`mosaic.geometry.Geometry`
             Cloud to cluster.
         distance : float
             DBSCAN epsilon parameter.
@@ -464,7 +458,7 @@ class DataContainer:
 
         Parameters
         ----------
-        geometry : :py:class:`colabseg.geometry.Geometry`
+        geometry : :py:class:`mosaic.geometry.Geometry`
             Cloud to process.
         method : str, optional
             'statistical' or 'eigenvalue', default 'statistical'.
@@ -544,7 +538,6 @@ class DataContainer:
         volume_path = parameters.get("volume_path", None)
         if volume_path is not None:
             volume = load_density(volume_path)
-            # volume.data = np.swapaxes(volume.data, 0, 2)
 
         parameters["isovalue_percentile"] = (
             parameters.get("isovalue_percentile", 99) / 100
@@ -682,7 +675,7 @@ class DataContainer:
                 print(e)
                 return -1
 
-            new_cluster.append(geometry.points[mask])
+            new_cluster.append((geometry.points[mask], geometry.normals[mask]))
 
             inverse_mask = np.invert(mask)
             if inverse_mask.sum() != 0:
@@ -693,5 +686,7 @@ class DataContainer:
         self.remove(remove_cluster)
 
         if len(new_cluster):
-            return self.add(np.concatenate(new_cluster), sampling_rate=sampling)
+            points = np.concatenate([x[0] for x in new_cluster])
+            normals = np.concatenate([x[1] for x in new_cluster])
+            return self.add(points, normals=normals, sampling_rate=sampling)
         return -1

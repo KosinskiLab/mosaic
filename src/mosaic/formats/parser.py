@@ -16,10 +16,9 @@ import open3d as o3d
 from scipy.spatial.transform import Rotation
 from tme import Density, Structure, Orientations
 
-from ._utils import NORMAL_REFERENCE
 from ..meshing.utils import to_open3d
 from ..parametrization import TriangularMesh
-from ..utils import volume_to_points, compute_bounding_box
+from ..utils import volume_to_points, compute_bounding_box, NORMAL_REFERENCE
 
 
 def _drop_prefix(iterable, target_length: int):
@@ -60,14 +59,15 @@ class GeometryDataContainer:
 
     def __post_init__(self):
         if self.normals is None:
-            self.normals = [np.zeros_like(x) for x in self.vertices]
-            self.normals[:, 0] = 1
+            self.normals = [
+                np.full_like(x, fill_value=NORMAL_REFERENCE) for x in self.vertices
+            ]
 
         for i in range(len(self.normals)):
             norm = np.linalg.norm(self.normals[i], axis=1)
             mask = norm < 1e-12
             norm[mask] = 1
-            self.normals[i][mask] = (1, 0, 0)
+            self.normals[i][mask] = NORMAL_REFERENCE
             self.normals[i] = self.normals[i] / norm[:, None]
 
         if self.shape is None:

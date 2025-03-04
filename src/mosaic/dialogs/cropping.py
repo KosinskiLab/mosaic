@@ -1,3 +1,4 @@
+from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QDialog,
@@ -8,19 +9,20 @@ from qtpy.QtWidgets import (
     QListWidget,
     QRadioButton,
     QButtonGroup,
+    QListWidgetItem,
 )
 from ..widgets.settings import format_tooltip
 
 
 class DistanceCropDialog(QDialog):
-    def __init__(self, cluster_data, parent=None):
+    def __init__(self, clusters, fits=[], parent=None):
         super().__init__(parent)
-        self.cluster_data = cluster_data
+
         self.setWindowTitle("Distance Crop")
         self.resize(500, 250)
-        self.setup_ui()
+        self.setup_ui(clusters, fits)
 
-    def setup_ui(self):
+    def setup_ui(self, clusters, fits):
         main_layout = QVBoxLayout()
         lists_layout = QHBoxLayout()
 
@@ -35,9 +37,9 @@ class DistanceCropDialog(QDialog):
         source_layout.addWidget(self.source_list)
 
         target_layout = QVBoxLayout()
-        label = QLabel("Target Clusters")
+        label = QLabel("Target")
         tooltip = format_tooltip(
-            "Target Clusters", "Reference to compute source distances to.", None
+            "Target", "Reference to compute source distances to.", None
         )
         label.setToolTip(tooltip)
         target_layout.addWidget(label)
@@ -46,9 +48,19 @@ class DistanceCropDialog(QDialog):
         self.target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         target_layout.addWidget(self.target_list)
 
-        for name, *_ in self.cluster_data:
-            self.source_list.addItem(name)
-            self.target_list.addItem(name)
+        for name, data in clusters:
+            item = QListWidgetItem(name)
+            item.setData(Qt.ItemDataRole.UserRole, data)
+            self.source_list.addItem(item)
+
+            item = QListWidgetItem(name)
+            item.setData(Qt.ItemDataRole.UserRole, data)
+            self.target_list.addItem(item)
+
+        for name, data in fits:
+            item = QListWidgetItem(name)
+            item.setData(Qt.ItemDataRole.UserRole, data)
+            self.target_list.addItem(item)
 
         lists_layout.addLayout(source_layout)
         lists_layout.addLayout(target_layout)
@@ -90,7 +102,6 @@ class DistanceCropDialog(QDialog):
             None,
         )
         self.larger_radio.setToolTip(tooltip)
-        self.larger_radio.setChecked(True)
 
         self.smaller_radio = QRadioButton("≤")
         tooltip = format_tooltip(
@@ -99,6 +110,7 @@ class DistanceCropDialog(QDialog):
             None,
         )
         self.smaller_radio.setToolTip(tooltip)
+        self.smaller_radio.setChecked(True)
 
         self.comparison_group.addButton(self.larger_radio)
         self.comparison_group.addButton(self.smaller_radio)
@@ -131,10 +143,10 @@ class DistanceCropDialog(QDialog):
 
     def apply_crop(self):
         self.sources = [
-            self.source_list.row(x) for x in self.source_list.selectedItems()
+            x.data(Qt.ItemDataRole.UserRole) for x in self.source_list.selectedItems()
         ]
         self.targets = [
-            self.target_list.row(x) for x in self.target_list.selectedItems()
+            x.data(Qt.ItemDataRole.UserRole) for x in self.target_list.selectedItems()
         ]
         self.distance = self.distance_input.value()
         self.keep_smaller = self.smaller_radio.isChecked()

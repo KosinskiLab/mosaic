@@ -12,6 +12,8 @@ import vtk
 import numpy as np
 from vtk.util import numpy_support
 
+from .utils import find_closest_points, find_closest_points_cutoff, NORMAL_REFERENCE
+
 BASE_COLOR = (0.7, 0.7, 0.7)
 
 
@@ -44,6 +46,9 @@ class Geometry:
 
         if points is not None:
             self.add_points(points)
+
+        if normals is None and points is not None:
+            normals = np.full_like(points, fill_value=NORMAL_REFERENCE)
 
         if normals is not None:
             self.add_normals(normals)
@@ -96,7 +101,7 @@ class Geometry:
 
     def __getitem__(self, idx):
         """
-        Array-like indexing of geometry using int/bool numpy arrays or slices.
+        Array-like indexing of geometry using int/bool numpy arrays, slices or ellipses
         """
         if isinstance(idx, (int, np.integer)):
             idx = [idx]
@@ -113,13 +118,17 @@ class Geometry:
                 normals = self.normals[idx].copy()
 
         ret = Geometry(
-            points=self.points[idx],
+            points=self.points[idx].copy(),
             normals=normals,
             color=self._appearance["base_color"],
             sampling_rate=self._sampling_rate,
             meta=self._meta.copy(),
         )
-        ret._appearance.update(self._appearance)
+
+        # Avoid clashes from properties of classes inheriting from Geometry
+        ret._appearance.update(
+            {k: v for k, v in self._appearance.items() if k in ret._appearance}
+        )
         return ret
 
     @classmethod
@@ -487,6 +496,18 @@ class Geometry:
         self._representation = representation
         return 0
 
+    def compute_distance(self, query_points: np.ndarray, cutoff: float = None):
+        model = self._meta.get("fit", None)
+        if hasattr(model, "compute_distance"):
+            return model.compute_distance(query_points)
+
+        if cutoff is not None:
+            indices = find_closest_points_cutoff(self.points, query_points, cutoff)
+            distances = np.full(indices.size, fill_value=cutoff + 1)
+            distances[indices] = 0
+            return distances
+        return find_closest_points(self.points, query_points, k=1)[1]
+
 
 class PointCloud(Geometry):
     pass
@@ -497,6 +518,7 @@ class VolumeGeometry(Geometry):
         self, volume: np.ndarray = None, volume_sampling_rate=np.ones(3), **kwargs
     ):
         super().__init__(**kwargs)
+        self._volume = None
         if volume is None:
             return None
 
@@ -515,6 +537,7 @@ class VolumeGeometry(Geometry):
             [-(b[1] - b[0]) * 0.5 for b in zip(bounds[::2], bounds[1::2])]
         )
 
+        self._volume_sampling_rate = volume_sampling_rate
         transformFilter = vtk.vtkTransformFilter()
         transformFilter.SetInputData(self._volume)
         transformFilter.SetTransform(transform)
@@ -537,6 +560,18 @@ class VolumeGeometry(Geometry):
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputConnection(self._glyph.GetOutputPort())
         self._actor.SetMapper(mapper)
+
+    def __getstate__(self):
+        state = super().__getstate__()
+
+        if self._volume is not None:
+            state.update(
+                {
+                    "volume": self._raw_volume,
+                    "volume_sampling_rate": self._volume_sampling_rate,
+                }
+            )
+        return state
 
     def update_isovalue(self, upper, lower: float = 0):
         return self._surface.SetValue(int(lower), upper)

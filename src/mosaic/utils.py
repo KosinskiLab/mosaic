@@ -11,10 +11,28 @@ from typing import List
 import vtk
 import numpy as np
 import open3d as o3d
+
 from scipy import spatial
 from skimage import measure
 from scipy.spatial import cKDTree
 from matplotlib.pyplot import get_cmap
+
+__all__ = [
+    "points_to_volume",
+    "volume_to_points",
+    "connected_components",
+    "dbscan_clustering",
+    "eigenvalue_outlier_removal",
+    "statistical_outlier_removal",
+    "find_closest_points",
+    "find_closest_points_cutoff",
+    "com_cluster_points",
+    "compute_bounding_box",
+    "cmap_to_vtkctf",
+    "NORMAL_REFERENCE",
+]
+
+NORMAL_REFERENCE = (0, 0, 1)
 
 
 def points_to_volume(points, sampling_rate=1, shape=None, weight=1, out=None):
@@ -227,6 +245,13 @@ def find_closest_points(positions1, positions2, k=1):
 
     tree = cKDTree(positions1)
     return tree.query(positions2, k=k)
+
+
+def find_closest_points_cutoff(positions1, positions2, cutoff=1):
+    positions1, positions2 = np.asarray(positions1), np.asarray(positions2)
+
+    tree = cKDTree(positions1)
+    return tree.query_ball_point(positions2, cutoff)
 
 
 def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
