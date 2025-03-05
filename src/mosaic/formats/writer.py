@@ -82,10 +82,7 @@ class OrientationsWriter:
 def write_density(
     data: np.ndarray, filename: str, sampling_rate: float = 1, origin: float = 0
 ) -> None:
-    dens = Density(data, sampling_rate=sampling_rate, origin=origin)
-    dens.data = np.swapaxes(dens.data, 0, 2)
-    dens.sampling_rate = dens.sampling_rate[::-1]
-    return dens.to_file(filename)
+    return Density(data, sampling_rate, origin=origin).to_file(filename)
 
 
 def write_topology_file(file_path: str, data: Dict, tsi_format: bool = False) -> None:

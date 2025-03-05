@@ -17,10 +17,10 @@ import zmesh
 import pyfqmr
 import numpy as np
 import open3d as o3d
-from tme import Density
 from tqdm.contrib.concurrent import process_map
 
 from .utils import merge_meshes, to_open3d
+from ..formats.parser import load_density
 
 
 def simplify_mesh(mesh, aggressiveness=5.5, decimation_factor=2, lod=1):
@@ -78,7 +78,7 @@ class MeshCreator:
         }
 
     def execute(self):
-        self._volume = Density.from_file(self.data_path, use_memmap=True)
+        self._volume = load_density(self.data_path, use_memmap=True)
 
         bounds_min = np.maximum(self.offset.astype(int, copy=True), 0)
         bounds_max = np.minimum(
@@ -95,7 +95,7 @@ class MeshCreator:
         subset = tuple(
             slice(int(x), int(y)) for x, y in zip(data_bounds_min, data_bounds_max)
         )
-        volume = Density.from_file(self.data_path, subset=subset)
+        volume = load_density(self.data_path, subset=subset)
 
         data = volume.data
         if not np.any(data):
@@ -260,7 +260,7 @@ def mesh_volume(
     for dir_name in (partial_meshes, merged_meshes, simplified_meshes):
         makedirs(dir_name, exist_ok=True)
 
-    volume = Density.from_file(volume_path, use_memmap=True)
+    volume = load_density(volume_path, use_memmap=True)
 
     tasks = [
         MeshCreator(volume_path, shape=shape, offset=x, output_dir=partial_meshes)

@@ -628,3 +628,11 @@ class GeometryTrajectory(Geometry):
         )
         self._meta.update(meta)
         return self.set_appearance(**appearance)
+
+    def change_representation(self, *args, **kwargs):
+        # This avoid a but in change_representation when saving previous datasets
+        # TODO: Adjust Geometry.change_representation when parametriations can
+        # no longer own samples from the underlying parametrization object
+        if self._representation == "surface":
+            self._representation = None
+        return super().change_representation(*args, **kwargs)

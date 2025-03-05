@@ -6,7 +6,7 @@ from os.path import splitext, join, basename
 
 import numpy as np
 
-from tme import Density
+from ..formats.parser import load_density
 
 # Hopefully stable download links will be available at some point
 MODEL_PATHS = {
@@ -118,7 +118,7 @@ def run_membrainseg(
 
         if input_sampling_rate < 0:
             input_sampling_rate = np.max(
-                Density.from_file(tomogram_path, use_memmap=True).sampling_rate
+                load_density(tomogram_path, use_memmap=True).sampling_rate
             )
             print(f"Setting samping rate to {input_sampling_rate}.")
 

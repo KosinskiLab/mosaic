@@ -282,8 +282,8 @@ def _read_vtu_file(file_path: str) -> Dict:
     return result
 
 
-def load_density(filename: str) -> Density:
-    volume = Density.from_file(filename)
+def load_density(filename: str, **kwargs) -> Density:
+    volume = Density.from_file(filename, **kwargs)
 
     if np.allclose(volume.sampling_rate, 0):
         warnings.warn(
