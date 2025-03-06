@@ -86,7 +86,7 @@ class TimelineBar(QWidget):
 class TrajectoryRow(QFrame):
     """Represents a single trajectory row with integrated timeline."""
 
-    frameChanged = Signal(int)
+    frameChanged = Signal()
 
     def __init__(self, trajectory, max_frames, parent=None):
         super().__init__(parent)
@@ -114,7 +114,7 @@ class TrajectoryRow(QFrame):
         # Center: Timeline with integrated slider
         self.timeline = TimelineBar()
         self.timeline.setRange(0, self.trajectory.frames - 1)
-        self.timeline.valueChanged.connect(self.update_frame)
+        self.timeline.valueChanged.connect(self._update_frame)
         self.timeline.setRelativeWidth(self.trajectory.frames, self.max_frames)
         layout.addWidget(self.timeline, 1)  # 1 = stretch factor
 
@@ -131,22 +131,22 @@ class TrajectoryRow(QFrame):
         super().resizeEvent(event)
         self.timeline.setRelativeWidth(self.trajectory.frames, self.max_frames)
 
-    def update_frame(self, frame_idx):
+    def _update_frame(self, frame_idx):
         """Update the displayed frame using the trajectory's display_frame method."""
-        if frame_idx >= self.trajectory.frames:
-            return
+
+        update = self.trajectory.display_frame(frame_idx)
+        if not update:
+            return None
 
         self.current_frame = frame_idx
         self.frame_label.setText(f"{frame_idx}/{self.trajectory.frames-1}")
-        self.trajectory.display_frame(frame_idx)
-        self.frameChanged.emit(frame_idx)
+        self.frameChanged.emit()
 
 
 class TrajectoryPlayer(QWidget):
     def __init__(self, cdata, parent=None):
         super().__init__(parent)
         self.cdata = cdata
-        self.trajectories = []
         self.current_frame = 0
         self.playing = False
         self.play_timer = QTimer()
@@ -156,6 +156,13 @@ class TrajectoryPlayer(QWidget):
         self.cdata.models.data_changed.connect(self.update_trajectories)
         self.setup_ui()
         self.update_trajectories()
+
+    @property
+    def trajectories(self):
+        ret = []
+        for i in range(self.rows_layout.count()):
+            ret.append(self.rows_layout.itemAt(i).widget())
+        return ret
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -183,7 +190,7 @@ class TrajectoryPlayer(QWidget):
         self.first_button.setFixedSize(button_size, button_size)
         self.first_button.clicked.connect(lambda: self.sync_frame(0))
 
-        self.prev_button = QPushButton()
+        self.prev_button = QPushButton(autoRepeat=True)
         self.prev_button.setIcon(
             self.style().standardIcon(QStyle.StandardPixmap.SP_MediaSeekBackward)
         )
@@ -197,7 +204,7 @@ class TrajectoryPlayer(QWidget):
         self.play_button.setFixedSize(button_size, button_size)
         self.play_button.clicked.connect(self.toggle_play)
 
-        self.next_button = QPushButton()
+        self.next_button = QPushButton(autoRepeat=True)
         self.next_button.setIcon(
             self.style().standardIcon(QStyle.StandardPixmap.SP_MediaSeekForward)
         )
@@ -209,6 +216,7 @@ class TrajectoryPlayer(QWidget):
             self.style().standardIcon(QStyle.StandardPixmap.SP_MediaSkipForward)
         )
         self.last_button.setFixedSize(button_size, button_size)
+        self.last_button.clicked.connect(lambda: self.sync_frame(self.max_frame()))
 
         for button in [
             self.first_button,
@@ -222,7 +230,7 @@ class TrajectoryPlayer(QWidget):
                 QPushButton {
                     border: none;
                     border-radius: 16px;
-                    padding: 4px;
+                    padding: 8px;
                 }
                 QPushButton:hover {
                     background-color: #f3f4f6;
@@ -276,10 +284,8 @@ class TrajectoryPlayer(QWidget):
 
     def update_trajectories(self):
         """Update trajectories from ColabsegData models."""
-        # Clear existing trajectories
         for i in reversed(range(self.rows_layout.count())):
             self.rows_layout.itemAt(i).widget().setParent(None)
-        self.trajectories.clear()
 
         # Find all GeometryTrajectory instances and determine max frames
         geometry_trajectories = [
@@ -293,12 +299,9 @@ class TrajectoryPlayer(QWidget):
             return
 
         max_frames = max(t.frames for t in geometry_trajectories)
-
-        # Create rows for each trajectory
         for model in geometry_trajectories:
             row = TrajectoryRow(model, max_frames)
-            row.frameChanged.connect(lambda x: self.sync_frame(x, from_row=True))
-            self.trajectories.append(row)
+            row.frameChanged.connect(lambda: self.cdata.models.render_vtk())
             self.rows_layout.addWidget(row)
 
         self.current_frame_label.setText(f"0/{max_frames-1}")
@@ -306,18 +309,11 @@ class TrajectoryPlayer(QWidget):
     def sync_frame(self, frame_idx, from_row=False):
         """Synchronize frame across all trajectories."""
         self.current_frame = frame_idx
-        self.current_frame_label.setText(
-            f"{frame_idx}/{max(t.trajectory.frames-1 for t in self.trajectories)}"
-        )
+        self.current_frame_label.setText(f"{frame_idx}/{self.max_frame() - 1}")
 
-        if not from_row:
-            # Update all trajectory rows
-            for trajectory in self.trajectories:
-                if frame_idx < trajectory.trajectory.frames:
-                    trajectory.timeline.setValue(frame_idx)
-
-        # Trigger render update
-        self.cdata.models.render()
+        # Changing the timeline value will trigger the frame update
+        for trajectory in self.trajectories:
+            trajectory.timeline.setValue(frame_idx)
 
     def toggle_play(self):
         """Toggle playback state."""
@@ -326,24 +322,28 @@ class TrajectoryPlayer(QWidget):
             self.play_button.setIcon(
                 self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause)
             )
-            self.play_timer.start()
-        else:
-            self.play_button.setIcon(
-                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
-            )
-            self.play_timer.stop()
+            return self.play_timer.start()
+
+        self.play_button.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+        )
+        self.play_timer.stop()
+
+    def max_frame(self):
+        if len(self.trajectories) == 0:
+            return 0
+        return max(t.trajectory.frames for t in self.trajectories)
 
     def next_frame(self):
         """Advance to next frame."""
-        max_frame = max(t.trajectory.frames - 1 for t in self.trajectories)
-        if self.current_frame < max_frame:
-            self.sync_frame(self.current_frame + 1)
-        else:
-            self.play_timer.stop()
-            self.playing = False
-            self.play_button.setIcon(
-                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
-            )
+        if self.current_frame < self.max_frame() - 1:
+            return self.sync_frame(self.current_frame + 1)
+
+        self.play_timer.stop()
+        self.playing = False
+        self.play_button.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+        )
 
     def prev_frame(self):
         """Go to previous frame."""

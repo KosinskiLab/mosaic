@@ -361,7 +361,7 @@ class Geometry:
         subset = self[indices]
         return self.swap_data(subset.points, normals=subset.normals)
 
-    def swap_data(self, points, normals=None, faces=None):
+    def swap_data(self, points, normals=None, faces=None, meta: Dict = None):
         self._points.Reset()
         self._cells.Reset()
         self._normals.Reset()
@@ -372,6 +372,9 @@ class Geometry:
 
         if faces is not None:
             self.add_faces(faces)
+
+        if isinstance(meta, dict):
+            self._meta.update(meta)
 
         self.set_color()
         return self.change_representation(self._representation)
@@ -387,43 +390,17 @@ class Geometry:
         ]
         representation = representation.lower()
 
+        # We dont check representation == self._representation to enable
+        # rendering in the same representation after swap_data
         if representation not in supported:
             raise ValueError(f"Supported representations are {', '.join(supported)}.")
 
-        if representation == self._representation:
-            return 0
-
         if representation in ["mesh", "wireframe", "surface"]:
-            is_mesh = hasattr(self._meta.get("fit", None), "mesh")
-            is_surface = self._meta.get("faces") is None or "points" not in self._meta
-            if not is_mesh and not is_surface:
+            if not hasattr(self._meta.get("fit", None), "mesh"):
                 print(
                     "Points and face data required for surface/wireframe representation."
                 )
                 return -1
-
-        # Gymnastics, because fits are currently still allowed to own samples
-        _save = ["pointcloud", "pointcloud_normals", "normals"]
-        if self._representation in _save and representation not in _save:
-            self._original_data = vtk.vtkPolyData()
-            self._original_data.DeepCopy(self._data)
-
-        if self._representation == "surface" and representation != "surface":
-            self._data.SetVerts(self._original_verts)
-            self._original_verts = None
-
-        if representation in _save and hasattr(self, "_original_data"):
-            self._data.Reset()
-            normals = self._original_data.GetPointData().GetNormals()
-            if normals is not None:
-                self._normals = normals
-            self._points = self._original_data.GetPoints()
-            self._cells = self._original_data.GetVerts()
-            self._data.SetPoints(self._points)
-            self._data.SetVerts(self._cells)
-            self._data.GetPointData().SetNormals(self._normals)
-            self._original_data = None
-            delattr(self, "_original_data")
 
         # Consistent normal rendering across representations
         if representation in ("pointcloud_normals", "normals"):
@@ -612,27 +589,22 @@ class GeometryTrajectory(Geometry):
     def frames(self):
         return len(self._trajectory)
 
-    def display_frame(self, frame_idx: int):
+    def display_frame(self, frame_idx: int) -> bool:
         if frame_idx < 0 or frame_idx > self.frames:
-            return None
+            return False
 
         appearance = self._appearance.copy()
         meta = self._trajectory[frame_idx]
 
         mesh = meta.get("fit", None)
         if not hasattr(mesh, "mesh"):
-            return None
+            return False
 
         self.swap_data(
-            mesh.vertices, faces=mesh.triangles, normals=mesh.compute_vertex_normals()
+            points=mesh.vertices,
+            faces=mesh.triangles,
+            normals=mesh.compute_vertex_normals(),
+            meta=meta,
         )
-        self._meta.update(meta)
-        return self.set_appearance(**appearance)
-
-    def change_representation(self, *args, **kwargs):
-        # This avoid a but in change_representation when saving previous datasets
-        # TODO: Adjust Geometry.change_representation when parametriations can
-        # no longer own samples from the underlying parametrization object
-        if self._representation == "surface":
-            self._representation = None
-        return super().change_representation(*args, **kwargs)
+        self.set_appearance(**appearance)
+        return True

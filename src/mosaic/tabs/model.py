@@ -742,7 +742,7 @@ CURVATURE_SETTINGS = {
     "settings": [
         {
             "label": "Curvature",
-            "parameter": "curvature_type",
+            "parameter": "curvature",
             "type": "select",
             "options": ["gaussian", "mean"],
             "default": "gaussian",

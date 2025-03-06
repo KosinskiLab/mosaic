@@ -46,8 +46,8 @@ from mosaic.formats import open_file
 from mosaic.meshing import to_open3d
 from mosaic import MosaicData, ExportManager
 from mosaic.parametrization import TriangularMesh
-from mosaic.styles import MeshEditInteractorStyle, CurveBuilderInteractorStyle
 from mosaic.tabs import SegmentationTab, ModelTab, IntelligenceTab
+from mosaic.styles import MeshEditInteractorStyle, CurveBuilderInteractorStyle
 from mosaic.dialogs import (
     TiltControlDialog,
     KeybindsDialog,
@@ -72,7 +72,7 @@ class Mode(enum.Enum):
     PICKING = "Picking"
     MESH_DELETE = "MeshEdit"
     MESH_ADD = "MeshAdd"
-    CURVE = "CURVE"
+    CURVE = "Curve"
 
 
 class CursorModeHandler:

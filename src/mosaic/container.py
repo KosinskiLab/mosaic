@@ -549,11 +549,14 @@ class DataContainer:
             geometry = self.data[index]
             if volume is not None:
                 scale = parameters.get("scale", 1.0)
+
+                state = geometry.__getstate__()
+                state["volume"] = volume.data * scale
+                state["volume_sampling_rate"] = volume.sampling_rate
+
                 geometry = VolumeGeometry(
-                    volume=volume.data * scale,
-                    volume_sampling_rate=volume.sampling_rate,
                     vtk_actor=self.data[index]._actor,
-                    **geometry.__getstate__(),
+                    **state,
                 )
                 self.data[index] = geometry
 

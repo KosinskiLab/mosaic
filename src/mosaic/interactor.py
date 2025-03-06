@@ -458,8 +458,6 @@ class DataContainerInteractor(QObject):
         base_parameters = base_container._appearance.copy()
         base_parameters["sampling_rate"] = base_container.sampling_rate
 
-        if getattr(base_container, "_raw_volume", None) is not None:
-            base_parameters["volume"] = base_container._raw_volume
         dialog = GeometryPropertiesDialog(initial_properties=base_parameters)
 
         def on_parameters_changed(parameters):
