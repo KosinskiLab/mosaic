@@ -292,14 +292,14 @@ class ModelTab(QWidget):
         for index in selected_meshes:
             import trimesh
             import skeletor as sk
+            from ..utils import com_cluster_points
 
             mesh = self.cdata._models.data[index]._meta.get("fit", None)
             mesh = trimesh.Trimesh(mesh.vertices, mesh.triangles)
             mesh = sk.pre.fix_mesh(mesh)
             skel = sk.skeletonize.by_wavefront(mesh, waves=5, step_size=1)
-            # from ..utils import com_cluster_points
 
-            # vertices = com_cluster_points(skel.vertices, 100)
+            vertices = com_cluster_points(skel.vertices, 100)
             vertices = skel.vertices
             self.cdata._data.add(vertices)
 
@@ -323,20 +323,15 @@ class ModelTab(QWidget):
         return self.cdata.models.render()
 
     def _show_mesh_dialog(self):
-        fits = self.cdata.format_datalist("models")
-        fits = [(x[0], x[1]._meta.get("fit", None)) for x in fits]
-        fits = [(x[0], x[1]) for x in fits if isinstance(x[1], TriangularMesh)]
-
-        dialog = MeshPropertiesDialog(fits=fits, parent=self)
+        dialog = MeshPropertiesDialog(
+            fits=self.cdata.format_datalist("models", mesh_only=True), parent=self
+        )
 
         def _update_dialog():
             if not dialog or not dialog.isVisible():
                 return
 
-            fits = self.cdata.format_datalist("models")
-            fits = [(x[0], x[1]._meta.get("fit", None)) for x in fits]
-            fits = [(x[0], x[1]) for x in fits if isinstance(x[1], TriangularMesh)]
-            dialog.update_fits(fits)
+            dialog.update_fits(self.cdata.format_datalist("models", mesh_only=True))
 
         self.cdata.models.render_update.connect(_update_dialog)
         return dialog.show()
@@ -344,18 +339,14 @@ class ModelTab(QWidget):
     def _color_curvature(
         self, cmap="viridis", curvature="gaussian", radius: int = 3, **kwargs
     ):
-        selected_meshes, curvatures = [], []
-        for index in self.cdata.models._get_selected_indices():
-            fit = self.cdata._models.data[index]._meta.get("fit")
-            if not isinstance(fit, TriangularMesh):
-                continue
-
-            selected_meshes.append(index)
-            curvatures.append(fit.compute_curvature(curvature=curvature, radius=radius))
-
+        selected_meshes, curvatures = self._get_selected_meshes(), []
         if len(selected_meshes) == 0:
             print("No mesh was selected for curvature computation.")
             return None
+
+        for index in selected_meshes:
+            fit = self.cdata._models.data[index]._meta.get("fit")
+            curvatures.append(fit.compute_curvature(curvature=curvature, radius=radius))
 
         all_curvatures = np.concatenate([c.flatten() for c in curvatures])
         valid_curvatures = all_curvatures[~np.isnan(all_curvatures)]

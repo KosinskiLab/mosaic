@@ -480,6 +480,7 @@ class DataContainerInteractor(QObject):
         added_cluster = self.container.add_selection(self.point_selection)
         if added_cluster == -1:
             return -1
+
         self.deselect_points()
         self.container.remove(added_cluster)
         self.render()

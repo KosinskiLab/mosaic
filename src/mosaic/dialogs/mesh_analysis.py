@@ -229,7 +229,7 @@ class MeshPropertiesDialog(QDialog):
 
         for source in sources:
             source_name = source.text()
-            fit = source.data(Qt.ItemDataRole.UserRole)
+            fit = source.data(Qt.ItemDataRole.UserRole)._meta["fit"]
 
             vertices = fit.vertices
             triangles = fit.triangles

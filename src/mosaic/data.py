@@ -14,10 +14,10 @@ from typing import Callable, Union
 import numpy as np
 from qtpy.QtCore import Signal, QObject
 
-from .formats import open_file, open_session
 from .container import DataContainer
+from .formats import open_file, open_session
 from .interactor import DataContainerInteractor
-from .parametrization import PARAMETRIZATION_TYPE
+from .parametrization import PARAMETRIZATION_TYPE, TriangularMesh
 
 
 def _progress_decorator(func: Callable) -> Callable:
@@ -260,19 +260,24 @@ class MosaicData(QObject):
         self.data.data_changed.emit()
         self.data.render()
 
-    def format_datalist(self, type="data"):
+    def format_datalist(self, type="data", mesh_only: bool = False):
         """Format data list for dialog display.
 
         Parameters
         ----------
         type : str, optional
             Type of data to format ('data' or 'models'), by default 'data'
+        mesh_only : bool, optional
+            Whether to return only TriangularMesh instances for type 'models'.
 
         Returns
         -------
         list
             List of tuples containing (item_text, data_object) pairs
         """
+        if mesh_only and type != "models":
+            mesh_only = False
+
         interactor, container = self.data, self._data
         if type == "models":
             interactor, container = self.models, self._models
@@ -280,5 +285,11 @@ class MosaicData(QObject):
         ret = []
         for i in range(interactor.data_list.count()):
             list_item = interactor.data_list.item(i)
+
+            if mesh_only:
+                is_mesh = isinstance(container.data[i]._meta.get("fit"), TriangularMesh)
+                if not is_mesh:
+                    continue
+
             ret.append((list_item.text(), container.data[i]))
         return ret

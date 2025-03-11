@@ -855,7 +855,7 @@ def main():
     app.setApplicationName("Mosaic")
     app.setApplicationDisplayName("Mosaic")
 
-    icon = QIcon(str(files("mosaic.data").joinpath("data/logo.png")))
+    icon = QIcon(str(files("mosaic.data").joinpath("data/mosaic.icns")))
     app.setWindowIcon(icon)
 
     # Fixes alignment issue in default style

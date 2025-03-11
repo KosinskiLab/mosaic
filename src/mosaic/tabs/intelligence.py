@@ -72,10 +72,6 @@ class IntelligenceTab(QWidget):
 
         index = indices[0]
         geometry = self.cdata._models.data[index]
-        if geometry._meta.get("fit", None) is None:
-            print(f"No parametrization associated with {index}.")
-            return -1
-
         if not hasattr(geometry._meta.get("fit", None), "mesh"):
             print(f"{index} is not a triangular mesh.")
             return -1
@@ -198,8 +194,7 @@ class IntelligenceTab(QWidget):
         if not save_dir:
             return -1
 
-        fits = self.cdata.format_datalist("models")
-        fits = [x for x in fits if isinstance(x[1]._meta.get("fit"), TriangularMesh)]
+        fits = self.cdata.format_datalist("models", mesh_only=True)
         clusters = self.cdata.format_datalist("data")
         dialog = MeshMappingDialog(fits=fits, clusters=clusters)
         if not dialog.exec():

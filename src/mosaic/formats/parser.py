@@ -17,7 +17,6 @@ from scipy.spatial.transform import Rotation
 from tme import Density, Structure, Orientations
 
 from ..meshing.utils import to_open3d
-from ..parametrization import TriangularMesh
 from ..utils import volume_to_points, compute_bounding_box, NORMAL_REFERENCE
 
 
@@ -161,10 +160,10 @@ def read_mesh(filename: str) -> GeometryDataContainer:
 
 
 def _return_mesh(mesh: o3d.geometry.TriangleMesh) -> GeometryDataContainer:
-    fit = TriangularMesh(mesh)
-    vertices = np.asarray(fit.mesh.vertices)
-    faces = np.asarray(fit.mesh.triangles)
-    normals = fit.compute_vertex_normals()
+    mesh.compute_vertex_normals()
+    vertices = np.asarray(mesh.vertices)
+    faces = np.asarray(mesh.triangles)
+    normals = np.asarray(mesh.vertex_normals)
     return GeometryDataContainer(vertices=[vertices], faces=[faces], normals=[normals])
 
 

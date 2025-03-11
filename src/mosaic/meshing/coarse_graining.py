@@ -1,3 +1,4 @@
+import textwrap
 import warnings
 from os.path import join
 from typing import Dict, List
@@ -45,6 +46,7 @@ def mesh_to_cg(
     scale_factor = compute_scale_factor_lower(mesh, lower_bound=1.0)
     mesh_scale = scale(mesh, scale_factor)
     data, offset = center_mesh(mesh_scale)
+    offset = ",".join([str(-float(x)) for x in offset])
 
     inclusion_list, inclusion_map = [], {}
     for index, vertex_map in enumerate(vertex_maps):
@@ -84,16 +86,33 @@ def mesh_to_cg(
 
     plm_path = join(output_directory, "plm.sh")
     with open(plm_path, mode="w", encoding="utf-8") as ofile:
-        ofile.write("#!/bin/bash\n")
         ofile.write(
-            f"TS2CG PLM -TSfile {mesh_path} -bilayerThickness 3.8  -rescalefactor 4 4 4"
+            textwrap.dedent(
+                f"""
+            #!/bin/bash\
+
+            TS2CG PLM \
+                -TSfile {mesh_path} \
+                -bilayerThickness 3.8  \
+                -rescalefactor 4 4 4"
+            """
+            )
         )
 
     pcg_path = join(output_directory, "pcg.sh")
     with open(pcg_path, mode="w", encoding="utf-8") as ofile:
-        ofile.write("#!/bin/bash\n")
         ofile.write(
-            f"TS2CG PCG -str {str_path} -Bondlength 0.2 -LLIB Martini3.LIB -defout system"
+            textwrap.dedent(
+                f"""
+            #!/bin/bash\
+
+            TS2CG PCG \
+                -str {str_path} \
+                -Bondlength 0.2 \
+                -LLIB Martini3.LIB \
+                -defout system
+            """
+            )
         )
 
     return True
