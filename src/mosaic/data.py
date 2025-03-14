@@ -14,11 +14,6 @@ from typing import Callable, Union
 import numpy as np
 from qtpy.QtCore import Signal, QObject
 
-from .container import DataContainer
-from .formats import open_file, open_session
-from .interactor import DataContainerInteractor
-from .parametrization import PARAMETRIZATION_TYPE, TriangularMesh
-
 
 def _progress_decorator(func: Callable) -> Callable:
     @wraps(func)
@@ -48,6 +43,9 @@ class MosaicData(QObject):
             VTK widget instance for 3D visualization
         """
         super().__init__()
+        from .container import DataContainer
+        from .interactor import DataContainerInteractor
+
         # Data containers and GUI interaction elements
         self.shape = None
         self._data = DataContainer()
@@ -79,6 +77,9 @@ class MosaicData(QObject):
         filename : str
             Path to the saved session file (.pickle).
         """
+        from .container import DataContainer
+        from .formats import open_file, open_session
+
         sampling = 1
         if filename.endswith("pickle"):
             data = open_session(filename)
@@ -179,6 +180,8 @@ class MosaicData(QObject):
         int
             Index of added fit, -1 if method not found
         """
+        from .parametrization import PARAMETRIZATION_TYPE
+
         method = method.lower()
         cluster_indices = self.data._get_selected_indices()
         if method not in PARAMETRIZATION_TYPE:
@@ -275,6 +278,8 @@ class MosaicData(QObject):
         list
             List of tuples containing (item_text, data_object) pairs
         """
+        from .parametrization import TriangularMesh
+
         if mesh_only and type != "models":
             mesh_only = False
 

@@ -13,10 +13,9 @@ from typing import Tuple, List
 
 import vtk
 from functools import wraps
-from qtpy.QtGui import QAction, QColor
+from qtpy.QtGui import QAction
 from qtpy.QtWidgets import (
     QListWidget,
-    QListWidgetItem,
     QMenu,
     QFileDialog,
     QMessageBox,
@@ -30,11 +29,6 @@ from qtpy.QtCore import (
     Signal,
     QEvent,
 )
-
-from .utils import points_to_volume
-from .widgets import ContainerListWidget
-from .formats import OrientationsWriter, write_density
-from .dialogs import GeometryPropertiesDialog, make_param, OperationDialog
 
 
 def _cluster_modifier(keep_selection: bool = False):
@@ -74,18 +68,20 @@ class DataContainerInteractor(QObject):
     render_update = Signal()
 
     def __init__(self, container, vtk_widget, prefix="Cluster"):
+        from .widgets import ContainerListWidget
+
         super().__init__()
         self.prefix = prefix
         self.point_selection, self.rendered_actors = {}, set()
         self.vtk_widget, self.container = vtk_widget, container
 
         # Interaction element for the GUI
-        self.data_list = ContainerListWidget(self.prefix)
+        # self.data_list = ContainerListWidget(self.prefix)
+        self.data_list = ContainerListWidget()
         self.data_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         self.data_list.itemChanged.connect(self._on_item_renamed)
         self.data_list.itemSelectionChanged.connect(self._on_cluster_selection_changed)
 
-        self.invisible_color = QColor(128, 128, 128)
         self.data_list.list_widget.setContextMenuPolicy(
             Qt.ContextMenuPolicy.CustomContextMenu
         )
@@ -268,6 +264,8 @@ class DataContainerInteractor(QObject):
         return None
 
     def _show_context_menu(self, position):
+        from .dialogs import make_param
+
         item = self.data_list.itemAt(position)
         if not item:
             return -1
@@ -347,6 +345,8 @@ class DataContainerInteractor(QObject):
         context_menu.exec(self.data_list.mapToGlobal(position))
 
     def _export_data(self, file_format: str, parameters: List[Tuple]):
+        from .dialogs import OperationDialog
+
         kwargs = {}
         if len(parameters):
             dialog = OperationDialog(
@@ -370,6 +370,9 @@ class DataContainerInteractor(QObject):
         return None
 
     def export_data(self, file_path, file_format, **kwargs):
+        from .utils import points_to_volume
+        from .formats import OrientationsWriter, write_density
+
         indices = self._get_selected_indices()
         if not len(indices):
             return -1
@@ -449,6 +452,8 @@ class DataContainerInteractor(QObject):
         orientations.to_file(f"{file_path}.{file_format}", file_format=file_format)
 
     def _show_properties_dialog(self) -> int:
+        from .dialogs import GeometryPropertiesDialog
+
         indices = self._get_selected_indices()
         indices = [x for x in indices if self.container._index_ok(x)]
         if not len(indices):
@@ -492,6 +497,8 @@ class DataContainerInteractor(QObject):
         return ret
 
     def render(self):
+        from .widgets import StyledListWidgetItem
+
         renderer = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
         current_actors = set(self.container.get_actors())
@@ -512,10 +519,9 @@ class DataContainerInteractor(QObject):
             if name is None:
                 name = f"{self.prefix} {i}"
 
-            item = QListWidgetItem(name)
-            if not visible:
-                item.setForeground(self.invisible_color)
+            item = StyledListWidgetItem(name)
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
+            item.set_visible(visible)
             self.data_list.addItem(item)
 
         self.render_vtk()

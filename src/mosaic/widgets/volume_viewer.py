@@ -22,10 +22,6 @@ import qtawesome as qta
 from qtpy.QtCore import Qt, Signal
 from vtkmodules.util import numpy_support
 
-from ..utils import cmap_to_vtkctf
-from ..formats.parser import load_density
-
-
 _colormaps = [
     "gray",
     "gray_r",
@@ -246,6 +242,8 @@ class VolumeViewer(QWidget):
             widget.setEnabled(is_enabled)
 
     def load_volume(self, file_path):
+        from ..formats.parser import load_density
+
         volume = load_density(file_path)
 
         self.volume = vtk.vtkImageData()
@@ -318,6 +316,8 @@ class VolumeViewer(QWidget):
         self.vtk_widget.GetRenderWindow().Render()
 
     def update_contrast_and_gamma(self):
+        from ..utils import cmap_to_vtkctf
+
         scalar_range = self.volume.GetScalarRange()
         min_value, max_value = scalar_range
         value_range = max_value - min_value

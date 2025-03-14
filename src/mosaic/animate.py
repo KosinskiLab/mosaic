@@ -31,11 +31,10 @@ from qtpy.QtWidgets import (
 from vtkmodules.util import numpy_support
 from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
 
-from .dialogs import ProgressDialog
-from .geometry import GeometryTrajectory
-
 
 def _get_trajectories(geometries):
+    from .geometry import GeometryTrajectory
+
     return [x for x in geometries if isinstance(x, GeometryTrajectory)]
 
 
@@ -237,6 +236,8 @@ class ExportManager:
         quality: int = 80,
     ):
         """Create animation video from frames"""
+        from .dialogs import ProgressDialog
+
         filename, _ = QFileDialog.getSaveFileName(
             None, "Save Animation", "", f"Video (*{format_settings['ext']})"
         )

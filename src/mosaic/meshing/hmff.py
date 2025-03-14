@@ -156,7 +156,7 @@ def setup_hmff(
         np.multiply(template_ft, mask, out=template_ft)
         data = np.fft.irfftn(template_ft, s=data.shape).real
 
-        axis_map = {"x": 2, "y": 1, "z": 0}
+        axis_map = {"x": 0, "y": 1, "z": 2}
         axis = axis_map.get(plane_norm, None)
         if axis is not None:
             axis = tuple(i for i in range(data.ndim) if i != axis)

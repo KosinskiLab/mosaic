@@ -12,9 +12,6 @@ import vtk
 import numpy as np
 from sklearn.cluster import KMeans
 
-from .parametrization import ConvexHull
-from .formats.parser import load_density
-from .geometry import Geometry, VolumeGeometry
 from .utils import (
     statistical_outlier_removal,
     dbscan_clustering,
@@ -135,6 +132,8 @@ class DataContainer:
         int
             Index of the new point cloud.
         """
+        from .geometry import Geometry
+
         if color is None:
             color = self.base_color
 
@@ -284,6 +283,8 @@ class DataContainer:
         int
             Index of newly added point cloud.
         """
+        from .parametrization import ConvexHull
+
         points = geometry.points
         cutoff = 4 * np.max(geometry._sampling_rate)
         if method == "core":
@@ -534,6 +535,9 @@ class DataContainer:
         return None
 
     def update_appearance(self, indices: list, parameters: dict) -> None:
+        from .formats.parser import load_density
+        from .geometry import VolumeGeometry
+
         volume = parameters.get("volume", None)
         volume_path = parameters.get("volume_path", None)
         if volume_path is not None:

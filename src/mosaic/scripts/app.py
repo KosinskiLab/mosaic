@@ -20,7 +20,6 @@ from qtpy.QtWidgets import (
     QMainWindow,
     QVBoxLayout,
     QWidget,
-    QSizePolicy,
     QSplitter,
     QFileDialog,
     QMenu,
@@ -42,12 +41,9 @@ from qtpy.QtGui import (
 import qtawesome as qta
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-from mosaic.formats import open_file
-from mosaic.meshing import to_open3d
 from mosaic import MosaicData, ExportManager
-from mosaic.parametrization import TriangularMesh
+
 from mosaic.tabs import SegmentationTab, ModelTab, IntelligenceTab
-from mosaic.styles import MeshEditInteractorStyle, CurveBuilderInteractorStyle
 from mosaic.dialogs import (
     TiltControlDialog,
     KeybindsDialog,
@@ -62,6 +58,7 @@ from mosaic.widgets import (
     TrajectoryPlayer,
     LegendWidget,
     ScaleBarWidget,
+    ObjectBrowserSidebar,
 )
 
 
@@ -233,22 +230,15 @@ class App(QMainWindow):
         layout.addWidget(self.tab_bar)
         layout.addWidget(self.tab_ribbon)
 
-        lists_widget = QWidget()
-        lists_widget.setSizePolicy(
-            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding
-        )
-        lists_layout = QVBoxLayout(lists_widget)
-        lists_layout.setContentsMargins(0, 0, 0, 0)
-        lists_layout.setSpacing(0)
-        lists_widget.setMinimumWidth(100)
-
-        lists_layout.addWidget(self.cdata.data.data_list)
-        lists_layout.addWidget(self.cdata.models.data_list)
+        list_wrapper = ObjectBrowserSidebar()
+        list_wrapper.set_title("Object Browser")
+        list_wrapper.add_widget("cluster", "Cluster", self.cdata.data.data_list)
+        list_wrapper.add_widget("model", "Model", self.cdata.models.data_list)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(lists_widget)
+        splitter.addWidget(list_wrapper)
         splitter.addWidget(self.vtk_widget)
-        splitter.setSizes([150, self.width() - 150])
+        splitter.setSizes([200, self.width() - 200])
 
         v_splitter = QSplitter(Qt.Orientation.Vertical)
         v_splitter.addWidget(splitter)
@@ -256,7 +246,7 @@ class App(QMainWindow):
         layout.addWidget(v_splitter)
 
         self.actor_collection = vtk.vtkActorCollection()
-        self.setup_menu()
+        # self.setup_menu()
 
     def on_tab_clicked(self):
         # Uncheck all other buttons
@@ -310,6 +300,8 @@ class App(QMainWindow):
         self.cdata.models.deselect()
 
     def _transition_modes(self, new_mode):
+        from mosaic.styles import MeshEditInteractorStyle, CurveBuilderInteractorStyle
+
         current_mode = self.cursor_handler.current_mode
 
         if current_mode in (Mode.MESH_ADD, Mode.MESH_DELETE, Mode.CURVE):
@@ -725,6 +717,10 @@ class App(QMainWindow):
         return self._load_session(file_path)
 
     def _open_files(self, filenames: List[str]):
+        from mosaic.formats import open_file
+        from mosaic.meshing import to_open3d
+        from mosaic.parametrization import TriangularMesh
+
         if isinstance(filenames, str):
             filenames = [
                 filenames,
@@ -855,12 +851,12 @@ def main():
     app.setApplicationName("Mosaic")
     app.setApplicationDisplayName("Mosaic")
 
-    icon = QIcon(str(files("mosaic.data").joinpath("data/mosaic.icns")))
-    app.setWindowIcon(icon)
+    # icon = QIcon(str(files("mosaic.data").joinpath("data/mosaic.icns")))
+    # app.setWindowIcon(icon)
 
     # Fixes alignment issue in default style
     # https://forum.qt.io/topic/105191/why-isn-t-a-qcombobox-positioned-correctly-in-a-layout/11
-    app.setStyle("Fusion")
+    # app.setStyle("Fusion")
 
     window = App()
     window.show()

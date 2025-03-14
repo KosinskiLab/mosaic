@@ -11,8 +11,6 @@ from qtpy.QtWidgets import (
 )
 from qtpy.QtCore import Qt, QTimer, Signal
 
-from ..geometry import GeometryTrajectory
-
 
 class TimelineBar(QWidget):
     """A custom widget that combines a slider with a visual timeline bar."""
@@ -283,6 +281,8 @@ class TrajectoryPlayer(QWidget):
         main_layout.addWidget(trajectory_container, 1)
 
     def update_trajectories(self):
+        from ..geometry import GeometryTrajectory
+
         """Update trajectories from ColabsegData models."""
         for i in reversed(range(self.rows_layout.count())):
             self.rows_layout.itemAt(i).widget().setParent(None)
