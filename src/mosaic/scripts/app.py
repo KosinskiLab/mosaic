@@ -797,9 +797,7 @@ class App(QMainWindow):
         self.cdata.to_file(file_path)
 
     def load_recent_files(self):
-        settings = QSettings("Mosaic")
-        files = settings.value("recentFiles", [])
-        return files if files else []
+        return QSettings("Mosaic").value("recentFiles", [])
 
     def save_recent_files(self):
         settings = QSettings("Mosaic")
