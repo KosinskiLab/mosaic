@@ -108,6 +108,7 @@ class MeshMappingDialog(QDialog):
         edge_label = QLabel("Edge Length:")
         self.edge_length = QDoubleSpinBox()
         self.edge_length.setValue(40.0)
+        self.edge_length.setRange(0, 1e32)
         self.edge_length.setSingleStep(0.1)
         edge_layout.addWidget(edge_label)
         edge_layout.addWidget(self.edge_length)

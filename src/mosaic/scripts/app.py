@@ -246,7 +246,7 @@ class App(QMainWindow):
         layout.addWidget(v_splitter)
 
         self.actor_collection = vtk.vtkActorCollection()
-        # self.setup_menu()
+        self.setup_menu()
 
     def on_tab_clicked(self):
         # Uncheck all other buttons
@@ -851,12 +851,12 @@ def main():
     app.setApplicationName("Mosaic")
     app.setApplicationDisplayName("Mosaic")
 
-    # icon = QIcon(str(files("mosaic.data").joinpath("data/mosaic.icns")))
-    # app.setWindowIcon(icon)
+    icon = QIcon(str(files("mosaic.data").joinpath("data/mosaic.icns")))
+    app.setWindowIcon(icon)
 
     # Fixes alignment issue in default style
     # https://forum.qt.io/topic/105191/why-isn-t-a-qcombobox-positioned-correctly-in-a-layout/11
-    # app.setStyle("Fusion")
+    app.setStyle("Fusion")
 
     window = App()
     window.show()
