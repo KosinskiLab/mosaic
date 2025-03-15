@@ -236,11 +236,7 @@ class App(QMainWindow):
     def _transition_modes(self, new_mode):
         from mosaic.styles import MeshEditInteractorStyle, CurveBuilderInteractorStyle
 
-        if hasattr(self, "status_indicator"):
-            self.status_indicator.update_status(interaction_mode=new_mode.value)
-
         current_mode = self.cursor_handler.current_mode
-
         if current_mode in (
             ViewerModes.MESH_ADD,
             ViewerModes.MESH_DELETE,
@@ -254,7 +250,9 @@ class App(QMainWindow):
             self.cdata.swap_area_picker()
 
         self.cdata.activate_viewing_mode()
+        self.status_indicator.update_status(interaction=new_mode.value)
         if current_mode == new_mode:
+            self.status_indicator.update_status(interaction=ViewerModes.VIEWING.value)
             return self.cursor_handler.update_mode(ViewerModes.VIEWING)
 
         if new_mode == ViewerModes.DRAWING:
