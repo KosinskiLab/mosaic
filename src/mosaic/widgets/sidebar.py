@@ -188,7 +188,7 @@ class ObjectBrowserSidebar(QWidget):
             /* Header styling with border-bottom */
             #sidebarHeader {
                 background-color: transparent;
-                border-bottom: 1px solid #e5e7eb;
+                border-bottom: 1px solid #6b7280;
             }
 
             #panelTitle {

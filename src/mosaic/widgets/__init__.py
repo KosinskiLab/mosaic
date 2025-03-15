@@ -9,4 +9,5 @@ from .container_list import ContainerListWidget, StyledListWidgetItem
 from .volume_viewer import MultiVolumeViewer, VolumeViewer
 from .coordinate_system import BoundingBoxWidget, AxesWidget
 from .sidebar import ObjectBrowserSidebar
+from .status_indicator import StatusIndicator, CursorModeHandler, ViewerModes
 from .settings import *

@@ -7,14 +7,13 @@
 """
 import os
 import sys
-import enum
 from typing import List
 from importlib_resources import files
 from os.path import splitext, basename
 
 import vtk
 import numpy as np
-from qtpy.QtCore import Qt, QPoint, QEvent, QSettings
+from qtpy.QtCore import Qt, QEvent, QSettings
 from qtpy.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -31,18 +30,12 @@ from qtpy.QtGui import (
     QAction,
     QGuiApplication,
     QIcon,
-    QCursor,
-    QColor,
-    QPixmap,
-    QPainter,
-    QPen,
     QActionGroup,
 )
 import qtawesome as qta
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from mosaic import MosaicData, ExportManager
-
 from mosaic.tabs import SegmentationTab, ModelTab, IntelligenceTab
 from mosaic.dialogs import (
     TiltControlDialog,
@@ -59,69 +52,10 @@ from mosaic.widgets import (
     LegendWidget,
     ScaleBarWidget,
     ObjectBrowserSidebar,
+    ViewerModes,
+    StatusIndicator,
+    CursorModeHandler,
 )
-
-
-class Mode(enum.Enum):
-    VIEWING = "Viewing"
-    SELECTION = "Selection"
-    DRAWING = "Drawing"
-    PICKING = "Picking"
-    MESH_DELETE = "MeshEdit"
-    MESH_ADD = "MeshAdd"
-    CURVE = "Curve"
-
-
-class CursorModeHandler:
-    def __init__(self, widget: QWidget):
-        self.widget = widget
-        self._current_mode = Mode.VIEWING
-
-        self.cursor_colors = {
-            Mode.VIEWING: None,
-            Mode.SELECTION: QColor("#2196F3"),
-            Mode.DRAWING: QColor("#FFC107"),
-            Mode.PICKING: QColor("#9C27B0"),
-            Mode.MESH_DELETE: QColor("#FFFFFF"),
-            Mode.MESH_ADD: QColor("#CACACA"),
-            Mode.CURVE: QColor("#ABABAB"),
-        }
-
-        self.cursors = {
-            k: self._create_custom_cursor(v) for k, v in self.cursor_colors.items()
-        }
-
-    def _create_custom_cursor(self, color: QColor, size: int = 16) -> QCursor:
-        if color is None:
-            return Qt.CursorShape.ArrowCursor
-
-        pixmap = QPixmap(size, size)
-        pixmap.fill(Qt.GlobalColor.transparent)
-
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        pen = QPen(color)
-        pen.setWidth(1)
-        painter.setPen(pen)
-        painter.drawEllipse(1, 1, size - 2, size - 2)
-
-        pen.setWidth(1)
-        painter.setPen(pen)
-        center = size // 2
-        painter.drawLine(QPoint(center - 3, center), QPoint(center + 3, center))
-        painter.drawLine(QPoint(center, center - 3), QPoint(center, center + 3))
-        painter.end()
-
-        return QCursor(pixmap, size // 2, size // 2)
-
-    def update_mode(self, mode: Mode):
-        self._current_mode = mode
-        self.widget.setCursor(self.cursors[mode])
-
-    @property
-    def current_mode(self):
-        return self._current_mode
 
 
 class App(QMainWindow):
@@ -278,22 +212,22 @@ class App(QMainWindow):
         elif key == "e":
             self.cdata.highlight_clusters_from_selected_points()
         elif key == "s":
-            self._transition_modes(Mode.VIEWING)
+            self._transition_modes(ViewerModes.VIEWING)
             self.cdata.swap_area_picker()
         elif key == "S":
-            self._transition_modes(Mode.PICKING)
+            self._transition_modes(ViewerModes.PICKING)
         elif key == "h":
             self.cdata.data.toggle_visibility()
         elif key == "a":
-            self._transition_modes(Mode.DRAWING)
+            self._transition_modes(ViewerModes.DRAWING)
         elif key == "A":
-            self._transition_modes(Mode.CURVE)
+            self._transition_modes(ViewerModes.CURVE)
         elif key == "q":
-            self._transition_modes(Mode.MESH_DELETE)
+            self._transition_modes(ViewerModes.MESH_DELETE)
         elif key == "Q":
-            self._transition_modes(Mode.MESH_ADD)
+            self._transition_modes(ViewerModes.MESH_ADD)
         elif key == "r":
-            self._transition_modes(Mode.SELECTION)
+            self._transition_modes(ViewerModes.SELECTION)
 
     def on_right_click(self, obj, event):
         self.cdata.data.deselect()
@@ -302,9 +236,16 @@ class App(QMainWindow):
     def _transition_modes(self, new_mode):
         from mosaic.styles import MeshEditInteractorStyle, CurveBuilderInteractorStyle
 
+        if hasattr(self, "status_indicator"):
+            self.status_indicator.update_status(interaction_mode=new_mode.value)
+
         current_mode = self.cursor_handler.current_mode
 
-        if current_mode in (Mode.MESH_ADD, Mode.MESH_DELETE, Mode.CURVE):
+        if current_mode in (
+            ViewerModes.MESH_ADD,
+            ViewerModes.MESH_DELETE,
+            ViewerModes.CURVE,
+        ):
             current_style = self.interactor.GetInteractorStyle()
             if hasattr(current_style, "cleanup"):
                 current_style.cleanup()
@@ -314,23 +255,23 @@ class App(QMainWindow):
 
         self.cdata.activate_viewing_mode()
         if current_mode == new_mode:
-            return self.cursor_handler.update_mode(Mode.VIEWING)
+            return self.cursor_handler.update_mode(ViewerModes.VIEWING)
 
-        if new_mode == Mode.DRAWING:
+        if new_mode == ViewerModes.DRAWING:
             self.cdata.data.toggle_drawing_mode()
-        elif new_mode == Mode.CURVE:
+        elif new_mode == ViewerModes.CURVE:
             style = CurveBuilderInteractorStyle(self, self.cdata)
             self.interactor.SetInteractorStyle(style)
             style.SetDefaultRenderer(self.renderer)
-        elif new_mode == Mode.SELECTION:
+        elif new_mode == ViewerModes.SELECTION:
             self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleRubberBandPick())
-        elif new_mode == Mode.PICKING:
+        elif new_mode == ViewerModes.PICKING:
             self.cdata.toggle_picking_mode()
-        elif new_mode in (Mode.MESH_ADD, Mode.MESH_DELETE):
+        elif new_mode in (ViewerModes.MESH_ADD, ViewerModes.MESH_DELETE):
             style = MeshEditInteractorStyle(self, self.cdata)
             self.interactor.SetInteractorStyle(style)
             style.SetDefaultRenderer(self.renderer)
-            if new_mode == Mode.MESH_ADD:
+            if new_mode == ViewerModes.MESH_ADD:
                 style.toggle_add_face_mode()
 
         return self.cursor_handler.update_mode(new_mode)
@@ -441,6 +382,7 @@ class App(QMainWindow):
         self.export_manager = ExportManager(
             self.vtk_widget, self.volume_viewer, self.cdata
         )
+        self.status_indicator = StatusIndicator(self.renderer, self.interactor)
 
     def setup_menu(self):
         self._update_style()
@@ -638,10 +580,22 @@ class App(QMainWindow):
             lambda checked: self.scale_bar.show() if checked else self.scale_bar.hide()
         )
 
+        show_viewer_mode = QAction("Viewer Mode", self)
+        show_viewer_mode.setCheckable(True)
+        show_viewer_mode.setChecked(True)
+        show_viewer_mode.triggered.connect(
+            lambda checked: (
+                self.status_indicator.show()
+                if checked
+                else self.status_indicator.hide()
+            )
+        )
+
         view_menu.addMenu(axes_menu)
         view_menu.addMenu(tilt_menu)
         view_menu.addMenu(legend_bar_menu)
         view_menu.addAction(show_scale_bar)
+        view_menu.addAction(show_viewer_mode)
         view_menu.addSeparator()
         view_menu.addAction(self.volume_action)
         view_menu.addAction(self.trajectory_action)

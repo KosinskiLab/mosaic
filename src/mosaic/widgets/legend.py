@@ -1,4 +1,4 @@
-""" VTK Legend Widget for visualization of scalar mappings.
+""" LegendWidget widget for visualization of scalar mappings.
 
     Copyright (c) 2025 European Molecular Biology Laboratory
 

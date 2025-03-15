@@ -145,10 +145,12 @@ class MosaicData(QObject):
         return obj.toggle_picking_mode()
 
     def _add_fit(self, fit, sampling_rate=None, **kwargs):
+        metadata_text = "mesh"
         if hasattr(fit, "mesh"):
             new_points = fit.vertices
             normals = fit.compute_vertex_normals()
         else:
+            metadata_text = "parametric"
             new_points = fit.sample(n_samples=1000)
             normals = fit.compute_normal(new_points)
 
@@ -156,7 +158,7 @@ class MosaicData(QObject):
             points=new_points,
             normals=normals,
             sampling_rate=sampling_rate,
-            meta={"fit": fit},
+            meta={"fit": fit, "metadata_text": metadata_text},
         )
         if hasattr(fit, "mesh"):
             self._models.data[index].change_representation("surface")

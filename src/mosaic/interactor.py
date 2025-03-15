@@ -514,14 +514,16 @@ class DataContainerInteractor(QObject):
 
         self.data_list.clear()
         for i in range(self.container.get_cluster_count()):
-            visible = self.container.data[i].visible
             name = self.container.data[i]._meta.get("name", None)
             if name is None:
                 name = f"{self.prefix} {i}"
 
-            item = StyledListWidgetItem(name)
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
-            item.set_visible(visible)
+            visible = self.container.data[i].visible
+            text = self.container.data[i]._meta.get("metadata_text", None)
+            if text is None:
+                text = _format_point_label(self.container.data[i].points.shape[0])
+
+            item = StyledListWidgetItem(name, visible, {"metadata_text": text})
             self.data_list.addItem(item)
 
         self.render_vtk()
@@ -674,3 +676,12 @@ class DataContainerInteractor(QObject):
     def update(self, *args, **kwargs):
         _ = self.container.update(*args, **kwargs)
         self.data_changed.emit()
+
+
+def _format_point_label(count):
+    if count <= 9999:
+        return f"{count} pts"
+    elif count < 1000000:
+        return f"{count/1000:.3g}k pts"
+    else:
+        return f"{count/1000000:.3g}M pts"
