@@ -654,6 +654,7 @@ class App(QMainWindow):
         self.volume_viewer.close()
         self.bounding_box.setup(shape=self.cdata.shape)
         self.renderer.AddActor(self.bounding_box.box_actor)
+        self.renderer.AddActor(self.status_indicator.text_actor)
         self.cdata.data.rendered_actors.clear()
         self.cdata.models.rendered_actors.clear()
         self.cdata.data.render()

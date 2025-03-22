@@ -184,9 +184,9 @@ def setup_hmff(
         VisualizationFormat      = VTUFileFormat VTU_F 1000
         NonbinaryTrajectory      = TSI TrajTSI 1000
         Kappa                    = {kappa} 0 0
-        Temperature              = 1 0
+        Temperature              = 1.5 0
         Set_Steps                = 1 5000
-        Min_Max_Lenghts          = 1 8
+        Min_Max_Lenghts          = 1 5
         TimeSeriesData_Period    = 100
         VolumeCoupling           = No SecondOrder 0.0 10000 0.7
         GlobalCurvatureCoupling  = No HarmonicPotential 180 0.3
@@ -206,6 +206,7 @@ def setup_hmff(
     run_config = textwrap.dedent(
         f"""
         #!/bin/bash
+
         rm -rf VTU_F TrajTSI
         mkdir -p  {directory}/TrajTSI
         ln -s {mesh} {directory}/TrajTSI/dts0.tsi

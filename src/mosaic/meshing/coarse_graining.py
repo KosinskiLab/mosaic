@@ -1,7 +1,7 @@
 import textwrap
 import warnings
-from os.path import join
 from typing import Dict, List
+from os.path import join, basename
 
 import numpy as np
 
@@ -81,38 +81,63 @@ def mesh_to_cg(
 
         ofile.write("[Protein List]\n")
         for index, inclusion in enumerate(inclusions):
-            ofile.write(f"{inclusion['name']} {index} 0.01 0 0 -2.5\n")
+            ofile.write(f"{inclusion['name']} {index} 0.01 0 0 0.0\n")
         ofile.write("End Protein\n")
+
+    # Mosaic assumes angstrom for all spatial units
+    mesh_to_nm = 0.1 / mesh_scale
 
     plm_path = join(output_directory, "plm.sh")
     with open(plm_path, mode="w", encoding="utf-8") as ofile:
-        ofile.write(
-            textwrap.dedent(
-                f"""
-            #!/bin/bash\
+        plm_script = textwrap.dedent(
+            f"""
+            #!/bin/bash
 
-            TS2CG PLM \
-                -TSfile {mesh_path} \
-                -bilayerThickness 3.8  \
-                -rescalefactor 4 4 4"
-            """
-            )
+            TS2CG PLM \\
+                -TSfile {basename(mesh_path)} \\
+                -bilayerThickness 3.8 \\
+                -rescalefactor {mesh_to_nm} {mesh_to_nm} {mesh_to_nm}
+        """
         )
+        ofile.write(plm_script.lstrip())
 
     pcg_path = join(output_directory, "pcg.sh")
     with open(pcg_path, mode="w", encoding="utf-8") as ofile:
-        ofile.write(
-            textwrap.dedent(
-                f"""
-            #!/bin/bash\
+        pcg_script = textwrap.dedent(
+            f"""
+            #!/bin/bash
 
-            TS2CG PCG \
-                -str {str_path} \
-                -Bondlength 0.2 \
-                -LLIB Martini3.LIB \
+            TS2CG PCG \\
+                -str {basename(str_path)} \\
+                -Bondlength 0.1 \\
+                -LLIB martini3.LIB \\
                 -defout system
+        """
+        )
+        ofile.write(pcg_script.lstrip())
+
+    martinize_path = join(output_directory, "martinize.sh")
+    with open(martinize_path, mode="w", encoding="utf-8") as ofile:
+        martinize_script = "#!/bin/bash\n"
+
+        martinize_execute = ""
+        for inclusion in inclusions:
+            inclusion_var = f"{inclusion['name']}_structure".toupper()
+
+            martinize_script += f"{inclusion_var}=\n"
+            martinize_execute += textwrap.dedent(
+                f"""
+                martinize2 \\
+                    -f ${inclusion_var} \\
+                    -x {inclusion['name']}.pdb \\
+                    -o {inclusion['name']}.top \\
+                    -p backbone \\
+                    -elastic \\
+                    -maxwarn 2 \\
+                    -merge all
             """
             )
-        )
+        martinize_script += martinize_execute
+        ofile.write(martinize_script)
 
     return True

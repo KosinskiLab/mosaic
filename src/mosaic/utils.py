@@ -95,11 +95,11 @@ def volume_to_points(volume, sampling_rate, reverse_order: bool = False):
 
     points = np.array(points, dtype=int).T
     unique_clusters = np.unique(points_cluster)
-    if unique_clusters.size > 10000:
-        warnings.warn(
-            "Found more than 10k cluster. Make sure you are loading a segmentation."
-        )
-        return None
+    # if unique_clusters.size > 10000:
+    #    warnings.warn(
+    #        "Found more than 10k cluster. Make sure you are loading a segmentation."
+    #    )
+    #    return None
 
     ret = []
     for cluster in unique_clusters:

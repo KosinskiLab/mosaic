@@ -1,5 +1,5 @@
 from qtpy.QtCore import Qt, QRect
-from qtpy.QtGui import QColor, QIcon, QPixmap, QPainter, QFont
+from qtpy.QtGui import QColor, QIcon, QPixmap, QPainter, QFont, QFontMetrics, QPalette
 from qtpy.QtWidgets import (
     QFrame,
     QVBoxLayout,
@@ -9,6 +9,8 @@ from qtpy.QtWidgets import (
     QApplication,
     QListWidgetItem,
     QStyledItemDelegate,
+    QStyle,
+    QStyleOptionViewItem,
 )
 
 
@@ -90,6 +92,10 @@ class ContainerListWidget(QFrame):
             QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
                 background: none;
             }
+            QLineEdit {
+                background-color:transparent;
+                selection-background-color: rgba(99, 102, 241, 0.6);
+            }
         """
         )
 
@@ -158,31 +164,41 @@ class MetadataItemDelegate(QStyledItemDelegate):
         super().__init__(parent)
 
     def paint(self, painter, option, index):
-        super().paint(painter, option, index)
+        original_rect = QRect(option.rect)
 
         list_widget = self.parent()
         item = list_widget.item(index.row())
+
         if not isinstance(item, StyledListWidgetItem):
-            return None
+            return super().paint(painter, option, index)
 
-        if (metadata_text := item.metadata.get("metadata_text", None)) is None:
-            return None
+        metadata_text = item.metadata.get("metadata_text", "")
 
+        metadata_font = QFont(painter.font())
+        metadata_font.setPointSize(8)
+        fm = QFontMetrics(metadata_font)
+        metadata_width = fm.horizontalAdvance(metadata_text) + 10
+
+        modified_option = QStyleOptionViewItem(option)
+        modified_option.rect.setWidth(option.rect.width() - metadata_width)
+
+        super().paint(painter, modified_option, index)
         painter.save()
-        rect = option.rect
 
-        font = painter.font()
-        metadata_font = QFont(font)
+        metadata_font = QFont(painter.font())
         metadata_font.setPointSize(8)
         painter.setFont(metadata_font)
         painter.setPen(QColor(107, 114, 128))
 
-        metadata_rect = QRect(rect.right() - 70, rect.top(), 60, rect.height())
-
+        metadata_rect = QRect(
+            original_rect.right() - metadata_width,
+            original_rect.top(),
+            metadata_width,
+            original_rect.height(),
+        )
         painter.drawText(
             metadata_rect,
             int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
-            str(metadata_text),
+            metadata_text,
         )
-
         painter.restore()
