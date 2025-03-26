@@ -210,7 +210,6 @@ class SegmentationTab(QWidget):
             if parameters.get("reverse", False):
                 colormap = f"{colormap}_r"
 
-            # colormap = get_cmap(colormap)
             target = parameters.get("target", None)
             distances, color_by = [], parameters.get("color_by", "Identity")
 
@@ -263,6 +262,9 @@ class SegmentationTab(QWidget):
         clusters = self.cdata.format_datalist(type="data")
         dialog = DistanceStatsDialog(clusters, parent=self)
         return dialog.show()
+        # from mosaic.dialogs.property_analysis import PropertyAnalysisDialog
+        # dialog = PropertyAnalysisDialog(self.cdata, parent=self)
+        # return dialog.show()
 
     def _distance_crop(self):
         fits = self.cdata.format_datalist("models")

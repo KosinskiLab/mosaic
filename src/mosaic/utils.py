@@ -5,7 +5,6 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import warnings
 from typing import List
 
 import vtk
@@ -15,7 +14,6 @@ import open3d as o3d
 from scipy import spatial
 from skimage import measure
 from scipy.spatial import cKDTree
-from matplotlib.pyplot import get_cmap
 
 __all__ = [
     "points_to_volume",
@@ -29,6 +27,7 @@ __all__ = [
     "com_cluster_points",
     "compute_bounding_box",
     "cmap_to_vtkctf",
+    "get_cmap",
     "NORMAL_REFERENCE",
 ]
 
@@ -296,7 +295,18 @@ def compute_bounding_box(points: List[np.ndarray]) -> List[float]:
     return stops - starts, starts
 
 
+def get_cmap(*args, **kwargs):
+    from matplotlib.pyplot import get_cmap
+
+    return get_cmap(*args, **kwargs)
+
+
 def cmap_to_vtkctf(cmap, max_value, min_value, gamma: float = 1.0):
+    if np.allclose(min_value, max_value):
+        offset = 0.01 * max_value + 1e-6
+        max_value += offset
+        min_value -= offset
+
     colormap = get_cmap(cmap)
     value_range = max_value - min_value
 

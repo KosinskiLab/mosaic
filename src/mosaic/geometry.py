@@ -290,11 +290,16 @@ class Geometry:
         return self._points.GetNumberOfPoints()
 
     def set_scalars(self, scalars, color_lut, scalar_range=None, use_point=False):
-        if isinstance(scalars, np.ndarray):
-            scalars = numpy_support.numpy_to_vtk(scalars)
+        scalars = np.asarray(scalars).reshape(-1)
+        if scalars.size == 1:
+            scalars = np.repeat(scalars, self.points.shape[0])
+
+        if scalars.size != self.points.shape[0]:
+            print(f"Needs {self.points.shape[0]} scalars, not {scalars.size}")
+            return None
 
         mapper = self._actor.GetMapper()
-        mapper.GetInput().GetPointData().SetScalars(scalars)
+        mapper.GetInput().GetPointData().SetScalars(numpy_support.numpy_to_vtk(scalars))
         mapper.SetLookupTable(color_lut)
         if scalar_range is not None:
             mapper.SetScalarRange(*scalar_range)
@@ -473,7 +478,9 @@ class Geometry:
         self._representation = representation
         return 0
 
-    def compute_distance(self, query_points: np.ndarray, cutoff: float = None):
+    def compute_distance(
+        self, query_points: np.ndarray, cutoff: float = None, k: int = 1
+    ):
         model = self._meta.get("fit", None)
         if hasattr(model, "compute_distance"):
             return model.compute_distance(query_points)
@@ -483,7 +490,7 @@ class Geometry:
             distances = np.full(indices.size, fill_value=cutoff + 1)
             distances[indices] = 0
             return distances
-        return find_closest_points(self.points, query_points, k=1)[1]
+        return find_closest_points(self.points, query_points, k=k)[0]
 
 
 class PointCloud(Geometry):

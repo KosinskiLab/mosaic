@@ -83,11 +83,37 @@ class ExportManager:
         clipboard = QGuiApplication.clipboard()
         return clipboard.setImage(q_image)
 
-    def capture_screenshot(self, transparent_bg: bool = False):
-        """Capture screenshot of current VTK window"""
+    def capture_screenshot(
+        self, transparent_bg: bool = False, width: int = None, height: int = None
+    ):
+        """Capture screenshot of current VTK window with optional custom dimensions
+
+        Parameters
+        ----------
+        transparent_bg : bool, optional
+            Whether to keep transparent background, by default False
+        width : int, optional
+            Custom width for the screenshot, uses current window with by default.
+        height : int, optional
+            Custom height for the screenshot, uses current window height by default.
+
+        Returns
+        -------
+        PIL.Image
+            Screenshot image
+        """
         render_window = self.vtk_widget.GetRenderWindow()
         render_window.SetAlphaBitPlanes(1)
         render_window.SetMultiSamples(0)
+
+        size_changed = False
+        original_size = render_window.GetSize()
+        if width != original_size[0] or height != original_size[1]:
+            new_width = width if width is not None else original_size[0]
+            new_height = height if height is not None else original_size[1]
+            render_window.SetSize(new_width, new_height)
+            render_window.Render()
+            size_changed = True
 
         window_to_image = vtkWindowToImageFilter()
         window_to_image.SetInput(render_window)
@@ -95,10 +121,14 @@ class ExportManager:
         window_to_image.Update()
 
         vtk_image = window_to_image.GetOutput()
-        width, height, _ = vtk_image.GetDimensions()
+        img_width, img_height, _ = vtk_image.GetDimensions()
 
         arr = numpy_support.vtk_to_numpy(vtk_image.GetPointData().GetScalars())
-        arr = arr.reshape(height, width, -1)[::-1]
+        arr = arr.reshape(img_height, img_width, -1)[::-1]
+
+        if size_changed:
+            render_window.SetSize(*original_size)
+            render_window.Render()
 
         ret = Image.fromarray(arr, "RGBA")
         if transparent_bg:
@@ -254,6 +284,15 @@ class ExportManager:
         screenshot = self.capture_screenshot(not is_video)
         height, width = np.array(screenshot).shape[:2]
 
+        if is_video:
+            height += height % 2
+            width += width % 2
+
+        screenshot_kwargs = {
+            "transparent_bg": not is_video,
+            "width": width,
+            "height": height,
+        }
         writer = FrameWriter(filename=filename)
         quality = max(min(quality / 10.0, 10), 1) if quality else None
         if is_video:
@@ -267,7 +306,7 @@ class ExportManager:
             if frame_idx is None:
                 continue
             renderer.Render()
-            frame = np.asarray(self.capture_screenshot(not is_video))
+            frame = np.asarray(self.capture_screenshot(**screenshot_kwargs))
             writer.append_data(frame)
             QApplication.processEvents()
 

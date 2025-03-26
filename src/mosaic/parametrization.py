@@ -900,6 +900,8 @@ class TriangularMesh(Parametrization):
         pd1, pd2, pv1, pv2 = igl.principal_curvature(
             vertices, faces, radius=radius, use_k_ring=use_k_ring
         )
+
+        curvature = curvature.lower()
         if curvature == "gaussian":
             return pv1 * pv2
         elif curvature == "mean":
