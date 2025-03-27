@@ -106,9 +106,13 @@ def run_membrainseg(
     ]
     if test_time_augmentation:
         cmd.append("--test-time-augmentation")
+    else:
+        cmd.append("--no-test-time-augmentation")
 
     if clustering:
         cmd.append("--store-connected-components")
+    else:
+        cmd.append("--no-store-connected-components")
 
     input_sampling_rate = np.max(input_sampling_rate)
     output_sampling_rate = np.max(output_sampling_rate)
@@ -125,6 +129,7 @@ def run_membrainseg(
     if input_sampling_rate > 0:
         cmd.extend(["--in-pixel-size", f"{input_sampling_rate}"])
 
+    print(cmd)
     ret = run([str(x) for x in cmd])
     out_path = join(
         out_folder, f"{_stem(tomogram_path)}_{_stem(model_path)}.ckpt_segmented.mrc"

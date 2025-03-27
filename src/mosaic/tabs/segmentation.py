@@ -34,7 +34,6 @@ class SegmentationTab(QWidget):
         self.histogram_widget = HistogramWidget()
         self.histogram_window = QWidget()
         self.histogram_window.setWindowTitle("Select Clusters by Size")
-        self.histogram_window.setFixedSize(600, 300)
 
         layout = QVBoxLayout(self.histogram_window)
         layout.addWidget(self.histogram_widget)

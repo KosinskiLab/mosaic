@@ -219,12 +219,15 @@ class DataContainerInteractor(QObject):
         self.container.highlight(selected_indices)
         self.vtk_widget.GetRenderWindow().Render()
 
-    def _on_cutoff_changed(self, cutoff_value):
+    def _on_cutoff_changed(self, lower_cutoff, upper_cutoff=None):
         cluster_sizes = self.container.get_cluster_size()
         selection = QItemSelection()
 
+        if upper_cutoff is None:
+            upper_cutoff = max(cluster_sizes) + 1
+
         for i in range(self.container.get_cluster_count()):
-            if cluster_sizes[i] < cutoff_value:
+            if (cluster_sizes[i] > lower_cutoff) & (cluster_sizes[i] < upper_cutoff):
                 index = self.data_list.model().index(i, 0)
                 selection.select(index, index)
 
