@@ -1,13 +1,10 @@
 from functools import partial
 
-import numpy as np
-from qtpy.QtCore import QThread, Signal
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
-from ..utils import cmap_to_vtkctf
+from ..parallel import run_in_background
 from ..formats.parser import load_density
 from ..widgets.ribbon import create_button
-from ..dialogs import MeshPropertiesDialog
 from ..parametrization import TriangularMesh
 from ..meshing import (
     to_open3d,
@@ -18,23 +15,9 @@ from ..meshing import (
 )
 
 
-class FitWorker(QThread):
-    finished = Signal()
-
-    def __init__(self, cdata, **kwargs):
-        super().__init__()
-        self.cdata = cdata
-        self.kwargs = kwargs
-
-    def run(self):
-        self.cdata.add_fit(**self.kwargs)
-        self.finished.emit()
-
-    def kill(self, timeout=10000):
-        self.quit()
-        if not self.wait(timeout):
-            self.terminate()
-            self.wait()
+def on_fit_complete(self, *args, **kwargs):
+    self.cdata.data.render()
+    self.cdata.models.render()
 
 
 class ModelTab(QWidget):
@@ -92,20 +75,15 @@ class ModelTab(QWidget):
 
         mesh_actions = [
             create_button(
+                "Merge", "mdi.merge", self, self._merge_meshes, "Merge Meshes"
+            ),
+            create_button(
                 "Volume",
                 "mdi.cube-outline",
                 self,
                 self._mesh_volume,
                 "Mesh Volume",
                 MESHVOLUME_SETTINGS,
-            ),
-            create_button(
-                "Curvature",
-                "mdi.vector-curve",
-                self,
-                self._color_curvature,
-                "Compute Curvature",
-                CURVATURE_SETTINGS,
             ),
             create_button(
                 "Repair",
@@ -123,19 +101,12 @@ class ModelTab(QWidget):
                 "Remesh Mesh",
                 REMESH_SETTINGS,
             ),
-            create_button(
-                "Analyze",
-                "mdi.poll",
-                self,
-                self._show_mesh_dialog,
-                "Analyze Mesh",
-            ),
-            create_button("Merge", "mdi.merge", self, self._merge_meshes),
-            # create_button("Skeleton", "mdi.merge", self, self._sceleton),
+            # create_button("Skeleton", "mdi.vector-line", self, self._sceleton),
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
 
-    def _fit(self, method: str, **kwargs):
+    @run_in_background("fit", callback=on_fit_complete)
+    def _fit(self, method: str, *args, **kwargs):
         _conversion = {
             "Alpha Shape": "convexhull",
             "Ball Pivoting": "mesh",
@@ -151,16 +122,7 @@ class ModelTab(QWidget):
             except Exception as e:
                 raise ValueError(f"Incorrect radius specification {radii}.") from e
 
-        self.fit_worker = FitWorker(self.cdata, method=method, **kwargs)
-        self.fit_worker.finished.connect(self._on_fit_complete)
-        self.fit_worker.start()
-
-    def _on_fit_complete(self):
-        self.fit_worker.deleteLater()
-        self.fit_worker = None
-
-        self.cdata.data.render()
-        self.cdata.models.render()
+        return self.cdata.add_fit(method, **kwargs)
 
     def _to_cluster(self, *args, **kwargs):
         indices = self.cdata.models._get_selected_indices()
@@ -208,6 +170,7 @@ class ModelTab(QWidget):
             fit = self.cdata._models.data[index]._meta.get("fit", None)
             if not hasattr(fit, "vertices"):
                 continue
+
             vs, fs = triangulate_refine_fair(
                 vs=fit.vertices,
                 fs=fit.triangles,
@@ -321,47 +284,6 @@ class ModelTab(QWidget):
 
         self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
-
-    def _show_mesh_dialog(self):
-        dialog = MeshPropertiesDialog(
-            fits=self.cdata.format_datalist("models", mesh_only=True), parent=self
-        )
-
-        def _update_dialog():
-            if not dialog or not dialog.isVisible():
-                return
-
-            dialog.update_fits(self.cdata.format_datalist("models", mesh_only=True))
-
-        self.cdata.models.render_update.connect(_update_dialog)
-        return dialog.show()
-
-    def _color_curvature(
-        self, cmap="viridis", curvature="gaussian", radius: int = 3, **kwargs
-    ):
-        selected_meshes, curvatures = self._get_selected_meshes(), []
-        if len(selected_meshes) == 0:
-            print("No mesh was selected for curvature computation.")
-            return None
-
-        for index in selected_meshes:
-            fit = self.cdata._models.data[index]._meta.get("fit")
-            curvatures.append(fit.compute_curvature(curvature=curvature, radius=radius))
-
-        all_curvatures = np.concatenate([c.flatten() for c in curvatures])
-        valid_curvatures = all_curvatures[~np.isnan(all_curvatures)]
-
-        n_bins = min(valid_curvatures.size // 10, 100)
-        bins = np.percentile(valid_curvatures, np.linspace(0, 100, n_bins + 1))
-        curvatures = [np.digitize(curv, bins) - 1 for curv in curvatures]
-
-        self.cdata.models.set_selection([])
-        lut, lut_range = cmap_to_vtkctf(cmap=cmap, max_value=n_bins, min_value=0)
-        for index, k in zip(selected_meshes, curvatures):
-            self.cdata._models.data[index].set_scalars(k, lut, lut_range)
-
-        self.legend.set_lookup_table(lut, f"{curvature.title()} curvature")
-        return self.cdata.models.render_vtk()
 
 
 SAMPLE_SETTINGS = {
@@ -723,45 +645,6 @@ MESHVOLUME_SETTINGS = {
             "type": "boolean",
             "default": True,
             "description": "Simplify mesh after initial reduction.",
-        },
-    ],
-}
-
-
-CURVATURE_SETTINGS = {
-    "title": "Curvature Settings",
-    "settings": [
-        {
-            "label": "Curvature",
-            "parameter": "curvature",
-            "type": "select",
-            "options": ["gaussian", "mean"],
-            "default": "gaussian",
-            "description": "Curvature type to compute on the mesh.",
-        },
-        {
-            "label": "Radius",
-            "parameter": "radius",
-            "type": "number",
-            "default": 5,
-            "min": 1,
-            "description": "Number of neighbor vertices considered during computation.",
-        },
-        {
-            "label": "Colormap",
-            "parameter": "cmap",
-            "type": "select",
-            "options": [
-                "viridis",
-                "plasma",
-                "inferno",
-                "magma",
-                "cividis",
-                "RdBu",
-                "Spectral",
-            ],
-            "default": "viridis",
-            "description": "Colormap to apply to curvature estimates.",
         },
     ],
 }

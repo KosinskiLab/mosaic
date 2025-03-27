@@ -3,17 +3,15 @@ from typing import List, Tuple, Literal
 import vtk
 import numpy as np
 from qtpy.QtCore import Qt, QEvent
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QDialog
+from qtpy.QtWidgets import QWidget, QVBoxLayout
 
-from ..widgets import HistogramWidget
 from ..widgets.ribbon import create_button
 from ..dialogs.paywall import PaywallDialog
-from ..utils import find_closest_points, cmap_to_vtkctf
 from ..dialogs import (
     DistanceAnalysisDialog,
-    DistanceStatsDialog,
     DistanceCropDialog,
-    LocalizationDialog,
+    HistogramDialog,
+    PropertyAnalysisDialog,
 )
 
 
@@ -31,18 +29,7 @@ class SegmentationTab(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.ribbon)
 
-        self.histogram_widget = HistogramWidget()
-        self.histogram_window = QWidget()
-        self.histogram_window.setWindowTitle("Select Clusters by Size")
-
-        layout = QVBoxLayout(self.histogram_window)
-        layout.addWidget(self.histogram_widget)
-
-        self.cdata.data.data_changed.connect(self._update_histogram)
-        self.histogram_widget.cutoff_changed.connect(self.cdata.data._on_cutoff_changed)
-
         self.cdata.data.vtk_widget.installEventFilter(self)
-        self.histogram_window.move(self.mapToGlobal(self.rect().center()))
 
     def eventFilter(self, obj, event):
         """Handle Escape key to exit transformer and trimmer mode."""
@@ -91,7 +78,7 @@ class SegmentationTab(QWidget):
             ),
             create_button(
                 "Transform",
-                "mdi.rotate-3d",
+                "mdi.rotate-right",
                 self,
                 self.transfomer.show,
                 "Transform selected cluster",
@@ -150,18 +137,11 @@ class SegmentationTab(QWidget):
                 "Analyse Distance Distributions",
             ),
             create_button(
-                "Localization",
-                "mdi.format-color-fill",
+                "Properties",
+                "mdi.poll",
                 self,
-                self._show_localization_dialog,
-                "Color Points By Localization",
-            ),
-            create_button(
-                "Statistics",
-                "fa5s.calculator",
-                self,
-                self._show_stats_dialog,
-                "Compute Cluster Statistics",
+                self._show_property_dialog,
+                "Analyse Point Properties",
             ),
         ]
         self.ribbon.add_section("Analysis", analysis_actions)
@@ -177,6 +157,14 @@ class SegmentationTab(QWidget):
         self._update_histogram()
         self.histogram_window.show()
 
+    def _show_histogram(self):
+        dialog = HistogramDialog(parent=self)
+        dialog.update_histogram(self.cdata._data.get_cluster_size())
+        dialog.histogram_widget.cutoff_changed.connect(
+            self.cdata.data._on_cutoff_changed
+        )
+        return dialog.exec()
+
     def _update_histogram(self):
         self.histogram_widget.update_histogram(self.cdata._data.get_cluster_size())
 
@@ -187,83 +175,9 @@ class SegmentationTab(QWidget):
         dialog = DistanceAnalysisDialog(clusters, fits=fits, parent=self)
         return dialog.show()
 
-    def _show_localization_dialog(self):
-        fits = self.cdata.format_datalist("models")
-        clusters = self.cdata.format_datalist("data")
-
-        dialog = LocalizationDialog(clusters, fits=fits, parent=self)
-
-        vtk_widget = self.cdata.data.vtk_widget
-        renderer = vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
-        camera_pos = np.array(renderer.GetActiveCamera().GetPosition())
-
-        def _handle_selection(parameters):
-            geometries = parameters.get("objects", [])
-            if len(geometries) == 0:
-                return None
-
-            if (colormap := parameters.get("color_map", None)) is None:
-                return None
-
-            colormap = colormap.lower()
-            if parameters.get("reverse", False):
-                colormap = f"{colormap}_r"
-
-            target = parameters.get("target", None)
-            distances, color_by = [], parameters.get("color_by", "Identity")
-
-            if target is None and color_by in ("Fit Distance", "Cluster Distance"):
-                return None
-
-            identity = np.linspace(0, 255, len(geometries))
-            for index, geometry in enumerate(geometries):
-                points = geometry.points
-                if color_by == "Camera Distance":
-                    dist = np.linalg.norm(points - camera_pos, axis=1)
-                elif color_by == "Cluster Distance":
-                    dist = find_closest_points(target.points, points, k=1)[0]
-                elif color_by == "Fit Distance":
-                    model = target._meta["fit"]
-                    if hasattr(model, "compute_distance"):
-                        dist = model.compute_distance(points)
-                    else:
-                        dist = find_closest_points(target.points, points, k=1)[0]
-                else:
-                    dist = np.full(points.shape[0], fill_value=identity[index])
-
-                distances.append(dist)
-
-            if parameters.get("normalize_per_object", False):
-                for index in range(len(distances)):
-                    x_min, x_max = distances[index].min(), distances[index].max()
-                    if (x_max - x_min) < 1e-6:
-                        continue
-                    distances[index] = (distances[index] - x_min) / (x_max - x_min)
-
-            lut, lut_range = cmap_to_vtkctf(
-                cmap=colormap,
-                max_value=np.max([x.max() for x in distances]),
-                min_value=np.min([x.min() for x in distances]),
-            )
-            for index, geometry in enumerate(geometries):
-                geometry.set_scalars(distances[index], lut, lut_range)
-
-            self.legend.set_lookup_table(lut, "Distance")
-            self.cdata.data.render_vtk()
-
-        dialog.previewRequested.connect(_handle_selection)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            return _handle_selection(dialog.get_settings())
-
-        return None
-
-    def _show_stats_dialog(self):
-        clusters = self.cdata.format_datalist(type="data")
-        dialog = DistanceStatsDialog(clusters, parent=self)
+    def _show_property_dialog(self):
+        dialog = PropertyAnalysisDialog(self.cdata, self.legend, parent=self)
         return dialog.show()
-        # from mosaic.dialogs.property_analysis import PropertyAnalysisDialog
-        # dialog = PropertyAnalysisDialog(self.cdata, parent=self)
-        # return dialog.show()
 
     def _distance_crop(self):
         fits = self.cdata.format_datalist("models")

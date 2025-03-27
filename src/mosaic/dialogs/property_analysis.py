@@ -20,7 +20,6 @@ from qtpy.QtWidgets import (
     QTableWidget,
     QHeaderView,
     QTableWidgetItem,
-    QSizePolicy,
     QFileDialog,
 )
 import pyqtgraph as pg
@@ -33,12 +32,13 @@ from mosaic.widgets.color_preview import ColorPreviewWidget
 
 
 class PropertyAnalysisDialog(QDialog):
-    def __init__(self, cdata, parent=None):
+    def __init__(self, cdata, legend=None, parent=None):
         super().__init__(parent)
         self.cdata = cdata
         self.setWindowTitle("Property Analysis")
         self.resize(1200, 800)
 
+        self.legend = legend
         self.color_preview = ColorPreviewWidget()
         self.setWindowFlags(Qt.WindowType.Window)
 
@@ -166,6 +166,8 @@ class PropertyAnalysisDialog(QDialog):
         checkbox_layout = QHBoxLayout()
         self.normalize_checkbox = QCheckBox("Normalize per Object")
         checkbox_layout.addWidget(self.normalize_checkbox)
+        self.quantile_checkbox = QCheckBox("Compute Quantiles")
+        checkbox_layout.addWidget(self.quantile_checkbox)
         self.invert_checkbox = QCheckBox("Invert Colors")
         self.invert_checkbox.stateChanged.connect(self._update_colormap_preview)
         checkbox_layout.addWidget(self.invert_checkbox)
@@ -601,21 +603,27 @@ class PropertyAnalysisDialog(QDialog):
                 k: (v - v.min()) / (v.max() - v.min()) for k, v in properties.items()
             }
 
-        max_value = np.max(
-            [np.max(x) for x in self.properties.values() if x is not None]
-        )
-        min_value = np.min(
-            [np.min(x) for x in self.properties.values() if x is not None]
-        )
+        if self.quantile_checkbox.isChecked():
+            all_curvatures = np.concatenate([v.flatten() for v in properties.values()])
+            valid_curvatures = all_curvatures[~np.isnan(all_curvatures)]
+            n_bins = min(valid_curvatures.size // 10, 100)
+            bins = np.percentile(valid_curvatures, np.linspace(0, 100, n_bins + 1))
+            properties = {k: np.digitize(v, bins) - 1 for k, v in properties.items()}
 
+        values = [x for x in properties.values() if x is not None]
+        if len(values) == 0:
+            return None
+
+        max_value = np.max([np.max(x) for x in values])
+        min_value = np.min([np.min(x) for x in values])
         lut, lut_range = cmap_to_vtkctf(colormap, max_value, min_value=min_value)
         for geometry in geometries:
-            metric = self.properties.get(id(geometry))
+            metric = properties.get(id(geometry))
             if metric is None:
                 continue
             geometry.set_scalars(metric, lut, lut_range)
 
-        # self.legend.set_lookup_table(lut, "Distance")
+        self.legend.set_lookup_table(lut, self.property_combo.currentText())
         self.cdata.data.render()
         self.cdata.models.render()
 

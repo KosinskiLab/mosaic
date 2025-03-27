@@ -16,7 +16,7 @@ from qtpy.QtWidgets import (
     QSlider,
     QLineEdit,
     QLabel,
-    QDoubleSpinBox,
+    QSpinBox,
     QSizePolicy,
     QComboBox,
 )
@@ -72,37 +72,50 @@ class RangeSlider(QWidget):
 
     def _update_slider_styles(self):
         """Apply distinct styles to lower and upper sliders"""
-        styles = {
-            "lower": """
-                QSlider::handle:horizontal {
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #8f8f8f);
-                    border: 1px solid #5c5c5c;
-                    width: 14px;
-                    margin-top: -6px;
-                    margin-bottom: -6px;
-                    border-radius: 7px;
-                }
-                QSlider::handle:horizontal:hover {
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #999999, stop:1 #7a7a7a);
-                }
-            """,
-            "upper": """
-                QSlider::handle:horizontal {
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #4c9eeb, stop:1 #326fa6);
-                    border: 1px solid #326fa6;
-                    width: 14px;
-                    margin-top: -6px;
-                    margin-bottom: -6px;
-                    border-radius: 7px;
-                }
-                QSlider::handle:horizontal:hover {
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #418cd8, stop:1 #2a5d8c);
-                }
-            """,
-        }
-
-        self.lower_slider.setStyleSheet(styles["lower"])
-        self.upper_slider.setStyleSheet(styles["upper"])
+        self.setStyleSheet(
+            """
+            QWidget {
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                color: #696c6f;
+            }
+            QSlider {
+                height: 24px;
+            }
+            QSlider:disabled {
+                opacity: 0.5;
+            }
+            QSlider::groove:horizontal {
+                height: 4px;
+                background: #6b7280;
+                border-radius: 2px;
+            }
+            QSlider::groove:horizontal:disabled {
+                opacity: 0.5;
+                background: #6b7280;
+            }
+            QSlider::handle:horizontal {
+                background: #ffffff;
+                border: 2px solid #3b82f6;
+                width: 16px;
+                height: 16px;
+                margin: -6px 0;
+                border-radius: 8px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #2563eb;
+                border-color: #2563eb;
+            }
+            QSlider::handle:horizontal:disabled {
+                opacity: 0.5;
+                border: 2px solid #6b7280;
+            }
+            QLabel:disabled {
+                opacity: 0.1;
+            }
+        """
+        )
 
     def setRange(self, minimum, maximum):
         self.lower_slider.setRange(minimum, maximum)
@@ -233,7 +246,7 @@ class HistogramWidget(QWidget):
         bin_layout.setSpacing(6)
 
         bin_label = QLabel("Bins:")
-        self.bin_count_spinner = QDoubleSpinBox()
+        self.bin_count_spinner = QSpinBox()
         self.bin_count_spinner.setRange(5, 100)
         self.bin_count_spinner.setValue(self.bin_count)
         self.bin_count_spinner.setFixedWidth(60)
@@ -256,9 +269,11 @@ class HistogramWidget(QWidget):
         self.data = np.asarray(data)
 
         if self.data.size == 0:
-            return self.plot_widget.clear()
-
-        self._draw_histogram()
+            try:
+                return self.plot_widget.clear()
+            except Exception:
+                return None
+        return self._draw_histogram()
 
     def _invert_scaling(self, value):
         if self.transform_combo.currentText().lower() == "log":

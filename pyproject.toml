@@ -26,6 +26,9 @@ dependencies = [
     "imageio-ffmpeg",
     "Pillow",
     "importlib_resources",
+    "zmesh",
+    "tqdm",
+    "pyfqmr",
 ]
 license = {text = "Proprietary"}
 classifiers = [

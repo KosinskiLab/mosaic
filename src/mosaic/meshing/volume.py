@@ -12,9 +12,8 @@
 from typing import Tuple, List
 from os import listdir, makedirs
 from os.path import join, basename
+from tempfile import TemporaryDirectory
 
-import zmesh
-import pyfqmr
 import numpy as np
 import open3d as o3d
 from tqdm.contrib.concurrent import process_map
@@ -24,6 +23,8 @@ from ..formats.parser import load_density
 
 
 def simplify_mesh(mesh, aggressiveness=5.5, decimation_factor=2, lod=1):
+    import pyfqmr
+
     simplifier = pyfqmr.Simplify()
     simplifier.setMesh(np.asarray(mesh.vertices), np.asarray(mesh.triangles))
     simplifier.simplify_mesh(
@@ -70,7 +71,7 @@ class MeshCreator:
 
         self.options = {
             "simplification_factor": kwargs.get("simplification_factor", 100),
-            "max_simplification_error": kwargs.get("max_simplification_error", 40),
+            "max_simplification_error": kwargs.get("max_simplification_error", None),
             "low_padding": kwargs.get("low_padding", 0),
             "high_padding": kwargs.get("high_padding", 1),
             "dust_threshold": kwargs.get("dust_threshold", None),
@@ -78,8 +79,9 @@ class MeshCreator:
         }
 
     def execute(self):
-        self._volume = load_density(self.data_path, use_memmap=True)
+        from zmesh import Mesher
 
+        self._volume = load_density(self.data_path, use_memmap=True)
         bounds_min = np.maximum(self.offset.astype(int, copy=True), 0)
         bounds_max = np.minimum(
             np.add(bounds_min, self.shape), self._volume.shape
@@ -108,7 +110,7 @@ class MeshCreator:
             )
 
         # Igneus includes dust removal before this step
-        mesher = zmesh.Mesher(volume.sampling_rate)
+        mesher = Mesher(volume.sampling_rate)
         mesher.mesh(data)
         data = None
 
@@ -125,16 +127,18 @@ class MeshCreator:
             mesh.vertices[:] += offset * volume.sampling_rate
             meshes[obj_id] = mesh
 
+        ret = []
         for k, v in meshes.items():
             bound_str = "-".join([str(x) for x in data_bounds_min.tolist()])
             fname = join(self.output_dir, f"{k}_{bound_str}.obj")
             with open(fname, mode="wb") as ofile:
                 ofile.write(v.to_obj())
+            ret.append(fname)
 
-        return None
+        return ret
 
     def _handle_dataset_boundary(self, data, bounds_min, bounds_max, volume_bounds):
-        """Add black border along dataset boundaries for closed meshes."""
+        """Add zero border along dataset boundaries for closed meshes."""
         if (not np.any(bounds_min == 0)) and (not np.any(bounds_max == volume_bounds)):
             return data, (0, 0, 0)
 
@@ -183,8 +187,10 @@ class MeshMerger:
             [mesh.vertices for mesh in meshes], [mesh.triangles for mesh in meshes]
         )
         mesh = to_open3d(vertices, faces)
-        o3d.io.write_triangle_mesh(join(self.output_dir, f"{self.seq_id}.obj"), mesh)
-        return None
+
+        opath = join(self.output_dir, f"{self.seq_id}.obj")
+        o3d.io.write_triangle_mesh(opath, mesh)
+        return opath
 
     def _get_submeshes(self):
         files = [x for x in listdir(self.data_path) if x.startswith(f"{self.seq_id}_")]
@@ -224,10 +230,9 @@ class MeshSimplifier:
             aggressiveness=self.aggressiveness,
             lod=self.lod,
         )
-        o3d.io.write_triangle_mesh(
-            join(self.output_dir, basename(self.mesh_path)), mesh
-        )
-        return None
+        opath = join(self.output_dir, basename(self.mesh_path))
+        o3d.io.write_triangle_mesh(opath, mesh)
+        return opath
 
 
 def _execute(task):
@@ -250,10 +255,16 @@ def _split_volume(shape, box) -> List:
 
 def mesh_volume(
     volume_path: str,
-    output_dir: str = "",
+    output_dir: str = None,
     shape: Tuple[int, int, int] = (448, 448, 448),
     num_workers: int = 8,
+    closed_dataset_edges: bool = True,
+    max_simplification_error: float = 40,
+    simplification_factor: int = 100,
 ):
+    if output_dir is None:
+        output_dir = TemporaryDirectory(ignore_cleanup_errors=True).name
+
     partial_meshes = join(output_dir, "partial")
     merged_meshes = join(output_dir, "merged")
     simplified_meshes = join(output_dir, "simplified")
@@ -261,9 +272,19 @@ def mesh_volume(
         makedirs(dir_name, exist_ok=True)
 
     volume = load_density(volume_path, use_memmap=True)
+    if shape is None:
+        shape = volume.shape
 
     tasks = [
-        MeshCreator(volume_path, shape=shape, offset=x, output_dir=partial_meshes)
+        MeshCreator(
+            volume_path,
+            shape=shape,
+            offset=x,
+            output_dir=partial_meshes,
+            closed_dataset_edges=closed_dataset_edges,
+            max_simplification_error=max_simplification_error,
+            simplification_factor=simplification_factor,
+        )
         for x in _split_volume(volume.shape, shape)
     ]
     _ = process_map(_execute, tasks, max_workers=num_workers)
@@ -276,6 +297,4 @@ def mesh_volume(
 
     merged_meshes = [join(merged_meshes, f"{x}.obj") for x in seq_ids]
     tasks = [MeshSimplifier(x, output_dir=simplified_meshes) for x in merged_meshes]
-    _ = process_map(_execute, tasks, max_workers=num_workers)
-
-    return None
+    return process_map(_execute, tasks, max_workers=num_workers)

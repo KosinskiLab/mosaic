@@ -241,6 +241,9 @@ class IntelligenceTab(QWidget):
         self.cdata.data.data_changed.emit()
         self.cdata.data.render()
 
+        self.cdata.data.render()
+        self.cdata.models.render()
+
 
 IMPORT_SETTINGS = {
     "title": "Trajectory Import",
