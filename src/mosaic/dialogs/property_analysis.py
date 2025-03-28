@@ -874,9 +874,8 @@ class PropertyAnalysisDialog(QDialog):
     def _export_data(self):
         """Export analysis data to a CSV file"""
         property_name = self.property_combo.currentText()
-        selected_objects = self._get_selected_objects()
-
-        if not selected_objects:
+        selected_items = self.objects_list.selectedItems()
+        if not selected_items:
             QMessageBox.warning(
                 self, "No Selection", "Please select at least one object."
             )
@@ -890,13 +889,18 @@ class PropertyAnalysisDialog(QDialog):
             return
 
         try:
-            with open(file_path, "w") as f:
-                f.write(f"Object,{property_name}\n")
+            with open(file_path, mode="w", encoding="utf-8") as ofile:
+                ofile.write(f"source,{property_name}\n")
 
-                for obj in selected_objects:
-                    for _ in range(50):
-                        value = round(np.random.normal(50, 15), 2)
-                        f.write(f"{obj.name},{value}\n")
+                for item in selected_items:
+                    obj = item.data(Qt.ItemDataRole.UserRole)
+                    values = self.properties.get(id(obj))
+                    if values is None:
+                        return None
+
+                    values = np.asarray(values).reshape(-1)
+                    lines = "\n".join([f"{item.text()},{v}" for v in values])
+                    ofile.write(lines + "\n")
 
             QMessageBox.information(self, "Success", "Data exported successfully")
 
