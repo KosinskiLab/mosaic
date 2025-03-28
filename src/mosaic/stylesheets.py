@@ -50,3 +50,23 @@ QScrollArea_style = """
         background: transparent;
     }
 """
+
+QTabBar_style = """
+    QTabBar::tab {
+        background: transparent;
+        border: 1px solid #cbd5e1;
+        border-bottom: none;
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
+        padding: 6px 12px;
+        margin-right: 2px;
+    }
+    QTabBar::tab:selected {
+        color: rgba(99, 102, 241, 1.0);
+        border-color: rgba(99, 102, 241, 1.0);
+
+    }
+    QTabBar::tab:hover:!selected {
+        color: #696c6f;
+    }
+"""

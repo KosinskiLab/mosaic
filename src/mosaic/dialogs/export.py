@@ -190,6 +190,7 @@ class ExportDialog(QDialog):
         footer_layout = QHBoxLayout(footer)
 
         cancel_btn = QPushButton("Cancel")
+        cancel_btn.setIcon(qta.icon("mdi.close", color="#4f46e5"))
         cancel_btn.clicked.connect(self.reject)
 
         export_btn = QPushButton("Export")
@@ -364,21 +365,3 @@ class ExportDialog(QDialog):
 
         self.export_requested.emit(export_data)
         self.accept()
-
-
-# Example usage
-if __name__ == "__main__":
-    from qtpy.QtWidgets import QApplication
-    import sys
-
-    app = QApplication(sys.argv)
-    dialog = ExportDialog()
-
-    def on_export(data):
-        print("Export requested:", data)
-
-    app.setStyle("Fusion")
-
-    dialog.export_requested.connect(on_export)
-    dialog.show()
-    sys.exit(app.exec())

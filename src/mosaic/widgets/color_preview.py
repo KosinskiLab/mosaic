@@ -38,7 +38,7 @@ class ColorPreviewWidget(QWidget):
 
         count = cmap.N
         if n_colors is not None:
-            count = min(n_colors, count)
+            count = min(n_colors + 1, count)
 
         ret = []
         for i in range(count):

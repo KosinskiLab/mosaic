@@ -3,12 +3,11 @@ from functools import partial
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
 from ..parallel import run_in_background
-from ..formats.parser import load_density
 from ..widgets.ribbon import create_button
 from ..parametrization import TriangularMesh
 from ..meshing import (
     to_open3d,
-    marching_cubes,
+    mesh_volume,
     merge_meshes,
     remesh,
     triangulate_refine_fair,
@@ -187,6 +186,7 @@ class ModelTab(QWidget):
 
         return self.cdata.models.render()
 
+    @run_in_background("remesh_meshes", callback=on_fit_complete)
     def _remesh_meshes(self, method, **kwargs):
         selected_meshes = self._get_selected_meshes()
         if len(selected_meshes) == 0:
@@ -221,8 +221,7 @@ class ModelTab(QWidget):
                 fit=TriangularMesh(mesh),
                 sampling_rate=self.cdata._models.data[index].sampling_rate,
             )
-        self.cdata.models.data_changed.emit()
-        return self.cdata.models.render()
+        return self.cdata.models.data_changed.emit()
 
     def _merge_meshes(self):
         meshes, selected_meshes = [], self._get_selected_meshes()
@@ -274,16 +273,23 @@ class ModelTab(QWidget):
         if not filename:
             return -1
 
-        dens = load_density(filename)
-        meshes = marching_cubes(dens.data, dens.sampling_rate, **kwargs)
-        for mesh in meshes:
+        return self._run_marching_cubes(
+            filename, max_simplification_error=None, **kwargs
+        )
+
+    @run_in_background("mesh_volume", callback=on_fit_complete)
+    def _run_marching_cubes(self, filename, **kwargs):
+        from ..formats.parser import load_density
+
+        mesh_paths = mesh_volume(filename, **kwargs)
+        sampling = load_density(filename, use_memmap=True).sampling_rate
+        for mesh_path in mesh_paths:
             self.cdata._add_fit(
-                fit=TriangularMesh(mesh),
-                sampling_rate=dens.sampling_rate,
+                fit=TriangularMesh.from_file(mesh_path),
+                sampling_rate=sampling,
             )
 
-        self.cdata.models.data_changed.emit()
-        return self.cdata.models.render()
+        return self.cdata.models.data_changed.emit()
 
 
 SAMPLE_SETTINGS = {
@@ -632,19 +638,27 @@ MESHVOLUME_SETTINGS = {
     "title": "Meshing Settings",
     "settings": [
         {
-            "label": "Reduction Factor",
-            "parameter": "reduction_factor",
+            "label": "Simplifcation Factor",
+            "parameter": "simplification_factor",
             "type": "number",
             "default": 100,
             "min": 1,
             "description": "Reduce initial mesh by x times the number of triangles.",
         },
         {
-            "label": "Simplify",
-            "parameter": "simplify",
+            "label": "Workers",
+            "parameter": "num_workers",
+            "type": "number",
+            "default": 8,
+            "min": 1,
+            "description": "Number of parallel workers to use.",
+        },
+        {
+            "label": "Close Dataset Edges",
+            "parameter": "closed_dataset_edges",
             "type": "boolean",
             "default": True,
-            "description": "Simplify mesh after initial reduction.",
+            "description": "Close mesh at at dataset edges.",
         },
     ],
 }

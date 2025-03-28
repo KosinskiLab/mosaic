@@ -10,7 +10,6 @@ from qtpy.QtCore import Signal
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QDialog,
-    QDialogButtonBox,
     QFormLayout,
     QPushButton,
     QGroupBox,
@@ -20,10 +19,12 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QWidget,
     QStackedWidget,
+    QFrame,
 )
 import qtawesome as qta
 
 from ..widgets.ribbon import RibbonToolBar, create_button
+from ..stylesheets import QPushButton_style, QGroupBox_style
 from ..widgets.settings import create_setting_widget, get_widget_value
 
 
@@ -44,10 +45,13 @@ class GeometryPropertiesDialog(QDialog):
 
         self.setup_ui()
         self.connect_signals()
+        self.setStyleSheet(QPushButton_style + QGroupBox_style)
 
     def setup_ui(self):
+        from ..icons import dialog_accept_icon, dialog_reject_icon
+
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 8, 8)
+        main_layout.setContentsMargins(0, 0, 8, 0)
 
         ribbon = RibbonToolBar()
         pages = (
@@ -82,12 +86,22 @@ class GeometryPropertiesDialog(QDialog):
         main_layout.addWidget(ribbon)
         main_layout.addWidget(self.stacked_widget)
 
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        main_layout.addWidget(button_box)
+        footer = QFrame()
+        footer.setStyleSheet("border-top: 1px solid #e5e7eb;")
+
+        footer_layout = QHBoxLayout(footer)
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setIcon(dialog_reject_icon)
+        cancel_btn.clicked.connect(self.reject)
+
+        export_btn = QPushButton("Done")
+        export_btn.setIcon(dialog_accept_icon)
+        export_btn.clicked.connect(self.accept)
+
+        footer_layout.addWidget(cancel_btn)
+        footer_layout.addWidget(export_btn)
+
+        main_layout.addWidget(footer)
 
     def setup_appearance_page(self):
         page = QWidget()

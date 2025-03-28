@@ -19,8 +19,10 @@ from qtpy.QtWidgets import (
     QWidget,
     QSplitter,
 )
+import qtawesome as qta
 
 from ..utils import find_closest_points
+from ..stylesheets import QGroupBox_style, QPushButton_style
 
 
 def _get_distinct_colors(cmap_name, n):
@@ -50,6 +52,7 @@ class DistanceAnalysisDialog(QDialog):
         # Maintain access to pyqtgraph plot modulation features
         self.setWindowFlags(Qt.WindowType.Window)
         self.setup_ui()
+        self.setStyleSheet(QGroupBox_style + QPushButton_style)
 
     def setup_ui(self):
         layout = QHBoxLayout(self)
@@ -228,6 +231,8 @@ class DistanceAnalysisDialog(QDialog):
         return 0
 
     def _create_histogram_widget(self):
+        from ..icons import dialog_accept_icon
+
         viz_widget = QWidget()
         viz_layout = QVBoxLayout(viz_widget)
 
@@ -243,7 +248,8 @@ class DistanceAnalysisDialog(QDialog):
         button_layout.addWidget(save_plot_btn)
         button_layout.addWidget(export_data_btn)
         button_layout.addStretch()
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton("Done")
+        close_btn.setIcon(dialog_accept_icon)
         close_btn.clicked.connect(self.close)
         button_layout.addWidget(close_btn)
         viz_layout.addLayout(button_layout)

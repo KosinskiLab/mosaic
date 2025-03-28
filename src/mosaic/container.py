@@ -543,6 +543,10 @@ class DataContainer:
         if volume_path is not None:
             volume = load_density(volume_path)
 
+        if volume is not None:
+            sampling = volume.sampling_rate
+            volume = volume.data * parameters.get("scale", 1.0)
+
         parameters["isovalue_percentile"] = (
             parameters.get("isovalue_percentile", 99) / 100
         )
@@ -552,17 +556,19 @@ class DataContainer:
 
             geometry = self.data[index]
             if volume is not None:
-                scale = parameters.get("scale", 1.0)
 
                 state = geometry.__getstate__()
-                state["volume"] = volume.data * scale
-                state["volume_sampling_rate"] = volume.sampling_rate
 
-                geometry = VolumeGeometry(
-                    vtk_actor=self.data[index]._actor,
-                    **state,
-                )
-                self.data[index] = geometry
+                try:
+                    data_recent = np.allclose(state["volume"], volume)
+                except Exception:
+                    data_recent = False
+
+                if not data_recent:
+                    state["volume"] = volume
+                    state["volume_sampling_rate"] = sampling
+                    geometry = VolumeGeometry(vtk_actor=geometry._actor, **state)
+                    self.data[index] = geometry
 
             geometry.set_appearance(**parameters)
 

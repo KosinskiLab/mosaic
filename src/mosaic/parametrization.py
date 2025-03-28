@@ -743,6 +743,10 @@ class TriangularMesh(Parametrization):
     def to_file(self, file_path):
         o3d.io.write_triangle_mesh(file_path, self.mesh)
 
+    @classmethod
+    def from_file(cls, file_path):
+        return cls(mesh=o3d.io.read_triangle_mesh(file_path))
+
     def __getstate__(self):
         state = {"vertices": self.vertices, "triangles": self.triangles}
 

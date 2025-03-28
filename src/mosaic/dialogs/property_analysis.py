@@ -41,7 +41,7 @@ class PropertyAnalysisDialog(QDialog):
         self.property_parameters = {}
 
         self.setWindowTitle("Property Analysis")
-        self.resize(1200, 800)
+        self.resize(900, 600)
 
         self.legend = legend
         self.color_preview = ColorPreviewWidget()
@@ -129,6 +129,8 @@ class PropertyAnalysisDialog(QDialog):
             self.objects_list.addItem(item)
 
     def _setup_visualization_tab(self):
+        from ..icons import dialog_accept_icon
+
         layout = QVBoxLayout(self.visualization_tab)
 
         property_group = QGroupBox("Property")
@@ -202,7 +204,7 @@ class PropertyAnalysisDialog(QDialog):
         button_layout.addWidget(export_btn)
 
         apply_btn = QPushButton("Done")
-        apply_btn.setIcon(qta.icon("mdi.chevron-right", color="#4f46e5"))
+        apply_btn.setIcon(dialog_accept_icon)
         apply_btn.clicked.connect(self.accept)
         button_layout.addWidget(apply_btn)
         layout.addLayout(button_layout)
@@ -211,6 +213,8 @@ class PropertyAnalysisDialog(QDialog):
         self._update_colormap_preview()
 
     def _setup_analysis_tab(self):
+        from ..icons import dialog_accept_icon
+
         layout = QVBoxLayout(self.analysis_tab)
 
         plot_group = QGroupBox("Distribution")
@@ -295,12 +299,14 @@ class PropertyAnalysisDialog(QDialog):
         button_layout.addWidget(export_btn)
 
         apply_btn = QPushButton("Done")
-        apply_btn.setIcon(qta.icon("mdi.chevron-right", color="#4f46e5"))
+        apply_btn.setIcon(dialog_accept_icon)
         apply_btn.clicked.connect(self.accept)
         button_layout.addWidget(apply_btn)
         layout.addLayout(button_layout)
 
     def _setup_statistics_tab(self):
+        from ..icons import dialog_accept_icon
+
         layout = QVBoxLayout(self.statistics_tab)
 
         stats_group = QGroupBox("Statistics")
@@ -335,7 +341,7 @@ class PropertyAnalysisDialog(QDialog):
         button_layout.addWidget(export_btn)
 
         apply_btn = QPushButton("Done")
-        apply_btn.setIcon(qta.icon("mdi.chevron-right", color="#4f46e5"))
+        apply_btn.setIcon(dialog_accept_icon)
         apply_btn.clicked.connect(self.accept)
         button_layout.addWidget(apply_btn)
         layout.addLayout(button_layout)
@@ -968,8 +974,8 @@ class PropertyAnalysisDialog(QDialog):
                 margin-right: 2px;
             }
             QTabBar::tab:selected {
-                border-bottom: 1px solid #ffffff;
                 color: rgba(99, 102, 241, 1.0);
+                border-color: rgba(99, 102, 241, 1.0);
 
             }
             QTabBar::tab:hover:!selected {
