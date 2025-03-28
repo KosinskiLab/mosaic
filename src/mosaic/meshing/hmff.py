@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from tme import Density
 from tme.filters import BandPassFilter
 
+from ..parallel import run_in_background
 from ..formats.writer import write_topology_file
 from ..meshing.utils import (
     equilibrate_edges,
@@ -20,6 +21,46 @@ from ..meshing.utils import (
 )
 
 
+def _equilibration_plot(instance, args, **kwargs):
+    # Avoid running matplotlib in qthread
+    dist_base, dist_remesh, dist_equil, filename = args
+    plt.style.use("seaborn-v0_8")
+    plt.figure(figsize=(10, 6))
+    plt.hist(
+        dist_base,
+        bins=30,
+        alpha=0.6,
+        color="#1f77b4",
+        label="Baseline",
+        density=True,
+    )
+    plt.hist(
+        dist_remesh,
+        bins=30,
+        alpha=0.6,
+        color="#2ca02c",
+        label="Remeshed",
+        density=True,
+    )
+    plt.hist(
+        dist_equil,
+        bins=30,
+        alpha=0.6,
+        color="#ff7f0e",
+        label="Equilibrated",
+        density=True,
+    )
+
+    plt.xlabel("Edge Lengths")
+    plt.ylabel("Frequency")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(f"{filename}_edgelength_histogram.png", dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+@run_in_background("equilibrate_fit", callback=_equilibration_plot)
 def equilibrate_fit(geometry, directory: str, parameters: Dict):
     makedirs(directory, exist_ok=True)
     mesh_base = geometry._meta.get("fit").mesh
@@ -74,42 +115,7 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
         ofile.write(f"{fname}\t{scale_factor}\t{offset}\n")
         dist_equil = compute_edge_lengths(mesh_scale)
 
-        plt.style.use("seaborn-v0_8")
-        plt.figure(figsize=(10, 6))
-        plt.hist(
-            dist_base,
-            bins=30,
-            alpha=0.6,
-            color="#1f77b4",
-            label="Baseline",
-            density=True,
-        )
-        plt.hist(
-            dist_remesh,
-            bins=30,
-            alpha=0.6,
-            color="#2ca02c",
-            label="Remeshed",
-            density=True,
-        )
-        plt.hist(
-            dist_equil,
-            bins=30,
-            alpha=0.6,
-            color="#ff7f0e",
-            label="Equilibrated",
-            density=True,
-        )
-
-        plt.xlabel("Edge Lengths")
-        plt.ylabel("Frequency")
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.savefig(
-            f"{filename}_edgelength_histogram.png", dpi=300, bbox_inches="tight"
-        )
-        plt.close()
+    return dist_base, dist_remesh, dist_equil, filename
 
 
 def setup_hmff(

@@ -1,4 +1,8 @@
 import sys
+import textwrap
+from os import makedirs
+from os.path import join
+
 from qtpy.QtWidgets import (
     QApplication,
     QDialog,
@@ -38,7 +42,6 @@ class FilePathSelector(QWidget):
 
         # Label
         self.label = QLabel(label_text)
-        self.label.setStyleSheet("font-weight: 500;")
         self.layout.addWidget(self.label)
         self.label.setFixedWidth(200)
 
@@ -78,13 +81,11 @@ class InputDataTab(QWidget):
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
-        self.scroll_layout.setContentsMargins(12, 12, 12, 12)
-        self.scroll_layout.setSpacing(16)
 
         # Target section
         self.target_group = QGroupBox("Target")
         self.target_layout = QVBoxLayout(self.target_group)
-        self.tomogram_selector = FilePathSelector("Tomogram:", "Path to target file")
+        self.tomogram_selector = FilePathSelector("Tomogram:", "Path to target")
         self.target_layout.addWidget(self.tomogram_selector)
 
         self.target_mask_selector = FilePathSelector(
@@ -96,7 +97,7 @@ class InputDataTab(QWidget):
         # Templates section
         self.template_group = QGroupBox("Template")
         self.template_layout = QVBoxLayout(self.template_group)
-        self.template_selector = FilePathSelector("Template:", "Path to template file")
+        self.template_selector = FilePathSelector("Template:", "Path to template")
         self.template_layout.addWidget(self.template_selector)
         self.template_mask_selector = FilePathSelector(
             "Template Mask (Optional):", "Path to template mask"
@@ -113,17 +114,6 @@ class InputDataTab(QWidget):
             "Orientations File (Optional):", "Path to orientations file"
         )
         self.orientation_layout.addWidget(self.orientations_selector, 0, 0, 1, 2)
-
-        # Orientations scale
-        scale_label = QLabel("Orientations Scale:")
-        scale_label.setStyleSheet("font-weight: 500;")
-        self.scale_input = QDoubleSpinBox()
-        self.scale_input.setValue(1.0)
-        self.scale_input.setRange(0.1, 100.0)
-        self.scale_input.setSingleStep(0.1)
-
-        self.orientation_layout.addWidget(scale_label, 1, 0)
-        self.orientation_layout.addWidget(self.scale_input, 1, 1)
 
         self.scroll_layout.addWidget(self.orientation_group)
 
@@ -145,8 +135,6 @@ class MatchingTab(QWidget):
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
-        self.scroll_layout.setContentsMargins(12, 12, 12, 12)
-        self.scroll_layout.setSpacing(16)
 
         # Angular Sampling section
         self.angular_group = QGroupBox("Angular Sampling")
@@ -154,20 +142,17 @@ class MatchingTab(QWidget):
 
         # Angular step
         step_label = QLabel("Angular Step (degrees):")
-        step_label.setStyleSheet("font-weight: 500;")
         self.step_input = QSpinBox()
         self.step_input.setValue(30)
         self.step_input.setRange(1, 180)
 
         # Score function
         score_label = QLabel("Score Function:")
-        score_label.setStyleSheet("font-weight: 500;")
         self.score_combo = QComboBox()
         self.score_combo.addItems(["FLCSphericalMask", "FLC"])
 
         # Cone angle from input data tab
         cone_label = QLabel("Cone Angle (degrees):")
-        cone_label.setStyleSheet("font-weight: 500;")
         self.cone_input = QDoubleSpinBox()
         self.cone_input.setValue(15.0)
         self.cone_input.setRange(0.0, 180.0)
@@ -188,13 +173,11 @@ class MatchingTab(QWidget):
 
         # Lowpass
         lowpass_label = QLabel("Lowpass (Å):")
-        lowpass_label.setStyleSheet("font-weight: 500;")
         self.lowpass_input = QLineEdit()
         self.lowpass_input.setPlaceholderText("e.g., 20")
 
         # Highpass
         highpass_label = QLabel("Highpass (Å):")
-        highpass_label.setStyleSheet("font-weight: 500;")
         self.highpass_input = QLineEdit()
         self.highpass_input.setPlaceholderText("e.g., 200")
 
@@ -203,15 +186,8 @@ class MatchingTab(QWidget):
         self.filters_layout.addWidget(highpass_label, 1, 0)
         self.filters_layout.addWidget(self.highpass_input, 1, 1)
 
-        self.scroll_layout.addWidget(self.filters_group)
-
-        # Missing Wedge section
-        self.wedge_group = QGroupBox("Missing Wedge")
-        self.wedge_layout = QGridLayout(self.wedge_group)
-
         # Tilt Range
         tilt_label = QLabel("Tilt Range:")
-        tilt_label.setStyleSheet("font-weight: 500;")
         self.tilt_input = QLineEdit()
         self.tilt_input.setPlaceholderText("e.g., -60,60")
         tilt_help = QLabel("Format: start,stop:step")
@@ -219,39 +195,30 @@ class MatchingTab(QWidget):
 
         # Wedge Axes
         axes_label = QLabel("Wedge Axes:")
-        axes_label.setStyleSheet("font-weight: 500;")
         self.axes_input = QLineEdit()
         self.axes_input.setPlaceholderText("e.g., 2,0")
         axes_help = QLabel("Format: opening,tilt")
         axes_help.setStyleSheet("color: #64748b; font-size: 10px;")
 
-        self.wedge_layout.addWidget(tilt_label, 0, 0)
-        self.wedge_layout.addWidget(self.tilt_input, 0, 1)
-        self.wedge_layout.addWidget(tilt_help, 1, 1)
-        self.wedge_layout.addWidget(axes_label, 2, 0)
-        self.wedge_layout.addWidget(self.axes_input, 2, 1)
-        self.wedge_layout.addWidget(axes_help, 3, 1)
-
-        self.scroll_layout.addWidget(self.wedge_group)
-
-        # CTF Correction section
-        self.ctf_group = QGroupBox("CTF Correction")
-        self.ctf_layout = QGridLayout(self.ctf_group)
+        self.filters_layout.addWidget(tilt_label, 2, 0)
+        self.filters_layout.addWidget(self.tilt_input, 2, 1)
+        self.filters_layout.addWidget(tilt_help, 3, 1)
+        self.filters_layout.addWidget(axes_label, 4, 0)
+        self.filters_layout.addWidget(self.axes_input, 4, 1)
+        self.filters_layout.addWidget(axes_help, 5, 1)
 
         # Defocus
         defocus_label = QLabel("Defocus (Å):")
-        defocus_label.setStyleSheet("font-weight: 500;")
         self.defocus_input = QLineEdit()
         self.defocus_input.setPlaceholderText("e.g., 15000")
 
         # Whitening
-        self.whitening_check = QCheckBox("Apply spectral whitening")
+        self.whitening_check = QCheckBox("Apply Spectral Whitening")
 
-        self.ctf_layout.addWidget(defocus_label, 0, 0)
-        self.ctf_layout.addWidget(self.defocus_input, 0, 1)
-        self.ctf_layout.addWidget(self.whitening_check, 1, 0, 1, 2)
-
-        self.scroll_layout.addWidget(self.ctf_group)
+        self.filters_layout.addWidget(defocus_label, 6, 0)
+        self.filters_layout.addWidget(self.defocus_input, 6, 1)
+        self.filters_layout.addWidget(self.whitening_check, 7, 0, 1, 2)
+        self.scroll_layout.addWidget(self.filters_group)
 
         self.scroll_layout.addStretch()
         self.scroll_area.setWidget(self.scroll_content)
@@ -271,8 +238,6 @@ class PeakCallingTab(QWidget):
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
-        self.scroll_layout.setContentsMargins(12, 12, 12, 12)
-        self.scroll_layout.setSpacing(16)
 
         # Peak Calling Settings section
         self.peak_group = QGroupBox("Peak Calling Settings")
@@ -280,7 +245,6 @@ class PeakCallingTab(QWidget):
 
         # Peak Caller
         caller_label = QLabel("Peak Caller:")
-        caller_label.setStyleSheet("font-weight: 500;")
         self.caller_combo = QComboBox()
         self.caller_combo.addItems(
             [
@@ -293,14 +257,12 @@ class PeakCallingTab(QWidget):
 
         # Number of Peaks
         peaks_label = QLabel("Number of Peaks:")
-        peaks_label.setStyleSheet("font-weight: 500;")
         self.peaks_input = QSpinBox()
         self.peaks_input.setValue(1000)
         self.peaks_input.setRange(1, 100000)
 
         # Minimum Distance
         distance_label = QLabel("Minimum Distance (voxels):")
-        distance_label.setStyleSheet("font-weight: 500;")
         self.distance_input = QSpinBox()
         self.distance_input.setValue(16)
         self.distance_input.setRange(1, 1000)
@@ -332,8 +294,6 @@ class ComputeTab(QWidget):
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
-        self.scroll_layout.setContentsMargins(12, 12, 12, 12)
-        self.scroll_layout.setSpacing(16)
 
         # Computation Settings section
         self.compute_group = QGroupBox("Computation Settings")
@@ -341,14 +301,12 @@ class ComputeTab(QWidget):
 
         # CPU Cores
         cores_label = QLabel("CPU Cores:")
-        cores_label.setStyleSheet("font-weight: 500;")
         self.cores_input = QSpinBox()
         self.cores_input.setValue(4)
         self.cores_input.setRange(1, 128)
 
         # Memory Usage
         memory_label = QLabel("Memory Usage:")
-        memory_label.setStyleSheet("font-weight: 500;")
         self.memory_input = QLineEdit()
         self.memory_input.setText("85%")
         self.memory_input.setPlaceholderText("e.g., 85% or 16GB")
@@ -387,7 +345,7 @@ class TemplateMatchingDialog(QDialog):
 
         super().__init__()
         self.setWindowTitle("Pytme setup")
-        self.resize(750, 600)
+        self.resize(650, 600)
 
         self.layout = QVBoxLayout(self)
         self.tabs = QTabWidget()
@@ -398,7 +356,7 @@ class TemplateMatchingDialog(QDialog):
         self.compute_tab = ComputeTab()
 
         self.tabs.addTab(
-            self.input_tab, qta.icon("fa5s.file-import", color="#4f46e5"), "Visualize"
+            self.input_tab, qta.icon("fa5s.file-import", color="#4f46e5"), "Data"
         )
         self.tabs.addTab(
             self.matching_tab, qta.icon("fa5s.sliders-h", color="#4f46e5"), "Matching"
@@ -426,9 +384,9 @@ class TemplateMatchingDialog(QDialog):
         self.cancel_button.setIcon(dialog_reject_icon)
         self.cancel_button.clicked.connect(self.reject)
 
-        self.run_button = QPushButton("Done")
+        self.run_button = QPushButton("Setup Run")
         self.run_button.setIcon(dialog_accept_icon)
-        self.run_button.clicked.connect(self.accept)
+        self.run_button.clicked.connect(self.handle_export)
 
         footer_layout.addWidget(self.help_text)
         footer_layout.addStretch()
@@ -448,6 +406,85 @@ class TemplateMatchingDialog(QDialog):
             "Configure computing resources and output",
         ]
         self.help_text.setText(help_texts[index])
+
+    def handle_export(self):
+        export_data = {
+            "input": self.selected_category,
+            "matching": self.selected_format,
+            "peak_calling": self.current_settings,
+            "compute": self.current_settings,
+        }
+
+        directory = "hehexd"
+        makedirs(directory, exist_ok=True)
+
+        generate_template = textwrap.dedent(
+            f"""
+            #!/bin/bash
+
+            mkdir -p  {directory}/templates
+
+            preprocess.py \\
+                -m ../templates/emd_17591.map.gz \
+                -o ../templates/emd_17591_6802.mrc \
+                --lowpass 13.604 \
+                --sampling_rate 6.802 \
+                --align_axis 2 \
+                --flip_axis
+        """
+        )
+        script_path = join(directory, "create_template.sh")
+        with open(script_path, mode="w", encoding="utf-8") as ofile:
+            ofile.write(generate_template.strip() + "\n")
+
+        match_template = textwrap.dedent(
+            f"""
+            #!/bin/bash
+
+            mkdir -p {directory}/templates
+
+            match_template_surface.py \
+              -m ../../raw_tomograms/00242_6.80Apx.mrc \
+              -i ../templates/8pbz.mrc \
+              -s FLC \
+              --orientations ../orientations/00242_80_125.star \
+              --orientations_scaling 1.0 \
+              --orientations_cone 15 \
+              --orientations_uncertainty 6,6,10 \
+              --invert_target_contrast \
+              --no_centering \
+              --use_gpu \
+              -a 5 \
+              --backend cupy \
+              --memory_scaling 1.0 \
+              --wedge_axes 2,0 \
+              --tilt_angles 60,60 \
+              -o ../match/00242_8pbz_flc_5_14_15_ellipse.pickle
+
+        """
+        )
+        with open(join(directory, "match.sh"), mode="w", encoding="utf-8") as ofile:
+            ofile.write(match_template.strip() + "\n")
+
+        extract_matches = textwrap.dedent(
+            f"""
+            #!/bin/bash
+
+            mkdir -p {directory}/templates
+
+            postprocess.py \
+              --input_file ../match/00242_680Apx_head_mask.pickle \
+              --peak_caller PeakCallerMaximumFilter \
+              --min_distance 20 \
+              --output_format orientations \
+              --output_prefix 00242_680Apx_head_mask
+
+        """
+        )
+        with open(join(directory, "extract.sh"), mode="w", encoding="utf-8") as ofile:
+            ofile.write(extract_matches.strip() + "\n")
+
+        return self.accept()
 
 
 if __name__ == "__main__":

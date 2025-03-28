@@ -19,7 +19,6 @@ from qtpy.QtWidgets import (
     QWidget,
     QSplitter,
 )
-import qtawesome as qta
 
 from ..utils import find_closest_points
 from ..stylesheets import QGroupBox_style, QPushButton_style
@@ -279,7 +278,7 @@ class DistanceAnalysisDialog(QDialog):
             bins.append(xdata.shape[0])
 
         if not len(target_data):
-            return -1
+            return None
 
         target_data = np.concatenate(target_data)
         distances, indices = find_closest_points(target_data, query_points, k=k)
@@ -316,7 +315,10 @@ class DistanceAnalysisDialog(QDialog):
             if self.include_self_checkbox.isChecked():
                 temp = [x for x in targets]
 
-            ret.append(self._get_distances(source, temp, k, k_start))
+            distance = self._get_distances(source, temp, k, k_start)
+            if distance is None:
+                continue
+            ret.append(distance)
 
         self.distances = ret
         self._update_plot()
