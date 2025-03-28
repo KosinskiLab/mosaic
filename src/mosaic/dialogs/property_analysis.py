@@ -25,16 +25,21 @@ from qtpy.QtWidgets import (
 import pyqtgraph as pg
 import qtawesome as qta
 
-from mosaic.utils import cmap_to_vtkctf
-from mosaic.properties import GeometryProperties
-from mosaic.widgets.settings import get_widget_value
-from mosaic.widgets.color_preview import ColorPreviewWidget
+from ..utils import cmap_to_vtkctf
+from ..properties import GeometryProperties
+from ..widgets.settings import get_widget_value
+from ..widgets.color_preview import ColorPreviewWidget
+
+from ..stylesheets import QGroupBox_style, QPushButton_style, QScrollArea_style
 
 
 class PropertyAnalysisDialog(QDialog):
     def __init__(self, cdata, legend=None, parent=None):
         super().__init__(parent)
         self.cdata = cdata
+        self.properties = {}
+        self.property_parameters = {}
+
         self.setWindowTitle("Property Analysis")
         self.resize(1200, 800)
 
@@ -515,10 +520,6 @@ class PropertyAnalysisDialog(QDialog):
         ]
 
     def _compute_properties(self):
-        if not hasattr(self, "properties"):
-            self.properties = {}
-            self.property_parameters = {}
-
         options = {}
         for k, widget in self.option_widgets.items():
             if isinstance(widget, QListWidget):
@@ -771,8 +772,8 @@ class PropertyAnalysisDialog(QDialog):
             plot.setLabel("left", y_label)
             plot.setLabel("bottom", x_label)
 
-            # legend = plot.addLegend(offset=(-10, 10))
-            # legend.setPos(plot.getViewBox().screenGeometry().width() - 20, 0)
+            legend = plot.addLegend(offset=(-10, 10))
+            legend.setPos(plot.getViewBox().screenGeometry().width() - 20, 0)
 
             for i, (name, obj, values, color) in enumerate(data_series):
                 if plot_type == "Histogram":
@@ -890,13 +891,10 @@ class PropertyAnalysisDialog(QDialog):
 
         try:
             with open(file_path, "w") as f:
-                # Write header
                 f.write(f"Object,{property_name}\n")
 
-                # Write mock data for each object
                 for obj in selected_objects:
-                    # Generate mock values
-                    for _ in range(50):  # 50 sample points per object
+                    for _ in range(50):
                         value = round(np.random.normal(50, 15), 2)
                         f.write(f"{obj.name},{value}\n")
 
@@ -926,20 +924,7 @@ class PropertyAnalysisDialog(QDialog):
             QMessageBox.critical(self, "Error", f"Failed to save plot: {str(e)}")
 
     def _setup_styling(self):
-        return self.setStyleSheet(
-            """
-            QGroupBox {
-                font-weight: 500;
-                border: 1px solid #cbd5e1;
-                border-radius: 6px;
-                margin-top: 6px;
-                padding-top: 14px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 7px;
-                padding: 0px 5px 0px 5px;
-            }
+        base_style = """
             QListWidget {
                 border: 1px solid #cbd5e1;
                 border-radius: 4px;
@@ -957,40 +942,12 @@ class PropertyAnalysisDialog(QDialog):
                 background-color: rgba(99, 102, 241, 0.3);
                 font-weight: 500;
             }
-            QScrollBar:vertical {
-                border: none;
-                background: transparent;
-                width: 8px;
-                margin: 4px 0px;
-            }
-            QScrollBar::handle:vertical {
-                background: rgba(209, 213, 219, 0.5);
-                border-radius: 4px;
-                min-height: 24px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: rgba(209, 213, 219, 0.8);
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-            }
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-                background: none;
-            }
             QCheckBox {
                 spacing: 5px;
             }
             QCheckBox::indicator {
                 width: 18px;
                 height: 18px;
-            }
-            QPushButton {
-                border: 1px solid #cbd5e1;
-                border-radius: 4px;
-                padding: 6px 12px;
-            }
-            QPushButton:hover {
-                background: #1a000000;
             }
             QTabWidget::pane {
                 border: 1px solid #cbd5e1;
@@ -1025,4 +982,6 @@ class PropertyAnalysisDialog(QDialog):
                 padding: 4px;
             }
         """
+        return self.setStyleSheet(
+            base_style + QGroupBox_style + QPushButton_style + QScrollArea_style
         )

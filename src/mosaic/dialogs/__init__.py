@@ -1,4 +1,5 @@
 from .hmff import HMFFDialog
+from .export import ExportDialog
 from .keybinds import KeybindsDialog
 from .progress import ProgressDialog
 from .histogram import HistogramDialog

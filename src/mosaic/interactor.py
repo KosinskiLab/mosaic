@@ -9,7 +9,7 @@
 
 import numpy as np
 from os.path import splitext
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 
 import vtk
 from functools import wraps
@@ -331,15 +331,9 @@ class DataContainerInteractor(QObject):
             },
             "xyz": [],
         }
-        export_menu = QMenu("Export As", context_menu)
-        for format_name, parameters in EXPORT_FORMATS.items():
-            action = QAction(format_name.lower(), export_menu)
-            action.triggered.connect(
-                lambda checked, f=format_name, p=parameters: self._export_data(f, p)
-            )
-            export_menu.addAction(action)
-
-        context_menu.addMenu(export_menu)
+        export_menu = QAction("Export As", self.data_list)
+        export_menu.triggered.connect(lambda: self._handle_export())
+        context_menu.addAction(export_menu)
 
         properties_action = QAction("Properties", self.data_list)
         properties_action.triggered.connect(self._show_properties_dialog)
@@ -347,35 +341,43 @@ class DataContainerInteractor(QObject):
 
         context_menu.exec(self.data_list.mapToGlobal(position))
 
-    def _export_data(self, file_format: str, parameters: List[Tuple]):
-        from .dialogs import OperationDialog
+    def _handle_export(self, *args, **kwargs):
+        from .dialogs import ExportDialog
 
-        kwargs = {}
-        if len(parameters):
-            dialog = OperationDialog(
-                f"Export as {file_format.lower()}", parameters, None
-            )
-            if dialog.exec() != dialog.DialogCode.Accepted:
-                return None
-            kwargs = dialog.get_parameters()
+        dialog = ExportDialog()
+
+        sampling, shape = 1, self.container.metadata.get("shape", (64, 64, 64))
+        if shape is not None:
+            sampling = self.container.metadata.get("sampling_rate", 1)
+            shape = np.rint(np.divide(shape, sampling)).astype(int)
+
+        dialog.set_shape(shape)
+        dialog.set_sampling(sampling)
+
+        dialog.export_requested.connect(self._wrap_export)
+
+        return dialog.show()
+
+    def _wrap_export(self, export_data):
+        file_format = export_data.get("format")
 
         file_dialog = QFileDialog(None)
         file_path, _ = file_dialog.getSaveFileName(
             None, "Save File", "", f"{file_format.upper()} Files (*.{file_format})"
         )
-
         if not file_path:
             return -1
 
-        success = self.export_data(file_path, file_format, **kwargs)
-        if success != -1:
-            QMessageBox.information(None, "Success", "Data export successful.")
+        success = self._export_data(file_path, export_data)
+        if success == -1:
+            QMessageBox.warning(None, "Error", "Data export failed.")
         return None
 
-    def export_data(self, file_path, file_format, **kwargs):
+    def _export_data(self, file_path: str, export_data: Dict):
         from .utils import points_to_volume
         from .formats import OrientationsWriter, write_density
 
+        file_format = export_data.get("format")
         indices = self._get_selected_indices()
         if not len(indices):
             return -1
@@ -388,8 +390,8 @@ class DataContainerInteractor(QObject):
             _sampling = self.container.metadata.get("sampling_rate", 1)
             shape = np.rint(np.divide(shape, _sampling)).astype(int)
 
-        if {"shape_x", "shape_y", "shape_z"}.issubset(kwargs):
-            shape = tuple(kwargs[x] for x in ["shape_x", "shape_y", "shape_y"])
+        if {"shape_x", "shape_y", "shape_z"}.issubset(export_data):
+            shape = tuple(export_data[x] for x in ["shape_x", "shape_y", "shape_y"])
             if file_format == "star":
                 center = np.divide(shape, 2).astype(int)
 
@@ -399,7 +401,7 @@ class DataContainerInteractor(QObject):
                 continue
 
             geometry = self.container.data[index]
-            if file_format in ("obj",):
+            if file_format in ("obj", "stl", "ply"):
                 fit = geometry._meta.get("fit", None)
                 if not hasattr(fit, "mesh"):
                     print(f"{index} is not a mesh but format is mesh-specific.")
@@ -414,7 +416,7 @@ class DataContainerInteractor(QObject):
                 if "fit" in geometry._meta:
                     normals = geometry._meta["fit"].compute_normal(points)
 
-            sampling = kwargs.get("sampling", None)
+            sampling = export_data.get("sampling", None)
             if sampling is None:
                 sampling = np.max(geometry.sampling_rate)
 
@@ -422,12 +424,12 @@ class DataContainerInteractor(QObject):
             export_data["points"].append(points)
             export_data["normals"].append(normals)
 
-        if file_format in ("obj",):
+        if file_format in ("obj", "stl", "ply"):
             return status
         elif len(export_data["points"]) == 0:
             return -1
 
-        if file_format == "mrc":
+        if file_format in ("mrc", "em", "h5"):
             if shape is None:
                 temp = np.rint(np.concatenate(export_data["points"]))
                 shape = temp.astype(int).max(axis=0) + 1
@@ -447,6 +449,7 @@ class DataContainerInteractor(QObject):
             for index, points in enumerate(export_data["points"]):
                 fname = f"{file_path}_{index}.{file_format}"
                 np.savetxt(fname, points, comments="")
+            return 1
 
         if file_format not in ("tsv", "star"):
             return -1

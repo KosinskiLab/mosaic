@@ -1,6 +1,5 @@
 from typing import Optional
 
-from PyQt6.QtGui import QPainter, QColor, QPen
 from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve
 from PyQt6.QtWidgets import (
     QWidget,
@@ -12,12 +11,13 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QScrollArea,
 )
+import qtawesome as qta
 
 
 class ChevronButton(QToolButton):
-    """A custom chevron button for collapsing/expanding panels."""
 
-    def __init__(self, direction="left", parent=None):
+    def __init__(self, direction="right", parent=None):
+        """Initialize a chevron button with specified direction."""
         super().__init__(parent)
         self.direction = direction
         self.setFixedSize(24, 24)
@@ -33,23 +33,22 @@ class ChevronButton(QToolButton):
             }
         """
         )
+        self._update_icon()
 
-    def paintEvent(self, event):
-        """Custom paint event to draw a chevron arrow."""
-        super().paintEvent(event)
+    def set_direction(self, direction):
+        """Change the direction of the chevron."""
+        self.direction = direction
+        self._update_icon()
 
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        pen = QPen(QColor("#666666"))
-        pen.setWidth(2)
-        painter.setPen(pen)
-
-        points = [(10, 8), (14, 12), (10, 16)]
+    def _update_icon(self):
+        self.setIcon(qta.icon("fa5s.chevron-right", color="#696c6f"))
         if self.direction == "left":
-            points = [(14, 8), (10, 12), (14, 16)]
-        painter.drawLine(points[0][0], points[0][1], points[1][0], points[1][1])
-        painter.drawLine(points[1][0], points[1][1], points[2][0], points[2][1])
+            self.setIcon(qta.icon("fa5s.chevron-left", color="#696c6f"))
+        elif self.direction == "up":
+            self.setIcon(qta.icon("fa5s.chevron-up", color="#696c6f"))
+        elif self.direction == "down":
+            self.setIcon(qta.icon("fa5s.chevron-down", color="#696c6f"))
+        return None
 
 
 class ObjectBrowserSidebarSection(QWidget):
@@ -315,10 +314,9 @@ class ObjectBrowserSidebar(QWidget):
         self.collapsed = not self.collapsed
         self.animation.setStartValue(start)
         self.animation.setEndValue(stop)
-        self.collapse_btn.direction = direction
 
         self.animation.start()
-        self.collapse_btn.update()
+        self.collapse_btn.set_direction(direction)
         self.visibility_changed.emit(self.collapsed)
 
     def set_title(self, title: str):
