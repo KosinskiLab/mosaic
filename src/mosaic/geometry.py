@@ -12,7 +12,7 @@ import vtk
 import numpy as np
 from vtk.util import numpy_support
 
-from .utils import find_closest_points, find_closest_points_cutoff, NORMAL_REFERENCE
+from .utils import find_closest_points, NORMAL_REFERENCE
 
 BASE_COLOR = (0.7, 0.7, 0.7)
 
