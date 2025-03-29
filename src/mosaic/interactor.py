@@ -648,6 +648,10 @@ class DataContainerInteractor(QObject):
         return self.container.decimate(**kwargs)
 
     @_cluster_modifier()
+    def downsample(self, **kwargs):
+        return self.container.downsample(**kwargs)
+
+    @_cluster_modifier()
     def merge_cluster(self, **kwargs):
         return self.container.merge(**kwargs)
 

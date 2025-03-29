@@ -12,6 +12,8 @@ from qtpy.QtWidgets import (
     QLineEdit,
 )
 
+from ..stylesheets import QPushButton_style
+
 
 class ImportDataDialog(QDialog):
     def __init__(self, parent=None):
@@ -20,8 +22,11 @@ class ImportDataDialog(QDialog):
         self.filenames = []
         self.file_parameters = {}
         self.setup_ui()
+        self.setStyleSheet(QPushButton_style)
 
     def setup_ui(self):
+        from ..icons import dialog_accept_icon, dialog_reject_icon, icon_color
+
         self.setWindowTitle("Import Parameters")
         self.setMinimumWidth(600)
         layout = QVBoxLayout()
@@ -111,6 +116,9 @@ class ImportDataDialog(QDialog):
         self.next_button.clicked.connect(self.next_file)
         self.apply_all_button.clicked.connect(self.apply_to_all_clicked)
         self.accept_button.clicked.connect(self.accept)
+
+        self.cancel_button.setIcon(dialog_reject_icon)
+        self.accept_button.setIcon(dialog_accept_icon)
 
         for button in [
             self.prev_button,

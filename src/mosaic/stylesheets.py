@@ -1,4 +1,17 @@
-__all__ = ["QGroupBox_style", "QPushButton_style", "QScrollArea_style"]
+__all__ = [
+    "QGroupBox_style",
+    "QPushButton_style",
+    "QScrollArea_style",
+    "HelpLabel_style",
+]
+
+HelpLabel_style = """
+    QLabel{
+        color: #696c6f;
+        font-size: 12px;
+        border-top: 0px;
+    }
+"""
 
 QGroupBox_style = """
     QGroupBox {
@@ -68,5 +81,61 @@ QTabBar_style = """
     }
     QTabBar::tab:hover:!selected {
         color: #696c6f;
+    }
+"""
+
+QListWidget_style = """
+    QListWidget {
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        outline: none;
+        min-height: 200px;
+    }
+    QListWidget::item {
+        border-radius: 6px;
+        padding: 4px 8px;
+        margin: 2px 4px;
+        font-size: 13px;
+    }
+    QListWidget::item:hover {
+        background-color: rgba(0, 0, 0, 0.10);
+    }
+    QListWidget::item:selected {
+        background-color: rgba(99, 102, 241, 0.3);
+        font-weight: 500;
+    }
+"""
+
+QSlider_style = """
+    QSlider {
+        height: 24px;
+    }
+    QSlider:disabled {
+        opacity: 0.5;
+    }
+    QSlider::groove:horizontal {
+        height: 4px;
+        background: #6b7280;
+        border-radius: 2px;
+    }
+    QSlider::groove:horizontal:disabled {
+        opacity: 0.5;
+        background: #6b7280;
+    }
+    QSlider::handle:horizontal {
+        background: #ffffff;
+        border: 2px solid #3b82f6;
+        width: 16px;
+        height: 16px;
+        margin: -6px 0;
+        border-radius: 8px;
+    }
+    QSlider::handle:horizontal:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+    }
+    QSlider::handle:horizontal:disabled {
+        opacity: 0.5;
+        border: 2px solid #6b7280;
     }
 """

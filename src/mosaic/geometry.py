@@ -478,18 +478,11 @@ class Geometry:
         self._representation = representation
         return 0
 
-    def compute_distance(
-        self, query_points: np.ndarray, cutoff: float = None, k: int = 1
-    ):
+    def compute_distance(self, query_points: np.ndarray, k: int = 1, **kwargs):
         model = self._meta.get("fit", None)
         if hasattr(model, "compute_distance"):
             return model.compute_distance(query_points)
 
-        if cutoff is not None:
-            indices = find_closest_points_cutoff(self.points, query_points, cutoff)
-            distances = np.full(indices.size, fill_value=cutoff + 1)
-            distances[indices] = 0
-            return distances
         return find_closest_points(self.points, query_points, k=k)[0]
 
 

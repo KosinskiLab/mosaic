@@ -262,7 +262,7 @@ class DataContainer:
         return tuple(new_cluster)
 
     @apply_over_indices
-    def decimate(self, geometry, method: str = "middle") -> int:
+    def decimate(self, geometry, method: str = "core", **kwargs) -> int:
         """
         Decimate point cloud using specified method
 
@@ -276,7 +276,7 @@ class DataContainer:
             - 'core' : Keep core
             - 'inner' : Keep inner hull
         **kwargs
-            Additional arguments passed to the chosen clustering method.
+            Additional arguments passed to the chosen method.
 
         Returns
         -------
@@ -318,6 +318,43 @@ class DataContainer:
             points = points[inner_indices]
         else:
             print("Supported methods are 'inner', 'core' and 'outer.")
+
+        return self.add(points, sampling_rate=geometry._sampling_rate)
+
+    @apply_over_indices
+    def downsample(self, geometry, method: str = "radius", **kwargs) -> int:
+        """
+        Downsample point cloud using specified method
+
+        Parameters
+        ----------
+        geometry : :py:class:`mosaic.geometry.Geometry`
+            Cloud to decimate.
+        method : str
+            Method to use. Options are:
+            - 'radius' : Remove points that fall within radius of each other.
+            - 'number' : Randomly subsample points to number.
+        **kwargs
+            Additional arguments passed to the chosen method.
+
+        Returns
+        -------
+        int
+            Index of newly added point cloud.
+        """
+        points = geometry.points
+        if method.lower() == "radius":
+            import open3d as o3d
+
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(points)
+            pcd = pcd.voxel_down_sample(**kwargs)
+            points = np.asarray(pcd.points)
+        else:
+            size = kwargs.get("size", 1000)
+            size = min(size, points.shape[0])
+            keep = np.random.choice(range(points.shape[0]), replace=False, size=size)
+            points = points[keep]
 
         return self.add(points, sampling_rate=geometry._sampling_rate)
 

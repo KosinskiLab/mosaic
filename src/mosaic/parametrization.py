@@ -714,7 +714,7 @@ class RBF(Parametrization):
         pcd.points = o3d.utility.Vector3dVector(points)
         pcd.estimate_normals()
         pcd.normalize_normals()
-        pcd.orient_normals_consistent_tangent_plane(k=50)
+        pcd.orient_normals_consistent_tangent_plane(k=15)
         normals = np.asarray(pcd.normals)
         normals /= np.linalg.norm(normals, axis=1)[:, None]
         return normals
@@ -876,20 +876,25 @@ class TriangularMesh(Parametrization):
         """
         return _sample_from_mesh(self.mesh, n_samples, mesh_init_factor)
 
-    def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(points)
-        pcd.estimate_normals()
-        pcd.normalize_normals()
-        try:
-            pcd.orient_normals_consistent_tangent_plane(k=10)
-        except Exception as e:
-            print(e)
-            print("Failed to consistently orient normals. Try including more points.")
+    def _setup_rayscene(self):
+        mesh = o3d.t.geometry.TriangleMesh.from_legacy(self.mesh)
+        scene = o3d.t.geometry.RaycastingScene()
+        scene_id = scene.add_triangles(mesh)
+        return scene, scene_id
 
-        normals = np.asarray(pcd.normals)
-        normals /= np.linalg.norm(normals, axis=1)[:, None]
-        return normals
+    def compute_normal(self, points: np.ndarray) -> np.ndarray:
+        if not self.mesh.has_triangle_normals():
+            self.mesh.compute_triangle_normals()
+
+        scene, _ = self._setup_rayscene()
+        points_tensor = o3d.core.Tensor(points, dtype=o3d.core.Dtype.Float32)
+        closest_info = scene.compute_closest_points(points_tensor)
+
+        triangle_indices = closest_info["primitive_ids"].numpy()
+
+        triangle_normals = np.asarray(self.mesh.triangle_normals)
+        normals = triangle_normals[triangle_indices]
+        return normals / np.linalg.norm(normals, axis=1, keepdims=True)
 
     def compute_curvature(
         self, curvature: str = "gaussian", radius: int = 5
@@ -923,9 +928,7 @@ class TriangularMesh(Parametrization):
         return int(n_points)
 
     def compute_distance(self, points: np.ndarray) -> np.ndarray:
-        mesh = o3d.t.geometry.TriangleMesh.from_legacy(self.mesh)
-        scene = o3d.t.geometry.RaycastingScene()
-        _ = scene.add_triangles(mesh)
+        scene, _ = self._setup_rayscene()
 
         points = o3d.core.Tensor(points, dtype=o3d.core.Dtype.Float32)
         ret = scene.compute_distance(points)

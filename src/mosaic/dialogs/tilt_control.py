@@ -12,9 +12,10 @@ from qtpy.QtWidgets import (
     QSlider,
     QPushButton,
     QDialog,
-    QFrame,
+    QGroupBox,
 )
 import qtawesome as qta
+from ..stylesheets import QPushButton_style, QGroupBox_style, QSlider_style
 
 
 class TiltControlDialog(QDialog):
@@ -34,6 +35,7 @@ class TiltControlDialog(QDialog):
                 | Qt.WindowType.WindowStaysOnTopHint
                 & ~Qt.WindowType.WindowContextHelpButtonHint
             )
+        self.setStyleSheet(QPushButton_style + QGroupBox_style + QSlider_style)
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -41,18 +43,12 @@ class TiltControlDialog(QDialog):
         layout.setContentsMargins(4, 4, 4, 4)
 
         def create_angle_frame(title, value_label, slider):
-            frame = QFrame()
-            frame.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Sunken)
+            frame = QGroupBox(title)
 
             frame_layout = QVBoxLayout(frame)
             frame_layout.setContentsMargins(4, 4, 4, 4)
             frame_layout.setSpacing(2)
 
-            # Title
-            title_label = QLabel(title)
-            title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
-            # Value label
             value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             slider.setOrientation(Qt.Orientation.Horizontal)
@@ -62,7 +58,6 @@ class TiltControlDialog(QDialog):
             slider.setTickPosition(QSlider.TickPosition.TicksBelow)
             slider.setTickInterval(30)
 
-            frame_layout.addWidget(title_label)
             frame_layout.addWidget(value_label)
             frame_layout.addWidget(slider)
 

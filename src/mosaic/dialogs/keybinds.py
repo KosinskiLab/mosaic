@@ -6,15 +6,15 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QDialog,
     QLabel,
-    QDialogButtonBox,
-    QFrame,
+    QPushButton,
     QGridLayout,
+    QGroupBox,
 )
+from ..stylesheets import QGroupBox_style, QPushButton_style
 
 KEYBIND_REGISTRY = {
     "Navigation": [
@@ -56,16 +56,11 @@ class KeybindsDialog(QDialog):
         self.setWindowTitle("Keybinds")
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
+        self.setStyleSheet(QGroupBox_style + QPushButton_style)
 
     def create_section(self, title, keybinds):
-        frame = QFrame()
-        frame.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Sunken)
-
-        section_layout = QVBoxLayout()
-        title_label = QLabel(
-            f"<span style='color: #314f78; font-weight: 600;'>{title}</span>"
-        )
-        section_layout.addWidget(title_label)
+        frame = QGroupBox(title)
+        section_layout = QVBoxLayout(frame)
 
         grid = QGridLayout()
         for row, (key, description) in enumerate(keybinds):
@@ -79,6 +74,8 @@ class KeybindsDialog(QDialog):
         return frame
 
     def show(self):
+        from ..icons import dialog_accept_icon
+
         while self._layout.count():
             child = self._layout.takeAt(0)
             if child.widget():
@@ -87,8 +84,9 @@ class KeybindsDialog(QDialog):
         for title, keybinds in KEYBIND_REGISTRY.items():
             self._layout.addWidget(self.create_section(title, keybinds))
 
-        close_button = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        close_button.accepted.connect(self.accept)
-        self._layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        close_button = QPushButton("Done")
+        close_button.setIcon(dialog_accept_icon)
+        close_button.clicked.connect(self.accept)
+        self._layout.addWidget(close_button)
 
         super().show()

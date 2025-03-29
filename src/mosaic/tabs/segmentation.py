@@ -5,6 +5,7 @@ import numpy as np
 from qtpy.QtCore import Qt, QEvent
 from qtpy.QtWidgets import QWidget, QVBoxLayout
 
+from ..properties import GeometryProperties
 from ..widgets.ribbon import create_button
 from ..dialogs.paywall import PaywallDialog
 from ..dialogs import (
@@ -83,6 +84,13 @@ class SegmentationTab(QWidget):
                 self.transfomer.show,
                 "Transform selected cluster",
             ),
+            create_button(
+                "Crop",
+                "mdi.map-marker-distance",
+                self,
+                self._distance_crop,
+                "Crop by Distance",
+            ),
         ]
         self.ribbon.add_section("Base Operations", cluster_actions)
 
@@ -94,13 +102,6 @@ class SegmentationTab(QWidget):
                 self.cdata.data.cluster,
                 "Cluster Points",
                 CLUSTER_SETTINGS,
-            ),
-            create_button(
-                "Crop",
-                "mdi.map-marker-distance",
-                self,
-                self._distance_crop,
-                "Crop by Distance",
             ),
             create_button(
                 "Outlier",
@@ -124,6 +125,14 @@ class SegmentationTab(QWidget):
                 self.cdata.data.decimate,
                 "Reduce cluster to outer, core or inner points.",
                 THINNING_SETTINGS,
+            ),
+            create_button(
+                "Downsample",
+                "mdi.focus-field-horizontal",
+                self,
+                self.cdata.data.downsample,
+                "Downsample cluster",
+                DOWNSAMPLE_SETTINGS,
             ),
         ]
         self.ribbon.add_section("Point Operations", point_actions)
@@ -189,13 +198,12 @@ class SegmentationTab(QWidget):
             return -1
 
         for source in sources:
-            dist = None
-            for target in targets:
-                curdist = target.compute_distance(source.points, distance)
-                if dist is None:
-                    dist = curdist
-                dist = np.minimum(dist, curdist)
-
+            dist = GeometryProperties.compute(
+                geometry=source,
+                property_name="distance",
+                queries=targets,
+                include_self=True,
+            )
             mask = dist >= distance
             if keep_smaller:
                 mask = dist < distance
@@ -467,6 +475,39 @@ THINNING_SETTINGS = {
         },
     ],
 }
+
+
+DOWNSAMPLE_SETTINGS = {
+    "title": "Downsample Settings",
+    "settings": [
+        {
+            "label": "Method",
+            "type": "select",
+            "options": ["Radius", "Number"],
+            "default": "Radius",
+        },
+    ],
+    "method_settings": {
+        "Radius": [
+            {
+                "label": "Radius",
+                "parameter": "voxel_size",
+                "type": "float",
+                "default": 40.0,
+            },
+        ],
+        "Number": [
+            {
+                "label": "Number",
+                "parameter": "size",
+                "type": "number",
+                "min": 1,
+                "default": 1000,
+            },
+        ],
+    },
+}
+
 
 CLUSTER_SETTINGS = {
     "title": "Cluster Settings",

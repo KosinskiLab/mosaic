@@ -21,7 +21,7 @@ from qtpy.QtWidgets import (
 )
 
 from ..utils import find_closest_points
-from ..stylesheets import QGroupBox_style, QPushButton_style
+from ..stylesheets import QGroupBox_style, QPushButton_style, QListWidget_style
 
 
 def _get_distinct_colors(cmap_name, n):
@@ -44,14 +44,14 @@ class DistanceAnalysisDialog(QDialog):
         self.clusters, self.fits = clusters, fits
 
         self.setWindowTitle("Distance Analysis")
-        self.resize(1200, 800)
 
         self.distances = []
 
         # Maintain access to pyqtgraph plot modulation features
         self.setWindowFlags(Qt.WindowType.Window)
         self.setup_ui()
-        self.setStyleSheet(QGroupBox_style + QPushButton_style)
+        self.setStyleSheet(QGroupBox_style + QPushButton_style + QListWidget_style)
+        self.resize(1200, 800)
 
     def setup_ui(self):
         layout = QHBoxLayout(self)

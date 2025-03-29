@@ -8,7 +8,6 @@
 from typing import Callable, Tuple
 from os.path import splitext
 
-
 import imageio
 import numpy as np
 from PIL import Image
@@ -30,6 +29,8 @@ from qtpy.QtWidgets import (
 )
 from vtkmodules.util import numpy_support
 from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
+
+from .stylesheets import QGroupBox_style, QPushButton_style
 
 
 def _get_trajectories(geometries):
@@ -325,8 +326,11 @@ class AnimationSettingsDialog(QDialog):
         self.formats = formats
         self.setWindowTitle("Animation Settings")
         self.setup_ui()
+        self.setStyleSheet(QGroupBox_style + QPushButton_style)
 
     def setup_ui(self):
+        from .icons import dialog_accept_icon, dialog_reject_icon
+
         layout = QVBoxLayout(self)
 
         type_group = QGroupBox("Animation Type")
@@ -400,12 +404,16 @@ class AnimationSettingsDialog(QDialog):
         layout.addWidget(frame_group)
 
         button_layout = QHBoxLayout()
-        ok_button = QPushButton("OK")
-        cancel_button = QPushButton("Cancel")
+        ok_button = QPushButton("Done")
         ok_button.clicked.connect(self.accept)
+        ok_button.setIcon(dialog_accept_icon)
+
+        cancel_button = QPushButton("Cancel")
         cancel_button.clicked.connect(self.reject)
-        button_layout.addWidget(ok_button)
+        cancel_button.setIcon(dialog_reject_icon)
+
         button_layout.addWidget(cancel_button)
+        button_layout.addWidget(ok_button)
         layout.addLayout(button_layout)
 
         self.update_frame_ranges()

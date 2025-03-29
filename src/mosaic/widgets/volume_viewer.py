@@ -22,6 +22,8 @@ import qtawesome as qta
 from qtpy.QtCore import Qt, Signal
 from vtkmodules.util import numpy_support
 
+from ..stylesheets import QSlider_style, QPushButton_style
+
 _colormaps = [
     "gray",
     "gray_r",
@@ -54,44 +56,12 @@ class VolumeViewer(QWidget):
             QWidget {
                 font-size: 13px;
             }
-            QPushButton:hover {
-                color: #696c6f;
-            }
-            QSlider {
-                height: 24px;
-            }
-            QSlider:disabled {
-                opacity: 0.5;
-            }
-            QSlider::groove:horizontal {
-                height: 4px;
-                background: #6b7280;
-                border-radius: 2px;
-            }
-            QSlider::groove:horizontal:disabled {
-                opacity: 0.5;
-                background: #6b7280;
-            }
-            QSlider::handle:horizontal {
-                background: #ffffff;
-                border: 2px solid #3b82f6;
-                width: 16px;
-                height: 16px;
-                margin: -6px 0;
-                border-radius: 8px;
-            }
-            QSlider::handle:horizontal:hover {
-                background: #2563eb;
-                border-color: #2563eb;
-            }
-            QSlider::handle:horizontal:disabled {
-                opacity: 0.5;
-                border: 2px solid #6b7280;
-            }
             QLabel:disabled {
                 opacity: 0.1;
             }
         """
+            + QPushButton_style
+            + QSlider_style
         )
 
         self.label = QLabel("Volume")

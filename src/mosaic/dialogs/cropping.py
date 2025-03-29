@@ -1,4 +1,4 @@
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QDialog,
@@ -10,131 +10,222 @@ from qtpy.QtWidgets import (
     QRadioButton,
     QButtonGroup,
     QListWidgetItem,
+    QGroupBox,
+    QWidget,
+    QFrame,
+    QMessageBox,
 )
+import qtawesome as qta
+
 from ..widgets.settings import format_tooltip
+from ..stylesheets import (
+    QGroupBox_style,
+    QPushButton_style,
+    QScrollArea_style,
+    HelpLabel_style,
+    QListWidget_style,
+)
 
 
 class DistanceCropDialog(QDialog):
+    cropApplied = Signal(dict)
+
     def __init__(self, clusters, fits=[], parent=None):
         super().__init__(parent)
+        self.clusters = clusters
+        self.fits = fits
 
         self.setWindowTitle("Distance Crop")
-        self.resize(500, 250)
-        self.setup_ui(clusters, fits)
+        self.resize(800, 550)
+        self.setup_ui()
+        self.setStyleSheet(
+            QGroupBox_style
+            + QPushButton_style
+            + QScrollArea_style
+            + QListWidget_style
+            + """
+            QRadioButton {
+                spacing: 5px;
+            }
+            QRadioButton::indicator {
+                width: 18px;
+                height: 18px;
+            }
+            """
+        )
 
-    def setup_ui(self, clusters, fits):
-        main_layout = QVBoxLayout()
-        lists_layout = QHBoxLayout()
+    def setup_ui(self):
+        from ..icons import (
+            dialog_reject_icon,
+            dialog_selectall_icon,
+            dialog_selectnone_icon,
+        )
 
-        source_layout = QVBoxLayout()
-        label = QLabel("Source Clusters")
-        tooltip = format_tooltip("Source Clusters", "Clusters to crop.", None)
-        label.setToolTip(tooltip)
-        source_layout.addWidget(label)
+        main_layout = QVBoxLayout(self)
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+
+        selection_widget = QWidget()
+        selection_layout = QHBoxLayout(selection_widget)
+        selection_layout.setContentsMargins(0, 0, 0, 0)
+        selection_layout.setSpacing(15)
+
+        source_panel = QGroupBox("Source Clusters")
+        source_layout = QVBoxLayout(source_panel)
+        source_layout.setSpacing(10)
+
+        source_description = QLabel("Select clusters to crop based on distance")
+        source_description.setStyleSheet(HelpLabel_style)
+        source_layout.addWidget(source_description)
+
+        # Quick select buttons
+        quick_select_layout = QHBoxLayout()
+        select_all_btn = QPushButton("Select All")
+        select_all_btn.setIcon(dialog_selectall_icon)
+        select_all_btn.clicked.connect(lambda: self.source_list.selectAll())
+        select_none_btn = QPushButton("Clear")
+        select_none_btn.setIcon(dialog_selectnone_icon)
+        select_none_btn.clicked.connect(lambda: self.source_list.clearSelection())
+
+        quick_select_layout.addWidget(select_all_btn)
+        quick_select_layout.addWidget(select_none_btn)
+        source_layout.addLayout(quick_select_layout)
 
         self.source_list = QListWidget()
         self.source_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         source_layout.addWidget(self.source_list)
 
-        target_layout = QVBoxLayout()
-        label = QLabel("Target")
-        tooltip = format_tooltip(
-            "Target", "Reference to compute source distances to.", None
-        )
-        label.setToolTip(tooltip)
-        target_layout.addWidget(label)
+        selection_layout.addWidget(source_panel)
+
+        target_panel = QGroupBox("Target Reference")
+        target_layout = QVBoxLayout(target_panel)
+        target_layout.setSpacing(10)
+
+        target_description = QLabel("Select reference objects to compute distances to")
+        target_description.setStyleSheet(HelpLabel_style)
+        target_layout.addWidget(target_description)
+
+        target_select_layout = QHBoxLayout()
+        target_all_btn = QPushButton("Select All")
+        target_all_btn.setIcon(dialog_selectall_icon)
+        target_all_btn.clicked.connect(lambda: self.target_list.selectAll())
+        target_none_btn = QPushButton("Clear")
+        target_none_btn.setIcon(dialog_selectnone_icon)
+        target_none_btn.clicked.connect(lambda: self.target_list.clearSelection())
+        target_select_layout.addWidget(target_all_btn)
+        target_select_layout.addWidget(target_none_btn)
+        target_layout.addLayout(target_select_layout)
 
         self.target_list = QListWidget()
         self.target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         target_layout.addWidget(self.target_list)
 
-        for name, data in clusters:
-            item = QListWidgetItem(name)
-            item.setData(Qt.ItemDataRole.UserRole, data)
-            self.source_list.addItem(item)
+        selection_layout.addWidget(target_panel)
+        main_layout.addWidget(selection_widget)
 
-            item = QListWidgetItem(name)
-            item.setData(Qt.ItemDataRole.UserRole, data)
-            self.target_list.addItem(item)
+        settings_group = QGroupBox("Distance Settings")
+        settings_layout = QHBoxLayout(settings_group)
 
-        for name, data in fits:
-            item = QListWidgetItem(name)
-            item.setData(Qt.ItemDataRole.UserRole, data)
-            self.target_list.addItem(item)
-
-        lists_layout.addLayout(source_layout)
-        lists_layout.addLayout(target_layout)
-
-        bottom_layout = QVBoxLayout()
-
-        dist_layout = QHBoxLayout()
-        label = QLabel("Distance:")
-        tooltip = format_tooltip(
-            "Distance", "Maximum distance between source and target.", 40
-        )
-        label.setToolTip(tooltip)
-        dist_layout.addWidget(label)
+        distance_layout = QHBoxLayout()
+        distance_label = QLabel("Maximum Distance:")
+        distance_label.setMinimumWidth(150)
 
         self.distance_input = QDoubleSpinBox()
         self.distance_input.setValue(40.0)
+        self.distance_input.setRange(0.01, 9999.99)
         self.distance_input.setMaximum(float("inf"))
-        self.distance_input.setMinimumWidth(100)
         self.distance_input.setDecimals(2)
-        dist_layout.addWidget(self.distance_input)
+        self.distance_input.setSingleStep(1.0)
+        self.distance_input.setMinimumWidth(100)
+        distance_layout.addWidget(distance_label)
+        distance_layout.addWidget(self.distance_input)
+        distance_layout.addStretch()
+        settings_layout.addLayout(distance_layout)
 
         direction_layout = QHBoxLayout()
-        label = QLabel("Direction:")
-        tooltip = format_tooltip(
-            "Direction",
-            "Select whether to keep points with distances greater than or less than equal to the specified value",
-            None,
-        )
-        label.setToolTip(tooltip)
-        direction_layout.addWidget(label)
+        direction_label = QLabel("Keep Points:")
+        direction_label.setMinimumWidth(150)
+        direction_layout.addWidget(direction_label)
 
-        comparison_layout = QHBoxLayout()
         self.comparison_group = QButtonGroup()
 
-        self.larger_radio = QRadioButton(">")
-        tooltip = format_tooltip(
-            "Greater than",
-            "Keep points with distances larger than the specified value",
-            None,
-        )
-        self.larger_radio.setToolTip(tooltip)
+        radio_container = QFrame()
+        radio_layout = QHBoxLayout(radio_container)
+        radio_layout.setContentsMargins(0, 0, 0, 0)
+        radio_layout.setSpacing(15)
 
-        self.smaller_radio = QRadioButton("≤")
-        tooltip = format_tooltip(
-            "Less than or equal",
-            "Keep points with distances less than or equal to the specified value",
-            None,
-        )
-        self.smaller_radio.setToolTip(tooltip)
+        self.smaller_radio = QRadioButton("Within Distance")
         self.smaller_radio.setChecked(True)
-
-        self.comparison_group.addButton(self.larger_radio)
+        self.larger_radio = QRadioButton("Outside Distance")
         self.comparison_group.addButton(self.smaller_radio)
+        self.comparison_group.addButton(self.larger_radio)
 
-        comparison_layout.addWidget(self.larger_radio)
-        comparison_layout.addWidget(self.smaller_radio)
-        comparison_layout.setSpacing(10)
+        radio_layout.addWidget(self.smaller_radio)
+        radio_layout.addWidget(self.larger_radio)
+        radio_layout.addStretch()
 
-        direction_layout.addLayout(comparison_layout)
-        direction_layout.addStretch()
+        direction_layout.addWidget(radio_container)
+        settings_layout.addLayout(direction_layout)
 
-        dist_layout.addSpacing(20)
-        dist_layout.addLayout(direction_layout)
-        dist_layout.addStretch()
+        main_layout.addWidget(settings_group)
 
-        apply_btn = QPushButton("Apply Crop")
-        apply_btn.clicked.connect(self.apply_crop)
+        footer = QFrame()
+        footer.setStyleSheet("border-top: 1px solid #e5e7eb;")
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(0, 15, 0, 0)
 
-        bottom_layout.addLayout(dist_layout)
-        bottom_layout.addWidget(apply_btn)
+        info_icon = QLabel()
+        info_icon.setPixmap(
+            qta.icon("mdi.information-outline", color="#4f46e5").pixmap(18, 18)
+        )
+        info_icon.setStyleSheet(HelpLabel_style)
+        info_label = QLabel(
+            "Points will be filtered based on their distance to the target references."
+        )
+        info_label.setStyleSheet(HelpLabel_style)
 
-        main_layout.addLayout(lists_layout)
-        main_layout.addLayout(bottom_layout)
-        self.setLayout(main_layout)
+        footer_layout.addWidget(info_icon)
+        footer_layout.addWidget(info_label)
+        footer_layout.addStretch()
+
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setIcon(dialog_reject_icon)
+        cancel_btn.clicked.connect(self.reject)
+
+        self.apply_btn = QPushButton("Apply Crop")
+        self.apply_btn.setIcon(qta.icon("mdi.content-cut", color="#4f46e5"))
+        self.apply_btn.clicked.connect(self.apply_crop)
+
+        footer_layout.addWidget(cancel_btn)
+        footer_layout.addWidget(self.apply_btn)
+        main_layout.addWidget(footer)
+
+        self.populate_lists()
+
+    def populate_lists(self):
+        from ..icons import cluster_icon, model_icon
+
+        for name, data in self.clusters:
+            item = QListWidgetItem(name)
+            if cluster_icon:
+                item.setIcon(cluster_icon)
+            item.setData(Qt.ItemDataRole.UserRole, data)
+            self.source_list.addItem(item)
+
+        for name, data in self.clusters:
+            item = QListWidgetItem(name)
+            if cluster_icon:
+                item.setIcon(cluster_icon)
+            item.setData(Qt.ItemDataRole.UserRole, data)
+            self.target_list.addItem(item)
+
+        for name, data in self.fits:
+            item = QListWidgetItem(name)
+            if model_icon:
+                item.setIcon(model_icon)
+
+            item.setData(Qt.ItemDataRole.UserRole, data)
+            self.target_list.addItem(item)
 
     def get_results(self):
         if self.exec() == QDialog.DialogCode.Accepted:
@@ -148,6 +239,29 @@ class DistanceCropDialog(QDialog):
         self.targets = [
             x.data(Qt.ItemDataRole.UserRole) for x in self.target_list.selectedItems()
         ]
+
+        if not self.sources:
+            return QMessageBox.warning(
+                self,
+                "Selection Required",
+                "Please select at least one source cluster to crop.",
+            )
+
+        if not self.targets:
+            return QMessageBox.warning(
+                self,
+                "Selection Required",
+                "Please select at least one target reference.",
+            )
+
         self.distance = self.distance_input.value()
         self.keep_smaller = self.smaller_radio.isChecked()
+
+        crop_data = {
+            "sources": self.sources,
+            "targets": self.targets,
+            "distance": self.distance,
+            "keep_smaller": self.keep_smaller,
+        }
+        self.cropApplied.emit(crop_data)
         self.accept()

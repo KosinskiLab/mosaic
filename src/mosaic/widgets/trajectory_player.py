@@ -1,3 +1,5 @@
+from os.path import basename
+from qtpy.QtCore import Qt, QTimer, Signal
 from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -6,10 +8,11 @@ from qtpy.QtWidgets import (
     QSlider,
     QLabel,
     QFrame,
-    QStyle,
     QSizePolicy,
 )
-from qtpy.QtCore import Qt, QTimer, Signal
+import qtawesome as qta
+
+from ..stylesheets import QSlider_style
 
 
 class TimelineBar(QWidget):
@@ -32,31 +35,10 @@ class TimelineBar(QWidget):
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.valueChanged.connect(self.valueChanged.emit)
 
-        # Make slider look integrated with the timeline
-        self.slider.setStyleSheet(
-            """
-            QSlider::groove:horizontal {
-                border: none;
-                height: 24px;
-                background: #e0e0e0;
-            }
-            QSlider::handle:horizontal {
-                background: #2563eb;
-                width: 2px;
-                margin: -4px 0;
-                border-radius: 0;
-                border: 4px solid #2563eb;
-            }
-            QSlider::sub-page:horizontal {
-                background: #c6dbfd;
-            }
-        """
-        )
-
+        self.slider.setStyleSheet(QSlider_style)
         container_layout.addWidget(self.slider)
         layout.addWidget(self.slider_container)
 
-        # Add spacer to fill remaining width
         self.spacer = QWidget()
         self.spacer.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
@@ -97,9 +79,6 @@ class TrajectoryRow(QFrame):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(8)
-
-        # Left side: Trajectory name
-        from os.path import basename
 
         name = basename(self.trajectory._meta.get("filename", "Unnamed Trajectory"))
         if isinstance(name, (list, tuple)) and len(name) > 0:
@@ -175,44 +154,33 @@ class TrajectoryPlayer(QWidget):
         # Center-aligned play controls
         play_controls = QWidget()
         play_layout = QHBoxLayout(play_controls)
-        play_layout.setContentsMargins(0, 0, 0, 0)
+        play_layout.setContentsMargins(0, 0, 0, 8)
         play_layout.setSpacing(4)
         play_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         button_size = 32
-
         self.first_button = QPushButton()
-        self.first_button.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaSkipBackward)
-        )
+        self.first_button.setIcon(qta.icon("fa5s.step-backward", color="#475569"))
         self.first_button.setFixedSize(button_size, button_size)
         self.first_button.clicked.connect(lambda: self.sync_frame(0))
 
         self.prev_button = QPushButton(autoRepeat=True)
-        self.prev_button.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaSeekBackward)
-        )
+        self.prev_button.setIcon(qta.icon("fa5s.backward", color="#475569"))
         self.prev_button.setFixedSize(button_size, button_size)
         self.prev_button.clicked.connect(self.prev_frame)
 
         self.play_button = QPushButton()
-        self.play_button.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
-        )
+        self.play_button.setIcon(qta.icon("fa5s.play", color="#3b82f6"))
         self.play_button.setFixedSize(button_size, button_size)
         self.play_button.clicked.connect(self.toggle_play)
 
         self.next_button = QPushButton(autoRepeat=True)
-        self.next_button.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaSeekForward)
-        )
+        self.next_button.setIcon(qta.icon("fa5s.forward", color="#475569"))
         self.next_button.setFixedSize(button_size, button_size)
         self.next_button.clicked.connect(self.next_frame)
 
         self.last_button = QPushButton()
-        self.last_button.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaSkipForward)
-        )
+        self.last_button.setIcon(qta.icon("fa5s.step-forward", color="#475569"))
         self.last_button.setFixedSize(button_size, button_size)
         self.last_button.clicked.connect(lambda: self.sync_frame(self.max_frame()))
 
@@ -319,14 +287,10 @@ class TrajectoryPlayer(QWidget):
         """Toggle playback state."""
         self.playing = not self.playing
         if self.playing:
-            self.play_button.setIcon(
-                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause)
-            )
+            self.play_button.setIcon(qta.icon("fa5s.pause", color="#3b82f6"))
             return self.play_timer.start()
 
-        self.play_button.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
-        )
+        self.play_button.setIcon(qta.icon("fa5s.play", color="#3b82f6"))
         self.play_timer.stop()
 
     def max_frame(self):
@@ -341,9 +305,7 @@ class TrajectoryPlayer(QWidget):
 
         self.play_timer.stop()
         self.playing = False
-        self.play_button.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
-        )
+        self.play_button.setIcon(qta.icon("fa5s.play", color="#3b82f6"))
 
     def prev_frame(self):
         """Go to previous frame."""

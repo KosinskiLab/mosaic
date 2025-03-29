@@ -30,7 +30,12 @@ from ..properties import GeometryProperties
 from ..widgets.settings import get_widget_value
 from ..widgets.color_preview import ColorPreviewWidget
 
-from ..stylesheets import QGroupBox_style, QPushButton_style, QScrollArea_style
+from ..stylesheets import (
+    QGroupBox_style,
+    QPushButton_style,
+    QScrollArea_style,
+    QListWidget_style,
+)
 
 
 class PropertyAnalysisDialog(QDialog):
@@ -51,6 +56,8 @@ class PropertyAnalysisDialog(QDialog):
         self._setup_styling()
 
     def _setup_ui(self):
+        from ..icons import dialog_selectall_icon, dialog_selectnone_icon
+
         main_layout = QVBoxLayout(self)
 
         self.main_splitter = QSplitter(Qt.Horizontal)
@@ -60,8 +67,10 @@ class PropertyAnalysisDialog(QDialog):
         objects_layout = QVBoxLayout()
         quick_select_layout = QHBoxLayout()
         select_all_btn = QPushButton("Select All")
+        select_all_btn.setIcon(dialog_selectall_icon)
         select_all_btn.clicked.connect(lambda: self.objects_list.selectAll())
-        select_none_btn = QPushButton("Select None")
+        select_none_btn = QPushButton("Clear")
+        select_none_btn.setIcon(dialog_selectnone_icon)
         select_none_btn.clicked.connect(lambda: self.objects_list.clearSelection())
         quick_select_layout.addWidget(select_all_btn)
         quick_select_layout.addWidget(select_none_btn)
@@ -109,6 +118,8 @@ class PropertyAnalysisDialog(QDialog):
         main_layout.addWidget(self.main_splitter)
 
     def _populate_objects_list(self):
+        from ..icons import cluster_icon, model_icon
+
         self.objects_list.clear()
 
         clusters = self.cdata.format_datalist("data")
@@ -118,14 +129,16 @@ class PropertyAnalysisDialog(QDialog):
             item = QListWidgetItem(name)
             item.setData(Qt.ItemDataRole.UserRole, obj)
             item.setData(Qt.ItemDataRole.UserRole + 1, "cluster")
-            item.setIcon(qta.icon("mdi.chart-bubble", color="#4f46e5"))
+            if cluster_icon:
+                item.setIcon(cluster_icon)
             self.objects_list.addItem(item)
 
         for name, obj in models:
             item = QListWidgetItem(name)
             item.setData(Qt.ItemDataRole.UserRole, obj)
             item.setData(Qt.ItemDataRole.UserRole + 1, "mesh")
-            item.setIcon(qta.icon("mdi.shape", color="#10b981"))
+            if model_icon:
+                item.setIcon(model_icon)
             self.objects_list.addItem(item)
 
     def _setup_visualization_tab(self):
@@ -935,23 +948,6 @@ class PropertyAnalysisDialog(QDialog):
 
     def _setup_styling(self):
         base_style = """
-            QListWidget {
-                border: 1px solid #cbd5e1;
-                border-radius: 4px;
-                outline: none;
-            }
-            QListWidget::item {
-                border-radius: 6px;
-                margin: 2px 8px;
-                font-size: 13px;
-            }
-            QListWidget::item:hover {
-                background-color: rgba(0, 0, 0, 0.10);
-            }
-            QListWidget::item:selected {
-                background-color: rgba(99, 102, 241, 0.3);
-                font-weight: 500;
-            }
             QCheckBox {
                 spacing: 5px;
             }
@@ -993,5 +989,9 @@ class PropertyAnalysisDialog(QDialog):
             }
         """
         return self.setStyleSheet(
-            base_style + QGroupBox_style + QPushButton_style + QScrollArea_style
+            base_style
+            + QGroupBox_style
+            + QPushButton_style
+            + QScrollArea_style
+            + QListWidget_style
         )
