@@ -60,7 +60,7 @@ def _equilibration_plot(instance, args, **kwargs):
     plt.close()
 
 
-@run_in_background("equilibrate_fit", callback=_equilibration_plot)
+@run_in_background("Equilibrate", callback=_equilibration_plot)
 def equilibrate_fit(geometry, directory: str, parameters: Dict):
     makedirs(directory, exist_ok=True)
     mesh_base = geometry._meta.get("fit").mesh

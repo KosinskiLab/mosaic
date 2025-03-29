@@ -48,7 +48,7 @@ class IntelligenceTab(QWidget):
             ),
             create_button("Backmapping", "mdi.set-merge", self, self._map_fit),
         ]
-        self.ribbon.add_section("HMFF", hmff_actions)
+        self.ribbon.add_section("DTS Simulation", hmff_actions)
 
         matching_actions = [
             create_button(

@@ -43,6 +43,7 @@ from mosaic.dialogs import (
     ImportDataDialog,
     ProgressDialog,
 )
+from mosaic.stylesheets import QMessageBox_style
 from mosaic.widgets import (
     MultiVolumeViewer,
     BoundingBoxWidget,
@@ -381,6 +382,19 @@ class App(QMainWindow):
             self.vtk_widget, self.volume_viewer, self.cdata
         )
         self.status_indicator = StatusIndicator(self.renderer, self.interactor)
+
+        from mosaic.parallel import BackgroundTaskManager
+
+        task_manager = BackgroundTaskManager.instance()
+        task_manager.task_started.connect(
+            lambda name: self.status_indicator.update_status(status=name)
+        )
+        task_manager.task_completed.connect(
+            lambda name, result: self.status_indicator.update_status(status="Ready")
+        )
+        task_manager.task_failed.connect(
+            lambda name, error: self.status_indicator.update_status(status="Ready")
+        )
 
     def setup_menu(self):
         self._update_style()
@@ -808,6 +822,7 @@ def main():
     # Fixes alignment issue in default style
     # https://forum.qt.io/topic/105191/why-isn-t-a-qcombobox-positioned-correctly-in-a-layout/11
     app.setStyle("Fusion")
+    app.setStyleSheet(QMessageBox_style)
 
     window = App()
     window.show()

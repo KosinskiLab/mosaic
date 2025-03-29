@@ -25,7 +25,7 @@ class ImportDataDialog(QDialog):
         self.setStyleSheet(QPushButton_style)
 
     def setup_ui(self):
-        from ..icons import dialog_accept_icon, dialog_reject_icon, icon_color
+        from ..icons import dialog_accept_icon, dialog_reject_icon
 
         self.setWindowTitle("Import Parameters")
         self.setMinimumWidth(600)

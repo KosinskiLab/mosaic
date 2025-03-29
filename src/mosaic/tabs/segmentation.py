@@ -7,7 +7,6 @@ from qtpy.QtWidgets import QWidget, QVBoxLayout
 
 from ..properties import GeometryProperties
 from ..widgets.ribbon import create_button
-from ..dialogs.paywall import PaywallDialog
 from ..dialogs import (
     DistanceAnalysisDialog,
     DistanceCropDialog,
@@ -154,13 +153,6 @@ class SegmentationTab(QWidget):
             ),
         ]
         self.ribbon.add_section("Analysis", analysis_actions)
-
-        upgrade_actions = [
-            create_button(
-                "Upgrade", "mdi.star", self, PaywallDialog.show_dialog, "Thin Cluster"
-            ),
-        ]
-        self.ribbon.add_section("Upgrade", upgrade_actions)
 
     def _show_histogram(self):
         self._update_histogram()

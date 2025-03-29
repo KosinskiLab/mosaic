@@ -51,19 +51,6 @@ class VolumeViewer(QWidget):
         self.slice = vtk.vtkImageSlice()
         self.volume = None
 
-        self.setStyleSheet(
-            """
-            QWidget {
-                font-size: 13px;
-            }
-            QLabel:disabled {
-                opacity: 0.1;
-            }
-        """
-            + QPushButton_style
-            + QSlider_style
-        )
-
         self.label = QLabel("Volume")
         self.open_button = QPushButton("Open")
         self.open_button.clicked.connect(self.open_volume)
@@ -162,6 +149,14 @@ class VolumeViewer(QWidget):
         layout = QVBoxLayout(self)
         layout.addLayout(self.controls_layout)
         self.setLayout(layout)
+        self.setStyleSheet(
+            """
+            QLabel:disabled {
+                opacity: 0.1;
+            }
+        """
+            + QSlider_style
+        )
 
     @property
     def volume(self):
@@ -301,9 +296,6 @@ class VolumeViewer(QWidget):
 
         self.gamma_value_label.setText(f"{gamma:.2f}")
         self.contrast_value_label.setText(f"{min_contrast:.2f} - {max_contrast:.2f}")
-
-        # color_transfer_function = vtk.vtkColorTransferFunction()
-
         adjusted_min = min_value + min_contrast * value_range
         adjusted_max = min_value + max_contrast * value_range
 

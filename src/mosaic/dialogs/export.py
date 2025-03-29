@@ -19,6 +19,7 @@ from qtpy.QtWidgets import (
 )
 import qtawesome as qta
 
+from ..widgets import DialogFooter
 from ..stylesheets import QGroupBox_style, QPushButton_style, QScrollArea_style
 
 
@@ -148,6 +149,8 @@ class ExportDialog(QDialog):
         return self.set_defaults(("sampling",), (max(sampling),))
 
     def setup_ui(self):
+        from ..icons import icon_color
+
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -183,23 +186,8 @@ class ExportDialog(QDialog):
 
         main_layout.addWidget(scroll_area)
 
-        footer = QFrame()
-        footer.setStyleSheet("border-top: 1px solid #e5e7eb;")
-        footer.setContentsMargins(10, 0, 10, 0)
-
-        footer_layout = QHBoxLayout(footer)
-
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.setIcon(qta.icon("mdi.close", color="#4f46e5"))
-        cancel_btn.clicked.connect(self.reject)
-
-        export_btn = QPushButton("Export")
-        export_btn.setIcon(qta.icon("fa5s.download", color="#4f46e5"))
-        export_btn.clicked.connect(self.handle_export)
-
-        footer_layout.addWidget(cancel_btn)
-        footer_layout.addWidget(export_btn)
-
+        footer = DialogFooter(dialog=self, margin=(20, 10, 20, 10))
+        footer.accept_button.setIcon(qta.icon("fa5s.download", color=icon_color))
         main_layout.addWidget(footer)
 
     def _clear_layout(self, layout):
@@ -356,7 +344,7 @@ class ExportDialog(QDialog):
     def update_setting(self, key, value):
         self.current_settings[key] = value
 
-    def handle_export(self):
+    def accept(self):
         export_data = {
             "category": self.selected_category,
             "format": self.selected_format,
@@ -364,4 +352,4 @@ class ExportDialog(QDialog):
         }
 
         self.export_requested.emit(export_data)
-        self.accept()
+        return super().accept()

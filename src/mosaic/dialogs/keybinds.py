@@ -10,11 +10,12 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
     QDialog,
     QLabel,
-    QPushButton,
     QGridLayout,
     QGroupBox,
 )
+from ..widgets import DialogFooter
 from ..stylesheets import QGroupBox_style, QPushButton_style
+
 
 KEYBIND_REGISTRY = {
     "Navigation": [
@@ -54,8 +55,8 @@ class KeybindsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Keybinds")
-        self._layout = QVBoxLayout()
-        self.setLayout(self._layout)
+
+        self.layout = QVBoxLayout(self)
         self.setStyleSheet(QGroupBox_style + QPushButton_style)
 
     def create_section(self, title, keybinds):
@@ -74,19 +75,15 @@ class KeybindsDialog(QDialog):
         return frame
 
     def show(self):
-        from ..icons import dialog_accept_icon
-
-        while self._layout.count():
-            child = self._layout.takeAt(0)
+        while self.layout.count():
+            child = self.layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
 
         for title, keybinds in KEYBIND_REGISTRY.items():
-            self._layout.addWidget(self.create_section(title, keybinds))
+            self.layout.addWidget(self.create_section(title, keybinds))
 
-        close_button = QPushButton("Done")
-        close_button.setIcon(dialog_accept_icon)
-        close_button.clicked.connect(self.accept)
-        self._layout.addWidget(close_button)
+        footer = DialogFooter(dialog=self)
+        self.layout.addWidget(footer)
 
         super().show()

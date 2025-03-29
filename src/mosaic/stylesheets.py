@@ -3,6 +3,10 @@ __all__ = [
     "QPushButton_style",
     "QScrollArea_style",
     "HelpLabel_style",
+    "QTabBar_style",
+    "QListWidget_style",
+    "QSlider_style",
+    "QMessageBox_style",
 ]
 
 HelpLabel_style = """
@@ -137,5 +141,31 @@ QSlider_style = """
     QSlider::handle:horizontal:disabled {
         opacity: 0.5;
         border: 2px solid #6b7280;
+    }
+"""
+
+QMessageBox_style = """
+    QMessageBox QLabel {
+        color: #334155;
+        font-size: 13px;
+    }
+    QMessageBox QPushButton {
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 6px 16px;
+        min-width: 80px;
+    }
+
+    QMessageBox QPushButton:default:hover {
+        background-color: #1a000000;
+    }
+    QMessageBox QCheckBox {
+        color: #475569;
+        font-size: 12px;
+    }
+    QMessageBox QTextEdit {
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 8px;
     }
 """

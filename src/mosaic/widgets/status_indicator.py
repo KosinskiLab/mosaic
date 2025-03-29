@@ -36,9 +36,8 @@ class StatusIndicator:
         self.renderer = renderer
         self.interactor = interactor
 
-        self.text_actor = self._create_actor("View: Perspective - Mode: Viewing")
-        self.renderer.AddActor(self.text_actor)
         self.visible = True
+        self.update_status()
 
     def show(self):
         """Show the status indicator."""
@@ -72,12 +71,15 @@ class StatusIndicator:
         text_prop.SetVerticalJustificationToBottom()
         return text_actor
 
-    def update_status(self, view="Perspective", interaction="Viewing"):
-        """Update the display text by removing and re-adding the actor."""
-        self.renderer.RemoveActor(self.text_actor)
+    def update_status(self, interaction="Viewing", status="Ready", **kwargs):
+        """Update the status indicator with current mode and task status."""
+        try:
+            self.renderer.RemoveActor(self.text_actor)
+        except Exception:
+            pass
 
         # Create a new actor to prevent odd-line breaks from spacing
-        self.text_actor = self._create_actor(f"View: {view} - Mode: {interaction}")
+        self.text_actor = self._create_actor(f"Mode: {interaction} - {status}")
         if self.visible:
             self.renderer.AddActor(self.text_actor)
             self.interactor.GetRenderWindow().Render()

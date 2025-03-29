@@ -54,7 +54,7 @@ class ModelTab(QWidget):
                 SPLINE_SETTINGS,
             ),
         ]
-        self.ribbon.add_section("Fitting Operations", fitting_actions)
+        self.ribbon.add_section("Parametrization", fitting_actions)
 
         mesh_actions = [
             create_button(
@@ -70,7 +70,7 @@ class ModelTab(QWidget):
                 "Remove", "fa5s.trash", self, self.cdata.models.remove_cluster
             ),
         ]
-        self.ribbon.add_section("Sampling Operations", mesh_actions)
+        self.ribbon.add_section("Sampling", mesh_actions)
 
         mesh_actions = [
             create_button(
@@ -104,7 +104,7 @@ class ModelTab(QWidget):
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
 
-    @run_in_background("fit", callback=on_fit_complete)
+    @run_in_background("Parametrization", callback=on_fit_complete)
     def _fit(self, method: str, *args, **kwargs):
         _conversion = {
             "Alpha Shape": "convexhull",
@@ -186,7 +186,7 @@ class ModelTab(QWidget):
 
         return self.cdata.models.render()
 
-    @run_in_background("remesh_meshes", callback=on_fit_complete)
+    @run_in_background("Resmesh", callback=on_fit_complete)
     def _remesh_meshes(self, method, **kwargs):
         selected_meshes = self._get_selected_meshes()
         if len(selected_meshes) == 0:
@@ -277,7 +277,7 @@ class ModelTab(QWidget):
             filename, max_simplification_error=None, **kwargs
         )
 
-    @run_in_background("mesh_volume", callback=on_fit_complete)
+    @run_in_background("Mesh Volume", callback=on_fit_complete)
     def _run_marching_cubes(self, filename, **kwargs):
         from ..formats.parser import load_density
 

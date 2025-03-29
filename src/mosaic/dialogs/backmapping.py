@@ -17,6 +17,9 @@ from qtpy.QtWidgets import (
 )
 import qtawesome as qta
 
+from ..widgets import DialogFooter
+from ..stylesheets import QGroupBox_style, QPushButton_style
+
 
 class MeshMappingRow(QWidget):
     def __init__(self, clusters, is_first=False, parent=None, dialog=None):
@@ -86,10 +89,14 @@ class MeshMappingDialog(QDialog):
         self.setWindowTitle("Backmapping")
         self.resize(500, 400)
         self.setup_ui()
+        self.setStyleSheet(QGroupBox_style + QPushButton_style)
 
     def setup_ui(self):
+        from ..icons import dialog_margin, footer_margin
+
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
+        layout.setContentsMargins(*dialog_margin)
 
         config_group = QGroupBox("Surface Configuration")
         config_layout = QVBoxLayout()
@@ -135,22 +142,15 @@ class MeshMappingDialog(QDialog):
         mapping_group.setLayout(mapping_layout)
         layout.addWidget(mapping_group)
 
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        self.ok_btn = QPushButton("OK")
-        self.ok_btn.clicked.connect(self.validate_and_accept)
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.clicked.connect(self.reject)
-        button_layout.addWidget(self.ok_btn)
-        button_layout.addWidget(cancel_btn)
-        layout.addLayout(button_layout)
+        footer = DialogFooter(dialog=self, margin=footer_margin)
+        layout.addWidget(footer)
 
         first_row = MeshMappingRow(
             self.clusters, is_first=True, parent=self.mapping_container, dialog=self
         )
         self.mapping_layout.insertWidget(self.mapping_layout.count() - 1, first_row)
 
-    def validate_and_accept(self):
+    def accept(self):
         """Validate the dialog inputs before accepting"""
         if not self.fit_combo.currentText():
             QMessageBox.warning(
@@ -173,7 +173,7 @@ class MeshMappingDialog(QDialog):
             )
             return
 
-        self.accept()
+        return super().accept()
 
     def add_mapping_row(self):
         new_row = MeshMappingRow(

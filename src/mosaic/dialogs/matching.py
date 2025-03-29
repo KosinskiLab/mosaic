@@ -6,10 +6,8 @@ from qtpy.QtWidgets import (
     QDialog,
     QTabWidget,
     QVBoxLayout,
-    QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
     QGroupBox,
     QCheckBox,
     QComboBox,
@@ -18,13 +16,12 @@ from qtpy.QtWidgets import (
     QDoubleSpinBox,
     QWidget,
     QGridLayout,
-    QFrame,
     QMessageBox,
 )
 import qtawesome as qta
 
-from mosaic.widgets.path_selector import PathSelector
-from mosaic.stylesheets import (
+from ..widgets import PathSelector, DialogFooter
+from ..stylesheets import (
     QGroupBox_style,
     QPushButton_style,
     QScrollArea_style,
@@ -528,29 +525,11 @@ class TemplateMatchingDialog(QDialog):
 
         self.layout.addWidget(self.tabs)
 
-        self.footer = QFrame()
-        self.footer.setStyleSheet("border-top: 1px solid #e5e7eb;")
-        self.footer.setContentsMargins(10, 0, 10, 0)
-
-        footer_layout = QHBoxLayout(self.footer)
-
-        self.help_text = QLabel("Define target tomogram and template structures")
-        self.help_text.setStyleSheet("border-top: 0px;")
-        self.tabs.currentChanged.connect(self.update_help_text)
-
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setIcon(dialog_reject_icon)
-        self.cancel_button.clicked.connect(self.reject)
-
-        self.run_button = QPushButton("Setup Run")
-        self.run_button.setIcon(dialog_accept_icon)
-        self.run_button.clicked.connect(self.handle_export)
-
-        footer_layout.addWidget(self.help_text)
-        footer_layout.addStretch()
-        footer_layout.addWidget(self.cancel_button)
-        footer_layout.addWidget(self.run_button)
-
+        self.footer = DialogFooter(
+            info_text="Define target tomogram and template structures",
+            dialog=self,
+            margin=(0, 10, 0, 0),
+        )
         self.layout.addWidget(self.footer)
         self.setStyleSheet(
             QTabBar_style + QPushButton_style + QScrollArea_style + QGroupBox_style

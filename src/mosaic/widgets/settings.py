@@ -85,6 +85,8 @@ def create_setting_widget(setting: Dict):
 
 
 def get_widget_value(widget):
+    from .path_selector import PathSelector
+
     if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
         return widget.value()
     elif isinstance(widget, QComboBox):
@@ -97,6 +99,8 @@ def get_widget_value(widget):
             return float(widget.text().replace(",", "."))
         else:
             return widget.text()
+    elif isinstance(widget, PathSelector):
+        return widget.get_path()
     return None
 
 

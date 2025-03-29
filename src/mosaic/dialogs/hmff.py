@@ -5,24 +5,18 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from os.path import exists
-
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
-    QHBoxLayout,
     QVBoxLayout,
-    QPushButton,
-    QFileDialog,
     QMessageBox,
     QDialog,
     QGroupBox,
     QFormLayout,
-    QWidget,
-    QLineEdit,
 )
-import qtawesome as qta
 
-from mosaic.widgets.settings import get_widget_value, create_setting_widget
+from ..widgets import PathSelector, DialogFooter
+from ..stylesheets import QGroupBox_style, QPushButton_style
+from ..widgets.settings import get_widget_value, create_setting_widget
 
 
 class HMFFDialog(QDialog):
@@ -35,13 +29,13 @@ class HMFFDialog(QDialog):
         self.mesh_options = mesh_options
         self.setup_ui()
         self.setup_connections()
+        self.setStyleSheet(QGroupBox_style + QPushButton_style)
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
 
-        # Input Configuration
         input_group = QGroupBox("Input Configuration")
-        input_layout = QFormLayout()
+        input_layout = QFormLayout(input_group)
 
         self.parameter_widgets["mesh"] = create_setting_widget(
             {
@@ -52,26 +46,14 @@ class HMFFDialog(QDialog):
         )
         input_layout.addRow("Mesh:", self.parameter_widgets["mesh"])
 
-        volume_widget = QWidget()
-        volume_layout = QHBoxLayout(volume_widget)
-        volume_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.volume_input = QLineEdit()
-        self.parameter_widgets["volume_path"] = self.volume_input
-
-        browse_button = QPushButton()
-        browse_button.setIcon(qta.icon("fa5s.folder-open", opacity=0.7, color="gray"))
-        browse_button.clicked.connect(self.browse_volume)
-
-        volume_layout.addWidget(self.volume_input)
-        volume_layout.addWidget(browse_button)
-        input_layout.addRow("Volume:", volume_widget)
-        input_group.setLayout(input_layout)
+        volume_input = PathSelector()
+        input_layout.addRow("Volume:", volume_input)
+        self.parameter_widgets["volume_path"] = volume_input
         main_layout.addWidget(input_group)
 
         # Filter Options Group
         filter_group = QGroupBox("Filter Options")
-        filter_layout = QFormLayout()
+        filter_layout = QFormLayout(filter_group)
 
         self.parameter_widgets["use_filters"] = create_setting_widget(
             {
@@ -121,13 +103,11 @@ class HMFFDialog(QDialog):
         )
         self.parameter_widgets["plane_norm"].setEnabled(False)
         filter_layout.addRow("Normalize axis:", self.parameter_widgets["plane_norm"])
-
-        filter_group.setLayout(filter_layout)
         main_layout.addWidget(filter_group)
 
         # Simulation Parameters Group
         sim_group = QGroupBox("Simulation Parameters")
-        sim_layout = QFormLayout()
+        sim_layout = QFormLayout(sim_group)
 
         self.parameter_widgets["invert_contrast"] = create_setting_widget(
             {
@@ -159,30 +139,15 @@ class HMFFDialog(QDialog):
                 {"type": widget_type, **settings}
             )
             sim_layout.addRow(labels[param], self.parameter_widgets[param])
-
-        sim_group.setLayout(sim_layout)
         main_layout.addWidget(sim_group)
 
-        # Button layout
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.clicked.connect(self.reject)
-
-        ok_btn = QPushButton("OK")
-        ok_btn.clicked.connect(self.accept)
-        ok_btn.setDefault(True)
-
-        button_layout.addWidget(cancel_btn)
-        button_layout.addWidget(ok_btn)
-        main_layout.addLayout(button_layout)
+        footer = DialogFooter(dialog=self, margin=(0, 10, 0, 0))
+        main_layout.addWidget(footer)
 
     def setup_connections(self):
         self.parameter_widgets["use_filters"].stateChanged.connect(
             self.toggle_filter_inputs
         )
-        self.volume_input.textChanged.connect(self.validate_volume)
         self.parameter_widgets["lowpass_cutoff"].valueChanged.connect(
             self.validate_filters
         )
@@ -195,28 +160,6 @@ class HMFFDialog(QDialog):
         self.parameter_widgets["lowpass_cutoff"].setEnabled(enabled)
         self.parameter_widgets["highpass_cutoff"].setEnabled(enabled)
         self.parameter_widgets["plane_norm"].setEnabled(enabled)
-
-    def browse_volume(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Volume File",
-            "",
-            "Volume Files (*.mrc *.map *.em);;All Files (*.*)",
-        )
-        if file_path:
-            self.volume_input.setText(file_path)
-
-    def validate_volume(self):
-        vol_path = self.volume_input.text()
-        if not vol_path:
-            return False
-
-        if not exists(vol_path):
-            self.volume_input.setStyleSheet("background-color: #d32f2f;")
-            return False
-
-        self.volume_input.setStyleSheet("")
-        return True
 
     def validate_filters(self):
         if not self.parameter_widgets["use_filters"].isChecked():
@@ -233,19 +176,13 @@ class HMFFDialog(QDialog):
         return valid_range
 
     def accept(self):
-        if not self.validate_volume():
-            QMessageBox.warning(
-                self, "Invalid Input", "Please select a valid volume file."
-            )
-            return
-
         if not self.validate_filters():
             QMessageBox.warning(
                 self, "Invalid Input", "Please provide a valid filter specification."
             )
             return
 
-        super().accept()
+        return super().accept()
 
     def get_parameters(self):
         return {

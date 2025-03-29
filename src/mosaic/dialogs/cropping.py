@@ -15,9 +15,8 @@ from qtpy.QtWidgets import (
     QFrame,
     QMessageBox,
 )
-import qtawesome as qta
 
-from ..widgets.settings import format_tooltip
+from ..widgets import DialogFooter
 from ..stylesheets import (
     QGroupBox_style,
     QPushButton_style,
@@ -56,7 +55,6 @@ class DistanceCropDialog(QDialog):
 
     def setup_ui(self):
         from ..icons import (
-            dialog_reject_icon,
             dialog_selectall_icon,
             dialog_selectnone_icon,
         )
@@ -166,38 +164,13 @@ class DistanceCropDialog(QDialog):
 
         direction_layout.addWidget(radio_container)
         settings_layout.addLayout(direction_layout)
-
         main_layout.addWidget(settings_group)
 
-        footer = QFrame()
-        footer.setStyleSheet("border-top: 1px solid #e5e7eb;")
-        footer_layout = QHBoxLayout(footer)
-        footer_layout.setContentsMargins(0, 15, 0, 0)
-
-        info_icon = QLabel()
-        info_icon.setPixmap(
-            qta.icon("mdi.information-outline", color="#4f46e5").pixmap(18, 18)
+        footer = DialogFooter(
+            info_text="Points will be filtered based on their distance to the target references.",
+            dialog=self,
+            margin=(0, 15, 0, 0),
         )
-        info_icon.setStyleSheet(HelpLabel_style)
-        info_label = QLabel(
-            "Points will be filtered based on their distance to the target references."
-        )
-        info_label.setStyleSheet(HelpLabel_style)
-
-        footer_layout.addWidget(info_icon)
-        footer_layout.addWidget(info_label)
-        footer_layout.addStretch()
-
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.setIcon(dialog_reject_icon)
-        cancel_btn.clicked.connect(self.reject)
-
-        self.apply_btn = QPushButton("Apply Crop")
-        self.apply_btn.setIcon(qta.icon("mdi.content-cut", color="#4f46e5"))
-        self.apply_btn.clicked.connect(self.apply_crop)
-
-        footer_layout.addWidget(cancel_btn)
-        footer_layout.addWidget(self.apply_btn)
         main_layout.addWidget(footer)
 
         self.populate_lists()
@@ -232,7 +205,7 @@ class DistanceCropDialog(QDialog):
             return self.sources, self.targets, self.distance, self.keep_smaller
         return None, None, None, None
 
-    def apply_crop(self):
+    def accept(self):
         self.sources = [
             x.data(Qt.ItemDataRole.UserRole) for x in self.source_list.selectedItems()
         ]
@@ -264,4 +237,4 @@ class DistanceCropDialog(QDialog):
             "keep_smaller": self.keep_smaller,
         }
         self.cropApplied.emit(crop_data)
-        self.accept()
+        return super().accept()
