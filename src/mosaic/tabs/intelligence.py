@@ -17,6 +17,7 @@ from ..dialogs import (
     HMFFDialog,
     ProgressDialog,
     MeshMappingDialog,
+    TemplateMatchingDialog,
 )
 
 
@@ -47,7 +48,18 @@ class IntelligenceTab(QWidget):
             ),
             create_button("Backmapping", "mdi.set-merge", self, self._map_fit),
         ]
-        self.ribbon.add_section("HMFF Operations", hmff_actions)
+        self.ribbon.add_section("HMFF", hmff_actions)
+
+        matching_actions = [
+            create_button(
+                "Setup",
+                "mdi.magnify",
+                self,
+                lambda: TemplateMatchingDialog().exec_(),
+                "Identify proteins using template matching",
+            ),
+        ]
+        self.ribbon.add_section("Template Matching", matching_actions)
 
         segmentation_actions = [
             create_button(
@@ -62,19 +74,19 @@ class IntelligenceTab(QWidget):
                 MEMBRAIN_SETTINGS,
             ),
         ]
-        self.ribbon.add_section("Segmentation Operations", segmentation_actions)
+        self.ribbon.add_section("Segmentation", segmentation_actions)
 
     def _equilibrate_fit(self):
         indices = self.cdata.models._get_selected_indices()
         if len(indices) != 1:
-            print("Can only equilibrate a single mesh at a time.")
-            return -1
+            msg = "Can only equilibrate a single mesh at a time."
+            return QMessageBox.warning(self, "Error", msg)
 
         index = indices[0]
         geometry = self.cdata._models.data[index]
         if not hasattr(geometry._meta.get("fit", None), "mesh"):
-            print(f"{index} is not a triangular mesh.")
-            return -1
+            msg = f"{index} is not a triangular mesh."
+            return QMessageBox.warning(self, "Error", msg)
 
         directory = QFileDialog.getExistingDirectory(
             self,
@@ -101,11 +113,9 @@ class IntelligenceTab(QWidget):
 
         mesh_config = join(directory, "mesh.txt")
         if not exists(mesh_config):
-            print(
-                f"Missing mesh_config at {mesh_config}. Most likely {directory} "
-                "is not a valid directory created by Equilibrate Mesh."
-            )
-            return -1
+            msg = f"Missing mesh_config at {mesh_config}. Most likely {directory} "
+            "is not a valid directory created by Equilibrate Mesh."
+            return QMessageBox.warning(self, "Error", msg)
 
         with open(mesh_config, mode="r", encoding="utf-8") as infile:
             data = [x.strip() for x in infile.read().split("\n")]
@@ -126,7 +136,6 @@ class IntelligenceTab(QWidget):
             return -1
 
         ret = setup_hmff(mesh_conf=ret, directory=directory, **dialog.get_parameters())
-        QMessageBox.information(self, "Success", "HMFF directory setup successfully.")
         return ret
 
     def _import_trajectory(
