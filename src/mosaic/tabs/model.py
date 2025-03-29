@@ -43,7 +43,7 @@ class ModelTab(QWidget):
                 "RBF", "mdi.grid", self, partial(func, "rbf"), "Fit RBF", RBF_SETTINGS
             ),
             create_button(
-                "Mesh", "mdi.vector-polyline", self, func, "Fit Mesh", MESH_SETTINGS
+                "Mesh", "mdi.triangle-outline", self, func, "Fit Mesh", MESH_SETTINGS
             ),
             create_button(
                 "Curve",

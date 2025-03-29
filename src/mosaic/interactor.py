@@ -529,7 +529,15 @@ class DataContainerInteractor(QObject):
             if text is None:
                 text = _format_point_label(self.container.data[i].points.shape[0])
 
-            item = StyledListWidgetItem(name, visible, {"metadata_text": text})
+            type = "cluster"
+            fit = self.container.data[i]._meta.get("fit", None)
+            if fit is not None:
+                text = "mesh" if hasattr(fit, "mesh") else "parametric"
+                type = "mesh" if hasattr(fit, "mesh") else "parametric"
+
+            item = StyledListWidgetItem(
+                name, visible, {"metadata_text": text, "item_type": type}
+            )
             self.data_list.addItem(item)
 
         self.render_vtk()

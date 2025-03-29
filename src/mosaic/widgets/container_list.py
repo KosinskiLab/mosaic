@@ -11,6 +11,7 @@ from qtpy.QtWidgets import (
     QStyledItemDelegate,
     QStyleOptionViewItem,
 )
+import qtawesome as qta
 
 
 class ContainerListWidget(QFrame):
@@ -116,39 +117,97 @@ class ContainerListWidget(QFrame):
         return getattr(self.list_widget, name)
 
 
+# class StyledListWidgetItem(QListWidgetItem):
+#     def __init__(self, text, visible=True, metadata=None, parent=None):
+#         super().__init__(text, parent)
+
+#         self.visible = visible
+#         self.metadata = metadata or {}
+
+#         self.invisible_color = QColor(128, 128, 128)
+#         self.setFlags(self.flags() | Qt.ItemFlag.ItemIsEditable)
+
+#         self.set_visible(visible)
+#         self._update_visibility_icon(visible)
+
+#     def _update_visibility_icon(self, visible):
+#         """Create a small colored dot icon to indicate visibility."""
+#         self.visible = visible
+
+#         pixmap = QPixmap(16, 16)
+#         pixmap.fill(Qt.GlobalColor.transparent)
+
+#         painter = QPainter(pixmap)
+#         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+#         color = self.invisible_color
+#         if visible:
+#             color = QColor(99, 102, 241, int(0.3 * 255))
+
+#         painter.setPen(Qt.PenStyle.NoPen)
+#         painter.setBrush(color)
+#         painter.drawEllipse(4, 4, 8, 8)
+#         painter.end()
+
+#         self.setIcon(QIcon(pixmap))
+
+#     def set_visible(self, visible):
+#         if visible != self.visible:
+#             self._update_visibility_icon(visible)
+
+#         if not visible:
+#             self.setForeground(self.invisible_color)
+
+
 class StyledListWidgetItem(QListWidgetItem):
     def __init__(self, text, visible=True, metadata=None, parent=None):
+        """
+        Create a styled list widget item with type-specific icons.
+
+        Parameters
+        ----------
+        text : str
+            The display text for the item
+        visible : bool
+            Whether the item is visible
+        metadata : dict
+            Additional metadata for the item
+        parent : QWidget
+            Parent widget
+
+        """
         super().__init__(text, parent)
 
         self.visible = visible
         self.metadata = metadata or {}
 
+        # Deactivate metadata label rendering
+        _ = self.metadata.pop("metadata_text", None)
+
+        self.visible_color = QColor(99, 102, 241)
         self.invisible_color = QColor(128, 128, 128)
+
         self.setFlags(self.flags() | Qt.ItemFlag.ItemIsEditable)
 
-        self.set_visible(visible)
-        self._update_visibility_icon(visible)
+        self._update_icon(visible)
 
-    def _update_visibility_icon(self, visible):
-        """Create a small colored dot icon to indicate visibility."""
+    def _update_icon(self, visible):
+        """Update the item icon based on type and visibility."""
         self.visible = visible
 
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
+        item_type = self.metadata.get("item_type")
+        if item_type == "cluster":
+            icon_name = "mdi.scatter-plot"
+        elif item_type == "parametric":
+            icon_name = "mdi.function"
+        elif item_type == "mesh":
+            icon_name = "mdi.triangle-outline"
+        else:
+            icon_name = "mdi.shape-outline"
 
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        color = self.invisible_color
-        if visible:
-            color = QColor(99, 102, 241, int(0.3 * 255))
-
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(color)
-        painter.drawEllipse(4, 4, 8, 8)
-        painter.end()
-
-        self.setIcon(QIcon(pixmap))
+        color = self.visible_color if visible else self.invisible_color
+        icon = qta.icon(icon_name, color=color, scale_factor=0.7)
+        self.setIcon(icon)
 
     def set_visible(self, visible):
         if visible != self.visible:
@@ -176,7 +235,7 @@ class MetadataItemDelegate(QStyledItemDelegate):
         metadata_font = QFont(painter.font())
         metadata_font.setPointSize(8)
         fm = QFontMetrics(metadata_font)
-        metadata_width = fm.horizontalAdvance(metadata_text) + 10
+        metadata_width = min(fm.horizontalAdvance(metadata_text), 55)
 
         modified_option = QStyleOptionViewItem(option)
         modified_option.rect.setWidth(option.rect.width() - metadata_width)
