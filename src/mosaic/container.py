@@ -593,7 +593,6 @@ class DataContainer:
 
             geometry = self.data[index]
             if volume is not None:
-
                 state = geometry.__getstate__()
 
                 try:

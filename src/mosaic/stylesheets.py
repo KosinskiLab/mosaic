@@ -86,6 +86,26 @@ QTabBar_style = """
     QTabBar::tab:hover:!selected {
         color: #696c6f;
     }
+    /* Style for the tab widget itself */
+    QTabWidget::pane {
+        border: 1px solid #cbd5e1;
+        background-color: transparent;
+        border-top-right-radius: 6px;
+        border-bottom-right-radius: 6px;
+        border-bottom-left-radius: 6px;
+    }
+
+    /* Style for the tab contents */
+    QWidget#scrollContentWidget {
+        background-color: transparent;
+    }
+
+    /* Make scroll areas transparent */
+    QScrollArea {
+        background-color: transparent;
+        border: none;
+    }
+
 """
 
 QListWidget_style = """

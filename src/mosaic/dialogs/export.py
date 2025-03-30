@@ -81,7 +81,6 @@ class StyleableButton(QPushButton):
 
 
 class ExportDialog(QDialog):
-
     export_requested = Signal(dict)
 
     def __init__(self, parent=None):

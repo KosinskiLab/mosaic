@@ -15,7 +15,6 @@ import qtawesome as qta
 
 
 class ChevronButton(QToolButton):
-
     def __init__(self, direction="right", parent=None):
         """Initialize a chevron button with specified direction."""
         super().__init__(parent)

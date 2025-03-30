@@ -490,7 +490,6 @@ class ComputeTab(QWidget):
 
 
 class TemplateMatchingDialog(QDialog):
-
     def __init__(self):
         from mosaic.icons import dialog_accept_icon, dialog_reject_icon
 

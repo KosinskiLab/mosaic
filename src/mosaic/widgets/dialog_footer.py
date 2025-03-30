@@ -11,7 +11,6 @@ from ..stylesheets import HelpLabel_style, QPushButton_style
 
 
 class DialogFooter(QFrame):
-
     def __init__(
         self, info_text: str = None, dialog: QDialog = None, margin: Tuple[int] = None
     ):

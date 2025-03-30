@@ -134,7 +134,6 @@ class RangeSlider(QWidget):
 
 
 class HistogramWidget(QWidget):
-
     cutoff_changed = Signal(float, float)
 
     def __init__(self, parent=None):
@@ -149,7 +148,6 @@ class HistogramWidget(QWidget):
         self.resize(800, 400)
 
     def setup_ui(self):
-
         main_layout = QVBoxLayout(self)
 
         self.histogram_plot = pg.PlotWidget()
