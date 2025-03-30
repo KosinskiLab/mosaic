@@ -178,6 +178,8 @@ class SegmentationTab(QWidget):
 
     def _show_property_dialog(self):
         dialog = PropertyAnalysisDialog(self.cdata, self.legend, parent=self)
+        self.cdata.data.render_update.connect(dialog.populate_lists)
+        self.cdata.models.render_update.connect(dialog.populate_lists)
         return dialog.show()
 
     def _distance_crop(self):
@@ -185,6 +187,9 @@ class SegmentationTab(QWidget):
         clusters = self.cdata.format_datalist("data")
 
         dialog = DistanceCropDialog(clusters=clusters, fits=fits, parent=self)
+        self.cdata.data.render_update.connect(dialog.populate_lists)
+        self.cdata.models.render_update.connect(dialog.populate_lists)
+
         sources, targets, distance, keep_smaller = dialog.get_results()
         if sources is None:
             return -1

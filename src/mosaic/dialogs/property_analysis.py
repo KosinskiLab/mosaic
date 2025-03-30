@@ -29,6 +29,7 @@ from ..utils import cmap_to_vtkctf
 from ..properties import GeometryProperties
 from ..widgets.settings import get_widget_value
 from ..widgets.color_preview import ColorPreviewWidget
+from ..widgets import ContainerListWidget, StyledListWidgetItem
 
 from ..stylesheets import (
     QGroupBox_style,
@@ -75,9 +76,10 @@ class PropertyAnalysisDialog(QDialog):
         quick_select_layout.addWidget(select_all_btn)
         quick_select_layout.addWidget(select_none_btn)
         objects_layout.addLayout(quick_select_layout)
-        self.objects_list = QListWidget()
+
+        self.objects_list = ContainerListWidget(border=False)
         self.objects_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
-        self._populate_objects_list()
+        self.populate_lists()
         objects_layout.addWidget(self.objects_list)
 
         self.objects_panel.setLayout(objects_layout)
@@ -117,28 +119,23 @@ class PropertyAnalysisDialog(QDialog):
         self.main_splitter.setSizes([300, 600])
         main_layout.addWidget(self.main_splitter)
 
-    def _populate_objects_list(self):
-        from ..icons import cluster_icon, model_icon
-
+    def populate_lists(self):
         self.objects_list.clear()
 
         clusters = self.cdata.format_datalist("data")
         models = self.cdata.format_datalist("models")
-
         for name, obj in clusters:
-            item = QListWidgetItem(name)
+            item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
+
             item.setData(Qt.ItemDataRole.UserRole, obj)
             item.setData(Qt.ItemDataRole.UserRole + 1, "cluster")
-            if cluster_icon:
-                item.setIcon(cluster_icon)
             self.objects_list.addItem(item)
 
         for name, obj in models:
-            item = QListWidgetItem(name)
+            item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
+
             item.setData(Qt.ItemDataRole.UserRole, obj)
             item.setData(Qt.ItemDataRole.UserRole + 1, "mesh")
-            if model_icon:
-                item.setIcon(model_icon)
             self.objects_list.addItem(item)
 
     def _setup_visualization_tab(self):
@@ -656,9 +653,7 @@ class PropertyAnalysisDialog(QDialog):
             lambda: (
                 self._update_plot()
                 if current_tab_index == 1
-                else self._update_statistics()
-                if current_tab_index == 2
-                else None
+                else self._update_statistics() if current_tab_index == 2 else None
             ),
         )
 

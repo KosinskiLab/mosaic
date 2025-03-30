@@ -9,14 +9,13 @@ from qtpy.QtWidgets import (
     QListWidget,
     QRadioButton,
     QButtonGroup,
-    QListWidgetItem,
     QGroupBox,
     QWidget,
     QFrame,
     QMessageBox,
 )
 
-from ..widgets import DialogFooter
+from ..widgets import DialogFooter, ContainerListWidget, StyledListWidgetItem
 from ..stylesheets import (
     QGroupBox_style,
     QPushButton_style,
@@ -89,7 +88,7 @@ class DistanceCropDialog(QDialog):
         quick_select_layout.addWidget(select_none_btn)
         source_layout.addLayout(quick_select_layout)
 
-        self.source_list = QListWidget()
+        self.source_list = ContainerListWidget(border=False)
         self.source_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         source_layout.addWidget(self.source_list)
 
@@ -114,7 +113,7 @@ class DistanceCropDialog(QDialog):
         target_select_layout.addWidget(target_none_btn)
         target_layout.addLayout(target_select_layout)
 
-        self.target_list = QListWidget()
+        self.target_list = ContainerListWidget(border=False)
         self.target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         target_layout.addWidget(self.target_list)
 
@@ -176,27 +175,18 @@ class DistanceCropDialog(QDialog):
         self.populate_lists()
 
     def populate_lists(self):
-        from ..icons import cluster_icon, model_icon
-
         for name, data in self.clusters:
-            item = QListWidgetItem(name)
-            if cluster_icon:
-                item.setIcon(cluster_icon)
+            item = StyledListWidgetItem(name, data.visible, data._meta.get("info"))
             item.setData(Qt.ItemDataRole.UserRole, data)
             self.source_list.addItem(item)
 
         for name, data in self.clusters:
-            item = QListWidgetItem(name)
-            if cluster_icon:
-                item.setIcon(cluster_icon)
+            item = StyledListWidgetItem(name, data.visible, data._meta.get("info"))
             item.setData(Qt.ItemDataRole.UserRole, data)
             self.target_list.addItem(item)
 
         for name, data in self.fits:
-            item = QListWidgetItem(name)
-            if model_icon:
-                item.setIcon(model_icon)
-
+            item = StyledListWidgetItem(name, data.visible, data._meta.get("info"))
             item.setData(Qt.ItemDataRole.UserRole, data)
             self.target_list.addItem(item)
 

@@ -15,7 +15,7 @@ import qtawesome as qta
 
 
 class ContainerListWidget(QFrame):
-    def __init__(self, title: str = None):
+    def __init__(self, title: str = None, border: bool = True):
         super().__init__()
         self.setFrameStyle(QFrame.Shape.NoFrame)
 
@@ -100,7 +100,8 @@ class ContainerListWidget(QFrame):
         )
 
         layout.addWidget(self.list_widget)
-        self.updateStyleSheet()
+        if border:
+            self.updateStyleSheet()
 
     def updateStyleSheet(self):
         return self.setStyleSheet(
@@ -115,48 +116,6 @@ class ContainerListWidget(QFrame):
 
     def __getattr__(self, name):
         return getattr(self.list_widget, name)
-
-
-# class StyledListWidgetItem(QListWidgetItem):
-#     def __init__(self, text, visible=True, metadata=None, parent=None):
-#         super().__init__(text, parent)
-
-#         self.visible = visible
-#         self.metadata = metadata or {}
-
-#         self.invisible_color = QColor(128, 128, 128)
-#         self.setFlags(self.flags() | Qt.ItemFlag.ItemIsEditable)
-
-#         self.set_visible(visible)
-#         self._update_visibility_icon(visible)
-
-#     def _update_visibility_icon(self, visible):
-#         """Create a small colored dot icon to indicate visibility."""
-#         self.visible = visible
-
-#         pixmap = QPixmap(16, 16)
-#         pixmap.fill(Qt.GlobalColor.transparent)
-
-#         painter = QPainter(pixmap)
-#         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-#         color = self.invisible_color
-#         if visible:
-#             color = QColor(99, 102, 241, int(0.3 * 255))
-
-#         painter.setPen(Qt.PenStyle.NoPen)
-#         painter.setBrush(color)
-#         painter.drawEllipse(4, 4, 8, 8)
-#         painter.end()
-
-#         self.setIcon(QIcon(pixmap))
-
-#     def set_visible(self, visible):
-#         if visible != self.visible:
-#             self._update_visibility_icon(visible)
-
-#         if not visible:
-#             self.setForeground(self.invisible_color)
 
 
 class StyledListWidgetItem(QListWidgetItem):

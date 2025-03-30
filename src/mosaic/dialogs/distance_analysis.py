@@ -14,13 +14,13 @@ from qtpy.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QGroupBox,
-    QListWidgetItem,
     QListWidget,
     QWidget,
     QSplitter,
 )
 
 from ..utils import find_closest_points
+from ..widgets import ContainerListWidget, StyledListWidgetItem
 from ..stylesheets import QGroupBox_style, QPushButton_style, QListWidget_style
 
 
@@ -90,10 +90,10 @@ class DistanceAnalysisDialog(QDialog):
 
         source_group = QGroupBox("Select Source")
         source_layout = QVBoxLayout()
-        self.source_list = QListWidget()
+        self.source_list = ContainerListWidget(border=False)
         self.source_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         for name, data in self.clusters:
-            item = QListWidgetItem(name)
+            item = StyledListWidgetItem(name, data.visible, data._meta.get("info"))
             item.setData(Qt.ItemDataRole.UserRole, data)
             self.source_list.addItem(item)
         source_layout.addWidget(self.source_list)
@@ -124,7 +124,7 @@ class DistanceAnalysisDialog(QDialog):
 
         target_layout.addWidget(checkbox_group)
 
-        self.target_list = QListWidget()
+        self.target_list = ContainerListWidget(border=False)
         self.target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
 
         target_layout.addWidget(self.target_list)
@@ -224,7 +224,9 @@ class DistanceAnalysisDialog(QDialog):
             self.neighbor_end.setEnabled(False)
 
         for name, element in data:
-            item = QListWidgetItem(name)
+            item = StyledListWidgetItem(
+                name, element.visible, element._meta.get("info")
+            )
             item.setData(Qt.ItemDataRole.UserRole, element)
             self.target_list.addItem(item)
         return 0
