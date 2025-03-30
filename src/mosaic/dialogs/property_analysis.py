@@ -641,8 +641,8 @@ class PropertyAnalysisDialog(QDialog):
             geometry.set_scalars(metric, lut, lut_range)
 
         self.legend.set_lookup_table(lut, self.property_combo.currentText())
-        self.cdata.data.render()
-        self.cdata.models.render()
+        self.cdata.data.render_vtk()
+        self.cdata.models.render_vtk()
 
     def _update_tab(self):
         current_tab_index = self.tabs_widget.currentIndex()
