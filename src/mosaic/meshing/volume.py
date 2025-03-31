@@ -19,7 +19,6 @@ import open3d as o3d
 from tqdm.contrib.concurrent import process_map
 
 from .utils import merge_meshes, to_open3d
-from ..formats.parser import load_density
 
 
 def simplify_mesh(mesh, aggressiveness=5.5, decimation_factor=2, lod=1):
@@ -80,6 +79,7 @@ class MeshCreator:
 
     def execute(self):
         from zmesh import Mesher
+        from ..formats.parser import load_density
 
         self._volume = load_density(self.data_path, use_memmap=True)
         bounds_min = np.maximum(self.offset.astype(int, copy=True), 0)

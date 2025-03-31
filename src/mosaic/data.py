@@ -12,6 +12,8 @@ from functools import wraps
 from typing import Callable, Union
 
 import numpy as np
+import multiprocessing as mp
+
 from qtpy.QtCore import Signal, QObject
 
 
@@ -215,54 +217,6 @@ class MosaicData(QObject):
 
             self.progress.emit((index + 1) / len(cluster_indices))
 
-    def sample_fit(
-        self,
-        sampling: Union[int, float],
-        sampling_method: str,
-        normal_offset: float = 0.0,
-        **kwargs,
-    ):
-        """Sample points from selected parametric fits.
-
-        Parameters
-        ----------
-        sampling : int or float
-            Number of points or sampling density
-        sampling_method : str
-            Method for sampling ('N points', 'Points', or density-based)
-        normal_offset : float, optional
-            Offset along surface normal, by default 0
-        **kwargs
-            Additional sampling parameters
-        """
-        fit_indices = self.models._get_selected_indices()
-        for index in fit_indices:
-            if not self._models._index_ok(index):
-                continue
-
-            geometry = self._models.data[index]
-            fit = geometry._meta.get("fit", None)
-            if fit is None:
-                return None
-
-            n_samples, kwargs = sampling, {}
-            if sampling_method != "N points" and sampling_method != "Points":
-                n_samples = fit.points_per_sampling(sampling)
-                kwargs["mesh_init_factor"] = 5
-
-            points = fit.sample(int(n_samples), **kwargs)
-            normals = fit.compute_normal(points)
-            points = np.add(points, np.multiply(normals, normal_offset))
-
-            self._data.add(
-                points=points,
-                normals=normals,
-                sampling_rate=geometry._sampling_rate,
-            )
-
-        self.data.data_changed.emit()
-        self.data.render()
-
     def format_datalist(self, type="data", mesh_only: bool = False):
         """Format data list for dialog display.
 
@@ -298,3 +252,44 @@ class MosaicData(QObject):
 
             ret.append((list_item.text(), container.data[i]))
         return ret
+
+    def sample_fit(self, sampling, sampling_method, normal_offset=0.0, **kwargs):
+        fit_indices = self.models._get_selected_indices()
+        tasks = []
+        for index in fit_indices:
+            if not self._models._index_ok(index):
+                continue
+            geometry = self._models.data[index]
+            fit = geometry._meta.get("fit", None)
+            if fit is None:
+                continue
+            sampling_rate = geometry._sampling_rate
+            tasks.append((fit, sampling_rate, sampling, sampling_method, normal_offset))
+
+        with mp.Pool(1) as pool:
+            results = pool.starmap(_sample_fit, tasks)
+
+        for points, normals, sampling_rate in results:
+            if points is None:
+                continue
+            self._data.add(points=points, normals=normals, sampling_rate=sampling_rate)
+
+        return self.data.data_changed.emit()
+
+
+def _sample_fit(
+    fit, sampling_rate, sampling, sampling_method, normal_offset=0.0, **kwargs
+):
+    if fit is None:
+        return None, None, None
+
+    n_samples, extra_kwargs = sampling, {}
+    if sampling_method != "N points" and sampling_method != "Points":
+        n_samples = fit.points_per_sampling(sampling)
+        extra_kwargs["mesh_init_factor"] = 5
+
+    points = fit.sample(int(n_samples), **extra_kwargs, **kwargs)
+    normals = fit.compute_normal(points)
+    points = np.add(points, np.multiply(normals, normal_offset))
+
+    return points, normals, sampling_rate

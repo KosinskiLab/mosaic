@@ -883,8 +883,7 @@ class TriangularMesh(Parametrization):
         return scene, scene_id
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        if not self.mesh.has_triangle_normals():
-            self.mesh.compute_triangle_normals()
+        self.mesh.compute_triangle_normals()
 
         scene, _ = self._setup_rayscene()
         points_tensor = o3d.core.Tensor(points, dtype=o3d.core.Dtype.Float32)

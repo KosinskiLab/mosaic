@@ -61,7 +61,7 @@ class ModelTab(QWidget):
                 "Sample",
                 "mdi.chart-scatter-plot",
                 self,
-                self.cdata.sample_fit,
+                self._sample_fit,
                 "Sample from Fit",
                 SAMPLE_SETTINGS,
             ),
@@ -122,6 +122,10 @@ class ModelTab(QWidget):
                 raise ValueError(f"Incorrect radius specification {radii}.") from e
 
         return self.cdata.add_fit(method, **kwargs)
+
+    @run_in_background("Sample Fit", callback=on_fit_complete)
+    def _sample_fit(self, *args, **kwargs):
+        return self.cdata.sample_fit(*args, **kwargs)
 
     def _to_cluster(self, *args, **kwargs):
         indices = self.cdata.models._get_selected_indices()

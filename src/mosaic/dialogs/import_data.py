@@ -21,11 +21,18 @@ class ImportDataDialog(QDialog):
         self.current_file_index = 0
         self.filenames = []
         self.file_parameters = {}
+
         self.setup_ui()
         self.setStyleSheet(QPushButton_style)
 
     def setup_ui(self):
-        from ..icons import dialog_accept_icon, dialog_reject_icon
+        from ..icons import (
+            dialog_accept_icon,
+            dialog_reject_icon,
+            dialog_next_icon,
+            dialog_previous_icon,
+            dialog_apply_icon,
+        )
 
         self.setWindowTitle("Import Parameters")
         self.setMinimumWidth(600)
@@ -106,8 +113,8 @@ class ImportDataDialog(QDialog):
         button_layout.addWidget(self.cancel_button)
 
         button_layout.addStretch()
-        self.prev_button = QPushButton("← Previous")
-        self.next_button = QPushButton("Next →")
+        self.prev_button = QPushButton("Previous")
+        self.next_button = QPushButton("Next")
         self.apply_all_button = QPushButton("Apply to All")
         self.accept_button = QPushButton("Accept")
         self.accept_button.setDefault(True)
@@ -119,6 +126,9 @@ class ImportDataDialog(QDialog):
 
         self.cancel_button.setIcon(dialog_reject_icon)
         self.accept_button.setIcon(dialog_accept_icon)
+        self.apply_all_button.setIcon(dialog_apply_icon)
+        self.prev_button.setIcon(dialog_previous_icon)
+        self.next_button.setIcon(dialog_next_icon)
 
         for button in [
             self.prev_button,
@@ -126,21 +136,10 @@ class ImportDataDialog(QDialog):
             self.apply_all_button,
             self.accept_button,
         ]:
-            button.setMinimumWidth(100)
             button_layout.addWidget(button)
 
         layout.addLayout(button_layout)
         self.setLayout(layout)
-
-        # Set fixed widths for labels
-        max_label_width = max(
-            scale_label.sizeHint().width(),
-            offset_label.sizeHint().width(),
-            sampling_label.sizeHint().width(),
-        )
-        scale_label.setFixedWidth(max_label_width)
-        offset_label.setFixedWidth(max_label_width)
-        sampling_label.setFixedWidth(max_label_width)
 
     def set_files(self, filenames):
         self.filenames = filenames

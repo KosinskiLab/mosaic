@@ -307,30 +307,6 @@ class DataContainerInteractor(QObject):
         context_menu.addMenu(representation_menu)
 
         context_menu.addSeparator()
-        EXPORT_FORMATS = {
-            "mrc": {
-                "default": [],
-                "custom": [
-                    make_param("shape_x", 64, 0, "Number of voxels along X"),
-                    make_param("shape_y", 64, 0, "Number of voxels along Y"),
-                    make_param("shape_z", 64, 0, "Number of voxels along Z"),
-                    make_param(
-                        "sampling", 1.0, 1e-6, "Distance (typically Å) per voxel."
-                    ),
-                ],
-            },
-            "obj": [],
-            "tsv": [],
-            "star": {
-                "default": [],
-                "relion 5": [
-                    make_param("shape_x", 64, 0, "Number of voxels in x (for center)."),
-                    make_param("shape_y", 64, 0, "Number of voxels in y (for center)."),
-                    make_param("shape_z", 64, 0, "Number of voxels in z (for center)."),
-                ],
-            },
-            "xyz": [],
-        }
         export_menu = QAction("Export As", self.data_list)
         export_menu.triggered.connect(lambda: self._handle_export())
         context_menu.addAction(export_menu)
@@ -346,10 +322,12 @@ class DataContainerInteractor(QObject):
 
         dialog = ExportDialog()
 
-        sampling, shape = 1, self.container.metadata.get("shape", (64, 64, 64))
+        sampling, shape = 1, self.container.metadata.get("shape")
         if shape is not None:
             sampling = self.container.metadata.get("sampling_rate", 1)
             shape = np.rint(np.divide(shape, sampling)).astype(int)
+        else:
+            shape = (64, 64, 64)
 
         dialog.set_shape(shape)
         dialog.set_sampling(sampling)

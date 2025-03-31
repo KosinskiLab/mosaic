@@ -22,7 +22,7 @@ QGroupBox_style = """
         font-weight: 500;
         border: 1px solid #cbd5e1;
         border-radius: 6px;
-        margin-top: 6px;
+        margin-top: 6px;1
         padding-top: 14px;
     }
     QGroupBox::title {
@@ -41,6 +41,9 @@ QPushButton_style = """
     QPushButton:hover {
         border: 1px solid #cbd5e1;
         background: #1a000000;
+    }
+    QPushButton:focus {
+        outline: none;
     }
 """
 

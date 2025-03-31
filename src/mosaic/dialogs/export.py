@@ -140,9 +140,14 @@ class ExportDialog(QDialog):
                 self.format_settings[k][key] = values[index]
 
     def set_shape(self, shape: Tuple[int]):
+        if shape is None:
+            return None
         return self.set_defaults(("shape_x", "shape_y", "shape_y"), shape)
 
     def set_sampling(self, sampling: Tuple[float]):
+        if sampling is None:
+            return None
+
         if not isinstance(sampling, Tuple):
             sampling = (sampling,)
         return self.set_defaults(("sampling",), (max(sampling),))
@@ -186,6 +191,7 @@ class ExportDialog(QDialog):
         main_layout.addWidget(scroll_area)
 
         footer = DialogFooter(dialog=self, margin=(20, 10, 20, 10))
+        footer.accept_button.setText("Export")
         footer.accept_button.setIcon(qta.icon("fa5s.download", color=icon_color))
         main_layout.addWidget(footer)
 

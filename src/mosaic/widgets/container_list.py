@@ -1,5 +1,5 @@
 from qtpy.QtCore import Qt, QRect
-from qtpy.QtGui import QColor, QIcon, QPixmap, QPainter, QFont, QFontMetrics
+from qtpy.QtGui import QColor, QFont, QFontMetrics
 from qtpy.QtWidgets import (
     QFrame,
     QVBoxLayout,

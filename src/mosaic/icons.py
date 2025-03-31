@@ -7,6 +7,10 @@ footer_margin = (0, 16, 0, 0)
 dialog_accept_icon = qta.icon("mdi.chevron-right", color=icon_color)
 dialog_reject_icon = qta.icon("mdi.close", color=icon_color)
 
+dialog_next_icon = qta.icon("mdi6.skip-next", color=icon_color)
+dialog_previous_icon = qta.icon("mdi6.skip-previous", color=icon_color)
+dialog_apply_icon = qta.icon("mdi6.check-all", color=icon_color)
+
 dialog_selectall_icon = qta.icon("mdi.select-all", color=icon_color)
 dialog_selectnone_icon = qta.icon("mdi6.select-remove", color=icon_color)
 
