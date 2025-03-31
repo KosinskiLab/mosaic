@@ -156,6 +156,7 @@ class VolumeViewer(QWidget):
             }
         """
             + QSlider_style
+            + QPushButton_style
         )
 
     @property

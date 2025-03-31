@@ -61,6 +61,12 @@ def create_setting_widget(setting: Dict):
         widget = MappedComboBox(choices=setting["choices"])
         if "default" in setting:
             widget.setCurrentText(setting["default"])
+    elif setting["type"] == "PathSelector":
+        from .path_selector import PathSelector
+
+        widget = PathSelector()
+        if "default" in setting:
+            widget.set_path(setting["default"])
     elif setting["type"] == "boolean":
         widget = QCheckBox()
         widget.setChecked(setting.get("default", False))

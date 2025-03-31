@@ -12,7 +12,7 @@ from qtpy.QtWidgets import (
     QLineEdit,
 )
 
-from ..stylesheets import QPushButton_style
+from ..stylesheets import QPushButton_style, QLineEdit_style
 
 
 class ImportDataDialog(QDialog):
@@ -23,7 +23,7 @@ class ImportDataDialog(QDialog):
         self.file_parameters = {}
 
         self.setup_ui()
-        self.setStyleSheet(QPushButton_style)
+        self.setStyleSheet(QPushButton_style + QLineEdit_style)
 
     def setup_ui(self):
         from ..icons import (

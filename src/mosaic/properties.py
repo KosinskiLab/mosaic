@@ -100,8 +100,12 @@ def distance(
     if distance is None:
         return None
 
+    if k_start == k:
+        raise ValueError("k_start needs to be smaller than k")
+
     if distance.ndim == 2:
         distance = distance[(slice(None), slice(k_start, k))].mean(axis=1)
+
     return distance
 
 

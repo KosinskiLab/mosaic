@@ -822,7 +822,22 @@ def main():
     # Fixes alignment issue in default style
     # https://forum.qt.io/topic/105191/why-isn-t-a-qcombobox-positioned-correctly-in-a-layout/11
     app.setStyle("Fusion")
-    app.setStyleSheet(QMessageBox_style)
+
+    from mosaic.stylesheets import (
+        QPushButton_style,
+        QLineEdit_style,
+        QSpinBox_style,
+        QDoubleSpinBox_style,
+        QComboBox_style,
+    )
+
+    app.setStyleSheet(
+        QMessageBox_style
+        + QLineEdit_style
+        + QSpinBox_style
+        + QDoubleSpinBox_style
+        + QComboBox_style
+    )
 
     window = App()
     window.show()

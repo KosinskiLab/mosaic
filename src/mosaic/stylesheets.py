@@ -1,6 +1,10 @@
 __all__ = [
     "QGroupBox_style",
     "QPushButton_style",
+    "QSpinBox_style",
+    "QDoubleSpinBox_style",
+    "QComboBox_style",
+    "QLineEdit_style",
     "QScrollArea_style",
     "HelpLabel_style",
     "QTabBar_style",
@@ -10,7 +14,7 @@ __all__ = [
 ]
 
 HelpLabel_style = """
-    QLabel{
+    QLabel {
         color: #696c6f;
         font-size: 12px;
         border-top: 0px;
@@ -22,13 +26,16 @@ QGroupBox_style = """
         font-weight: 500;
         border: 1px solid #cbd5e1;
         border-radius: 6px;
-        margin-top: 6px;1
+        margin-top: 6px;
         padding-top: 14px;
     }
     QGroupBox::title {
         subcontrol-origin: margin;
         left: 7px;
         padding: 0px 5px 0px 5px;
+    }
+    QPushButton:focus {
+        outline: none;
     }
 """
 
@@ -46,6 +53,101 @@ QPushButton_style = """
         outline: none;
     }
 """
+
+QLineEdit_style = """
+    QLineEdit {
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 4px 8px;
+        background-color:transparent;
+        selection-background-color: rgba(99, 102, 241, 0.6);
+    }
+    QLineEdit:focus {
+        outline: none;
+        border: 1px solid #4f46e5;
+    }
+    QLineEdit:hover:!focus {
+        border: 1px solid #94a3b8;
+    }
+    QLineEdit:disabled {
+        background-color: #f1f5f9;
+        color: #94a3b8;
+    }
+"""
+
+QSpinBox_style = """
+    QSpinBox {
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 4px 8px;
+        background-color: transparent;
+        selection-background-color: rgba(99, 102, 241, 0.6);
+    }
+    QSpinBox:focus {
+        outline: none;
+        border: 1px solid #4f46e5;
+    }
+    QSpinBox:hover:!focus {
+        border: 1px solid #94a3b8;
+    }
+    QSpinBox:disabled {
+        background-color: #f1f5f9;
+        color: #94a3b8;
+    }
+"""
+QDoubleSpinBox_style = """
+    QDoubleSpinBox {
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 4px 8px;
+        background-color: transparent;
+        selection-background-color: rgba(99, 102, 241, 0.6);
+    }
+    QDoubleSpinBox:focus {
+        outline: none;
+        border: 1px solid #4f46e5;
+    }
+    QDoubleSpinBox:hover:!focus {
+        border: 1px solid #94a3b8;
+    }
+    QDoubleSpinBox:disabled {
+        background-color: #f1f5f9;
+        color: #94a3b8;
+    }
+"""
+QComboBox_style = """
+    QComboBox {
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 4px 8px;
+        background-color: transparent;
+        selection-background-color: rgba(99, 102, 241, 0.6);
+    }
+    QComboBox:focus {
+        outline: none;
+        border: 1px solid #4f46e5;
+    }
+    QComboBox:hover:!focus {
+        border: 1px solid #94a3b8;
+    }
+    QComboBox:disabled {
+        background-color: #f1f5f9;
+        color: #94a3b8;
+    }
+    QComboBox::drop-down {
+        subcontrol-origin: padding;
+        subcontrol-position: center right;
+        width: 16px;
+        border: none;
+        background-color: transparent;
+    }
+    QComboBox QAbstractItemView {
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        selection-background-color: rgba(99, 102, 241, 0.3);
+    }
+"""
+
 
 QScrollArea_style = """
     QScrollArea {

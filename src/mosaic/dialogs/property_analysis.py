@@ -435,12 +435,12 @@ class PropertyAnalysisDialog(QDialog):
             target_group = QGroupBox("Target Clusters")
             target_layout = QVBoxLayout(target_group)
 
-            target_list = QListWidget()
+            target_list = ContainerListWidget(border=False)
             target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
             clusters = self.cdata.format_datalist("data")
 
             for name, obj in clusters:
-                item = QListWidgetItem(name)
+                item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
                 item.setData(Qt.ItemDataRole.UserRole, obj)
                 target_list.addItem(item)
             target_layout.addWidget(target_list)
@@ -492,12 +492,12 @@ class PropertyAnalysisDialog(QDialog):
             target_group = QGroupBox("Target Models")
             target_layout = QVBoxLayout(target_group)
 
-            target_list = QListWidget()
+            target_list = ContainerListWidget(border=False)
             target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
             models = self.cdata.format_datalist("models")
 
             for name, obj in models:
-                item = QListWidgetItem(name)
+                item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
                 item.setData(Qt.ItemDataRole.UserRole, obj)
                 target_list.addItem(item)
             target_layout.addWidget(target_list)
@@ -594,12 +594,16 @@ class PropertyAnalysisDialog(QDialog):
             self.properties = {id(x): i for i, x in enumerate(geometries)}
             return None
 
-        self.properties.update(
-            {
-                id(x): GeometryProperties.compute(geometry=x, **options)
-                for i, x in enumerate(missing_geometries)
-            }
-        )
+        try:
+            self.properties.update(
+                {
+                    id(x): GeometryProperties.compute(geometry=x, **options)
+                    for i, x in enumerate(missing_geometries)
+                }
+            )
+        except Exception as e:
+            QMessageBox.warning(self, "Error", str(e))
+            self.properties.clear()
 
     def _preview(self):
         geometries = self._get_selected_objects()

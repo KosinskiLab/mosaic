@@ -16,6 +16,7 @@ from qtpy.QtWidgets import (
 import qtawesome as qta
 
 from .settings import create_setting_widget, get_layout_widget_value
+from ..stylesheets import QPushButton_style
 
 
 class SettingsToolButton(QToolButton):
@@ -103,6 +104,7 @@ class SettingsMenu(QMenu):
                 spacing: 10px;
             }
         """
+            + QPushButton_style
         )
 
     def get_current_settings(self):
