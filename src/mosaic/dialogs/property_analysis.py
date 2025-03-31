@@ -7,7 +7,6 @@ from qtpy.QtWidgets import (
     QLabel,
     QComboBox,
     QListWidget,
-    QListWidgetItem,
     QGroupBox,
     QCheckBox,
     QSpinBox,
@@ -21,6 +20,7 @@ from qtpy.QtWidgets import (
     QHeaderView,
     QTableWidgetItem,
     QFileDialog,
+    QListWidgetItem,
 )
 import pyqtgraph as pg
 import qtawesome as qta
@@ -538,7 +538,7 @@ class PropertyAnalysisDialog(QDialog):
     def _compute_properties(self):
         options = {}
         for k, widget in self.option_widgets.items():
-            if isinstance(widget, QListWidget):
+            if isinstance(widget, (QListWidget, ContainerListWidget)):
                 value = [
                     item.data(Qt.ItemDataRole.UserRole)
                     for item in widget.selectedItems()

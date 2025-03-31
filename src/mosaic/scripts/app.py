@@ -824,7 +824,6 @@ def main():
     app.setStyle("Fusion")
 
     from mosaic.stylesheets import (
-        QPushButton_style,
         QLineEdit_style,
         QSpinBox_style,
         QDoubleSpinBox_style,
