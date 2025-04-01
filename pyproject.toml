@@ -19,22 +19,28 @@ dependencies = [
     "pytme>=0.2.6",
     "open3d>=0.18.0",
     "libigl==2.5.1",
-    "pymeshlab",
+    "pymeshlab>=2023.12.post2",
     "qtawesome",
     "matplotlib",
     "imageio",
     "imageio-ffmpeg",
     "Pillow",
     "importlib_resources",
-    "zmesh",
-    "tqdm",
-    "pyfqmr",
+    "zmesh>=1.8.0",
+    "tqdm>=4.67.1",
+    "pyfqmr>=0.3.0",
 ]
 license = {text = "Proprietary"}
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
+
+[project.optional-dependencies]
+all = [
+    "membrain-seg>=0.05",
+]
+
 
 [project.gui-scripts]
 mosaic = "mosaic.scripts.app:main"

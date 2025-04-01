@@ -1,27 +1,44 @@
-==========
-Quickstart
-==========
+========
+Tutorial
+========
 
 .. toctree::
    :caption: Get Started
 
    installation
-
-
-.. toctree::
-   :caption: Preprocessing
-
-   installation
+   quickstart
+   concepts
 
 .. toctree::
-   :caption: Template Matching
+   :caption: Working with Data
 
-   installation
-
+   data/import_export
+   data/sessions
+   data/special
 
 .. toctree::
-   :caption: Miscellaneous
+   :caption: Feature Tabs
 
-   contribution
-   issues
-   license
+   tabs/segmentation
+   tabs/parametrization
+   tabs/intelligence
+
+.. toctree::
+   :caption: Practical Workflows
+
+   workflows/iav
+   workflows/mycoplasma
+   workflows/mitochondria
+
+.. toctree::
+   :caption: Reference
+
+   reference/formats
+   reference/config
+   reference/issues
+   reference/troubleshooting
+
+.. toctree::
+   :caption: Further Information
+
+   misc/license

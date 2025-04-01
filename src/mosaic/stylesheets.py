@@ -4,6 +4,7 @@ __all__ = [
     "QSpinBox_style",
     "QDoubleSpinBox_style",
     "QComboBox_style",
+    "QCheckBox_style",
     "QLineEdit_style",
     "QScrollArea_style",
     "HelpLabel_style",
@@ -148,6 +149,15 @@ QComboBox_style = """
     }
 """
 
+QCheckBox_style = """
+    QCheckBox {
+        spacing: 5px;
+    }
+    QCheckBox::indicator {
+        width: 18px;
+        height: 18px;
+    }
+"""
 
 QScrollArea_style = """
     QScrollArea {

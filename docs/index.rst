@@ -24,7 +24,7 @@
 
        +++
 
-       .. button-ref:: tutorial/index
+       .. button-ref:: tutorial/installation
              :expand:
              :color: secondary
              :click-parent:

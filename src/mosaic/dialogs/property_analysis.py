@@ -20,7 +20,6 @@ from qtpy.QtWidgets import (
     QHeaderView,
     QTableWidgetItem,
     QFileDialog,
-    QListWidgetItem,
 )
 import pyqtgraph as pg
 import qtawesome as qta
@@ -36,6 +35,7 @@ from ..stylesheets import (
     QPushButton_style,
     QScrollArea_style,
     QListWidget_style,
+    QCheckBox_style,
 )
 
 
@@ -949,13 +949,6 @@ class PropertyAnalysisDialog(QDialog):
 
     def _setup_styling(self):
         base_style = """
-            QCheckBox {
-                spacing: 5px;
-            }
-            QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
-            }
             QTabWidget::pane {
                 border: 1px solid #cbd5e1;
                 border-radius: 6px;
@@ -995,4 +988,5 @@ class PropertyAnalysisDialog(QDialog):
             + QPushButton_style
             + QScrollArea_style
             + QListWidget_style
+            + QCheckBox_style
         )

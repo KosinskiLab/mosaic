@@ -828,6 +828,7 @@ def main():
         QSpinBox_style,
         QDoubleSpinBox_style,
         QComboBox_style,
+        QCheckBox_style,
     )
 
     app.setStyleSheet(
@@ -836,6 +837,7 @@ def main():
         + QSpinBox_style
         + QDoubleSpinBox_style
         + QComboBox_style
+        + QCheckBox_style
     )
 
     window = App()

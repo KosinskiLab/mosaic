@@ -1,11 +1,12 @@
 .. include:: ../substitutions.rst
 
+
 Installation
 ------------
 
 .. _installation-section:
 
-This section provides instructions on how to install |project|. We recommend creating an installation enviroment for a clean and isolated setup. Available options for different use cases are outlined in the tabs below.
+We recommend creating an installation enviroment for a clean and isolated setup. Available options for different use cases are outlined in the tabs below.
 
 .. tab-set::
 
@@ -24,24 +25,35 @@ This section provides instructions on how to install |project|. We recommend cre
 
       .. code-block:: bash
 
-         conda create \
-            --name mosaic \
-            -c conda-forge \
-            python=3.11
+         conda create --name mosaic -c conda-forge python=3.11
 
 After setting up your environment, |project| can be installed from PyPi
 
 .. code-block:: bash
 
-   pip install mosaic
+   pip install mosaic["all"]
 
-Alternatively, you can install the development version with the latest changes
+.. tip::
+
+   Use the following to install |project| without optional dependencies
+
+   .. code-block:: bash
+
+      pip install mosaic
+
+
+Development
+-----------
+
+The latest development version can be installed from GitHub
 
 .. code-block:: bash
 
    pip install git+https://github.com/KosinskiLab/mosaic.git
 
-Support
--------
+If you want to modify the codebase
 
-For issues, questions, or contributions, please open an issue or pull request in the |project| `repository <https://github.com/KosinskiLab/mosaic.git>`_.
+.. code-block:: bash
+
+   git clone https://github.com/KosinskiLab/mosaic.git
+   python3 -mpip install -e mosaic

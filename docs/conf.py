@@ -63,9 +63,9 @@ html_favicon = "../src/mosaic/data/logo.png"
 html_theme_options = {
     "logo": {
         "text": "mosaic",
-        "image_light": "../src/mosaic/data/logo.png",
-        "image_dark": "../src/mosaic/data/logo.png",
-        "width": "50px",
+        # "image_light": "../src/mosaic/data/mosaic.icns",
+        # "image_dark": "../src/mosaic/data/mosaic.icns",
+        # "width": "50px",
     },
     "header_links_before_dropdown": 4,
     "icon_links": [
@@ -80,15 +80,11 @@ html_theme_options = {
     "show_toc_level": 1,
 }
 
-intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-    "numpy": ("https://numpy.org/doc/stable/", None),
-    "skimage": ("https://scikit-image.org/docs/stable/", None),
-    "scipy": ("http://docs.scipy.org/doc/scipy/", None),
-}
+intersphinx_mapping = {}
 
 plot_html_show_source_link = True
 plot_html_show_formats = True
+html_show_sourcelink = False
 
 plot_rcparams = {
     "figure.facecolor": "none",
