@@ -264,10 +264,7 @@ def fair_mesh(
     n_ring : int, optional
         n_ring vertices around vids to consider for fairing.
     """
-    bbox = vs.max(axis=0) - vs.min(axis=0)
-    mesh_scale = np.linalg.norm(bbox)
-    beta = beta * (mesh_scale**2)
-
+    vids = np.asarray(vids)
     if n_ring > 0:
         vids = np.asarray(list(get_ring_vertices(vs, fs, vids, n=n_ring)))
 
@@ -283,6 +280,9 @@ def fair_mesh(
     Q = a * Q2 + b * Q4 + displacement
     B = displacement @ vs
     out_vs = np.ascontiguousarray(igl.spsolve(Q, B))
+
+    if np.any(np.isnan(out_vs)):
+        return vs
 
     if gamma == 0:
         return out_vs

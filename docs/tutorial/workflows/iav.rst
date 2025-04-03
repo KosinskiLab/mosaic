@@ -2,61 +2,55 @@
 Influenza A Virus
 =================
 
-IAV (Influenza A Virus) Workflow
-============================
-
 This tutorial guides you through analyzing Influenza A Virus (IAV) virus-like particles (VLPs) using Mosaic, from initial segmentation to creating coarse-grained molecular models.
 
-Overview
---------
+Data Acquisition
+----------------
 
-The workflow consists of these major steps:
-
-1. Data acquisition
-2. Initial segmentation with MemBrain-seg
-3. Mesh generation and refinement
-4. HMFF simulation
-5. Constrained template matching of viral proteins
-6. Backmapping to coarse-grained models
-
-1. Data Acquisition
-------------------
-
-First, download the IAV virus-like particle (VLP) tomogram:
+In this tutorial we will use publicly available cryo-ET data of an IAV VLP, which can be downloaded from `EMDB-11075 <https://www.ebi.ac.uk/emdb/EMD-11075>`_ or from the command line
 
 .. code-block:: bash
 
-   # Download example IAV VLP tomogram (to be replaced with actual download command)
-   wget https://example.org/iav_vlp_tomogram.mrc
+   wget https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-11075/map/emd_11075.map.gz
+   gunzip emd_11075.map.gz
 
-2. Initial Segmentation
-----------------------
+
+We will use MemBrain_seg_v10_alpha model for segmentation in mosaic, which can be downloaded from `Google Drive <https://drive.google.com/file/d/1tSQIz_UCsQZNfyHg0RxD-4meFgolszo8/view>`.
+
+
+Membrane Segmentation
+---------------------
 
 Segment the membranes using MemBrain-seg:
 
 1. Launch Mosaic and navigate to the **Intelligence** tab.
 2. Click on the **Membrane** button in the **Segmentation Operations** section.
-3. Select the IAV tomogram file.
+3. Click the **Browse** button to select the model ckpt file.
 4. Configure the MemBrain-seg parameters:
 
-   - Model: Select appropriate model
    - Window Size: 160
+   - Connected Components: Enabled
    - Test-Time Augmentation: Enabled
+5. Press **Apply** and select the downloaded IAV VLP tomogram.
 
 The segmentation will be loaded into Mosaic automatically when complete.
 
-3. Mesh Generation and Refinement
---------------------------------
 
-3.1. Clean the Segmentation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Mesh Generation and Refinement
+------------------------------
 
-1. In the **Segmentation** tab, select the segmented cluster.
-2. Click on **Thin** and choose "outer" to extract the outer cloud.
-3. Remove any erroneous segments using the **Remove** function.
 
-3.2. Generate Initial Mesh
-^^^^^^^^^^^^^^^^^^^^^^^^^
+Clean the Segmentation
+^^^^^^^^^^^^^^^^^^^^^^
+
+1. In the **Segmentation** tab, use the **Select** button to remove small artifacts.
+2. Select the central IAV VLP in the object browser and use the **Thin** with the 'outer' option to extract the outer segmentation layer.
+3. Remove any incorrectly segmented voxel using manual selection by pressing the **r** key and removing selected points using **del** key.
+
+# Show SI pictures
+
+Generate Initial Mesh
+^^^^^^^^^^^^^^^^^^^^^
 
 1. Switch to the **Parametrization** tab.
 2. Select the cleaned point cloud.
@@ -65,21 +59,25 @@ The segmentation will be loaded into Mosaic automatically when complete.
    - Alpha: 1.0
    - Elastic Weight: 1.0
    - Curvature Weight: 10.0
+   - Scaling Factor: 6
 
-3.3. Refine the Mesh
-^^^^^^^^^^^^^^^^^^^
 
-1. Sample from the mesh for a volumetric estimate:
+Refine the Mesh
+^^^^^^^^^^^^^^^
+
+One of the caps of the IAV VLP falls outside the field of view of the tomogram. To mitigate the influence of boundary effects on subsequent simulations, we extend the caps outside the tomogram area.
+
+1. Sample points from the created mesh:
 
    - Select the mesh.
    - Click on **Sample** and set:
 
-     - Sampling Method: Distance
-     - Sampling: 110
+     - Sampling Method: Points
+     - Sampling: 20000
 
    - Click "Apply".
 
-2. Manually examine and remove any undesirable samples.
+2. Manually remove the cap that would fall outside the tomogram using the selection tool.
 
 3. Create a new mesh from the cleaned samples:
 
@@ -87,16 +85,17 @@ The segmentation will be loaded into Mosaic automatically when complete.
    - Click on **Mesh** again, using Alpha Shape with:
 
      - Alpha: 1.0
-     - Elastic Weight: 0.1
-     - Pressure Weight: 0.1
+     - Elastic Weight: 1.0
+     - Pressure Weight: 10.0
+     - Volume Weight: 0.0050
 
-4. Remesh to target edge length:
+The before and after should look similar to the example below.
 
-   - Select the new mesh.
-   - Click on **Remesh**.
-   - Set the target edge length to 110Å.
 
-5. Equilibrate the mesh:
+Equilibrate the Mesh
+^^^^^^^^^^^^^^^^^^^^
+
+1. Equilibrate the mesh:
 
    - Select the remeshed model.
    - Click on **Equilibrate** in the **HMFF Operations** section.
@@ -104,11 +103,11 @@ The segmentation will be loaded into Mosaic automatically when complete.
 
      - Average Edge Length: 110
      - Steps: 5000
-     - Kappa_b: 300
      - Other parameters at default values
 
-4. HMFF Simulation
------------------
+
+HMFF Simulation
+---------------
 
 1. Prepare the tomogram:
 
@@ -153,11 +152,12 @@ The segmentation will be loaded into Mosaic automatically when complete.
    - After simulation completion, import the final .tsi or .vtu file.
    - In Mosaic, choose **Open** and select the final configuration.
 
-5. Constrained Template Matching
--------------------------------
 
-5.1. Generate Seed Points
-^^^^^^^^^^^^^^^^^^^^^^^^
+Constrained Template Matching
+-----------------------------
+
+Generate Seed Points
+^^^^^^^^^^^^^^^^^^^^
 
 1. Create seed points from the HMFF-refined mesh:
 
@@ -169,8 +169,8 @@ The segmentation will be loaded into Mosaic automatically when complete.
      - Sampling: 40
      - Offset: 100
 
-5.2. Prepare Templates
-^^^^^^^^^^^^^^^^^^^^^
+Prepare Templates
+^^^^^^^^^^^^^^^^^
 
 Prepare HA and NA protein templates:
 
@@ -200,8 +200,8 @@ Prepare HA and NA protein templates:
 
       # Similar for NA template
 
-5.3. Run Template Matching
-^^^^^^^^^^^^^^^^^^^^^^^^^
+Run Template Matching
+^^^^^^^^^^^^^^^^^^^^^
 
 Using PyTME for constrained template matching:
 
@@ -235,15 +235,15 @@ Using PyTME for constrained template matching:
 
    # Similarly for NA with score_threshold=0.12
 
-5.4. Filter and Refine Results
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Filter and Refine Results
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Keep the top 97% of NA picks by score.
 2. Remove HA picks that are within 7 voxels of NA picks to avoid clashes.
 3. Visualize and verify the distribution in Mosaic.
 
-6. Backmapping to Coarse-Grained Models
---------------------------------------
+Backmapping to Coarse-Grained Models
+------------------------------------
 
 1. Remesh the HMFF-refined structure:
 

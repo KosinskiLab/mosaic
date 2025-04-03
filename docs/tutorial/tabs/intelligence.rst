@@ -1,6 +1,6 @@
-=================
-Intelligence Tab
-=================
+============
+Intelligence
+============
 
 The Intelligence tab provides advanced features for specialized tasks including membrane modeling, simulation setup, and trajectory analysis.
 
@@ -127,7 +127,3 @@ Multi-Scale Modeling
 4. Analyze interactions between components
 
 #Screenshot: Multi-scale model example
-
-Next Steps
-==========
-Explore the :doc:`../workflows/iav` section for complete end-to-end examples combining tools from all tabs.

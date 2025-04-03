@@ -546,6 +546,8 @@ class VolumeGeometry(Geometry):
                 {
                     "volume": self._raw_volume,
                     "volume_sampling_rate": self._volume_sampling_rate,
+                    "lower_quantile": self._lower_quantile,
+                    "upper_quantile": self._upper_quantile,
                 }
             )
         return state
@@ -562,9 +564,11 @@ class VolumeGeometry(Geometry):
         if lower_quantile >= upper_quantile:
             raise ValueError("Upper quantile must be greater than lower quantile")
 
-        lower_value = np.quantile(self._raw_volume, lower_quantile)
-        upper_value = np.quantile(self._raw_volume, upper_quantile)
-        return self.update_isovalue(upper_value, lower_value)
+        self._lower_quantile = lower_quantile
+        self._upper_quantile = upper_quantile
+        lower_value = np.quantile(self._raw_volume, self._lower_quantile)
+        upper_value = np.quantile(self._raw_volume, self._upper_quantile)
+        return self.update_isovalue(upper=upper_value, lower=lower_value)
 
     def change_representation(self, *args, **kwargs) -> int:
         return -1

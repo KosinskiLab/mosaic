@@ -1,6 +1,6 @@
-=================
-Parametrization Tab
-=================
+===============
+Parametrization
+===============
 
 The Parametrization tab provides tools for fitting geometric models to point clouds, analyzing surfaces, and creating meshes.
 

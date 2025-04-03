@@ -93,8 +93,8 @@ class ContainerListWidget(QFrame):
                 background: none;
             }
             QLineEdit {
-                background-color:transparent;
-                selection-background-color: rgba(99, 102, 241, 0.6);
+                selection-background-color: rgba(99, 102, 241, 1.0);
+                border: none;
             }
         """
         )

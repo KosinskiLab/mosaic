@@ -1027,6 +1027,7 @@ class ConvexHull(TriangularMesh):
         volume_weight: float = 0,
         boundary_ring: int = 0,
         k_neighbors=50,
+        resampling_factor: float = 12.0,
         **kwargs,
     ):
         voxel_size = 1 if voxel_size is None else voxel_size
@@ -1078,11 +1079,11 @@ class ConvexHull(TriangularMesh):
             return cls(mesh=mesh)
 
         # Fair vertices that are distant to input points
-        mesh = remesh(mesh, 12 * voxel_size)
+        mesh = remesh(mesh, resampling_factor * voxel_size)
         vs, fs = np.asarray(mesh.vertices), np.asarray(mesh.triangles)
         distances, indices = find_closest_points(positions, vs)
 
-        vids = np.where(distances > 6 * voxel_size)[0]
+        vids = np.where(distances > (resampling_factor / 2 * voxel_size))[0]
         if len(vids) == 0:
             return cls(mesh=to_open3d(vs, fs))
 

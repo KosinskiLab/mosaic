@@ -831,6 +831,7 @@ def main():
         QCheckBox_style,
     )
 
+    # Dont set all as global state but rather move to specifics
     app.setStyleSheet(
         QMessageBox_style
         + QLineEdit_style

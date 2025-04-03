@@ -1,6 +1,6 @@
-=================
-Segmentation Tab
-=================
+============
+Segmentation
+============
 
 The Segmentation tab provides tools for working with point cloud data, clustering, analysis, and selection operations.
 
@@ -144,7 +144,3 @@ Calculates geometric properties:
 1. Click **Statistics**
 2. View point counts, bounds, centers, and densities
 3. Export statistics as TSV file
-
-Next Steps
-=========
-Continue to the :doc:`parametrization` tab to learn how to fit parametric models to your point clouds.

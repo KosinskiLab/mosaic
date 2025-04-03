@@ -519,6 +519,14 @@ MESH_SETTINGS = {
                 "description": "Alpha-shape parameter.",
                 "notes": "Large values yield coarser features.",
             },
+            {
+                "label": "Scaling Factor",
+                "parameter": "resampling_factor",
+                "type": "float",
+                "default": 12.0,
+                "description": "Resample mesh to scaling factor times sampling rate.",
+                "notes": "Decrease for creating smoother pressurized meshes.",
+            },
         ],
         "Ball Pivoting": [
             {

@@ -12,7 +12,7 @@ description = "mosaic"
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.22.2,<2.0",
-    "scipy>=1.10.0",
+    "scipy>=1.14.1",
     "vtk>=9.3.1",
     "PyQt6>=6.7.1",
     "pyqtgraph>=0.13.3",
