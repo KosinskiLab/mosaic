@@ -1,7 +1,7 @@
 from typing import Dict
 
 import numpy as np
-from qtpy.QtCore import QLocale
+from qtpy.QtCore import Qt, QLocale
 from qtpy.QtGui import QDoubleValidator
 from qtpy.QtWidgets import (
     QSpinBox,
@@ -10,6 +10,7 @@ from qtpy.QtWidgets import (
     QCheckBox,
     QFormLayout,
     QLineEdit,
+    QSlider,
 )
 
 
@@ -50,6 +51,9 @@ def create_setting_widget(setting: Dict):
         widget.setValue(setting.get("default", 0.0))
         widget.setSingleStep(setting.get("step", 1.0))
         widget.setDecimals(4)
+    elif setting["type"] == "slider":
+        widget = QSlider(Qt.Orientation.Horizontal)
+        widget.setRange(int(setting.get("min", 0)), int(setting.get("max", 1)))
     elif setting["type"] == "select":
         widget = QComboBox()
         widget.addItems(setting["options"])
@@ -62,11 +66,13 @@ def create_setting_widget(setting: Dict):
         if "default" in setting:
             widget.setCurrentText(setting["default"])
     elif setting["type"] == "PathSelector":
-        from .path_selector import PathSelector
+        from . import PathSelector
 
         widget = PathSelector()
         if "default" in setting:
             widget.set_path(setting["default"])
+        widget.setMinimumWidth(200)
+
     elif setting["type"] == "boolean":
         widget = QCheckBox()
         widget.setChecked(setting.get("default", False))

@@ -22,7 +22,15 @@ import qtawesome as qta
 from qtpy.QtCore import Qt, Signal
 from vtkmodules.util import numpy_support
 
-from ..stylesheets import QSlider_style, QPushButton_style
+from ..stylesheets import (
+    QSlider_style,
+    QPushButton_style,
+    QLineEdit_style,
+    QSpinBox_style,
+    QDoubleSpinBox_style,
+    QComboBox_style,
+    QCheckBox_style,
+)
 
 _colormaps = [
     "gray",
@@ -157,6 +165,11 @@ class VolumeViewer(QWidget):
         """
             + QSlider_style
             + QPushButton_style
+            + QLineEdit_style
+            + QSpinBox_style
+            + QDoubleSpinBox_style
+            + QComboBox_style
+            + QCheckBox_style
         )
 
     @property

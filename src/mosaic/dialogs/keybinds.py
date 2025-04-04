@@ -57,6 +57,8 @@ class KeybindsDialog(QDialog):
         self.setWindowTitle("Keybinds")
 
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(8, 8, 8, 8)
+
         self.setStyleSheet(QGroupBox_style + QPushButton_style)
 
     def create_section(self, title, keybinds):
@@ -83,7 +85,7 @@ class KeybindsDialog(QDialog):
         for title, keybinds in KEYBIND_REGISTRY.items():
             self.layout.addWidget(self.create_section(title, keybinds))
 
-        footer = DialogFooter(dialog=self)
+        footer = DialogFooter(dialog=self, margin=(0, 8, 0, 0))
         self.layout.addWidget(footer)
 
         super().show()

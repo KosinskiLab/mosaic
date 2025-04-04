@@ -7,6 +7,7 @@ import numpy as np
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 
 from ..formats import open_file
+from ..parallel import run_in_background
 from ..geometry import GeometryTrajectory
 from ..widgets.ribbon import create_button
 from ..parametrization import TriangularMesh
@@ -19,6 +20,11 @@ from ..dialogs import (
     MeshMappingDialog,
     TemplateMatchingDialog,
 )
+
+
+def on_run_complete(self, *args, **kwargs):
+    self.cdata.data.render()
+    self.cdata.models.render()
 
 
 class IntelligenceTab(QWidget):
@@ -69,7 +75,7 @@ class IntelligenceTab(QWidget):
                 "Membrane",
                 "mdi.border-all-variant",
                 self,
-                self._run_membrain,
+                self._run_membrane_segmentation,
                 "Segment membranes using Membrain-seg",
                 MEMBRAIN_SETTINGS,
             ),
@@ -219,20 +225,11 @@ class IntelligenceTab(QWidget):
         QMessageBox.information(self, "Success", "Export successful.")
         return ret
 
-    def _run_membrain(self, **kwargs):
-        file_name, _ = QFileDialog.getOpenFileName(
-            self, "Select Tomogram", "", "MRC Files (*.mrc);;All Files (*.*)"
-        )
-        if not file_name:
-            return None
-
-        if kwargs.get("model_path", "") == "":
-            print("Missing path to membrain model.")
-            return None
-
-        output_name = run_membrainseg(tomogram_path=file_name, **kwargs)
+    @run_in_background("Membrane Segmentation", callback=on_run_complete)
+    def _run_membrain(self, *args, **kwargs):
+        output_name = run_membrainseg(*args, **kwargs)
         if output_name is None:
-            return None
+            return QMessageBox.warning(None, "Error", "No segmentation was created.")
 
         container = open_file(output_name)
         for index in range(len(container)):
@@ -241,7 +238,18 @@ class IntelligenceTab(QWidget):
                 points=data.vertices, normals=data.normals, sampling_rate=data.sampling
             )
         self.cdata.data.data_changed.emit()
-        return self.cdata.data.render()
+
+    def _run_membrane_segmentation(self, **kwargs):
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, "Select Tomogram", "", "MRC Files (*.mrc);;All Files (*.*)"
+        )
+        if not file_name:
+            return None
+
+        if not exists(kwargs.get("model_path", "")):
+            return QMessageBox.warning(None, "Error", "Missing path to membrain model.")
+
+        return self._run_membrain(tomogram_path=file_name, **kwargs)
 
     def add_cloud(self, *args):
         num_points = 1000

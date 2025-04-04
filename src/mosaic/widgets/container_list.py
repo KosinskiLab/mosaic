@@ -95,6 +95,7 @@ class ContainerListWidget(QFrame):
             QLineEdit {
                 selection-background-color: rgba(99, 102, 241, 1.0);
                 border: none;
+                padding: 0px 2px;
             }
         """
         )
@@ -119,7 +120,7 @@ class ContainerListWidget(QFrame):
 
 
 class StyledListWidgetItem(QListWidgetItem):
-    def __init__(self, text, visible=True, metadata=None, parent=None):
+    def __init__(self, text, visible=True, metadata=None, parent=None, editable=False):
         """
         Create a styled list widget item with type-specific icons.
 
@@ -146,7 +147,8 @@ class StyledListWidgetItem(QListWidgetItem):
         self.visible_color = QColor(99, 102, 241)
         self.invisible_color = QColor(128, 128, 128)
 
-        self.setFlags(self.flags() | Qt.ItemFlag.ItemIsEditable)
+        if editable:
+            self.setFlags(self.flags() | Qt.ItemFlag.ItemIsEditable)
 
         self._update_icon(visible)
 

@@ -2,7 +2,7 @@ import warnings
 from pathlib import Path
 from typing import Tuple
 from subprocess import run
-from os.path import splitext, join, basename
+from os.path import splitext, join, basename, exists
 
 import numpy as np
 
@@ -19,12 +19,12 @@ MEMBRAIN_SETTINGS = {
     "title": "Membrain Settings",
     "settings": [
         {
-            "type": "MappedComboBox",
+            "type": "PathSelector",
             "label": "Model",
             "parameter": "model_path",
             "choices": MODEL_PATHS,
-            "default": "Model A",
-            "description": "Pre-trained model checkpoint to be used",
+            "default": None,
+            "description": "Path to pre-trained model ckpt file.",
         },
         {
             "type": "number",

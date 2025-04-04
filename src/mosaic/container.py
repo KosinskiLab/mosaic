@@ -534,6 +534,9 @@ class DataContainer:
             elif index not in _highlighted:
                 continue
 
+            if not geometry.visible:
+                continue
+
             geometry.set_color(color=color)
 
         self._highlighted_indices = set(indices)

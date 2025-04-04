@@ -77,7 +77,7 @@ class AxesWidget:
         self.orientation_marker.SetOutlineColor(0.93, 0.57, 0.13)
 
         self.visible = True
-        self.colored = True
+        self.set_colored(True)
         self.set_labels_visible(False)
         self.arrow_heads_visible = True
 
@@ -88,11 +88,9 @@ class AxesWidget:
     def set_colored(self, colored: bool):
         self.colored = colored
 
-        colors = [
-            (0.5, 0.5, 0.5),
-        ] * 3
+        colors = [(0.5, 0.5, 0.5)] * 3
         if self.colored:
-            colors = [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
+            colors = [(0.8, 0.2, 0.2), (0.26, 0.65, 0.44), (0.2, 0.4, 0.8)]
 
         for index, axis in enumerate(["X", "Y", "Z"]):
             actor = getattr(self.axes_actor, f"Get{axis}AxisTipProperty")()

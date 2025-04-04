@@ -527,6 +527,14 @@ MESH_SETTINGS = {
                 "description": "Resample mesh to scaling factor times sampling rate.",
                 "notes": "Decrease for creating smoother pressurized meshes.",
             },
+            {
+                "label": "Distance",
+                "parameter": "distance_cutoff",
+                "type": "float",
+                "default": 2.0,
+                "description": "Vertices further than distance time sampling rate are "
+                "labled as inferred for subsequent optimization.",
+            },
         ],
         "Ball Pivoting": [
             {

@@ -262,6 +262,8 @@ def mesh_volume(
     max_simplification_error: float = 40,
     simplification_factor: int = 100,
 ):
+    from ..formats.parser import load_density
+
     if output_dir is None:
         output_dir = TemporaryDirectory(ignore_cleanup_errors=True).name
 

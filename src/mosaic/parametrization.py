@@ -1028,6 +1028,7 @@ class ConvexHull(TriangularMesh):
         boundary_ring: int = 0,
         k_neighbors=50,
         resampling_factor: float = 12.0,
+        distance_cutoff: float = 2.0,
         **kwargs,
     ):
         voxel_size = 1 if voxel_size is None else voxel_size
@@ -1070,10 +1071,14 @@ class ConvexHull(TriangularMesh):
         mesh = mesh.remove_duplicated_vertices()
 
         # Better compression and guaranteed to be watertight
-        if alpha == 1:
-            mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
-            mesh = mesh.compute_convex_hull()
-            mesh = mesh.to_legacy()
+        # if alpha == 1:
+        #     mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
+        #     mesh = mesh.compute_convex_hull()
+        #     mesh = mesh.to_legacy()
+
+        mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
+        mesh = mesh.compute_convex_hull()
+        mesh = mesh.to_legacy()
 
         if elastic_weight == curvature_weight == volume_weight == 0:
             return cls(mesh=mesh)
@@ -1081,9 +1086,11 @@ class ConvexHull(TriangularMesh):
         # Fair vertices that are distant to input points
         mesh = remesh(mesh, resampling_factor * voxel_size)
         vs, fs = np.asarray(mesh.vertices), np.asarray(mesh.triangles)
-        distances, indices = find_closest_points(positions, vs)
+        distances, _ = find_closest_points(positions, vs)
 
-        vids = np.where(distances > (resampling_factor / 2 * voxel_size))[0]
+        vids = np.where(distances > (resampling_factor / distance_cutoff * voxel_size))[
+            0
+        ]
         if len(vids) == 0:
             return cls(mesh=to_open3d(vs, fs))
 

@@ -43,7 +43,15 @@ from mosaic.dialogs import (
     ImportDataDialog,
     ProgressDialog,
 )
-from mosaic.stylesheets import QMessageBox_style
+from mosaic.stylesheets import (
+    QMessageBox_style,
+    QLineEdit_style,
+    QSpinBox_style,
+    QDoubleSpinBox_style,
+    QComboBox_style,
+    QCheckBox_style,
+    QSlider_style,
+)
 from mosaic.widgets import (
     MultiVolumeViewer,
     BoundingBoxWidget,
@@ -133,6 +141,7 @@ class App(QMainWindow):
         ]
         for index, (tab, name) in enumerate(self.tabs):
             btn = QPushButton(name)
+            btn.setObjectName("TabButton")
             btn.setProperty("tab_id", index)
             btn.setCheckable(True)
             btn.clicked.connect(self.on_tab_clicked)
@@ -335,7 +344,6 @@ class App(QMainWindow):
         return self.set_camera_view(view, not direction)
 
     def _update_style(self):
-        # This also sets the style of the list widgets
         self.setStyleSheet(
             """
             QMenuBar {
@@ -822,16 +830,6 @@ def main():
     # Fixes alignment issue in default style
     # https://forum.qt.io/topic/105191/why-isn-t-a-qcombobox-positioned-correctly-in-a-layout/11
     app.setStyle("Fusion")
-
-    from mosaic.stylesheets import (
-        QLineEdit_style,
-        QSpinBox_style,
-        QDoubleSpinBox_style,
-        QComboBox_style,
-        QCheckBox_style,
-    )
-
-    # Dont set all as global state but rather move to specifics
     app.setStyleSheet(
         QMessageBox_style
         + QLineEdit_style
@@ -839,6 +837,7 @@ def main():
         + QDoubleSpinBox_style
         + QComboBox_style
         + QCheckBox_style
+        + QSlider_style
     )
 
     window = App()

@@ -518,7 +518,7 @@ class DataContainerInteractor(QObject):
             meta_info.update({"metadata_text": text, "item_type": type, "name": name})
 
             geometry._meta["info"] = meta_info
-            item = StyledListWidgetItem(name, visible, meta_info)
+            item = StyledListWidgetItem(name, visible, meta_info, editable=True)
             self.data_list.addItem(item)
 
         self.render_vtk()

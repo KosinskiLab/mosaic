@@ -15,7 +15,7 @@ In this tutorial we will use publicly available cryo-ET data of an IAV VLP, whic
    gunzip emd_11075.map.gz
 
 
-We will use MemBrain_seg_v10_alpha model for segmentation in mosaic, which can be downloaded from `Google Drive <https://drive.google.com/file/d/1tSQIz_UCsQZNfyHg0RxD-4meFgolszo8/view>`.
+We will use MemBrain_seg_v10_alpha model for segmentation in mosaic, which can be downloaded from `Google Drive <https://drive.google.com/file/d/1tSQIz_UCsQZNfyHg0RxD-4meFgolszo8/view>`_.
 
 
 Membrane Segmentation
@@ -33,7 +33,7 @@ Segment the membranes using MemBrain-seg:
    - Test-Time Augmentation: Enabled
 5. Press **Apply** and select the downloaded IAV VLP tomogram.
 
-The segmentation will be loaded into Mosaic automatically when complete.
+Pressing appliy will trigger the segmentation workflow. The status indicator at the bottom right of the Viewer should witch from Ready to Membrane Segmentation. The segmentation will be loaded into Mosaic automatically once completed.
 
 
 Mesh Generation and Refinement
@@ -49,18 +49,22 @@ Clean the Segmentation
 
 # Show SI pictures
 
+
 Generate Initial Mesh
 ^^^^^^^^^^^^^^^^^^^^^
 
 1. Switch to the **Parametrization** tab.
 2. Select the cleaned point cloud.
-3. Click on **Mesh** and choose "Alpha Shape" with the following parameters:
+3. Click on **Mesh** and choose "Ball Pivoting" with the following parameters:
 
-   - Alpha: 1.0
    - Elastic Weight: 1.0
-   - Curvature Weight: 10.0
-   - Scaling Factor: 6
-
+   - Curvature Weight: 25.0
+   - Boundary Ring: 0
+   - Neighbors: 15
+   - Radii: 5.0
+   - Hole Size: -1.0
+   - Downsample: True
+   - Smoothing Steps: 5
 
 Refine the Mesh
 ^^^^^^^^^^^^^^^
@@ -82,12 +86,20 @@ One of the caps of the IAV VLP falls outside the field of view of the tomogram. 
 3. Create a new mesh from the cleaned samples:
 
    - Select the cleaned samples.
-   - Click on **Mesh** again, using Alpha Shape with:
+   - Click on **Mesh** again, using Ball Pivoting with:
 
-     - Alpha: 1.0
      - Elastic Weight: 1.0
-     - Pressure Weight: 10.0
-     - Volume Weight: 0.0050
+     - Curvature Weight: 1000.0
+     - Volume WeightL: 0.0075
+     - Boundary Ring: 0
+     - Neighbors: 15
+     - Radii: 5.0
+     - Hole Size: -1.0
+     - Downsample: True
+     - Smoothing Steps: 5
+
+   - Click "Apply".
+
 
 The before and after should look similar to the example below.
 
@@ -109,48 +121,36 @@ Equilibrate the Mesh
 HMFF Simulation
 ---------------
 
-1. Prepare the tomogram:
+Move to the **Intelligence** tab and click on **Setup** in the **DTS Simulation** section. This will bring up a dialog window. Select the directory in which you saved the equilibrated mesh. Configure the parameters:
 
-   - From the **View** menu, open **Volume Viewer**.
-   - Load the IAV tomogram.
-   - Apply bandpass filtering:
+- Mesh: Select mesh_equilibrated.q
+- Volume: Select the downloaded EMD-11075.
+- Invert Contrast: Enabled
+- HMFF weight (ξ): 5.0
+- Rigidity (κ): 25.0
+- Steps: 150000
+- Threads: Set based on your system, we typically use 8
+- Lowpass cutoff: 50Å
+- Highpass cutoff: 900Å
 
-     - Low cutoff: 50Å
-     - High cutoff: 900Å
+Executing the operation above will create a filtered density map and setup the required files for DTS simulation with HMFF. Now open the input.dts file and set:
 
-2. Configure HMFF:
+- AlexanderMove            = MetropolisAlgorithmOpenMP 0
+- VolumeCoupling           = SecondOrder 0.5 1000 1.1
 
-   - Select the equilibrated mesh.
-   - Click on **Setup** in the **HMFF Operations** section.
-   - Configure parameters:
+From within the simulation folder, you can run the simulation using:
 
-     - Mesh: Select your equilibrated mesh
-     - Volume: Select your filtered tomogram
-     - Invert Contrast: Enabled
-     - HMFF weight (ξ): 5.0
-     - Rigidity (κ): 30.0
-     - Steps: 50000
-     - Threads: Set based on your system
+.. code-block:: bash
 
-   - Set volume coupling:
+      bash run.sh
 
-     - Kappa_v: 1000
-     - Volume fraction: 1.1
+The analyze the refined mesh in mosaic, Click the **Trajectory** button and adapt the settings to the settings shown in the DTS file:
 
-3. Run the HMFF simulation:
+- EnergyMethod             = FreeDTS1.0_MDFF .../density.mrc 5.0 0 0.012202743213335199 21.0,6.0,16.0 1 0.0
 
-   - A simulation folder will be created.
-   - Run the simulation using:
+The scale would be 0.012202743213335199 and the offset 21.0,6.0,16.0.
 
-   .. code-block:: bash
-
-      cd /path/to/hmff_simulation_folder
-      FreeDTS
-
-4. Import the refined mesh:
-
-   - After simulation completion, import the final .tsi or .vtu file.
-   - In Mosaic, choose **Open** and select the final configuration.
+Mosaic will load all time points from the trajectory and create a new object in the Model section of the Object Browser. Select View > Trajectory player to show the controls and navigate through time points.
 
 
 Constrained Template Matching
@@ -159,81 +159,68 @@ Constrained Template Matching
 Generate Seed Points
 ^^^^^^^^^^^^^^^^^^^^
 
-1. Create seed points from the HMFF-refined mesh:
+To create seed points from the HMFF-refined mesh, select the desired time-point in the trajectory (or right click on the trajectory object and press duplicate to create a permanent snapshot). Move to the **Parametrization** tab and configure the **Sample** settings with:
 
-   - Select the refined mesh.
-   - Switch to the **Parametrization** tab.
-   - Click on **Sample** with:
+- Sampling Method: Distance
+- Sampling: 40
+- Offset: 100
 
-     - Sampling Method: Distance
-     - Sampling: 40
-     - Offset: 100
+Executing this command will generate seed points from the mesh surface with an approximate average distance of 40 Å and an offset of 100 Å from the surface. Both can be validated using the **Properties** button in the **Analysis** section of the **Segmentation** tab. The offset should roughly correspond to the center of the protein-of-interest, in our case Hemagglutinin (HA) and Neuraminidase (NA).
 
-Prepare Templates
-^^^^^^^^^^^^^^^^^
+Right-click on the newly created cluster object and export it as STAR file.
 
-Prepare HA and NA protein templates:
 
-1. Generate AlphaFold models:
+Setup Matching
+^^^^^^^^^^^^^^
 
-   .. code-block:: bash
+1. **Launch the PyTME Template Matching Dialog**:
 
-      # Example for HA from A/Hong-Kong/1/1968 H3N2 (UniProt: P11134)
-      # Example for NA from A/California/04/2009 H1N1 (UniProt: C3W5S3)
-      # Run AlphaFold with 6 refinement cycles
+   - Navigate to the **Intelligence** tab
+   - Click on **Setup** in the Template Matching directive.
 
-2. Convert structures to template maps with PyTME:
+2. **Prepare Data**:
+   - Select the "Data" tab in the dialog
+   - Specify your working directory.
+   - Specify the path to the EMD-11075 tomogram, and the HA or NA structure.
 
-   .. code-block:: python
+3. **Prepare Templates**:
 
-      # Python code using PyTME
-      import pytme
+   - Switch to the "Preprocess" tab to configure template preparation
+   - Set Lowpass to 15
+   - Set Align Template Axis to z
+   - Set Flip Template to checked
 
-      # For HA template
-      ha_template = pytme.Template.from_pdb("ha_model.pdb")
-      ha_template.align_to_z_axis()
-      ha_template.to_density(voxel_size=6.8)
-      ha_template.apply_lowpass_filter(resolution=27.2)
-      ha_template.create_mask(shape="cylinder", height=251.6, radius=68.0, sigma=2.0)
-      ha_template.save("ha_template.mrc")
-      ha_template.mask.save("ha_mask.mrc")
+4. **Configure Template Matching**:
 
-      # Similar for NA template
+   - In the "Matching" tab configure template matching parameters.
+   - Set Angular Step to 7
+   - Set Score Function to FLC
+   - Set the path to the STAR file with seed points
+   - Set Rotational Uncertainty to 15
+   - Set Translational Uncertainty to (6,6,10) for HA and (6,6,12) for NA due to the longer stalk.
+   - Set Tilt Range to -60, 60
+   - Set Wedge Axes to 2, 0
+   - Set Defocus to 30000
+   - Set No Centering to checked
 
-Run Template Matching
-^^^^^^^^^^^^^^^^^^^^^
+5. **Set Peak Calling Parameters**:
 
-Using PyTME for constrained template matching:
+   - Switch to the "Peak Calling" tab
+   - Set Peak Caller PeakCallerMaximumFilter
+   - Set Number of Peaks 10000
+   - Set Minimum Distance 7 for HA and 10 for NA
 
-.. code-block:: python
+6. **Configure Compute Resources**:
 
-   import pytme
+   - In the "Compute" tab, allocate CPU cores and memory
+   - Set backend cupy.
 
-   # Initialize template matcher
-   matcher = pytme.TemplateMatcher(
-       "ha_template.mrc",
-       "tomogram.mrc",
-       mask="ha_mask.mrc",
-       score="flc"
-   )
+7. **Execute the Workflow**:
 
-   # Configure constraints
-   matcher.set_seed_points(
-       "seed_points.tsv",  # Points exported from Mosaic
-       max_angle=15,
-       max_distance=(7, 7, 7)
-   )
+   - Click "OK" to generate the template matching scripts
+   - Mosaic will create and organize all necessary files in your working directory
+   - Run the generated scripts to perform template matching
 
-   # Run matching
-   peaks_ha = matcher.match(
-       angular_sampling=7,
-       min_peak_distance=10,
-       score_threshold=0.135,
-       min_distance_to_mesh=100.0,
-       max_distance_to_mesh=150.0
-   )
-
-   # Similarly for NA with score_threshold=0.12
 
 Filter and Refine Results
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -242,13 +229,14 @@ Filter and Refine Results
 2. Remove HA picks that are within 7 voxels of NA picks to avoid clashes.
 3. Visualize and verify the distribution in Mosaic.
 
+
 Backmapping to Coarse-Grained Models
 ------------------------------------
 
 1. Remesh the HMFF-refined structure:
 
    - Select the mesh.
-   - Click on **Remesh** and set the target edge length to 40Å.
+   -  **Remesh** and set the target edge length to 40Å.
 
 2. Map proteins to vertices:
 

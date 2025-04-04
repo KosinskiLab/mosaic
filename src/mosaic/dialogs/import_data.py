@@ -8,11 +8,11 @@ from qtpy.QtWidgets import (
     QPushButton,
     QFrame,
     QGridLayout,
-    QSizePolicy,
     QLineEdit,
+    QCheckBox,
 )
 
-from ..stylesheets import QPushButton_style, QLineEdit_style
+from ..stylesheets import QPushButton_style, QLineEdit_style, QCheckBox_style
 
 
 class ImportDataDialog(QDialog):
@@ -21,9 +21,8 @@ class ImportDataDialog(QDialog):
         self.current_file_index = 0
         self.filenames = []
         self.file_parameters = {}
-
         self.setup_ui()
-        self.setStyleSheet(QPushButton_style + QLineEdit_style)
+        self.setStyleSheet(QPushButton_style + QLineEdit_style + QCheckBox_style)
 
     def setup_ui(self):
         from ..icons import (
@@ -45,68 +44,91 @@ class ImportDataDialog(QDialog):
 
         self.progress_label = QLabel("File 0 of 0")
         self.progress_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        grid_layout.addWidget(self.progress_label, 0, 0, 1, 2)
+        grid_layout.addWidget(self.progress_label, 0, 0, 1, 4)
 
         self.filename_label = QLabel()
         self.filename_label.setWordWrap(True)
         self.filename_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.filename_label.setMinimumWidth(400)
-        grid_layout.addWidget(self.filename_label, 1, 0, 1, 2)
+        grid_layout.addWidget(self.filename_label, 1, 0, 1, 4)
 
+        # Column headers for X, Y, Z axes
+        param_label = QLabel("")
+        param_label.setFixedWidth(100)
+        self.x_label = QLabel("X")
+        self.y_label = QLabel("Y")
+        self.z_label = QLabel("Z")
+        self.x_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.y_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.z_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        grid_layout.addWidget(param_label, 2, 0)
+        grid_layout.addWidget(self.x_label, 2, 1)
+        grid_layout.addWidget(self.y_label, 2, 2)
+        grid_layout.addWidget(self.z_label, 2, 3)
+
+        # Scale factor inputs
         scale_label = QLabel("Scale Factor:")
-        self.scale_input = QLineEdit()
-        self.scale_input.setToolTip("Scale imported data by points times scale.")
-        validator = QDoubleValidator()
-        validator.setLocale(QLocale.c())
-        validator.setNotation(QDoubleValidator.Notation.StandardNotation)
-        validator.setBottom(1e-6)
-        self.scale_input.setValidator(validator)
-        self.scale_input.setText(str(1.0))
-        self.scale_input.setMinimumWidth(150)
-        self.scale_input.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
-        grid_layout.addWidget(scale_label, 2, 0)
-        grid_layout.addWidget(self.scale_input, 2, 1)
+        scale_label.setToolTip("Scale imported data by points times scale.")
+        self.scale_x = self._create_double_input(1.0)
+        self.scale_y = self._create_double_input(1.0)
+        self.scale_z = self._create_double_input(1.0)
 
+        grid_layout.addWidget(scale_label, 3, 0)
+        grid_layout.addWidget(self.scale_x, 3, 1)
+        grid_layout.addWidget(self.scale_y, 3, 2)
+        grid_layout.addWidget(self.scale_z, 3, 3)
+
+        # Offset inputs
         offset_label = QLabel("Offset:")
-        self.offset_input = QLineEdit()
-        self.offset_input.setToolTip("Add offset as (points - offset) * scale.")
-        validator = QDoubleValidator()
-        validator.setLocale(QLocale.c())
-        validator.setNotation(QDoubleValidator.Notation.StandardNotation)
-        self.offset_input.setValidator(validator)
-        self.offset_input.setText(str(0.0))
-        self.offset_input.setMinimumWidth(150)
-        self.offset_input.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
-        grid_layout.addWidget(offset_label, 3, 0)
-        grid_layout.addWidget(self.offset_input, 3, 1)
+        offset_label.setToolTip("Add offset as (points - offset) * scale.")
+        self.offset_x = self._create_double_input(0.0, allow_negative=True)
+        self.offset_y = self._create_double_input(0.0, allow_negative=True)
+        self.offset_z = self._create_double_input(0.0, allow_negative=True)
 
+        grid_layout.addWidget(offset_label, 4, 0)
+        grid_layout.addWidget(self.offset_x, 4, 1)
+        grid_layout.addWidget(self.offset_y, 4, 2)
+        grid_layout.addWidget(self.offset_z, 4, 3)
+
+        # Sampling rate inputs
         sampling_label = QLabel("Sampling Rate:")
-        self.sampling_input = QLineEdit()
-        self.sampling_input.setToolTip("Set sampling rate of points.")
-        validator = QDoubleValidator()
-        validator.setLocale(QLocale.c())
-        validator.setNotation(QDoubleValidator.Notation.StandardNotation)
-        validator.setBottom(0.0)
-        self.sampling_input.setValidator(validator)
-        self.sampling_input.setText(str(1.0))
-        self.sampling_input.setMinimumWidth(150)
-        self.sampling_input.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        sampling_label.setToolTip("Scale imported data by points times scale.")
+        self.sampling_x = self._create_double_input(1.0)
+        self.sampling_y = self._create_double_input(1.0)
+        self.sampling_z = self._create_double_input(1.0)
+
+        grid_layout.addWidget(sampling_label, 5, 0)
+        grid_layout.addWidget(self.sampling_x, 5, 1)
+        grid_layout.addWidget(self.sampling_y, 5, 2)
+        grid_layout.addWidget(self.sampling_z, 5, 3)
+
+        axis_label = QLabel("Configure per Axis")
+        axis_label.setToolTip("Specify parameters per axis.")
+        self.axis_checkbox = QCheckBox()
+        self.axis_checkbox.toggled.connect(self.toggle_per_axis_mode)
+        self.axis_checkbox.setChecked(False)
+
+        grid_layout.addWidget(axis_label, 6, 0)
+        grid_layout.addWidget(self.axis_checkbox, 6, 1)
+
+        self.scale_x.textChanged.connect(
+            lambda text: self._propagate_value(text, self.scale_y, self.scale_z)
         )
-        grid_layout.addWidget(sampling_label, 4, 0)
-        grid_layout.addWidget(self.sampling_input, 4, 1)
+        self.offset_x.textChanged.connect(
+            lambda text: self._propagate_value(text, self.offset_y, self.offset_z)
+        )
+        self.sampling_x.textChanged.connect(
+            lambda text: self._propagate_value(text, self.sampling_y, self.sampling_z)
+        )
 
         frame = QFrame()
         frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         frame.setLayout(grid_layout)
         layout.addWidget(frame)
-
         layout.addStretch()
 
+        # Button layout
         button_layout = QHBoxLayout()
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.clicked.connect(self.reject)
@@ -136,10 +158,52 @@ class ImportDataDialog(QDialog):
             self.apply_all_button,
             self.accept_button,
         ]:
+            button.setMinimumWidth(100)
             button_layout.addWidget(button)
 
         layout.addLayout(button_layout)
         self.setLayout(layout)
+
+        # Set fixed widths for labels
+        max_label_width = max(
+            scale_label.sizeHint().width(),
+            offset_label.sizeHint().width(),
+            sampling_label.sizeHint().width(),
+        )
+        scale_label.setFixedWidth(max_label_width)
+        offset_label.setFixedWidth(max_label_width)
+        sampling_label.setFixedWidth(max_label_width)
+
+        self.toggle_per_axis_mode(False)
+
+    def toggle_per_axis_mode(self, checked):
+        self.x_label.setVisible(checked)
+        self.y_label.setVisible(checked)
+        self.z_label.setVisible(checked)
+
+        self.scale_y.setVisible(checked)
+        self.scale_z.setVisible(checked)
+        self.offset_y.setVisible(checked)
+        self.offset_z.setVisible(checked)
+        self.sampling_y.setVisible(checked)
+        self.sampling_z.setVisible(checked)
+
+    def _create_double_input(self, default_value, allow_negative=False):
+        input_widget = QLineEdit()
+        input_widget.setToolTip("Enter value for this coordinate axis")
+        validator = QDoubleValidator()
+        validator.setLocale(QLocale.c())
+        validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+        if not allow_negative:
+            validator.setBottom(1e-6)
+        input_widget.setValidator(validator)
+        input_widget.setText(str(default_value))
+        input_widget.setMinimumWidth(80)
+        return input_widget
+
+    def _propagate_value(self, text, y_input, z_input):
+        y_input.setText(text)
+        z_input.setText(text)
 
     def set_files(self, filenames):
         self.filenames = filenames
@@ -149,11 +213,7 @@ class ImportDataDialog(QDialog):
         self.update_navigation_buttons()
 
         for file in filenames:
-            self.file_parameters[file] = {
-                "scale": float(self.scale_input.text()),
-                "offset": float(self.offset_input.text()),
-                "sampling_rate": float(self.sampling_input.text()),
-            }
+            self.file_parameters[file] = self._get_current_parameters()
 
     def update_file_display(self):
         if not self.filenames:
@@ -174,18 +234,48 @@ class ImportDataDialog(QDialog):
     def save_current_parameters(self):
         if self.filenames:
             current_file = self.filenames[self.current_file_index]
-            self.file_parameters[current_file] = {
-                "scale": float(self.scale_input.text()),
-                "offset": float(self.offset_input.text()),
-                "sampling_rate": float(self.sampling_input.text()),
-            }
+            self.file_parameters[current_file] = self._get_current_parameters()
+
+    def _get_current_parameters(self):
+        return {
+            "scale": (
+                float(self.scale_x.text()),
+                float(self.scale_y.text()),
+                float(self.scale_z.text()),
+            ),
+            "offset": (
+                float(self.offset_x.text()),
+                float(self.offset_y.text()),
+                float(self.offset_z.text()),
+            ),
+            "sampling_rate": (
+                float(self.sampling_x.text()),
+                float(self.sampling_y.text()),
+                float(self.sampling_z.text()),
+            ),
+        }
 
     def load_file_parameters(self, filename):
-        if filename in self.file_parameters:
-            params = self.file_parameters[filename]
-            self.scale_input.setText(str(params["scale"]))
-            self.offset_input.setText(str(params["offset"]))
-            self.sampling_input.setText(str(params["sampling_rate"]))
+        if filename not in self.file_parameters:
+            return None
+
+        params = self.file_parameters[filename]
+
+        scale = params["scale"]
+        offset = params["offset"]
+        sampling_rate = params["sampling_rate"]
+
+        self.scale_x.setText(str(scale[0]))
+        self.scale_y.setText(str(scale[1]))
+        self.scale_z.setText(str(scale[2]))
+
+        self.offset_x.setText(str(offset[0]))
+        self.offset_y.setText(str(offset[1]))
+        self.offset_z.setText(str(offset[2]))
+
+        self.sampling_x.setText(str(sampling_rate[0]))
+        self.sampling_y.setText(str(sampling_rate[1]))
+        self.sampling_z.setText(str(sampling_rate[2]))
 
     def next_file(self):
         self.save_current_parameters()
@@ -204,16 +294,10 @@ class ImportDataDialog(QDialog):
             self.update_navigation_buttons()
 
     def apply_to_all_clicked(self):
-        current_scale = float(self.scale_input.text())
-        current_offset = float(self.offset_input.text())
-        current_sampling_rate = float(self.sampling_input.text())
+        current_params = self._get_current_parameters()
 
-        for idx in range(self.current_file_index, len(self.filenames)):
-            self.file_parameters[self.filenames[idx]] = {
-                "scale": current_scale,
-                "offset": current_offset,
-                "sampling_rate": current_sampling_rate,
-            }
+        for idx in range(len(self.filenames)):
+            self.file_parameters[self.filenames[idx]] = current_params
 
     def get_all_parameters(self):
         self.save_current_parameters()
