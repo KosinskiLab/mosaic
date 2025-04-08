@@ -42,6 +42,36 @@ After setting up your environment, |project| can be installed from PyPi
       pip install mosaic
 
 
+DTS simulations
+---------------
+
+If you intend to use features of |project| that pertain to DTS simulations, you also need to install FreeDTS for simulation and Trimem for mesh equilibration.
+
+FreeDTS can be installed by following the instructions in https://github.com/weria-pezeshkian/FreeDTS. Alternatively, we provide a python wrapper that can be installed using pip
+
+.. code-block:: bash
+
+   pip install pyfreedts
+
+Trimem can be installed by following the instructions in the repository https://github.com/bio-phys/trimem
+
+.. code-block:: bash
+
+   git clone --recurse-submodules https://github.com/bio-phys/trimem.git
+   pip install trimem/
+
+
+DTS Backmapping
+---------------
+
+We use TS2CG (https://github.com/weria-pezeshkian/TS2CG-v2.0) to map back meshes onto coarse-grained representations for molecular dynamics simulations and Martinize2 (https://github.com/marrink-lab/vermouth-martinize) to create the corresponding coarse-grained representations of atomic structures. Both can be intalled using pip
+
+.. code-block:: bash
+
+   pip install TS2CG
+   pip install vermouth
+
+
 Development
 -----------
 
