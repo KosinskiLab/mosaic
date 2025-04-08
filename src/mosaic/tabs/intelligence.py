@@ -141,7 +141,7 @@ class IntelligenceTab(QWidget):
         if not dialog.exec():
             return -1
 
-        ret = setup_hmff(mesh_conf=ret, directory=directory, **dialog.get_parameters())
+        ret = setup_hmff(ret, directory=directory, **dialog.get_parameters())
         return ret
 
     def _import_trajectory(

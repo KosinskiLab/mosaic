@@ -56,4 +56,4 @@ If you want to modify the codebase
 .. code-block:: bash
 
    git clone https://github.com/KosinskiLab/mosaic.git
-   python3 -mpip install -e mosaic
+   poetry install mosaic

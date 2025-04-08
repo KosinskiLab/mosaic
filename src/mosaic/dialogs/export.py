@@ -353,7 +353,7 @@ class ExportDialog(QDialog):
         export_data = {
             "category": self.selected_category,
             "format": self.selected_format,
-            "settings": self.current_settings,
+            **self.current_settings,
         }
 
         self.export_requested.emit(export_data)

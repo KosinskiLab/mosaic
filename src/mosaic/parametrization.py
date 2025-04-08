@@ -168,6 +168,7 @@ class Sphere(Parametrization):
     def sample(
         self,
         n_samples: int,
+        normal_offset: float = 0.0,
         radius: np.ndarray = None,
         center: np.ndarray = None,
         mesh_init_factor: int = None,
@@ -211,6 +212,11 @@ class Sphere(Parametrization):
                 positions_xyz=positions_xyz,
                 mesh_init_factor=mesh_init_factor,
                 n_samples=n_samples,
+            )
+        if normal_offset != 0:
+            positions_xyz = np.add(
+                positions_xyz,
+                np.multiply(self.compute_normal(positions_xyz), normal_offset),
             )
 
         return positions_xyz
@@ -308,6 +314,7 @@ class Ellipsoid(Parametrization):
         radii: np.ndarray = None,
         center: np.ndarray = None,
         orientations: np.ndarray = None,
+        normal_offset: float = 0.0,
         sample_mesh: bool = True,
         mesh_init_factor: int = 5,
     ) -> np.ndarray:
@@ -365,6 +372,11 @@ class Ellipsoid(Parametrization):
                 positions_xyz=positions_xyz,
                 mesh_init_factor=mesh_init_factor,
                 n_samples=n_samples,
+            )
+        if normal_offset != 0:
+            positions_xyz = np.add(
+                positions_xyz,
+                np.multiply(self.compute_normal(positions_xyz), normal_offset),
             )
 
         return positions_xyz
@@ -564,6 +576,7 @@ class Cylinder(Parametrization):
         orientations: np.ndarray = None,
         radius: float = None,
         height: float = None,
+        normal_offset: float = 0.0,
         sample_mesh: bool = False,
         mesh_init_factor: int = None,
     ) -> np.ndarray:
@@ -617,6 +630,11 @@ class Cylinder(Parametrization):
                 positions_xyz=samples,
                 mesh_init_factor=mesh_init_factor,
                 n_samples=n_samples,
+            )
+
+        if normal_offset != 0:
+            samples = np.add(
+                samples, np.multiply(self.compute_normal(samples), normal_offset)
             )
 
         return samples
@@ -692,7 +710,9 @@ class RBF(Parametrization):
         grid = ((np.min(X), np.max(X)), (np.min(Y), np.max(Y)))
         return cls(rbf=rbf, direction=direction, grid=grid)
 
-    def sample(self, n_samples: int, **kwargs) -> np.ndarray:
+    def sample(
+        self, n_samples: int, normal_offset: float = 0.0, **kwargs
+    ) -> np.ndarray:
         (xmin, xmax), (ymin, ymax) = self.grid
 
         n_samples = int(np.ceil(np.sqrt(n_samples)))
@@ -706,6 +726,12 @@ class RBF(Parametrization):
             positions_xyz[:, [0, 2]] = positions_xyz[:, [2, 0]]
         elif self.direction == "yz":
             positions_xyz[:, [1, 2]] = positions_xyz[:, [2, 1]]
+
+        if normal_offset != 0:
+            positions_xyz = np.add(
+                positions_xyz,
+                np.multiply(self.compute_normal(positions_xyz), normal_offset),
+            )
 
         return positions_xyz
 
@@ -852,7 +878,11 @@ class TriangularMesh(Parametrization):
         return cls(mesh=mesh)
 
     def sample(
-        self, n_samples: int, mesh_init_factor: bool = None, **kwargs
+        self,
+        n_samples: int,
+        mesh_init_factor: bool = None,
+        normal_offset: float = 0.0,
+        **kwargs,
     ) -> np.ndarray:
         """
         Samples points from the Triangular mesh.
@@ -874,7 +904,14 @@ class TriangularMesh(Parametrization):
         np.ndarray
             Sampled points.
         """
-        return _sample_from_mesh(self.mesh, n_samples, mesh_init_factor)
+        mesh = self.mesh
+        if normal_offset != 0:
+            self.mesh.compute_vertex_normals()
+            mesh = to_open3d(
+                np.add(self.vertices, normal_offset * np.asarray(mesh.vertex_normals)),
+                self.triangles,
+            )
+        return _sample_from_mesh(mesh, n_samples, mesh_init_factor)
 
     def _setup_rayscene(self):
         mesh = o3d.t.geometry.TriangleMesh.from_legacy(self.mesh)
@@ -889,10 +926,7 @@ class TriangularMesh(Parametrization):
         points_tensor = o3d.core.Tensor(points, dtype=o3d.core.Dtype.Float32)
         closest_info = scene.compute_closest_points(points_tensor)
 
-        triangle_indices = closest_info["primitive_ids"].numpy()
-
-        triangle_normals = np.asarray(self.mesh.triangle_normals)
-        normals = triangle_normals[triangle_indices]
+        normals = closest_info["primitive_normals"].numpy()
         return normals / np.linalg.norm(normals, axis=1, keepdims=True)
 
     def compute_curvature(
@@ -1071,14 +1105,10 @@ class ConvexHull(TriangularMesh):
         mesh = mesh.remove_duplicated_vertices()
 
         # Better compression and guaranteed to be watertight
-        # if alpha == 1:
-        #     mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
-        #     mesh = mesh.compute_convex_hull()
-        #     mesh = mesh.to_legacy()
-
-        mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
-        mesh = mesh.compute_convex_hull()
-        mesh = mesh.to_legacy()
+        if alpha == 1:
+            mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
+            mesh = mesh.compute_convex_hull()
+            mesh = mesh.to_legacy()
 
         if elastic_weight == curvature_weight == volume_weight == 0:
             return cls(mesh=mesh)
@@ -1145,9 +1175,18 @@ class SplineCurve(Parametrization):
     def fit(cls, positions: np.ndarray, **kwargs) -> "SplineCurve":
         return cls(positions=np.asarray(positions, dtype=np.float64), **kwargs)
 
-    def sample(self, n_samples: int, **kwargs) -> np.ndarray:
+    def sample(
+        self, n_samples: int, normal_offset: float = 0.0, **kwargs
+    ) -> np.ndarray:
         t = np.linspace(0, 1, n_samples)
-        return np.column_stack([spline(t) for spline in self._splines])
+        points = np.column_stack([spline(t) for spline in self._splines])
+
+        if normal_offset != 0:
+            points = np.add(
+                points, np.multiply(self.compute_normal(points), normal_offset)
+            )
+
+        return points
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
         params = np.linspace(0, 1, len(points))

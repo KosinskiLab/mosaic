@@ -9,7 +9,7 @@
 
 import pickle
 from functools import wraps
-from typing import Callable, Union
+from typing import Callable
 
 import numpy as np
 import multiprocessing as mp
@@ -158,7 +158,7 @@ class MosaicData(QObject):
             points=new_points,
             normals=normals,
             sampling_rate=sampling_rate,
-            meta={"fit": fit},
+            meta={"fit": fit, "fit_kwargs": kwargs},
         )
         if hasattr(fit, "mesh"):
             self._models.data[index].change_representation("surface")
@@ -288,8 +288,9 @@ def _sample_fit(
         n_samples = fit.points_per_sampling(sampling)
         extra_kwargs["mesh_init_factor"] = 5
 
+    extra_kwargs["normal_offset"] = normal_offset
     points = fit.sample(int(n_samples), **extra_kwargs, **kwargs)
     normals = fit.compute_normal(points)
-    points = np.add(points, np.multiply(normals, normal_offset))
+    # points = np.add(points, np.multiply(normals, normal_offset))
 
     return points, normals, sampling_rate

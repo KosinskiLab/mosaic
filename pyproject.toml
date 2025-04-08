@@ -1,77 +1,60 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
-[project]
+[tool.poetry]
 name = "mosaic"
-authors = [
-  { name = "Valentin Maurer", email = "valentin.maurer@embl-hamburg.de" },
-]
 version = "1.0.0"
 description = "mosaic"
-requires-python = ">=3.11"
-dependencies = [
-    "numpy>=1.22.2,<2.0",
-    "scipy>=1.14.1",
-    "vtk>=9.3.1",
-    "PyQt6>=6.7.1",
-    "pyqtgraph>=0.13.3",
-    "pytme>=0.2.6",
-    "open3d>=0.18.0",
-    "libigl==2.5.1",
-    "pymeshlab>=2023.12.post2",
-    "qtawesome",
-    "matplotlib",
-    "imageio",
-    "imageio-ffmpeg",
-    "Pillow",
-    "importlib_resources",
-    "zmesh>=1.8.0",
-    "tqdm>=4.67.1",
-    "pyfqmr>=0.3.0",
-]
-license = {text = "Proprietary"}
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
+authors = ["Valentin Maurer <valentin.maurer@embl-hamburg.de>"]
+license = "Proprietary"
+readme = "README.md"
+repository = "https://github.com/KosinskiLab/mosaic"
+packages = [{include = "mosaic", from = "src"}]
+include = [
+    "LICENSE",
+    "README.md",
+    "src/mosaic/data/**/*"
 ]
 
-[project.optional-dependencies]
-all = [
-    "membrain-seg>=0.05",
-]
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+numpy = ">=1.22.2,<2.0"
+scipy = ">=1.14.1"
+vtk = ">=9.3.1"
+PyQt6 = ">=6.7.1"
+pyqtgraph = ">=0.13.3"
+pytme = ">=0.2.6"
+open3d = ">=0.18.0"
+libigl = "==2.5.1"
+pymeshlab = ">=2023.12.post2"
+qtawesome = "*"
+matplotlib = "*"
+imageio = "*"
+imageio-ffmpeg = "*"
+Pillow = "*"
+importlib_resources = "*"
+zmesh = ">=1.8.0"
+tqdm = ">=4.67.1"
+pyfqmr = ">=0.3.0"
 
+[tool.poetry.group.optional.dependencies]
+membrain-seg = ">=0.0.5"
 
-[project.gui-scripts]
+[tool.poetry.scripts]
 mosaic = "mosaic.scripts.app:main"
 
-[project.urls]
+[tool.poetry.urls]
 "Homepage" = "https://github.com/KosinskiLab/mosaic"
 
-[tool.setuptools]
-include-package-data = true
-package-dir = {"" = "src"}
-
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["mosaic*"]
-
-[tool.setuptools.package-data]
-"mosaic.data" = ["*.png"]
-
 [tool.pytest.ini_options]
-addopts = [
-    "--import-mode=importlib",
-]
+addopts = ["--import-mode=importlib"]
 
 [tool.coverage.run]
-omit = [
-    "tests/*"
-]
+omit = ["tests/*"]
 
 [tool.pyright.defineConstant]
 PYQT5 = false
 PYSIDE2 = false
 PYQT6 = true
 PYSIDE6 = false
-

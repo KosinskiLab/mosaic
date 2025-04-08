@@ -118,6 +118,7 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
     return dist_base, dist_remesh, dist_equil, filename
 
 
+@run_in_background("HMFF Setup")
 def setup_hmff(
     mesh_conf: Dict,
     directory: str,

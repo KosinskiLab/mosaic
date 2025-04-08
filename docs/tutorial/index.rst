@@ -27,8 +27,6 @@ Tutorial
    :caption: Practical Workflows
 
    workflows/iav
-   workflows/mycoplasma
-   workflows/mitochondria
 
 .. toctree::
    :caption: Reference

@@ -90,7 +90,7 @@ One of the caps of the IAV VLP falls outside the field of view of the tomogram. 
 
      - Elastic Weight: 1.0
      - Curvature Weight: 1000.0
-     - Volume WeightL: 0.0075
+     - Volume Weight: 0.005
      - Boundary Ring: 0
      - Neighbors: 15
      - Radii: 5.0
@@ -113,7 +113,7 @@ Equilibrate the Mesh
    - Click on **Equilibrate** in the **HMFF Operations** section.
    - Use default parameters:
 
-     - Average Edge Length: 110
+     - Average Edge Length: 100
      - Steps: 5000
      - Other parameters at default values
 
@@ -135,8 +135,8 @@ Move to the **Intelligence** tab and click on **Setup** in the **DTS Simulation*
 
 Executing the operation above will create a filtered density map and setup the required files for DTS simulation with HMFF. Now open the input.dts file and set:
 
-- AlexanderMove            = MetropolisAlgorithmOpenMP 0
-- VolumeCoupling           = SecondOrder 0.5 1000 1.1
+- AlexanderMove   = MetropolisAlgorithmOpenMP 0
+- VolumeCoupling  = SecondOrder 0.6 1000 1.1
 
 From within the simulation folder, you can run the simulation using:
 
@@ -144,13 +144,20 @@ From within the simulation folder, you can run the simulation using:
 
       bash run.sh
 
-The analyze the refined mesh in mosaic, Click the **Trajectory** button and adapt the settings to the settings shown in the DTS file:
+Running the simulation takes less than five minutes on a system with 8 threads. To analyze the refined mesh in mosaic, Click the **Trajectory** button and adapt the settings to the settings shown in the DTS file:
 
-- EnergyMethod             = FreeDTS1.0_MDFF .../density.mrc 5.0 0 0.012202743213335199 21.0,6.0,16.0 1 0.0
+- EnergyMethod = FreeDTS1.0_MDFF density.mrc 5.0 0 0.012202743213335199 21.0,6.0,16.0 1 0.0
 
 The scale would be 0.012202743213335199 and the offset 21.0,6.0,16.0.
 
 Mosaic will load all time points from the trajectory and create a new object in the Model section of the Object Browser. Select View > Trajectory player to show the controls and navigate through time points.
+
+To assess the HMFF trajectory, select View > Volume Viewer, open the density specified in the input.dts file, and adjust contrast and gamma to your liking. Shown below is the equilibrated mesh and HMFF-refined mesh.
+
+
+.. note::
+
+   If you notive vertices that are frozen in-place throughout the simulation, this could indicate that the simulation is not able to develop them. Undevelopable vertiecs primarily arise from edge-length constraints or the inability of the mesh to capture the underlying topology. Try relaxing Min_Max_Lenghts or choose a lower edge length for equilibration to increase mesh resolution.
 
 
 Constrained Template Matching
