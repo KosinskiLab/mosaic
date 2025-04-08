@@ -5,7 +5,7 @@ Quickstart
 This quickstart guide will help you get up and running with Mosaic, providing the minimal steps needed to load data, visualize it, and save your work.
 
 Loading Data
-===========
+============
 
 1. Launch Mosaic by running ``mosaic`` from your terminal or command prompt.
 
@@ -30,17 +30,17 @@ Loading Data
 
 
 Basic Interaction
-================
+=================
 
 Navigating the 3D View
----------------------
+----------------------
 
 - Rotate: Click and drag with the left mouse button
 - Pan: Hold Shift and drag with the left mouse button
 - Zoom: Use the mouse wheel
 
 Standard Camera Views
---------------------
+---------------------
 
 For standard orientations, use the keyboard shortcuts:
 
@@ -49,7 +49,7 @@ For standard orientations, use the keyboard shortcuts:
 - ``C``: View along Y axis
 
 Selecting and Managing Objects
------------------------------
+------------------------------
 
 1. Click on items in the Object Browser to select them
 2. Use Ctrl+click to select multiple items, Ctrl+A for all items, Ctrl+Shift for a from-to selection.
@@ -64,7 +64,7 @@ Selecting and Managing Objects
    #Screenshot: Context menu on an object
 
 Making a Simple Selection
-------------------------
+-------------------------
 
 For interacting with points in an object:
 
@@ -76,10 +76,10 @@ For selecting an entire object press ``S`` to activate the picking mode. For swi
 
 
 Saving Your Work
-===============
+================
 
 Save a Screenshot
-----------------
+-----------------
 
 To save a screenshot of the 3D viewport:
 
@@ -87,7 +87,7 @@ To save a screenshot of the 3D viewport:
 2. Choose a location and filename
 
 Save a Session
--------------
+--------------
 
 To save your entire workspace for later use:
 
@@ -97,6 +97,6 @@ To save your entire workspace for later use:
 
 
 Next Steps
-=========
+==========
 
 With these basic operations, you can already start exploring your data in Mosaic. For more detailed functionality, continue to the :doc:`Concepts and UI <concepts>` section.

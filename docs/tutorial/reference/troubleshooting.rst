@@ -1,6 +1,6 @@
-=================
+===============
 Troubleshooting
-=================
+===============
 
 This page provides solutions for common issues encountered when using Mosaic.
 
@@ -145,7 +145,7 @@ Mesh Generation Failures
 
 
 Reporting Issues
-=============
+================
 
 When reporting issues to the Mosaic team:
 
@@ -162,8 +162,3 @@ You can submit issues through:
 - GitHub issue tracker
 - Support email
 - User forum
-
-See Also
-=======
-- :doc:`commands` for command-line options that might help troubleshoot
-- :doc:`config` for configuration settings that affect performance

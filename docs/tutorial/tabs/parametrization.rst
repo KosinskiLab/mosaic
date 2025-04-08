@@ -16,25 +16,25 @@ Primitive Fitting
 Fit basic geometric shapes to point clouds:
 
 Sphere
-^^^^^
+^^^^^^
 1. Select a cluster
 2. Click **Sphere**
 3. A sphere model is fitted to the points
 
 Ellipsoid
-^^^^^^^
+^^^^^^^^^
 1. Select a cluster
 2. Click **Ellipsoid**
 3. An ellipsoid with optimized axes is fitted
 
 Cylinder
-^^^^^^^
+^^^^^^^^
 1. Select a cluster with cylindrical shape
 2. Click **Cylinder**
 3. A cylinder is fitted along the principal axis
 
 RBF (Radial Basis Function)
-^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 For smooth, non-parametric surfaces:
 
 1. Select a cluster
@@ -160,5 +160,5 @@ Combines multiple meshes:
 3. A new combined mesh is created
 
 Next Steps
-=========
+==========
 Continue to the :doc:`intelligence` tab to learn about advanced features like HMFF and membrane segmentation.

@@ -5,10 +5,10 @@ Concepts and UI
 This section introduces the fundamental concepts behind Mosaic and explains the main components of the user interface.
 
 Core Concepts
-============
+=============
 
 Data Organization
-----------------
+-----------------
 
 Mosaic organizes data into two main categories:
 
@@ -27,7 +27,7 @@ Right-clicking an item opens a context menu with operations specific to that obj
 
 
 Coordinate System
----------------
+-----------------
 
 Mosaic uses a right-handed coordinate system:
 
@@ -39,7 +39,7 @@ The standard orientation is (0, 0, 1).
 
 
 Sampling Rate
-------------
+-------------
 
 Mosaic does not handle spatial units internally. Instead, imported data is immediately transformed into a consistent reference frame based on the sampling rate (typically Ångstroms for molecular data). This sampling rate is provided by the user or can be extracted from the header of particular file formats, e.g. 'mrc' files.
 
@@ -80,7 +80,7 @@ The Mosaic interface consists of several key components:
 
 
 Functional Tabs
---------------
+---------------
 
 Mosaic organizes functionality into three main tabs:
 
@@ -92,7 +92,7 @@ Mosaic organizes functionality into three main tabs:
 
 
 Interaction Modes
-===============
+=================
 
 Mosaic supports several interaction modes that change how mouse actions affect the 3D view:
 
@@ -108,17 +108,17 @@ Mosaic supports several interaction modes that change how mouse actions affect t
 Switching between modes will change the cursor appearance. The current mode is displayed in the **Status Bar**. To exit any mode and return to Viewing Mode press the same button again.
 
 Keyboard Shortcuts
-================
+==================
 
 Navigation
----------
+----------
 
 - ``Z``, ``X``, ``C``: Set camera view along Z, X, or Y axes
 - ``V``: Swap camera view direction
 - ``D``: Toggle renderer background color
 
 Selection and Manipulation
-------------------------
+--------------------------
 
 - ``A``: Toggle drawing mode
 - ``R``: Toggle area selector
@@ -129,7 +129,7 @@ Selection and Manipulation
 - ``E``: Expand selection
 
 File Operations
--------------
+---------------
 
 - ``Ctrl+N``: New session
 - ``Ctrl+O``: Import files
@@ -140,6 +140,6 @@ File Operations
 - ``Ctrl+H``: Show keybinds
 
 Next Steps
-=========
+==========
 
-Now that you understand the basic concepts and layout of Mosaic, proceed to the :doc:`Working with Data <data/importing>` section to learn how to handle different data types.
+Now that you understand the basic concepts and layout of Mosaic, proceed to the :doc:`Working with Data <data/import_export>` section to learn how to handle different data types.

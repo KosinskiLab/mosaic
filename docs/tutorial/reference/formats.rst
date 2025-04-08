@@ -1,14 +1,14 @@
-=================
+=====================
 File Format Reference
-=================
+=====================
 
 This page documents all file formats supported by Mosaic, their specifications, and usage details.
 
 Volume Formats
-============
+==============
 
 MRC (.mrc, .map)
---------------
+----------------
 - **Type**: Binary
 - **Description**: Standard format for electron microscopy density maps
 - **Header**: Contains voxel size, grid dimensions, origin coordinates
@@ -17,14 +17,14 @@ MRC (.mrc, .map)
 - **Specification**: http://www.ccpem.ac.uk/mrc_format/mrc2014.php
 
 EM (.em)
--------
+--------
 - **Type**: Binary
 - **Description**: IMAGIC EM format for microscopy data
 - **Header**: 512 bytes header with dimensions and metadata
 - **Data Types**: 8-bit, 16-bit, 32-bit float
 
 HDF5 (.h5)
---------
+----------
 - **Type**: Binary hierarchical container
 - **Description**: General-purpose scientific data format
 - **Structure**: Groups, datasets, and attributes
@@ -32,10 +32,10 @@ HDF5 (.h5)
 - **Compression**: Supports various compression methods
 
 Point Cloud Formats
-================
+===================
 
 XYZ (.xyz)
---------
+----------
 - **Type**: ASCII text
 - **Structure**: Three columns (X, Y, Z coordinates) per line
 - **Optional**: Fourth column for cluster ID
@@ -47,24 +47,24 @@ XYZ (.xyz)
   ```
 
 CSV (.csv)
---------
+----------
 - **Type**: ASCII text
 - **Delimiter**: Comma (,)
 - **Structure**: X,Y,Z[,ID] per line
 - **Header**: Optional first line with column names
 
 TSV (.tsv)
---------
+----------
 - **Type**: ASCII text
 - **Delimiter**: Tab character
 - **Structure**: X\tY\tZ[\tID] per line
 - **Header**: Optional first line
 
 Mesh Formats
-==========
+============
 
 OBJ (.obj)
---------
+----------
 - **Type**: ASCII text
 - **Structure**: Lists of vertices, faces and normals
 - **Prefix**: 'v' for vertices, 'f' for faces, 'vn' for normals
@@ -77,7 +77,7 @@ OBJ (.obj)
   ```
 
 PLY (.ply)
---------
+----------
 - **Type**: ASCII or binary
 - **Description**: Stanford polygon format
 - **Header**: Defines element types and counts
@@ -96,17 +96,17 @@ PLY (.ply)
   ```
 
 STL (.stl)
---------
+----------
 - **Type**: ASCII or binary
 - **Description**: Simple triangulated surfaces
 - **Structure**: Triangle normals and vertices
 - **Binary Format**: 80-byte header, 4-byte triangle count, 50 bytes per triangle
 
 Orientation Formats
-================
+===================
 
 STAR (.star)
----------
+------------
 - **Type**: ASCII text
 - **Description**: Relion data format for particle metadata
 - **Structure**: Header with column definitions followed by data
@@ -127,17 +127,17 @@ STAR (.star)
   ```
 
 CIF (.cif)
---------
+----------
 - **Type**: ASCII text
 - **Description**: Crystallographic Information File format
 - **Structure**: Data blocks with loop definitions
 - **Domain**: Atomic structures with positions and orientations
 
 Trajectory Formats
-===============
+==================
 
 TSI (.tsi, .q)
------------
+--------------
 - **Type**: ASCII text
 - **Description**: Topology files with time series data
 - **Structure**: Version, box dimensions, vertices, faces
@@ -154,44 +154,35 @@ TSI (.tsi, .q)
   ```
 
 VTU (.vtu)
---------
+----------
 - **Type**: XML-based
 - **Description**: VTK unstructured grid files
 - **Structure**: Points, cells, and data arrays
 - **Features**: Supports cell and point data attributes
 
 Session Format
-============
+==============
 
 Pickle (.pickle)
--------------
+----------------
 - **Type**: Binary
 - **Description**: Python serialization format
 - **Content**: Complete Mosaic session with all objects
 - **Compatibility**: Python version dependent
 - **Security**: Only open pickles from trusted sources
 
-Format Conversion
-==============
-
-| From | To | Command Line Example |
-|------|----|--------------------|
-| MRC | OBJ | `mosaic --input file.mrc --output file.obj --isovalue 0.5` |
-| XYZ | MRC | `mosaic --input cloud.xyz --output map.mrc --shape 64,64,64` |
-| OBJ | XYZ | `mosaic --input mesh.obj --output points.xyz --sample 1000` |
-
 Troubleshooting
-=============
+===============
 
 Invalid Format Issues
-------------------
+---------------------
 - **Missing header**: Some formats require specific headers
 - **Wrong byte order**: Binary formats may need endian conversion
 - **Text encoding**: Use UTF-8 for text formats
 - **Line endings**: Some parsers are sensitive to CR/LF differences
 
 Large File Handling
-----------------
+-------------------
 - Maximum recommended file sizes:
   - Point clouds: 10-20 million points
   - Meshes: 5-10 million triangles
@@ -199,6 +190,5 @@ Large File Handling
 - For larger files, consider using downsampling
 
 See Also
-=======
-- :doc:`importing` for import parameter details
-- :doc:`exporting` for export options
+========
+:doc:`../data/import_export` for import and export options

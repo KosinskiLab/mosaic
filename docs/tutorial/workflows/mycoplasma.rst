@@ -3,7 +3,7 @@ Mycoplasma Pneumoniae
 =====================
 
 Mycoplasma pneumoniae Workflow
-============================
+==============================
 
 This tutorial guides you through analyzing *Mycoplasma pneumoniae* using Mosaic, from initial segmentation to creating coarse-grained molecular models with ribosome localization.
 
@@ -21,7 +21,7 @@ The workflow consists of these major steps:
 7. Backmapping to coarse-grained models
 
 1. Data Acquisition
-------------------
+-------------------
 
 First, download the *M. pneumoniae* tomogram:
 
@@ -31,7 +31,7 @@ First, download the *M. pneumoniae* tomogram:
    wget https://example.org/mycoplasma_pneumoniae_tomogram.mrc
 
 2. Initial Segmentation
-----------------------
+-----------------------
 
 Segment the bacterial membrane using MemBrain-seg:
 
@@ -47,7 +47,7 @@ Segment the bacterial membrane using MemBrain-seg:
 The segmentation will be loaded into Mosaic automatically when complete.
 
 3. Mesh Generation and Refinement
---------------------------------
+---------------------------------
 
 3.1. Clean the Segmentation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -57,7 +57,7 @@ The segmentation will be loaded into Mosaic automatically when complete.
 3. Remove any erroneous segments using the **Remove** function.
 
 3.2. Generate Initial Mesh
-^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Switch to the **Parametrization** tab.
 2. Select the cleaned point cloud.
@@ -68,7 +68,7 @@ The segmentation will be loaded into Mosaic automatically when complete.
    - Curvature Weight: 10.0
 
 3.3. Refine the Mesh
-^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
 
 1. Sample from the mesh for a volumetric estimate:
 
@@ -109,7 +109,7 @@ The segmentation will be loaded into Mosaic automatically when complete.
      - Other parameters at default values
 
 4. HMFF Simulation
------------------
+------------------
 
 1. Prepare the tomogram:
 
@@ -154,10 +154,10 @@ The segmentation will be loaded into Mosaic automatically when complete.
    - In Mosaic, choose **Open** and select the final configuration.
 
 5. Constrained Template Matching of Nap Proteins
------------------------------------------------
+------------------------------------------------
 
 5.1. Generate Seed Points
-^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Create seed points from the HMFF-refined mesh:
 
@@ -170,7 +170,7 @@ The segmentation will be loaded into Mosaic automatically when complete.
      - Offset: 80
 
 5.2. Prepare Template
-^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^
 
 Prepare the Nap protein template:
 
@@ -206,7 +206,7 @@ Prepare the Nap protein template:
       nap_template.mask.save("nap_mask.mrc")
 
 5.3. Run Template Matching
-^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Using PyTME for constrained template matching:
 
@@ -239,16 +239,16 @@ Using PyTME for constrained template matching:
    )
 
 5.4. Filter and Verify Results
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Visualize the template matching results in Mosaic by importing the peaks file.
 2. Verify the distribution of Nap proteins on the cell surface.
 
 6. Ribosome Localization
------------------------
+------------------------
 
 6.1. Prepare Ribosome Template
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Download ribosome template:
 
@@ -276,7 +276,7 @@ Using PyTME for constrained template matching:
       ribosome_template.mask.save("ribosome_mask.mrc")
 
 6.2. Run Template Matching
-^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -298,13 +298,13 @@ Using PyTME for constrained template matching:
    )
 
 6.3. Manual Refinement
-^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
 
 1. Import the ribosome picks into Mosaic.
 2. Manually refine the picks to remove false positives and adjust positions.
 
 7. Backmapping to Coarse-Grained Models
---------------------------------------
+---------------------------------------
 
 1. Remesh the HMFF-refined structure:
 

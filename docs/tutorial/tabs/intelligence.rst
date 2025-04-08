@@ -53,8 +53,6 @@ Imports simulation results:
 3. Configure scaling and offset
 4. Trajectory is loaded into the Trajectory Player
 
-See :doc:`../data/trajectories` for more details on working with trajectories.
-
 Backmapping
 -----------
 

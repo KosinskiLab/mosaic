@@ -3,7 +3,7 @@ HeLa Mitochondria
 =================
 
 Mitochondria Workflow
-===================
+=====================
 
 This tutorial guides you through analyzing mitochondria from cellular tomography data using Mosaic, from acquiring segmentations to HMFF refinement and potential downstream applications.
 
@@ -19,7 +19,7 @@ The workflow consists of these major steps:
 5. Analysis and downstream applications
 
 1. Data Acquisition
-------------------
+-------------------
 
 First, download the jrc-hela2 cellular segmentation dataset:
 
@@ -34,7 +34,7 @@ First, download the jrc-hela2 cellular segmentation dataset:
 This will download the mitochondria segmentation volume at full resolution (4nm, 4nm, 5.24nm).
 
 2. Initial Mesh Generation
--------------------------
+--------------------------
 
 2.1. Convert Segmentation to Mesh
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -128,7 +128,7 @@ Convert the volumetric segmentations to initial meshes using marching cubes:
       simplified_mesh.export("simplified_mitochondria.obj")
 
 3. Mesh Cleaning and Refinement
-------------------------------
+-------------------------------
 
 3.1. Import and Assess Mesh Quality
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -143,7 +143,7 @@ Convert the volumetric segmentations to initial meshes using marching cubes:
    - Use the **Analyze** tool in the **Mesh Operations** section to check metrics.
 
 3.2. Clean and Repair the Mesh
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Generate equidistant samples from the mesh:
 
@@ -171,10 +171,10 @@ Convert the volumetric segmentations to initial meshes using marching cubes:
    - Set method to "Edge Length" with target edge length of 20nm.
 
 4. HMFF Simulation
------------------
+------------------
 
 4.1. Prepare the Tomogram
-^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Import the jrc-hela2 tomogram (at an appropriate binning level):
 
@@ -184,7 +184,7 @@ Convert the volumetric segmentations to initial meshes using marching cubes:
 2. No additional preprocessing is typically needed for this dataset.
 
 4.2. Configure HMFF
-^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
 
 1. Select the remeshed mitochondria model.
 
@@ -202,7 +202,7 @@ Convert the volumetric segmentations to initial meshes using marching cubes:
    - Temperature (T): 1.5
 
 4.3. Run the HMFF Simulation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. A simulation folder will be created by the setup step.
 
@@ -216,7 +216,7 @@ Convert the volumetric segmentations to initial meshes using marching cubes:
 3. Monitor the simulation progress and energy minimization.
 
 4.4. Import the Refined Mesh
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. After simulation completion, import the final .tsi or .vtu file:
 
@@ -225,10 +225,10 @@ Convert the volumetric segmentations to initial meshes using marching cubes:
 2. Visually inspect the refined mesh against the tomogram data.
 
 5. Analysis and Downstream Applications
--------------------------------------
+---------------------------------------
 
 5.1. Quantitative Analysis
-^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Calculate mesh properties:
 
@@ -240,7 +240,7 @@ Convert the volumetric segmentations to initial meshes using marching cubes:
    - Save the generated statistics using the export function.
 
 5.2. Visualization
-^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^
 
 1. Create high-quality renderings:
 
@@ -252,7 +252,7 @@ Convert the volumetric segmentations to initial meshes using marching cubes:
    - Use **File > Export Animation** to create a video rotating around the mitochondria.
 
 5.3. Further Modeling (Optional)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If desired, you can proceed with additional modeling steps similar to the IAV and Mycoplasma workflows:
 

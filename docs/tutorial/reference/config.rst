@@ -1,14 +1,14 @@
-=================
+=======================
 Configuration Reference
-=================
+=======================
 
 Mosaic can be configured through configuration files and settings. This page documents all available options and their effects.
 
 Configuration Files
-================
+===================
 
 Location
--------
+--------
 
 Mosaic reads configuration from the following locations (in order of precedence):
 
@@ -18,7 +18,7 @@ Mosaic reads configuration from the following locations (in order of precedence)
 4. System-wide config (``/etc/mosaic/config.cfg`` or ``C:\ProgramData\Mosaic\config.cfg``)
 
 Format
------
+------
 
 Configuration files use the INI format:
 
@@ -32,10 +32,10 @@ Configuration files use the INI format:
    option = value
 
 General Settings
-=============
+================
 
 [General]
---------
+---------
 
 .. list-table::
    :widths: 30 20 50
@@ -67,7 +67,7 @@ General Settings
      - Show confirmation dialog on exit
 
 [Performance]
------------
+-------------
 
 .. list-table::
    :widths: 30 20 50
@@ -96,7 +96,7 @@ General Settings
      - Enable GPU acceleration when available
 
 [Display]
--------
+---------
 
 .. list-table::
    :widths: 30 20 50
@@ -131,10 +131,10 @@ General Settings
      - Show coordinate axes
 
 Visualization Settings
-===================
+======================
 
 [Colors]
-------
+--------
 
 .. list-table::
    :widths: 30 20 50
@@ -157,7 +157,7 @@ Visualization Settings
      - Default colormap for property visualization
 
 [Volume]
-------
+--------
 
 .. list-table::
    :widths: 30 20 50
@@ -183,10 +183,10 @@ Visualization Settings
      - Default gamma correction value
 
 Processing Settings
-================
+===================
 
 [Fitting]
--------
+---------
 
 .. list-table::
    :widths: 30 20 50
@@ -212,7 +212,7 @@ Processing Settings
      - Octree depth for Poisson reconstruction
 
 [Clustering]
----------
+------------
 
 .. list-table::
    :widths: 30 20 50
@@ -235,7 +235,7 @@ Processing Settings
      - Default number of K-means clusters
 
 Example Configuration
-==================
+=====================
 
 Basic configuration example:
 
@@ -266,10 +266,10 @@ Basic configuration example:
    default_method = ellipsoid
 
 Editing Configuration
-==================
+=====================
 
 GUI Configuration
---------------
+-----------------
 
 Most settings can be changed through the GUI:
 
@@ -281,7 +281,7 @@ Most settings can be changed through the GUI:
 #Screenshot: Preferences dialog
 
 Manual Editing
-------------
+--------------
 
 Configuration files are plain text and can be edited with any text editor:
 
@@ -292,6 +292,5 @@ Configuration files are plain text and can be edited with any text editor:
 5. Restart Mosaic to apply changes
 
 See Also
-=======
-- :doc:`commands` for command-line configuration options
+========
 - :doc:`troubleshooting` for configuration-related issues

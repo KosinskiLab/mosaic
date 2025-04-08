@@ -47,7 +47,19 @@ Clean the Segmentation
 2. Select the central IAV VLP in the object browser and use the **Thin** with the 'outer' option to extract the outer segmentation layer.
 3. Remove any incorrectly segmented voxel using manual selection by pressing the **r** key and removing selected points using **del** key.
 
-# Show SI pictures
+.. raw:: html
+
+   <div class="before-after-container" style="display: flex; gap: 10px;">
+     <div style="flex: 1;">
+       <img src="../../_static/tutorial/iav_workflow/segmentation_raw.png" style="width: 100%;">
+      <p style="color: #707070">Before segmentation cleanup</p>
+     </div>
+     <div style="flex: 1;">
+       <img src="../../_static/tutorial/iav_workflow/segmentation_clean.png" style="width: 100%;">
+         <p style="color: #707070">After segmentation cleanup</p>
+     </div>
+   </div>
+
 
 
 Generate Initial Mesh
@@ -58,13 +70,23 @@ Generate Initial Mesh
 3. Click on **Mesh** and choose "Ball Pivoting" with the following parameters:
 
    - Elastic Weight: 1.0
-   - Curvature Weight: 25.0
+   - Curvature Weight: 10.0
+   - Volume Weight: 10.0
    - Boundary Ring: 0
    - Neighbors: 15
    - Radii: 5.0
    - Hole Size: -1.0
    - Downsample: True
    - Smoothing Steps: 5
+
+The generated mesh should look similar to the image below
+
+.. figure:: ../../_static/tutorial/iav_workflow/initial_mesh_5550.png
+   :width: 100 %
+   :align: center
+
+   Initial mesh obtained from Ball Pivoting
+
 
 Refine the Mesh
 ^^^^^^^^^^^^^^^
@@ -77,7 +99,7 @@ One of the caps of the IAV VLP falls outside the field of view of the tomogram. 
    - Click on **Sample** and set:
 
      - Sampling Method: Points
-     - Sampling: 20000
+     - Sampling: 30000
 
    - Click "Apply".
 
@@ -89,7 +111,7 @@ One of the caps of the IAV VLP falls outside the field of view of the tomogram. 
    - Click on **Mesh** again, using Ball Pivoting with:
 
      - Elastic Weight: 1.0
-     - Curvature Weight: 1000.0
+     - Curvature Weight: 10.0
      - Volume Weight: 0.005
      - Boundary Ring: 0
      - Neighbors: 15
@@ -103,9 +125,24 @@ One of the caps of the IAV VLP falls outside the field of view of the tomogram. 
 
 The before and after should look similar to the example below.
 
+.. raw:: html
+
+   <div class="before-after-container" style="display: flex; gap: 10px;">
+     <div style="flex: 1;">
+       <img src="../../_static/tutorial/iav_workflow/segmentation_sample_0600.png" style="width: 100%;">
+      <p style="color: #707070">Cleaned mesh points</p>
+     </div>
+     <div style="flex: 1;">
+       <img src="../../_static/tutorial/iav_workflow/mesh_pressurized_0600.png" style="width: 100%;">
+         <p style="color: #707070">Pressurized mesh</p>
+     </div>
+   </div>
+
 
 Equilibrate the Mesh
 ^^^^^^^^^^^^^^^^^^^^
+
+Meshes are equilibrated prior to DTS simulation to achieve a consistend edge-length range throughout the mesh. This equilibration is necessary to ensure the physical validity and overall success of the simulation.
 
 1. Equilibrate the mesh:
 
@@ -116,6 +153,22 @@ Equilibrate the Mesh
      - Average Edge Length: 100
      - Steps: 5000
      - Other parameters at default values
+
+Mosaic will create three different meshes in the target directory: mesh_base, mesh_remeshed and mesh_equilibrated. mesh_equilibrated is shown below
+
+.. figure:: ../../_static/tutorial/iav_workflow/mesh_equilibrated_0600.png
+   :width: 100 %
+   :align: center
+
+   Equilibrated mesh used for HMFF
+
+We can assess whether the edge-length distribution is suitable for simulation using the **Properties** button in the **Segmentation** tab. Based on the figure below, both the remeshed and equilibrated mesh are suitable for DTS simulation. We typically choose the equilibrated mesh, as they are smoother and behave more predictable in simulations.
+
+.. figure:: ../../_static/tutorial/iav_workflow/edge_lengths.png
+   :width: 100 %
+   :align: center
+
+   Comparison of edge lengths
 
 
 HMFF Simulation
@@ -132,6 +185,12 @@ Move to the **Intelligence** tab and click on **Setup** in the **DTS Simulation*
 - Threads: Set based on your system, we typically use 8
 - Lowpass cutoff: 50Å
 - Highpass cutoff: 900Å
+
+.. figure:: ../../_static/tutorial/iav_workflow/hmff_setup.png
+   :width: 100 %
+   :align: center
+
+   HMFF simulation setup dialog
 
 Executing the operation above will create a filtered density map and setup the required files for DTS simulation with HMFF. Now open the input.dts file and set:
 
@@ -152,7 +211,21 @@ The scale would be 0.012202743213335199 and the offset 21.0,6.0,16.0.
 
 Mosaic will load all time points from the trajectory and create a new object in the Model section of the Object Browser. Select View > Trajectory player to show the controls and navigate through time points.
 
-To assess the HMFF trajectory, select View > Volume Viewer, open the density specified in the input.dts file, and adjust contrast and gamma to your liking. Shown below is the equilibrated mesh and HMFF-refined mesh.
+To assess the HMFF trajectory, select View > Volume Viewer, open the density specified in the input.dts file, and adjust contrast and gamma to your liking. Shown below is mesh at simulation step 0 (left) and 150,000 (right). We find that the HMFF-simulation has evolved our input mesh into a configuration that recapituales the viral membrane more accurately.
+
+.. raw:: html
+
+   <div class="before-after-container" style="display: flex; gap: 10px;">
+     <div style="flex: 1;">
+       <img src="../../_static/tutorial/iav_workflow/hmff_t0.png" style="width: 100%;">
+      <p style="color: #707070">Initial mesh.</p>
+     </div>
+     <div style="flex: 1;">
+       <img src="../../_static/tutorial/iav_workflow/hmff_t150.png" style="width: 100%;">
+         <p style="color: #707070">HMFF-refined mesh.</p>
+     </div>
+   </div>
+
 
 
 .. note::

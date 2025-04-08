@@ -3,7 +3,7 @@ Import and Export
 =================
 
 Importing Data
-=============
+==============
 
 Opening Files
 -------------
@@ -28,7 +28,7 @@ Quick Tips
 - Rename data to apppropriate extension
 
 Exporting Data
-=============
+==============
 
 Export Types
 ------------

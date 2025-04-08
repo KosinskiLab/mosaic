@@ -1,6 +1,6 @@
-=================
+==================
 Session Management
-=================
+==================
 
 Mosaic allows you to save and restore complete workspaces with all data and settings.
 
