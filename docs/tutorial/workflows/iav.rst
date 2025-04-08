@@ -154,27 +154,27 @@ Meshes are equilibrated prior to DTS simulation to achieve a consistend edge-len
      - Steps: 5000
      - Other parameters at default values
 
-Mosaic will create three different meshes in the target directory: mesh_base, mesh_remeshed and mesh_equilibrated. mesh_equilibrated is shown below
-
-.. figure:: ../../_static/tutorial/iav_workflow/mesh_equilibrated_0600.png
-   :width: 100 %
-   :align: center
-
-   Equilibrated mesh used for HMFF
-
-We can assess whether the edge-length distribution is suitable for simulation using the **Properties** button in the **Segmentation** tab. Based on the figure below, both the remeshed and equilibrated mesh are suitable for DTS simulation. We typically choose the equilibrated mesh, as they are smoother and behave more predictable in simulations.
+Mosaic will create three different meshes in the target directory: mesh_base, mesh_remeshed and mesh_equilibrated.
 
 .. figure:: ../../_static/tutorial/iav_workflow/edge_lengths.png
-   :width: 100 %
-   :align: center
+   :scale: 40 %
+   :align: right
 
    Comparison of edge lengths
+
+We can assess whether the edge-length distribution is suitable for simulation by importing them into mosaic and using the **Properties** button in the **Segmentation** tab. Based on the figure below, both the remeshed and equilibrated mesh are suitable for DTS simulation. We typically choose the equilibrated mesh, as they are smoother and behave more predictable in simulations.
 
 
 HMFF Simulation
 ---------------
 
 Move to the **Intelligence** tab and click on **Setup** in the **DTS Simulation** section. This will bring up a dialog window. Select the directory in which you saved the equilibrated mesh. Configure the parameters:
+
+.. figure:: ../../_static/tutorial/iav_workflow/hmff_setup.png
+   :scale: 40 %
+   :align: right
+
+   HMFF simulation setup dialog
 
 - Mesh: Select mesh_equilibrated.q
 - Volume: Select the downloaded EMD-11075.
@@ -186,11 +186,6 @@ Move to the **Intelligence** tab and click on **Setup** in the **DTS Simulation*
 - Lowpass cutoff: 50Å
 - Highpass cutoff: 900Å
 
-.. figure:: ../../_static/tutorial/iav_workflow/hmff_setup.png
-   :width: 100 %
-   :align: center
-
-   HMFF simulation setup dialog
 
 Executing the operation above will create a filtered density map and setup the required files for DTS simulation with HMFF. Now open the input.dts file and set:
 
