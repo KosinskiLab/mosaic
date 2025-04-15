@@ -1,26 +1,22 @@
 from typing import Dict, List
 
 import numpy as np
+from scipy.spatial.transform import Rotation
 from tme import Orientations, Density
-from tme.rotations import align_vectors
 
 from ._utils import get_extension
-from ..utils import NORMAL_REFERENCE
 
 
 class OrientationsWriter:
-    def __init__(self, points: List[np.ndarray], normals: List[np.ndarray]):
+    def __init__(self, points: List[np.ndarray], quaternions: List[np.ndarray]):
         self.entities = np.concatenate(
             [np.full(x.shape[0], fill_value=i) for i, x in enumerate(points)]
         )
-        self.points, normals = np.concatenate(points), np.concatenate(normals)
-
-        self.normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
-        self.rotations = np.zeros_like(self.normals)
-        for i in range(self.normals.shape[0]):
-            self.rotations[i] = align_vectors(
-                base=NORMAL_REFERENCE, target=self.normals[i], seq="zyz"
-            )
+        self.points = np.concatenate(points)
+        self.rotations = Rotation.from_quat(
+            np.concatenate(quaternions), scalar_first=True
+        )
+        self.rotations = self.rotations.as_euler(seq="zyz", degrees=True)
 
     def to_file(self, file_path, file_format: str = None, **kwargs):
         _supported_formats = {"tsv": self._to_txt, "star": self._to_star}

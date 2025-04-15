@@ -371,9 +371,11 @@ class DataContainerInteractor(QObject):
         if {"shape_x", "shape_y", "shape_z"}.issubset(export_data):
             shape = tuple(export_data[x] for x in ["shape_x", "shape_y", "shape_y"])
             if file_format == "star":
-                center = np.divide(shape, 2).astype(int)
+                center = 0
+                # TODO: Implement RELION5 star file format
+                # center = np.divide(shape, 2).astype(int)
 
-        export_data, status = {"points": [], "normals": []}, -1
+        export_data, status = {"points": [], "quaternions": []}, -1
         for index in indices:
             if not self.container._index_ok(index):
                 continue
@@ -388,11 +390,9 @@ class DataContainerInteractor(QObject):
                 status = 0
                 continue
 
-            points, normals = geometry.points, geometry.normals
-            if normals is None:
-                normals = np.zeros_like(points)
-                if "fit" in geometry._meta:
-                    normals = geometry._meta["fit"].compute_normal(points)
+            points, quaternions = geometry.points, geometry.quaternions
+            if quaternions is None:
+                quaternions = np.zeros((points.shape[0], 4), fill_value=(1, 0, 0, 0))
 
             sampling = export_data.get("sampling", None)
             if sampling is None:
@@ -400,7 +400,7 @@ class DataContainerInteractor(QObject):
 
             points = np.subtract(np.divide(points, sampling), center)
             export_data["points"].append(points)
-            export_data["normals"].append(normals)
+            export_data["quaternions"].append(quaternions)
 
         if file_format in ("obj", "stl", "ply"):
             return status

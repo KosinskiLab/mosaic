@@ -12,7 +12,7 @@ import vtk
 import numpy as np
 from vtk.util import numpy_support
 
-from .utils import find_closest_points, NORMAL_REFERENCE
+from .utils import find_closest_points, normals_to_rot, apply_quat, NORMAL_REFERENCE
 
 BASE_COLOR = (0.7, 0.7, 0.7)
 
@@ -21,7 +21,6 @@ class Geometry:
     def __init__(
         self,
         points=None,
-        normals=None,
         quaternions=None,
         color=BASE_COLOR,
         sampling_rate=None,
@@ -45,17 +44,20 @@ class Geometry:
         self._meta = {} if meta is None else meta
         self._representation = "pointcloud"
 
-        if points is not None:
-            self.add_points(points)
+        normals = kwargs.get("normals")
+        if quaternions is not None:
+            normals = apply_quat(quaternions)
 
         if normals is None and points is not None:
             normals = np.full_like(points, fill_value=NORMAL_REFERENCE)
 
-        if normals is not None:
-            self.add_normals(normals)
+        if quaternions is None:
+            quaternions = normals_to_rot(normals, scalar_first=True)
 
-        if quaternions is not None:
-            self.add_quaternions(quaternions)
+        # We do need normals for rendering reasons in certain representations
+        self.points = points
+        self.normals = normals
+        self.quaternions = quaternions
 
         self._appearance = {
             "size": 8,
@@ -117,11 +119,6 @@ class Geometry:
         if idx.dtype == bool:
             idx = np.where(idx)[0]
 
-        normals = None
-        if isinstance(self.normals, np.ndarray):
-            if np.max(idx) < self.normals.shape[0]:
-                normals = self.normals[idx].copy()
-
         quaternions = None
         if isinstance(self.quaternions, np.ndarray):
             if np.max(idx) < self.quaternions.shape[0]:
@@ -129,7 +126,6 @@ class Geometry:
 
         ret = Geometry(
             points=self.points[idx].copy(),
-            normals=normals,
             quaternions=quaternions,
             color=self._appearance["base_color"],
             sampling_rate=self._sampling_rate,
@@ -147,26 +143,20 @@ class Geometry:
         if not len(geometries):
             raise ValueError("No geometries provided for merging")
 
-        points, normals, quaternions = [], [], []
-        has_normals = any(geometry.normals is not None for geometry in geometries)
+        points, quaternions = [], []
         has_quat = any(geometry.quaternions is not None for geometry in geometries)
         for geometry in geometries:
             points.append(geometry.points)
-            if not has_normals:
+            if not has_quat:
                 continue
-            normals = geometry.normals
-            if normals is None:
-                normals = np.zeros_like(geometry.points)
 
             quaternions = geometry.quaternions
             if quaternions is None:
                 quaternions = np.full_like(geometry.points, fill_value=(1, 0, 0, 0))
 
-        normals = np.concatenate(normals, axis=0) if has_normals else None
         quaternions = np.concatenate(quaternions, axis=0) if has_quat else None
         ret = cls(
             points=np.concatenate(points, axis=0),
-            normals=normals,
             quaternions=quaternions,
             sampling_rate=geometries[0]._sampling_rate,
             color=geometries[0]._appearance["base_color"],
@@ -187,21 +177,8 @@ class Geometry:
     def points(self):
         return numpy_support.vtk_to_numpy(self._data.GetPoints().GetData())
 
-    @property
-    def normals(self):
-        normals = self._data.GetPointData().GetNormals()
-        if normals is not None:
-            normals = np.asarray(normals)
-        return normals
-
-    @property
-    def quaternions(self):
-        quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
-        if quaternions is not None:
-            quaternions = np.asarray(quaternions)
-        return quaternions
-
-    def add_points(self, points):
+    @points.setter
+    def points(self, points: np.ndarray):
         points = np.asarray(points, dtype=np.float32)
         if points.shape[1] != 3:
             warnings.warn("Only 3D point clouds are supported.")
@@ -220,7 +197,15 @@ class Geometry:
         self._data.SetPoints(self._points)
         self._data.Modified()
 
-    def add_normals(self, normals):
+    @property
+    def normals(self):
+        normals = self._data.GetPointData().GetNormals()
+        if normals is not None:
+            normals = np.asarray(normals)
+        return normals
+
+    @normals.setter
+    def normals(self, normals: np.ndarray):
         normals = np.asarray(normals, dtype=np.float32)
         if normals.shape != self.points.shape:
             warnings.warn("Number of normals must match number of points.")
@@ -231,7 +216,15 @@ class Geometry:
         self._data.GetPointData().SetNormals(normals_vtk)
         self._data.Modified()
 
-    def add_quaternions(self, quaternions):
+    @property
+    def quaternions(self):
+        quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
+        if quaternions is not None:
+            quaternions = np.asarray(quaternions)
+        return quaternions
+
+    @quaternions.setter
+    def quaternions(self, quaternions: np.ndarray):
         """
         Add orientation quaternions to the geometry.
 
@@ -254,7 +247,7 @@ class Geometry:
         self._data.GetPointData().AddArray(quat_vtk)
         self._data.Modified()
 
-    def add_faces(self, faces):
+    def _set_faces(self, faces):
         faces = np.asarray(faces, dtype=int)
         if faces.shape[1] != 3:
             warnings.warn("Only triangular faces are supported.")
@@ -412,19 +405,29 @@ class Geometry:
 
     def subset(self, indices):
         subset = self[indices]
-        return self.swap_data(subset.points, normals=subset.normals)
+        return self.swap_data(subset.points, quaternions=subset.quaternions)
 
-    def swap_data(self, points, normals=None, faces=None, meta: Dict = None):
+    def swap_data(
+        self, points, normals=None, faces=None, quaternions=None, meta: Dict = None
+    ):
         self._points.Reset()
         self._cells.Reset()
         self._normals.Reset()
 
-        self.add_points(points)
+        self.points = points
+
+        if quaternions is None and normals is not None:
+            quaternions = normals_to_rot(normals)
+
+        if quaternions is not None:
+            normals = apply_quat(quaternions, NORMAL_REFERENCE)
+            self.quaternions = quaternions
+
         if normals is not None:
-            self.add_normals(normals)
+            self.normals = normals
 
         if faces is not None:
-            self.add_faces(faces)
+            self._set_faces(faces)
 
         if isinstance(meta, dict):
             self._meta.update(meta)
@@ -504,9 +507,9 @@ class Geometry:
             mesh = self._meta.get("fit", None)
             if not hasattr(mesh, "vertices"):
                 return None
-            self.add_points(mesh.vertices)
-            self.add_faces(mesh.triangles)
-            self.add_normals(mesh.compute_vertex_normals())
+            self.points = mesh.vertices
+            self._set_faces(mesh.triangles)
+            self.normals = mesh.compute_vertex_normals()
 
             if representation == "surface":
                 self._original_verts = self._data.GetVerts()
@@ -572,9 +575,6 @@ class VolumeGeometry(Geometry):
         self._surface = vtk.vtkContourFilter()
         self._surface.SetInputConnection(transformFilter.GetOutputPort())
         self._surface.GenerateValues(1, volume.min(), volume.max())
-
-        quaternions = np.full((self.points.shape[0], 4), fill_value=(1, 0, 0, 0))
-        self.add_quaternions(quaternions)
 
         if self.quaternions is None:
             # Per glyph orientation and coloring

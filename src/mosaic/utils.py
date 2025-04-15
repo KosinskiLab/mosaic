@@ -14,6 +14,7 @@ import open3d as o3d
 from scipy import spatial
 from skimage import measure
 from scipy.spatial import cKDTree
+from scipy.spatial.transform import Rotation
 
 __all__ = [
     "points_to_volume",
@@ -28,6 +29,8 @@ __all__ = [
     "compute_bounding_box",
     "cmap_to_vtkctf",
     "get_cmap",
+    "normals_to_rot",
+    "apply_quat",
     "NORMAL_REFERENCE",
 ]
 
@@ -324,3 +327,19 @@ def cmap_to_vtkctf(cmap, max_value, min_value, gamma: float = 1.0):
         color_transfer_function.AddRGBPoint(data_value, *colormap(x)[0:3])
 
     return color_transfer_function, (min_value, max_value)
+
+
+def normals_to_rot(normals, target=NORMAL_REFERENCE, mode: str = "quat", **kwargs):
+    rotations = Rotation.concatenate(
+        [Rotation.align_vectors(target, base)[0] for base in normals]
+    ).inv()
+    func = rotations.as_matrix
+    if mode == "quat":
+        func = rotations.as_quat
+    elif mode == "euler":
+        func = rotations.as_euler
+    return func(**kwargs)
+
+
+def apply_quat(quaternions, target=NORMAL_REFERENCE):
+    return Rotation.from_quat(quaternions, scalar_first=True).apply(target)
