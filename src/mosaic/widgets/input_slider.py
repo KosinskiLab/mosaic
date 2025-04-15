@@ -7,9 +7,9 @@ class SliderWithInput(QWidget):
 
     def __init__(self, orientation=Qt.Horizontal, parent=None):
         super().__init__(parent)
-        self.initUI(orientation)
+        self.setup_ui(orientation)
 
-    def initUI(self, orientation):
+    def setup_ui(self, orientation):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -17,21 +17,26 @@ class SliderWithInput(QWidget):
         self.spinbox = QDoubleSpinBox()
         self.spinbox.setRange(0, 100)
         self.spinbox.setDecimals(4)
-        self.spinbox.setSingleStep(0.01)
+        self.spinbox.setSingleStep(0.1)
 
         self.slider.valueChanged.connect(self.valueChanged.emit)
-
-        self.slider.valueChanged.connect(
-            lambda: self.spinbox.setValue(self._value_to_quantile(self.slider.value()))
-        )
-        self.spinbox.valueChanged.connect(
-            lambda: self.slider.setValue(self._quantile_to_value(self.spinbox.value()))
-        )
+        self.slider.valueChanged.connect(self._update_spinbox_from_slider)
+        self.spinbox.valueChanged.connect(self._update_slider_from_spinbox)
 
         main_layout.addWidget(self.slider)
         main_layout.addWidget(self.spinbox)
 
         self.setLayout(main_layout)
+
+    def _update_spinbox_from_slider(self):
+        self.spinbox.blockSignals(True)
+        self.spinbox.setValue(self._value_to_quantile(self.slider.value()))
+        self.spinbox.blockSignals(False)
+
+    def _update_slider_from_spinbox(self):
+        self.slider.blockSignals(True)
+        self.slider.setValue(self._quantile_to_value(self.spinbox.value()))
+        self.slider.blockSignals(False)
 
     def _quantile_to_value(self, value) -> int:
         return int(value * (self.maximum() - self.minimum()) / 100 + self.minimum())

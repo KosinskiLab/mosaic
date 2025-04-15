@@ -573,6 +573,9 @@ class VolumeGeometry(Geometry):
         self._surface.SetInputConnection(transformFilter.GetOutputPort())
         self._surface.GenerateValues(1, volume.min(), volume.max())
 
+        quaternions = np.full((self.points.shape[0], 4), fill_value=(1, 0, 0, 0))
+        self.add_quaternions(quaternions)
+
         if self.quaternions is None:
             # Per glyph orientation and coloring
             self._glyph = vtk.vtkGlyph3D()
