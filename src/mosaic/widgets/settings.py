@@ -52,8 +52,11 @@ def create_setting_widget(setting: Dict):
         widget.setSingleStep(setting.get("step", 1.0))
         widget.setDecimals(4)
     elif setting["type"] == "slider":
-        widget = QSlider(Qt.Orientation.Horizontal)
+        from .input_slider import SliderWithInput
+
+        widget = SliderWithInput(Qt.Orientation.Horizontal)
         widget.setRange(int(setting.get("min", 0)), int(setting.get("max", 1)))
+        widget.setValue(int(setting.get("default", 0)))
     elif setting["type"] == "select":
         widget = QComboBox()
         widget.addItems(setting["options"])
@@ -113,7 +116,11 @@ def get_widget_value(widget):
             return widget.text()
     elif isinstance(widget, PathSelector):
         return widget.get_path()
-    return None
+
+    try:
+        return widget.value()
+    except Exception:
+        return None
 
 
 def get_layout_widget_value(layout):

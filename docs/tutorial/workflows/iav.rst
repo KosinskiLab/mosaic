@@ -44,8 +44,9 @@ Clean the Segmentation
 ^^^^^^^^^^^^^^^^^^^^^^
 
 1. In the **Segmentation** tab, use the **Select** button to remove small artifacts.
-2. Select the central IAV VLP in the object browser and use the **Thin** with the 'outer' option to extract the outer segmentation layer.
-3. Remove any incorrectly segmented voxel using manual selection by pressing the **r** key and removing selected points using **del** key.
+2. Remove any incorrectly segmented voxel using manual selection by pressing the **r** key and removing selected points using **del** key.
+3. Select the central IAV VLP in the object browser and use the **Thin** with the 'outer' option to extract the outer segmentation layer.
+
 
 .. raw:: html
 
@@ -71,7 +72,7 @@ Generate Initial Mesh
 
    - Elastic Weight: 1.0
    - Curvature Weight: 10.0
-   - Volume Weight: 10.0
+   - Volume Weight: 0.0
    - Boundary Ring: 0
    - Neighbors: 15
    - Radii: 5.0

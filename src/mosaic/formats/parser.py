@@ -44,6 +44,7 @@ class GeometryData:
     vertices: np.ndarray = None
     normals: np.ndarray = None
     faces: np.ndarray = None
+    quaternions: np.ndarray = None
     shape: List[int] = None
     sampling: List[float] = (1, 1, 1)
 
@@ -53,6 +54,7 @@ class GeometryDataContainer:
     vertices: List[np.ndarray] = None
     normals: List[np.ndarray] = None
     faces: List[np.ndarray] = None
+    quaternions: List[np.ndarray] = None
     shape: List[int] = None
     sampling: List[float] = (1, 1, 1)
 
@@ -79,6 +81,11 @@ class GeometryDataContainer:
             if len(self.vertices) != len(self.faces):
                 raise ValueError("Faces need to be specified for each vertex set.")
 
+        if self.quaternions is None:
+            self.quaternions = [
+                np.full_like(x, fill_value=(1, 0, 0, 0)) for x in self.vertices
+            ]
+
     def __len__(self):
         return len(self.vertices)
 
@@ -92,6 +99,7 @@ class GeometryDataContainer:
             shape=self.shape,
             sampling=self.sampling,
             faces=self.faces[index] if self.faces is not None else None,
+            quaternions=self.quaternions[index],
         )
 
 
@@ -99,12 +107,15 @@ def _read_orientations(filename):
     data = Orientations.from_file(filename)
     angles = Rotation.from_euler("zyz", data.rotations, degrees=True)
     normals = angles.apply(NORMAL_REFERENCE)
-    return [data.translations], [normals]
+    return {
+        "vertices": [data.translations],
+        "normals": [normals],
+        "quaternions": [angles.as_quat(scalar_first=True)],
+    }
 
 
 def read_star(filename):
-    vertices, normals = _read_orientations(filename)
-    return GeometryDataContainer(vertices=vertices, normals=normals)
+    return GeometryDataContainer(**_read_orientations(filename))
 
 
 def read_txt(filename: str):
@@ -140,9 +151,7 @@ def read_tsv(filename: str) -> GeometryDataContainer:
         header = infile.readline()
     if "euler" not in header:
         return read_txt(filename)
-
-    vertices, normals = _read_orientations(filename)
-    return GeometryDataContainer(vertices=vertices, normals=normals)
+    return GeometryDataContainer(**_read_orientations(filename))
 
 
 def read_tsi(filename: str) -> GeometryDataContainer:

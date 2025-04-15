@@ -291,7 +291,11 @@ class DataContainer:
             points = com_cluster_points(points, cutoff)
         elif method == "outer":
             hull = ConvexHull.fit(
-                points, elastic_weight=0, curvature_weight=0, volume_weight=0
+                points,
+                elastic_weight=0,
+                curvature_weight=0,
+                volume_weight=0,
+                voxel_size=geometry._sampling_rate,
             )
             hull_points = hull.sample(int(0.5 * points.shape[0]))
             _, indices = find_closest_points(points, hull_points)

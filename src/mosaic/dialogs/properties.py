@@ -187,14 +187,14 @@ class GeometryPropertiesDialog(QDialog):
 
         self.isovalue_spin = create_setting_widget(
             {
-                "type": "float",
+                "type": "slider",
                 "min": 0.0,
-                "max": 100.0,
+                "max": 10000.0,
                 "step": 1.0,
-                "default": self.initial_properties.get("isovalue_percentile", 99.5),
+                "default": self.initial_properties.get("isovalue_percentile", 99.5)
+                * 100,
             }
         )
-        self.isovalue_spin.setDecimals(8)
         self.isovalue_spin.setEnabled(False)
         volume_layout.addRow("Isovalue:", self.isovalue_spin)
 

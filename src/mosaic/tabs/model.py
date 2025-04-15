@@ -190,7 +190,7 @@ class ModelTab(QWidget):
 
         return self.cdata.models.render()
 
-    @run_in_background("Resmesh", callback=on_fit_complete)
+    @run_in_background("Remesh", callback=on_fit_complete)
     def _remesh_meshes(self, method, **kwargs):
         selected_meshes = self._get_selected_meshes()
         if len(selected_meshes) == 0:
@@ -550,7 +550,7 @@ MESH_SETTINGS = {
                 "label": "Downsample",
                 "parameter": "downsample_input",
                 "type": "boolean",
-                "default": False,
+                "default": True,
                 "description": "Thin input point cloud to core.",
             },
             {

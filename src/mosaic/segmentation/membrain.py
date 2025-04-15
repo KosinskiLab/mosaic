@@ -2,7 +2,7 @@ import warnings
 from pathlib import Path
 from typing import Tuple
 from subprocess import run
-from os.path import splitext, join, basename, exists
+from os.path import splitext, join, basename
 
 import numpy as np
 
@@ -129,7 +129,6 @@ def run_membrainseg(
     if input_sampling_rate > 0:
         cmd.extend(["--in-pixel-size", f"{input_sampling_rate}"])
 
-    print(cmd)
     ret = run([str(x) for x in cmd])
     out_path = join(
         out_folder, f"{_stem(tomogram_path)}_{_stem(model_path)}.ckpt_segmented.mrc"

@@ -71,7 +71,6 @@ class StyleableButton(QPushButton):
             }
             QPushButton:checked {
                 border: 1px solid #4f46e5;
-                background-color: #eef2ff;
             }
             QPushButton:hover:!checked {
                 background-color: #1a000000;

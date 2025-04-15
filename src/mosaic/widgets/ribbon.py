@@ -66,6 +66,9 @@ class SettingsToolButton(QToolButton):
             QToolButton::menu-button:hover {
                 background: transparent;
             }
+            QToolButton::menu-button:hover {
+                background: rgba(0, 0, 0, 0.05);
+            }
         """
         )
 

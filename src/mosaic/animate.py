@@ -249,13 +249,19 @@ class ExportManager:
             if frame_idx is not None:
                 return self.viewer.primary.slice_slider.setValue(frame_idx)
 
-        self._create_animation(
-            update_func=_update,
-            original_frame=original_frame,
-            fps=dialog.frame_rate.value(),
-            frames=frames,
-            format_settings=self.format_settings[dialog.format_combo.currentText()],
-        )
+        try:
+            self.vtk_widget.GetRenderWindow().SetOffScreenRendering(1)
+            self._create_animation(
+                update_func=_update,
+                original_frame=original_frame,
+                fps=dialog.frame_rate.value(),
+                frames=frames,
+                format_settings=self.format_settings[dialog.format_combo.currentText()],
+            )
+        except Exception as e:
+            QMessageBox.warning(None, "Error", str(e))
+        finally:
+            self.vtk_widget.GetRenderWindow().SetOffScreenRendering(0)
 
     def _create_animation(
         self,
@@ -276,7 +282,6 @@ class ExportManager:
             return -1
 
         renderer = self.vtk_widget.GetRenderWindow()
-        renderer.SetOffScreenRendering(1)
 
         is_video = not format_settings.get("frame_series", False)
 
@@ -301,19 +306,18 @@ class ExportManager:
                 filename, mode="I", fps=fps, quality=quality, macro_block_size=None
             )
 
-        progress = ProgressDialog(frames, title="Processing Frames")
-        for frame_idx in progress:
-            update_func(frame_idx)
-            if frame_idx is None:
-                continue
-            renderer.Render()
-            frame = np.asarray(self.capture_screenshot(**screenshot_kwargs))
-            writer.append_data(frame)
-            QApplication.processEvents()
+        with ProgressDialog(frames, title="Processing Frames") as progress:
+            for frame_idx in progress:
+                update_func(frame_idx)
+                if frame_idx is None:
+                    continue
+                renderer.Render()
+                frame = np.asarray(self.capture_screenshot(**screenshot_kwargs))
+                writer.append_data(frame)
+                QApplication.processEvents()
 
-        writer.close()
+            writer.close()
 
-        renderer.SetOffScreenRendering(0)
         if original_frame is not None:
             update_func(original_frame)
 

@@ -162,7 +162,6 @@ QComboBox_style = """
         border: 1px solid #cbd5e1;
         border-radius: 4px;
         padding: 4px 8px;
-        background-color: transparent;
         selection-background-color: rgba(99, 102, 241, 0.6);
     }
     QComboBox:focus {
@@ -181,7 +180,6 @@ QComboBox_style = """
         subcontrol-position: center right;
         width: 16px;
         border: none;
-        background-color: transparent;
     }
     QComboBox QAbstractItemView {
         border: 1px solid #cbd5e1;

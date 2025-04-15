@@ -153,8 +153,8 @@ class App(QMainWindow):
                     font-size: 13px;
                     border-bottom: 2px solid transparent;
                 }
-                QPushButton:hover {
-                    color: #696c6f;
+                QPushButton:hover:!checked {
+                    font-weight: 500;
                 }
                 QPushButton:checked {
                     color: rgba(99, 102, 241, 1.0);
@@ -738,6 +738,7 @@ class App(QMainWindow):
                             points=data.vertices,
                             normals=data.normals,
                             sampling_rate=sampling,
+                            quaternions=data.quaternions,
                         )
                         self.cdata._data.data[index]._meta["name"] = name
                     else:

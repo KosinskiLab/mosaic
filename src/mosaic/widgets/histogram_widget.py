@@ -50,15 +50,12 @@ class RangeSlider(QWidget):
             slider.valueChanged.connect(callback)
             layout.addWidget(slider)
 
-        self._update_slider_styles()
-
     def _lower_slider_changed(self, value):
         if value > self.upper_slider.value():
             self.lower_slider.setValue(self.upper_slider.value())
             return
 
         self.lower_value = value
-        self._update_slider_styles()
         self.rangeChanged.emit(self.lower_value, self.upper_value)
 
     def _upper_slider_changed(self, value):
@@ -67,55 +64,7 @@ class RangeSlider(QWidget):
             return
 
         self.upper_value = value
-        self._update_slider_styles()
         self.rangeChanged.emit(self.lower_value, self.upper_value)
-
-    def _update_slider_styles(self):
-        """Apply distinct styles to lower and upper sliders"""
-        self.setStyleSheet(
-            """
-            QWidget {
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                color: #696c6f;
-            }
-            QSlider {
-                height: 24px;
-            }
-            QSlider:disabled {
-                opacity: 0.5;
-            }
-            QSlider::groove:horizontal {
-                height: 4px;
-                background: #6b7280;
-                border-radius: 2px;
-            }
-            QSlider::groove:horizontal:disabled {
-                opacity: 0.5;
-                background: #6b7280;
-            }
-            QSlider::handle:horizontal {
-                background: #ffffff;
-                border: 2px solid #3b82f6;
-                width: 16px;
-                height: 16px;
-                margin: -6px 0;
-                border-radius: 8px;
-            }
-            QSlider::handle:horizontal:hover {
-                background: #2563eb;
-                border-color: #2563eb;
-            }
-            QSlider::handle:horizontal:disabled {
-                opacity: 0.5;
-                border: 2px solid #6b7280;
-            }
-            QLabel:disabled {
-                opacity: 0.1;
-            }
-        """
-        )
 
     def setRange(self, minimum, maximum):
         self.lower_slider.setRange(minimum, maximum)
@@ -130,7 +79,6 @@ class RangeSlider(QWidget):
 
         self.lower_value = lower
         self.upper_value = upper
-        self._update_slider_styles()
 
 
 class HistogramWidget(QWidget):
