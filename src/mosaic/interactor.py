@@ -267,8 +267,6 @@ class DataContainerInteractor(QObject):
         return None
 
     def _show_context_menu(self, position):
-        from .dialogs import make_param
-
         item = self.data_list.itemAt(position)
         if not item:
             return -1
@@ -290,15 +288,20 @@ class DataContainerInteractor(QObject):
         context_menu.addAction(remove_action)
 
         formats = [
-            "Pointcloud",
+            "Points",
             "Normals",
-            "Pointcloud with Normals",
+            "Basis",
+            "Points with Normals",
+            None,
             "Mesh",
             "Surface",
             "Wireframe",
         ]
         representation_menu = QMenu("Representation", context_menu)
         for format_name in formats:
+            if format_name is None:
+                representation_menu.addSeparator()
+                continue
             action = QAction(format_name, representation_menu)
             action.triggered.connect(
                 lambda checked, f=format_name: self.change_representation(f)
@@ -549,6 +552,12 @@ class DataContainerInteractor(QObject):
             return -1
 
         representation = representation.lower().replace("with", "_").replace(" ", "")
+
+        if representation == "points":
+            representation = "pointcloud"
+        elif representation == "points_normals":
+            representation = "pointcloud_normals"
+
         for index in indices:
             if not self.container._index_ok(index):
                 continue
@@ -558,7 +567,7 @@ class DataContainerInteractor(QObject):
             # back breaks glyph rendering. This could be due to incorrect cleanup in
             # Geometry.change_representation or an issue of vtk 9.3.1. Creating a copy
             # of the Geometry instance circumvents the issue.
-            if representation in ("pointcloud_normals", "normals"):
+            if representation in ("pointcloud_normals", "normals", "basis"):
                 self.container.data[index] = geometry[...]
                 if hasattr(geometry, "_original_data"):
                     self.container.data[index]._original_data = geometry._original_data

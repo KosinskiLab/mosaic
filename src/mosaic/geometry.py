@@ -443,6 +443,7 @@ class Geometry:
             "wireframe",
             "normals",
             "surface",
+            "basis",
         ]
         representation = representation.lower()
 
@@ -480,6 +481,7 @@ class Geometry:
         mapper, prop = self._actor.GetMapper(), self._actor.GetProperty()
         prop.SetOpacity(self._appearance["opacity"])
         prop.SetPointSize(self._appearance["size"])
+
         if representation == "pointcloud":
             prop.SetRepresentationToPoints()
             mapper.SetInputData(self._data)
@@ -499,6 +501,67 @@ class Geometry:
         elif representation == "normals":
             glyph.SetInputData(self._data)
             mapper.SetInputConnection(glyph.GetOutputPort())
+
+        elif representation == "basis":
+            if self.quaternions is None:
+                print("Quaternions are required for basis representation.")
+                return -1
+
+            scale = 15 * np.max(self.sampling_rate)
+            arrow_x = vtk.vtkArrowSource()
+            arrow_y = vtk.vtkArrowSource()
+            arrow_z = vtk.vtkArrowSource()
+
+            for arrow in [arrow_x, arrow_y, arrow_z]:
+                arrow.SetTipResolution(6)
+                arrow.SetShaftResolution(6)
+                arrow.SetTipRadius(0.08)
+                arrow.SetShaftRadius(0.02)
+
+            transform_x = vtk.vtkTransform()
+            transform_x.RotateY(-90)  # Rotate from Z to X
+            transform_filter_x = vtk.vtkTransformPolyDataFilter()
+            transform_filter_x.SetInputConnection(arrow_x.GetOutputPort())
+            transform_filter_x.SetTransform(transform_x)
+            transform_filter_x.Update()
+            transform_y = vtk.vtkTransform()
+            transform_y.RotateZ(90)  # Rotate from Z to Y
+            transform_filter_y = vtk.vtkTransformPolyDataFilter()
+            transform_filter_y.SetInputConnection(arrow_y.GetOutputPort())
+            transform_filter_y.SetTransform(transform_y)
+            transform_filter_y.Update()
+            transform_scale = vtk.vtkTransform()
+            transform_scale.Scale(scale, scale, scale)
+
+            scale_filter_x = vtk.vtkTransformPolyDataFilter()
+            scale_filter_x.SetInputConnection(transform_filter_x.GetOutputPort())
+            scale_filter_x.SetTransform(transform_scale)
+            scale_filter_x.Update()
+            scale_filter_y = vtk.vtkTransformPolyDataFilter()
+            scale_filter_y.SetInputConnection(transform_filter_y.GetOutputPort())
+            scale_filter_y.SetTransform(transform_scale)
+            scale_filter_y.Update()
+            scale_filter_z = vtk.vtkTransformPolyDataFilter()
+            scale_filter_z.SetInputConnection(arrow_z.GetOutputPort())
+            scale_filter_z.SetTransform(transform_scale)
+            scale_filter_z.Update()
+            append_filter = vtk.vtkAppendPolyData()
+            append_filter.AddInputConnection(scale_filter_x.GetOutputPort())
+            append_filter.AddInputConnection(scale_filter_y.GetOutputPort())
+            append_filter.AddInputConnection(scale_filter_z.GetOutputPort())
+            append_filter.Update()
+
+            polydata = append_filter.GetOutput()
+
+            mapper = vtk.vtkGlyph3DMapper()
+            mapper.SetInputData(self._data)
+            mapper.SetSourceData(polydata)
+            mapper.SetOrientationArray("OrientationQuaternion")
+            mapper.SetOrientationModeToQuaternion()
+            mapper.SetScaleModeToNoDataScaling()
+            mapper.OrientOn()
+
+            self._actor.SetMapper(mapper)
 
         elif representation in ("mesh", "wireframe", "surface"):
             self._cells.Reset()
