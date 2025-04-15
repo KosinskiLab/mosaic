@@ -619,7 +619,6 @@ class VolumeGeometry(Geometry):
         if not (0 <= lower_quantile <= 1 and 0 <= upper_quantile <= 1):
             raise ValueError("Quantiles must be between 0 and 1")
 
-        print(lower_quantile, upper_quantile)
         if lower_quantile >= upper_quantile:
             raise ValueError("Upper quantile must be greater than lower quantile")
 

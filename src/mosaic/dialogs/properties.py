@@ -307,7 +307,7 @@ class GeometryPropertiesDialog(QDialog):
             "base_color": self.base_color,
             "highlight_color": self.highlight_color,
             "scale": -1 if self.scale_negative.isChecked() else 1,
-            "isovalue_percentile": get_widget_value(self.isovalue_spin),
+            "isovalue_percentile": get_widget_value(self.isovalue_spin) / 100,
             "volume_path": self.volume_path,
             "sampling_rate": (
                 float(get_widget_value(self.sampling_x)),
