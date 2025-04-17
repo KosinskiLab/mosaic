@@ -418,7 +418,6 @@ def center_mesh(mesh, center: bool = True, margin=20):
         offset = vertices.min(axis=0) - margin
         offset = np.sign(offset) * np.ceil(np.abs(offset))
         vertices -= offset
-        print("Mesh offset", offset)
 
     data = to_tsi(vertices, mesh.triangles, margin=margin)
     return data, offset

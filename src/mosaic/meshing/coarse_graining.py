@@ -5,11 +5,13 @@ from os.path import join, basename
 
 import numpy as np
 
+from ..utils import find_closest_points
+from ..parallel import run_in_background
 from . import remesh, center_mesh, compute_scale_factor_lower, scale
 from ..formats.writer import write_topology_file
-from ..utils import find_closest_points
 
 
+@run_in_background("Coarse graining")
 def mesh_to_cg(
     mesh,
     output_directory: str,
@@ -51,7 +53,7 @@ def mesh_to_cg(
     inclusion_list, inclusion_map = [], {}
     for index, vertex_map in enumerate(vertex_maps):
         inclusion_map[index] = inclusions[index]["name"]
-        inclusion_list.extend([(index, x, 0, 1) for x in vertex_map])
+        inclusion_list.extend([(index + 1, x, 0, 1) for x in vertex_map])
 
     _inclusions = np.zeros((len(inclusion_list), 5))
     _inclusions[:, 0] = np.arange(_inclusions.shape[0])
@@ -81,11 +83,11 @@ def mesh_to_cg(
 
         ofile.write("[Protein List]\n")
         for index, inclusion in enumerate(inclusions):
-            ofile.write(f"{inclusion['name']} {index} 0.01 0 0 0.0\n")
+            ofile.write(f"{inclusion['name']} {index + 1} 0.01 0 0 0.0\n")
         ofile.write("End Protein\n")
 
     # Mosaic assumes angstrom for all spatial units
-    mesh_to_nm = 0.1 / mesh_scale
+    mesh_to_nm = 0.1 / scale_factor
 
     plm_path = join(output_directory, "plm.sh")
     with open(plm_path, mode="w", encoding="utf-8") as ofile:
@@ -95,7 +97,7 @@ def mesh_to_cg(
 
             TS2CG PLM \\
                 -TSfile {basename(mesh_path)} \\
-                -bilayerThickness 3.8 \\
+                -bilayerThickness {3.8 / mesh_to_nm} \\
                 -rescalefactor {mesh_to_nm} {mesh_to_nm} {mesh_to_nm}
         """
         )
@@ -122,7 +124,7 @@ def mesh_to_cg(
 
         martinize_execute = ""
         for inclusion in inclusions:
-            inclusion_var = f"{inclusion['name']}_structure".toupper()
+            inclusion_var = f"{inclusion['name']}_structure".upper()
 
             martinize_script += f"{inclusion_var}=\n"
             martinize_execute += textwrap.dedent(

@@ -217,12 +217,11 @@ class IntelligenceTab(QWidget):
 
         fit, edge_length, mappings = dialog.get_parameters()
         ret = mesh_to_cg(
-            mesh=fit._meta["fit"].mesh,
+            fit._meta["fit"].mesh,
             edge_length=edge_length,
             output_directory=save_dir,
             inclusions=mappings,
         )
-        QMessageBox.information(self, "Success", "Export successful.")
         return ret
 
     @run_in_background("Membrane Segmentation", callback=on_run_complete)
