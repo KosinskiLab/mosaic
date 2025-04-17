@@ -83,7 +83,7 @@ class GeometryDataContainer:
 
         if self.quaternions is None:
             self.quaternions = [
-                np.full_like(x, fill_value=(1, 0, 0, 0)) for x in self.vertices
+                np.full((x.shape[0], 4), fill_value=(1, 0, 0, 0)) for x in self.vertices
             ]
 
     def __len__(self):

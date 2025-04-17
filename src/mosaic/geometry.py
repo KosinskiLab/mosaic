@@ -51,13 +51,14 @@ class Geometry:
         if normals is None and points is not None:
             normals = np.full_like(points, fill_value=NORMAL_REFERENCE)
 
-        if quaternions is None:
-            quaternions = normals_to_rot(normals, scalar_first=True)
+        # if quaternions is None:
+        #     quaternions = normals_to_rot(normals, scalar_first=True)
 
         # We do need normals for rendering reasons in certain representations
         self.points = points
         self.normals = normals
-        self.quaternions = quaternions
+        if quaternions is not None:
+            self.quaternions = quaternions
 
         self._appearance = {
             "size": 8,
@@ -119,6 +120,11 @@ class Geometry:
         if idx.dtype == bool:
             idx = np.where(idx)[0]
 
+        normals = None
+        if isinstance(self.normals, np.ndarray):
+            if np.max(idx) < self.normals.shape[0]:
+                normals = self.normals[idx].copy()
+
         quaternions = None
         if isinstance(self.quaternions, np.ndarray):
             if np.max(idx) < self.quaternions.shape[0]:
@@ -126,6 +132,7 @@ class Geometry:
 
         ret = Geometry(
             points=self.points[idx].copy(),
+            normals=normals,
             quaternions=quaternions,
             color=self._appearance["base_color"],
             sampling_rate=self._sampling_rate,
@@ -145,18 +152,27 @@ class Geometry:
 
         points, quaternions = [], []
         has_quat = any(geometry.quaternions is not None for geometry in geometries)
+        has_normals = any(geometry.normals is not None for geometry in geometries)
         for geometry in geometries:
             points.append(geometry.points)
-            if not has_quat:
+            if not has_quat and not has_normals:
                 continue
 
             quaternions = geometry.quaternions
             if quaternions is None:
-                quaternions = np.full_like(geometry.points, fill_value=(1, 0, 0, 0))
+                quaternions = np.full(
+                    (geometry.points.shape(0), 4), fill_value=(1, 0, 0, 0)
+                )
+
+            normals = geometry.normals
+            if normals is None:
+                normals = np.full_like(geometry.points, fill_value=NORMAL_REFERENCE)
 
         quaternions = np.concatenate(quaternions, axis=0) if has_quat else None
+        normals = np.concatenate(normals, axis=0) if has_normals else None
         ret = cls(
             points=np.concatenate(points, axis=0),
+            normals=normals,
             quaternions=quaternions,
             sampling_rate=geometries[0]._sampling_rate,
             color=geometries[0]._appearance["base_color"],
@@ -221,6 +237,10 @@ class Geometry:
         quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
         if quaternions is not None:
             quaternions = np.asarray(quaternions)
+        elif self.normals is not None:
+            warnings.warn("Computing quaternions from associated normals.")
+            quaternions = normals_to_rot(self.normals, scalar_first=True)
+            self.quaternions = quaternions
         return quaternions
 
     @quaternions.setter
@@ -234,16 +254,15 @@ class Geometry:
             Quaternion values in scalar-first format (n, (w, x, y, z)).
         """
         quaternions = np.asarray(quaternions, dtype=np.float32)
-        if quaternions.shape[0] != self.points.shape[0]:
-            warnings.warn("Number of orientations must match number of points.")
-            return -1
-        if quaternions.shape[1] != 4:
-            warnings.warn("Quaternions must have 4 components (w, x, y, z).")
-            return -1
+        # if quaternions.shape[0] != self.points.shape[0]:
+        #     warnings.warn("Number of orientations must match number of points.")
+        #     return -1
+        # if quaternions.shape[1] != 4:
+        #     warnings.warn("Quaternions must have 4 components (w, x, y, z).")
+        #     return -1
 
         quat_vtk = numpy_support.numpy_to_vtk(quaternions, deep=True)
         quat_vtk.SetName("OrientationQuaternion")
-        quat_vtk.SetNumberOfComponents(4)
         self._data.GetPointData().AddArray(quat_vtk)
         self._data.Modified()
 
@@ -615,10 +634,16 @@ class VolumeGeometry(Geometry):
 
         self._volume = vtk.vtkImageData()
         self._volume.SetSpacing(volume_sampling_rate)
-        self._volume.SetDimensions(volume.shape[::-1])
+        self._volume.SetDimensions(volume.shape)
         self._volume.AllocateScalars(vtk.VTK_FLOAT, 1)
+
+        if self.quaternions is None:
+            self.quaternions = normals_to_rot(self.normals, scalar_first=True)
+
         self._raw_volume = volume
-        volume_vtk = numpy_support.numpy_to_vtk(volume.ravel(), deep=True)
+        volume_vtk = numpy_support.numpy_to_vtk(
+            volume.ravel(order="F"), deep=True, array_type=vtk.VTK_FLOAT
+        )
         self._volume.GetPointData().SetScalars(volume_vtk)
 
         bounds = [0.0] * 6
@@ -629,36 +654,22 @@ class VolumeGeometry(Geometry):
         )
 
         self._volume_sampling_rate = volume_sampling_rate
+
+        # Render volume isosurface as vtk glpyh object
         transformFilter = vtk.vtkTransformFilter()
         transformFilter.SetInputData(self._volume)
         transformFilter.SetTransform(transform)
         transformFilter.Update()
-
-        # Render volume isosurface as vtk glpyh object
         self._surface = vtk.vtkContourFilter()
         self._surface.SetInputConnection(transformFilter.GetOutputPort())
         self._surface.GenerateValues(1, volume.min(), volume.max())
 
-        if self.quaternions is None:
-            # Per glyph orientation and coloring
-            self._glyph = vtk.vtkGlyph3D()
-            self._glyph.SetInputData(self._data)
-            self._glyph.SetSourceConnection(self._surface.GetOutputPort())
-            self._glyph.SetVectorModeToUseNormal()
-            self._glyph.SetScaleModeToDataScalingOff()
-            self._glyph.SetColorModeToColorByScalar()
-            self._glyph.OrientOn()
-
-            mapper = vtk.vtkPolyDataMapper()
-            mapper.SetInputConnection(self._glyph.GetOutputPort())
-            return self._actor.SetMapper(mapper)
-
         mapper = vtk.vtkGlyph3DMapper()
         mapper.SetInputData(self._data)
         mapper.SetSourceConnection(self._surface.GetOutputPort())
-        mapper.SetOrientationArray("OrientationQuaternion")
         mapper.SetOrientationModeToQuaternion()
         mapper.SetScaleModeToNoDataScaling()
+        mapper.SetOrientationArray("OrientationQuaternion")
         mapper.OrientOn()
         self._actor.SetMapper(mapper)
 

@@ -21,9 +21,9 @@ class BackgroundTaskWorker(QThread):
         try:
             # Add progress callback to kwargs if not present
             if "progress_callback" not in self.kwargs:
-                self.kwargs[
-                    "progress_callback"
-                ] = self.signal_manager.progress_signal.emit
+                self.kwargs["progress_callback"] = (
+                    self.signal_manager.progress_signal.emit
+                )
 
             # Call the original function
             result = self.func(*self.args, **self.kwargs)
