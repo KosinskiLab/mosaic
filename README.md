@@ -8,7 +8,7 @@ To install mosaic within a virtual environment
 
 ```
 python3 -m venv mosaic
-source mosaic/bin/mosaic
+source mosaic/bin/activate
 pip install git+https://github.com/maurerv/mosaic
 ```
 
