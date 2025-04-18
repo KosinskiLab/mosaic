@@ -72,7 +72,6 @@ class App(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        print("hehexd")
         self.max_recent_files = 10
         self.recent_file_actions = []
         self.recent_files = self.load_recent_files()
