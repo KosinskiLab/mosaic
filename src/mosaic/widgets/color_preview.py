@@ -8,8 +8,6 @@
 from qtpy.QtWidgets import QWidget
 from qtpy.QtGui import QColor, QPainter
 
-from ..utils import get_cmap
-
 
 class ColorPreviewWidget(QWidget):
     """Widget to display color map preview"""
@@ -34,6 +32,8 @@ class ColorPreviewWidget(QWidget):
         ]
 
     def generate_gradient(self, cmap_name: str, n_colors: int = None):
+        from ..utils import get_cmap
+
         cmap = get_cmap(cmap_name)
 
         count = cmap.N

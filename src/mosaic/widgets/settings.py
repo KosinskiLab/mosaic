@@ -10,7 +10,6 @@ from qtpy.QtWidgets import (
     QCheckBox,
     QFormLayout,
     QLineEdit,
-    QSlider,
 )
 
 

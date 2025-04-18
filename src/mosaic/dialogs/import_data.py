@@ -6,13 +6,13 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QFrame,
     QGridLayout,
     QLineEdit,
     QCheckBox,
+    QGroupBox,
 )
 
-from ..stylesheets import QPushButton_style, QLineEdit_style, QCheckBox_style
+from ..stylesheets import QPushButton_style
 
 
 class ImportDataDialog(QDialog):
@@ -22,7 +22,7 @@ class ImportDataDialog(QDialog):
         self.filenames = []
         self.file_parameters = {}
         self.setup_ui()
-        self.setStyleSheet(QPushButton_style + QLineEdit_style + QCheckBox_style)
+        self.setStyleSheet(QPushButton_style)
 
     def setup_ui(self):
         from ..icons import (
@@ -38,7 +38,8 @@ class ImportDataDialog(QDialog):
         layout = QVBoxLayout()
         layout.setSpacing(15)
 
-        grid_layout = QGridLayout()
+        group = QGroupBox()
+        grid_layout = QGridLayout(group)
         grid_layout.setVerticalSpacing(10)
         grid_layout.setHorizontalSpacing(10)
 
@@ -121,12 +122,7 @@ class ImportDataDialog(QDialog):
         self.sampling_x.textChanged.connect(
             lambda text: self._propagate_value(text, self.sampling_y, self.sampling_z)
         )
-
-        frame = QFrame()
-        frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
-        frame.setLayout(grid_layout)
-        layout.addWidget(frame)
-        layout.addStretch()
+        layout.addWidget(group)
 
         # Button layout
         button_layout = QHBoxLayout()

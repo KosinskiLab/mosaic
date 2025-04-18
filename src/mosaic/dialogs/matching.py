@@ -22,7 +22,6 @@ import qtawesome as qta
 
 from ..widgets import PathSelector, DialogFooter
 from ..stylesheets import (
-    QGroupBox_style,
     QPushButton_style,
     QScrollArea_style,
     QTabBar_style,
@@ -491,8 +490,6 @@ class ComputeTab(QWidget):
 
 class TemplateMatchingDialog(QDialog):
     def __init__(self):
-        from mosaic.icons import dialog_accept_icon, dialog_reject_icon
-
         super().__init__()
         self.setWindowTitle("Pytme Setup")
         self.resize(650, 600)
@@ -530,9 +527,7 @@ class TemplateMatchingDialog(QDialog):
             margin=(0, 10, 0, 0),
         )
         self.layout.addWidget(self.footer)
-        self.setStyleSheet(
-            QTabBar_style + QPushButton_style + QScrollArea_style + QGroupBox_style
-        )
+        self.setStyleSheet(QTabBar_style + QPushButton_style + QScrollArea_style)
 
     def update_help_text(self, index):
         help_texts = [

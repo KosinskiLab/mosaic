@@ -61,6 +61,7 @@ QLineEdit_style = """
         border-radius: 4px;
         padding: 4px 8px;
         selection-background-color: rgba(99, 102, 241, 0.6);
+        background: transparent;
     }
     QLineEdit:focus {
         outline: none;

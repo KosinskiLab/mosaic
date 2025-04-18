@@ -8,11 +8,8 @@ from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 
 from ..formats import open_file
 from ..parallel import run_in_background
-from ..geometry import GeometryTrajectory
 from ..widgets.ribbon import create_button
-from ..parametrization import TriangularMesh
 from ..segmentation import MEMBRAIN_SETTINGS, run_membrainseg
-from ..meshing import equilibrate_fit, setup_hmff, to_open3d, mesh_to_cg
 from ..dialogs import (
     MeshEquilibrationDialog,
     HMFFDialog,
@@ -83,6 +80,8 @@ class IntelligenceTab(QWidget):
         self.ribbon.add_section("Segmentation", segmentation_actions)
 
     def _equilibrate_fit(self):
+        from ..meshing import equilibrate_fit
+
         indices = self.cdata.models._get_selected_indices()
         if len(indices) != 1:
             msg = "Can only equilibrate a single mesh at a time."
@@ -109,6 +108,8 @@ class IntelligenceTab(QWidget):
         return equilibrate_fit(geometry, directory, dialog.get_parameters())
 
     def _setup_hmff(self):
+        from ..meshing import setup_hmff
+
         directory = QFileDialog.getExistingDirectory(
             self,
             "Select Directory with Equilibrated Meshes.",
@@ -147,6 +148,10 @@ class IntelligenceTab(QWidget):
     def _import_trajectory(
         self, scale: float = 1.0, offset: Union[str, float] = 0.0, **kwargs
     ):
+        from ..meshing import to_open3d
+        from ..geometry import GeometryTrajectory
+        from ..parametrization import TriangularMesh
+
         directory = QFileDialog.getExistingDirectory(
             self,
             "Select Directory with Point Cloud Series",
@@ -200,6 +205,8 @@ class IntelligenceTab(QWidget):
         return self.cdata.models.render()
 
     def _map_fit(self):
+        from ..meshing import mesh_to_cg
+
         save_dir = QFileDialog.getExistingDirectory(
             self,
             "Select Save Directory",

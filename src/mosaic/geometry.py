@@ -254,12 +254,12 @@ class Geometry:
             Quaternion values in scalar-first format (n, (w, x, y, z)).
         """
         quaternions = np.asarray(quaternions, dtype=np.float32)
-        # if quaternions.shape[0] != self.points.shape[0]:
-        #     warnings.warn("Number of orientations must match number of points.")
-        #     return -1
-        # if quaternions.shape[1] != 4:
-        #     warnings.warn("Quaternions must have 4 components (w, x, y, z).")
-        #     return -1
+        if quaternions.shape[0] != self.points.shape[0]:
+            warnings.warn("Number of orientations must match number of points.")
+            return -1
+        if quaternions.shape[1] != 4:
+            warnings.warn("Quaternions must have 4 components (w, x, y, z).")
+            return -1
 
         quat_vtk = numpy_support.numpy_to_vtk(quaternions, deep=True)
         quat_vtk.SetName("OrientationQuaternion")

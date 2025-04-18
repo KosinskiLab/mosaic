@@ -51,6 +51,7 @@ from mosaic.stylesheets import (
     QComboBox_style,
     QCheckBox_style,
     QSlider_style,
+    QGroupBox_style,
 )
 from mosaic.widgets import (
     MultiVolumeViewer,
@@ -71,6 +72,7 @@ class App(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        print("hehexd")
         self.max_recent_files = 10
         self.recent_file_actions = []
         self.recent_files = self.load_recent_files()
@@ -839,6 +841,7 @@ def main():
         + QComboBox_style
         + QCheckBox_style
         + QSlider_style
+        + QGroupBox_style
     )
 
     window = App()
