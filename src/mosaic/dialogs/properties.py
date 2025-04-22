@@ -191,7 +191,7 @@ class GeometryPropertiesDialog(QDialog):
                 "min": 0.0,
                 "max": 10000.0,
                 "step": 1.0,
-                "default": self.initial_properties.get("isovalue_percentile", 99.5)
+                "default": self.initial_properties.get("isovalue_percentile", 0.995)
                 * 10000,
             }
         )

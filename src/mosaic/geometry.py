@@ -433,11 +433,12 @@ class Geometry:
         self._cells.Reset()
         self._normals.Reset()
 
-        self.points = points
-
-        if quaternions is None and normals is not None:
+        # Check whether we have to synchronize quaternion representation
+        _quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
+        if quaternions is None and _quaternions is not None and normals is not None:
             quaternions = normals_to_rot(normals)
 
+        self.points = points
         if quaternions is not None:
             normals = apply_quat(quaternions, NORMAL_REFERENCE)
             self.quaternions = quaternions

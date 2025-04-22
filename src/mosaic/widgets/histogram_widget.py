@@ -168,7 +168,7 @@ class HistogramWidget(QWidget):
         ]:
             label = QLabel(label_text)
             widget.setValidator(QDoubleValidator())
-            widget.setFixedWidth(80)
+            widget.setMinimumWidth(80)
             widget.editingFinished.connect(callback)
 
             cutoff_layout.addWidget(label)
@@ -181,7 +181,7 @@ class HistogramWidget(QWidget):
         transform_label = QLabel("Transform:")
         self.transform_combo = QComboBox()
         self.transform_combo.addItems(["Linear", "Log"])
-        self.transform_combo.setFixedWidth(100)
+        self.transform_combo.setMinimumWidth(100)
         self.transform_combo.currentTextChanged.connect(self._draw_histogram)
 
         transform_layout.addWidget(transform_label)
@@ -195,7 +195,7 @@ class HistogramWidget(QWidget):
         self.bin_count_spinner = QSpinBox()
         self.bin_count_spinner.setRange(5, 100)
         self.bin_count_spinner.setValue(self.bin_count)
-        self.bin_count_spinner.setFixedWidth(60)
+        self.bin_count_spinner.setMinimumWidth(60)
         self.bin_count_spinner.valueChanged.connect(self._on_bin_count_changed)
 
         bin_layout.addWidget(bin_label)
@@ -287,8 +287,8 @@ class HistogramWidget(QWidget):
         self.lower_cutoff_line.setValue(lower_value)
         self.upper_cutoff_line.setValue(upper_value)
 
-        self.min_value_input.setText(str(lower_value))
-        self.max_value_input.setText(str(upper_value))
+        self.min_value_input.setText(str(round(lower_value, 4)))
+        self.max_value_input.setText(str(round(upper_value, 4)))
         self.range_slider.setValues(lower_percent, upper_percent)
         for element in [
             self.lower_cutoff_line,

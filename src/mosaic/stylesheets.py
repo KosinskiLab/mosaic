@@ -178,7 +178,7 @@ QComboBox_style = """
     QComboBox {
         border: 1px solid #cbd5e1;
         border-radius: 4px;
-        min-height: 24px;
+        min-height: 27px;
         padding: 0px 8px;
         background: transparent;
         selection-background-color: rgba(99, 102, 241, 0.6);
@@ -193,6 +193,9 @@ QComboBox_style = """
     QComboBox:disabled {
         background-color: #f1f5f9;
         color: #94a3b8;
+    }
+    QComboBox::drop-down:disabled {
+        border: none;
     }
     QComboBox QAbstractItemView {
         border: 1px solid #cbd5e1;

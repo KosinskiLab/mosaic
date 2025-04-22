@@ -125,7 +125,6 @@ class TrajectoryPlayer(QWidget):
         super().__init__(parent)
         self.cdata = cdata
         self.current_frame = 0
-        self.playing = False
         self.play_timer = QTimer()
         self.play_timer.timeout.connect(self.next_frame)
         self.play_timer.setInterval(100)
@@ -133,6 +132,25 @@ class TrajectoryPlayer(QWidget):
         self.cdata.models.data_changed.connect(self.update_trajectories)
         self.setup_ui()
         self.update_trajectories()
+
+        self.playing = False
+
+    @property
+    def playing(self):
+        return self._playing
+
+    @playing.setter
+    def playing(self, playing: bool):
+        from ..icons import icon_color
+
+        self._playing = playing
+        if not hasattr(self, "play_button"):
+            return None
+
+        if not playing:
+            self.play_button.setIcon(qta.icon("fa5s.play", color=icon_color))
+        else:
+            self.play_button.setIcon(qta.icon("fa5s.pause", color=icon_color))
 
     @property
     def trajectories(self):
@@ -170,7 +188,7 @@ class TrajectoryPlayer(QWidget):
         self.prev_button.clicked.connect(self.prev_frame)
 
         self.play_button = QPushButton()
-        self.play_button.setIcon(qta.icon("fa5s.play", color="#3b82f6"))
+        self.play_button.setIcon(qta.icon("fa5s.play"))
         self.play_button.setFixedSize(button_size, button_size)
         self.play_button.clicked.connect(self.toggle_play)
 
@@ -287,10 +305,8 @@ class TrajectoryPlayer(QWidget):
         """Toggle playback state."""
         self.playing = not self.playing
         if self.playing:
-            self.play_button.setIcon(qta.icon("fa5s.pause", color="#3b82f6"))
             return self.play_timer.start()
 
-        self.play_button.setIcon(qta.icon("fa5s.play", color="#3b82f6"))
         self.play_timer.stop()
 
     def max_frame(self):
@@ -305,7 +321,6 @@ class TrajectoryPlayer(QWidget):
 
         self.play_timer.stop()
         self.playing = False
-        self.play_button.setIcon(qta.icon("fa5s.play", color="#3b82f6"))
 
     def prev_frame(self):
         """Go to previous frame."""

@@ -18,7 +18,7 @@ from qtpy.QtWidgets import (
 import qtawesome as qta
 
 from ..widgets import DialogFooter
-from ..stylesheets import QGroupBox_style, QPushButton_style
+from ..stylesheets import QPushButton_style
 
 
 class MeshMappingRow(QWidget):
@@ -45,10 +45,10 @@ class MeshMappingRow(QWidget):
         self.name_edit.setText(self.cluster_combo.currentText())
         self.cluster_combo.currentTextChanged.connect(self.name_edit.setText)
 
-        completer = QCompleter(names)
-        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self.cluster_combo.setEditable(True)
-        self.cluster_combo.setCompleter(completer)
+        # completer = QCompleter(names)
+        # completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        # self.cluster_combo.setEditable(True)
+        # self.cluster_combo.setCompleter(completer)
 
         self.toggle_btn = QPushButton()
         self.toggle_btn.setFixedWidth(20)
@@ -89,7 +89,7 @@ class MeshMappingDialog(QDialog):
         self.setWindowTitle("Backmapping")
         self.resize(500, 400)
         self.setup_ui()
-        self.setStyleSheet(QGroupBox_style + QPushButton_style)
+        self.setStyleSheet(QPushButton_style)
 
     def setup_ui(self):
         from ..icons import dialog_margin, footer_margin

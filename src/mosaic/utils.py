@@ -330,9 +330,16 @@ def cmap_to_vtkctf(cmap, max_value, min_value, gamma: float = 1.0):
     return color_transfer_function, (min_value, max_value)
 
 
+def _align_vectors(target, base) -> Rotation:
+    try:
+        return Rotation.align_vectors(target, base)[0]
+    except ValueError:
+        return Rotation.from_quat((1, 0, 0, 0), scalar_first=True)
+
+
 def normals_to_rot(normals, target=NORMAL_REFERENCE, mode: str = "quat", **kwargs):
     rotations = Rotation.concatenate(
-        [Rotation.align_vectors(target, base)[0] for base in normals]
+        [_align_vectors(target, base) for base in normals]
     ).inv()
     func = rotations.as_matrix
     if mode == "quat":
