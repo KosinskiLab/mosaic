@@ -52,6 +52,7 @@ from mosaic.stylesheets import (
     QCheckBox_style,
     QSlider_style,
     QGroupBox_style,
+    QListWidget_style,
 )
 from mosaic.widgets import (
     MultiVolumeViewer,
@@ -78,7 +79,7 @@ class App(QMainWindow):
 
         # Adapt to screen size
         screen = QGuiApplication.primaryScreen().geometry()
-        width = int(screen.width() * 0.7)
+        width = int(screen.width() * 0.9)
         height = int(screen.height() * 0.9)
         self.resize(width, height)
         self.move((screen.width() - width) // 2, (screen.height() - height) // 2)
@@ -841,6 +842,7 @@ def main():
         + QCheckBox_style
         + QSlider_style
         + QGroupBox_style
+        + QListWidget_style
     )
 
     window = App()

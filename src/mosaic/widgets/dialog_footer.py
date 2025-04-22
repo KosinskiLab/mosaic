@@ -46,4 +46,4 @@ class DialogFooter(QFrame):
 
         layout.addWidget(self.reject_button)
         layout.addWidget(self.accept_button)
-        self.setStyleSheet("border-top: 1px solid #e5e7eb;" + QPushButton_style)
+        self.setStyleSheet(QPushButton_style)

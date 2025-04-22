@@ -1,3 +1,5 @@
+from importlib_resources import files
+
 __all__ = [
     "QGroupBox_style",
     "QPushButton_style",
@@ -13,6 +15,20 @@ __all__ = [
     "QSlider_style",
     "QMessageBox_style",
 ]
+
+
+def _get_resource_path(resource_name):
+    """Get the absolute path to a resource in the package.
+
+    Args:
+        resource_name (str): Relative path to the resource within the
+            package data directory
+
+    Returns:
+        str: The absolute path to the resource
+    """
+    return str(files("mosaic.data").joinpath(f"data/{resource_name}"))
+
 
 HelpLabel_style = """
     QLabel {
@@ -162,7 +178,9 @@ QComboBox_style = """
     QComboBox {
         border: 1px solid #cbd5e1;
         border-radius: 4px;
-        padding: 4px 8px;
+        min-height: 24px;
+        padding: 0px 8px;
+        background: transparent;
         selection-background-color: rgba(99, 102, 241, 0.6);
     }
     QComboBox:focus {
@@ -176,12 +194,6 @@ QComboBox_style = """
         background-color: #f1f5f9;
         color: #94a3b8;
     }
-    QComboBox::drop-down {
-        subcontrol-origin: padding;
-        subcontrol-position: center right;
-        width: 16px;
-        border: none;
-    }
     QComboBox QAbstractItemView {
         border: 1px solid #cbd5e1;
         border-radius: 4px;
@@ -189,14 +201,19 @@ QComboBox_style = """
     }
 """
 
-QCheckBox_style = """
-    QCheckBox {
+QCheckBox_style = f"""
+    QCheckBox {{
         spacing: 5px;
-    }
-    QCheckBox::indicator {
+        background-color: transparent;
+    }}
+    QCheckBox::indicator {{
         width: 18px;
         height: 18px;
-    }
+        border: 1px solid #cbd5e1;
+    }}
+    QCheckBox::indicator:checked {{
+        image: url('{_get_resource_path("checkbox-cross.svg")}')
+    }}
 """
 
 QScrollArea_style = """
@@ -265,15 +282,14 @@ QTabBar_style = """
 
 QListWidget_style = """
     QListWidget {
-        border: 1px solid #cbd5e1;
-        border-radius: 4px;
+        border: none;
+        background-color: transparent;
         outline: none;
-        min-height: 200px;
+        padding: 4px 0px;
     }
     QListWidget::item {
         border-radius: 6px;
-        padding: 4px 8px;
-        margin: 2px 4px;
+        margin: 2px 8px;
         font-size: 13px;
     }
     QListWidget::item:hover {

@@ -54,24 +54,6 @@ class ContainerListWidget(QFrame):
         self.list_widget.setItemDelegate(MetadataItemDelegate(self.list_widget))
         self.list_widget.setStyleSheet(
             """
-            QListWidget {
-                border: none;
-                background-color: transparent;
-                outline: none;
-                padding: 4px 0px;
-            }
-            QListWidget::item {
-                border-radius: 6px;
-                margin: 2px 8px;
-                font-size: 13px;
-            }
-            QListWidget::item:hover {
-                background-color: rgba(0, 0, 0, 0.10);
-            }
-            QListWidget::item:selected {
-                background-color: rgba(99, 102, 241, 0.3);
-                font-weight: 500;
-            }
             QScrollBar:vertical {
                 border: none;
                 background: transparent;
@@ -93,9 +75,9 @@ class ContainerListWidget(QFrame):
                 background: none;
             }
             QLineEdit {
-                selection-background-color: rgba(99, 102, 241, 1.0);
+                background-color: rgba(99, 102, 241, 1.0);
                 border: none;
-                padding: 0px 2px;
+                padding: 4px 0px;
             }
         """
         )

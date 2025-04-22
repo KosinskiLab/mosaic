@@ -693,8 +693,8 @@ class VolumeGeometry(Geometry):
     def update_isovalue_quantile(
         self, upper_quantile: float, lower_quantile: float = 0.0
     ):
-        if not (0 <= lower_quantile <= 1 and 0 <= upper_quantile <= 1):
-            raise ValueError("Quantiles must be between 0 and 1")
+        lower_quantile = max(lower_quantile, 0)
+        upper_quantile = min(upper_quantile, 1)
 
         if lower_quantile >= upper_quantile:
             raise ValueError("Upper quantile must be greater than lower quantile")
@@ -710,6 +710,7 @@ class VolumeGeometry(Geometry):
 
     def set_appearance(self, isovalue_percentile=0.99, **kwargs):
         if hasattr(self, "_raw_volume"):
+            self._appearance["isovalue_percentile"] = isovalue_percentile
             self.update_isovalue_quantile(upper_quantile=isovalue_percentile)
         super().set_appearance(**kwargs)
 

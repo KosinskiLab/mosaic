@@ -110,15 +110,14 @@ class ObjectBrowserSidebar(QWidget):
         self.collapsed = False
         self.sections = {}
 
-        # Setup UI
         self._setup_ui()
         self._setup_styling()
 
-        # Setup animation
         self.animation = QPropertyAnimation(self, b"maximumWidth")
         self.animation.setDuration(200)
         self.animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
         self.animation.valueChanged.connect(self._update_width)
+        self.animation.finished.connect(self._animation_finished)
 
     def _update_width(self, width):
         """Update the sidebar width during animation."""
@@ -128,6 +127,12 @@ class ObjectBrowserSidebar(QWidget):
 
         if hasattr(self, "scroll_area"):
             self.scroll_area.setVisible(show_content)
+
+    def _animation_finished(self):
+        """Handle animation completion."""
+        if not self.collapsed:
+            # Avoid unwanted splitter interactions
+            self.setMaximumWidth(16777215)
 
     def _setup_ui(self):
         """Initialize the UI components."""
@@ -292,7 +297,6 @@ class ObjectBrowserSidebar(QWidget):
         self.content_layout.addStretch(0)
 
         self.sections[section_id] = section
-
         return widget
 
     def clear_sections(self):

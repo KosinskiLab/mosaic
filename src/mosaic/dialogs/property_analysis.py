@@ -31,11 +31,9 @@ from ..widgets.color_preview import ColorPreviewWidget
 from ..widgets import ContainerListWidget, StyledListWidgetItem
 
 from ..stylesheets import (
-    QGroupBox_style,
     QPushButton_style,
     QScrollArea_style,
     QListWidget_style,
-    QCheckBox_style,
 )
 
 
@@ -468,7 +466,7 @@ class PropertyAnalysisDialog(QDialog):
 
             neighbor_end = QSpinBox()
             neighbor_end.setRange(1, 255)
-            neighbor_end.setValue(1)
+            neighbor_end.setValue(2)
 
             knn_layout.addWidget(neighbor_start)
             knn_layout.addWidget(neighbor_to_label)
@@ -657,7 +655,9 @@ class PropertyAnalysisDialog(QDialog):
             lambda: (
                 self._update_plot()
                 if current_tab_index == 1
-                else self._update_statistics() if current_tab_index == 2 else None
+                else self._update_statistics()
+                if current_tab_index == 2
+                else None
             ),
         )
 
@@ -983,10 +983,5 @@ class PropertyAnalysisDialog(QDialog):
             }
         """
         return self.setStyleSheet(
-            base_style
-            + QGroupBox_style
-            + QPushButton_style
-            + QScrollArea_style
-            + QListWidget_style
-            + QCheckBox_style
+            base_style + QPushButton_style + QScrollArea_style + QListWidget_style
         )

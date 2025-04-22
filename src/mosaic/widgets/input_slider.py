@@ -34,9 +34,7 @@ class SliderWithInput(QWidget):
         self.spinbox.blockSignals(False)
 
     def _update_slider_from_spinbox(self):
-        self.slider.blockSignals(True)
         self.slider.setValue(self._quantile_to_value(self.spinbox.value()))
-        self.slider.blockSignals(False)
 
     def _quantile_to_value(self, value) -> int:
         return int(value * (self.maximum() - self.minimum()) / 100 + self.minimum())

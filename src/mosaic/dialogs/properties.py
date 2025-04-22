@@ -192,7 +192,7 @@ class GeometryPropertiesDialog(QDialog):
                 "max": 10000.0,
                 "step": 1.0,
                 "default": self.initial_properties.get("isovalue_percentile", 99.5)
-                * 100,
+                * 10000,
             }
         )
         self.isovalue_spin.setEnabled(False)
