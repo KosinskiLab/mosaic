@@ -6,6 +6,7 @@
 """
 
 import warnings
+from string import ascii_lowercase
 
 from typing import List, Dict
 from dataclasses import dataclass
@@ -59,6 +60,16 @@ class GeometryDataContainer:
     sampling: List[float] = (1, 1, 1)
 
     def __post_init__(self):
+        dtype_map = {
+            "vertices": np.float32,
+            "normals": np.float32,
+            "faces": int,
+            "quaternions": np.float32,
+        }
+        for attr_name, dtype in dtype_map.items():
+            attr = getattr(self, attr_name)
+            setattr(self, attr_name, self._to_dtype(attr, dtype))
+
         if self.normals is None:
             self.normals = [
                 np.full_like(x, fill_value=NORMAL_REFERENCE) for x in self.vertices
@@ -82,9 +93,7 @@ class GeometryDataContainer:
                 raise ValueError("Faces need to be specified for each vertex set.")
 
         if self.quaternions is None:
-            self.quaternions = [
-                np.full((x.shape[0], 4), fill_value=(1, 0, 0, 0)) for x in self.vertices
-            ]
+            self.quaternions = [None for x in self.vertices]
 
     def __len__(self):
         return len(self.vertices)
@@ -101,6 +110,12 @@ class GeometryDataContainer:
             faces=self.faces[index] if self.faces is not None else None,
             quaternions=self.quaternions[index],
         )
+
+    @staticmethod
+    def _to_dtype(data: List[np.ndarray], dtype=np.float32):
+        if data is not None:
+            return [x.astype(dtype) for x in data]
+        return data
 
 
 def _read_orientations(filename):
@@ -127,23 +142,44 @@ def read_txt(filename: str):
     elif filename.endswith("txt"):
         delimiter = "\t"
 
-    data = np.loadtxt(filename, delimiter=delimiter)
+    with open(filename, mode="r") as ifile:
+        data = ifile.read().split()
+        data = [x.strip().split(delimiter) for x in data if x.strip()]
 
-    n_cols = data.shape[1]
-    if n_cols < 3 or n_cols > 4:
-        raise ValueError(
-            f"{filename} needs to have 3 coordinate and optionally 1 cluster column."
-        )
+    header = ("x", "y", "z", *ascii_lowercase)[: len(data[0])]
+    if "x" in data[0]:
+        header = data.pop(0)
 
-    if n_cols == 3:
-        ret.append(data)
-    elif n_cols == 4:
-        unique_clusters = np.unique(data[:, 3])
-        for cluster in unique_clusters:
-            keep = data[:, 3] == cluster
-            ret.append(data[keep, :3])
+    required_columns = ("x", "y", "z")
+    for rc in required_columns:
+        if rc in header:
+            continue
+        raise ValueError(f"Colums {required_columns} are required.")
 
-    return GeometryDataContainer(vertices=ret)
+    data = {c: np.asarray(d) for c, d in zip(header, zip(*data))}
+    if "cluster" in data:
+        ret = []
+        for cluster in np.unique(data["cluster"]):
+            ret.append({c: d[data["cluster"] == c] for c, d in data.items()})
+        data = ret
+    else:
+        data = [data]
+
+    vertices, normals, quaternions = [], [], []
+    for cluster in data:
+        cols = ("x", "y", "z")
+        vertices.append((np.hstack([cluster[k][:, None] for k in cols])))
+        try:
+            cols = ("nx", "ny", "nz")
+            normals.append((np.hstack([cluster[k][:, None] for k in cols])))
+        except Exception as e:
+            print(e)
+            continue
+
+    if len(normals) == 0:
+        normals = None
+
+    return GeometryDataContainer(vertices=vertices, normals=normals)
 
 
 def read_tsv(filename: str) -> GeometryDataContainer:

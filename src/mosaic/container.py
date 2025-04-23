@@ -346,21 +346,23 @@ class DataContainer:
         int
             Index of newly added point cloud.
         """
-        points = geometry.points
+        points, normals = geometry.points, geometry.normals
         if method.lower() == "radius":
             import open3d as o3d
 
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(points)
+            pcd.normals = o3d.utility.Vector3dVector(normals)
             pcd = pcd.voxel_down_sample(**kwargs)
             points = np.asarray(pcd.points)
+            normals = np.asarray(pcd.normals)
         else:
             size = kwargs.get("size", 1000)
             size = min(size, points.shape[0])
             keep = np.random.choice(range(points.shape[0]), replace=False, size=size)
-            points = points[keep]
+            points, normals = points[keep], normals[keep]
 
-        return self.add(points, sampling_rate=geometry._sampling_rate)
+        return self.add(points, normals=normals, sampling_rate=geometry._sampling_rate)
 
     @apply_over_indices
     def crop(

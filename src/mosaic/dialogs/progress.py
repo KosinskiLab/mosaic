@@ -13,6 +13,7 @@ from qtpy.QtWidgets import (
     QLabel,
     QDialog,
     QApplication,
+    QMessageBox,
 )
 
 
@@ -106,4 +107,6 @@ class ProgressDialog:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        return self.dialog.close()
+        self.dialog.close()
+        if exc_type is not None:
+            QMessageBox.warning(None, "Error", str(exc_value))

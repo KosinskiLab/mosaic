@@ -5,8 +5,8 @@ from os.path import join, basename
 
 import numpy as np
 
-from ..utils import find_closest_points
 from ..parallel import run_in_background
+from ..utils import find_closest_points, apply_quat
 from . import remesh, center_mesh, compute_scale_factor_lower, scale
 from ..formats.writer import write_topology_file
 
@@ -26,19 +26,27 @@ def mesh_to_cg(
         if geometry is None:
             continue
 
-        distances, indices = find_closest_points(
-            np.asarray(mesh.vertices), np.asarray(geometry.points)
+        distances, vertex_indices = find_closest_points(
+            mesh.vertices, geometry.points, k=1
         )
-        vertex_maps.append(set(indices))
+        vertex_indices, inclusion_indices = np.unique(vertex_indices, return_index=True)
+        inclusion_normals = apply_quat(
+            geometry.quaternions[inclusion_indices], (1, 0, 0)
+        )
+
+        vertex_maps.append((vertex_indices, inclusion_indices, inclusion_normals))
 
     n_inclusions = len(vertex_maps)
     for i in range(n_inclusions):
         for k in range(i + 1, n_inclusions):
-            overlap = vertex_maps[i] & vertex_maps[k]
+            overlap = np.intersect1d(vertex_maps[i][0], vertex_maps[k][0])
             if len(overlap) == 0:
                 continue
 
-            vertex_maps[k] = vertex_maps[k] - vertex_maps[i]
+            keep = not np.isin(vertex_maps[k][0], overlap)
+            for i in range(len(vertex_maps[k])):
+                vertex_maps[k][i] = vertex_maps[k][i][keep]
+
             print(
                 f"{inclusions[i]['name']} and {inclusions[k]['name']} collide on "
                 f"{len(overlap)} vertices. Consider reducing mesh edge length. "
@@ -50,10 +58,10 @@ def mesh_to_cg(
     data, offset = center_mesh(mesh_scale)
     offset = ",".join([str(-float(x)) for x in offset])
 
-    inclusion_list, inclusion_map = [], {}
-    for index, vertex_map in enumerate(vertex_maps):
-        inclusion_map[index] = inclusions[index]["name"]
-        inclusion_list.extend([(index + 1, x, 0, 1) for x in vertex_map])
+    inclusion_list, inclusion_normals = [], []
+    for index, ret in enumerate(vertex_maps):
+        inclusion_list.extend([(index + 1, x, 0, 1) for x in ret[0]])
+        inclusion_normals.extend([(index + 1, x, y, *z) for x, y, z in zip(*ret)])
 
     _inclusions = np.zeros((len(inclusion_list), 5))
     _inclusions[:, 0] = np.arange(_inclusions.shape[0])
@@ -62,6 +70,16 @@ def mesh_to_cg(
 
     mesh_path = join(output_directory, "mesh.tsi")
     write_topology_file(file_path=mesh_path, data=data, tsi_format=True)
+
+    normal_path = join(output_directory, "inclusion_normals.csv")
+    inclusion_normals = np.asarray(inclusion_normals)
+    np.savetxt(
+        normal_path,
+        inclusion_normals,
+        delimiter=",",
+        comments="",
+        header="inclusion_type,vertex,inclusion,nx,ny,nz",
+    )
 
     warnings.warn(
         "Setup TS2CG - Corresponding Citation: "
