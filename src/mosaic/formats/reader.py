@@ -21,7 +21,7 @@ FORMAT_MAPPING = {
     read_volume: ["mrc", "em", "map", "h5", "mrc.gz", "em.gz", "map.gz"],
     read_tsi: ["q", "tsi"],
     read_vtu: ["vtu"],
-    read_structure: ["pdb", "cif"],
+    read_structure: ["pdb", "cif", "gro"],
 }
 
 

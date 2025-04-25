@@ -511,14 +511,18 @@ class DataContainer:
 
         Returns
         -------
-        ndarray
-            Points with outliers removed.
+        int
+            Index of newly added point cloud.
         """
         func = statistical_outlier_removal
         if method == "eigenvalue":
             func = eigenvalue_outlier_removal
 
-        return func(geometry.points, **kwargs)
+        mask = func(geometry.points, **kwargs)
+        if mask.sum() == 0:
+            return None
+
+        return self.add(geometry[mask])
 
     def highlight(self, indices: Tuple[int]):
         """Highlight specified geometries.

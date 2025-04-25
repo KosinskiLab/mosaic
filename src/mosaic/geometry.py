@@ -46,7 +46,15 @@ class Geometry:
 
         normals = kwargs.get("normals")
         if quaternions is not None:
-            normals = apply_quat(quaternions)
+            _normals = apply_quat(quaternions)
+            if normals is not None:
+                if not np.allclose(_normals, normals, atol=1e-3):
+                    warnings.warn(
+                        "Orientation given by quaternions does not match the "
+                        "supplied normal vectors. Overwriting normals with "
+                        "quaternoins for now."
+                    )
+            normals = _normals
 
         if normals is None and points is not None:
             normals = np.full_like(points, fill_value=NORMAL_REFERENCE)

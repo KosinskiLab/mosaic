@@ -6,7 +6,7 @@ from os.path import join, basename
 import numpy as np
 
 from ..parallel import run_in_background
-from ..utils import find_closest_points, apply_quat
+from ..utils import find_closest_points, apply_quat, normals_to_rot
 from . import remesh, center_mesh, compute_scale_factor_lower, scale
 from ..formats.writer import write_topology_file
 
@@ -17,7 +17,11 @@ def mesh_to_cg(
     output_directory: str,
     inclusions: List[Dict],
     edge_length: float = 40.0,
+    include_normals: bool = True,
+    flip_normals: bool = True,
 ) -> bool:
+    from ..parametrization import TriangularMesh
+
     mesh = remesh(mesh, edge_length)
 
     vertex_maps = []
@@ -26,15 +30,20 @@ def mesh_to_cg(
         if geometry is None:
             continue
 
-        distances, vertex_indices = find_closest_points(
-            mesh.vertices, geometry.points, k=1
-        )
-        vertex_indices, inclusion_indices = np.unique(vertex_indices, return_index=True)
-        inclusion_normals = apply_quat(
-            geometry.quaternions[inclusion_indices], (1, 0, 0)
-        )
+        if include_normals:
+            fit = TriangularMesh(mesh)
+            kwargs = {
+                "points": geometry.points,
+                "normals": geometry.normals * -1 if flip_normals else 1,
+            }
+            _, vertex_indices = fit.compute_distance(**kwargs)
+        else:
+            _, vertex_indices = find_closest_points(mesh.vertices, geometry.points, k=1)
 
-        vertex_maps.append((vertex_indices, inclusion_indices, inclusion_normals))
+        vertex_indices, incl_indices = np.unique(vertex_indices, return_index=True)
+
+        incl_quat = geometry.quaternions[incl_indices]
+        vertex_maps.append([vertex_indices, incl_indices, incl_quat])
 
     n_inclusions = len(vertex_maps)
     for i in range(n_inclusions):
@@ -43,9 +52,9 @@ def mesh_to_cg(
             if len(overlap) == 0:
                 continue
 
-            keep = not np.isin(vertex_maps[k][0], overlap)
-            for i in range(len(vertex_maps[k])):
-                vertex_maps[k][i] = vertex_maps[k][i][keep]
+            keep = np.invert(np.isin(vertex_maps[k][0], overlap))
+            for ix in range(len(vertex_maps[k])):
+                vertex_maps[k][ix] = vertex_maps[k][ix][keep]
 
             print(
                 f"{inclusions[i]['name']} and {inclusions[k]['name']} collide on "
@@ -58,10 +67,10 @@ def mesh_to_cg(
     data, offset = center_mesh(mesh_scale)
     offset = ",".join([str(-float(x)) for x in offset])
 
-    inclusion_list, inclusion_normals = [], []
+    inclusion_list, inclusion_quat = [], []
     for index, ret in enumerate(vertex_maps):
         inclusion_list.extend([(index + 1, x, 0, 1) for x in ret[0]])
-        inclusion_normals.extend([(index + 1, x, y, *z) for x, y, z in zip(*ret)])
+        inclusion_quat.extend([(index + 1, x, y, *z) for x, y, z in zip(*ret)])
 
     _inclusions = np.zeros((len(inclusion_list), 5))
     _inclusions[:, 0] = np.arange(_inclusions.shape[0])
@@ -71,14 +80,14 @@ def mesh_to_cg(
     mesh_path = join(output_directory, "mesh.tsi")
     write_topology_file(file_path=mesh_path, data=data, tsi_format=True)
 
-    normal_path = join(output_directory, "inclusion_normals.csv")
-    inclusion_normals = np.asarray(inclusion_normals)
+    normal_path = join(output_directory, "inclusion_quaternions.csv")
+    inclusion_quat = np.asarray(inclusion_quat)
     np.savetxt(
         normal_path,
-        inclusion_normals,
+        inclusion_quat,
         delimiter=",",
         comments="",
-        header="inclusion_type,vertex,inclusion,nx,ny,nz",
+        header="inclusion_type,vertex,inclusion,w,x,y,z",
     )
 
     warnings.warn(

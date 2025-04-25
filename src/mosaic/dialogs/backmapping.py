@@ -1,4 +1,3 @@
-from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -13,7 +12,7 @@ from qtpy.QtWidgets import (
     QFrame,
     QLineEdit,
     QMessageBox,
-    QCompleter,
+    QCheckBox,
 )
 import qtawesome as qta
 
@@ -44,11 +43,6 @@ class MeshMappingRow(QWidget):
 
         self.name_edit.setText(self.cluster_combo.currentText())
         self.cluster_combo.currentTextChanged.connect(self.name_edit.setText)
-
-        # completer = QCompleter(names)
-        # completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        # self.cluster_combo.setEditable(True)
-        # self.cluster_combo.setCompleter(completer)
 
         self.toggle_btn = QPushButton()
         self.toggle_btn.setFixedWidth(20)
@@ -87,7 +81,7 @@ class MeshMappingDialog(QDialog):
         self.clusters = clusters
 
         self.setWindowTitle("Backmapping")
-        self.resize(500, 400)
+        self.resize(500, 540)
         self.setup_ui()
         self.setStyleSheet(QPushButton_style)
 
@@ -98,7 +92,7 @@ class MeshMappingDialog(QDialog):
         layout.setSpacing(15)
         layout.setContentsMargins(*dialog_margin)
 
-        config_group = QGroupBox("Surface Configuration")
+        config_group = QGroupBox("Mesh")
         config_layout = QVBoxLayout()
         config_layout.setSpacing(10)
 
@@ -112,7 +106,7 @@ class MeshMappingDialog(QDialog):
         config_layout.addLayout(fit_layout)
 
         edge_layout = QHBoxLayout()
-        edge_label = QLabel("Edge Length:")
+        edge_label = QLabel("Output Edge Length:")
         self.edge_length = QDoubleSpinBox()
         self.edge_length.setValue(40.0)
         self.edge_length.setRange(0, 1e32)
@@ -124,7 +118,23 @@ class MeshMappingDialog(QDialog):
         config_group.setLayout(config_layout)
         layout.addWidget(config_group)
 
-        mapping_group = QGroupBox("Cluster Mapping")
+        projection_group = QGroupBox("Projection")
+        projection_layout = QVBoxLayout(projection_group)
+        projection_layout.setSpacing(10)
+        self.cast_rays = QCheckBox("Use raycasting to project proteins onto mesh.")
+        self.cast_rays.toggled.connect(
+            lambda: self.flip_normals.setEnabled(self.cast_rays.isChecked())
+        )
+
+        self.flip_normals = QCheckBox("Flip normal direction (needs to point inward).")
+        self.cast_rays.setChecked(False)
+        self.flip_normals.setChecked(False)
+        self.flip_normals.setEnabled(False)
+        projection_layout.addWidget(self.cast_rays)
+        projection_layout.addWidget(self.flip_normals)
+        layout.addWidget(projection_group)
+
+        mapping_group = QGroupBox("Inclusions")
         mapping_layout = QVBoxLayout()
 
         scroll = QScrollArea()
@@ -191,4 +201,10 @@ class MeshMappingDialog(QDialog):
             if isinstance(widget, MeshMappingRow):
                 mappings.append(widget.get_parameters())
 
-        return selected_fit, edge_length, mappings
+        return (
+            selected_fit,
+            edge_length,
+            mappings,
+            self.cast_rays.isChecked(),
+            self.flip_normals.isChecked(),
+        )

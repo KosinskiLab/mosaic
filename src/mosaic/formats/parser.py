@@ -273,6 +273,20 @@ def _read_tsi_file(file_path: str) -> Dict:
     ret["n_faces"] = n_faces
     ret["faces"] = np.array([x.split() for x in faces], dtype=np.float64)
 
+    while len(data):
+        if not data[0].startswith("inclusion"):
+            data.pop(0)
+        break
+
+    if len(data) == 0:
+        return ret
+
+    n_inclusions = _drop_prefix(data.pop(0).split(), 2)
+    n_inclusions = int(n_inclusions[0])
+    incl, data = data[:n_inclusions], data[n_inclusions:]
+    ret["n_inclusions"] = n_inclusions
+    ret["inclusions"] = np.array([x.split() for x in incl], dtype=np.float64)
+
     return ret
 
 

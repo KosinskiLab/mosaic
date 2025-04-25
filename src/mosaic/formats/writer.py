@@ -103,6 +103,8 @@ def write_topology_file(file_path: str, data: Dict, tsi_format: bool = False) ->
         vertex_string = f"vertex {vertex_string}"
 
     stop = data["vertices"].shape[1] - 1
+    if tsi_format:
+        stop = data["vertices"].shape[1]
     for i in range(data["vertices"].shape[0]):
         vertex_string += f"{int(data['vertices'][i, 0])}  "
         vertex_string += "  ".join([f"{x:<.10f}" for x in data["vertices"][i, 1:stop]])
@@ -111,13 +113,11 @@ def write_topology_file(file_path: str, data: Dict, tsi_format: bool = False) ->
             vertex_string += f"  {int(data['vertices'][i, stop])}"
         vertex_string += "\n"
 
+    stop = data["faces"].shape[1] - 1
     face_string = f"{data['faces'].shape[0]}\n"
     if tsi_format:
         face_string = f"triangle {face_string}"
-
-    stop = data["faces"].shape[1]
-    if tsi_format:
-        stop = stop - 1
+        stop = data["faces"].shape[1]
     for i in range(data["faces"].shape[0]):
         face = [f"{int(x):d}" for x in data["faces"][i, :stop]]
         face[1] += " "
@@ -126,10 +126,14 @@ def write_topology_file(file_path: str, data: Dict, tsi_format: bool = False) ->
 
     inclusion_string = ""
     inclusions = data.get("inclusions", None)
-    if inclusions is not None:
+    if tsi_format and inclusions is not None:
         inclusion_string = f"inclusion {inclusions.shape[0]}\n"
         for i in range(data["inclusions"].shape[0]):
-            inclusion_string += f"{'   '.join([f'{x}' for x in inclusions[i]])}   \n"
+            ret = inclusions[i]
+            ret[0] = int(ret[0])
+            ret[1] = int(ret[1])
+            ret[2] = int(ret[2])
+            inclusion_string += f"{'   '.join([f'{x}' for x in ret])}   \n"
 
     box_string = f"{'   '.join([f'{x:<.10f}' for x in data['box']])}   \n"
     if tsi_format:

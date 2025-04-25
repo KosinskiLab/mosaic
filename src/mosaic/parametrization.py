@@ -10,6 +10,7 @@
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import warnings
 from typing import Tuple
 from abc import ABC, abstractmethod
 
@@ -960,12 +961,60 @@ class TriangularMesh(Parametrization):
         n_points = np.ceil(np.divide(self.mesh.get_surface_area(), area_per_sample))
         return int(n_points)
 
-    def compute_distance(self, points: np.ndarray) -> np.ndarray:
+    def compute_distance(
+        self, points: np.ndarray, normals: np.ndarray = None
+    ) -> np.ndarray:
+        """
+        Compute distance to mesh or project points onto mesh surface along normals.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            Points to compute distance from or project onto mesh
+        normals : np.ndarray, optional
+            Normal vectors for projection direction. If None, computes shortest distance.
+
+        Returns
+        -------
+        np.ndarray or Tuple[np.ndarray, np.ndarray]
+            If normals is None:
+                Distance from each point to mesh
+            If normals is provided:
+                Tuple of (mapped_points, vertex_indices)
+        """
+        self.mesh.compute_vertex_normals()
+        self.mesh.compute_triangle_normals()
+
         scene, _ = self._setup_rayscene()
 
-        points = o3d.core.Tensor(points, dtype=o3d.core.Dtype.Float32)
-        ret = scene.compute_distance(points)
-        return ret.numpy()
+        if normals is None:
+            points = o3d.core.Tensor(points, dtype=o3d.core.Dtype.Float32)
+            ret = scene.compute_distance(points)
+            return ret.numpy()
+
+        rays = o3d.core.Tensor(
+            np.hstack([points, normals]), dtype=o3d.core.Dtype.Float32
+        )
+        hits = scene.cast_rays(rays)
+
+        hit_distances = hits["t_hit"].numpy()
+        valid_hits = np.logical_and(hit_distances > 0, np.isfinite(hit_distances))
+
+        n_invalid = valid_hits.size - np.sum(valid_hits)
+        if n_invalid > 0:
+            warnings.warn(
+                f"{n_invalid} of {valid_hits.size} did not intersect with the mesh. "
+                f"Check the accuracy of the associated normal vectors. Falling back to "
+                "Euclidean distance for those cases."
+            )
+
+        mapped_points = np.copy(points)
+        mapped_points[valid_hits] += (
+            normals[valid_hits] * hit_distances[valid_hits, np.newaxis]
+        )
+
+        _, vertex_indices = find_closest_points(self.vertices, mapped_points, k=1)
+        return mapped_points, np.array(vertex_indices)
 
 
 class PoissonMesh(TriangularMesh):

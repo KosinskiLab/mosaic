@@ -222,12 +222,14 @@ class IntelligenceTab(QWidget):
         if not dialog.exec():
             return -1
 
-        fit, edge_length, mappings = dialog.get_parameters()
+        fit, edge_length, mappings, cast_ray, flip = dialog.get_parameters()
         ret = mesh_to_cg(
             fit._meta["fit"].mesh,
             edge_length=edge_length,
             output_directory=save_dir,
             inclusions=mappings,
+            include_normals=cast_ray,
+            flip_normals=flip,
         )
         return ret
 
