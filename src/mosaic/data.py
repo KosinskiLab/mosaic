@@ -266,6 +266,7 @@ class MosaicData(QObject):
             sampling_rate = geometry._sampling_rate
             tasks.append((fit, sampling_rate, sampling, sampling_method, normal_offset))
 
+        # TODO: Handle processes in the Qt backend to avoid initialization overhead
         with mp.Pool(1) as pool:
             results = pool.starmap(_sample_fit, tasks)
 

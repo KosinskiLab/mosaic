@@ -8,8 +8,12 @@
 import os
 import sys
 from typing import List
+from platform import system
 from importlib_resources import files
 from os.path import splitext, basename
+
+if system() == "Darwin":
+    os.environ["OMP_NUM_THREADS"] = "1"
 
 import vtk
 import numpy as np

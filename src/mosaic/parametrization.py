@@ -350,20 +350,24 @@ class Ellipsoid(Parametrization):
         orientations = self.orientations if orientations is None else orientations
 
         positions_xyz = np.zeros((n_samples, self.center.size))
-        samples_drawn = 0
-        np.random.seed(42)
+
+        remaining = n_samples
+        batch_size = min(n_samples * 5, 10000)
         radii_fourth, r_min = np.power(radii, 4), np.min(radii)
-        while samples_drawn < n_samples:
-            point = np.random.normal(size=3)
-            point /= np.linalg.norm(point)
+        while remaining > 0:
+            points = np.random.normal(size=(batch_size, 3))
+            np.divide(points, np.linalg.norm(points, axis=1, keepdims=True), out=points)
+            np.multiply(points, radii, out=points)
 
-            np.multiply(point, radii, out=point)
+            p = r_min * np.sqrt(np.divide(np.square(points), radii_fourth).sum(axis=1))
+            u = np.random.uniform(0, 1, size=batch_size)
 
-            p = r_min * np.sqrt(np.divide(np.square(point), radii_fourth).sum())
-            u = np.random.uniform(0, 1)
-            if u <= p:
-                positions_xyz[samples_drawn] = point
-                samples_drawn += 1
+            points = points[u <= p]
+            n_accepted = min(points.shape[0], remaining)
+
+            n_add = n_samples - remaining
+            positions_xyz[n_add : (n_add + n_accepted)] = points[:n_accepted]
+            remaining -= n_accepted
 
         positions_xyz = positions_xyz.dot(orientations.T)
         positions_xyz = np.add(positions_xyz, center)

@@ -13,6 +13,7 @@ from qtpy.QtWidgets import (
 )
 
 from ..stylesheets import QPushButton_style
+from ..widgets.settings import get_widget_value, create_setting_widget
 
 
 class ImportDataDialog(QDialog):
@@ -68,12 +69,18 @@ class ImportDataDialog(QDialog):
         grid_layout.addWidget(self.y_label, 2, 2)
         grid_layout.addWidget(self.z_label, 2, 3)
 
-        # Scale factor inputs
         scale_label = QLabel("Scale Factor:")
-        scale_label.setToolTip("Scale imported data by points times scale.")
-        self.scale_x = self._create_double_input(1.0)
-        self.scale_y = self._create_double_input(1.0)
-        self.scale_z = self._create_double_input(1.0)
+        scale_input = {
+            "label": "Scale Factor",
+            "type": "text",
+            "min": 0.0,
+            "max": 1e32,
+            "default": 1.0,
+            "description": "Scale imported data by points times scale.",
+        }
+        self.scale_x = create_setting_widget(scale_input)
+        self.scale_y = create_setting_widget(scale_input)
+        self.scale_z = create_setting_widget(scale_input)
 
         grid_layout.addWidget(scale_label, 3, 0)
         grid_layout.addWidget(self.scale_x, 3, 1)
@@ -82,10 +89,17 @@ class ImportDataDialog(QDialog):
 
         # Offset inputs
         offset_label = QLabel("Offset:")
-        offset_label.setToolTip("Add offset as (points - offset) * scale.")
-        self.offset_x = self._create_double_input(0.0, allow_negative=True)
-        self.offset_y = self._create_double_input(0.0, allow_negative=True)
-        self.offset_z = self._create_double_input(0.0, allow_negative=True)
+        offset_settings = {
+            "label": "Offset",
+            "type": "text",
+            "min": -1e32,
+            "max": 1e32,
+            "default": 0.0,
+            "description": "Add offset as (points - offset) * scale.",
+        }
+        self.offset_x = create_setting_widget(offset_settings)
+        self.offset_y = create_setting_widget(offset_settings)
+        self.offset_z = create_setting_widget(offset_settings)
 
         grid_layout.addWidget(offset_label, 4, 0)
         grid_layout.addWidget(self.offset_x, 4, 1)
@@ -94,10 +108,17 @@ class ImportDataDialog(QDialog):
 
         # Sampling rate inputs
         sampling_label = QLabel("Sampling Rate:")
-        sampling_label.setToolTip("Scale imported data by points times scale.")
-        self.sampling_x = self._create_double_input(1.0)
-        self.sampling_y = self._create_double_input(1.0)
-        self.sampling_z = self._create_double_input(1.0)
+        sampling_settings = {
+            "label": "Offset",
+            "type": "text",
+            "min": 1e-8,
+            "max": 1e32,
+            "default": 1.0,
+            "description": "Set sampling rate of imported data.",
+        }
+        self.sampling_x = create_setting_widget(sampling_settings)
+        self.sampling_y = create_setting_widget(sampling_settings)
+        self.sampling_z = create_setting_widget(sampling_settings)
 
         grid_layout.addWidget(sampling_label, 5, 0)
         grid_layout.addWidget(self.sampling_x, 5, 1)
@@ -105,8 +126,13 @@ class ImportDataDialog(QDialog):
         grid_layout.addWidget(self.sampling_z, 5, 3)
 
         axis_label = QLabel("Configure per Axis")
-        axis_label.setToolTip("Specify parameters per axis.")
-        self.axis_checkbox = QCheckBox()
+        axis_settings = {
+            "label": "Configure per Axis",
+            "type": "boolean",
+            "default": False,
+            "description": "Specify parameters per axis.",
+        }
+        self.axis_checkbox = create_setting_widget(axis_settings)
         self.axis_checkbox.toggled.connect(self.toggle_per_axis_mode)
         self.axis_checkbox.setChecked(False)
 
@@ -183,19 +209,6 @@ class ImportDataDialog(QDialog):
         self.offset_z.setVisible(checked)
         self.sampling_y.setVisible(checked)
         self.sampling_z.setVisible(checked)
-
-    def _create_double_input(self, default_value, allow_negative=False):
-        input_widget = QLineEdit()
-        input_widget.setToolTip("Enter value for this coordinate axis")
-        validator = QDoubleValidator()
-        validator.setLocale(QLocale.c())
-        validator.setNotation(QDoubleValidator.Notation.StandardNotation)
-        if not allow_negative:
-            validator.setBottom(1e-6)
-        input_widget.setValidator(validator)
-        input_widget.setText(str(default_value))
-        input_widget.setMinimumWidth(80)
-        return input_widget
 
     def _propagate_value(self, text, y_input, z_input):
         y_input.setText(text)
