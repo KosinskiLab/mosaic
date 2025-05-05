@@ -124,7 +124,7 @@ def mesh_to_cg(
 
             TS2CG PLM \\
                 -TSfile {basename(mesh_path)} \\
-                -bilayerThickness {3.8 / mesh_to_nm} \\
+                -bilayerThickness 3.8 \\
                 -rescalefactor {mesh_to_nm} {mesh_to_nm} {mesh_to_nm}
         """
         )

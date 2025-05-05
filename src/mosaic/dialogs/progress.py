@@ -34,6 +34,8 @@ class ProgressDialog:
         self.dialog.show()
 
     def setup_ui(self):
+        from ..stylesheets import QProgressBar_style
+
         layout = QVBoxLayout(self.dialog)
 
         container = QFrame()
@@ -51,20 +53,7 @@ class ProgressDialog:
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setTextVisible(False)
-        self.progress_bar.setStyleSheet(
-            """
-            QProgressBar {
-                border: none;
-                background-color: #f3f4f6;
-                border-radius: 4px;
-                height: 8px;
-            }
-            QProgressBar::chunk {
-                background-color: #3b82f6;
-                border-radius: 4px;
-            }
-        """
-        )
+        self.progress_bar.setStyleSheet(QProgressBar_style)
         self.progress_bar.setMaximum(self.total)
 
         self.status_label = QLabel()

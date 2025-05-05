@@ -14,6 +14,7 @@ __all__ = [
     "QListWidget_style",
     "QSlider_style",
     "QMessageBox_style",
+    "QProgressBar_style",
 ]
 
 
@@ -371,5 +372,18 @@ QMessageBox_style = """
         border: 1px solid #cbd5e1;
         border-radius: 4px;
         padding: 8px;
+    }
+"""
+
+QProgressBar_style = """
+    QProgressBar {
+        border: none;
+        background-color: #f3f4f6;
+        border-radius: 4px;
+        height: 8px;
+    }
+    QProgressBar::chunk {
+        background-color: #4f46e5;
+        border-radius: 4px;
     }
 """

@@ -1,6 +1,6 @@
 """ Atomic Geometry class displayed by the vtk viewer.
 
-    Copyright (c) 2024 European Molecular Biology Laboratory
+    Copyright (c) 2024-2025 European Molecular Biology Laboratory
 
     Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -133,10 +133,10 @@ class Geometry:
             if np.max(idx) < self.normals.shape[0]:
                 normals = self.normals[idx].copy()
 
-        quaternions = None
-        if isinstance(self.quaternions, np.ndarray):
-            if np.max(idx) < self.quaternions.shape[0]:
-                quaternions = self.quaternions[idx].copy()
+        quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
+        if isinstance(quaternions, np.ndarray):
+            if np.max(idx) < quaternions.shape[0]:
+                quaternions = quaternions[idx].copy()
 
         ret = Geometry(
             points=self.points[idx].copy(),

@@ -96,7 +96,7 @@ class GeometryPropertiesDialog(QDialog):
         layout = QVBoxLayout(page)
 
         appearance_group = QGroupBox("Display")
-        appearance_layout = QFormLayout()
+        appearance_layout = QFormLayout(appearance_group)
 
         self.size_spin = create_setting_widget(
             {
@@ -113,8 +113,6 @@ class GeometryPropertiesDialog(QDialog):
             base_settings | {"default": self.initial_properties.get("opacity", 0.3)}
         )
         appearance_layout.addRow("Opacity:", self.opacity_spin)
-
-        appearance_group.setLayout(appearance_layout)
         layout.addWidget(appearance_group)
 
         # Colors Group

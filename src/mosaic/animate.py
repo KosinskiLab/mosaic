@@ -30,7 +30,8 @@ from qtpy.QtWidgets import (
 from vtkmodules.util import numpy_support
 from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
 
-from .stylesheets import QGroupBox_style, QPushButton_style
+
+__all__ = ["ExportManager"]
 
 
 def _get_trajectories(geometries):
@@ -226,6 +227,7 @@ class ExportManager:
         frames = tuple(range(start, end, stride))
         if use_reveal:
             frames = (*frames, None, *list(range(end, start, -stride)))
+            # self.viewer.primary.project_selector.setCurrentText("Project -")
             actors.InitTraversal()
             for _ in range(actors.GetNumberOfItems()):
                 actors.GetNextActor().SetVisibility(0)
@@ -241,6 +243,7 @@ class ExportManager:
                 return self.cdata.models.render_vtk()
 
             if use_reveal and frame_idx is None:
+                # self.viewer.primary.project_selector.setCurrentText("Off")
                 actors.InitTraversal()
                 for visible in actors_visible:
                     actors.GetNextActor().SetVisibility(visible)
@@ -324,6 +327,8 @@ class ExportManager:
 
 class AnimationSettingsDialog(QDialog):
     def __init__(self, volume_viewer, cdata, formats, parent=None):
+        from .stylesheets import QGroupBox_style, QPushButton_style
+
         super().__init__(parent)
         self.viewer = volume_viewer
         self.cdata = cdata

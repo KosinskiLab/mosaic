@@ -64,4 +64,3 @@ Images
 .DS_Store
 .gitconfig
 .pickle
-src/colabseg/data/logo.webp
