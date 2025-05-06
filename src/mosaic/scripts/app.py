@@ -454,6 +454,7 @@ class App(QMainWindow):
         animation_action = QAction("Export Animation", self)
         animation_action.triggered.connect(
             lambda x: self.export_manager.export_animation()
+            # lambda x: self._animate()
         )
         animation_action.setShortcut("Ctrl+E")
 
@@ -512,7 +513,7 @@ class App(QMainWindow):
         axes_menu.addAction(colored_action)
         axes_menu.addAction(arrow_action)
 
-        # Handle differnt camera angles
+        # Handle different camera angles
         tilt_menu = QMenu("Camera", self)
         self.tilt_dialog = TiltControlDialog(self)
         show_tilt_control = QAction(
@@ -627,6 +628,14 @@ class App(QMainWindow):
         view_menu.addAction(self.trajectory_action)
 
         help_menu.addAction(show_keybinds_action)
+
+    def _animate(self):
+        from mosaic.animation.compose import AnimationComposerDialog
+
+        dialog = AnimationComposerDialog(
+            self.vtk_widget, self.volume_viewer, self.cdata
+        )
+        return dialog.show()
 
     def _setup_volume_viewer(self):
         self.volume_dock = QDockWidget(self)

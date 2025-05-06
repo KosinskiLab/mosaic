@@ -19,9 +19,9 @@ from qtpy.QtWidgets import (
 )
 import qtawesome as qta
 
-from timeline import TimelineWidget
-from animations import AnimationType
-from settings import AnimationSettings, ExportSettings
+from .timeline import TimelineWidget
+from .animations import AnimationType
+from .settings import AnimationSettings, ExportSettings
 
 from mosaic.stylesheets import (
     QMessageBox_style,
@@ -40,68 +40,43 @@ from mosaic.widgets import DialogFooter
 
 
 @dataclass
-class Animation:
-    id: str
-    type: AnimationType
-    name: str
-    global_start_frame: int
-    start_frame: int
-    stop_frame: int
-    stride: int
-    parameters: Dict[str, Any]
-    enabled: bool
-
-    @property
-    def duration(self) -> int:
-        """Calculate duration based on local frames and stride"""
-        return ((self.stop_frame - self.start_frame) // self.stride) + 1
-
-
-@dataclass
 class Track:
-    id: str
-    animation: Animation
+    id: int
+    animation: object
     color: str
 
 
-@dataclass
-class DataContext:
-    volume_viewer: List[Any] = None
-    cdata: List[Any] = None
-
-    @property
-    def all_geometries(self):
-        geometries = []
-        if self.trajectories:
-            geometries.extend(self.trajectories)
-        if self.clusters:
-            geometries.extend(self.clusters)
-        if self.fits:
-            geometries.extend(self.fits)
-        return geometries
-
-    def update(self, **kwargs):
-        """Update context with new data"""
-        for key, value in kwargs.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
-
-
 class AnimationComposerDialog(QDialog):
-    def __init__(self, parent=None, volume_viewer=None, cdata=None):
+    def __init__(self, vtk_widget, volume_viewer=None, cdata=None, parent=None):
         super().__init__(parent)
         self.tracks: List[Track] = []
         self.selected_track = None
         self.current_frame = 0
-        self.total_frames = 300
+
         self.is_playing = False
         self.timer = QTimer()
         self.timer.timeout.connect(self.advance_frame)
 
-        self.data_context = DataContext(volume_viewer=volume_viewer, cdata=cdata)
+        self.cdata = cdata
+        self.vtk_widget = vtk_widget
+        self.volume_viewer = volume_viewer
 
         self.setWindowTitle("Animation Composer")
         self.setup_ui()
+
+        self.setStyleSheet(
+            QMessageBox_style
+            + QLineEdit_style
+            + QSpinBox_style
+            + QDoubleSpinBox_style
+            + QComboBox_style
+            + QCheckBox_style
+            + QSlider_style
+            + QGroupBox_style
+            + QListWidget_style
+            + QPushButton_style
+            + QScrollArea_style
+        )
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -182,7 +157,7 @@ class AnimationComposerDialog(QDialog):
 
         forward_btn = QPushButton()
         forward_btn.setIcon(qta.icon("fa5s.step-forward"))
-        forward_btn.clicked.connect(lambda: self.set_current_frame(self.total_frames))
+        forward_btn.clicked.connect(lambda: self.set_current_frame(self.current_frame))
 
         controls_layout.addWidget(back_btn)
         controls_layout.addWidget(self.play_btn)
@@ -190,7 +165,7 @@ class AnimationComposerDialog(QDialog):
 
         controls_layout.addWidget(QLabel("Frame:"))
         self.frame_spin = QSpinBox()
-        self.frame_spin.setRange(0, self.total_frames)
+        self.frame_spin.setRange(0, 2 << 29)
         self.frame_spin.valueChanged.connect(self.set_current_frame)
         controls_layout.addWidget(self.frame_spin)
         controls_layout.addStretch()
@@ -198,7 +173,7 @@ class AnimationComposerDialog(QDialog):
         timeline_inner_layout.addWidget(controls_group)
 
         self.timeline = TimelineWidget()
-        self.timeline.trackSelected.connect(self.on_track_selected)
+        self.timeline.content.trackSelected.connect(self.on_track_selected)
         self.timeline.frameMoved.connect(self.set_current_frame)
         self.timeline.trackMoved.connect(self.on_track_moved)
         self.timeline.trackRemoved.connect(self.delete_track)
@@ -227,31 +202,27 @@ class AnimationComposerDialog(QDialog):
         pass
 
     def add_animation(self, anim_type: AnimationType):
-        preset = anim_type.value
-        anim_id = f"anim-{len(self.tracks)}"
+        animation_class = anim_type.value["class"]
 
-        animation = Animation(
-            id=anim_id,
-            type=anim_type,
-            name=f"{preset['name']} {len(self.tracks) + 1}",
+        animation = animation_class(
+            cdata=self.cdata,
+            vtk_widget=self.vtk_widget,
+            volume_viewer=self.volume_viewer,
             global_start_frame=0,
-            start_frame=0,
-            stop_frame=100,
-            stride=1,
-            parameters=preset["parameters"].copy(),
             enabled=True,
+            name=f"{anim_type.value['name']} {len(self.tracks) + 1}",
         )
 
         track = Track(
-            id=anim_id,
+            id=str(id(animation)),
             animation=animation,
-            color=anim_type.value.get("color", "#6b7280"),
+            color=anim_type.value["color"],
         )
 
         self.tracks.append(track)
         self.timeline.set_tracks(self.tracks)
 
-    def _get_track(self, track_id: str):
+    def _get_track(self, track_id: int):
         return next((t for t in self.tracks if t.id == track_id), None)
 
     def delete_track(self, track_id: str):
@@ -260,7 +231,7 @@ class AnimationComposerDialog(QDialog):
             self.selected_track = None
         self.timeline.set_tracks(self.tracks)
 
-    def on_track_selected(self, track_id: str):
+    def on_track_selected(self, track_id: int):
         if (track := self._get_track(track_id)) is None:
             return None
 
@@ -276,23 +247,26 @@ class AnimationComposerDialog(QDialog):
         self.timeline.update()
 
     def on_animation_changed(self, changes: Dict[str, Any]):
-        if (track := self._get_track(self.selected_track)) is None:
-            return None
-
-        for key, value in changes.items():
-            if key == "parameters":
-                track.animation.parameters.update(value)
-            else:
-                setattr(track.animation, key, value)
-        self.timeline.update()
+        return self.timeline.update()
 
     def set_current_frame(self, frame: int):
-        self.current_frame = max(0, min(self.total_frames, frame))
+        if not self.tracks:
+            return None
+
+        total_frames = max(
+            (x.animation.frames + x.animation.global_start_frame for x in self.tracks)
+        )
+
+        self.current_frame = max(0, min(total_frames, frame))
         self.frame_spin.setValue(self.current_frame)
         self.timeline.set_current_frame(self.current_frame)
 
-        if self.current_frame >= self.total_frames and self.is_playing:
+        if self.current_frame >= total_frames and self.is_playing:
             self.toggle_play()
+
+        for track in self.tracks:
+            track.animation.update(frame - 1)
+        self.vtk_widget.GetRenderWindow().Render()
 
     def toggle_play(self):
         self.is_playing = not self.is_playing

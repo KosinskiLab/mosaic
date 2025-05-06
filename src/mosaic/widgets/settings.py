@@ -16,6 +16,8 @@ from qtpy.QtWidgets import (
 def format_tooltip(label=None, description="", default=None, notes=None, **kwargs):
     if label is None:
         return ""
+
+    label = str(label).title().replace("_", " ")
     tooltip = f"""
     <div class="tooltip">
         <span style='font-size: 11pt; font-weight: 600; color: #2c3e50;'>{label}</span>

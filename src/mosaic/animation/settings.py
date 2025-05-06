@@ -32,7 +32,7 @@ class AnimationSettings(QGroupBox):
         name_layout = QHBoxLayout()
         name_layout.addWidget(QLabel("Name:"))
         self.name_edit = QLineEdit()
-        self.name_edit.setMaximumWidth(100)
+        self.name_edit.setMaximumWidth(140)
         self.name_edit.textChanged.connect(lambda x: self.on_change(x, "name"))
         name_layout.addWidget(self.name_edit)
 
@@ -50,7 +50,7 @@ class AnimationSettings(QGroupBox):
 
         frame_layout.addWidget(QLabel("Global Start:"), 0, 0)
         self.global_start_spin = QSpinBox()
-        self.global_start_spin.setRange(0, 10000)
+        self.global_start_spin.setRange(0, 2 << 29)
         self.global_start_spin.valueChanged.connect(
             lambda x: self.on_change(x, "global_start_frame")
         )
@@ -58,7 +58,7 @@ class AnimationSettings(QGroupBox):
 
         frame_layout.addWidget(QLabel("Stride:"), 1, 0)
         self.stride_spin = QSpinBox()
-        self.stride_spin.setRange(1, 100)
+        self.stride_spin.setRange(1, 2 << 29)
         self.stride_spin.setValue(1)
         self.stride_spin.valueChanged.connect(lambda x: self.on_change(x, "stride"))
         frame_layout.addWidget(self.stride_spin, 1, 1)
@@ -90,6 +90,7 @@ class AnimationSettings(QGroupBox):
         self.global_start_spin.setValue(animation.global_start_frame)
         self.start_spin.setValue(animation.start_frame)
         self.stop_spin.setValue(animation.stop_frame)
+        self.stop_spin.setMaximum(animation.frames)
         self.stride_spin.setValue(animation.stride)
         self.enabled_check.setChecked(animation.enabled)
 
@@ -97,7 +98,7 @@ class AnimationSettings(QGroupBox):
             self.params_layout.removeRow(0)
         self.parameter_widgets.clear()
 
-        for widget_settings in animation.type.value["settings"]:
+        for widget_settings in animation.get_settings():
             widget = create_setting_widget(widget_settings)
             if isinstance(widget, QComboBox):
                 signal = widget.currentTextChanged
@@ -107,9 +108,10 @@ class AnimationSettings(QGroupBox):
                 signal = widget.textChanged
 
             label = widget_settings["label"]
-            signal.connect(lambda x: self.on_change(x, label))
+            signal.connect(lambda x, lab=label: self.on_change(x, lab))
 
-            self.params_layout.addRow(f"{label}:", widget)
+            label_clean = label.title().replace("_", " ")
+            self.params_layout.addRow(f"{label_clean}:", widget)
             self.parameter_widgets[label] = widget
 
     def on_change(self, value, key):
@@ -120,8 +122,14 @@ class AnimationSettings(QGroupBox):
         if attr is not None:
             setattr(self.animation, key, value)
         else:
-            self.animation.parameters[key] = value
-            key, value = "parameters", self.animation.parameters
+            self.animation.update_parameters(**{key: value})
+
+        if self.animation.frames != self.stop_spin.maximum():
+            self.start_spin.setMaximum(self.animation.frames)
+            self.stop_spin.setMaximum(self.animation.frames)
+
+            if self.animation.frames < (2 << 15):
+                self.stop_spin.setValue(self.animation.frames)
 
         self.animationChanged.emit({key: value})
 
@@ -139,7 +147,6 @@ class ExportSettings(QGroupBox):
         self.format_combo.addItems(["MP4", "AVI", "RGBA"])
         layout.addWidget(self.format_combo, 0, 1)
 
-        # Quality
         layout.addWidget(QLabel("Quality:"), 1, 0)
         self.quality_spin = QSpinBox()
         self.quality_spin.setRange(0, 100)
@@ -153,14 +160,12 @@ class ExportSettings(QGroupBox):
         self.frame_rate.setValue(30)
         layout.addWidget(self.frame_rate, 2, 1)
 
-        # Stride
         layout.addWidget(QLabel("Stride:"), 3, 0)
         self.frame_stride = QSpinBox()
         self.frame_stride.setRange(1, 100)
         self.frame_stride.setValue(1)
         layout.addWidget(self.frame_stride, 3, 1)
 
-        # Window
         layout.addWidget(QLabel("Window:"), 4, 0)
         range_layout = QHBoxLayout()
         self.start_frame = QSpinBox()

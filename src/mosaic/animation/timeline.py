@@ -1,5 +1,5 @@
 from qtpy.QtCore import Qt, QRect, Signal
-from qtpy.QtWidgets import QWidget, QScrollArea
+from qtpy.QtWidgets import QWidget, QScrollArea, QApplication
 from qtpy.QtGui import QPainter, QColor, QPen, QFont, QMouseEvent
 
 import qtawesome as qta
@@ -350,9 +350,11 @@ class TimelineWidget(QScrollArea):
 
     def set_tracks(self, tracks):
         self.content.set_tracks(tracks)
+        QApplication.processEvents()
 
     def set_current_frame(self, frame):
         self.content.set_current_frame(frame)
+        QApplication.processEvents()
 
     @property
     def selected_track(self):
@@ -363,4 +365,7 @@ class TimelineWidget(QScrollArea):
         self.content.selected_track = value
 
     def update(self):
+        self.content.update_view_range()
+        self.content.update_size()
         self.content.update()
+        QApplication.processEvents()
