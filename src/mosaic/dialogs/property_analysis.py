@@ -671,11 +671,25 @@ class PropertyAnalysisDialog(QDialog):
             if value is None:
                 continue
 
-            self.stats_table.setItem(index, 0, QTableWidgetItem(item.text()))
-            self.stats_table.setItem(index, 1, QTableWidgetItem(str(np.min(value))))
-            self.stats_table.setItem(index, 2, QTableWidgetItem(str(np.max(value))))
-            self.stats_table.setItem(index, 3, QTableWidgetItem(str(np.mean(value))))
-            self.stats_table.setItem(index, 4, QTableWidgetItem(str(np.std(value))))
+            item = QTableWidgetItem(item.text())
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self.stats_table.setItem(index, 0, item)
+
+            item = QTableWidgetItem(str(np.min(value)))
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self.stats_table.setItem(index, 1, item)
+
+            item = QTableWidgetItem(str(np.max(value)))
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self.stats_table.setItem(index, 2, item)
+
+            item = QTableWidgetItem(str(np.mean(value)))
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self.stats_table.setItem(index, 3, item)
+
+            item = QTableWidgetItem(str(np.std(value)))
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self.stats_table.setItem(index, 4, item)
 
     def _set_plot_type(self, plot_type):
         self.current_plot_type = plot_type

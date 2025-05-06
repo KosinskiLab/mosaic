@@ -185,9 +185,12 @@ class App(QMainWindow):
         list_wrapper.add_widget("cluster", "Cluster", self.cdata.data.data_list)
         list_wrapper.add_widget("model", "Model", self.cdata.models.data_list)
 
+        # self.list_wrapper2 = ObjectBrowserSidebar()
+
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(list_wrapper)
         splitter.addWidget(self.vtk_widget)
+        # splitter.addWidget(self.list_wrapper2)
         splitter.setSizes([200, self.width() - 200])
 
         v_splitter = QSplitter(Qt.Orientation.Vertical)
@@ -636,6 +639,24 @@ class App(QMainWindow):
             self.vtk_widget, self.volume_viewer, self.cdata
         )
         return dialog.show()
+
+        # dock = QDockWidget("Animation Composer", self)
+        # dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
+        # dock.setWidget(dialog)
+
+        # dock.setFeatures(
+        #     QDockWidget.DockWidgetClosable |
+        #     QDockWidget.DockWidgetFloatable |
+        #     QDockWidget.DockWidgetMovable
+        # )
+
+        # dialog.accepted.connect(dock.close)
+        # dialog.rejected.connect(dock.close)
+
+        # self.addDockWidget(Qt.RightDockWidgetArea, dock)
+
+        # dock.raise_()
+        # dock.show()
 
     def _setup_volume_viewer(self):
         self.volume_dock = QDockWidget(self)

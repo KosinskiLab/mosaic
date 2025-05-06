@@ -57,38 +57,32 @@ class ObjectBrowserSidebarSection(QWidget):
         super().__init__(parent)
         self.title = title
 
-        # Main layout with no spacing or margins
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Create compact header
         header_frame = QFrame()
         header_frame.setObjectName("sectionHeader")
-        header_frame.setFixedHeight(26)  # Compact fixed height
+        header_frame.setFixedHeight(26)
 
         header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(8, 0, 8, 0)  # Horizontal padding only
+        header_layout.setContentsMargins(8, 0, 8, 0)
 
-        # Simple title label
         title_label = QLabel(title)
         title_label.setObjectName("sectionTitle")
 
         header_layout.addWidget(title_label)
         header_layout.addStretch()
 
-        # Content widget container
         self.content_widget = QWidget()
         self.content_widget.setObjectName("sectionContent")
 
-        # Content layout with no margins
         self.content_layout = QVBoxLayout(self.content_widget)
         self.content_layout.setContentsMargins(0, 0, 0, 0)
         self.content_layout.setSpacing(0)
 
-        # Add components to main layout
         layout.addWidget(header_frame)
-        layout.addWidget(self.content_widget, 1)  # Give content stretch priority
+        layout.addWidget(self.content_widget, 1)
 
     def addWidget(self, widget):
         """Add a widget to the content layout."""

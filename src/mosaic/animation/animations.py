@@ -404,7 +404,6 @@ class WaypointAnimation(BaseAnimation):
     def _update(self, frame: int) -> None:
         if not hasattr(self, "_curve"):
             self._init_spline()
-
             # Spline creation failed for some reason
             if not hasattr(self, "_curve"):
                 return None
@@ -414,25 +413,20 @@ class WaypointAnimation(BaseAnimation):
 
         camera, renderer = self._get_rendering_context(return_renderer=True)
 
-        transform = vtkTransform()
-        transform.Identity()
-
-        initial_pos = self._initial_position
         new_pos = self._positions[frame]
+        displacement = [
+            new_pos[0] - self._initial_position[0],
+            new_pos[1] - self._initial_position[1],
+            new_pos[2] - self._initial_position[2],
+        ]
 
-        transform.Translate(
-            new_pos[0] - initial_pos[0],
-            new_pos[1] - initial_pos[1],
-            new_pos[2] - initial_pos[2],
-        )
-
-        camera_pos = transform.TransformPoint(self._initial_position)
-        focal_point = transform.TransformPoint(self._initial_focal)
-        view_up = transform.TransformVector(self._initial_view_up)
-
-        camera.SetPosition(*camera_pos)
-        camera.SetFocalPoint(*focal_point)
-        camera.SetViewUp(*view_up)
+        new_focal = [
+            self._initial_focal[0] + displacement[0],
+            self._initial_focal[1] + displacement[1],
+            self._initial_focal[2] + displacement[2],
+        ]
+        camera.SetPosition(*new_pos)
+        camera.SetFocalPoint(*new_focal)
 
         renderer.ResetCameraClippingRange()
 
