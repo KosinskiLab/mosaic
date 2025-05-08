@@ -24,7 +24,7 @@ from scipy.spatial.distance import pdist
 def to_open3d(vertices, faces) -> o3d.geometry.TriangleMesh:
     ret = o3d.geometry.TriangleMesh()
     ret.vertices = o3d.utility.Vector3dVector(np.asarray(vertices, dtype=np.float64))
-    ret.triangles = o3d.utility.Vector3iVector(np.asarray(faces, dtype=np.float32))
+    ret.triangles = o3d.utility.Vector3iVector(np.asarray(faces, dtype=np.int32))
     return ret
 
 

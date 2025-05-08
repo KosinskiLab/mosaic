@@ -269,7 +269,7 @@ class TrajectoryPlayer(QWidget):
     def update_trajectories(self):
         from ..geometry import GeometryTrajectory
 
-        """Update trajectories from ColabsegData models."""
+        """Update trajectories from MosaicData models."""
         for i in reversed(range(self.rows_layout.count())):
             self.rows_layout.itemAt(i).widget().setParent(None)
 

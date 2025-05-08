@@ -206,15 +206,19 @@ class ModelTab(QWidget):
         if method not in (supported):
             raise ValueError(f"{method} is not supported, chose one of {supported}.")
 
+        if method == "subdivide":
+            smooth = kwargs.pop("smooth", False)
+
         for index in selected_meshes:
-            mesh = self.cdata._models.data[index]._meta.get("fit", None).mesh
+            mesh = self.cdata._models.data[index]._meta.get("fit", None)
+
+            mesh = to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
             if method == "edge length":
                 mesh = remesh(mesh=mesh, **kwargs)
             elif method == "vertex clustering":
                 mesh = mesh.simplify_vertex_clustering(**kwargs)
             elif method == "subdivide":
                 func = mesh.subdivide_midpoint
-                smooth = kwargs.pop("smooth", False)
                 if smooth:
                     func = mesh.subdivide_loop
                 mesh = func(**kwargs)

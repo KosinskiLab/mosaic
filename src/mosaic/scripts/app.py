@@ -710,7 +710,10 @@ class App(QMainWindow):
         self._add_file_to_recent(file_path)
         self.renderer.RemoveAllViewProps()
         self.volume_viewer.close()
-        self.bounding_box.setup(shape=self.cdata.shape)
+        # self.bounding_box.setup(shape=self.cdata.shape)
+        # shape = np.multiply((1592, 400, 3000), (20.96, 16.0, 16.0)).astype(int)
+        # self.bounding_box.setup(shape=shape)
+
         self.renderer.AddActor(self.bounding_box.box_actor)
         self.renderer.AddActor(self.status_indicator.text_actor)
         self.cdata.data.rendered_actors.clear()

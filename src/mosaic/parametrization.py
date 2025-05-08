@@ -138,6 +138,22 @@ class Parametrization(ABC):
             Number of required random samples.
         """
 
+    def compute_distance(self, points: np.ndarray, **kwargs) -> np.ndarray:
+        """
+        Computes the distance between points and the parameterization.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            Array of coordinates (n, d).
+
+        Returns
+        -------
+        np.ndarray
+            Distances between points and the parametrization.
+        """
+        return np.full_like(points, fill_value=0)
+
 
 class Sphere(Parametrization):
     """
@@ -227,7 +243,7 @@ class Sphere(Parametrization):
         normals /= np.linalg.norm(normals, axis=1)[:, None]
         return normals
 
-    def compute_distance(self, points: np.ndarray) -> np.ndarray:
+    def compute_distance(self, points: np.ndarray, **kwargs) -> np.ndarray:
         centered = np.linalg.norm(points - self.center, axis=1)
         return np.abs(centered - self.radius)
 
@@ -394,7 +410,7 @@ class Ellipsoid(Parametrization):
         normals /= np.linalg.norm(normals, axis=1)[:, None]
         return normals
 
-    def compute_distance(self, points: np.ndarray) -> float:
+    def compute_distance(self, points: np.ndarray, **kwargs) -> float:
         # Approximate as projected deviation from unit sphere
         norm_points = (points - self.center).dot(np.linalg.inv(self.orientations.T))
         norm_points /= np.linalg.norm(norm_points / self.radii, axis=1)[:, None]
@@ -966,10 +982,15 @@ class TriangularMesh(Parametrization):
         return int(n_points)
 
     def compute_distance(
-        self, points: np.ndarray, normals: np.ndarray = None
+        self,
+        points: np.ndarray,
+        normals: np.ndarray = None,
+        return_projection: bool = False,
+        return_indices: bool = False,
+        **kwargs,
     ) -> np.ndarray:
         """
-        Compute distance to mesh or project points onto mesh surface along normals.
+        Compute distance to mesh by ray-casting.
 
         Parameters
         ----------
@@ -977,14 +998,19 @@ class TriangularMesh(Parametrization):
             Points to compute distance from or project onto mesh
         normals : np.ndarray, optional
             Normal vectors for projection direction. If None, computes shortest distance.
+        return_projection : bool, optional
+            Return points projected onto mesh, defaults to False.
+        return_indices : bool, optional
+            Return vertex indices closest to projection, defaults to False.
 
         Returns
         -------
-        np.ndarray or Tuple[np.ndarray, np.ndarray]
-            If normals is None:
-                Distance from each point to mesh
-            If normals is provided:
-                Tuple of (mapped_points, vertex_indices)
+        distances : np.ndarray
+            Distance to mesh surface for each point.
+        projection : np.ndarray, optional
+            Projection of each point onto mesh surface.
+        indices : np.ndarray, optional
+            Closest vertex to projection.
         """
         self.mesh.compute_vertex_normals()
         self.mesh.compute_triangle_normals()
@@ -992,33 +1018,106 @@ class TriangularMesh(Parametrization):
         scene, _ = self._setup_rayscene()
 
         if normals is None:
-            points = o3d.core.Tensor(points, dtype=o3d.core.Dtype.Float32)
-            ret = scene.compute_distance(points)
-            return ret.numpy()
+            ret = scene.compute_closest_points(
+                o3d.core.Tensor(points, dtype=o3d.core.Dtype.Float32)
+            )
+            projected_points = ret["points"].numpy()
+        else:
+            rays = o3d.core.Tensor(
+                np.hstack([points, normals]), dtype=o3d.core.Dtype.Float32
+            )
+            hits = scene.cast_rays(rays)
 
-        rays = o3d.core.Tensor(
-            np.hstack([points, normals]), dtype=o3d.core.Dtype.Float32
-        )
-        hits = scene.cast_rays(rays)
+            hit_distances = hits["t_hit"].numpy()
+            valid_hits = np.logical_and(hit_distances > 0, np.isfinite(hit_distances))
 
-        hit_distances = hits["t_hit"].numpy()
-        valid_hits = np.logical_and(hit_distances > 0, np.isfinite(hit_distances))
+            n_invalid = valid_hits.size - np.sum(valid_hits)
+            if n_invalid > 0:
+                warnings.warn(
+                    f"{n_invalid} of {valid_hits.size} did not intersect with the mesh. "
+                    f"Check the accuracy of the associated normal vectors. Falling back to "
+                    "Euclidean distance for those cases."
+                )
 
-        n_invalid = valid_hits.size - np.sum(valid_hits)
-        if n_invalid > 0:
-            warnings.warn(
-                f"{n_invalid} of {valid_hits.size} did not intersect with the mesh. "
-                f"Check the accuracy of the associated normal vectors. Falling back to "
-                "Euclidean distance for those cases."
+            projected_points = np.copy(points)
+            projected_points[valid_hits] += (
+                normals[valid_hits] * hit_distances[valid_hits, np.newaxis]
             )
 
-        mapped_points = np.copy(points)
-        mapped_points[valid_hits] += (
-            normals[valid_hits] * hit_distances[valid_hits, np.newaxis]
-        )
+        dist = np.linalg.norm(points - projected_points, axis=1)
+        _, vertex_indices = find_closest_points(self.vertices, projected_points, k=1)
 
-        _, vertex_indices = find_closest_points(self.vertices, mapped_points, k=1)
-        return mapped_points, np.array(vertex_indices)
+        ret = dist
+        vertex_indices = np.array(vertex_indices)
+        if return_indices and not return_projection:
+            ret = (dist, vertex_indices)
+        elif not return_indices and return_projection:
+            ret = (dist, projected_points)
+        elif return_indices and return_projection:
+            ret = (dist, projected_points, vertex_indices)
+        return ret
+
+    def geodesic_distance(
+        self,
+        target_vertices: np.ndarray,
+        source_vertices: np.ndarray = None,
+        k: int = 1,
+        return_indices: bool = False,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Compute geodesic distance from target vertices to their k-nearest
+        source vertices on the mesh.
+
+        Parameters
+        ----------
+        target_vertices : np.ndarray
+            Target vertex indices for which to compute distances.
+        source_vertices : np.ndarray, optional
+            Source vertex indices to compute distances from.
+            If None, uses all mesh vertices as sources.
+        k : int, optional
+            Number of closest source vertices to find for each target vertex.
+            Minimum and default value is 1 (nearest neighbor).
+        return_indices : bool, optional
+            Whether to also return an array of closest vertices in terms of geodesic
+            distance. Defaults to False.
+
+        Returns
+        -------
+        distances: ndarray
+            Geodesic distances to k closest sources. Shape is (len(target_vertices), k).
+        indices: ndarray, optional
+            Corresponding source vertex indices. Shape is (len(target_vertices), k).
+        """
+        k = max(1, min(k, len(source_vertices)))
+        if source_vertices is None:
+            source_vertices = np.arange(self.vertices.shape[0])
+
+        source_vertices = np.asarray(source_vertices, dtype=np.int32).ravel()
+        target_vertices = np.asarray(target_vertices, dtype=np.int32).ravel()
+
+        k_distances, k_indices = [], []
+        for i, tgt_idx in enumerate(target_vertices):
+            kwargs = {
+                "vt": source_vertices[source_vertices != tgt_idx],
+                "vs": np.array([tgt_idx], dtype=np.int32),
+            }
+
+            # Faster, we only need to find the closest non-trivial neighbor
+            if k == 1:
+                kwargs = {"vt": kwargs["vs"], "vs": kwargs["vt"]}
+
+            distances = igl.exact_geodesic(v=self.vertices, f=self.faces, **kwargs)
+            distances = np.atleast_1d(distances)
+
+            sorted_indices = np.argsort(distances)[:k]
+            k_distances.append(distances[sorted_indices])
+            k_indices.append(source_vertices[sorted_indices])
+
+        k_distances = np.asarray(k_distances)
+        if return_indices:
+            return k_distances, np.asarray(k_indices)
+        return k_distances
 
 
 class PoissonMesh(TriangularMesh):
@@ -1258,9 +1357,6 @@ class SplineCurve(Parametrization):
         length = np.sum(np.linalg.norm(segments, axis=1))
         n_points = int(np.ceil(length / sampling_density))
         return n_points
-
-    def compute_distance(self, points: np.ndarray) -> np.ndarray:
-        return np.full_like(points, fill_value=-1)
 
 
 PARAMETRIZATION_TYPE = {

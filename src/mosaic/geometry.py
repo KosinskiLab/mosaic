@@ -52,7 +52,7 @@ class Geometry:
                     warnings.warn(
                         "Orientation given by quaternions does not match the "
                         "supplied normal vectors. Overwriting normals with "
-                        "quaternoins for now."
+                        "quaternions for now."
                     )
             normals = _normals
 
@@ -92,10 +92,14 @@ class Geometry:
         self._sampling_rate = sampling_rate
 
     def __getstate__(self):
+        quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
+        if quaternions is not None:
+            quaternions = self.quaternions
+
         return {
             "points": self.points,
             "normals": self.normals,
-            "quaternions": self.quaternions,
+            "quaternions": quaternions,
             "sampling_rate": self.sampling_rate,
             "meta": self._meta,
             "visible": self.visible,
@@ -487,6 +491,8 @@ class Geometry:
                 )
                 return -1
 
+        clipping_planes = self._actor.GetMapper().GetClippingPlanes()
+
         # Consistent normal rendering across representations
         if representation in ("pointcloud_normals", "normals"):
             arrow = vtk.vtkArrowSource()
@@ -616,6 +622,9 @@ class Geometry:
 
                 self._appearance["size"] = 2
                 prop.SetPointSize(self._appearance["size"])
+
+        if clipping_planes:
+            mapper.SetClippingPlanes(clipping_planes)
 
         self._representation = representation
         return 0

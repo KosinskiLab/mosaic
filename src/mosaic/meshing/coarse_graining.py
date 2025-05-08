@@ -5,13 +5,14 @@ from os.path import join, basename
 
 import numpy as np
 
-from ..parallel import run_in_background
-from ..utils import find_closest_points, apply_quat, normals_to_rot
+from ..utils import find_closest_points
+
+# from ..parallel import run_in_background
 from . import remesh, center_mesh, compute_scale_factor_lower, scale
 from ..formats.writer import write_topology_file
 
 
-@run_in_background("Coarse graining")
+# @run_in_background("Coarse graining")
 def mesh_to_cg(
     mesh,
     output_directory: str,
@@ -22,7 +23,7 @@ def mesh_to_cg(
 ) -> bool:
     from ..parametrization import TriangularMesh
 
-    mesh = remesh(mesh, edge_length)
+    # mesh = remesh(mesh, edge_length)
 
     vertex_maps = []
     for protein in inclusions:
@@ -30,11 +31,17 @@ def mesh_to_cg(
         if geometry is None:
             continue
 
+        from ..utils import visualize_ray_casting
+
+        visualize_ray_casting(
+            mesh, geometry.points, geometry.normals * (-1 if flip_normals else 1)
+        )
         if include_normals:
             fit = TriangularMesh(mesh)
             kwargs = {
                 "points": geometry.points,
                 "normals": geometry.normals * -1 if flip_normals else 1,
+                "return_indices": True,
             }
             _, vertex_indices = fit.compute_distance(**kwargs)
         else:
