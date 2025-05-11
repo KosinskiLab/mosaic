@@ -429,7 +429,7 @@ class DataContainerInteractor(QObject):
         if file_format == "xyz":
             for index, points in enumerate(export_data["points"]):
                 fname = f"{file_path}_{index}.{file_format}"
-                np.savetxt(fname, points, comments="")
+                np.savetxt(fname, points, delimiter=",")
             return 1
 
         if file_format not in ("tsv", "star"):
@@ -489,6 +489,14 @@ class DataContainerInteractor(QObject):
         renderer = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
         current_actors = set(self.container.get_actors())
+
+        # for index, actor in enumerate(self.container.get_actors()):
+        #     mapper = actor.GetMapper()
+        #     if index == 4:
+        #         mapper.SetRelativeCoincidentTopologyLineOffsetParameters(0, -5)
+        #     if index in (4, 5):
+        #         actor.GetProperty().SetLineWidth(2)
+
         actors_to_remove = self.rendered_actors - current_actors
         for actor in actors_to_remove:
             renderer.RemoveActor(actor)

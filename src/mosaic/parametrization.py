@@ -987,6 +987,7 @@ class TriangularMesh(Parametrization):
         normals: np.ndarray = None,
         return_projection: bool = False,
         return_indices: bool = False,
+        return_triangles: bool = False,
         **kwargs,
     ) -> np.ndarray:
         """
@@ -1002,6 +1003,8 @@ class TriangularMesh(Parametrization):
             Return points projected onto mesh, defaults to False.
         return_indices : bool, optional
             Return vertex indices closest to projection, defaults to False.
+        return_triangles : bool, optional
+            Return triangles indices hit by raycasting.
 
         Returns
         -------
@@ -1011,6 +1014,8 @@ class TriangularMesh(Parametrization):
             Projection of each point onto mesh surface.
         indices : np.ndarray, optional
             Closest vertex to projection.
+        triangles : np.ndarray, optional
+            Triangle indices hit by projection.
         """
         self.mesh.compute_vertex_normals()
         self.mesh.compute_triangle_normals()
@@ -1022,6 +1027,7 @@ class TriangularMesh(Parametrization):
                 o3d.core.Tensor(points, dtype=o3d.core.Dtype.Float32)
             )
             projected_points = ret["points"].numpy()
+            triangle_indices = ret["primitive_ids"].numpy()
         else:
             rays = o3d.core.Tensor(
                 np.hstack([points, normals]), dtype=o3d.core.Dtype.Float32
@@ -1043,19 +1049,142 @@ class TriangularMesh(Parametrization):
             projected_points[valid_hits] += (
                 normals[valid_hits] * hit_distances[valid_hits, np.newaxis]
             )
+            triangle_indices = hits["primitive_ids"].numpy()
 
         dist = np.linalg.norm(points - projected_points, axis=1)
         _, vertex_indices = find_closest_points(self.vertices, projected_points, k=1)
 
-        ret = dist
-        vertex_indices = np.array(vertex_indices)
-        if return_indices and not return_projection:
-            ret = (dist, vertex_indices)
-        elif not return_indices and return_projection:
-            ret = (dist, projected_points)
-        elif return_indices and return_projection:
-            ret = (dist, projected_points, vertex_indices)
+        ret = [dist]
+
+        if return_projection:
+            ret.append(projected_points)
+        if return_indices:
+            ret.append(np.array(vertex_indices))
+        if return_triangles:
+            ret.append(np.array(triangle_indices))
+
+        if len(ret) == 1:
+            return ret[0]
         return ret
+
+    def add_projections(
+        self,
+        projections: np.ndarray,
+        triangle_indices: np.ndarray,
+        return_indices: bool = False,
+    ) -> Tuple[o3d.geometry.TriangleMesh, np.ndarray]:
+        """
+        Add projected points to the mesh by splitting triangles.
+
+        Parameters
+        ----------
+        projections : np.ndarray
+            Projections on the mesh surface to add to the mesh.
+        triangle_indices : np.ndarray
+            Indices of triangles that each point projects onto.
+        return_indices : bool, optional
+            Whether to return the index of projections in the new mesh.
+
+        Returns
+        -------
+        mesh : o3d.geometry.TriangleMesh
+            New mesh with valid projections added
+        indices : np.ndarray,
+            Array of vertex indices for the added points in the new mesh
+        """
+
+        keep = np.logical_and(
+            triangle_indices >= 0, triangle_indices < self.triangles.shape[0]
+        )
+        projections = projections[keep]
+        triangle_indices = triangle_indices[keep]
+
+        if len(projections) == 0:
+            return to_open3d(self.vertices.copy(), self.triangles.copy())
+
+        n_vertices = self.vertices.shape[0]
+        vertices = np.vstack((self.vertices, projections))
+        new_indices = np.arange(projections.shape[0]) + n_vertices
+
+        triangles = self.triangles
+        triangle_to_points = {}
+        for i, tri_idx in enumerate(triangle_indices):
+            if tri_idx not in triangle_to_points:
+                triangle_to_points[tri_idx] = []
+            triangle_to_points[tri_idx].append(i)
+
+        new_triangles = []
+        processed_triangles = set()
+        for tri_idx, point_indices in triangle_to_points.items():
+            v1_idx, v2_idx, v3_idx = triangles[tri_idx]
+
+            processed_triangles.add(tri_idx)
+
+            if len(point_indices) == 1:
+                new_vertex_idx = new_indices[point_indices[0]]
+                new_triangles.append([v1_idx, v2_idx, new_vertex_idx])
+                new_triangles.append([v2_idx, v3_idx, new_vertex_idx])
+                new_triangles.append([v3_idx, v1_idx, new_vertex_idx])
+                continue
+
+            # Complex case: multiple points in the same triangle
+            # Create a Delaunay triangulation of the points plus triangle vertices
+            tri_vertices = np.array(
+                [vertices[v1_idx], vertices[v2_idx], vertices[v3_idx]]
+            )
+
+            point_indices = np.array(point_indices)
+
+            tri_points = projections[point_indices]
+            tri_point_indices = new_indices[point_indices]
+            all_points = np.vstack((tri_vertices, tri_points))
+
+            # Project points into triangle plan for triangulation
+            e1 = tri_vertices[1] - tri_vertices[0]
+            normal = np.cross(e1, tri_vertices[2] - tri_vertices[0])
+
+            e1 = e1 / np.linalg.norm(e1)
+            e2 = np.cross(normal / np.linalg.norm(normal), e1)
+            all_points_2d = np.zeros((all_points.shape[0], 2))
+            all_points_2d[:, 0] = np.dot(all_points - tri_vertices[0], e1)
+            all_points_2d[:, 1] = np.dot(all_points - tri_vertices[0], e2)
+
+            try:
+                from scipy.spatial import Delaunay
+
+                tri = Delaunay(all_points_2d)
+                all_indices = np.array(
+                    [v1_idx, v2_idx, v3_idx] + tri_point_indices.tolist()
+                )
+
+                for simplex in tri.simplices:
+                    new_triangles.append(all_indices[simplex])
+
+            except Exception as e:
+                warnings.warn(str(e))
+                warnings.warn("Falling back to star triangulation instead.")
+
+                # Fallback: Star triangulation adding erach point one by one.
+                current_triangle_indices = [[v1_idx, v2_idx, v3_idx]]
+
+                for i, new_vertex_idx in enumerate(tri_point_indices):
+                    next_triangle_indices = []
+
+                    for t in current_triangle_indices:
+                        new_triangles.append([t[0], t[1], new_vertex_idx])
+                        new_triangles.append([t[1], t[2], new_vertex_idx])
+                        new_triangles.append([t[2], t[0], new_vertex_idx])
+
+                    current_triangle_indices = next_triangle_indices
+
+        for i in range(len(triangles)):
+            if i not in processed_triangles:
+                new_triangles.append(triangles[i].tolist())
+
+        new_mesh = to_open3d(vertices, np.array(new_triangles))
+        if return_indices:
+            return new_mesh, new_indices
+        return new_mesh
 
     def geodesic_distance(
         self,
@@ -1089,10 +1218,10 @@ class TriangularMesh(Parametrization):
         indices: ndarray, optional
             Corresponding source vertex indices. Shape is (len(target_vertices), k).
         """
-        k = max(1, min(k, len(source_vertices)))
         if source_vertices is None:
             source_vertices = np.arange(self.vertices.shape[0])
 
+        k = max(1, min(k, len(source_vertices)))
         source_vertices = np.asarray(source_vertices, dtype=np.int32).ravel()
         target_vertices = np.asarray(target_vertices, dtype=np.int32).ravel()
 
@@ -1107,7 +1236,7 @@ class TriangularMesh(Parametrization):
             if k == 1:
                 kwargs = {"vt": kwargs["vs"], "vs": kwargs["vt"]}
 
-            distances = igl.exact_geodesic(v=self.vertices, f=self.faces, **kwargs)
+            distances = igl.exact_geodesic(v=self.vertices, f=self.triangles, **kwargs)
             distances = np.atleast_1d(distances)
 
             sorted_indices = np.argsort(distances)[:k]

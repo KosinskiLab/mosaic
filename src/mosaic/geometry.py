@@ -59,10 +59,6 @@ class Geometry:
         if normals is None and points is not None:
             normals = np.full_like(points, fill_value=NORMAL_REFERENCE)
 
-        # if quaternions is None:
-        #     quaternions = normals_to_rot(normals, scalar_first=True)
-
-        # We do need normals for rendering reasons in certain representations
         self.points = points
         self.normals = normals
         if quaternions is not None:
@@ -502,6 +498,9 @@ class Geometry:
             arrow.SetShaftRadius(0.02)
 
             normal_scale = 0.1 * np.max(self.sampling_rate)
+
+            # arrow.SetShaftRadius(0.02 / 5)
+            # normal_scale = 0.5 * np.max(self.sampling_rate)
 
             glyph = vtk.vtkGlyph3D()
             glyph.SetSourceConnection(arrow.GetOutputPort())

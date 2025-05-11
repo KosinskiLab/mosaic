@@ -287,6 +287,7 @@ def create_button(
         if callback:
             button.triggered.connect(callback)
 
+    button.setIconSize(QSize(20, 20))
     if tooltip:
         button.setToolTip(tooltip)
     return button

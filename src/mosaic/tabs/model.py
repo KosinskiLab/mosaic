@@ -100,6 +100,14 @@ class ModelTab(QWidget):
                 "Remesh Mesh",
                 REMESH_SETTINGS,
             ),
+            create_button(
+                "Project",
+                "mdi.vector-curve",
+                self,
+                self._remesh_meshes,
+                "Project on Mesh",
+                PROJECTION_SETTINGS,
+            ),
             # create_button("Skeleton", "mdi.vector-line", self, self._sceleton),
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
@@ -683,6 +691,27 @@ MESHVOLUME_SETTINGS = {
             "type": "boolean",
             "default": True,
             "description": "Close mesh at at dataset edges.",
+        },
+    ],
+}
+
+
+PROJECTION_SETTINGS = {
+    "title": "Projection Settings",
+    "settings": [
+        {
+            "label": "Cast Normals",
+            "parameter": "use_normals",
+            "type": "boolean",
+            "default": True,
+            "description": "Include normal vectors in raycasting.",
+        },
+        {
+            "label": "Invert Normals",
+            "parameter": "invert_normals",
+            "type": "boolean",
+            "default": False,
+            "description": "Invert direction of normal vectors.",
         },
     ],
 }

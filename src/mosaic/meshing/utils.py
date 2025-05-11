@@ -9,6 +9,7 @@ import sys
 import h5py
 import warnings
 import textwrap
+from copy import deepcopy
 
 from os.path import join
 from subprocess import run
@@ -445,3 +446,42 @@ def to_tsi(vertices, faces, margin: int = 0) -> Dict:
         "n_faces": _faces.shape[0],
         "faces": _faces,
     }
+
+
+def visualize_ray_casting(mesh, points, normals, point_colors):
+    mesh_vis = deepcopy(mesh)
+    mesh_vis.compute_vertex_normals()
+
+    mesh_vis.paint_uniform_color((0.2, 0.4, 0.8))
+    vis = o3d.visualization.Visualizer()
+    vis.create_window()
+    vis.add_geometry(mesh_vis)
+
+    render_option = vis.get_render_option()
+    render_option.point_size = 15.0
+    render_option.line_width = 20.0
+    render_option.mesh_show_back_face = True
+    render_option.mesh_show_wireframe = True
+
+    for index, pc in enumerate(points):
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(pc)
+        pcd.paint_uniform_color(point_colors[index])
+        ray_lines = []
+        line_length = 300.0
+        for i in range(len(pc)):
+            line_points = [pc[i], pc[i] + normals[index][i] * line_length]
+            line = o3d.geometry.LineSet()
+            line.points = o3d.utility.Vector3dVector(line_points)
+            line.lines = o3d.utility.Vector2iVector([[0, 1]])
+            line.colors = o3d.utility.Vector3dVector([(0.26, 0.65, 0.44)])
+            ray_lines.append(line)
+        vis.add_geometry(pcd)
+        for line in ray_lines:
+            vis.add_geometry(line)
+    view_control = vis.get_view_control()
+    view_control.reset_camera_local_rotate()
+    view_control.set_up([1, 0, 0])
+    view_control.set_front([0, 0, 1])
+    vis.run()
+    vis.destroy_window()

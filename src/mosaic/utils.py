@@ -7,7 +7,6 @@
 
 import warnings
 from typing import List
-from copy import deepcopy
 
 import vtk
 import numpy as np
@@ -331,28 +330,6 @@ def cmap_to_vtkctf(cmap, max_value, min_value, gamma: float = 1.0):
         color_transfer_function.AddRGBPoint(data_value, *colormap(x)[0:3])
 
     return color_transfer_function, (min_value, max_value)
-
-
-def visualize_ray_casting(mesh, points, normals):
-    mesh_vis = deepcopy(mesh)
-    mesh_vis.paint_uniform_color([0.8, 0.8, 0.8])
-
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(points)
-    pcd.paint_uniform_color([1, 0, 0])
-
-    ray_lines = []
-    line_length = 300.0
-
-    for i in range(len(points)):
-        line_points = [points[i], points[i] + normals[i] * line_length]
-        line = o3d.geometry.LineSet()
-        line.points = o3d.utility.Vector3dVector(line_points)
-        line.lines = o3d.utility.Vector2iVector([[0, 1]])
-        line.colors = o3d.utility.Vector3dVector([[0, 1, 0]])
-        ray_lines.append(line)
-
-    o3d.visualization.draw_geometries([mesh_vis, pcd] + ray_lines)
 
 
 def _align_vectors(target, base) -> Rotation:

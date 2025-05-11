@@ -29,12 +29,18 @@ from ..properties import GeometryProperties
 from ..widgets.settings import get_widget_value
 from ..widgets.color_preview import ColorPreviewWidget
 from ..widgets import ContainerListWidget, StyledListWidgetItem
+from ..stylesheets import QPushButton_style, QScrollArea_style
 
-from ..stylesheets import (
-    QPushButton_style,
-    QScrollArea_style,
-    QListWidget_style,
-)
+
+def _populate_list(geometries):
+    target_list = ContainerListWidget(border=False)
+    target_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+
+    for name, obj in geometries:
+        item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
+        item.setData(Qt.ItemDataRole.UserRole, obj)
+        target_list.addItem(item)
+    return target_list
 
 
 class PropertyAnalysisDialog(QDialog):
@@ -147,7 +153,9 @@ class PropertyAnalysisDialog(QDialog):
         category_layout = QHBoxLayout()
         category_layout.addWidget(QLabel("Category:"))
         self.category_combo = QComboBox()
-        self.category_combo.addItems(["Distance", "Surface", "Geometric", "Custom"])
+        self.category_combo.addItems(
+            ["Distance", "Surface", "Geometric", "Projection", "Custom"]
+        )
         self.category_combo.currentTextChanged.connect(self._update_property_list)
         category_layout.addWidget(self.category_combo)
 
@@ -195,8 +203,8 @@ class PropertyAnalysisDialog(QDialog):
 
         # Dialog Control Buttons
         button_layout = QHBoxLayout()
-        refresh_btn = QPushButton("Refresh")
-        refresh_btn.setIcon(qta.icon("mdi.refresh", color="#4f46e5"))
+        refresh_btn = QPushButton("Compute")
+        refresh_btn.setIcon(qta.icon("mdi.monitor", color="#4f46e5"))
         refresh_btn.clicked.connect(self._preview)
         button_layout.addWidget(refresh_btn)
         button_layout.addStretch()
@@ -373,6 +381,10 @@ class PropertyAnalysisDialog(QDialog):
                 "Number of Vertices",
                 "Number of Triangles",
             ],
+            "Projection": [
+                "Projected Curvature",
+                "Geodesic Distance",
+            ],
             "Geometric": [
                 "Identity",
                 "Width (X-axis)",
@@ -401,6 +413,9 @@ class PropertyAnalysisDialog(QDialog):
             "Depth (Y-axis)": "depth",
             "Height (Z-axis)": "height",
             "Number of Points": "n_points",
+            # Projection
+            "Projected Curvature": "projected_curvature",
+            "Geodesic Distance": "geodesic_distance",
         }
 
         self.property_combo.addItems(properties.get(category, []))
@@ -429,18 +444,75 @@ class PropertyAnalysisDialog(QDialog):
             self.option_widgets["curvature"] = curvature_combobox
             self.option_widgets["radius"] = radius_spinbox
 
+        elif property_name == "Projected Curvature":
+            # Target mesh selection
+            target_group = QGroupBox("Target Mesh")
+            target_layout = QVBoxLayout(target_group)
+
+            target_list = _populate_list(
+                self.cdata.format_datalist("models", mesh_only=True)
+            )
+            target_layout.addWidget(target_list)
+
+            options_layout = QFormLayout()
+
+            curvature_combobox = QComboBox()
+            curvature_combobox.addItems(["Gaussian", "Mean"])
+            options_layout.addRow("Method:", curvature_combobox)
+
+            radius_spinbox = QSpinBox()
+            radius_spinbox.setRange(1, 20)
+            radius_spinbox.setValue(5)
+            options_layout.addRow("Radius:", radius_spinbox)
+
+            target_layout.addLayout(options_layout)
+
+            self.property_options_layout.addRow(target_group)
+            self.option_widgets["queries"] = target_list
+            self.option_widgets["curvature"] = curvature_combobox
+            self.option_widgets["radius"] = radius_spinbox
+
+        elif property_name == "Geodesic Distance":
+            target_group = QGroupBox("Target Mesh")
+            target_layout = QVBoxLayout(target_group)
+
+            target_list = _populate_list(
+                self.cdata.format_datalist("models", mesh_only=True)
+            )
+            target_layout.addWidget(target_list)
+
+            neighbor_layout = QHBoxLayout()
+            neighbor_label = QLabel("k-Nearest Neighbors:")
+            knn_layout = QHBoxLayout()
+
+            neighbor_start = QSpinBox()
+            neighbor_start.setRange(1, 255)
+            neighbor_start.setValue(1)
+
+            neighbor_to_label = QLabel("to")
+            neighbor_to_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            neighbor_end = QSpinBox()
+            neighbor_end.setRange(1, 255)
+            neighbor_end.setValue(1)
+
+            knn_layout.addWidget(neighbor_start)
+            knn_layout.addWidget(neighbor_to_label)
+            knn_layout.addWidget(neighbor_end)
+            neighbor_layout.addWidget(neighbor_label)
+            neighbor_layout.addLayout(knn_layout)
+            target_layout.addLayout(neighbor_layout)
+
+            self.property_options_layout.addRow(target_group)
+            self.option_widgets["queries"] = target_list
+            self.option_widgets["k_start"] = neighbor_start
+            self.option_widgets["k"] = neighbor_end
+
         elif property_name == "To Cluster":
             target_group = QGroupBox("Target Clusters")
             target_layout = QVBoxLayout(target_group)
 
-            target_list = ContainerListWidget(border=False)
-            target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
-            clusters = self.cdata.format_datalist("data")
-
-            for name, obj in clusters:
-                item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
-                item.setData(Qt.ItemDataRole.UserRole, obj)
-                target_list.addItem(item)
+            target_list = _populate_list(self.cdata.format_datalist("data"))
             target_layout.addWidget(target_list)
 
             # Checkboxes
@@ -466,7 +538,7 @@ class PropertyAnalysisDialog(QDialog):
 
             neighbor_end = QSpinBox()
             neighbor_end.setRange(1, 255)
-            neighbor_end.setValue(2)
+            neighbor_end.setValue(1)
 
             knn_layout.addWidget(neighbor_start)
             knn_layout.addWidget(neighbor_to_label)
@@ -490,14 +562,7 @@ class PropertyAnalysisDialog(QDialog):
             target_group = QGroupBox("Target Models")
             target_layout = QVBoxLayout(target_group)
 
-            target_list = ContainerListWidget(border=False)
-            target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
-            models = self.cdata.format_datalist("models")
-
-            for name, obj in models:
-                item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
-                item.setData(Qt.ItemDataRole.UserRole, obj)
-                target_list.addItem(item)
+            target_list = _populate_list(self.cdata.format_datalist("models"))
             target_layout.addWidget(target_list)
 
             all_targets_checkbox = QCheckBox("Compare to All")
@@ -577,8 +642,10 @@ class PropertyAnalysisDialog(QDialog):
             try:
                 if isinstance(value, np.ndarray) or isinstance(other_value, np.ndarray):
                     cache_miss = not np.allclose(value, other_value)
-                else:
-                    cache_miss = all(value != other_value)
+
+                cache_miss = value != other_value
+                if not isinstance(cache_miss, bool):
+                    cache_miss = all(cache_miss)
             except Exception:
                 cache_miss = True
 
@@ -996,6 +1063,4 @@ class PropertyAnalysisDialog(QDialog):
                 padding: 4px;
             }
         """
-        return self.setStyleSheet(
-            base_style + QPushButton_style + QScrollArea_style + QListWidget_style
-        )
+        return self.setStyleSheet(base_style + QPushButton_style + QScrollArea_style)
