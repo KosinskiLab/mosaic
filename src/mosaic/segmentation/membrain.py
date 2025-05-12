@@ -2,6 +2,7 @@ import warnings
 from pathlib import Path
 from typing import Tuple
 from subprocess import run
+from os import makedirs
 from os.path import splitext, join, basename
 
 import numpy as np
@@ -91,6 +92,8 @@ def run_membrainseg(
     )
     if out_folder is None:
         out_folder = str(Path.home().joinpath("mosaic/segmentations/membrain"))
+
+    makedirs(out_folder, exist_ok=True)
 
     cmd = [
         "membrain",
