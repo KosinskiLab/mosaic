@@ -223,7 +223,7 @@ class RibbonToolBar(QToolBar):
             }
             QToolButton {
                 min-width: 60px;
-                padding: 6px 4px;
+                padding: 6px px;
                 border-radius: 4px;
                 font-size: 11px;
             }

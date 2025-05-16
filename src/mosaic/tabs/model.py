@@ -1,6 +1,6 @@
 from functools import partial
 
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 
 from ..parallel import run_in_background
 from ..widgets.ribbon import create_button
@@ -104,7 +104,7 @@ class ModelTab(QWidget):
                 "Project",
                 "mdi.vector-curve",
                 self,
-                self._remesh_meshes,
+                self._project_on_mesh,
                 "Project on Mesh",
                 PROJECTION_SETTINGS,
             ),
@@ -170,7 +170,7 @@ class ModelTab(QWidget):
 
     def _repair_mesh(
         self,
-        hole_size=-1,
+        max_hole_size=-1,
         elastic_weight=0,
         curvature_weight=0,
         volume_weight=0,
@@ -188,7 +188,7 @@ class ModelTab(QWidget):
                 alpha=elastic_weight,
                 beta=curvature_weight,
                 gamma=volume_weight,
-                hole_len_thr=hole_size,
+                hole_len_thr=max_hole_size,
                 n_ring=boundary_ring,
             )
             self.cdata._add_fit(
@@ -197,6 +197,19 @@ class ModelTab(QWidget):
             )
 
         return self.cdata.models.render()
+
+    def _project_on_mesh(
+        self, use_normals: bool = False, invert_normals: bool = False, **kwargs
+    ):
+        selected_meshes = self._get_selected_meshes()
+        if len(selected_meshes) != 0:
+            QMessageBox.warning(None, "Please select one mesh for projection.")
+            return None
+
+        for index in self.cdata.data._get_selected_indices():
+            geometry = self.cdata._data.data[index]
+
+        pass
 
     @run_in_background("Remesh", callback=on_fit_complete)
     def _remesh_meshes(self, method, **kwargs):
@@ -375,6 +388,7 @@ REPAIR_SETTINGS = {
             "parameter": "elastic_weight",
             "type": "float",
             "default": 0.0,
+            "min": -(2**28),
             "description": "Control mesh smoothness and elasticity.",
             "notes": "0 - strong anchoring, 1 - no anchoring, > 1 repulsion.",
         },
@@ -383,6 +397,7 @@ REPAIR_SETTINGS = {
             "parameter": "curvature_weight",
             "type": "float",
             "default": 0.0,
+            "min": -(2**28),
             "description": "Controls propagation of mesh curvature.",
         },
         {
@@ -390,6 +405,7 @@ REPAIR_SETTINGS = {
             "parameter": "volume_weight",
             "type": "float",
             "default": 0.0,
+            "min": -(2**28),
             "description": "Controls internal pressure of mesh.",
         },
         {
@@ -401,7 +417,7 @@ REPAIR_SETTINGS = {
         },
         {
             "label": "Hole Size",
-            "parameter": "hole_size",
+            "parameter": "max_hole_size",
             "type": "float",
             "min": -1.0,
             "default": -1.0,
@@ -567,7 +583,7 @@ MESH_SETTINGS = {
             },
             {
                 "label": "Smoothing Steps",
-                "parameter": "smoothing_steps",
+                "parameter": "n_smoothing",
                 "type": "number",
                 "default": 5,
                 "description": "Pre-smoothing steps before fairing.",

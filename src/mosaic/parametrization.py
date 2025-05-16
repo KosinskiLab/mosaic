@@ -874,7 +874,8 @@ class TriangularMesh(Parametrization):
         mesh = mesh.remove_duplicated_triangles()
         mesh = mesh.remove_unreferenced_vertices()
         mesh = mesh.remove_duplicated_vertices()
-        mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
+        if n_smoothing > 0:
+            mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
 
         if np.asarray(mesh.vertices).shape[0] == 0:
             print("No suitable vertices for mesh creation found.")
@@ -884,7 +885,7 @@ class TriangularMesh(Parametrization):
             return cls(mesh=mesh)
 
         # Hole triangulation and fairing
-        new_vs, new_fs = triangulate_refine_fair(
+        new_vs, new_fs, vids = triangulate_refine_fair(
             vs=np.asarray(mesh.vertices),
             fs=np.asarray(mesh.triangles),
             hole_len_thr=max_hole_size,
@@ -894,7 +895,21 @@ class TriangularMesh(Parametrization):
         )
         mesh = to_open3d(new_vs, new_fs)
         mesh = mesh.remove_degenerate_triangles()
-        mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
+        if n_smoothing > 0:
+            mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
+
+        vertices = np.asarray(mesh.vertices)
+        np.savetxt(
+            "/Users/vmaurer/Desktop/vertices_inferred.csv",
+            vertices[vids],
+            delimiter=",",
+        )
+        np.savetxt(
+            "/Users/vmaurer/Desktop/vertices.csv",
+            vertices[np.setdiff1d(np.arange(vertices.shape[0]), vids)],
+            delimiter=",",
+        )
+
         mesh = mesh.compute_vertex_normals()
         return cls(mesh=mesh)
 
@@ -1072,7 +1087,7 @@ class TriangularMesh(Parametrization):
         projections: np.ndarray,
         triangle_indices: np.ndarray,
         return_indices: bool = False,
-    ) -> Tuple[o3d.geometry.TriangleMesh, np.ndarray]:
+    ) -> Tuple["TriangularMesh", np.ndarray]:
         """
         Add projected points to the mesh by splitting triangles.
 
@@ -1087,7 +1102,7 @@ class TriangularMesh(Parametrization):
 
         Returns
         -------
-        mesh : o3d.geometry.TriangleMesh
+        mesh : TriangularMesh
             New mesh with valid projections added
         indices : np.ndarray,
             Array of vertex indices for the added points in the new mesh
@@ -1181,7 +1196,7 @@ class TriangularMesh(Parametrization):
             if i not in processed_triangles:
                 new_triangles.append(triangles[i].tolist())
 
-        new_mesh = to_open3d(vertices, np.array(new_triangles))
+        new_mesh = TriangularMesh(to_open3d(vertices, np.array(new_triangles)))
         if return_indices:
             return new_mesh, new_indices
         return new_mesh

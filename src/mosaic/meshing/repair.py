@@ -509,4 +509,4 @@ def triangulate_refine_fair(
 
     # Fair selected parts of the mesh
     vs = fair_mesh(vs, fs, vids, alpha=alpha, beta=beta, gamma=gamma, n_ring=n_ring)
-    return vs, fs
+    return vs, fs, vids

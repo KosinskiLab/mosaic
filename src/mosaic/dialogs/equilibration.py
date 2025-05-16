@@ -44,7 +44,7 @@ class MeshEquilibrationDialog(QDialog):
             make_param("volume_fraction", 1.1, 0, "Fraction VN/V0."),
             make_param("area_fraction", 1.1, 0, "Fraction AN/A0."),
             make_param(
-                "scaling_lower", 1.0, 0, "Lower bound for rescalde mesh edge length."
+                "scaling_lower", 1.0, 0, "Lower bound for rescaled mesh edge length."
             ),
         ]
 

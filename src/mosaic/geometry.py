@@ -134,7 +134,8 @@ class Geometry:
                 normals = self.normals[idx].copy()
 
         quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
-        if isinstance(quaternions, np.ndarray):
+        if quaternions is not None:
+            quaternions = self.quaternions
             if np.max(idx) < quaternions.shape[0]:
                 quaternions = quaternions[idx].copy()
 
