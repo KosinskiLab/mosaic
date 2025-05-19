@@ -33,16 +33,10 @@ After setting up your environment, |project| can be installed from PyPi
 
    pip install mosaic["all"]
 
-.. tip::
 
-   Use the following to install |project| without optional dependencies
+.. _installation-dts:
 
-   .. code-block:: bash
-
-      pip install mosaic
-
-
-DTS simulations
+DTS Simulations
 ---------------
 
 If you intend to use features of |project| that pertain to DTS simulations, you also need to install FreeDTS for simulation and Trimem for mesh equilibration.
@@ -60,6 +54,7 @@ Trimem can be installed by following the instructions in the repository https://
    git clone --recurse-submodules https://github.com/bio-phys/trimem.git
    pip install trimem/
 
+.. _installation-backmapping:
 
 DTS Backmapping
 ---------------
@@ -68,9 +63,9 @@ We use TS2CG (https://github.com/weria-pezeshkian/TS2CG-v2.0) to map back meshes
 
 .. code-block:: bash
 
-   pip install TS2CG
-   pip install vermouth
+   pip install TS2CG vermouth
 
+We use Gromacs for equilibrating coarse-grained Martini models. The installation instructions are available `here <https://manual.gromacs.org/current/install-guide/index.html>`_.
 
 Development
 -----------

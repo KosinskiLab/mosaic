@@ -13,9 +13,9 @@ Loading Data
 
 3. Navigate to your data file and select it. Mosaic supports various formats including:
 
-   - MRC, MAP, EM (volume data)
+   - MRC, MAP, EM (volume segmentation data)
    - OBJ, PLY, STL (mesh data)
-   - TSV, STAR (orientation data)
+   - TSV, STAR (point cloud data with angular orientation, e.g. protein picks)
    - XYZ, CSV, TXT (point cloud data)
 
 4. After selecting a file, the Import Parameters dialog will appear, allowing you to set:
