@@ -109,7 +109,7 @@ class ImportDataDialog(QDialog):
         # Sampling rate inputs
         sampling_label = QLabel("Sampling Rate:")
         sampling_settings = {
-            "label": "Offset",
+            "label": "Sampling Rate",
             "type": "text",
             "min": 1e-8,
             "max": 1e32,

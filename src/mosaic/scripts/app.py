@@ -7,6 +7,7 @@
 """
 import os
 import sys
+import argparse
 from typing import List
 from platform import system
 from importlib_resources import files
@@ -39,7 +40,7 @@ from qtpy.QtGui import (
 import qtawesome as qta
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-from mosaic import MosaicData, ExportManager
+from mosaic import MosaicData, ExportManager, __version__
 from mosaic.tabs import SegmentationTab, ModelTab, IntelligenceTab
 from mosaic.dialogs import (
     TiltControlDialog,
@@ -864,6 +865,10 @@ class App(QMainWindow):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--version", action="version", version=f"{__version__}")
+    parser.parse_args()
+
     app = QApplication(sys.argv)
     app.setApplicationName("Mosaic")
     app.setApplicationDisplayName("Mosaic")

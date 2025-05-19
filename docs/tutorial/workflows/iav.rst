@@ -55,8 +55,8 @@ The status indicator will change from "Ready" to "Membrane Segmentation." The re
    Membrane segmentation requires a GPU. If unavailable, download the pre-computed segmentation `emd_11075_MemBrain_seg_v10_alpha.ckpt_segmented.mrc.gz <https://oc.embl.de/index.php/s/fi7bJDRtAbVcOnt>`_ and load it using File > Open.
 
 
-Mesh Generation and Refinement
-------------------------------
+Mesh Creation
+-------------
 
 
 Clean the Segmentation

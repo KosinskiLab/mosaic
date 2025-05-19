@@ -1,6 +1,6 @@
-=======================
-Configuration Reference
-=======================
+=============
+Configuration
+=============
 
 Mosaic can be configured through configuration files and settings. This page documents all available options and their effects.
 

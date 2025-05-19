@@ -145,6 +145,8 @@ class StyledListWidgetItem(QListWidgetItem):
             icon_name = "mdi.function"
         elif item_type == "mesh":
             icon_name = "mdi.triangle-outline"
+        elif item_type == "trajectory":
+            icon_name = "mdi.chart-line-variant"
         else:
             icon_name = "mdi.shape-outline"
 

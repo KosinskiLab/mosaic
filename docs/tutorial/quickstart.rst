@@ -2,81 +2,78 @@
 Quickstart
 ==========
 
-This quickstart guide will help you get up and running with Mosaic, providing the minimal steps needed to load data, visualize it, and save your work.
+This quickstart guide will help you get up and running with Mosaic quickly, covering the essential steps to load data, visualize it, and save your work.
+
+
+Launch Mosaic
+-------------
+
+Start Mosaic from your command line:
+
+.. code-block:: bash
+
+   mosaic
+
+.. figure:: ../../_static/tutorial/mosaic_interface.png
+   :width: 100 %
+   :align: center
+
+   Main application interface
+
+.. tip::
+   An overview of all available keyboard shortcuts is given in **Help** > **Keybinds**.
 
 Loading Data
-============
+------------
 
-1. Launch Mosaic by running ``mosaic`` from your terminal or command prompt.
+1. Click **File > Open** (⌘ + O for macOS / Ctrl + O) to open the file selection dialog.
 
-2. Once the application opens, click on **File > Open** or use the shortcut ``Ctrl+O`` to bring up the file selection dialog.
+2. Navigate to your data file and select it. Mosaic supports various formats including:
 
-3. Navigate to your data file and select it. Mosaic supports various formats including:
-
-   - MRC, MAP, EM (volume segmentation data)
+   - MRC, MAP, EM, H5 (volume segmentation data)
    - OBJ, PLY, STL (mesh data)
    - TSV, STAR (point cloud data with angular orientation, e.g. protein picks)
-   - XYZ, CSV, TXT (point cloud data)
+   - XYZ, CSV, TXT, GRO (point cloud data)
 
-4. After selecting a file, the Import Parameters dialog will appear, allowing you to set:
+   .. note::
+      For detailed information about supported file formats, see the :doc:`File Format Reference <reference/formats>`.
 
-   - Scale: Controls the overall size scaling
-   - Offset: Shifts the data position
-   - Sampling Rate: Defines the resolution/spacing
+3. Configure import parameters in the dialog that appears:
 
-   #Screenshot: Import Parameters dialog
+   - **Scale**: Data coordinates are multiplied by this value (default: 1.0)
+   - **Offset**: Shifts data position (default: 0.0)
+   - **Sampling Rate**: Defines resolution/spacing (default: 1.0)
 
-5. Click **OK** to load the data. Your data will appear in the 3D viewport and be listed in the Object Browser panel.
+.. figure:: ../../_static/tutorial/import_data.png
+   :width: 60%
+   :align: center
 
+   Import Parameters dialog showing scale, offset, and sampling rate options.
 
-Basic Interaction
-=================
+4. Click **OK** to load the data.
 
-Navigating the 3D View
-----------------------
+Your data will appear in the 3D viewport and be listed in the **Object Browser** panel on the right.
 
-- Rotate: Click and drag with the left mouse button
-- Pan: Hold Shift and drag with the left mouse button
-- Zoom: Use the mouse wheel
-
-Standard Camera Views
----------------------
-
-For standard orientations, use the keyboard shortcuts:
-
-- ``X``: View along X axis
-- ``Z``: View along Z axis
-- ``C``: View along Y axis
-
-Selecting and Managing Objects
-------------------------------
-
-1. Click on items in the Object Browser to select them
-2. Use Ctrl+click to select multiple items, Ctrl+A for all items, Ctrl+Shift for a from-to selection.
-3. Right-click objects to access their context menu with operations like:
-
-   - Show / Hide
-   - Duplicate / Remove
-   - Change representation
-   - Export
-   - Properties
-
-   #Screenshot: Context menu on an object
-
-Making a Simple Selection
--------------------------
-
-For interacting with points in an object:
-
-- Press ``R`` to activate the rubber band selection tool
-- Click and drag in the 3D viewport to select points
-- Press ``E`` to expand selection to entire clusters
-
-For selecting an entire object press ``S`` to activate the picking mode. For switching from interacting with clusters to models press ``s``.
+.. tip::
+   Hover over Mosaic interface elements for tooltips with detailed explanations.
 
 
-Saving Your Work
-================
+Basic Navigation
+----------------
+
+**Mouse Controls:**
+
+- **Rotate**: Left-click and drag
+- **Pan**: Shift + left-click and drag
+- **Zoom**: Mouse wheel or right-click and drag
+
+**Keyboard Shortcuts:**
+
+- ``X``: View along X-axis
+- ``Z``: View along Z-axis
+- ``C``: View along Y-axis
+- ``V``: Flip camera view direction
+
 
 Save a Screenshot
 -----------------
@@ -89,14 +86,21 @@ To save a screenshot of the 3D viewport:
 Save a Session
 --------------
 
-To save your entire workspace for later use:
+To preserve your complete workspace:
 
 1. Select **File > Save Session** or press ``Ctrl+S``
-2. Choose a location and filename (with .pickle extension)
-3. This will save all your data, models, and view settings
+2. Choose a location and filename (automatically adds .pickle extension)
+3. This saves:
+   - All loaded data (clusters and models)
+   - Object visibility settings
+   - Visual properties (colors, sizes)
+   - Object names and metadata
+
+.. note::
+   Sessions do not save camera position or volume viewer state. These are reset when loading a session.
 
 
 Next Steps
-==========
+----------
 
 With these basic operations, you can already start exploring your data in Mosaic. For more detailed functionality, continue to the :doc:`Concepts and UI <concepts>` section.

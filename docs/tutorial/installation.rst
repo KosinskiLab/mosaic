@@ -1,4 +1,25 @@
+============
+Installation
+============
+
 .. include:: ../substitutions.rst
+
+Prerequisites
+-------------
+
+- **Python**: 3.11+ recommended
+- **Operating System**:
+
+  - Linux (recommended)
+  - macOS (some performance limitations noted below)
+  - Windows 10+ (not tested but principally supported)
+- **Hardware**:
+
+  - Standard consumer laptops (8GB+ RAM recommended)
+  - NVIDIA GPU with CUDA support required for: membrane segmentation, template matching and molecular dynamics simulations (oldest model tested: RTX 3090)
+
+.. note::
+   macOS Users: Due to compatibility issues, some functions (edge length-based remeshing and certain parametrizations) have reduced performance compared to Linux systems.
 
 
 Installation
@@ -6,13 +27,13 @@ Installation
 
 .. _installation-section:
 
-We recommend creating an installation enviroment for a clean and isolated setup. Available options for different use cases are outlined in the tabs below.
+We recommend creating a virtual environment for a clean and isolated setup.
 
 .. tab-set::
 
    .. tab-item:: Venv
 
-      Venv is Python's built-in virtual environment module. Venv is a good choice for simpler setups, but does not handle non-Python dependencies.
+      Python's built-in option, suitable for simpler setups.
 
       .. code-block:: bash
 
@@ -21,33 +42,38 @@ We recommend creating an installation enviroment for a clean and isolated setup.
 
    .. tab-item:: Conda
 
-      Conda is a powerful package manager that creates isolated environments with both Python and non-Python dependencies. Conda is a good choice for more complex setups and cross-platform compatibility.
+      Best for cross-platform compatibility and managing complex dependencies.
 
       .. code-block:: bash
 
          conda create --name mosaic -c conda-forge python=3.11
+         conda activate mosaic
 
-After setting up your environment, |project| can be installed from PyPi
+After setting up your environment, Mosaic can be installed from PyPI
 
 .. code-block:: bash
 
-   pip install mosaic["all"]
+   pip install "mosaic[all]"
+   mosaic --version          # Smoke test to verify installation
 
+
+Optional Dependencies
+---------------------
 
 .. _installation-dts:
 
 DTS Simulations
----------------
+^^^^^^^^^^^^^^^
 
-If you intend to use features of |project| that pertain to DTS simulations, you also need to install FreeDTS for simulation and Trimem for mesh equilibration.
+If you intend to use Mosaic for dynamically triangulated surface (DTS) simulations, please install these additional tools
 
-FreeDTS can be installed by following the instructions in https://github.com/weria-pezeshkian/FreeDTS. Alternatively, we provide a python wrapper that can be installed using pip
+**FreeDTS**: Can be installed by following the instructions at https://github.com/weria-pezeshkian/FreeDTS. Alternatively, use our Python wrapper:
 
 .. code-block:: bash
 
    pip install pyfreedts
 
-Trimem can be installed by following the instructions in the repository https://github.com/bio-phys/trimem
+**Trimem**: Install from the repository at https://github.com/bio-phys/trimem:
 
 .. code-block:: bash
 
@@ -57,9 +83,9 @@ Trimem can be installed by following the instructions in the repository https://
 .. _installation-backmapping:
 
 DTS Backmapping
----------------
+^^^^^^^^^^^^^^^
 
-We use TS2CG (https://github.com/weria-pezeshkian/TS2CG-v2.0) to map back meshes onto coarse-grained representations for molecular dynamics simulations and Martinize2 (https://github.com/marrink-lab/vermouth-martinize) to create the corresponding coarse-grained representations of atomic structures. Both can be intalled using pip
+If you intend to use Mosaic for creating coarse-grained representations of meshes, install TS2CG (https://github.com/weria-pezeshkian/TS2CG-v2.0) for backmapping and Martinize2 (https://github.com/marrink-lab/vermouth-martinize) for creating coarse-grained representations of atomic structures
 
 .. code-block:: bash
 
@@ -67,10 +93,11 @@ We use TS2CG (https://github.com/weria-pezeshkian/TS2CG-v2.0) to map back meshes
 
 We use Gromacs for equilibrating coarse-grained Martini models. The installation instructions are available `here <https://manual.gromacs.org/current/install-guide/index.html>`_.
 
-Development
------------
 
-The latest development version can be installed from GitHub
+Instructions for Developers
+---------------------------
+
+The latest development version of Mosaic can be installed from GitHub
 
 .. code-block:: bash
 
@@ -80,5 +107,14 @@ If you want to modify the codebase
 
 .. code-block:: bash
 
+   pip install poetry
    git clone https://github.com/KosinskiLab/mosaic.git
-   poetry install mosaic
+   cd mosaic
+   poetry install
+
+
+Getting Help
+------------
+
+- Check the :doc:`troubleshooting guide <reference/troubleshooting>`.
+- Open an issue on :doc:`GitHub <reference/issues>`.

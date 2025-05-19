@@ -523,6 +523,8 @@ class DataContainerInteractor(QObject):
             fit = geometry._meta.get("fit", None)
             if fit is not None:
                 text = "mesh" if hasattr(fit, "mesh") else "parametric"
+                if text == "mesh" and hasattr(geometry, "_trajectory"):
+                    text = "trajectory"
                 type = text
 
             meta_info = geometry._meta.pop("info", {})

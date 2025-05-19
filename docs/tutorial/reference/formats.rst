@@ -1,6 +1,6 @@
-=====================
-File Format Reference
-=====================
+============
+File Formats
+============
 
 This page documents all file formats supported by Mosaic, their specifications, and usage details.
 
