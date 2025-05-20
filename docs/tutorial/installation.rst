@@ -4,10 +4,12 @@ Installation
 
 .. include:: ../substitutions.rst
 
+Before installing Mosaic, ensure your system meets the following requirements.
+
 Prerequisites
 -------------
 
-- **Python**: 3.11+ recommended
+- **Python**: 3.11+ (3.11 recommended)
 - **Operating System**:
 
   - Linux (recommended)
@@ -15,11 +17,11 @@ Prerequisites
   - Windows 10+ (not tested but principally supported)
 - **Hardware**:
 
-  - Standard consumer laptops (8GB+ RAM recommended)
+  - Standard consumer laptops (8GB RAM recommended)
   - NVIDIA GPU with CUDA support required for: membrane segmentation, template matching and molecular dynamics simulations (oldest model tested: RTX 3090)
 
 .. note::
-   macOS Users: Due to compatibility issues, some functions (edge length-based remeshing and certain parametrizations) have reduced performance compared to Linux systems.
+   macOS Users: Due to compatibility issues, some functions (edge length-based remeshing and certain parametrizations) have reduced performance compared to Linux systems, but yield the same output.
 
 
 Installation
@@ -59,6 +61,8 @@ After setting up your environment, Mosaic can be installed from PyPI
 
 Optional Dependencies
 ---------------------
+
+Mosaic provides specialized functionality through the following optional components.
 
 .. _installation-dts:
 

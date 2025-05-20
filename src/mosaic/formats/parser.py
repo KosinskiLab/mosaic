@@ -173,7 +173,6 @@ def read_txt(filename: str):
             cols = ("nx", "ny", "nz")
             normals.append((np.hstack([cluster[k][:, None] for k in cols])))
         except Exception as e:
-            print(e)
             continue
 
     if len(normals) == 0:

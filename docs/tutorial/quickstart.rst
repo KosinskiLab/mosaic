@@ -48,9 +48,9 @@ Loading Data
    :width: 60%
    :align: center
 
-   Import Parameters dialog showing scale, offset, and sampling rate options.
+   Data import dialog showing scale, offset, and sampling rate options.
 
-4. Click **OK** to load the data.
+4. Click **Accept** to load the data.
 
 Your data will appear in the 3D viewport and be listed in the **Object Browser** panel on the right.
 
@@ -91,6 +91,7 @@ To preserve your complete workspace:
 1. Select **File > Save Session** or press ``Ctrl+S``
 2. Choose a location and filename (automatically adds .pickle extension)
 3. This saves:
+
    - All loaded data (clusters and models)
    - Object visibility settings
    - Visual properties (colors, sizes)
@@ -103,4 +104,4 @@ To preserve your complete workspace:
 Next Steps
 ----------
 
-With these basic operations, you can already start exploring your data in Mosaic. For more detailed functionality, continue to the :doc:`Concepts and UI <concepts>` section.
+With these operations, you can already start exploring your data in Mosaic. For more information continue to the :doc:`Concepts and UI <concepts>` section.

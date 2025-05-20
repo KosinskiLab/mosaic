@@ -15,4 +15,4 @@ def get_extension(filename: str) -> str:
     base, extension = splitext(basename(filename))
     if extension.lower() == ".gz":
         _, extension = splitext(basename(base))
-    return extension
+    return extension.lower()

@@ -12,7 +12,7 @@ API
 .. toctree::
    :caption: Preprocessing
 
-   data_structures/data
+   input_output
 
 .. toctree::
    :caption: Template Matching

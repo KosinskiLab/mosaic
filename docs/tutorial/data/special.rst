@@ -2,67 +2,58 @@
 Specialized Views
 =================
 
-This section covers tools for visualizing volume data and time-series trajectories.
+This section covers specialized visualization tools in Mosaic
 
 Volumes
-=======
+-------
 
-To active the viewer and load a volume file
+The Volume Viewer allows you to explore 3D volumetric data in context.
+
+.. figure:: ../../_static/tutorial/volume_viewer.png
+  :width: 100 %
+  :align: center
+
+  Mosaic session with Volume Viewer highlighted at the bottom.
+
+To activate the viewer and load a volume:
 
 1. Select **View > Volume Viewer** from the menu
 2. The Volume Viewer panel appears at the bottom of the screen
 3. In the Volume Viewer panel, click **Open**
-4. Navigate to your volume file (.mrc, .map, .em)
+4. Navigate to your volume file
 5. Select the file and click **Open**
 
-Click the **+** button to add another slice viewer. You can load multiple volumes by using the **Open** method of the newly added slice viewer.
-
-Display Controls
-----------------
+You can modify the visualization using the dedicate display controls:
 
 - **Slice slider**: Browse through volume slices
 - **Orientation selector**: Switch between X, Y, Z views
 - **Min/Max contrast sliders**: Set display range
 - **Gamma slider**: Adjust contrast curve
 - **Color palette**: Change visualization (gray, viridis, magma, etc.)
-- **Projection modes**: 
+- **Projection modes**:
+
   - **Off**: Current slice only
   - **Project +/-**: Show structures in slice direction
+- **+**: Add another volume viewer
+
+.. tip::
+  The **+** button will add a new row with a viewer displaying the same volume. However, you can also render other volumes by using the **Open** button of the newly added viewer and selecting a volume of your choice.
 
 
 Trajectories
-============
+------------
 
-Trajectories are sequence of structures representing the same object at different times points. In mosaic, we use them to assess HMFF simulation results. To open a trajectory:
+Trajectories in Mosaic represent the same triangular mesh at different points throughout a DTS simulation. To open a trajectory:
 
-1. Go to the **Intelligence** tab
-2. Click **Trajectory** in the HMFF Operations section
-3. Configure scale and offset settings
-4. Select the directory with trajectory files (.tsi, .vtu, or mesh series)
-
-Files should follow a numerical sequence (e.g., ``basename_001.tsi``, ``basename_002.tsi``, ...), as produced by FreeDTS.
-
+1. Go to the **Intelligence** and click the dropdown arrow of the **Trajectory** button
+2. Configure scale and offset settings and press *Apply*
+3. Select the directory with the FreeDTS trajectory (in .tsi or .vtu format)
 
 .. note::
+  Files should follow a numerical sequence (e.g., ``basename_001.tsi``, ``basename_002.tsi``, ...), as produced by FreeDTS.
 
-  Duplicating a trajectory object will not create a new trajectory but rather a Geometry object representing the current time point.
+To select different time points, select **View > Trajectory Player**. Each row corresponds to a distinct trajectory with independent controls.
 
+.. tip::
 
-Using the Trajectory Player
----------------------------
-
-1. Select **View > Trajectory Player** from the menu
-2. Control options:
-   - **Play/Pause**: Start/stop animation
-   - **Previous/Next Frame**: Step through frames
-   - **First/Last**: Jump to beginning/end
-   - **Timeline**: Navigate to specific frames
-
-Mosaic can display multiple trajectories simultaneously with independent controls.
-
-To create a moview of the trajectory:
-
-1. Set up the desired camera angle
-2. Select **File > Export Animation** or press ``Ctrl+E``
-3. Select **Trajectory** as Animation Type
-4. Choose format, frame range, and rate
+  Duplicating a trajectory object will not create a new trajectory but rather an representing the current time point.

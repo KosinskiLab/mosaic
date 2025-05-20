@@ -2,11 +2,13 @@
 Influenza A Virus
 =================
 
-This tutorial guides you through analyzing Influenza A Virus (IAV) virus-like particles (VLPs) using Mosaic, taking you from initial segmentation to creating coarse-grained molecular models.
+This tutorial guides you through analyzing Influenza A Virus (IAV) virus-like particles (VLPs) using Mosaic, taking you from initial segmentation to creating coarse-grained Martini models.
 
 .. figure:: ../../_static/tutorial/iav_workflow/mosaic_workflow.png
    :width: 100 %
    :align: center
+
+   Coming up
 
 Requirements
 ------------
@@ -388,7 +390,7 @@ This creates system.gro, which can be used for molecular dynamics simulation or 
 Equilibration
 ^^^^^^^^^^^^^
 
-Gromacs settings for model equilibration are available from `ownCloud <https://oc.embl.de/index.php/s/fi7bJDRtAbVcOnt>`_ in the ts2cg folder:
+Gromacs [7]_ settings for Martini [8]_ model equilibration are available from `ownCloud <https://oc.embl.de/index.php/s/fi7bJDRtAbVcOnt>`_ in the ts2cg folder:
 
 .. code-block:: bash
 
@@ -411,3 +413,5 @@ References
 .. [4] Pezeshkian, W., Ipsen, J.H. (2024). "Mesoscale simulation of biomembranes with FreeDTS". Nature Communications, 15, 548. https://doi.org/10.1038/s41467-024-44819-w
 .. [5] Maurer, V.J., Siggel, M., Kosinski, J. (2024). "PyTME (Python Template Matching Engine): A fast, flexible, and multi-purpose template matching library for cryogenic electron microscopy data". SoftwareX, 25, 101636. https://doi.org/10.1016/j.softx.2023.101636
 .. [6] Pezeshkian, W., König, M., Wassenaar, T.A., Marrink, S.J. (2020). "Backmapping triangulated surfaces to coarse-grained membrane models". Nature Communications, 11, 2296. https://doi.org/10.1038/s41467-020-16094-y
+.. [7] Abraham, M.J., Murtola, T., Schulz, R., Páll, S., Smith, J.C., Hess, B., Lindahl, E. (2015). "GROMACS: High performance molecular simulations through multi-level parallelism from laptops to supercomputers". SoftwareX, 1-2, 19-25. https://doi.org/10.1016/j.softx.2015.06.001
+.. [8] Souza, P.C.T., Alessandri, R., Barnoud, J., Thallmair, S., Faustino, I., Grünewald, F., Patmanidis, I., Abdizadeh, H., Bruininks, B.M.H., Wassenaar, T.A., Kroon, P.C., Melcr, J., Nieto, V., Corradi, V., Khan, H.M., Domański, J., Javanainen, M., Martinez-Seara, H., Reuter, N., Best, R.B., Vattulainen, I., Monticelli, L., Periole, X., Tieleman, D.P., de Vries, A.H., Marrink, S.J. (2021). "Martini 3: a general purpose force field for coarse-grained molecular dynamics". Nature Methods, 18, 382-388. https://doi.org/10.1038/s41592-021-01098-3

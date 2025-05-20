@@ -1,5 +1,4 @@
-from qtpy.QtCore import Qt, QLocale
-from qtpy.QtGui import QDoubleValidator
+from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -7,13 +6,11 @@ from qtpy.QtWidgets import (
     QLabel,
     QPushButton,
     QGridLayout,
-    QLineEdit,
-    QCheckBox,
     QGroupBox,
 )
 
 from ..stylesheets import QPushButton_style
-from ..widgets.settings import get_widget_value, create_setting_widget
+from ..widgets.settings import create_setting_widget
 
 
 class ImportDataDialog(QDialog):
@@ -215,6 +212,10 @@ class ImportDataDialog(QDialog):
         z_input.setText(text)
 
     def set_files(self, filenames):
+        from ..formats._utils import get_extension
+        from ..formats.reader import FORMAT_MAPPING
+        from ..formats.parser import load_density, read_volume
+
         self.filenames = filenames
         self.current_file_index = 0
         self.file_parameters = {}
@@ -222,6 +223,18 @@ class ImportDataDialog(QDialog):
         self.update_navigation_buttons()
 
         for file in filenames:
+            extension = get_extension(file)[1:]
+            if extension in FORMAT_MAPPING.get(read_volume):
+                volume = load_density(file, use_memmap=True)
+                self.scale_x.setText(f"{volume.sampling_rate[0]}")
+                self.sampling_x.setText(f"{volume.sampling_rate[0]}")
+
+                self.scale_y.setText(f"{volume.sampling_rate[1]}")
+                self.sampling_y.setText(f"{volume.sampling_rate[1]}")
+
+                self.scale_z.setText(f"{volume.sampling_rate[2]}")
+                self.sampling_z.setText(f"{volume.sampling_rate[2]}")
+
             self.file_parameters[file] = self._get_current_parameters()
 
     def update_file_display(self):
