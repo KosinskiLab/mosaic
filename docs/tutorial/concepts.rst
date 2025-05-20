@@ -73,7 +73,7 @@ Context Menu
    :width: 100%
    :align: right
 
-      Context menu with object management options
+   Context menu with object management options
 
 Right-click any object in the *Object Browser* to access:
 

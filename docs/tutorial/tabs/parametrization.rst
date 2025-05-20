@@ -2,17 +2,126 @@
 Parametrization
 ===============
 
-The Parametrization tab provides tools for fitting geometric models to point clouds, analyzing surfaces, and creating meshes.
+The *Parametrization* tab provides tools for fitting and working with models.
 
-.. figure:: ../../_static/tutorial/tabs/parametrization_tab.png
-    :width: 100 %
-    :align: center
+.. grid:: 2 3 3 4
+   :gutter: 1
 
-Fitting Operations
-==================
+   .. grid-item-card:: Sphere
+       :text-align: center
+       :link: #sphere
+
+       .. raw:: html
+
+           <i class="mdi mdi-circle" style="font-size: 1.5rem;"></i>
+
+   .. grid-item-card:: Ellipse
+       :text-align: center
+       :link: #ellipsoid
+
+       .. raw:: html
+
+           <i class="mdi mdi-ellipse" style="font-size: 1.5rem;"></i>
+
+   .. grid-item-card:: Cylinder
+       :text-align: center
+       :link: #cylinder
+
+       .. raw:: html
+
+           <i class="mdi mdi-hexagon" style="font-size: 1.5rem;"></i>
+
+   .. grid-item-card:: RBF
+       :text-align: center
+       :link: #rbf
+
+       .. raw:: html
+
+           <i class="mdi mdi-grid" style="font-size: 1.5rem;"></i>
+
+   .. grid-item-card:: Mesh
+       :text-align: center
+       :link: #mesh
+
+       .. raw:: html
+
+           <i class="mdi mdi-triangle-outline" style="font-size: 1.5rem;"></i>
+
+   .. grid-item-card:: Curve
+       :text-align: center
+       :link: #curve
+
+       .. raw:: html
+
+           <i class="mdi mdi-chart-bell-curve" style="font-size: 1.5rem;"></i>
+
+   .. grid-item-card:: Sample
+       :text-align: center
+       :link: #sample
+
+       .. raw:: html
+
+           <i class="mdi mdi-chart-scatter-plot" style="font-size: 1.5rem;"></i>
+
+   .. grid-item-card:: To Cluster
+       :text-align: center
+       :link: #to-cluster
+
+       .. raw:: html
+
+           <i class="mdi mdi-plus" style="font-size: 1.5rem;"></i>
+
+   .. grid-item-card:: Remove
+       :text-align: center
+       :link: #remove
+
+       .. raw:: html
+
+           <i class="mdi mdi-delete" style="font-size: 1.5rem;"></i>
+
+   .. grid-item-card:: Merge
+       :text-align: center
+       :link: #merge-meshes
+
+       .. raw:: html
+
+           <i class="mdi mdi-merge" style="font-size: 1.5rem;"></i>
+
+   .. grid-item-card:: Volume
+       :text-align: center
+       :link: #volume
+
+       .. raw:: html
+
+           <i class="mdi mdi-cube-outline" style="font-size: 1.5rem;"></i>
+
+   .. grid-item-card:: Repair
+       :text-align: center
+       :link: #repair
+
+       .. raw:: html
+
+           <i class="mdi mdi-auto-fix" style="font-size: 1.5rem;"></i>
+
+   .. grid-item-card:: Remesh
+       :text-align: center
+       :link: #remesh
+
+       .. raw:: html
+
+           <i class="mdi mdi-repeat" style="font-size: 1.5rem;"></i>
+
+   .. grid-item-card:: Project
+       :text-align: center
+       :link: #project
+
+       .. raw:: html
+
+           <i class="mdi mdi-vector-curve" style="font-size: 1.5rem;"></i>
+
 
 Primitive Fitting
------------------
+------------------
 Fit basic geometric shapes to point clouds:
 
 Sphere
@@ -67,10 +176,10 @@ Fits a spline curve to points:
 4. A smooth curve is fitted
 
 Sampling Operations
-===================
+-------------------
 
 Sample
-------
+^^^^^^
 
 Creates point clouds from parametric models:
 
@@ -83,7 +192,7 @@ Creates point clouds from parametric models:
 4. Click **OK**
 
 To Cluster
-----------
+^^^^^^^^^^
 
 Converts a model to a point cloud:
 
@@ -92,7 +201,7 @@ Converts a model to a point cloud:
 3. The model's vertices are added as a new cluster
 
 Remove
-------
+^^^^^^
 
 Deletes selected models:
 
@@ -103,7 +212,7 @@ Mesh Operations
 ===============
 
 Volume
-------
+^^^^^^
 
 Creates a mesh from volumetric data:
 
@@ -115,7 +224,7 @@ Creates a mesh from volumetric data:
 #Screenshot: Volume meshing dialog
 
 Repair
-------
+^^^^^^
 Fixes mesh issues:
 
 1. Select a mesh
@@ -126,7 +235,7 @@ Fixes mesh issues:
 4. The mesh is repaired with improved topology
 
 Remesh
-------
+^^^^^^
 
 Improves mesh quality:
 
@@ -140,7 +249,7 @@ Improves mesh quality:
 5. A refined mesh is created
 
 Analyze
--------
+^^^^^^^
 Examines mesh properties:
 
 1. Select a mesh
@@ -152,7 +261,7 @@ Examines mesh properties:
 4. Generate plots of property distributions
 
 Merge
------
+^^^^^
 Combines multiple meshes:
 
 1. Select multiple mesh models
@@ -160,5 +269,5 @@ Combines multiple meshes:
 3. A new combined mesh is created
 
 Next Steps
-==========
+----------
 Continue to the :doc:`intelligence` tab to learn about advanced features like HMFF and membrane segmentation.

@@ -2,14 +2,66 @@
 Intelligence
 ============
 
-The Intelligence tab provides advanced features for specialized tasks including membrane modeling, simulation setup, and trajectory analysis.
+The *Intelligence* tab provides advanced features for specialized tasks.
 
-.. figure:: ../../_static/tutorial/tabs/intelligence_tab.png
-    :width: 100 %
-    :align: center
+.. grid:: 2 3 3 4
+    :gutter: 1
 
-HMFF Operations
-===============
+    .. grid-item-card:: Equilibrate
+        :text-align: center
+        :link: #equilibrate
+
+        .. raw:: html
+
+            <i class="mdi mdi-molecule" style="font-size: 1.5rem;"></i>
+
+    .. grid-item-card:: Setup
+        :text-align: center
+        :link: #setup
+
+        .. raw:: html
+
+            <i class="mdi mdi-export" style="font-size: 1.5rem;"></i>
+
+    .. grid-item-card:: Trajectory
+        :text-align: center
+        :link: #trajectory
+
+        .. raw:: html
+
+            <i class="mdi mdi-chart-line-variant" style="font-size: 1.5rem;"></i>
+
+    .. grid-item-card:: Backmapping
+        :text-align: center
+        :link: #backmapping
+
+        .. raw:: html
+
+            <i class="mdi mdi-set-merge" style="font-size: 1.5rem;"></i>
+
+    .. grid-item-card:: Setup
+        :text-align: center
+        :link: #template-matching
+
+        .. raw:: html
+
+            <i class="mdi mdi-magnify" style="font-size: 1.5rem;"></i>
+
+    .. grid-item-card:: Add
+        :text-align: center
+        :link: #add
+
+        .. raw:: html
+
+            <i class="mdi mdi-plus" style="font-size: 1.5rem;"></i>
+
+    .. grid-item-card:: Membrane
+        :text-align: center
+        :link: #membrane
+
+        .. raw:: html
+
+            <i class="mdi mdi-border-all-variant" style="font-size: 1.5rem;"></i>
 
 Equilibrate
 -----------
@@ -25,8 +77,6 @@ Prepares meshes for simulation:
 4. Select output directory
 5. An equilibration process prepares the mesh for simulation
 
-#Screenshot: Equilibrate dialog
-
 Setup
 -----
 
@@ -40,8 +90,6 @@ Configures HMFF simulation:
    - Simulation parameters (steps, coefficients)
 4. Select output directory
 5. Files are prepared for HMFF simulation
-
-#Screenshot: HMFF Setup dialog
 
 Trajectory
 ----------
@@ -64,22 +112,31 @@ Maps coarse-grained models to detailed structures:
 4. Add cluster mappings (protein structures)
 5. The system is prepared for multi-scale modeling
 
-#Screenshot: Backmapping dialog
+Template Matching
+-----------------
+
+Setup
+^^^^^
+
+Configures template matching for protein identification:
+
+1. Click **Setup** in the Template Matching section
+2. Configure data paths:
+   - Input tomogram
+   - Template structures
+   - Output directory
+3. Set matching parameters:
+   - Angular sampling
+   - Score function
+   - Uncertainty values
+4. Configure computational resources
+5. Run template matching to identify protein positions
 
 Segmentation Operations
-=======================
-
-Add
----
-
-Creates a new empty cluster:
-
-1. Click **Add**
-2. A new cluster appears in the Object Browser
-3. Use drawing mode (``A`` key) to add points
+-----------------------
 
 Membrane
---------
+^^^^^^^^
 
 Automatically segments membranes in tomograms:
 
@@ -91,37 +148,3 @@ Automatically segments membranes in tomograms:
    - Clustering: Connected components option
 4. Select tomogram file
 5. Membrane structures are automatically segmented
-
-#Screenshot: Membrane segmentation result
-
-Advanced Workflow Examples
-==========================
-
-HMFF Simulation Workflow
-------------------------
-
-1. Create or import a mesh model
-2. Equilibrate the mesh for simulation
-3. Set up HMFF with appropriate parameters
-4. Run the external HMFF simulation
-5. Import the trajectory results
-6. Analyze membrane behavior
-
-Membrane Segmentation Workflow
-------------------------------
-
-1. Import a tomogram volume
-2. Use the Membrane tool for automatic segmentation
-3. Refine results using Segmentation tab tools
-4. Fit models to segmented structures
-5. Export for further analysis
-
-Multi-Scale Modeling
---------------------
-
-1. Create a coarse-grained membrane model
-2. Use Backmapping to place proteins
-3. Configure for molecular dynamics simulation
-4. Analyze interactions between components
-
-#Screenshot: Multi-scale model example

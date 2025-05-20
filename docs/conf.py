@@ -52,6 +52,7 @@ html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 html_css_files = [
     "css/general.css",
+    "https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesignicons.min.css",
 ]
 html_context = {
     "github_user": "maurerv",
