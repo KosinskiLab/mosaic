@@ -5,119 +5,119 @@ Parametrization
 The *Parametrization* tab provides tools for fitting and working with models.
 
 .. grid:: 2 3 3 4
-   :gutter: 1
+    :gutter: 1
 
-   .. grid-item-card:: Sphere
-       :text-align: center
-       :link: #sphere
+    .. grid-item-card:: Sphere
+        :text-align: center
+        :link: #sphere
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-circle" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-circle" style="font-size: 1.5rem;"></i>
 
-   .. grid-item-card:: Ellipse
-       :text-align: center
-       :link: #ellipsoid
+    .. grid-item-card:: Ellipse
+        :text-align: center
+        :link: #ellipsoid
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-ellipse" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-ellipse" style="font-size: 1.5rem;"></i>
 
-   .. grid-item-card:: Cylinder
-       :text-align: center
-       :link: #cylinder
+    .. grid-item-card:: Cylinder
+        :text-align: center
+        :link: #cylinder
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-hexagon" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-hexagon" style="font-size: 1.5rem;"></i>
 
-   .. grid-item-card:: RBF
-       :text-align: center
-       :link: #rbf
+    .. grid-item-card:: RBF
+        :text-align: center
+        :link: #rbf
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-grid" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-grid" style="font-size: 1.5rem;"></i>
 
-   .. grid-item-card:: Mesh
-       :text-align: center
-       :link: #mesh
+    .. grid-item-card:: Mesh
+        :text-align: center
+        :link: #mesh
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-triangle-outline" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-triangle-outline" style="font-size: 1.5rem;"></i>
 
-   .. grid-item-card:: Curve
-       :text-align: center
-       :link: #curve
+    .. grid-item-card:: Curve
+        :text-align: center
+        :link: #curve
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-chart-bell-curve" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-chart-bell-curve" style="font-size: 1.5rem;"></i>
 
-   .. grid-item-card:: Sample
-       :text-align: center
-       :link: #sample
+    .. grid-item-card:: Sample
+        :text-align: center
+        :link: #sample
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-chart-scatter-plot" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-chart-scatter-plot" style="font-size: 1.5rem;"></i>
 
-   .. grid-item-card:: To Cluster
-       :text-align: center
-       :link: #to-cluster
+    .. grid-item-card:: To Cluster
+        :text-align: center
+        :link: #to-cluster
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-plus" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-plus" style="font-size: 1.5rem;"></i>
 
-   .. grid-item-card:: Remove
-       :text-align: center
-       :link: #remove
+    .. grid-item-card:: Remove
+        :text-align: center
+        :link: #remove
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-delete" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-delete" style="font-size: 1.5rem;"></i>
 
-   .. grid-item-card:: Merge
-       :text-align: center
-       :link: #merge-meshes
+    .. grid-item-card:: Merge
+        :text-align: center
+        :link: #merge-meshes
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-merge" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-merge" style="font-size: 1.5rem;"></i>
 
-   .. grid-item-card:: Volume
-       :text-align: center
-       :link: #volume
+    .. grid-item-card:: Volume
+        :text-align: center
+        :link: #volume
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-cube-outline" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-cube-outline" style="font-size: 1.5rem;"></i>
 
-   .. grid-item-card:: Repair
-       :text-align: center
-       :link: #repair
+    .. grid-item-card:: Repair
+        :text-align: center
+        :link: #repair
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-auto-fix" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-auto-fix" style="font-size: 1.5rem;"></i>
 
-   .. grid-item-card:: Remesh
-       :text-align: center
-       :link: #remesh
+    .. grid-item-card:: Remesh
+        :text-align: center
+        :link: #remesh
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-repeat" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-repeat" style="font-size: 1.5rem;"></i>
 
-   .. grid-item-card:: Project
-       :text-align: center
-       :link: #project
+    .. grid-item-card:: Project
+        :text-align: center
+        :link: #project
 
-       .. raw:: html
+        .. raw:: html
 
-           <i class="mdi mdi-vector-curve" style="font-size: 1.5rem;"></i>
+            <i class="mdi mdi-vector-curve" style="font-size: 1.5rem;"></i>
 
 
 Primitive Fitting
