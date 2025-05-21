@@ -134,31 +134,8 @@ Mesh Generation Failures
 
 **Solutions:**
 
-1. Try different mesh generation methods:
-   - Alpha Shape for simple surfaces
-   - Ball Pivoting for structured data
-   - Poisson for watertight meshes
+1. Check whether a different meshing method might be more suitable
 2. Adjust method-specific parameters
 3. Clean input point cloud (remove outliers)
 4. Increase point density in sparse areas
 5. For complex shapes, segment into simpler parts first
-
-
-Reporting Issues
-================
-
-When reporting issues to the Mosaic team:
-
-1. Provide detailed steps to reproduce the problem
-2. Include system information (OS, RAM, GPU)
-3. Attach log files from:
-   ```
-   ~/.local/share/mosaic/logs/
-   ```
-4. Share a minimal example file that demonstrates the issue
-5. Note Mosaic version and relevant settings
-
-You can submit issues through:
-- GitHub issue tracker
-- Support email
-- User forum

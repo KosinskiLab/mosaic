@@ -4,23 +4,17 @@
 Issues
 ======
 
-Thank you for helping improve the project by opening an issue. If you are thinking about reporting a bug or requesting a feature, please consider the following guidelines to enable efficient troubleshooting.
-
-
-Bugs
-----
-
-The more information you can provide, the easier it is to address your issue. Relevant information to include in your issue is:
+When reporting issues please:
 
 1. Provide detailed steps to reproduce the problem
+2. Include system information (OS, RAM, GPU)
+3. Attach log files if available
+4. Share a minimal example file that demonstrates the issue
+5. Note Mosaic version and relevant settings
 
-2. The full error log
+Thank you for helping improve the project by opening an issue. If you are thinking about reporting a bug or requesting a feature, please consider the following guidelines to enable efficient troubleshooting.
 
-3. Python and |project| version
-
-4. Relevant system information (OS, RAM, GPU)
-
-Issues can be submited through GitHub.
+Issues can be submitted on `GitHub <https://github.com/KosinskiLab/mosaic/issues>`_
 
 Features
 --------

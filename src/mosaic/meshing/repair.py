@@ -37,6 +37,10 @@ def _close_hole(vs: np.ndarray, fs: np.ndarray, hole_vids, fast=True) -> np.ndar
     -------
     ndarray, shape (K, 3)
         Face indices of mesh with holes closed.
+
+    References
+    ----------
+    .. [1] Code adapted from https://github.com/kentechx/hole-filling
     """
 
     def hash_func(edges):
@@ -376,7 +380,7 @@ def _triangulation_refine_leipa(
 
     References
     ----------
-    .. [1] Code copied from Liepa, P. "Filling holes in meshes." (2003)
+    .. [1] Code adapted from https://github.com/kentechx/hole-filling.
     .. [2] Liepa, P. "Filling holes in meshes." (2003)
     """
     out_vs = np.copy(vs)
