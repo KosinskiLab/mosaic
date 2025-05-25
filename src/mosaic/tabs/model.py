@@ -1,5 +1,6 @@
 from functools import partial
 
+import numpy as np
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 
 from ..parallel import run_in_background
@@ -198,18 +199,55 @@ class ModelTab(QWidget):
 
         return self.cdata.models.render()
 
+    @run_in_background("Project", callback=on_fit_complete)
     def _project_on_mesh(
         self, use_normals: bool = False, invert_normals: bool = False, **kwargs
     ):
         selected_meshes = self._get_selected_meshes()
-        if len(selected_meshes) != 0:
-            QMessageBox.warning(None, "Please select one mesh for projection.")
+        if len(selected_meshes) != 1:
+            QMessageBox.warning(None, "Error", "Please select one mesh for projection.")
             return None
 
+        mesh = self.cdata._models.data[selected_meshes[0]]._meta.get("fit", None)
+        if mesh is None:
+            return None
+
+        projections, triangles = [], []
         for index in self.cdata.data._get_selected_indices():
             geometry = self.cdata._data.data[index]
 
-        pass
+            normals = geometry.normals if use_normals else None
+            if normals is not None:
+                normals = normals * (-1 if invert_normals else 1)
+
+            kwargs = {
+                "points": geometry.points,
+                "normals": normals,
+                "return_projection": True,
+                "return_indices": False,
+                "return_triangles": True,
+            }
+            _, projection, triangle = mesh.compute_distance(**kwargs)
+
+            projections.append(projection)
+            triangles.append(triangle)
+            self.cdata._data.add(
+                points=projection, sampling_rate=geometry.sampling_rate
+            )
+
+        if not len(projections):
+            return None
+
+        projections = np.concatenate(projections)
+        triangles = np.concatenate(triangles)
+        new_mesh = mesh.add_projections(projections, triangles, return_indices=False)
+
+        self.cdata._add_fit(
+            fit=new_mesh,
+            sampling_rate=self.cdata._models.data[selected_meshes[0]].sampling_rate,
+        )
+        self.cdata.data.data_changed.emit()
+        return self.cdata.models.data_changed.emit()
 
     @run_in_background("Remesh", callback=on_fit_complete)
     def _remesh_meshes(self, method, **kwargs):

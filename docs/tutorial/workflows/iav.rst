@@ -65,7 +65,7 @@ Clean the Segmentation
 ^^^^^^^^^^^^^^^^^^^^^^
 
 1. Switch to the **Segmentation** tab
-2. Use the **Select**button to identify and **Remove** clusters corresponding to small artifacts
+2. Use the **Select** button to identify and **Remove** clusters corresponding to small artifacts
 3. Eliminate incorrectly segmented voxels using manual selection (press **r** key) and deletion (press **del** key)
 4. Select the central IAV VLP in the object browser and use **Thin** with the *outer* option to extract the outer segmentation layer
 
@@ -261,6 +261,7 @@ Generate Seed Points
 ^^^^^^^^^^^^^^^^^^^^
 
 To create seed points from the HMFF-refined mesh:
+
 1. Select your desired time-point in the trajectory
 2. Right-click the trajectory object in the *Object Browser* and select **Duplicate**
 3. Move to the **Parametrization** tab and configure **Sample**:
@@ -402,7 +403,7 @@ This performs energy minimization which can be run on a standard laptop. The fin
 Conclusion
 ----------
 
-You've now completed the entire workflow for analyzing IAV virus-like particles—from tomogram segmentation to creating a detailed molecular model. This model can serve as a foundation for structural analysis or as a starting configuration for molecular simulations.
+You've now completed the entire workflow for analyzing IAV virus-like particles—from tomogram segmentation to creating a detailed molecular model. This model can serve as a foundation for structural analysis or as a starting system for molecular simulations.
 
 References
 ----------

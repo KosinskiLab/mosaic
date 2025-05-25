@@ -1,6 +1,0 @@
-Geometry.points
-===============================
-
-.. currentmodule:: mosaic.geometry
-
-.. autoproperty:: Geometry.points

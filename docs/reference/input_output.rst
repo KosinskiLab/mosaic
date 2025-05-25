@@ -8,7 +8,7 @@ Reader
 .. currentmodule:: mosaic.formats.reader
 
 .. autosummary::
-   :toctree: ../api/
+   :toctree: rst
    :nosignatures:
 
    open_file
@@ -21,7 +21,7 @@ Container
 .. currentmodule:: mosaic.formats.parser
 
 .. autosummary::
-   :toctree: ../api/
+   :toctree: rst
    :nosignatures:
 
    GeometryData

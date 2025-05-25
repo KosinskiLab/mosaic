@@ -17,10 +17,10 @@
     .. grid-item-card::
        :img-top: _static/index_getting_started.svg
 
-       Tutorial
-       ^^^^^^^^
+       User Guide
+       ^^^^^^^^^^
 
-       Tutorials for using the |project| GUI.
+       Learn how to use |project|.
 
        +++
 
@@ -29,7 +29,7 @@
              :color: secondary
              :click-parent:
 
-             To the tutorial
+             To the user guide
 
     .. grid-item-card::
        :img-top: _static/index_api.svg
@@ -37,22 +37,21 @@
        API
        ^^^
 
-       Detailed documentation of |project|'s API.
+       Detailed documentation of the |project| API.
 
        +++
 
-       .. button-ref:: reference/index
+       .. button-ref:: index
              :expand:
              :color: secondary
              :click-parent:
 
-             To the documentation
+             Coming soon
 
 .. toctree::
    :maxdepth: 1
    :hidden:
    :titlesonly:
 
-   Tutorial <tutorial/index>
-   API <reference/index>
+   User Guide <tutorial/index>
    Index <genindex>

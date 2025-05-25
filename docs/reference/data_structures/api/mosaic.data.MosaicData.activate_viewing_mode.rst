@@ -1,6 +1,0 @@
-MosaicData.activate\_viewing\_mode
-============================================
-
-.. currentmodule:: mosaic.data
-
-.. automethod:: MosaicData.activate_viewing_mode

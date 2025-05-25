@@ -1,6 +1,0 @@
-Geometry.set\_visibility
-=======================================
-
-.. currentmodule:: mosaic.geometry
-
-.. automethod:: Geometry.set_visibility

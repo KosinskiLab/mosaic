@@ -299,8 +299,7 @@ class ClusterTransformer:
 
         new_points = np.add(new_points, translation, out=new_points)
         self.data.container.data[self.selected_cluster].swap_data(
-            new_points,
-            # normals=new_normals
+            new_points, normals=new_normals
         )
         self.data.render()
 

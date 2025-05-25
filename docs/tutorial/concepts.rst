@@ -9,22 +9,24 @@ UI Layout
 
 The Mosaic interface consists of several key components:
 
-1. **Menu Bar**: Access to file operations, view settings and help (on macOS its located on the top menu bar)
+1. **Menu Bar**: Access to file operations, view settings and help (on macOS its in the top menu)
 2. **Tab Bar**: Switches between major functional areas
-   - **Segmentation**: Tools for working with point cloud data (clustering, filtering, selection) and analysing object properties
-   - **Parametrization**: Tools for fitting and working with models (geometric fitting, mesh operations)
+
+   - **Segmentation**: Work with point cloud data and analyze object properties
+   - **Parametrization**: Create and operate on mathematical models
    - **Intelligence**: Advanced features (Dynamically Triangulated Surface simulations, constrained template matching, membrane segmentations)
 3. **Ribbon Toolbar**: Context-specific tools for the active tab
 4. **Object Browser**: Lists and manages loaded data with:
-   - Visibility indicators (colored dots)
-   - Editable names
-   - Point counts or data types
+
+   - Visibility indicators with data types
    - Context menus for operations
+   - Editable names
 5. **3D Viewport**: Main visualization area with:
+
    - Navigation controls
    - Orientation indicators
    - Optional coordinate axes
-6. **Status Bar**: Shows application status and activates optional panels
+6. **Status Bar**: Shows current interaction mode and application status
 
 Additional dock widgets such as the *Volume Viewer* will be displayed at the bottom of the window.
 
@@ -70,18 +72,18 @@ Context Menu
 ------------
 
 .. figure:: ../../_static/tutorial/mosaic_context.png
-   :width: 100%
+   :width: 50%
    :align: right
 
-   Context menu with object management options
+   Context menu with options
 
 Right-click any object in the *Object Browser* to access:
 
 - **Show/Hide**: Toggle visibility
 - **Duplicate/Remove**: Copy or delete objects
-- **Change Representation**: Modify how objects appear
+- **Representation**: Modify how objects appear
 - **Export**: Save to various formats
-- **Properties**: View detailed information
+- **Properties**: Set rendering properties.
 
 
 Interaction Modes

@@ -1,6 +1,0 @@
-Geometry.set\_scalars
-====================================
-
-.. currentmodule:: mosaic.geometry
-
-.. automethod:: Geometry.set_scalars

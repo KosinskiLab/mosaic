@@ -7,24 +7,22 @@ API
 
    data_structures/data
    data_structures/container
+   data_structures/interactor
    data_structures/geometry
 
 .. toctree::
-   :caption: Preprocessing
+   :caption: GUI
 
-   input_output
-
-.. toctree::
-   :caption: Template Matching
-
-   data_structures/data
+   gui/widgets
+   gui/dialogs
+   gui/tabs
 
 .. toctree::
-   :caption: Flexible Backends
+   :caption: File I/O
 
-   data_structures/data
+   formats
 
 .. toctree::
-   :caption: Miscellaneous
+   :caption: Parallel Processing
 
-   data_structures/data
+   parallel

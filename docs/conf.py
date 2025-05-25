@@ -29,23 +29,23 @@ copybutton_prompt_text = ">>> "
 copybutton_prompt_is_regexp = False
 
 autosummary_generate = True
-autosummary_generate_overwrite = True
-autosummary_imported_members = True
+autosummary_generate_overwrite = False
+autosummary_imported_members = False
 add_module_names = False
 
 numpydoc_show_class_members = False
 numpydoc_show_inherited_class_members = False
 
 autodoc_default_options = {
-    "show-inheritance": True,
-    "inherited_members": False,
+    "show-inheritance": False,
+    "inherited_members": "QObject, QDialog, QWidget, QMainWindow, QVBoxLayout, QHBoxLayout, QGridLayout, QSplitter, QScrollArea, QListWidget, QTreeWidget, QTabWidget, QGroupBox, QPushButton, QLabel, QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QCheckBox, QSlider, QProgressBar",
 }
 
 autodoc_inherit_docstrings = True
 autodoc_typehints_format = "short"
 autodoc_typehints = "none"
 
-templates_path = ["_templates"]
+# templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "pydata_sphinx_theme"
@@ -65,9 +65,6 @@ html_favicon = "../src/mosaic/data/logo.png"
 html_theme_options = {
     "logo": {
         "text": "mosaic",
-        # "image_light": "../src/mosaic/data/mosaic.icns",
-        # "image_dark": "../src/mosaic/data/mosaic.icns",
-        # "width": "50px",
     },
     "header_links_before_dropdown": 4,
     "icon_links": [

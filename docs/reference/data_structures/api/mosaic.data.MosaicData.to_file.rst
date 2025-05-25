@@ -1,6 +1,0 @@
-MosaicData.to\_file
-==============================
-
-.. currentmodule:: mosaic.data
-
-.. automethod:: MosaicData.to_file

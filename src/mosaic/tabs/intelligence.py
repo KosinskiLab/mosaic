@@ -95,7 +95,7 @@ class IntelligenceTab(QWidget):
 
         directory = QFileDialog.getExistingDirectory(
             self,
-            "Select or Create Directory",
+            "Select or create directory",
             options=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
         )
         if not directory:
@@ -112,7 +112,7 @@ class IntelligenceTab(QWidget):
 
         directory = QFileDialog.getExistingDirectory(
             self,
-            "Select Directory with Equilibrated Meshes.",
+            "Select directory with equilibrated meshes.",
             options=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
         )
         if not directory:
@@ -154,7 +154,7 @@ class IntelligenceTab(QWidget):
 
         directory = QFileDialog.getExistingDirectory(
             self,
-            "Select Directory with Point Cloud Series",
+            "Select directory with DTS trajectory",
             "",
             QFileDialog.Option.ShowDirsOnly,
         )
@@ -209,7 +209,7 @@ class IntelligenceTab(QWidget):
 
         save_dir = QFileDialog.getExistingDirectory(
             self,
-            "Select Save Directory",
+            "Select output directory",
             "",
             QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
         )
@@ -249,7 +249,7 @@ class IntelligenceTab(QWidget):
 
     def _run_membrane_segmentation(self, **kwargs):
         file_name, _ = QFileDialog.getOpenFileName(
-            self, "Select Tomogram", "", "MRC Files (*.mrc);;All Files (*.*)"
+            self, "Select volume", "", "MRC Files (*.mrc);;All Files (*.*)"
         )
         if not file_name:
             return None

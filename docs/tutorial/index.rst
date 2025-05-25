@@ -1,6 +1,6 @@
-========
-Tutorial
-========
+==========
+User Guide
+==========
 
 .. toctree::
    :caption: Get Started
@@ -32,9 +32,8 @@ Tutorial
    :caption: Reference
 
    reference/formats
-   reference/config
-   reference/issues
    reference/troubleshooting
+   reference/issues
 
 .. toctree::
    :caption: Further Information
