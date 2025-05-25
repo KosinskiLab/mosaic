@@ -10,7 +10,7 @@
 
 **Date**: |today| **Version**: |release|
 
-|project| is a GUI application that aims to make 3D microscopy data to physical simulations.
+Mosaic is a software ecosystem that translates 3D electron microscope data into simulation-ready models of biomembranes. It unifies membrane segmentation, mesh generation, protein identification, and multi-scale simulation into a graphical user interface (GUI).
 
 .. grid:: 2
 

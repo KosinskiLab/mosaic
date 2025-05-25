@@ -1,10 +1,10 @@
 # Mosaic
 
-Mosaic is a Python-based tool for interactive processing, analysis, and parametrization of membrane segmentations.
+Mosaic is a software ecosystem that translates 3D electron microscope data into simulation-ready models of biomembranes. It unifies membrane segmentation, mesh generation, protein identification, and multi-scale simulation into a graphical user interface (GUI).
 
 ## Installation
 
-To install mosaic within a virtual environment
+To install Mosaic within a virtual environment
 
 ```
 python3 -m venv mosaic
@@ -14,7 +14,7 @@ pip install git+https://github.com/maurerv/mosaic
 
 ## Start Processing
 
-Launch the graphical user interface from the command line using
+Launch the GUI from the command line using
 
 ```
 mosaic
