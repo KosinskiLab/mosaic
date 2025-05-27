@@ -7,13 +7,13 @@
 
 import warnings
 from typing import List
+from functools import lru_cache
 
 import vtk
 import numpy as np
 import open3d as o3d
 
 from scipy import spatial
-from skimage import measure
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation
 
@@ -22,6 +22,7 @@ __all__ = [
     "volume_to_points",
     "connected_components",
     "dbscan_clustering",
+    "birch_clustering",
     "eigenvalue_outlier_removal",
     "statistical_outlier_removal",
     "find_closest_points",
@@ -121,6 +122,43 @@ def volume_to_points(volume, sampling_rate, reverse_order: bool = False):
     return ret
 
 
+def binary_opening(points, sampling_rate=1, iterations=1, structure=None, **kwargs):
+    """
+    Uses binary erosion to break thin connections between structures,
+    then applies connected components to identify separate clusters.
+
+    Parameters
+    ----------
+    points : ndarray
+        Input point cloud coordinates.
+    sampling_rate : float, optional
+        Spacing between volume voxels, by default 1.
+    structure : ndarray, optional
+        Structuring element. If None, uses 3x3x3 cube, by default None.
+    **kwargs
+        Additional arguments passed to skimage.measure.label.
+
+    Returns
+    -------
+    list
+        List of point clouds, one for each separated component.
+    """
+    import numpy as np
+    from scipy import ndimage as ndi
+
+    offset = points.min(axis=0)
+    volume = points_to_volume(points - offset, sampling_rate=sampling_rate)
+
+    if structure is None:
+        structure = np.ones((3, 3, 3), dtype=bool)
+
+    ndi_volume = ndi.binary_opening(
+        volume.astype(bool), structure=structure, iterations=iterations
+    )
+    labels = volume * ndi_volume
+    return [x + offset for x in volume_to_points(labels, sampling_rate)]
+
+
 def connected_components(points, sampling_rate=1, **kwargs):
     """
     Find connected components in point cloud using volumetric analysis.
@@ -139,12 +177,15 @@ def connected_components(points, sampling_rate=1, **kwargs):
     list
         List of point clouds, one for each connected component.
     """
-    volume = points_to_volume(points, sampling_rate=sampling_rate)
-    labels = measure.label(volume.astype(np.int32), background=0, **kwargs)
-    return volume_to_points(labels, sampling_rate)
+    from skimage.measure import label
+
+    offset = points.min(axis=0)
+    volume = points_to_volume(points - offset, sampling_rate=sampling_rate)
+    labels = label(volume.astype(np.int32), background=0, **kwargs)
+    return [x + offset for x in volume_to_points(labels, sampling_rate)]
 
 
-def dbscan_clustering(points, eps=0.02, min_points=10):
+def dbscan_clustering(points, distance=100.0, min_points=500):
     """
     Perform DBSCAN clustering on the input points.
 
@@ -152,7 +193,7 @@ def dbscan_clustering(points, eps=0.02, min_points=10):
     ----------
     points : ndarray
         Input point cloud.
-    eps : float, optional
+    distance : float, optional
         Maximum distance between two samples for one to be considered as in
         the neighborhood of the other, by default 40.
     min_points : int, optional
@@ -166,7 +207,42 @@ def dbscan_clustering(points, eps=0.02, min_points=10):
     """
     from sklearn.cluster import DBSCAN
 
-    labels = DBSCAN(eps=eps, min_samples=min_points).fit_predict(points)
+    labels = DBSCAN(eps=distance, min_samples=min_points).fit_predict(points)
+    return [points[labels == x] for x in np.unique(labels) if x != -1]
+
+
+def birch_clustering(
+    points, n_clusters: int = 3, threshold: float = 0.5, branching_factor: int = 50
+):
+    """
+    Perform Birch clustering on the input points using skimage.
+
+    Parameters
+    ----------
+    points : ndarray
+        Input point cloud.
+    threshold: float, optional
+        The radius of the subcluster obtained by merging a new sample
+        and the closest subcluster should be lesser than the threshold.
+        Otherwise a new subcluster is started. Setting this value to be
+        very low promotes splitting and vice-versa.
+    branching_factor: int, optional
+        Maximum number of CF subclusters in each node. If a new samples
+        enters such that the number of subclusters exceed the branching_factor
+        then that node is split into two nodes with the subclusters
+        redistributed in each. The parent subcluster of that node is removed
+        and two new subclusters are added as parents of the 2 split nodes.
+
+    Returns
+    -------
+    list
+        List of clusters, where each cluster is an array of points.
+    """
+    from sklearn.cluster import Birch
+
+    labels = Birch(
+        n_clusters=n_clusters, threshold=threshold, branching_factor=branching_factor
+    ).fit_predict(points)
     return [points[labels == x] for x in np.unique(labels) if x != -1]
 
 
@@ -324,6 +400,7 @@ def cmap_to_vtkctf(cmap, max_value, min_value, gamma: float = 1.0):
     return color_transfer_function, (min_value, max_value)
 
 
+@lru_cache(maxsize=128)
 def _align_vectors(target, base) -> Rotation:
     try:
         return Rotation.align_vectors(target, base)[0]
@@ -344,7 +421,7 @@ def normals_to_rot(normals, target=NORMAL_REFERENCE, mode: str = "quat", **kwarg
         )
 
     rotations = Rotation.concatenate(
-        [_align_vectors(target, base) for base, target in zip(normals, targets)]
+        [_align_vectors(tuple(t), tuple(b)) for b, t in zip(normals, targets)]
     ).inv()
     func = rotations.as_matrix
     if mode == "quat":

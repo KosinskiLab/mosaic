@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict
 
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -8,14 +8,12 @@ from ._utils import get_extension
 
 
 class OrientationsWriter:
-    def __init__(self, points: List[np.ndarray], quaternions: List[np.ndarray]):
-        self.entities = np.concatenate(
-            [np.full(x.shape[0], fill_value=i) for i, x in enumerate(points)]
-        )
-        self.points = np.concatenate(points)
-        self.rotations = Rotation.from_quat(
-            np.concatenate(quaternions), scalar_first=True
-        )
+    def __init__(
+        self, points: np.ndarray, quaternions: np.ndarray, entities: np.ndarray
+    ):
+        self.entities = entities
+        self.points = points
+        self.rotations = Rotation.from_quat(quaternions, scalar_first=True)
         self.rotations = self.rotations.as_euler(seq="zyz", degrees=True)
 
     def to_file(self, file_path, file_format: str = None, **kwargs):

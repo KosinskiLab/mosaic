@@ -336,7 +336,9 @@ class DataContainerInteractor(QObject):
     def _handle_export(self, *args, **kwargs):
         from .dialogs import ExportDialog
 
-        dialog = ExportDialog()
+        parameters = {"shape": self.container.metadata.get("shape")}
+
+        dialog = ExportDialog(parent=None, parameters=parameters)
 
         sampling, shape = 1, self.container.metadata.get("shape")
         if shape is not None:
@@ -362,48 +364,49 @@ class DataContainerInteractor(QObject):
         if not file_path:
             return -1
 
-        success = self._export_data(file_path, export_data)
-        if success == -1:
-            QMessageBox.warning(None, "Error", "Data export failed.")
+        try:
+            self._export_data(file_path, export_data)
+        except Exception as e:
+            QMessageBox.warning(None, "Error", str(e))
         return None
 
     def _export_data(self, file_path: str, export_data: Dict):
         from .utils import points_to_volume
         from .formats import OrientationsWriter, write_density
 
+        mesh_formats = ("obj", "stl", "ply")
+        volume_formats = ("mrc", "em", "h5")
+        point_formats = ("tsv", "star", "xyz")
+
         file_format = export_data.get("format")
         indices = self._get_selected_indices()
         if not len(indices):
-            return -1
+            raise ValueError("Select at least one object.")
 
         file_path, _ = splitext(file_path)
-        center, shape = 0, self.container.metadata.get("shape", None)
-        # Shape and sampling are given if ColabsegData.open_file loaded a volume.
+
+        # Shape and sampling are given if MosaicData.open_file loaded a volume.
         # For convenience, outputs will be handled w.r.t to the initial volume
+        shape = self.container.metadata.get("shape", None)
         if shape is not None:
             _sampling = self.container.metadata.get("sampling_rate", 1)
             shape = np.rint(np.divide(shape, _sampling)).astype(int)
 
+        center = 0
         if {"shape_x", "shape_y", "shape_z"}.issubset(export_data):
             shape = tuple(export_data[x] for x in ["shape_x", "shape_y", "shape_y"])
-            if file_format == "star":
-                center = 0
-                # TODO: Implement RELION5 star file format
-                # center = np.divide(shape, 2).astype(int)
 
-        export_data, status = {"points": [], "quaternions": []}, -1
+        data = {"points": [], "quaternions": []}
         for index in indices:
             if not self.container._index_ok(index):
                 continue
 
             geometry = self.container.data[index]
-            if file_format in ("obj", "stl", "ply"):
+            if file_format in mesh_formats:
                 fit = geometry._meta.get("fit", None)
                 if not hasattr(fit, "mesh"):
-                    print(f"{index} is not a mesh but format is mesh-specific.")
-                    continue
+                    raise ValueError(f"Selected geometry {index} is not a mesh.")
                 fit.to_file(f"{file_path}_{index}.{file_format}")
-                status = 0
                 continue
 
             points, quaternions = geometry.points, geometry.quaternions
@@ -414,22 +417,28 @@ class DataContainerInteractor(QObject):
             if sampling is None:
                 sampling = np.max(geometry.sampling_rate)
 
+            if export_data.get("relion_5_format", False):
+                center = np.divide(shape, 2).astype(int) if shape is not None else 0
+                center = np.muliply(center, sampling)
+                sampling = 1
+
             points = np.subtract(np.divide(points, sampling), center)
-            export_data["points"].append(points)
-            export_data["quaternions"].append(quaternions)
+            data["points"].append(points)
+            data["quaternions"].append(quaternions)
 
-        if file_format in ("obj", "stl", "ply"):
-            return status
-        elif len(export_data["points"]) == 0:
-            return -1
+        if file_format in mesh_formats:
+            return None
 
-        if file_format in ("mrc", "em", "h5"):
+        if len(data["points"]) == 0:
+            raise ValueError("No elements suitable for export")
+
+        if file_format in volume_formats:
             if shape is None:
-                temp = np.rint(np.concatenate(export_data["points"]))
+                temp = np.rint(np.concatenate(data["points"]))
                 shape = temp.astype(int).max(axis=0) + 1
 
             data = None
-            for index, points in enumerate(export_data["points"]):
+            for index, points in enumerate(data["points"]):
                 data = points_to_volume(
                     points, sampling_rate=1, shape=shape, weight=index + 1, out=data
                 )
@@ -439,17 +448,34 @@ class DataContainerInteractor(QObject):
                 sampling_rate=sampling,
             )
 
+        if file_format not in point_formats:
+            return None
+
+        data["entities"] = [
+            np.full(x.shape[0], fill_value=i) for i, x in enumerate(data["points"])
+        ]
+        if single_file := export_data.get("single_file", True):
+            data = {k: [np.concatenate(v)] for k, v in data.items()}
+
         if file_format == "xyz":
-            for index, points in enumerate(export_data["points"]):
+            for index, points in enumerate(data["points"]):
                 fname = f"{file_path}_{index}.{file_format}"
-                np.savetxt(fname, points, delimiter=",")
+                if single_file:
+                    fname = f"{file_path}.{file_format}"
+
+                header = ""
+                if export_data.get("header", True):
+                    header = ",".join(["x", "y", "z"])
+
+                np.savetxt(fname, points, delimiter=",", header=header, comments="")
             return 1
 
-        if file_format not in ("tsv", "star"):
-            return -1
-
-        orientations = OrientationsWriter(**export_data)
-        orientations.to_file(f"{file_path}.{file_format}", file_format=file_format)
+        for index in range(len(data["points"])):
+            orientations = OrientationsWriter(**{k: v[index] for k, v in data.items()})
+            fname = f"{file_path}_{index}.{file_format}"
+            if single_file:
+                fname = f"{file_path}.{file_format}"
+            orientations.to_file(fname, file_format=file_format)
 
     def _show_properties_dialog(self) -> int:
         from .dialogs import GeometryPropertiesDialog
@@ -657,6 +683,8 @@ class DataContainerInteractor(QObject):
             func = self.container.connected_components
         elif method == "K-Means":
             func = self.container.split
+        elif method == "Birch":
+            func = self.container.birch_cluster
 
         return func(**kwargs)
 

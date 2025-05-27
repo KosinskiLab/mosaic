@@ -19,6 +19,7 @@ from .utils import (
     connected_components,
     com_cluster_points,
     find_closest_points,
+    birch_clustering,
 )
 
 
@@ -474,24 +475,44 @@ class DataContainer:
         return 101
 
     @apply_over_indices
-    def dbscan_cluster(self, geometry, distance, min_points, **kwargs):
+    def dbscan_cluster(self, geometry, **kwargs):
         """Perform DBSCAN clustering.
 
         Parameters
         ----------
         geometry : :py:class:`mosaic.geometry.Geometry`
             Cloud to cluster.
-        distance : float
-            DBSCAN epsilon parameter.
-        min_points : int
-            DBSCAN minimum points parameter.
+        kwargs : dict
+            Keyword arguments passed to py:meth:`mosaic.utils.birch_clustering`
 
         Returns
         -------
         ndarray
             Clustered points.
         """
-        ret = dbscan_clustering(geometry.points, eps=distance, min_points=min_points)
+        ret = dbscan_clustering(geometry.points, **kwargs)
+        for component in ret:
+            self.add(component, sampling_rate=geometry._sampling_rate)
+        return None
+
+    @apply_over_indices
+    def birch_cluster(self, geometry, **kwargs):
+        """
+        Perform Birch clustering on the input points using skimage.
+
+        Parameters
+        ----------
+        geometry : ndarray
+            Input point cloud.
+        kwargs : dict
+            Keyword arguments passed to py:meth:`mosaic.utils.birch_clustering`
+
+        Returns
+        -------
+        list
+            List of clusters, where each cluster is an array of points.
+        """
+        ret = birch_clustering(geometry.points, **kwargs)
         for component in ret:
             self.add(component, sampling_rate=geometry._sampling_rate)
         return None

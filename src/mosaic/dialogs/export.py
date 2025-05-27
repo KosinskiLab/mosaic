@@ -1,5 +1,4 @@
-from typing import Tuple
-
+from typing import Tuple, Dict
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
     QDialog,
@@ -7,20 +6,17 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QGridLayout,
-    QCheckBox,
-    QSpinBox,
-    QDoubleSpinBox,
-    QComboBox,
     QFrame,
     QScrollArea,
     QWidget,
     QGroupBox,
+    QGridLayout,
 )
 import qtawesome as qta
 
 from ..widgets import DialogFooter
 from ..stylesheets import QGroupBox_style, QPushButton_style, QScrollArea_style
+from ..widgets import create_setting_widget, get_widget_value
 
 
 class StyleableButton(QPushButton):
@@ -82,13 +78,12 @@ class StyleableButton(QPushButton):
 class ExportDialog(QDialog):
     export_requested = Signal(dict)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, parameters={}):
         super().__init__(parent)
 
         self.setWindowTitle("Export Data")
         self.resize(700, 600)
 
-        # Principal export categories
         self.format_categories = {
             "pointcloud": {
                 "icon": "mdi.dots-grid",
@@ -110,14 +105,88 @@ class ExportDialog(QDialog):
             },
         }
 
-        # Format implementations for principal categories
-        self.format_settings = {
-            "mrc": {"shape_x": 64, "shape_y": 64, "shape_z": 64, "sampling": 1.0},
-            "em": {"shape_x": 64, "shape_y": 64, "shape_z": 64, "sampling": 1.0},
-            "map": {"shape_x": 64, "shape_y": 64, "shape_z": 64, "sampling": 1.0},
-            "star": {},
-            "tsv": {},
-            "xyz": {"header": True, "delimiter": "\t"},
+        self.format_settings_definitions = {
+            "mrc": volume_settings,
+            "em": volume_settings,
+            "h5": volume_settings,
+            "xyz": {
+                "single_file": {
+                    "type": "boolean",
+                    "label": "Single File",
+                    "description": "Export all data to a single file",
+                    "default": False,
+                    "parameter": "single_file",
+                },
+                "header": {
+                    "type": "boolean",
+                    "label": "Include Header",
+                    "description": "Include column headers in the exported file",
+                    "default": True,
+                    "parameter": "header",
+                },
+            },
+            "star": {
+                "single_file": {
+                    "type": "boolean",
+                    "label": "Single File",
+                    "description": "Export all data to a single file",
+                    "default": False,
+                    "parameter": "single_file",
+                },
+                "relion_5_format": {
+                    "type": "boolean",
+                    "label": "RELION 5",
+                    "description": "Export in RELION 5 format with coordinate transformation",
+                    "default": False,
+                    "parameter": "relion_5_format",
+                },
+                "shape_x": {
+                    "type": "number",
+                    "label": "Shape X",
+                    "description": "X dimension for coordinate transformation (RELION 5)",
+                    "default": 64,
+                    "min": 1,
+                    "max": 1024,
+                    "parameter": "shape_x",
+                },
+                "shape_y": {
+                    "type": "number",
+                    "label": "Shape Y",
+                    "description": "Y dimension for coordinate transformation (RELION 5)",
+                    "default": 64,
+                    "min": 1,
+                    "max": 1024,
+                    "parameter": "shape_y",
+                },
+                "shape_z": {
+                    "type": "number",
+                    "label": "Shape Z",
+                    "description": "Z dimension for coordinate transformation (RELION 5)",
+                    "default": 64,
+                    "min": 1,
+                    "max": 1024,
+                    "parameter": "shape_z",
+                },
+                "sampling": {
+                    "type": "float",
+                    "label": "Sampling Rate",
+                    "description": "Sampling rate in Ångströms for coordinate transformation",
+                    "default": 1.0,
+                    "min": 0.1,
+                    "max": 100.0,
+                    "step": 0.1,
+                    "parameter": "sampling",
+                },
+            },
+            "tsv": {
+                "single_file": {
+                    "type": "boolean",
+                    "label": "Single File",
+                    "description": "Export all data to a single file",
+                    "default": False,
+                    "parameter": "single_file",
+                }
+            },
             "obj": {},
             "stl": {},
             "ply": {},
@@ -125,23 +194,23 @@ class ExportDialog(QDialog):
 
         self.selected_category = "pointcloud"
         self.selected_format = "star"
-        self.current_settings = self.format_settings["mrc"].copy()
+        self.current_settings = {}
         self.show_advanced = False
 
         self.setup_ui()
         self.setStyleSheet(QGroupBox_style + QPushButton_style + QScrollArea_style)
 
     def set_defaults(self, keys, values):
-        for k, v in self.format_settings.items():
+        """Update default values for format settings"""
+        for format_name, settings_dict in self.format_settings_definitions.items():
             for index, key in enumerate(keys):
-                if key not in v:
-                    continue
-                self.format_settings[k][key] = values[index]
+                if key in settings_dict:
+                    settings_dict[key]["default"] = values[index]
 
     def set_shape(self, shape: Tuple[int]):
         if shape is None:
             return None
-        return self.set_defaults(("shape_x", "shape_y", "shape_y"), shape)
+        return self.set_defaults(("shape_x", "shape_y", "shape_z"), shape)
 
     def set_sampling(self, sampling: Tuple[float]):
         if sampling is None:
@@ -169,23 +238,20 @@ class ExportDialog(QDialog):
         content_layout.setContentsMargins(20, 20, 20, 20)
         content_layout.setSpacing(20)
 
-        # Principal export categories
         export_group = QGroupBox("Export Type")
         self.export_layout = QHBoxLayout(export_group)
         self.setup_group_buttons()
         content_layout.addWidget(export_group)
 
-        # Formats of principal export category
         format_group = QGroupBox("File Format")
         self.format_layout = QHBoxLayout(format_group)
         self.setup_format_buttons()
         content_layout.addWidget(format_group)
 
-        # Settings for format in pricinpal export category
-        seettings_group = QGroupBox("Settings")
-        self.settings_layout = QVBoxLayout(seettings_group)
+        settings_group = QGroupBox("Settings")
+        self.settings_layout = QVBoxLayout(settings_group)
         self.update_advanced_settings()
-        content_layout.addWidget(seettings_group)
+        content_layout.addWidget(settings_group)
 
         main_layout.addWidget(scroll_area)
 
@@ -233,89 +299,58 @@ class ExportDialog(QDialog):
     def update_advanced_settings(self):
         self._clear_layout(self.settings_layout)
 
+        settings_definitions = self.format_settings_definitions.get(
+            self.selected_format, {}
+        )
+
+        if not settings_definitions:
+            self.settings_grid_layout = None
+            no_settings_label = QLabel(
+                "No additional settings available for this format."
+            )
+            no_settings_label.setStyleSheet("color: #6b7280; font-style: italic;")
+            self.settings_layout.addWidget(no_settings_label)
+            return
+
         settings_widget = QWidget()
-        settings_layout = QGridLayout(settings_widget)
-        settings_layout.setContentsMargins(10, 10, 10, 10)
-        settings_layout.setSpacing(10)
+        grid_layout = QGridLayout(settings_widget)
+        grid_layout.setContentsMargins(10, 10, 10, 10)
+        grid_layout.setSpacing(10)
 
-        if self.selected_format in ["mrc", "em", "h5"]:
-            # Volume format settings
-            shape_x_label = QLabel("Shape X:")
-            shape_x_spin = QSpinBox()
-            shape_x_spin.setRange(1, 1024)
-            shape_x_spin.setValue(self.current_settings.get("shape_x", 64))
-            shape_x_spin.valueChanged.connect(
-                lambda v: self.update_setting("shape_x", v)
-            )
+        row = 0
+        col = 0
+        for setting_key, setting_def in settings_definitions.items():
+            widget = create_setting_widget(setting_def)
 
-            shape_y_label = QLabel("Shape Y:")
-            shape_y_spin = QSpinBox()
-            shape_y_spin.setRange(1, 1024)
-            shape_y_spin.setValue(self.current_settings.get("shape_y", 64))
-            shape_y_spin.valueChanged.connect(
-                lambda v: self.update_setting("shape_y", v)
-            )
+            label = QLabel(setting_def["label"])
+            grid_layout.addWidget(label, row, col * 2)
+            grid_layout.addWidget(widget, row, col * 2 + 1)
 
-            shape_z_label = QLabel("Shape Z:")
-            shape_z_spin = QSpinBox()
-            shape_z_spin.setRange(1, 1024)
-            shape_z_spin.setValue(self.current_settings.get("shape_z", 64))
-            shape_z_spin.valueChanged.connect(
-                lambda v: self.update_setting("shape_z", v)
-            )
-
-            sampling_label = QLabel("Sampling Rate (Å):")
-            sampling_spin = QDoubleSpinBox()
-            sampling_spin.setRange(0.1, 100.0)
-            sampling_spin.setSingleStep(0.1)
-            sampling_spin.setValue(self.current_settings.get("sampling", 1.0))
-            sampling_spin.valueChanged.connect(
-                lambda v: self.update_setting("sampling", v)
-            )
-
-            settings_layout.addWidget(shape_x_label, 0, 0)
-            settings_layout.addWidget(shape_x_spin, 0, 1)
-            settings_layout.addWidget(shape_y_label, 0, 2)
-            settings_layout.addWidget(shape_y_spin, 0, 3)
-            settings_layout.addWidget(shape_z_label, 1, 0)
-            settings_layout.addWidget(shape_z_spin, 1, 1)
-            settings_layout.addWidget(sampling_label, 1, 2)
-            settings_layout.addWidget(sampling_spin, 1, 3)
-
-        elif self.selected_format == "xyz":
-            header_check = QCheckBox("Include Header")
-            header_check.setChecked(self.current_settings.get("header", False))
-            header_check.stateChanged.connect(
-                lambda state: self.update_setting(
-                    "header", state == Qt.CheckState.Checked.value
-                )
-            )
-
-            delimiter_label = QLabel("Delimiter:")
-            delimiter_combo = QComboBox()
-            delimiter_combo.addItem("Comma (,)", ",")
-            delimiter_combo.addItem("Tab", "\t")
-            delimiter_combo.addItem("Space", " ")
-
-            current_delimiter = self.current_settings.get("delimiter", ",")
-            delimiter_index = 0
-            for i in range(delimiter_combo.count()):
-                if delimiter_combo.itemData(i) == current_delimiter:
-                    delimiter_index = i
-                    break
-            delimiter_combo.setCurrentIndex(delimiter_index)
-
-            delimiter_combo.currentIndexChanged.connect(
-                lambda idx: self.update_setting(
-                    "delimiter", delimiter_combo.itemData(idx)
-                )
-            )
-
-            settings_layout.addWidget(header_check, 0, 0, 1, 2)
-            settings_layout.addWidget(delimiter_label, 1, 0)
-            settings_layout.addWidget(delimiter_combo, 1, 1)
+            col = 1 - col
+            if col == 0:
+                row += 1
 
         self.settings_layout.addWidget(settings_widget)
+        self.settings_grid_layout = grid_layout
+
+    def get_current_settings(self) -> Dict:
+        """Extract current settings from the grid widgets"""
+        settings = {}
+
+        if getattr(self, "settings_grid_layout", None) is None:
+            return settings
+
+        # Collect values from all widgets in the grid
+        for i in range(self.settings_grid_layout.count()):
+            item = self.settings_grid_layout.itemAt(i)
+            if item and item.widget():
+                widget = item.widget()
+                parameter = widget.property("parameter")
+                if not parameter:
+                    continue
+                settings[parameter] = get_widget_value(widget)
+
+        return settings
 
     def on_category_selected(self, category_id):
         if category_id == self.selected_category:
@@ -325,11 +360,8 @@ class ExportDialog(QDialog):
             btn.setChecked(cat_id == category_id)
 
         self.selected_category = category_id
-
         self.selected_format = self.format_categories[category_id]["formats"][0]
-        self.current_settings = self.format_settings.get(
-            self.selected_format, {}
-        ).copy()
+        self.current_settings = {}
 
         self.setup_format_buttons()
         self.update_advanced_settings()
@@ -342,18 +374,56 @@ class ExportDialog(QDialog):
             btn.setChecked(fmt == format_id)
 
         self.selected_format = format_id
-        self.current_settings = self.format_settings.get(format_id, {}).copy()
+        self.current_settings = {}
         self.update_advanced_settings()
-
-    def update_setting(self, key, value):
-        self.current_settings[key] = value
 
     def accept(self):
         export_data = {
             "category": self.selected_category,
             "format": self.selected_format,
-            **self.current_settings,
+            **self.get_current_settings(),
         }
 
         self.export_requested.emit(export_data)
         return super().accept()
+
+
+volume_settings = {
+    "shape_x": {
+        "type": "number",
+        "label": "Shape X",
+        "description": "X dimension of the volume",
+        "default": 64,
+        "min": 1,
+        "max": 1024,
+        "parameter": "shape_x",
+    },
+    "shape_y": {
+        "type": "number",
+        "label": "Shape Y",
+        "description": "Y dimension of the volume",
+        "default": 64,
+        "min": 1,
+        "max": 1024,
+        "parameter": "shape_y",
+    },
+    "shape_z": {
+        "type": "number",
+        "label": "Shape Z",
+        "description": "Z dimension of the volume",
+        "default": 64,
+        "min": 1,
+        "max": 1024,
+        "parameter": "shape_z",
+    },
+    "sampling": {
+        "type": "float",
+        "label": "Sampling Rate",
+        "description": "Sampling rate in Ångströms",
+        "default": 1.0,
+        "min": 0.1,
+        "max": 100.0,
+        "step": 0.1,
+        "parameter": "sampling",
+    },
+}
