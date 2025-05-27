@@ -415,11 +415,11 @@ class DataContainerInteractor(QObject):
 
             sampling = export_data.get("sampling", None)
             if sampling is None:
-                sampling = np.max(geometry.sampling_rate)
+                sampling = geometry.sampling_rate
 
             if export_data.get("relion_5_format", False):
                 center = np.divide(shape, 2).astype(int) if shape is not None else 0
-                center = np.muliply(center, sampling)
+                center = np.multiply(center, sampling)
                 sampling = 1
 
             points = np.subtract(np.divide(points, sampling), center)

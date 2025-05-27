@@ -143,7 +143,7 @@ class ExportDialog(QDialog):
                 "shape_x": {
                     "type": "number",
                     "label": "Shape X",
-                    "description": "X dimension for coordinate transformation (RELION 5)",
+                    "description": "X voxel for coordinate transformation (RELION 5)",
                     "default": 64,
                     "min": 1,
                     "max": 1024,
@@ -152,7 +152,7 @@ class ExportDialog(QDialog):
                 "shape_y": {
                     "type": "number",
                     "label": "Shape Y",
-                    "description": "Y dimension for coordinate transformation (RELION 5)",
+                    "description": "Y voxel for coordinate transformation (RELION 5)",
                     "default": 64,
                     "min": 1,
                     "max": 1024,
@@ -161,21 +161,11 @@ class ExportDialog(QDialog):
                 "shape_z": {
                     "type": "number",
                     "label": "Shape Z",
-                    "description": "Z dimension for coordinate transformation (RELION 5)",
+                    "description": "Z voxel for coordinate transformation (RELION 5)",
                     "default": 64,
                     "min": 1,
                     "max": 1024,
                     "parameter": "shape_z",
-                },
-                "sampling": {
-                    "type": "float",
-                    "label": "Sampling Rate",
-                    "description": "Sampling rate in Ångströms for coordinate transformation",
-                    "default": 1.0,
-                    "min": 0.1,
-                    "max": 100.0,
-                    "step": 0.1,
-                    "parameter": "sampling",
                 },
             },
             "tsv": {
