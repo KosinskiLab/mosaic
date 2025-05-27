@@ -29,6 +29,8 @@ class Geometry:
         **kwargs,
     ):
         self._points = vtk.vtkPoints()
+        self._points.SetDataTypeToFloat()
+
         self._cells = vtk.vtkCellArray()
         self._normals = vtk.vtkFloatArray()
         self._normals.SetNumberOfComponents(3)
@@ -212,14 +214,20 @@ class Geometry:
         if self.points.shape[0] != 0:
             points = np.concatenate((self.points, points))
 
+        # Allow for area picking
         vertex_cells = vtk.vtkCellArray()
         idx = np.arange(points.shape[0], dtype=int)
         cells = np.column_stack((np.ones(idx.size, dtype=int), idx)).flatten()
         vertex_cells.SetCells(idx.size, numpy_support.numpy_to_vtkIdTypeArray(cells))
 
-        self._points.SetData(numpy_support.numpy_to_vtk(points, deep=True))
+        # n_points = points.shape[0]
+        # vertex_cells = vtk.vtkCellArray()
+        # vertex_cells.InsertNextCell(n_points)
+        # for i in range(n_points):
+        #     vertex_cells.InsertCellPoint(i)
+
+        self._points.SetData(numpy_support.numpy_to_vtk(points, deep=False))
         self._data.SetVerts(vertex_cells)
-        self._data.SetPoints(self._points)
         self._data.Modified()
 
     @property
@@ -347,10 +355,13 @@ class Geometry:
         mapper.SetInputData(self._data)
 
         mapper.SetScalarModeToDefault()
+        mapper.SetVBOShiftScaleMethod(1)
+        mapper.SetResolveCoincidentTopology(False)
         mapper.SetResolveCoincidentTopologyToPolygonOffset()
 
         if actor is None:
-            actor = vtk.vtkActor()
+            actor = vtk.vtkLODActor()
+            actor.SetNumberOfCloudPoints(100000)
 
         actor.SetMapper(mapper)
         return actor
@@ -398,11 +409,38 @@ class Geometry:
         # Remove highlight_color hue when switching back from modes above
         prop.SetColor(*self._appearance["base_color"])
         n_points = self._points.GetNumberOfPoints()
-        point_ids = [x for x in point_ids if x < n_points]
+        point_ids = np.fromiter(
+            (pid for pid in point_ids if pid < n_points), dtype=np.int32
+        )
+
+        if not len(point_ids) or n_points == 0:
+            return
+
+        current_colors = self._data.GetPointData().GetScalars()
+        if (
+            current_colors is not None
+            and current_colors.GetName() == "Colors"
+            and current_colors.GetNumberOfTuples() == n_points
+            and current_colors.GetNumberOfComponents() == 3
+        ):
+            colors_np = vtk.util.numpy_support.vtk_to_numpy(current_colors)
+            colors_np = colors_np.reshape(n_points, 3)
+
+            base_color_uint8 = np.array(
+                [x * 255 for x in self._appearance["base_color"]], dtype=np.uint8
+            )
+            highlight_color_unit8 = np.array([x * 255 for x in color], dtype=np.uint8)
+
+            colors_np[:] = base_color_uint8
+            colors_np[point_ids] = highlight_color_unit8
+
+            current_colors.Modified()
+            return self._data.Modified()
+
         colors = np.full(
             (n_points, 3),
             fill_value=[x * 255 for x in self._appearance["base_color"]],
-            dtype=np.float32,
+            dtype=np.uint8,
         )
         colors[point_ids] = [x * 255 for x in color]
         return self.set_point_colors(colors)
@@ -433,7 +471,18 @@ class Geometry:
 
     def subset(self, indices):
         subset = self[indices]
-        return self.swap_data(subset.points, quaternions=subset.quaternions)
+
+        _quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
+        if _quaternions is not None:
+            _quaternions = subset.quaternions
+
+        kwargs = {
+            "points": subset.points,
+            "normals": subset.normals,
+            "quaternions": _quaternions,
+        }
+
+        return self.swap_data(**kwargs)
 
     def swap_data(
         self, points, normals=None, faces=None, quaternions=None, meta: Dict = None
@@ -467,6 +516,7 @@ class Geometry:
     def change_representation(self, representation: str = "pointcloud") -> int:
         supported = [
             "pointcloud",
+            "gaussian_density",
             "pointcloud_normals",
             "mesh",
             "wireframe",
@@ -479,7 +529,10 @@ class Geometry:
         # We dont check representation == self._representation to enable
         # rendering in the same representation after swap_data
         if representation not in supported:
-            raise ValueError(f"Supported representations are {', '.join(supported)}.")
+            supported = ", ".join(supported)
+            raise ValueError(
+                f"Supported representations are {supported} - got {representation}."
+            )
 
         if representation in ["mesh", "wireframe", "surface"]:
             if not hasattr(self._meta.get("fit", None), "mesh"):
@@ -511,13 +564,27 @@ class Geometry:
             glyph.OrientOn()
 
         self._appearance.update({"opacity": 1, "size": 8})
-        self._actor.SetMapper(vtk.vtkPolyDataMapper())
+
+        mapper = vtk.vtkPolyDataMapper()
+        if representation == "gaussian_density":
+            mapper = vtk.vtkPointGaussianMapper()
+            mapper.SetSplatShaderCode("")
+
+        mapper.SetScalarModeToDefault()
+        mapper.SetVBOShiftScaleMethod(1)
+        mapper.SetResolveCoincidentTopology(False)
+        mapper.SetResolveCoincidentTopologyToPolygonOffset()
+
+        self._actor.SetMapper(mapper)
         mapper, prop = self._actor.GetMapper(), self._actor.GetProperty()
         prop.SetOpacity(self._appearance["opacity"])
         prop.SetPointSize(self._appearance["size"])
 
         if representation == "pointcloud":
             prop.SetRepresentationToPoints()
+            mapper.SetInputData(self._data)
+
+        elif representation == "gaussian_density":
             mapper.SetInputData(self._data)
 
         elif representation == "pointcloud_normals":

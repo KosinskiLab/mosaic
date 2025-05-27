@@ -467,7 +467,7 @@ class DataContainer:
         geometry : :py:class:`mosaic.geometry.Geometry`
             Cloud to cluster.
         """
-        sampling = geometry._sampling_rate
+        sampling = geometry.sampling_rate
         components = connected_components(geometry.points, sampling_rate=sampling)
         for component in components:
             self.add(component, sampling_rate=sampling)
@@ -729,7 +729,7 @@ class DataContainer:
             if geometry.points.shape[0] == 0:
                 continue
 
-            sampling = geometry._sampling_rate
+            sampling = geometry.sampling_rate
             mask = np.zeros(len(geometry.points), dtype=bool)
             try:
                 mask[list(point_ids)] = True
@@ -738,7 +738,6 @@ class DataContainer:
                 return -1
 
             new_cluster.append((geometry.points[mask], geometry.normals[mask]))
-
             inverse_mask = np.invert(mask)
             if inverse_mask.sum() != 0:
                 geometry.subset(inverse_mask)

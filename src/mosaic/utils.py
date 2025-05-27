@@ -164,18 +164,10 @@ def dbscan_clustering(points, eps=0.02, min_points=10):
     list
         List of clusters, where each cluster is an array of points.
     """
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(points.astype(np.float64))
-    dbscan_labels = np.asarray(pcd.cluster_dbscan(eps=eps, min_points=min_points))
+    from sklearn.cluster import DBSCAN
 
-    new_cluster = []
-    for label in np.unique(dbscan_labels):
-        positions_to_write = np.asarray(pcd.points)[dbscan_labels == label]
-        if label == -1:
-            continue
-        new_cluster.append(positions_to_write)
-
-    return new_cluster
+    labels = DBSCAN(eps=eps, min_samples=min_points).fit_predict(points)
+    return [points[labels == x] for x in np.unique(labels) if x != -1]
 
 
 def eigenvalue_outlier_removal(points, k_neighbors=300, thresh=0.05):

@@ -29,9 +29,15 @@ from qtpy.QtCore import (
     Signal,
     QEvent,
 )
+from .parallel import run_in_background
 
 
-def _cluster_modifier(keep_selection: bool = False):
+def on_run_complete(self, *args, **kwargs):
+    self.data_changed.emit()
+    self.render()
+
+
+def _cluster_modifier(keep_selection: bool = False, render: bool = True):
     def decorator(func):
         @wraps(func)
         def func_wrapper(self, **kwargs):
@@ -41,8 +47,10 @@ def _cluster_modifier(keep_selection: bool = False):
                 kwarg_indices = [kwarg_indices]
 
             result = func(self, indices=(*indices, *kwarg_indices), **kwargs)
-            self.data_changed.emit()
-            self.render()
+
+            if render:
+                self.data_changed.emit()
+                self.render()
 
             if not keep_selection:
                 return result
@@ -76,7 +84,6 @@ class DataContainerInteractor(QObject):
         self.vtk_widget, self.container = vtk_widget, container
 
         # Interaction element for the GUI
-        # self.data_list = ContainerListWidget(self.prefix)
         self.data_list = ContainerListWidget()
         self.data_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         self.data_list.itemChanged.connect(self._on_item_renamed)
@@ -237,20 +244,25 @@ class DataContainerInteractor(QObject):
 
     def _on_area_pick(self, obj, event):
         frustum = obj.GetFrustum()
+
+        extractor = vtk.vtkExtractSelectedFrustum()
+        extractor.SetFrustum(frustum)
+
         self.deselect_points()
         for i, cluster in enumerate(self.container.data):
-            extract = vtk.vtkExtractSelectedFrustum()
-            extract.SetFrustum(frustum)
-            extract.SetInputData(cluster._data)
-            extract.Update()
-            selected_ids = vtk.vtkIdTypeArray.SafeDownCast(
-                extract.GetOutput().GetPointData().GetArray("vtkOriginalPointIds")
-            )
+            extractor.SetInputData(cluster._data)
+            extractor.Update()
+
+            output = extractor.GetOutput()
+            n_selected = output.GetNumberOfPoints()
+            if n_selected == 0:
+                continue
+
+            selected_ids = output.GetPointData().GetArray("vtkOriginalPointIds")
             if selected_ids and selected_ids.GetNumberOfTuples() > 0:
-                self.point_selection[i] = set(
-                    selected_ids.GetValue(j)
-                    for j in range(selected_ids.GetNumberOfTuples())
-                )
+                ids_numpy = vtk.util.numpy_support.vtk_to_numpy(selected_ids)
+                self.point_selection[i] = set(ids_numpy)
+
         self.highlight_selected_points(color=None)
 
     def _pick_prop(self, event_pos):
@@ -289,6 +301,7 @@ class DataContainerInteractor(QObject):
 
         formats = [
             "Points",
+            "Gaussian Density",
             "Normals",
             "Basis",
             "Points with Normals",
@@ -337,7 +350,7 @@ class DataContainerInteractor(QObject):
 
         dialog.export_requested.connect(self._wrap_export)
 
-        return dialog.show()
+        return dialog.exec()
 
     def _wrap_export(self, export_data):
         file_format = export_data.get("format")
@@ -490,13 +503,6 @@ class DataContainerInteractor(QObject):
 
         current_actors = set(self.container.get_actors())
 
-        # for index, actor in enumerate(self.container.get_actors()):
-        #     mapper = actor.GetMapper()
-        #     if index == 4:
-        #         mapper.SetRelativeCoincidentTopologyLineOffsetParameters(0, -5)
-        #     if index in (4, 5):
-        #         actor.GetProperty().SetLineWidth(2)
-
         actors_to_remove = self.rendered_actors - current_actors
         for actor in actors_to_remove:
             renderer.RemoveActor(actor)
@@ -551,6 +557,7 @@ class DataContainerInteractor(QObject):
     def highlight_selected_points(self, color):
         for cluster_index, point_ids in self.point_selection.items():
             self.container.highlight_points(cluster_index, point_ids, color)
+
         self.vtk_widget.GetRenderWindow().Render()
 
     def highlight_clusters_from_selected_points(self):
@@ -561,7 +568,7 @@ class DataContainerInteractor(QObject):
         if not len(indices):
             return -1
 
-        representation = representation.lower().replace("with", "_").replace(" ", "")
+        representation = representation.lower().replace("with", "_").replace(" ", "_")
 
         if representation == "points":
             representation = "pointcloud"
@@ -577,7 +584,12 @@ class DataContainerInteractor(QObject):
             # back breaks glyph rendering. This could be due to incorrect cleanup in
             # Geometry.change_representation or an issue of vtk 9.3.1. Creating a copy
             # of the Geometry instance circumvents the issue.
-            if representation in ("pointcloud_normals", "normals", "basis"):
+            if representation in (
+                "pointcloud_normals",
+                "normals",
+                "basis",
+                "gaussian_density",
+            ):
                 self.container.data[index] = geometry[...]
                 if hasattr(geometry, "_original_data"):
                     self.container.data[index]._original_data = geometry._original_data
@@ -618,7 +630,8 @@ class DataContainerInteractor(QObject):
 
         return None
 
-    @_cluster_modifier()
+    @run_in_background("Clustering", callback=on_run_complete)
+    @_cluster_modifier(render=False)
     def cluster(self, method, **kwargs):
         """
         Cluster point cloud using specified clustering method.
@@ -682,10 +695,6 @@ class DataContainerInteractor(QObject):
     @_cluster_modifier()
     def trim(self, **kwargs):
         return self.container.trim(**kwargs)
-
-    @_cluster_modifier()
-    def dbscan_cluster(self, **kwargs):
-        return self.container.dbscan_cluster(**kwargs)
 
     @_cluster_modifier()
     def remove_outliers(self, **kwargs):

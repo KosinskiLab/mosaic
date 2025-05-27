@@ -522,14 +522,16 @@ CLUSTER_SETTINGS = {
                 "label": "Distance",
                 "parameter": "distance",
                 "type": "float",
-                "default": 40.0,
+                "description": "Distance between neighbors in a cluster.",
+                "default": 100.0,
             },
             {
                 "label": "Min Points",
                 "parameter": "min_points",
                 "type": "number",
+                "description": "Minimum cluster size.",
                 "min": 1,
-                "default": 5,
+                "default": 500,
             },
         ],
         "K-Means": [

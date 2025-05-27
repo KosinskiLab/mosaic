@@ -56,4 +56,4 @@ To select different time points, select **View > Trajectory Player**. Each row c
 
 .. tip::
 
-  Duplicating a trajectory object will not create a new trajectory but rather an representing the current time point.
+  Duplicating a trajectory object will not create a new trajectory but rather an object representing the current time point.

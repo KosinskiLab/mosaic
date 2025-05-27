@@ -7,9 +7,9 @@ The *Intelligence* tab provides advanced features for specialized tasks.
 .. grid:: 2 3 3 4
     :gutter: 1
 
-    .. grid-item-card:: Sphere
+    .. grid-item-card:: Equilibrate
         :text-align: center
-        :link: #sphere
+        :link: #equilibrate
 
         .. raw:: html
 

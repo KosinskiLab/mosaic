@@ -115,6 +115,7 @@ class App(QMainWindow):
         render_window.SetPointSmoothing(False)
         render_window.SetLineSmoothing(False)
         render_window.SetPolygonSmoothing(False)
+        render_window.SetDesiredUpdateRate(120.0)
 
         # Setup GUI interactions
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
@@ -137,6 +138,8 @@ class App(QMainWindow):
         tab_layout.setContentsMargins(16, 0, 16, 0)
         tab_layout.setSpacing(4)
 
+        from mosaic.tabs import DevelopmentTab
+
         self.setup_widgets()
         self.tab_buttons = {}
         self.tab_ribbon = RibbonToolBar(self)
@@ -145,6 +148,7 @@ class App(QMainWindow):
             (SegmentationTab(**data), "Segmentation"),
             (ModelTab(**data), "Parametrization"),
             (IntelligenceTab(**data), "Intelligence"),
+            (DevelopmentTab(**data), "Development"),
         ]
         for index, (tab, name) in enumerate(self.tabs):
             btn = QPushButton(name)
@@ -204,6 +208,8 @@ class App(QMainWindow):
         self.actor_collection = vtk.vtkActorCollection()
         self.setup_menu()
 
+        # print(render_window.ReportCapabilities())
+
     def on_tab_clicked(self):
         # Uncheck all other buttons
         sender = self.sender()
@@ -236,7 +242,7 @@ class App(QMainWindow):
         elif key == "s":
             self._transition_modes(ViewerModes.VIEWING)
             self.cdata.swap_area_picker()
-        elif key == "S":
+        elif key == "E":
             self._transition_modes(ViewerModes.PICKING)
         elif key == "h":
             self.cdata.data.toggle_visibility()
@@ -714,11 +720,8 @@ class App(QMainWindow):
         self.renderer.RemoveAllViewProps()
         self.volume_viewer.close()
 
-        self.bounding_box.setup(shape=self.cdata.shape)
-        # shape = np.multiply((1592, 400, 3000), (20.96, 16.0, 16.0)).astype(int)
-        # self.bounding_box.setup(shape=shape)
-
-        self.renderer.AddActor(self.bounding_box.box_actor)
+        # self.bounding_box.setup(shape=self.cdata.shape)
+        # self.renderer.AddActor(self.bounding_box.box_actor)
 
         self.renderer.AddActor(self.status_indicator.text_actor)
         self.cdata.data.rendered_actors.clear()
@@ -772,6 +775,8 @@ class App(QMainWindow):
                 base, _ = splitext(basename(filename))
                 use_index = len(container) > 1
                 for index, data in enumerate(container):
+                    # data.sampling is typically 1 apart from parser.read_volume
+                    scale = np.divide(scale, data.sampling)
                     data.vertices = np.multiply(
                         np.subtract(data.vertices, offset), scale
                     )
