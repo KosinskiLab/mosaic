@@ -24,7 +24,7 @@ scipy = ">=1.14.1"
 vtk = ">=9.3.1"
 PyQt6 = "==6.7.1"
 pyqtgraph = ">=0.13.3"
-pytme = ">=0.2.6"
+pytme = ">=0.3.0"
 open3d = ">=0.18.0"
 libigl = "==2.5.1"
 pymeshlab = ">=2023.12.post2"
@@ -39,7 +39,7 @@ tqdm = ">=4.67.1"
 pyfqmr = ">=0.3.0"
 
 [tool.poetry.group.optional.dependencies]
-membrain-seg = ">=0.0.5"
+membrain-seg = "==0.0.5"
 
 [tool.poetry.scripts]
 mosaic = "mosaic.scripts.app:main"
