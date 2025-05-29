@@ -55,7 +55,7 @@ After setting up your environment, Mosaic can be installed from PyPI
 
 .. code-block:: bash
 
-   pip install "mosaic[all]"
+   pip install "mosaic-gui[all]"
    mosaic --version          # Smoke test to verify installation
 
 

@@ -1,10 +1,10 @@
 # Mosaic
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/KosinskiLab/mosaic/main.yml?label=CI)](https://github.com/KosinskiLab/mosaic/actions)
-[![PyPI](https://img.shields.io/pypi/v/mosaic.svg)](https://pypi.org/project/mosaic/)
+[![PyPI](https://img.shields.io/pypi/v/mosaic-gui.svg)](https://pypi.org/project/mosaic-gui/)
 [![License: GPL v2](https://img.shields.io/badge/License-GPL_v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 
-**[Documentation](https://kosinskilab.github.io/mosaic/)** | **[Installation](https://kosinskilab.github.io/mosaic/quickstart/installation.html)**
+**[Documentation](https://kosinskilab.github.io/mosaic/)** | **[Installation](https://kosinskilab.github.io/mosaic/tutorial/installation.html)**
 
 
 Mosaic is a software ecosystem that translates 3D electron microscopy (3D EM) data into simulation-ready models of biomembranes. It unifies membrane segmentation, mesh generation, protein identification, and multi-scale simulation into a graphical user interface (GUI).
@@ -16,11 +16,11 @@ Mosaic is a software ecosystem that translates 3D electron microscopy (3D EM) da
 Mosaic requires Python 3.11 or higher.
 
 ```bash
-pip install mosaic
+pip install mosaic-gui
 mosaic &
 ```
 
-For detailed installation instructions, see our [Installation Guide](https://kosinskilab.github.io/mosaic/quickstart/installation.html).
+For detailed installation instructions, see our [Installation Guide](https://kosinskilab.github.io/mosaic/tutorial/installation.html).
 
 
 ## How to Cite
