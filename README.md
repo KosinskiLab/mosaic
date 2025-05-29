@@ -33,5 +33,6 @@ If you use Mosaic in your research, please [cite](https://www.biorxiv.org/conten
 	journal = {bioRxiv},
 	title = {Helfrich Monte Carlo Flexible Fitting: physics-based, data-driven cell-scale simulations},
 	doi = {10.1101/2025.05.24.655915},
-	year = {2025}}
+	year = {2025}
+}
 ```

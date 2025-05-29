@@ -1,0 +1,70 @@
+on:
+  push:
+    branches:
+      - main
+  release:
+    types: [created]
+jobs:
+  # build:
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: python:3.11.5
+  #     options: --shm-size=8gb
+  #   steps:
+  #     - name: Checkout Repository
+  #       uses: actions/checkout@v4
+  #     - name: Build Package
+  #       run: |
+  #         python -mpip install .
+  #     - name: Upload Distribution as Artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: dist
+  #         path: dist/*
+      # - name: Test with pytest
+      #   run: |
+      #     pip install pytest pytest-cov importlib-resources
+      #     ulimit -n 4096
+      #     pytest -vvv
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1 \
+            libegl1 \
+            libxrender1 \
+            libfontconfig1 \
+            xvfb
+      - name: Set matplotlib backend and display
+        run: |
+          echo "MPLBACKEND=Agg" >> $GITHUB_ENV
+          echo "DISPLAY=:99" >> $GITHUB_ENV
+      - name: Install dependencies
+        run: |
+          python -mpip install .
+          python -mpip install \
+            Sphinx \
+            pydata-sphinx-theme \
+            sphinx_design \
+            numpydoc \
+            sphinx_copybutton \
+            sphinx-tabs \
+            matplotlib \
+            sphinxcontrib-youtube
+      - name: Sphinx build
+        run: |
+          xvfb-run -a -s "-screen 0 1024x768x24" sphinx-build docs _build
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: _build/
+          force_orphan: true
