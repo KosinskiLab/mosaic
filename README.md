@@ -2,7 +2,7 @@
 
 Mosaic is a software ecosystem that translates 3D electron microscope data into simulation-ready models of biomembranes. It unifies membrane segmentation, mesh generation, protein identification, and multi-scale simulation into a graphical user interface (GUI).
 
-![Mosaic Workflow](static/tutorial/iav_workflow/mosaic_workflow.png)
+![Mosaic Workflow](docs/_static/tutorial/iav_workflow/mosaic_workflow.png)
 
 ## Installation
 
