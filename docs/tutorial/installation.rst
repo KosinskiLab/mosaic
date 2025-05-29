@@ -111,10 +111,8 @@ If you want to modify the codebase
 
 .. code-block:: bash
 
-   pip install poetry
    git clone https://github.com/KosinskiLab/mosaic.git
-   cd mosaic
-   poetry install
+   pip install -e mosaic
 
 
 Getting Help
