@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.toggle\_drawing\_mode
+===============================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.toggle_drawing_mode

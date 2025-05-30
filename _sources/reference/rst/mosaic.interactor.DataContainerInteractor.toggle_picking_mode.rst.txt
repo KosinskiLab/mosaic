@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.toggle\_picking\_mode
+===============================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.toggle_picking_mode

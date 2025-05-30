@@ -1,0 +1,6 @@
+﻿mosaic.parallel.TaskWorker.errorOccurred
+========================================
+
+.. currentmodule:: mosaic.parallel
+
+.. autoattribute:: TaskWorker.errorOccurred

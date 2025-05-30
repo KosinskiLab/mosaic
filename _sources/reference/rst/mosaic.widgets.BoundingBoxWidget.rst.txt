@@ -1,0 +1,23 @@
+﻿mosaic.widgets.BoundingBoxWidget
+================================
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: BoundingBoxWidget
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BoundingBoxWidget.__init__
+      ~BoundingBoxWidget.setup
+   
+   
+
+   
+   
+   

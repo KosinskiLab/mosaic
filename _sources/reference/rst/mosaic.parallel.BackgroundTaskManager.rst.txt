@@ -1,0 +1,77 @@
+﻿mosaic.parallel.BackgroundTaskManager
+=====================================
+
+.. currentmodule:: mosaic.parallel
+
+.. autoclass:: BackgroundTaskManager
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BackgroundTaskManager.__init__
+      ~BackgroundTaskManager.blockSignals
+      ~BackgroundTaskManager.childEvent
+      ~BackgroundTaskManager.children
+      ~BackgroundTaskManager.connectNotify
+      ~BackgroundTaskManager.customEvent
+      ~BackgroundTaskManager.deleteLater
+      ~BackgroundTaskManager.disconnect
+      ~BackgroundTaskManager.disconnectNotify
+      ~BackgroundTaskManager.dumpObjectInfo
+      ~BackgroundTaskManager.dumpObjectTree
+      ~BackgroundTaskManager.dynamicPropertyNames
+      ~BackgroundTaskManager.event
+      ~BackgroundTaskManager.eventFilter
+      ~BackgroundTaskManager.findChild
+      ~BackgroundTaskManager.findChildren
+      ~BackgroundTaskManager.inherits
+      ~BackgroundTaskManager.installEventFilter
+      ~BackgroundTaskManager.instance
+      ~BackgroundTaskManager.isQuickItemType
+      ~BackgroundTaskManager.isSignalConnected
+      ~BackgroundTaskManager.isWidgetType
+      ~BackgroundTaskManager.isWindowType
+      ~BackgroundTaskManager.is_task_running
+      ~BackgroundTaskManager.killTimer
+      ~BackgroundTaskManager.metaObject
+      ~BackgroundTaskManager.moveToThread
+      ~BackgroundTaskManager.objectName
+      ~BackgroundTaskManager.parent
+      ~BackgroundTaskManager.property
+      ~BackgroundTaskManager.pyqtConfigure
+      ~BackgroundTaskManager.receivers
+      ~BackgroundTaskManager.removeEventFilter
+      ~BackgroundTaskManager.run_task
+      ~BackgroundTaskManager.sender
+      ~BackgroundTaskManager.senderSignalIndex
+      ~BackgroundTaskManager.setObjectName
+      ~BackgroundTaskManager.setParent
+      ~BackgroundTaskManager.setProperty
+      ~BackgroundTaskManager.shutdown
+      ~BackgroundTaskManager.signalsBlocked
+      ~BackgroundTaskManager.startTimer
+      ~BackgroundTaskManager.thread
+      ~BackgroundTaskManager.timerEvent
+      ~BackgroundTaskManager.tr
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BackgroundTaskManager.destroyed
+      ~BackgroundTaskManager.objectNameChanged
+      ~BackgroundTaskManager.staticMetaObject
+      ~BackgroundTaskManager.task_completed
+      ~BackgroundTaskManager.task_failed
+      ~BackgroundTaskManager.task_started
+   
+   

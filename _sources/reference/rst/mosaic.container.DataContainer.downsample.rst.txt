@@ -1,0 +1,6 @@
+﻿mosaic.container.DataContainer.downsample
+=========================================
+
+.. currentmodule:: mosaic.container
+
+.. automethod:: DataContainer.downsample
