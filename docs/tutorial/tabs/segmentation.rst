@@ -108,20 +108,41 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 Merge
 -----
 
-Combines multiple clusters into a single object:
+Combines multiple clusters or creates new clusters from point selections:
+
+**For complete clusters:**
 
 1. Select multiple clusters in the Object Browser
-2. Click **Merge** in the ribbon or press ``M``
+2. Click **Merge** in the ribbon or press ``m`` after clicking the viewport.
+3. Selected clusters are combined into a single new cluster
+
+**For point selections:**
+
+1. Use area selection (``R`` key) to select points from one or more clusters
+2. Click **Merge** or press ``m`` after clicking the viewport.
+3. A new cluster is created containing only the selected points
+4. Original clusters remain but without the selected points
+
 
 .. _remove:
 
 Remove
 ------
 
-Deletes selected clusters:
+Deletes selected clusters or removes points from clusters:
 
-1. Select one or more clusters
-2. Click **Remove** or press ``Delete``
+**For complete clusters:**
+
+1. Select one or more clusters in the Object Browser
+2. Click **Remove** or press ``Delete`` after clicking the viewport.
+3. Selected clusters are completely deleted
+
+**For point selections:**
+
+1. Use area selection (``R`` key) to select points within clusters
+2. Click **Remove** or press ``Delete`` after clicking the viewport.
+3. Only the selected points are removed from their parent clusters
+4. Empty clusters are automatically deleted
 
 .. _select_by_size:
 
@@ -133,6 +154,7 @@ Filters clusters by point count:
 1. Click **Select** in the ribbon
 2. Adjust the slider to set a minimum size threshold
 3. Clusters below the threshold are automatically selected
+4. Use in combination with **Remove** to clean up small clusters
 
 .. _transform:
 
@@ -141,9 +163,11 @@ Transform
 
 Applies rotation and translation to clusters:
 
-1. Select a cluster
+1. Select a cluster in the Object Browser
 2. Click **Transform**
-3. Use the transformation widget to move or rotate the cluster
+3. A 3D transformation widget appears around the cluster
+4. Use the transformation widget to move or rotate the cluster
+5. Press ``Escape`` to exit transformation mode
 
 .. _crop:
 
@@ -167,43 +191,67 @@ Groups points into separate clusters:
 
 1. Select a cluster with multiple distinct structures
 2. Click **Cluster**
-3. Choose method: Connected Components, DBSCAN, or K-Means
-4. Configure method-specific options
-5. Click **OK**
+3. Choose clustering method:
+
+   - **Connected Components**: Groups connected components (default). Particularly useful for postprocessing volume segmentations.
+   - **DBSCAN**: Density-based clustering with distance and minimum points parameters
+   - **K-Means**: Divides into a specified number of clusters
+   - **Birch**: Hierarchical clustering using Clustering Feature Trees, ideal for large datasets
+
+4. Configure method-specific parameters:
+
+   :DBSCAN:
+      - **Distance**: Maximum distance between points in the same cluster
+      - **Min Points**: Minimum points required to form a cluster
+
+   :K-Means:
+      - **K**: Number of target clusters
+
+   :Birch:
+      - **Clusters**: Number of target clusters
+      - **Threshold**: Radius threshold for merging subclusters (lower values create more clusters)
+      - **Branching Factor**: Maximum subclusters per node (affects memory usage and clustering speed)
+
+5. Click **OK** to apply clustering
+
 
 .. _outlier_removal:
 
 Outlier Removal
 ---------------
 
-Removes noise points:
+Removes noise points using statistical methods:
 
 1. Select a cluster to clean
 2. Click **Outlier**
-3. Choose method:
-   - Statistical: Removes points based on average distance
-   - Eigenvalue: Removes edge points
-4. Set threshold and neighbors parameters
-5. Click **OK**
+3. Choose removal method:
+
+   - **Statistical**: Removes points based on distance to neighbors
+   - **Eigenvalue**: Removes edge points using covariance analysis
+
+4. Configure parameters:
+
+   - **Neighbors**: Number of neighbors to consider for statistics
+   - **Threshold**: Sensitivity of outlier detection (lower = more aggressive)
 
 .. _trim:
 
 Trim
 ----
 
-Removes points outside specified axis boundaries:
+Select points outside specified axis-aligned boundaries:
 
 1. Select a cluster
 2. Click **Trim**
-3. Two cutting planes appear in the viewer
-4. Position the planes or use X/Y/Z keys to align them
-5. Points between planes are preserved
+3. Two cutting planes appear in the 3D viewer
+4. Position the planes by dragging or use keyboard shortcuts:
 
-.. figure:: ../../_static/tutorial/trim_planes.png
-    :width: 80%
-    :align: center
+   - ``X``: Align planes to X-axis
+   - ``Y``: Align planes to Y-axis
+   - ``Z``: Align planes to Z-axis
 
-    Trim planes in action
+5. Points between the planes are preserved
+6. Press ``Escape`` to exit trim mode
 
 .. _thin:
 
@@ -214,10 +262,13 @@ Reduces point density while preserving structure:
 
 1. Select a cluster
 2. Click **Thin**
-3. Choose method:
-   - Outer: Keep surface points
-   - Core: Keep central points
-   - Inner: Keep interior points
+3. Choose thinning method:
+
+   - **Outer**: Keep surface/hull points
+   - **Core**: Keep central/medoid points
+   - **Inner**: Keep interior points using ray-casting
+
+4. Click **OK** to apply thinning
 
 .. _downsample:
 
@@ -228,30 +279,72 @@ Reduces the number of points while maintaining overall structure:
 
 1. Select a cluster
 2. Click **Downsample**
-3. Configure sampling parameters:
-   - Method: Random, Voxel Grid, or FPS
-   - Factor: Reduction percentage
-4. Click **OK**
+3. Choose downsampling method:
+
+   - **Radius**: Remove points within a specified distance of each other
+   - **Number**: Randomly subsample to a target number of points
+
+4. Configure parameters:
+
+   - **Radius**: Minimum distance between retained points
+   - **Size**: Target number of points for random subsampling
+
+5. Click **OK** to apply downsampling
 
 .. _distances:
 
 Distances
 ---------
 
-Analyzes distances between clusters:
+Analyzes distance distributions between clusters:
 
 1. Click **Distances**
-2. Select source and target objects
-3. View distance distribution and statistics
-4. Export data for external analysis
+2. In the dialog:
+
+   - Select source clusters/models to measure from
+   - Select target clusters/models to measure to
+   - Configure distance calculation parameters
+
+3. View results:
+
+   - Distance histograms and statistics
+   - Minimum, maximum, mean, and standard deviation
+   - Export data as CSV for external analysis
+
+4. Use results to inform clustering or filtering decisions
 
 .. _statistics:
+
 
 Properties
 ----------
 
-Calculates geometric properties:
+Advanced analysis and visualization dialog with three modes: **Visualize**, **Distribution**, and **Statistics**.
 
-1. Click **Properties**
-2. View point counts, bounds, centers, and densities
-3. Export statistics as TSV file
+1. Select objects in the Object Browser
+2. Click **Properties** in the ribbon
+3. Use **Compute** to calculate properties, then switch between tabs
+
+**Property Categories:**
+
+- **Distance**: To camera, clusters, or models
+- **Surface**: Curvature, edge length, surface area, volume
+- **Geometric**: Dimensions, point counts, identity
+- **Projection**: Projected curvature, geodesic distance
+
+**Visualization Options:**
+
+- **Color Maps**: Common colormaps (viridis, plasma, etc.)
+- **Normalization**: Per-object or global scaling
+- **Quantiles**: Statistical binning for outlier handling
+- **Interactive**: Real-time color mapping in 3D viewport
+
+**Visualize Tab:** Compute geometric properties and display as interactive color maps in the 3D viewport.
+
+**Distribution Tab:** Generate interactive export-ready histograms, density plots, and line charts with customizable styling.
+
+**Statistics Tab:** View numerical summaries (min, max, mean, std dev) and export data as CSV/TSV files.
+
+.. tip::
+
+    All data can be exported using the **Export Data** button.

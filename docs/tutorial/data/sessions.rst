@@ -35,7 +35,7 @@ This replaces your current workspace. Unsaved changes will be lost.
 Programmatic Access for Developers
 ----------------------------------
 
-Mosaic uses the :py:func:`open_session <mosaic.formats.reader.open_session>` function to import sessions. This function returns a pickle object containing the current session. Generally, they are not intended to be used directly, but can be be useful for developers building custom workflows.
+Mosaic uses the :py:func:`open_session <mosaic.formats.reader.open_session>` function to import sessions from pickle files. Generally, session files are not intended to be used directly, but can be be useful for developers building custom workflows.
 
 An example is shown below:
 

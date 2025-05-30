@@ -157,10 +157,11 @@ def read_txt(filename: str):
         raise ValueError(f"Colums {required_columns} are required.")
 
     data = {c: np.asarray(d) for c, d in zip(header, zip(*data))}
-    if "cluster" in data:
+
+    if "id" in data:
         ret = []
-        for cluster in np.unique(data["cluster"]):
-            ret.append({c: d[data["cluster"] == c] for c, d in data.items()})
+        for cluster in np.unique(data["id"]):
+            ret.append({c: d[data["id"] == cluster] for c, d in data.items()})
         data = ret
     else:
         data = [data]

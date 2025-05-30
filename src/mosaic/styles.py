@@ -323,9 +323,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
         self.AddObserver("KeyPressEvent", self.on_key_press)
 
     def _event_to_worldposition(self, position):
-        dpr = self.parent.vtk_widget.devicePixelRatio()
-
-        event_position = (position[0] * dpr, position[1], 0)
+        event_position = (position[0], position[1], 0)
         r = self.parent.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
         self.world_picker.Pick(*event_position, r)
         world_position = self.world_picker.GetPickPosition()

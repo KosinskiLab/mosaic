@@ -96,7 +96,7 @@ Generate Initial Mesh
    - Volume Weight: 0.0
    - Boundary Ring: 0
    - Neighbors: 15
-   - Radii: 5.0
+   - Radii: 60.0
    - Hole Size: -1.0
    - Downsample: True
    - Smoothing Steps: 5
@@ -137,7 +137,7 @@ Since one cap of the IAV VLP falls outside the tomogram, we'll extend it to miti
      - Volume Weight: 0.005
      - Boundary Ring: 0
      - Neighbors: 15
-     - Radii: 5.0
+     - Radii: 60.0
      - Hole Size: -1.0
      - Downsample: True
      - Smoothing Steps: 5

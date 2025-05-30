@@ -138,7 +138,7 @@ class App(QMainWindow):
         tab_layout.setContentsMargins(16, 0, 16, 0)
         tab_layout.setSpacing(4)
 
-        from mosaic.tabs import DevelopmentTab
+        # from mosaic.tabs import DevelopmentTab
 
         self.setup_widgets()
         self.tab_buttons = {}
@@ -148,7 +148,7 @@ class App(QMainWindow):
             (SegmentationTab(**data), "Segmentation"),
             (ModelTab(**data), "Parametrization"),
             (IntelligenceTab(**data), "Intelligence"),
-            (DevelopmentTab(**data), "Development"),
+            # (DevelopmentTab(**data), "Development"),
         ]
         for index, (tab, name) in enumerate(self.tabs):
             btn = QPushButton(name)

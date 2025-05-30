@@ -4,7 +4,7 @@
 Issues
 ======
 
-Thank you for helping improve the project by opening an issue. Please consider the following guidelines to enable efficient troubleshooting:
+Thank you for improving the project by reporting an issue. Please consider the guidelines for efficient troubleshooting:
 
 1. Provide detailed steps to reproduce the problem
 2. Include system information (OS, RAM, GPU)

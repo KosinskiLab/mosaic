@@ -120,153 +120,288 @@ The *Parametrization* tab provides tools for fitting and working with models.
             <i class="mdi mdi-vector-curve" style="font-size: 1.5rem;"></i>
 
 
-Primitive Fitting
-------------------
+Parametric Fitting
+==================
 Fit basic geometric shapes to point clouds:
 
+.. _sphere:
+
 Sphere
-^^^^^^
-1. Select a cluster
-2. Click **Sphere**
-3. A sphere model is fitted to the points
+------
+Fits a sphere using least squares optimization:
+
+1. Select a cluster with spherical shape
+2. Click **Sphere** to fit the model
+3. The fitted sphere appears in the Models section
+
+.. _ellipsoid:
 
 Ellipsoid
-^^^^^^^^^
-1. Select a cluster
-2. Click **Ellipsoid**
-3. An ellipsoid with optimized axes is fitted
+---------
+Fits an ellipsoid using eigenvalue decomposition and least squares optimization:
+
+1. Select a cluster with ellipsoidal shape
+2. Click **Ellipsoid** to fit the model
+3. The fitted ellipsoid appears in the Models section
+
+.. _cylinder:
 
 Cylinder
-^^^^^^^^
-1. Select a cluster with cylindrical shape
-2. Click **Cylinder**
-3. A cylinder is fitted along the principal axis
+--------
+Fits a cylinder using PCA and iterative refinement:
+
+1. Select a cluster with cylindrical or tubular shape
+2. Click **Cylinder** to fit the model
+3. The fitted cylinder appears in the Models section
+
+.. _rbf:
+
+Non-Parametric Fitting
+======================
+
+.. _rbf:
 
 RBF (Radial Basis Function)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-For smooth, non-parametric surfaces:
+---------------------------
+Creates smooth, non-parametric surface models through radial basis function interpolation. Ideal for complex, non-parametric shapes that can be represented as height fields, i.e. an open membrane section.
 
-1. Select a cluster
+1. Select a cluster with surface-like structure
 2. Click **RBF**
-3. Choose direction (xy, xz, yz)
-4. A smooth surface is interpolated through the points
+3. Configure interpolation direction:
+
+   - **xy**: Surface as function of x,y coordinates
+   - **xz**: Surface as function of x,z coordinates
+   - **yz**: Surface as function of y,z coordinates
+4. Click **OK** to create the interpolated surface
+
+.. _mesh:
 
 Mesh
-^^^^
-Creates triangular mesh surfaces:
-
-1. Select a cluster
+----
+1. Select a cluster with sufficient point density
 2. Click **Mesh**
-3. Select method:
-   - Alpha Shape: Convex hull with alpha parameter
-   - Ball Pivoting: Surface reconstruction
-   - Poisson: Watertight surfaces
-4. Configure method-specific parameters
-5. Click **OK**
+3. Choose reconstruction method:
 
-#Screenshot: Mesh fitting dialog
+   - **Alpha Shape**: Convex hull with alpha parameter control
+   - **Ball Pivoting**: Robust surface reconstruction for structured data
+   - **Cluster Ball Pivoting**: Ball pivoting with automatic parameter determination
+   - **Poisson**: Watertight surface reconstruction
+
+4. Configure method-specific parameters:
+
+   :Alpha Shape Parameters:
+      - **Alpha**: Controls shape complexity (higher = coarser features)
+      - **Scaling Factor**: Mesh resampling resolution
+      - **Distance**: Threshold for inferred vs. measured vertices
+
+   :Ball Pivoting Parameters:
+      - **Radii**: Ball radii for reconstruction (comma-separated, e.g., "5,3.5,1.0")
+      - **Downsample**: Thin input point cloud to core points
+      - **Smoothing Steps**: Pre-smoothing iterations
+
+   :Poisson Parameters:
+      - **Depth**: Octree depth (higher = more detail)
+      - **Samples**: Minimum points per octree node
+      - **Pointweight**: Interpolation weight of input points
+
+5. Set repair parameters:
+
+   - **Elastic Weight**: Controls mesh elasticity (0 = strong anchoring)
+   - **Curvature Weight**: Controls curvature propagation
+   - **Volume Weight**: Controls internal mesh pressure
+   - **Hole Size**: Maximum hole area for automatic filling
+
+6. Click **OK** to generate the mesh
+
+**Note**: Mesh quality depends on point cloud density and noise levels. For noisy data, increase smoothing steps. For sparse data, reduce the number of neighbors.
+
+.. _curve:
 
 Curve
-^^^^^
-Fits a spline curve to points:
+-----
+Fits spline curves of requested order to sequential control point data. Good for creating smooth curves from hand-drawn paths:
 
-1. Select a cluster with linear structure
+1. **Create control points** using drawing mode:
+
+   - Press ``Shift+A`` to enter curve drawing mode
+   - Click to place control points in sequence
+   - Press ``Enter`` to complete the curve
+   - *OR* select an existing cluster with linear structure
+
 2. Click **Curve**
-3. Set the order parameter
-4. A smooth curve is fitted
+3. Configure spline parameters:
+   - **Order**: Spline degree (1=linear, 3=cubic, 5=quintic)
+4. Click **OK** to fit the curve
+
 
 Sampling Operations
--------------------
+===================
+
+.. _sample:
 
 Sample
-^^^^^^
+------
+Creates point clouds from fitted models:
 
-Creates point clouds from parametric models:
-
-1. Select a model in the Object Browser
+1. Select one or more models in the Object Browser
 2. Click **Sample**
-3. Configure:
-   - Method: Points or Distance
-   - Sampling: Number of points or point spacing
-   - Offset: Optional normal-direction offset
-4. Click **OK**
+3. Configure sampling parameters:
+
+   :Sampling Method:
+      - **Points**: Generate specified number of points
+      - **Distance**: Generate points with specified average spacing
+
+   :Parameters:**
+      - **Sampling**: Number of points or point spacing value
+      - **Offset**: Normal-direction offset from surface (useful for particle picking)
+
+4. Click **OK** to generate sample points
+
+.. _to-cluster:
 
 To Cluster
-^^^^^^^^^^
+----------
 
-Converts a model to a point cloud:
+Converts model vertices to point cloud format:
 
-1. Select one or more models
+1. Select one or more models in the Object Browser
 2. Click **To Cluster**
-3. The model's vertices are added as a new cluster
+3. Model vertices are automatically added as new clusters
+
+.. note::
+    For most models, both vertices and computed normals are preserved in the conversion.
+
+.. _remove:
 
 Remove
-^^^^^^
-
+------
 Deletes selected models:
 
-1. Select one or more models
+1. Select one or more models in the Object Browser
 2. Click **Remove** or press ``Delete``
+3. Selected models are permanently removed
+
 
 Mesh Operations
 ===============
 
-Volume
-^^^^^^
+.. _volume:
 
-Creates a mesh from volumetric data:
+Volume
+------
+Creates meshes from volumetric data using marching cubes:
 
 1. Click **Volume**
-2. Select a volume file
-3. Configure isovalue and resolution
-4. A surface mesh is created at the specified density level
+2. Select a volume file (MRC, MAP, EM, HDF5)
+3. Configure meshing parameters:
 
-#Screenshot: Volume meshing dialog
+   :Algorithm Settings:
+      - **Simplification Factor**: Reduce triangle count by this factor
+      - **Workers**: Number of parallel processing threads
+      - **Close Dataset Edges**: Create closed meshes at volume boundaries
+
+   :Processing Method:
+      - Uses sharded marching cubes algorithm for large volumes
+      - Splits volume into manageable chunks for parallel processing
+      - Merges submeshes and applies quadratic edge collapse simplification
+
+4. Click **OK** to generate meshes
+
+.. note::
+
+    Optimized for large datasets with automatic memory management and parallel processing.
+
+.. _repair:
 
 Repair
-^^^^^^
-Fixes mesh issues:
+------
+Fixes mesh topology issues and fills holes using Leipa triangulation and fairing:
 
-1. Select a mesh
+1. Select mesh models to repair
 2. Click **Repair**
-3. Set parameters:
-   - Hole Size: Maximum hole area to fill
-   - Weights: Controls for elasticity, curvature
-4. The mesh is repaired with improved topology
+3. Configure repair parameters:
+
+   :Optimization Weights:
+      - **Elastic Weight**: Mesh smoothness (0=anchor to original, 1=free movement)
+      - **Curvature Weight**: Preserve or modify curvature
+      - **Volume Weight**: Internal pressure (positive=inflation, negative=shrinkage)
+      - **Boundary Ring**: Optimize n-ring vertices around boundaries
+
+   :Hole Filling:
+      - **Hole Size**: Maximum hole area to fill (-1=fill all holes)
+
+4. Click **OK** to repair meshes
+
+.. _remesh:
 
 Remesh
 ^^^^^^
 
-Improves mesh quality:
+Improves mesh quality and adjusts triangle density:
 
-1. Select a mesh
+1. Select mesh models to remesh
 2. Click **Remesh**
-3. Choose method:
-   - Edge Length: Uniform edge lengths
-   - Vertex Clustering: Simplification
-   - Subdivision: Refinement
-4. Set method parameters
-5. A refined mesh is created
+3. Choose remeshing method:
 
-Analyze
-^^^^^^^
-Examines mesh properties:
+   :Edge Length:
+      - **Edge Length**: Target average edge length
+      - **Iterations**: Number of optimization passes
+      - **Mesh Angle**: Preserve edges above this angle threshold
 
-1. Select a mesh
-2. Click **Analyze**
-3. View statistics:
-   - Surface area and volume
-   - Edge length distribution
-   - Triangle count and quality
-4. Generate plots of property distributions
+   :Vertex Clustering:
+      - **Radius**: Clustering radius for vertex merging
+
+   :Quadratic Decimation:
+      - **Triangles**: Target triangle count
+
+   :Subdivide:
+      - **Iterations**: Number of subdivision passes
+      - **Smooth**: Use smooth Loop subdivision vs. simple midpoint
+
+4. Configure method-specific parameters
+5. Click **OK** to remesh
+
+**Use Cases:**
+
+- **Edge Length**: Create uniform triangle sizes for simulation
+- **Vertex Clustering**: Quick mesh simplification
+- **Quadratic Decimation**: High-quality mesh reduction
+- **Subdivide**: Increase resolution for detailed modeling
+
+.. _project:
+
+Project
+-------
+Projects point clouds onto mesh surfaces using ray casting:
+
+1. Select exactly one mesh model (target surface)
+2. Select one or more point cloud clusters (sources to project)
+3. Click **Project**
+4. Configure projection settings:
+
+   :Projection Method:
+      - **Cast Normals**: Use point normal vectors for ray casting
+      - **Invert Normals**: Reverse normal direction
+
+5. Click **OK** to perform projection
+
+**Results:**
+
+- Creates new point clouds with projected coordinates
+- Generates updated mesh with projection points integrated
+- Preserves original data while adding projected versions
+
+.. _merge-meshes:
 
 Merge
-^^^^^
-Combines multiple meshes:
+-----
+Combines multiple meshes into a single object:
 
-1. Select multiple mesh models
+1. Select two or more mesh models in the Object Browser
 2. Click **Merge**
-3. A new combined mesh is created
+3. Meshes are automatically combined into a single mesh
+4. Original meshes are removed, replaced by the merged result
+
 
 Next Steps
 ----------

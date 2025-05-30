@@ -857,7 +857,7 @@ class TriangularMesh(Parametrization):
         pcd.orient_normals_consistent_tangent_plane(k=k_neighbors)
 
         mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
-            pcd, o3d.utility.DoubleVector(np.multiply(radii, voxel_size))
+            pcd, o3d.utility.DoubleVector(radii)
         )
 
         # Remove noisy small meshes

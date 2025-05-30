@@ -2,14 +2,14 @@ import os
 import sys
 
 autodoc_mock_imports = [
-    'qtpy',
-    'qtpy.QtGui',
-    'qtpy.QtCore',
-    'qtpy.QtWidgets',
-    'PyQt6',
-    'PyQt6.QtGui',
-    'PyQt6.QtCore',
-    'PyQt6.QtWidgets',
+    "qtpy",
+    "qtpy.QtGui",
+    "qtpy.QtCore",
+    "qtpy.QtWidgets",
+    "PyQt6",
+    "PyQt6.QtGui",
+    "PyQt6.QtCore",
+    "PyQt6.QtWidgets",
 ]
 
 sys.path.insert(0, os.path.abspath("../mosaic"))
