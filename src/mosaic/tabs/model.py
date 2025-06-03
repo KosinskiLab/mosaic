@@ -5,14 +5,7 @@ from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 
 from ..parallel import run_in_background
 from ..widgets.ribbon import create_button
-from ..parametrization import TriangularMesh
-from ..meshing import (
-    to_open3d,
-    mesh_volume,
-    merge_meshes,
-    remesh,
-    triangulate_refine_fair,
-)
+from .. import meshing
 
 
 def on_fit_complete(self, *args, **kwargs):
@@ -105,7 +98,7 @@ class ModelTab(QWidget):
                 "Project",
                 "mdi.vector-curve",
                 self,
-                self._project_on_mesh,
+                self.project_on_mesh,
                 "Project on Mesh",
                 PROJECTION_SETTINGS,
             ),
@@ -161,6 +154,8 @@ class ModelTab(QWidget):
         return None
 
     def _get_selected_meshes(self):
+        from ..parametrization import TriangularMesh
+
         ret = []
         for index in self.cdata.models._get_selected_indices():
             fit = self.cdata._models.data[index]._meta.get("fit", None)
@@ -178,12 +173,14 @@ class ModelTab(QWidget):
         boundary_ring=0,
         **kwargs,
     ):
+        from ..parametrization import TriangularMesh
+
         for index in self._get_selected_meshes():
             fit = self.cdata._models.data[index]._meta.get("fit", None)
             if not hasattr(fit, "vertices"):
                 continue
 
-            vs, fs = triangulate_refine_fair(
+            vs, fs = meshing.triangulate_refine_fair(
                 vs=fit.vertices,
                 fs=fit.triangles,
                 alpha=elastic_weight,
@@ -193,20 +190,28 @@ class ModelTab(QWidget):
                 n_ring=boundary_ring,
             )
             self.cdata._add_fit(
-                fit=TriangularMesh(to_open3d(vs, fs)),
+                fit=TriangularMesh(meshing.to_open3d(vs, fs)),
                 sampling_rate=self.cdata._models.data[index].sampling_rate,
             )
 
         return self.cdata.models.render()
 
-    @run_in_background("Project", callback=on_fit_complete)
-    def _project_on_mesh(
-        self, use_normals: bool = False, invert_normals: bool = False, **kwargs
-    ):
+    def project_on_mesh(self, **kwargs):
         selected_meshes = self._get_selected_meshes()
         if len(selected_meshes) != 1:
             QMessageBox.warning(None, "Error", "Please select one mesh for projection.")
             return None
+        return self._project_on_mesh(**kwargs)
+
+    @run_in_background("Project", callback=on_fit_complete)
+    def _project_on_mesh(
+        self,
+        use_normals: bool = False,
+        invert_normals: bool = False,
+        update_normals: bool = False,
+        **kwargs,
+    ):
+        selected_meshes = self._get_selected_meshes()
 
         mesh = self.cdata._models.data[selected_meshes[0]]._meta.get("fit", None)
         if mesh is None:
@@ -229,10 +234,16 @@ class ModelTab(QWidget):
             }
             _, projection, triangle = mesh.compute_distance(**kwargs)
 
+            normals = geometry.normals
+            if update_normals:
+                normals = mesh.compute_normal(projection)
+
             projections.append(projection)
             triangles.append(triangle)
             self.cdata._data.add(
-                points=projection, sampling_rate=geometry.sampling_rate
+                points=projection,
+                normals=normals,
+                sampling_rate=geometry.sampling_rate,
             )
 
         if not len(projections):
@@ -251,6 +262,8 @@ class ModelTab(QWidget):
 
     @run_in_background("Remesh", callback=on_fit_complete)
     def _remesh_meshes(self, method, **kwargs):
+        from ..parametrization import TriangularMesh
+
         selected_meshes = self._get_selected_meshes()
         if len(selected_meshes) == 0:
             return None
@@ -271,9 +284,9 @@ class ModelTab(QWidget):
         for index in selected_meshes:
             mesh = self.cdata._models.data[index]._meta.get("fit", None)
 
-            mesh = to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
+            mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
             if method == "edge length":
-                mesh = remesh(mesh=mesh, **kwargs)
+                mesh = meshing.remesh(mesh=mesh, **kwargs)
             elif method == "vertex clustering":
                 mesh = mesh.simplify_vertex_clustering(**kwargs)
             elif method == "subdivide":
@@ -291,6 +304,8 @@ class ModelTab(QWidget):
         return self.cdata.models.data_changed.emit()
 
     def _merge_meshes(self):
+        from ..parametrization import TriangularMesh
+
         meshes, selected_meshes = [], self._get_selected_meshes()
 
         if len(selected_meshes) < 2:
@@ -299,12 +314,12 @@ class ModelTab(QWidget):
         for index in selected_meshes:
             meshes.append(self.cdata._models.data[index]._meta.get("fit"))
 
-        vertices, faces = merge_meshes(
+        vertices, faces = meshing.merge_meshes(
             vertices=[x.vertices for x in meshes],
             faces=[x.triangles for x in meshes],
         )
         self.cdata._add_fit(
-            fit=TriangularMesh(to_open3d(vertices, faces)),
+            fit=TriangularMesh(meshing.to_open3d(vertices, faces)),
             sampling_rate=self.cdata._models.data[index].sampling_rate,
         )
         self.cdata._models.remove(selected_meshes)
@@ -346,7 +361,9 @@ class ModelTab(QWidget):
 
     @run_in_background("Mesh Volume", callback=on_fit_complete)
     def _run_marching_cubes(self, filename, **kwargs):
+        from ..meshing import mesh_volume
         from ..formats.parser import load_density
+        from ..parametrization import TriangularMesh
 
         mesh_paths = mesh_volume(filename, **kwargs)
         sampling = load_density(filename, use_memmap=True).sampling_rate
@@ -766,6 +783,13 @@ PROJECTION_SETTINGS = {
             "type": "boolean",
             "default": False,
             "description": "Invert direction of normal vectors.",
+        },
+        {
+            "label": "Update Normals",
+            "parameter": "update_normals",
+            "type": "boolean",
+            "default": False,
+            "description": "Update normal vectors of projection based on the mesh.",
         },
     ],
 }

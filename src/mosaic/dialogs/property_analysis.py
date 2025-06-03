@@ -24,8 +24,6 @@ from qtpy.QtWidgets import (
 import pyqtgraph as pg
 import qtawesome as qta
 
-from ..utils import cmap_to_vtkctf
-from ..properties import GeometryProperties
 from ..widgets.settings import get_widget_value
 from ..widgets.color_preview import ColorPreviewWidget
 from ..widgets import ContainerListWidget, StyledListWidgetItem
@@ -599,6 +597,8 @@ class PropertyAnalysisDialog(QDialog):
         ]
 
     def _compute_properties(self):
+        from ..properties import GeometryProperties
+
         options = {}
         for k, widget in self.option_widgets.items():
             if isinstance(widget, (QListWidget, ContainerListWidget)):
@@ -671,6 +671,8 @@ class PropertyAnalysisDialog(QDialog):
             self.properties.clear()
 
     def _preview(self):
+        from ..utils import cmap_to_vtkctf
+
         geometries = self._get_selected_objects()
         if not geometries:
             QMessageBox.warning(
@@ -731,6 +733,8 @@ class PropertyAnalysisDialog(QDialog):
     def _update_statistics(self):
         selected_items = self.objects_list.selectedItems()
         self.stats_table.setRowCount(len(selected_items))
+
+        row_count, n_decimals = 0, 6
         for index, item in enumerate(selected_items):
             obj = item.data(Qt.ItemDataRole.UserRole)
 
@@ -738,25 +742,27 @@ class PropertyAnalysisDialog(QDialog):
             if value is None:
                 continue
 
+            row_count += 1
             item = QTableWidgetItem(item.text())
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self.stats_table.setItem(index, 0, item)
 
-            item = QTableWidgetItem(str(np.min(value)))
+            item = QTableWidgetItem(str(np.round(np.min(value), n_decimals)))
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self.stats_table.setItem(index, 1, item)
 
-            item = QTableWidgetItem(str(np.max(value)))
+            item = QTableWidgetItem(str(np.round(np.max(value), n_decimals)))
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self.stats_table.setItem(index, 2, item)
 
-            item = QTableWidgetItem(str(np.mean(value)))
+            item = QTableWidgetItem(str(np.round(np.mean(value), n_decimals)))
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self.stats_table.setItem(index, 3, item)
 
-            item = QTableWidgetItem(str(np.std(value)))
+            item = QTableWidgetItem(str(np.round(np.std(value), n_decimals)))
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self.stats_table.setItem(index, 4, item)
+        self.stats_table.setRowCount(row_count)
 
     def _set_plot_type(self, plot_type):
         self.current_plot_type = plot_type
@@ -1054,6 +1060,7 @@ class PropertyAnalysisDialog(QDialog):
             }
             QTableWidget {
                 border: 1px solid #cbd5e1;
+                background-color: transparent;
                 border-radius: 4px;
                 outline: none;
             }

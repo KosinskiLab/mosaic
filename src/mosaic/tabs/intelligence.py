@@ -6,17 +6,8 @@ from os.path import join, exists, basename
 import numpy as np
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 
-from ..formats import open_file
 from ..parallel import run_in_background
 from ..widgets.ribbon import create_button
-from ..segmentation import MEMBRAIN_SETTINGS, run_membrainseg
-from ..dialogs import (
-    MeshEquilibrationDialog,
-    HMFFDialog,
-    ProgressDialog,
-    MeshMappingDialog,
-    TemplateMatchingDialog,
-)
 
 
 def on_run_complete(self, *args, **kwargs):
@@ -36,6 +27,9 @@ class IntelligenceTab(QWidget):
         layout.addWidget(self.ribbon)
 
     def show_ribbon(self):
+        from ..segmentation import MEMBRAIN_SETTINGS
+        from ..dialogs import TemplateMatchingDialog
+
         self.ribbon.clear()
 
         hmff_actions = [
@@ -80,6 +74,7 @@ class IntelligenceTab(QWidget):
         self.ribbon.add_section("Segmentation", segmentation_actions)
 
     def _equilibrate_fit(self):
+        from ..dialogs import MeshEquilibrationDialog
         from ..meshing import equilibrate_fit
 
         indices = self.cdata.models._get_selected_indices()
@@ -109,6 +104,7 @@ class IntelligenceTab(QWidget):
 
     def _setup_hmff(self):
         from ..meshing import setup_hmff
+        from ..dialogs import HMFFDialog
 
         directory = QFileDialog.getExistingDirectory(
             self,
@@ -149,6 +145,8 @@ class IntelligenceTab(QWidget):
         self, scale: float = 1.0, offset: Union[str, float] = 0.0, **kwargs
     ):
         from ..meshing import to_open3d
+        from ..formats import open_file
+        from ..dialogs import ProgressDialog
         from ..geometry import GeometryTrajectory
         from ..parametrization import TriangularMesh
 
@@ -206,6 +204,7 @@ class IntelligenceTab(QWidget):
 
     def _map_fit(self):
         from ..meshing import mesh_to_cg
+        from ..dialogs import MeshMappingDialog
 
         save_dir = QFileDialog.getExistingDirectory(
             self,
@@ -235,6 +234,9 @@ class IntelligenceTab(QWidget):
 
     @run_in_background("Membrane Segmentation", callback=on_run_complete)
     def _run_membrain(self, *args, **kwargs):
+        from ..formats import open_file
+        from ..segmentation import run_membrainseg
+
         output_name = run_membrainseg(*args, **kwargs)
         if output_name is None:
             return QMessageBox.warning(None, "Error", "No segmentation was created.")

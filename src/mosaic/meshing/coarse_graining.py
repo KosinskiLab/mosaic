@@ -11,6 +11,8 @@ from ..parallel import run_in_background
 from . import remesh, center_mesh, compute_scale_factor_lower, scale
 from ..formats.writer import write_topology_file
 
+__all__ = ["mesh_to_cg"]
+
 
 @run_in_background("Coarse graining")
 def mesh_to_cg(

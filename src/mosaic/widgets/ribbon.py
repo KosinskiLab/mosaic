@@ -109,6 +109,8 @@ class SettingsMenu(QMenu):
         """
             + QPushButton_style
         )
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.Popup)
 
     def get_current_settings(self):
         ret = {}
@@ -182,6 +184,8 @@ class SettingsMenu(QMenu):
         if self.method_combo is not None:
             self.update_method_settings(self.method_combo.currentText())
 
+        self.setFocusProxy(apply_btn)
+
     def update_method_settings(self, method):
         if self.method_layout is None:
             return None
@@ -232,6 +236,7 @@ class RibbonToolBar(QToolBar):
             }
         """
         )
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
     def add_section(self, title, actions):
         if len(self.actions()) > 0:

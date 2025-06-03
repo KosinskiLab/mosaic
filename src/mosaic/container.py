@@ -22,6 +22,8 @@ from .utils import (
     birch_clustering,
 )
 
+__all__ = ["DataContainer"]
+
 
 def apply_over_indices(func: Callable) -> Callable:
     @wraps(func)

@@ -885,7 +885,7 @@ class TriangularMesh(Parametrization):
             return cls(mesh=mesh)
 
         # Hole triangulation and fairing
-        new_vs, new_fs, vids = triangulate_refine_fair(
+        new_vs, new_fs = triangulate_refine_fair(
             vs=np.asarray(mesh.vertices),
             fs=np.asarray(mesh.triangles),
             hole_len_thr=max_hole_size,
@@ -897,18 +897,6 @@ class TriangularMesh(Parametrization):
         mesh = mesh.remove_degenerate_triangles()
         if n_smoothing > 0:
             mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
-
-        vertices = np.asarray(mesh.vertices)
-        np.savetxt(
-            "/Users/vmaurer/Desktop/vertices_inferred.csv",
-            vertices[vids],
-            delimiter=",",
-        )
-        np.savetxt(
-            "/Users/vmaurer/Desktop/vertices.csv",
-            vertices[np.setdiff1d(np.arange(vertices.shape[0]), vids)],
-            delimiter=",",
-        )
 
         mesh = mesh.compute_vertex_normals()
         return cls(mesh=mesh)

@@ -20,6 +20,14 @@ from tqdm.contrib.concurrent import process_map
 
 from .utils import merge_meshes, to_open3d
 
+__all__ = [
+    "mesh_volume",
+    "simplify_mesh",
+    "MeshCreator",
+    "MeshMerger",
+    "MeshSimplifier",
+]
+
 
 def simplify_mesh(mesh, aggressiveness=5.5, decimation_factor=2, lod=1):
     import pyfqmr

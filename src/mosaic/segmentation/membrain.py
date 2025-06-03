@@ -7,8 +7,6 @@ from os.path import splitext, join, basename
 
 import numpy as np
 
-from ..formats.parser import load_density
-
 # Hopefully stable download links will be available at some point
 MODEL_PATHS = {
     "": "",
@@ -86,6 +84,8 @@ def run_membrainseg(
     output_sampling_rate: Tuple[float] = -1.0,
     test_time_augmentation: bool = True,
 ):
+    from ..formats.parser import load_density
+
     warnings.warn(
         "Running MemBrain - Corresponding Citation: "
         "[1] Lamm, L. et al. (2024) bioRxiv, doi.org/10.1101/2024.01.05.574336."

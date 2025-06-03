@@ -19,7 +19,6 @@ from qtpy.QtWidgets import (
     QSplitter,
 )
 
-from ..utils import find_closest_points
 from ..widgets import ContainerListWidget, StyledListWidgetItem
 from ..stylesheets import QGroupBox_style, QPushButton_style, QListWidget_style
 
@@ -258,6 +257,8 @@ class DistanceAnalysisDialog(QDialog):
         return viz_widget
 
     def _get_distances(self, source, targets, k, k_start):
+        from ..utils import find_closest_points
+
         source_name = source.text()
         query_points = source.data(Qt.ItemDataRole.UserRole).points
 

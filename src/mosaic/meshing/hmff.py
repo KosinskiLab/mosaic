@@ -20,6 +20,8 @@ from ..meshing.utils import (
     center_mesh,
 )
 
+__all__ = ["equilibrate_fit", "setup_hmff"]
+
 
 def _equilibration_plot(instance, args, **kwargs):
     # Avoid running matplotlib in qthread

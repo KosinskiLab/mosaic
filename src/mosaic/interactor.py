@@ -31,6 +31,8 @@ from qtpy.QtCore import (
 )
 from .parallel import run_in_background
 
+__all__ = ["DataContainerInteractor"]
+
 
 def on_run_complete(self, *args, **kwargs):
     self.data_changed.emit()
@@ -72,6 +74,8 @@ def _cluster_modifier(keep_selection: bool = False, render: bool = True):
 
 
 class DataContainerInteractor(QObject):
+    """Handle interaction between GUI and DataContainer"""
+
     data_changed = Signal()
     render_update = Signal()
 

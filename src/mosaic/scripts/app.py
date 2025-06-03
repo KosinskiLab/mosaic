@@ -30,6 +30,7 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QPushButton,
     QDockWidget,
+    QButtonGroup,
 )
 from qtpy.QtGui import (
     QAction,
@@ -40,8 +41,11 @@ from qtpy.QtGui import (
 import qtawesome as qta
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-from mosaic import MosaicData, ExportManager, __version__
+from mosaic import __version__
+from mosaic.data import MosaicData
+from mosaic.animate import ExportManager
 from mosaic.tabs import SegmentationTab, ModelTab, IntelligenceTab
+
 from mosaic.dialogs import (
     TiltControlDialog,
     KeybindsDialog,
@@ -140,6 +144,9 @@ class App(QMainWindow):
 
         # from mosaic.tabs import DevelopmentTab
 
+        self.tab_button_group = QButtonGroup(self)
+        self.tab_button_group.setExclusive(True)
+
         self.setup_widgets()
         self.tab_buttons = {}
         self.tab_ribbon = RibbonToolBar(self)
@@ -148,14 +155,15 @@ class App(QMainWindow):
             (SegmentationTab(**data), "Segmentation"),
             (ModelTab(**data), "Parametrization"),
             (IntelligenceTab(**data), "Intelligence"),
-            # (DevelopmentTab(**data), "Development"),
         ]
+
         for index, (tab, name) in enumerate(self.tabs):
             btn = QPushButton(name)
             btn.setObjectName("TabButton")
             btn.setProperty("tab_id", index)
             btn.setCheckable(True)
-            btn.clicked.connect(self.on_tab_clicked)
+            self.tab_button_group.addButton(btn, index)
+
             btn.setStyleSheet(
                 """
                 QPushButton {
@@ -180,6 +188,11 @@ class App(QMainWindow):
             )
             tab_layout.addWidget(btn)
             self.tab_buttons[index] = btn
+
+        self.tab_button_group.idClicked.connect(
+            lambda tab_id: self.tabs[tab_id][0].show_ribbon()
+        )
+
         tab_layout.addStretch()
         self.tab_buttons[0].setChecked(True)
         self.tabs[0][0].show_ribbon()
@@ -209,17 +222,6 @@ class App(QMainWindow):
         self.setup_menu()
 
         # print(render_window.ReportCapabilities())
-
-    def on_tab_clicked(self):
-        # Uncheck all other buttons
-        sender = self.sender()
-        tab_id = sender.property("tab_id")
-
-        for btn in self.tab_buttons.values():
-            if btn != sender:
-                btn.setChecked(False)
-
-        self.tabs[tab_id][0].show_ribbon()
 
     def on_key_press(self, obj, event):
         key = obj.GetKeyCode()

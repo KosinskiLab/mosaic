@@ -18,6 +18,15 @@ import scipy.sparse
 
 _epsilon = 1e-16
 
+__all__ = [
+    "triangulate_refine_fair",
+    "fair_mesh",
+    "get_ring_vertices",
+    "close_holes",
+    "get_mollified_edge_length",
+    "harmonic_deformation",
+]
+
 
 def _close_hole(vs: np.ndarray, fs: np.ndarray, hole_vids, fast=True) -> np.ndarray:
     """Close mesh holes with perimeter length below threshold.
@@ -513,4 +522,4 @@ def triangulate_refine_fair(
 
     # Fair selected parts of the mesh
     vs = fair_mesh(vs, fs, vids, alpha=alpha, beta=beta, gamma=gamma, n_ring=n_ring)
-    return vs, fs, vids
+    return vs, fs

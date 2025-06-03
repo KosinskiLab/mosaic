@@ -22,6 +22,10 @@ mosaic &
 
 For detailed installation instructions, see our [Installation Guide](https://kosinskilab.github.io/mosaic/tutorial/installation.html).
 
+## Helfrich Monte Carlo Flexible Fitting (HMFF)
+
+HMFF refines membrane mesh models by uniquely integrating experimental density data into membrane simulations, enabling experimental observations and physical properties to jointly determine membrane conformations. HMFF is implemented in FreeDTS and integrated into the Mosaic workflow. For usage instructions, see our [IAV tutorial](https://kosinskilab.github.io/mosaic/tutorial/workflows/iav.html), and for technical details, consult the [FreeDTS User Manual](https://github.com/weria-pezeshkian/FreeDTS/wiki/User-Manual-for-version-2).
+
 
 ## How to Cite
 

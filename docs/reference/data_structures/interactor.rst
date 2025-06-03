@@ -13,15 +13,6 @@ Constructor
 
    DataContainerInteractor
 
-Core Interface Components
-~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autosummary::
-   :toctree: ../rst/
-
-   DataContainerInteractor.data_list
-   DataContainerInteractor.container
-   DataContainerInteractor.vtk_widget
-
 Interaction Modes
 ~~~~~~~~~~~~~~~~~
 .. autosummary::
@@ -84,10 +75,3 @@ Data Import/Export
    DataContainerInteractor.add
    DataContainerInteractor.cluster_points
    DataContainerInteractor.remove_points
-
-Utility Functions
-~~~~~~~~~~~~~~~~~
-.. autosummary::
-   :toctree: ../rst/
-
-   DataContainer

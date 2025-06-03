@@ -5,14 +5,7 @@ import numpy as np
 from qtpy.QtCore import Qt, QEvent
 from qtpy.QtWidgets import QWidget, QVBoxLayout
 
-from ..properties import GeometryProperties
 from ..widgets.ribbon import create_button
-from ..dialogs import (
-    DistanceAnalysisDialog,
-    DistanceCropDialog,
-    HistogramDialog,
-    PropertyAnalysisDialog,
-)
 
 
 class SegmentationTab(QWidget):
@@ -159,6 +152,8 @@ class SegmentationTab(QWidget):
         self.histogram_window.show()
 
     def _show_histogram(self):
+        from ..dialogs import HistogramDialog
+
         dialog = HistogramDialog(parent=self)
         dialog.update_histogram(self.cdata._data.get_cluster_size())
         dialog.histogram_widget.cutoff_changed.connect(
@@ -170,6 +165,8 @@ class SegmentationTab(QWidget):
         self.histogram_widget.update_histogram(self.cdata._data.get_cluster_size())
 
     def _show_distance_dialog(self):
+        from ..dialogs import DistanceAnalysisDialog
+
         fits = self.cdata.format_datalist("models")
         clusters = self.cdata.format_datalist("data")
 
@@ -177,12 +174,17 @@ class SegmentationTab(QWidget):
         return dialog.show()
 
     def _show_property_dialog(self):
+        from ..dialogs import PropertyAnalysisDialog
+
         dialog = PropertyAnalysisDialog(self.cdata, self.legend, parent=self)
         self.cdata.data.render_update.connect(dialog.populate_lists)
         self.cdata.models.render_update.connect(dialog.populate_lists)
         return dialog.show()
 
     def _distance_crop(self):
+        from ..dialogs import DistanceCropDialog
+        from ..properties import GeometryProperties
+
         fits = self.cdata.format_datalist("models")
         clusters = self.cdata.format_datalist("data")
 

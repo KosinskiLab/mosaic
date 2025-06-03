@@ -14,6 +14,9 @@ from vtk.util import numpy_support
 
 from .utils import find_closest_points, normals_to_rot, apply_quat, NORMAL_REFERENCE
 
+__all__ = ["Geometry", "VolumeGeometry", "GeometryTrajectory"]
+
+
 BASE_COLOR = (0.7, 0.7, 0.7)
 
 

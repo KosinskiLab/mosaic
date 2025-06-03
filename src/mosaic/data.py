@@ -16,6 +16,8 @@ import multiprocessing as mp
 
 from qtpy.QtCore import Signal, QObject
 
+__all__ = ["MosaicData"]
+
 
 def _progress_decorator(func: Callable) -> Callable:
     @wraps(func)
