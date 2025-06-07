@@ -28,22 +28,6 @@ File Import Errors
 - **Text encoding**: Use UTF-8 for text formats
 - **Line endings**: Some parsers are sensitive to CR/LF differences
 
-Selection Problems
-------------------
-
-**Symptoms:**
-
-- Can't select points or objects
-- Selection works inconsistently
-- Wrong objects selected
-
-**Solutions:**
-
-1. Check current interaction mode (bottom status bar)
-2. Press ``s`` to switch between cluster and model objects
-3. Try different selection methods (area vs. point selection)
-4. Verify picking tolerance in preferences
-5. Ensure objects are visible
 
 Performance Issues
 ------------------
@@ -63,15 +47,33 @@ Performance Issues
 
 **Recommended File Size Limits:**
 
-- Point clouds: 10-20 million points
+- Point clouds: 5 million on laptop 10-20 million with GPU
 - Meshes: 5-10 million triangles
 - Volumes: 512³ voxels
 
 **For larger files:**
 
-- Consider using downsampling
+- Consider using **Downsample** in the **Segmentation** tab
 - Process data in smaller chunks
 - Use more powerful hardware
+
+
+Selection Problems
+------------------
+
+**Symptoms:**
+
+- Can't select points or objects
+- Selection works inconsistently
+- Wrong objects selected
+
+**Solutions:**
+
+1. Check current interaction mode (bottom status bar)
+2. Press ``s`` to switch between cluster and model objects
+3. Try different selection methods (area vs. point selection)
+4. Verify picking tolerance in preferences
+5. Ensure objects are visible
 
 Crashes During Operations
 -------------------------

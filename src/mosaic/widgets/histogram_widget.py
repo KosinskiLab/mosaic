@@ -1,8 +1,9 @@
-""" Variety of widgets used throughout the GUI.
+"""
+Variety of widgets used throughout the GUI.
 
-    Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import numpy as np
@@ -20,6 +21,8 @@ from qtpy.QtWidgets import (
     QSizePolicy,
     QComboBox,
 )
+
+from ..stylesheets import QSlider_style
 
 
 class RangeSlider(QWidget):
@@ -41,6 +44,10 @@ class RangeSlider(QWidget):
 
         self.lower_slider = QSlider(orientation)
         self.upper_slider = QSlider(orientation)
+
+        # Emulate range slider appearance
+        self._apply_slider_styles()
+
         for slider, value, callback in [
             (self.lower_slider, 0, self._lower_slider_changed),
             (self.upper_slider, 100, self._upper_slider_changed),
@@ -49,6 +56,51 @@ class RangeSlider(QWidget):
             slider.setValue(value)
             slider.valueChanged.connect(callback)
             layout.addWidget(slider)
+
+    def _apply_slider_styles(self):
+        """Apply custom styles to achieve right-side coloring for lower slider."""
+        lower_slider_style = (
+            QSlider_style
+            + """
+        QSlider::sub-page:horizontal {
+            background: #e2e8f0;
+            border-radius: 2px;
+        }
+        QSlider::sub-page:horizontal:disabled {
+            background: #f1f5f9;
+        }
+        QSlider::add-page:horizontal {
+            background: #94a3b8;
+            border-radius: 2px;
+        }
+        QSlider::add-page:horizontal:disabled {
+            background: #cbd5e1;
+        }
+        """
+        )
+
+        upper_slider_style = (
+            QSlider_style
+            + """
+        QSlider::sub-page:horizontal {
+            background: #94a3b8;
+            border-radius: 2px;
+        }
+        QSlider::sub-page:horizontal:disabled {
+            background: #cbd5e1;
+        }
+        QSlider::add-page:horizontal {
+            background: #e2e8f0;
+            border-radius: 2px;
+        }
+        QSlider::add-page:horizontal:disabled {
+            background: #f1f5f9;
+        }
+        """
+        )
+
+        self.lower_slider.setStyleSheet(lower_slider_style)
+        self.upper_slider.setStyleSheet(upper_slider_style)
 
     def _lower_slider_changed(self, value):
         if value > self.upper_slider.value():

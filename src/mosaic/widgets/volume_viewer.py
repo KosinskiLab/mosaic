@@ -1,9 +1,10 @@
-""" Implements VolumeViewer, which provides overlays volumeetric data with
-    the corresponding point cloud segmentations.
+"""
+Implements VolumeViewer, which provides overlays volumeetric data with
+the corresponding point cloud segmentations.
 
-    Copyright (c) 2023-2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2025 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import vtk
@@ -31,7 +32,6 @@ _colormaps = [
     "magma",
     "twilight_shifted",
     "coolwarm",
-    "none",
 ]
 
 
@@ -56,6 +56,14 @@ class VolumeViewer(QWidget):
         self.open_button.clicked.connect(self.open_volume)
         self.close_button = QPushButton("Close")
         self.close_button.clicked.connect(self.close_volume)
+
+        self.is_visible = True
+        self.visibility_button = QPushButton()
+        self.visibility_button.setIcon(qta.icon("fa5s.eye", color="#696c6f"))
+        self.visibility_button.setFixedWidth(30)
+        self.visibility_button.setToolTip("Toggle volume visibility")
+        self.visibility_button.clicked.connect(self.toggle_visibility)
+        self.visibility_button.setEnabled(False)
 
         self.slice_slider = QSlider(Qt.Orientation.Horizontal)
         self.slice_slider.setEnabled(False)
@@ -116,6 +124,7 @@ class VolumeViewer(QWidget):
         self.controls_layout.addWidget(self.close_button)
         self.controls_layout.addWidget(self.orientation_selector)
         self.controls_layout.addWidget(self.color_selector)
+        self.controls_layout.addWidget(self.visibility_button)
         self.controls_layout.addWidget(self.slice_label)
         self.controls_layout.addWidget(self.slice_slider)
         self.controls_layout.addWidget(self.slice_value_label)
@@ -136,6 +145,7 @@ class VolumeViewer(QWidget):
             self.max_contrast_slider,
             self.gamma_slider,
             self.close_button,
+            self.visibility_button,
             self.project_selector,
             self.contrast_value_label,
             self.slice_value_label,
@@ -157,6 +167,22 @@ class VolumeViewer(QWidget):
         """
             + QPushButton_style
         )
+
+    def toggle_visibility(self):
+        """Toggle the visibility of the volume slice"""
+        if self.volume is None:
+            return
+
+        self.is_visible = not self.is_visible
+        self.slice.SetVisibility(self.is_visible)
+
+        self.visibility_button.setIcon(qta.icon("fa5s.eye-slash", color="#696c6f"))
+        self.visibility_button.setToolTip("Show volume")
+        if self.is_visible:
+            self.visibility_button.setIcon(qta.icon("fa5s.eye", color="#696c6f"))
+            self.visibility_button.setToolTip("Hide volume")
+
+        self.vtk_widget.GetRenderWindow().Render()
 
     @property
     def volume(self):
@@ -283,10 +309,7 @@ class VolumeViewer(QWidget):
 
     def change_color_palette(self, palette_name):
         self.current_palette = palette_name
-
-        self.slice.SetVisibility(self.current_palette != "none")
-        if self.current_palette != "none":
-            self.update_contrast_and_gamma()
+        self.update_contrast_and_gamma()
         self.vtk_widget.GetRenderWindow().Render()
 
     def update_contrast_and_gamma(self):
@@ -307,9 +330,6 @@ class VolumeViewer(QWidget):
         self.contrast_value_label.setText(f"{min_contrast:.2f} - {max_contrast:.2f}")
         adjusted_min = min_value + min_contrast * value_range
         adjusted_max = min_value + max_contrast * value_range
-
-        if self.current_palette == "none":
-            return None
 
         ctf, _ = cmap_to_vtkctf(
             self.current_palette, adjusted_max, adjusted_min, gamma=gamma

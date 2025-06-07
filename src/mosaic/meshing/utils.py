@@ -1,8 +1,9 @@
-""" Utilities for triangular meshes.
+"""
+Utilities for triangular meshes.
 
-    Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import sys
@@ -363,11 +364,7 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
         tfile.write(config)
         tfile.flush()
 
-        ret = run(["mc_app", "run", "--conf", str(tfile.name)])
-        if ret.stderr:
-            print(ret.stdout)
-            print(ret.stderr)
-
+        ret = run(["mc_app", "run", "--conf", str(tfile.name)], capture_output=True)
         output_file = f"{tfile.name.replace('.conf', '')}.cpt.p0.h5"
 
         try:
@@ -375,8 +372,10 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
                 faces = infile["cells"][()]
                 vertices = infile["points"][()]
         except Exception as e:
-            print(e)
-            print("Skipping calibration. Check trimem installation validity.")
+            warnings.warn(
+                f"{str(ret.stderr).strip()}\n\n"
+                f"Skipping calibration - Check Trimem installation."
+            )
             return mesh
 
     ret = to_open3d(vertices, faces)

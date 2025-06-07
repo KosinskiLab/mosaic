@@ -1,8 +1,9 @@
-""" Implements ProgressDialog, wrapping a ProgressBar in a dialog window.
+"""
+Implements ProgressDialog, wrapping a ProgressBar in a dialog window.
 
-    Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from qtpy.QtCore import Qt

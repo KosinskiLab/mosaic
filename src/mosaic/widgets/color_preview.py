@@ -1,8 +1,9 @@
-""" ColorPreviewWidget widget for visualization of color maps.
+"""
+ColorPreviewWidget widget for visualization of color maps.
 
-    Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2025 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from qtpy.QtWidgets import QWidget

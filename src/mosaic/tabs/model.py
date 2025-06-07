@@ -1,7 +1,7 @@
 from functools import partial
 
 import numpy as np
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
 from ..parallel import run_in_background
 from ..widgets.ribbon import create_button
@@ -98,7 +98,7 @@ class ModelTab(QWidget):
                 "Project",
                 "mdi.vector-curve",
                 self,
-                self.project_on_mesh,
+                self._project_on_mesh,
                 "Project on Mesh",
                 PROJECTION_SETTINGS,
             ),
@@ -180,6 +180,11 @@ class ModelTab(QWidget):
             if not hasattr(fit, "vertices"):
                 continue
 
+            fit.mesh.remove_non_manifold_edges()
+            fit.mesh.remove_degenerate_triangles()
+            fit.mesh.remove_duplicated_triangles()
+            fit.mesh.remove_unreferenced_vertices()
+            fit.mesh.remove_duplicated_vertices()
             vs, fs = meshing.triangulate_refine_fair(
                 vs=fit.vertices,
                 fs=fit.triangles,
@@ -196,13 +201,6 @@ class ModelTab(QWidget):
 
         return self.cdata.models.render()
 
-    def project_on_mesh(self, **kwargs):
-        selected_meshes = self._get_selected_meshes()
-        if len(selected_meshes) != 1:
-            QMessageBox.warning(None, "Error", "Please select one mesh for projection.")
-            return None
-        return self._project_on_mesh(**kwargs)
-
     @run_in_background("Project", callback=on_fit_complete)
     def _project_on_mesh(
         self,
@@ -211,6 +209,10 @@ class ModelTab(QWidget):
         update_normals: bool = False,
         **kwargs,
     ):
+        selected_meshes = self._get_selected_meshes()
+        if len(selected_meshes) != 1:
+            raise ValueError("Please select one mesh for projection.")
+
         selected_meshes = self._get_selected_meshes()
 
         mesh = self.cdata._models.data[selected_meshes[0]]._meta.get("fit", None)
@@ -624,9 +626,9 @@ MESH_SETTINGS = {
                 "label": "Radii",
                 "parameter": "radii",
                 "type": "text",
-                "default": "5",
-                "description": "Voxel size ball radii used for surface reconstruction.",
-                "notes": "Use commas to specify multiple radii, e.g. '5,3.5,1.0'.",
+                "default": "50",
+                "description": "Ball radii used for surface reconstruction.",
+                "notes": "Use commas to specify multiple radii, e.g. '50,30.5,10.0'.",
             },
             REPAIR_SETTINGS["settings"][-1],
             {

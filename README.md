@@ -7,9 +7,13 @@
 **[Documentation](https://kosinskilab.github.io/mosaic/)** | **[Installation](https://kosinskilab.github.io/mosaic/tutorial/installation.html)**
 
 
-Mosaic is a software ecosystem that translates 3D electron microscopy (3D EM) data into simulation-ready models of biomembranes. It unifies membrane segmentation, mesh generation, protein identification, and multi-scale simulation into a graphical user interface (GUI).
+Mosaic translates 3D electron microscopy data into simulation-ready models of biomembranes.
 
-![Mosaic Workflow](docs/_static/tutorial/iav_workflow/mosaic_workflow.png)
+![IAV Example](docs/_static/tutorial/iav_workflow/mosaic_workflow.png)
+
+To achieve this, the Mosaic ecosystem unifies membrane segmentation, mesh generation, protein identification, and multi-scale simulation into a graphical user interface.
+
+![Mosaic Workflow](docs/_static/workflow.png)
 
 ## Quick Start
 

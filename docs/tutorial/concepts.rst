@@ -91,55 +91,68 @@ Interaction Modes
 
 Mosaic provides multiple interaction modes for selecting and modifying different types of data. The current mode is always displayed in the status bar at the bottom of the window and indicated by the cursor color.
 
+.. tip::
+   Every mode can be exited by pressing the key used to enter it or via ``Esc``. Modes can also be activated via the **Interaction** category in the menu bar.
+
+
+**Viewing Mode (Default)**
+- Default camera navigation mode
+- Use mouse to rotate, pan, and zoom the 3D viewport
+- Press ``Esc`` to return to viewing mode from any other mode
+
 Point Interaction
 ^^^^^^^^^^^^^^^^^
 
 **Area Selection (Rubber Band)**
 
-- Press ``R`` to activate rectangular selection mode
+- Press ``r`` to activate rectangular selection mode
 - Click and drag in the 3D viewport to select points within a rectangular area
-- Press ``E`` to expand selection to entire connected clusters
-- Press ``R`` again to exit mode
+- Press ``e`` to expand selection to entire connected clusters
+- Press ``r`` again or ``Esc`` to exit selection mode
 
 **Point Drawing**
 
-- Press ``A`` to activate drawing mode
+- Press ``a`` to activate drawing mode
 - Click anywhere in the 3D viewport to add new points to the selected cluster
 - If no cluster is selected, a new cluster will be created automatically
-- Press ``A`` again to exit drawing mode
-
-Object Selection
-^^^^^^^^^^^^^^^^
-
-**Object Picking**
-
-- Press ``S`` to activate object picking mode
-- Click directly on objects (clusters or models) to select them
-- Press ``s`` (lowercase) to switch between cluster and model selection targets
-- Selected objects are highlighted and listed in the Object Browser
-
-Advanced Editing
-^^^^^^^^^^^^^^^^
+- Press ``a`` again or ``Esc`` to exit drawing mode
 
 **Curve Drawing**
 
 - Press ``Shift+A`` to activate curve drawing mode
 - Click to place points along a curve path
 - Press ``Enter`` to save the curve as a new cluster of points
-- Press ``Esc`` to cancel curve drawing
+- Press ``Shift+A`` or ``Esc`` to cancel curve drawing
 - Optional: Fit a curve model to the created cluster to parametrize it.
 
-**Mesh Editing**
+
+Object Selection
+^^^^^^^^^^^^^^^^
+
+**Object Picking**
+
+- Press ``E`` to activate object picking mode
+- Click directly on objects (clusters or models) to select them
+- Press ``s`` to switch between cluster and model selection targets
+- Selected objects are highlighted and selected in the Object Browser
+
+Mesh Editing
+^^^^^^^^^^^^
+
+**Mesh Delete**
 
 - Press ``q`` to activate mesh face selection mode
 - Click on triangular faces to select them
 - Press ``Delete`` to remove selected faces
-- Press ``Q`` to activate mesh addition mode
-- Click on three vertices to create a new triangular face
-- Press ``q`` or ``Q`` again to exit mesh editing modes
+- Press ``q`` or ``Esc`` to exit
 
-.. tip::
-   All interaction modes are toggles - press the same key again or a different mode to return to the default viewing mode. Watch the status bar and cursor color to confirm which mode is currently active.
+**Mesh Add**
+
+- Press ``Q`` to activate mesh addition mode
+- Click on three points to create a new triangular face
+- If any point is a vertex in an existing mesh, the face will be added to it
+- Press ``Q`` or ``Esc`` to exit
+
 
 Coordinate System
 -----------------

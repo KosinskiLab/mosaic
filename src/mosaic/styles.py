@@ -1,8 +1,9 @@
-""" Style classes facilitating unique interactions with the vtk viewer.
+"""
+Style classes facilitating unique interactions with the vtk viewer.
 
-    Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2025 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import vtk

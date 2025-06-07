@@ -4,7 +4,6 @@ from .path_selector import PathSelector
 from .dialog_footer import DialogFooter
 from .sidebar import ObjectBrowserSidebar
 from .mapped_combobox import MappedComboBox
-from .progress_button import ProgressButton
 from .histogram_widget import HistogramWidget
 from .parameter_widget import ParameterWidget
 from .trajectory_player import TrajectoryPlayer

@@ -67,7 +67,7 @@ Clean the Segmentation
 1. Switch to the **Segmentation** tab
 2. Use the **Select** button to identify and **Remove** clusters corresponding to small artifacts
 3. Eliminate incorrectly segmented voxels using manual selection (press **r** key) and deletion (press **del** key)
-4. Select the central IAV VLP in the object browser and use **Thin** with the *outer* option to extract the outer segmentation layer
+4. Select the central IAV VLP in the object browser and use the **Thin** button from the **Segmentation** tab with the *outer* option to extract the outer segmentation layer
 
 .. raw:: html
 
@@ -227,6 +227,7 @@ Run the simulation (takes less than five minutes with 8 threads):
    Simulation outputs are available on `ownCloud <https://oc.embl.de/index.php/s/fi7bJDRtAbVcOnt>`_ in hmff/TrajTSI_Done.
 
 To analyze the refined mesh in Mosaic:
+
 1. Click the arrow next to the **Trajectory** button in the **Intelligence** tab
 2. Configure the settings to match the input.dts file:
 

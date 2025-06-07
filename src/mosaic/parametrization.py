@@ -1,13 +1,14 @@
-""" Implements geometric surface models for point cloud data. This includes
-    parameteric as well as non-parametric triangular-mesh based approaches.
+"""
+Implements geometric surface models for point cloud data. This includes
+parameteric as well as non-parametric triangular-mesh based approaches.
 
-    Children of the underlying abstract Parametrization class, also define
-    means for equidistant sampling and computation of normal vectors.
-    Furthermore, there are amenable to native python pickling.
+Children of the underlying abstract Parametrization class, also define
+means for equidistant sampling and computation of normal vectors.
+Furthermore, there are amenable to native python pickling.
 
-    Copyright (c) 2023-2024 European Molecular Biology Laboratory
+Copyright (c) 2023-2025 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import warnings
@@ -878,8 +879,9 @@ class TriangularMesh(Parametrization):
             mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
 
         if np.asarray(mesh.vertices).shape[0] == 0:
-            print("No suitable vertices for mesh creation found.")
-            return None
+            raise ValueError(
+                "No vertices for mesh creation. Try increasing ball pivoting radii."
+            )
 
         if max_hole_size == 0:
             return cls(mesh=mesh)

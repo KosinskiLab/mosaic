@@ -1,8 +1,9 @@
-""" Atomic Geometry class displayed by the vtk viewer.
+"""
+Atomic Geometry class displayed by the vtk viewer.
 
-    Copyright (c) 2024-2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2025 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import warnings
@@ -43,8 +44,6 @@ class Geometry:
         self._data.SetPoints(self._points)
         self._data.SetVerts(self._cells)
 
-        self._actor = self.create_actor(vtk_actor)
-
         self.sampling_rate = sampling_rate
         self._meta = {} if meta is None else meta
         self._representation = "pointcloud"
@@ -69,6 +68,7 @@ class Geometry:
         if quaternions is not None:
             self.quaternions = quaternions
 
+        self._actor = self.create_actor(vtk_actor)
         self._appearance = {
             "size": 8,
             "opacity": 1.0,
@@ -217,17 +217,10 @@ class Geometry:
         if self.points.shape[0] != 0:
             points = np.concatenate((self.points, points))
 
-        # Allow for area picking
         vertex_cells = vtk.vtkCellArray()
         idx = np.arange(points.shape[0], dtype=int)
         cells = np.column_stack((np.ones(idx.size, dtype=int), idx)).flatten()
         vertex_cells.SetCells(idx.size, numpy_support.numpy_to_vtkIdTypeArray(cells))
-
-        # n_points = points.shape[0]
-        # vertex_cells = vtk.vtkCellArray()
-        # vertex_cells.InsertNextCell(n_points)
-        # for i in range(n_points):
-        #     vertex_cells.InsertCellPoint(i)
 
         self._points.SetData(numpy_support.numpy_to_vtk(points, deep=False))
         self._data.SetVerts(vertex_cells)
@@ -353,7 +346,9 @@ class Geometry:
         prop.SetDiffuse(self._appearance.get("diffuse", 0.7))
         prop.SetSpecular(self._appearance.get("specular", 0.2))
 
-    def create_actor(self, actor=None):
+    def create_actor(
+        self, actor=None, lod_points: int = 100000, lod_points_size: int = 3
+    ):
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(self._data)
 
@@ -364,7 +359,20 @@ class Geometry:
 
         if actor is None:
             actor = vtk.vtkLODActor()
-            actor.SetNumberOfCloudPoints(100000)
+            actor.SetNumberOfCloudPoints(lod_points)
+            actor.GetProperty().SetPointSize(lod_points_size)
+
+            # medium_filter = vtk.vtkMaskPoints()
+            # medium_filter.SetInputData(self._data)
+            # medium_filter.RandomModeOff()
+            # medium_filter.SetOnRatio(10)
+            # medium_filter.SetMaximumNumberOfPoints(5 * lod_points)
+            # medium_filter.SetSingleVertexPerCell(True)
+            # actor.SetMediumResFilter(medium_filter)
+
+            # low_filter = vtk.vtkOutlineFilter()
+            # low_filter.SetInputData(self._data)
+            # actor.SetLowResFilter(low_filter)
 
         actor.SetMapper(mapper)
         return actor
@@ -504,6 +512,9 @@ class Geometry:
             normals = apply_quat(quaternions, NORMAL_REFERENCE)
             self.quaternions = quaternions
 
+        if normals is None and points is not None:
+            normals = np.full_like(points, fill_value=NORMAL_REFERENCE)
+
         if normals is not None:
             self.normals = normals
 
@@ -556,9 +567,6 @@ class Geometry:
 
             normal_scale = 0.1 * np.max(self.sampling_rate)
 
-            # arrow.SetShaftRadius(0.02 / 5)
-            # normal_scale = 0.5 * np.max(self.sampling_rate)
-
             glyph = vtk.vtkGlyph3D()
             glyph.SetSourceConnection(arrow.GetOutputPort())
             glyph.SetVectorModeToUseNormal()
@@ -579,15 +587,22 @@ class Geometry:
         mapper.SetResolveCoincidentTopologyToPolygonOffset()
 
         self._actor.SetMapper(mapper)
+        self._appearance["render_spheres"] = True
+        if representation == "gaussian_density":
+            self._appearance["render_spheres"] = False
+
         mapper, prop = self._actor.GetMapper(), self._actor.GetProperty()
         prop.SetOpacity(self._appearance["opacity"])
         prop.SetPointSize(self._appearance["size"])
-
+        prop.SetRenderPointsAsSpheres(self._appearance["render_spheres"])
         if representation == "pointcloud":
             prop.SetRepresentationToPoints()
             mapper.SetInputData(self._data)
 
         elif representation == "gaussian_density":
+            mapper.SetSplatShaderCode("")
+            mapper.SetScaleFactor(self._appearance["size"] * 0.25)
+            mapper.SetScalarVisibility(True)
             mapper.SetInputData(self._data)
 
         elif representation == "pointcloud_normals":

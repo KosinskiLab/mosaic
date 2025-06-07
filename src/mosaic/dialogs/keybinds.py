@@ -1,9 +1,10 @@
-""" Defines KeybindDialog and the underlying KEYBIND_REGISTRY, which
-    can be modified to change the Keybind Dialog window.
+"""
+Defines KeybindDialog and the underlying KEYBIND_REGISTRY, which
+can be modified to change the Keybind Dialog window.
 
-    Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from qtpy.QtWidgets import (

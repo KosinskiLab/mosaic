@@ -1,8 +1,9 @@
-""" StatusIndicator widget for visualization of current viewer modes.
+"""
+StatusIndicator widget for visualization of current viewer modes.
 
-    Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2025 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import enum

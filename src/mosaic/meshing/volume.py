@@ -1,12 +1,13 @@
-""" Tools for sharded meshing of large volumes using marching cubes,
-    merging of submeshes and simplification using quadratic edge collapse.
+"""
+Tools for sharded meshing of large volumes using marching cubes,
+merging of submeshes and simplification using quadratic edge collapse.
 
-    This loosely follows the approach taken in igneous (github.com/seung-lab/igneous)
-    but is focused on simplifying local meshing of large volumes.
+This loosely follows the approach taken in igneous (github.com/seung-lab/igneous)
+but is focused on simplifying local meshing of large volumes.
 
-    Copyright (c) 2024-2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2025 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from typing import Tuple, List

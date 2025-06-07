@@ -64,8 +64,12 @@ QPushButton_style = """
         padding: 6px 12px;
     }
     QPushButton:hover {
-        border: 1px solid #cbd5e1;
+        border: 1px solid #9ca3af;
         background: #1a000000;
+    }
+    QPushButton:pressed {
+        border: 1px solid #9ca3af;
+        background: rgba(0, 0, 0, 0.24);
     }
     QPushButton:focus {
         outline: none;

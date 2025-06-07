@@ -1,13 +1,14 @@
-""" Utilities for repair of triangular meshes.
+"""
+Utilities for repair of triangular meshes.
 
-    Hole filling and Leipa triangulation were adapted from
-    https://github.com/kentechx/hole-filling and are distributed under
-    MIT license. This origin is indicated as reference for the
-    respective functions.
+Hole filling and Leipa triangulation were adapted from
+https://github.com/kentechx/hole-filling and are distributed under
+MIT license. This origin is indicated as reference for the
+respective functions.
 
-    Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from typing import Tuple

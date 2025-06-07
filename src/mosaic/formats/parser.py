@@ -1,8 +1,9 @@
-""" IO methods to parse a variety of file formats.
+"""
+IO methods to parse a variety of file formats.
 
-    Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import warnings

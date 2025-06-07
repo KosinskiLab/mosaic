@@ -724,9 +724,7 @@ class PropertyAnalysisDialog(QDialog):
             lambda: (
                 self._update_plot()
                 if current_tab_index == 1
-                else self._update_statistics()
-                if current_tab_index == 2
-                else None
+                else self._update_statistics() if current_tab_index == 2 else None
             ),
         )
 

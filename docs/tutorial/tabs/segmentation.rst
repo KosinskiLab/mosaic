@@ -167,7 +167,7 @@ Applies rotation and translation to clusters:
 2. Click **Transform**
 3. A 3D transformation widget appears around the cluster
 4. Use the transformation widget to move or rotate the cluster
-5. Press ``Escape`` to exit transformation mode
+5. Press **Transform** again to exit transformation mode
 
 .. _crop:
 
@@ -251,7 +251,7 @@ Select points outside specified axis-aligned boundaries:
    - ``Z``: Align planes to Z-axis
 
 5. Points between the planes are preserved
-6. Press ``Escape`` to exit trim mode
+6. Press **Trim** again to exit trim mode
 
 .. _thin:
 

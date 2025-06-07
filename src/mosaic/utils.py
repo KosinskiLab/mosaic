@@ -1,8 +1,9 @@
-""" Utility functions.
+"""
+Utility functions.
 
-    Copyright (c) 2023-2024 European Molecular Biology Laboratory
+Copyright (c) 2023-2024 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import warnings
@@ -14,13 +15,16 @@ import numpy as np
 import open3d as o3d
 
 from scipy import spatial
-from scipy.spatial import cKDTree
+from scipy.sparse import coo_matrix
+from scipy.sparse.csgraph import connected_components as sparse_connected_components
+from scipy.spatial import KDTree
 from scipy.spatial.transform import Rotation
 
 __all__ = [
     "points_to_volume",
     "volume_to_points",
     "connected_components",
+    "connected_components_volume",
     "dbscan_clustering",
     "birch_clustering",
     "eigenvalue_outlier_removal",
@@ -103,7 +107,6 @@ def volume_to_points(volume, sampling_rate, reverse_order: bool = False):
         warnings.warn(
             "Found more than 10k cluster. Make sure you are loading a segmentation."
         )
-        return None
 
     ret = []
     for cluster in unique_clusters:
@@ -159,7 +162,48 @@ def binary_opening(points, sampling_rate=1, iterations=1, structure=None, **kwar
     return [x + offset for x in volume_to_points(labels, sampling_rate)]
 
 
-def connected_components(points, sampling_rate=1, **kwargs):
+def connected_components(points, distance=1, **kwargs):
+    """
+    Find connected components in point clouds using sparse graph representations.
+
+    Parameters
+    ----------
+    points : ndarray
+        Input point cloud coordinates.
+    distance : tuple of float, optional
+        Distance between points to be considered connected, defaults to 1.
+
+    Returns
+    -------
+    list of ndarray
+        Point cloud coordinates per connected component.
+    """
+    points = np.divide(points, distance, out=points)
+
+    # Leafsize needs to be tuned depending on the structure of the input data.
+    # Points typically originates from voxel membrane segmentation on regular grids.
+    # Leaf sizes between 8 - 16 work reasonably well.
+    tree = KDTree(
+        points,
+        leafsize=16,
+        compact_nodes=False,
+        balanced_tree=False,
+        copy_data=False,
+    )
+    pairs = tree.query_pairs(r=np.sqrt(3), output_type="ndarray")
+
+    n_points = points.shape[0]
+    adjacency = coo_matrix(
+        (np.ones(len(pairs)), (pairs[:, 0], pairs[:, 1])),
+        shape=(n_points, n_points),
+        dtype=np.int8,
+    )
+    points = np.multiply(points, distance, out=points)
+    n_components, labels = sparse_connected_components(adjacency, directed=False)
+    return [points[labels == i] for i in range(n_components)]
+
+
+def connected_components_volume(points, sampling_rate=1, **kwargs):
     """
     Find connected components in point cloud using volumetric analysis.
 
@@ -182,7 +226,8 @@ def connected_components(points, sampling_rate=1, **kwargs):
     offset = points.min(axis=0)
     volume = points_to_volume(points - offset, sampling_rate=sampling_rate)
     labels = label(volume.astype(np.int32), background=0, **kwargs)
-    return [x + offset for x in volume_to_points(labels, sampling_rate)]
+    ret = [x + offset for x in volume_to_points(labels, sampling_rate)]
+    return ret
 
 
 def dbscan_clustering(points, distance=100.0, min_points=500):
@@ -268,7 +313,7 @@ def eigenvalue_outlier_removal(points, k_neighbors=300, thresh=0.05):
     ----------
     .. [1]  https://github.com/denabazazian/Edge_Extraction/blob/master/Difference_Eigenvalues.py
     """
-    tree = spatial.cKDTree(points)
+    tree = spatial.KDTree(points)
     distances, indices = tree.query(points, k=k_neighbors + 1, workers=-1)
 
     points_centered = points[indices[:, 1:]] - points[:, np.newaxis, :]
@@ -316,14 +361,14 @@ def statistical_outlier_removal(points, k_neighbors=100, thresh=0.2):
 def find_closest_points(positions1, positions2, k=1):
     positions1, positions2 = np.asarray(positions1), np.asarray(positions2)
 
-    tree = cKDTree(positions1)
+    tree = KDTree(positions1)
     return tree.query(positions2, k=k)
 
 
 def find_closest_points_cutoff(positions1, positions2, cutoff=1):
     positions1, positions2 = np.asarray(positions1), np.asarray(positions2)
 
-    tree = cKDTree(positions1)
+    tree = KDTree(positions1)
     return tree.query_ball_point(positions2, cutoff)
 
 
@@ -334,7 +379,7 @@ def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
     if isinstance(cutoff, np.ndarray):
         cutoff = np.max(cutoff)
 
-    tree = cKDTree(positions)
+    tree = KDTree(positions)
     n_points = len(positions)
     unassigned = np.ones(n_points, dtype=bool)
     clusters = []

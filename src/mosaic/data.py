@@ -1,42 +1,24 @@
-""" Implements ColabsegData, which is reponsible for tracking overall
-    application state and mediating interaction between segmentations
-    and parametrizations.
+"""
+Implements ColabsegData, which is reponsible for tracking overall
+application state and mediating interaction between segmentations
+and parametrizations.
 
-    Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import pickle
-from functools import wraps
-from typing import Callable
 
 import numpy as np
 import multiprocessing as mp
 
-from qtpy.QtCore import Signal, QObject
+from qtpy.QtCore import QObject
 
 __all__ = ["MosaicData"]
 
 
-def _progress_decorator(func: Callable) -> Callable:
-    @wraps(func)
-    def wrapper(self, *args, **kwargs) -> None:
-        ret = None
-        try:
-            ret = func(self, *args, **kwargs)
-        except Exception as e:
-            print(e)
-        finally:
-            # Termination signal for listeners
-            self.progress.emit(1)
-        return ret
-
-    return wrapper
-
-
 class MosaicData(QObject):
-    progress = Signal(float)
 
     def __init__(self, vtk_widget):
         """Initialize MosaicData instance for managing application state.
@@ -144,9 +126,9 @@ class MosaicData(QObject):
         obj = self._get_active_container()
         return obj.highlight_clusters_from_selected_points()
 
-    def toggle_picking_mode(self):
+    def activate_picking_mode(self):
         obj = self._get_active_container()
-        return obj.toggle_picking_mode()
+        return obj.activate_picking_mode()
 
     def _add_fit(self, fit, sampling_rate=None, **kwargs):
         if hasattr(fit, "mesh"):
@@ -168,7 +150,6 @@ class MosaicData(QObject):
 
         return index
 
-    @_progress_decorator
     def add_fit(self, method: str, **kwargs):
         """Add parametric fit to selected data points.
 
@@ -178,11 +159,6 @@ class MosaicData(QObject):
             Name of the fitting method to use
         **kwargs
             Additional parameters for the fitting method
-
-        Returns
-        -------
-        int
-            Index of added fit, -1 if method not found
         """
         from .parametrization import PARAMETRIZATION_TYPE
 
@@ -203,8 +179,9 @@ class MosaicData(QObject):
 
             n = cloud.points.shape[0]
             if n < 50 and method not in ["convexhull", "spline"]:
-                print(f"Cluster {index} contains insufficient points for fit ({n}<50).")
-                continue
+                raise ValueError(
+                    f"Cluster {index} contains insufficient points for fit ({n}<50)."
+                )
 
             try:
                 fit = fit_object.fit(cloud.points, **kwargs)
@@ -214,10 +191,7 @@ class MosaicData(QObject):
                 self._add_fit(fit=fit, sampling_rate=cloud._sampling_rate)
 
             except Exception as e:
-                print(e)
-                continue
-
-            self.progress.emit((index + 1) / len(cluster_indices))
+                raise type(e)(f"Object {index}: {str(e)}") from e
 
     def format_datalist(self, type="data", mesh_only: bool = False):
         """Format data list for dialog display.
@@ -291,9 +265,9 @@ def _sample_fit(
         n_samples = fit.points_per_sampling(sampling)
         extra_kwargs["mesh_init_factor"] = 5
 
+    # We handle normal offset in sample to ensure equidistant spacing for meshes
     extra_kwargs["normal_offset"] = normal_offset
     points = fit.sample(int(n_samples), **extra_kwargs, **kwargs)
     normals = fit.compute_normal(points)
-    # points = np.add(points, np.multiply(normals, normal_offset))
 
     return points, normals, sampling_rate

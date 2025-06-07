@@ -85,7 +85,7 @@ class DevelopmentTab(QWidget):
         self.ribbon.add_section("Base Operations", cluster_actions)
 
     def add_cloud(self, *args):
-        num_points = 1000
+        num_points = 50000
         points = np.random.rand(num_points, 3) * 100
         self.cdata._data.add(points=points, sampling_rate=1)
         self.cdata.data.data_changed.emit()

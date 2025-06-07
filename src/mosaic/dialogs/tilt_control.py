@@ -1,8 +1,9 @@
-""" Implements TiltControlDialog for controling camera view angles.
+"""
+Implements TiltControlDialog for controling camera view angles.
 
-    Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from qtpy.QtCore import Qt

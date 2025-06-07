@@ -3,7 +3,7 @@ from typing import List, Tuple, Literal
 import vtk
 import numpy as np
 from qtpy.QtCore import Qt, QEvent
-from qtpy.QtWidgets import QWidget, QVBoxLayout
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QMessageBox
 
 from ..widgets.ribbon import create_button
 
@@ -28,10 +28,6 @@ class SegmentationTab(QWidget):
         """Handle Escape key to exit transformer and trimmer mode."""
         if event.type() == QEvent.Type.KeyPress:
             key = event.key()
-            if key == Qt.Key.Key_Escape:
-                self.trimmer.clean()
-                self.transfomer.clean()
-                return True
 
             if not self.trimmer.active:
                 return super().eventFilter(obj, event)
@@ -73,7 +69,7 @@ class SegmentationTab(QWidget):
                 "Transform",
                 "mdi.rotate-right",
                 self,
-                self.transfomer.show,
+                self._toggle_transform,
                 "Transform selected cluster",
             ),
             create_button(
@@ -107,7 +103,7 @@ class SegmentationTab(QWidget):
                 "Trim",
                 "mdi.scissors-cutting",
                 self,
-                self.trimmer.show,
+                self._toggle_trimmer,
                 "Trim points using planes",
             ),
             create_button(
@@ -146,6 +142,16 @@ class SegmentationTab(QWidget):
             ),
         ]
         self.ribbon.add_section("Analysis", analysis_actions)
+
+    def _toggle_trimmer(self):
+        if self.trimmer.active:
+            return self.trimmer.clean()
+        return self.trimmer.show()
+
+    def _toggle_transform(self):
+        if self.transfomer.active:
+            return self.transfomer.clean()
+        return self.transfomer.show()
 
     def _show_histogram(self):
         self._update_histogram()
@@ -207,6 +213,10 @@ class SegmentationTab(QWidget):
             if keep_smaller:
                 mask = dist < distance
 
+            if mask.sum() == 0:
+                QMessageBox.warning(self, "Warning", "No points satisfy cutoff.")
+
+                continue
             self.cdata.data.add(source[mask])
 
         self.cdata.data.render()
@@ -519,6 +529,18 @@ CLUSTER_SETTINGS = {
         },
     ],
     "method_settings": {
+        "Connected Components": [
+            {
+                "label": "Distance",
+                "parameter": "distance",
+                "type": "float",
+                "description": "Distance between points to be considered connected.",
+                "default": -1.0,
+                "min": -1.0,
+                "max": 1e32,
+                "notes": "Defaults to the associated sampling rate of the cluster.",
+            },
+        ],
         "DBSCAN": [
             {
                 "label": "Distance",

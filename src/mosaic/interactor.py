@@ -1,10 +1,11 @@
-""" Implemenents DataContainerInteractor and LinkedDataContainerInteractor,
-    which mediate interaction between the GUI and underlying DataContainers.
-    This includes selection, editing and rendering.
+"""
+Implemenents DataContainerInteractor and LinkedDataContainerInteractor,
+which mediate interaction between the GUI and underlying DataContainers.
+This includes selection, editing and rendering.
 
-    Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import numpy as np
@@ -187,18 +188,12 @@ class DataContainerInteractor(QObject):
         return mode if self._interaction_mode != mode else None
 
     def activate_viewing_mode(self):
-        if self._interaction_mode == "draw":
-            self.toggle_drawing_mode()
-        elif self._interaction_mode == "pick":
-            self.toggle_picking_mode()
-        return None
-
-    def toggle_drawing_mode(self):
+        self._interaction_mode = None
         self._active_cluster = None
-        self._interaction_mode = self._toggle_mode("draw")
 
-        if self._interaction_mode != "draw":
-            return None
+    def activate_drawing_mode(self):
+        self._active_cluster = None
+        self._interaction_mode = "draw"
 
         active_clusters = list(set(self._get_selected_indices()))
         if len(active_clusters) > 1:
@@ -210,8 +205,8 @@ class DataContainerInteractor(QObject):
 
         self._active_cluster = active_clusters[0]
 
-    def toggle_picking_mode(self):
-        self._interaction_mode = self._toggle_mode("pick")
+    def activate_picking_mode(self):
+        self._interaction_mode = "pick"
 
     def set_selection(self, selected_indices):
         selection = QItemSelection()
@@ -252,7 +247,10 @@ class DataContainerInteractor(QObject):
         extractor = vtk.vtkExtractSelectedFrustum()
         extractor.SetFrustum(frustum)
 
-        self.deselect_points()
+        interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
+        if not interactor.GetShiftKey():
+            self.deselect_points()
+
         for i, cluster in enumerate(self.container.data):
             extractor.SetInputData(cluster._data)
             extractor.Update()
@@ -265,7 +263,9 @@ class DataContainerInteractor(QObject):
             selected_ids = output.GetPointData().GetArray("vtkOriginalPointIds")
             if selected_ids and selected_ids.GetNumberOfTuples() > 0:
                 ids_numpy = vtk.util.numpy_support.vtk_to_numpy(selected_ids)
-                self.point_selection[i] = set(ids_numpy)
+                if i not in self.point_selection:
+                    self.point_selection[i] = set()
+                self.point_selection[i].update(set(ids_numpy))
 
         self.highlight_selected_points(color=None)
 

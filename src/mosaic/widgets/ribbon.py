@@ -185,6 +185,8 @@ class SettingsMenu(QMenu):
             self.update_method_settings(self.method_combo.currentText())
 
         self.setFocusProxy(apply_btn)
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+        self.setMouseTracking(True)
 
     def update_method_settings(self, method):
         if self.method_layout is None:

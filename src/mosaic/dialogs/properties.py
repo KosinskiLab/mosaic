@@ -1,8 +1,9 @@
-""" Modulate visual properties of Geometry objects.
+"""
+Modulate visual properties of Geometry objects.
 
-    Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from qtpy.QtGui import QColor

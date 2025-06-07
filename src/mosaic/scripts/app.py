@@ -1,9 +1,10 @@
 #!python3
-""" GUI entrypoint.
+"""
+GUI entrypoint.
 
-    Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 import os
 import sys
@@ -18,7 +19,7 @@ if system() == "Darwin":
 
 import vtk
 import numpy as np
-from qtpy.QtCore import Qt, QEvent, QSettings
+from qtpy.QtCore import Qt, QEvent
 from qtpy.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -31,18 +32,23 @@ from qtpy.QtWidgets import (
     QPushButton,
     QDockWidget,
     QButtonGroup,
+    QShortcut,
+    QMessageBox,
+    QCheckBox,
 )
 from qtpy.QtGui import (
     QAction,
     QGuiApplication,
     QIcon,
     QActionGroup,
+    QKeyEvent,
 )
 import qtawesome as qta
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from mosaic import __version__
 from mosaic.data import MosaicData
+from mosaic.settings import Settings
 from mosaic.animate import ExportManager
 from mosaic.tabs import SegmentationTab, ModelTab, IntelligenceTab
 
@@ -82,10 +88,6 @@ class App(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.max_recent_files = 10
-        self.recent_file_actions = []
-        self.recent_files = self.load_recent_files()
-
         # Adapt to screen size
         screen = QGuiApplication.primaryScreen().geometry()
         width = int(screen.width() * 0.9)
@@ -119,13 +121,14 @@ class App(QMainWindow):
         render_window.SetPointSmoothing(False)
         render_window.SetLineSmoothing(False)
         render_window.SetPolygonSmoothing(False)
-        render_window.SetDesiredUpdateRate(120.0)
+        render_window.SetDesiredUpdateRate(60.0)
 
         # Setup GUI interactions
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         self.interactor.Initialize()
         self.interactor.AddObserver("RightButtonPressEvent", self.on_right_click)
         self.interactor.AddObserver("KeyPressEvent", self.on_key_press)
+        self.interactor.SetDesiredUpdateRate(60.0)
 
         self.cdata = MosaicData(self.vtk_widget)
 
@@ -155,6 +158,7 @@ class App(QMainWindow):
             (SegmentationTab(**data), "Segmentation"),
             (ModelTab(**data), "Parametrization"),
             (IntelligenceTab(**data), "Intelligence"),
+            # (DevelopmentTab(**data), "Development"),
         ]
 
         for index, (tab, name) in enumerate(self.tabs):
@@ -221,7 +225,13 @@ class App(QMainWindow):
         self.actor_collection = vtk.vtkActorCollection()
         self.setup_menu()
 
-        # print(render_window.ReportCapabilities())
+        self.escape_shortcut = QShortcut(Qt.Key.Key_Escape, self.vtk_widget)
+        self.escape_shortcut.activated.connect(self.handle_escape_key)
+
+    def handle_escape_key(self, *args, **kwargs):
+        """Handle escape key press - switch to viewing mode if not already in it."""
+        self._transition_modes(self.cursor_handler.current_mode)
+        self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
 
     def on_key_press(self, obj, event):
         key = obj.GetKeyCode()
@@ -244,6 +254,7 @@ class App(QMainWindow):
         elif key == "s":
             self._transition_modes(ViewerModes.VIEWING)
             self.cdata.swap_area_picker()
+            self.toggle_selection_menu()
         elif key == "E":
             self._transition_modes(ViewerModes.PICKING)
         elif key == "h":
@@ -286,7 +297,7 @@ class App(QMainWindow):
             return self.cursor_handler.update_mode(ViewerModes.VIEWING)
 
         if new_mode == ViewerModes.DRAWING:
-            self.cdata.data.toggle_drawing_mode()
+            self.cdata.data.activate_drawing_mode()
         elif new_mode == ViewerModes.CURVE:
             style = CurveBuilderInteractorStyle(self, self.cdata)
             self.interactor.SetInteractorStyle(style)
@@ -294,7 +305,7 @@ class App(QMainWindow):
         elif new_mode == ViewerModes.SELECTION:
             self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleRubberBandPick())
         elif new_mode == ViewerModes.PICKING:
-            self.cdata.toggle_picking_mode()
+            self.cdata.activate_picking_mode()
         elif new_mode in (ViewerModes.MESH_ADD, ViewerModes.MESH_DELETE):
             style = MeshEditInteractorStyle(self, self.cdata)
             self.interactor.SetInteractorStyle(style)
@@ -430,6 +441,7 @@ class App(QMainWindow):
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("File")
         view_menu = menu_bar.addMenu("View")
+        interact_menu = menu_bar.addMenu("Interaction")
         help_menu = menu_bar.addMenu("Help")
 
         # File menu actions
@@ -445,8 +457,9 @@ class App(QMainWindow):
         save_file_action.triggered.connect(self.save_session)
         save_file_action.setShortcut("Ctrl+S")
 
+        self.recent_file_actions = []
         self.recent_menu = QMenu("Recent Files", self)
-        for i in range(self.max_recent_files):
+        for i in range(Settings.ui.max_recent_files):
             action = QAction(self)
             action.setVisible(False)
             action.triggered.connect(self._open_recent_file)
@@ -638,10 +651,123 @@ class App(QMainWindow):
         view_menu.addAction(show_scale_bar)
         view_menu.addAction(show_viewer_mode)
         view_menu.addSeparator()
+
+        xy_action = QAction("XY-Plane", self)
+        xy_action.setText("Top View (XY)\tz")
+        xy_action.triggered.connect(lambda: self.simulate_key_press("z"))
+        yz_action = QAction("YZ-Plane", self)
+        yz_action.setText("Side View (YZ)\tx")
+        yz_action.triggered.connect(lambda: self.simulate_key_press("x"))
+        xz_action = QAction("XZ-Plane", self)
+        xz_action.setText("Front View (XZ)\tc")
+        xz_action.triggered.connect(lambda: self.simulate_key_press("c"))
+        view_menu.addAction(xy_action)
+        view_menu.addAction(yz_action)
+        view_menu.addAction(xz_action)
+        view_menu.addSeparator()
+
         view_menu.addAction(self.volume_action)
         view_menu.addAction(self.trajectory_action)
 
         help_menu.addAction(show_keybinds_action)
+
+        viewing_action = QAction("Viewing Mode\tEsc", self)
+        viewing_action.triggered.connect(lambda: self.handle_escape_key())
+
+        selection_action = QAction("Point Selection\tr", self)
+        selection_action.triggered.connect(lambda: self.simulate_key_press("r"))
+
+        expand_selection_action = QAction("Expand Selection\te", self)
+        expand_selection_action.triggered.connect(lambda: self.simulate_key_press("e"))
+
+        picking_action = QAction("Pick Objects\tShift+E", self)
+        picking_action.triggered.connect(lambda: self.simulate_key_press("E"))
+
+        remove_action = QAction("Remove Selection\tDelete", self)
+        remove_action.triggered.connect(lambda: self.simulate_key_press("\x7f"))
+
+        merge_action = QAction("Merge Selection", self)
+        merge_action.setText("Merge Selection\tm")
+        merge_action.triggered.connect(lambda: self.simulate_key_press("m"))
+
+        drawing_action = QAction("Free Hand Drawing", self)
+        drawing_action.setText("Free Hand Drawing\ta")
+        drawing_action.triggered.connect(lambda: self.simulate_key_press("a"))
+
+        curve_action = QAction("Curve Drawing\tShift+A", self)
+        curve_action.triggered.connect(lambda: self.simulate_key_press("A"))
+
+        mesh_delete_action = QAction("Delete Mesh Triangles\tq", self)
+        mesh_delete_action.triggered.connect(lambda: self.simulate_key_press("q"))
+
+        mesh_add_action = QAction("Add Mesh Triangles\tShift+Q", self)
+        mesh_add_action.triggered.connect(lambda: self.simulate_key_press("m"))
+
+        interaction_target_menu = QMenu("Interaction Target", self)
+        target_group = QActionGroup(self)
+        target_group.setExclusive(True)
+        self.cluster_target_action = QAction("Clusters\ts", self)
+        self.cluster_target_action.setCheckable(True)
+        self.cluster_target_action.setChecked(True)
+        self.cluster_target_action.triggered.connect(
+            lambda: self.simulate_key_press("s")
+        )
+        target_group.addAction(self.cluster_target_action)
+
+        self.model_target_action = QAction("Models\ts", self)
+        self.model_target_action.setCheckable(True)
+        self.model_target_action.triggered.connect(lambda: self.simulate_key_press("s"))
+        target_group.addAction(self.model_target_action)
+        interaction_target_menu.addAction(self.cluster_target_action)
+        interaction_target_menu.addAction(self.model_target_action)
+
+        interact_menu.addAction(viewing_action)
+        interact_menu.addSeparator()
+
+        interact_menu.addAction(selection_action)
+        interact_menu.addAction(picking_action)
+        interact_menu.addMenu(interaction_target_menu)
+        interact_menu.addSeparator()
+
+        interact_menu.addAction(merge_action)
+        interact_menu.addAction(remove_action)
+        interact_menu.addAction(expand_selection_action)
+        interact_menu.addSeparator()
+
+        interact_menu.addAction(drawing_action)
+        interact_menu.addAction(curve_action)
+        interact_menu.addSeparator()
+
+        interact_menu.addAction(mesh_add_action)
+        interact_menu.addAction(mesh_delete_action)
+
+    def toggle_selection_menu(self):
+        """Update the menu radio buttons to reflect current selection target."""
+        if self.model_target_action.isChecked():
+            self.cluster_target_action.setChecked(True)
+        else:
+            self.model_target_action.setChecked(True)
+
+    def simulate_key_press(self, key):
+        self.vtk_widget.setFocus()
+
+        key_code = (
+            ord(key.upper())
+            if len(key) == 1
+            else getattr(Qt.Key, f"Key_{key}", ord(key))
+        )
+
+        key_press = QKeyEvent(
+            QEvent.Type.KeyPress, key_code, Qt.KeyboardModifier.NoModifier, key
+        )
+
+        key_release = QKeyEvent(
+            QEvent.Type.KeyRelease, key_code, Qt.KeyboardModifier.NoModifier, key
+        )
+
+        QApplication.postEvent(self.vtk_widget, key_press)
+        QApplication.postEvent(self.vtk_widget, key_release)
+        QApplication.processEvents()
 
     def _animate(self):
         from mosaic.animation.compose import AnimationComposerDialog
@@ -757,6 +883,7 @@ class App(QMainWindow):
             return -1
 
         file_parameters = dialog.get_all_parameters()
+        large_files = False
         with ProgressDialog(filenames, title="Reading Files", parent=None) as pbar:
             for filename in pbar:
                 self._add_file_to_recent(filename)
@@ -776,12 +903,32 @@ class App(QMainWindow):
 
                 base, _ = splitext(basename(filename))
                 use_index = len(container) > 1
+
+                if len(container) > 10000:
+                    reply = QMessageBox.question(
+                        self,
+                        "Large number of objects detected",
+                        f"File '{basename(filename)}' contains {len(container):,} objects.\n\n"
+                        "This may indicate:\n"
+                        "- Raw EM data instead of segmentations or meshes\n"
+                        "- Incorrectly formatted file\n"
+                        "- You are dealing with a large dataset\n"
+                        "Processing will require considerable compute capabilities.\n\n"
+                        "Do you want to continue?",
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    )
+                    if reply != QMessageBox.StandardButton.Yes:
+                        continue
+
                 for index, data in enumerate(container):
                     # data.sampling is typically 1 apart from parser.read_volume
                     scale = np.divide(scale, data.sampling)
                     data.vertices = np.multiply(
                         np.subtract(data.vertices, offset), scale
                     )
+
+                    if data.vertices.shape[0] > 1e7:
+                        large_files = True
 
                     name = base if not use_index else f"{index}_base"
                     if data.faces is None:
@@ -798,6 +945,9 @@ class App(QMainWindow):
                             sampling_rate=sampling,
                         )
                         self.cdata._models.data[index]._meta["name"] = name
+
+        if large_files:
+            show_large_file_warning()
 
         self.cdata.data.data_changed.emit()
         self.cdata.models.data_changed.emit()
@@ -823,15 +973,8 @@ class App(QMainWindow):
 
         self.cdata.to_file(file_path)
 
-    def load_recent_files(self):
-        return QSettings("Mosaic").value("recentFiles", [])
-
-    def save_recent_files(self):
-        settings = QSettings("Mosaic")
-        settings.setValue("recentFiles", self.recent_files)
-
     def update_recent_files_menu(self):
-        files_to_show = self.recent_files[: self.max_recent_files]
+        files_to_show = list(dict.fromkeys(Settings.ui.recent_files))
 
         for i, file_path in enumerate(files_to_show):
             text = f"&{i + 1} {os.path.basename(file_path)}"
@@ -839,20 +982,20 @@ class App(QMainWindow):
             self.recent_file_actions[i].setData(file_path)
             self.recent_file_actions[i].setVisible(True)
 
-        for j in range(len(files_to_show), self.max_recent_files):
+        for j in range(len(files_to_show), Settings.ui.max_recent_files):
             self.recent_file_actions[j].setVisible(False)
 
         self.recent_menu.setEnabled(len(files_to_show) > 0)
 
     def _add_file_to_recent(self, file_path):
-        if file_path in self.recent_files:
-            self.recent_files.remove(file_path)
-        self.recent_files.insert(0, file_path)
+        if file_path in Settings.ui.recent_files:
+            return None
 
-        while len(self.recent_files) > self.max_recent_files:
-            self.recent_files.pop()
+        recent_files = [file_path] + list(Settings.ui.recent_files)
+        while len(recent_files) > Settings.ui.max_recent_files:
+            recent_files.pop()
+        Settings.ui.recent_files = list(dict.fromkeys(recent_files))
 
-        self.save_recent_files()
         self.update_recent_files_menu()
 
     def _open_recent_file(self):
@@ -862,13 +1005,61 @@ class App(QMainWindow):
 
         file_path = action.data()
         if not os.path.exists(file_path):
-            self.recent_files.remove(file_path)
-            self.save_recent_files()
+            QMessageBox.critical(self, "Error", f"{file_path} not found.")
+            recent_files = list(Settings.ui.recent_files)
+            try:
+                recent_files.remove(file_path)
+            except Exception:
+                pass
+            Settings.ui.recent_files = recent_files
             return self.update_recent_files_menu()
 
         if file_path.endswith(".pickle"):
             return self._load_session(file_path)
         return self._open_files([file_path])
+
+
+def show_large_file_warning():
+    if Settings.warnings.suppress_large_file_warning:
+        return None
+
+    msg_box = QMessageBox()
+    msg_box.setIcon(QMessageBox.Icon.Warning)
+    msg_box.setWindowTitle("Large File Detected")
+
+    msg_box.setText(
+        "Large File Warning\n\n"
+        "We found one or more files exceeding 10 million points."
+    )
+
+    msg_box.setInformativeText(
+        "Please make sure this is a segmentation and not raw data. "
+        "If you are on a laptop without dedicated GPU, consider reducing the number "
+        "of points for a smooth experience using Segmentation > Downsample "
+        "or process in batches."
+    )
+
+    msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+    help_button = msg_box.addButton(
+        "Open Documentation", QMessageBox.ButtonRole.HelpRole
+    )
+
+    def open_documentation():
+        import webbrowser
+
+        webbrowser.open(
+            "https://kosinskilab.github.io/mosaic/tutorial/reference/troubleshooting.html#performance-issues"
+        )
+
+    help_button.clicked.connect(open_documentation)
+
+    checkbox = QCheckBox("Don't show this warning again")
+    msg_box.setCheckBox(checkbox)
+
+    msg_box.exec()
+
+    if checkbox.isChecked():
+        Settings.warnings.suppress_large_file_warning = True
 
 
 def main():

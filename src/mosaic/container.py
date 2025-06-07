@@ -1,8 +1,9 @@
-""" Implements DataContainer as handler of Geometry object collections.
+"""
+Implements DataContainer as handler of Geometry object collections.
 
-    Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024 European Molecular Biology Laboratory
 
-    Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from functools import wraps
@@ -462,7 +463,7 @@ class DataContainer:
         return points[mask]
 
     @apply_over_indices
-    def connected_components(self, geometry, **kwargs):
+    def connected_components(self, geometry, distance: float = -1.0, **kwargs):
         """Identify connected components in a point cloud.
 
         Parameters
@@ -470,10 +471,12 @@ class DataContainer:
         geometry : :py:class:`mosaic.geometry.Geometry`
             Cloud to cluster.
         """
-        sampling = geometry.sampling_rate
-        components = connected_components(geometry.points, sampling_rate=sampling)
+        if np.any(np.array(distance) < 0):
+            distance = geometry.sampling_rate
+
+        components = connected_components(geometry.points, distance=distance)
         for component in components:
-            self.add(component, sampling_rate=sampling)
+            self.add(component, sampling_rate=geometry.sampling_rate)
         return 101
 
     @apply_over_indices

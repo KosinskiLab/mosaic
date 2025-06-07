@@ -1,3 +1,12 @@
+"""
+Parallel backend for offloading compute heavy tasks.
+
+Copyright (c) 2025 European Molecular Biology Laboratory
+
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
+
+import warnings
 from functools import wraps
 from typing import Callable, Any, Dict
 
@@ -11,6 +20,7 @@ class TaskWorker(QObject):
 
     resultReady = Signal(object)
     errorOccurred = Signal(str)
+    warningOccurred = Signal(str)
 
     def __init__(self, func: Callable, *args, **kwargs):
         """Initialize the worker with the function and arguments."""
@@ -21,11 +31,31 @@ class TaskWorker(QObject):
 
     def process(self):
         """Execute the function and emit signals based on the result."""
-        try:
-            result = self.func(*self.args, **self.kwargs)
+        with warnings.catch_warnings(record=True) as warning_list:
+            warnings.simplefilter("always")
+
+            try:
+                result = self.func(*self.args, **self.kwargs)
+
+            except Exception as e:
+                self.errorOccurred.emit(str(e))
+                return None
+
+            warning_msg = ""
+            for warning_item in warning_list:
+
+                # TODO: Manage citation warnings more rigorously
+                if "citation" in str(warning_item.message).lower():
+                    continue
+
+                warning_msg += (
+                    f"{warning_item.category.__name__}: {warning_item.message}\n"
+                )
+
+            if len(warning_msg):
+                self.warningOccurred.emit(warning_msg.rstrip())
+
             self.resultReady.emit(result)
-        except Exception as e:
-            self.errorOccurred.emit(str(e))
 
 
 class BackgroundTaskManager(QObject):
@@ -34,6 +64,7 @@ class BackgroundTaskManager(QObject):
     task_started = Signal(str)
     task_completed = Signal(str, object)
     task_failed = Signal(str, str)
+    task_warning = Signal(str, str)
 
     _instance = None
 
@@ -53,6 +84,7 @@ class BackgroundTaskManager(QObject):
 
         self.task_completed.connect(self._dispatch_callback)
         self.task_failed.connect(self._default_error_handler)
+        self.task_warning.connect(self._default_warning_handler)
 
     def _dispatch_callback(self, task_name, result):
         """Dispatch to the appropriate callback for this task."""
@@ -62,26 +94,59 @@ class BackgroundTaskManager(QObject):
 
     def _default_error_handler(self, task_name, error):
         """Default handler for task errors."""
-        QMessageBox.warning(
-            None, "Error", f"An error occurred in {task_name}: {error}."
-        )
+        return self._default_messagebox(task_name, error, is_warning=False)
+
+    def _default_warning_handler(self, task_name, warning):
+        """Default handler for task errors."""
+        return self._default_messagebox(task_name, warning, is_warning=True)
+
+    def _default_messagebox(self, task_name, msg, is_warning: bool = False):
+        readable_name = task_name.replace("_", " ").title()
+
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Icon.Critical)
+        msg_box.setWindowTitle("Operation Failed")
+        msg_box.setText(f"{readable_name} Failed with Errors")
+        if is_warning:
+            msg_box.setIcon(QMessageBox.Icon.Warning)
+            msg_box.setWindowTitle("Operation Warning")
+            msg_box.setText(f"{readable_name} Completed with Warnings")
+
+        msg_box.setInformativeText(str(msg))
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.exec()
 
     def run_task(
-        self, name: str, func: Callable, callback=None, instance=None, *args, **kwargs
+        self,
+        name: str,
+        func: Callable,
+        callback: Callable = None,
+        instance: object = None,
+        *args,
+        **kwargs,
     ) -> bool:
-        """Run a function in a background thread.
+        """
+        Run a function in a background thread.
 
-        Args:
-            name: A unique identifier for the task.
-            func: The function to run.
-            *args: Positional arguments to pass to the function.
-            callback: Optional callback function to call when task completes.
-            instance: Instance to pass to the callback.
-            **kwargs: Keyword arguments to pass to the function.
+        Parameters
+        ----------
+        name : str
+            A unique identifier for the task.
+        func : callable
+            The function to run.
+        callback : callable, optional
+            callback function to call when task completes.
+        instance : object, optional
+            Class instance to pass to the callback
+        *args: optional
+            Positional arguments to pass to func.
+        **kwars : optional
+            Keyword arguments to pass to func.
 
-        Returns:
-            bool: True if the task was started, False if a task with the same name
-                 is already running.
+        Returns
+        -------
+        bool
+            True if task was started False otherwise.
         """
         if name in self._active_tasks:
             return False
@@ -98,6 +163,9 @@ class BackgroundTaskManager(QObject):
         thread.started.connect(worker.process)
         worker.resultReady.connect(lambda result: self._handle_completion(name, result))
         worker.errorOccurred.connect(lambda error: self._handle_error(name, error))
+        worker.warningOccurred.connect(
+            lambda warning: self._default_warning_handler(name, warning)
+        )
 
         self._active_tasks[name] = thread
         self._workers[name] = worker
@@ -112,6 +180,7 @@ class BackgroundTaskManager(QObject):
 
     def _handle_error(self, name: str, error: str):
         self._cleanup_task(name)
+
         # Also remove any registered callback
         if name in self._callbacks:
             self._callbacks.pop(name)
@@ -125,6 +194,7 @@ class BackgroundTaskManager(QObject):
             thread.started.disconnect()
             worker.resultReady.disconnect()
             worker.errorOccurred.disconnect()
+            worker.warningOccurred.disconnect()
 
             worker.deleteLater()
             thread.quit()
@@ -143,12 +213,15 @@ class BackgroundTaskManager(QObject):
         self._callbacks.clear()
 
 
-def run_in_background(task_name=None, callback=None):
+def run_in_background(task_name: str = None, callback: Callable = None):
     """Decorator to run a method in the background thread.
 
-    Args:
-        task_name: Optional name for the task. If not provided, uses function name.
-        callback: Optional callback function to execute when task completes.
+    Paramters
+    ---------
+    task_name: str, optional
+        Optional name for the task. If not provided, uses function name.
+    callback: callable, optional
+        Callback function to execute when task completes.
     """
 
     def decorator(func):
