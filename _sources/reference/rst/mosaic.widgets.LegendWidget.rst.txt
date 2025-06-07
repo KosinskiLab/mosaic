@@ -1,0 +1,26 @@
+﻿mosaic.widgets.LegendWidget
+===========================
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: LegendWidget
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LegendWidget.__init__
+      ~LegendWidget.hide
+      ~LegendWidget.set_lookup_table
+      ~LegendWidget.set_orientation
+      ~LegendWidget.show
+   
+   
+
+   
+   
+   

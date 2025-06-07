@@ -1,0 +1,33 @@
+﻿mosaic.formats.parser.GeometryDataContainer
+===========================================
+
+.. currentmodule:: mosaic.formats.parser
+
+.. autoclass:: GeometryDataContainer
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GeometryDataContainer.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GeometryDataContainer.faces
+      ~GeometryDataContainer.normals
+      ~GeometryDataContainer.quaternions
+      ~GeometryDataContainer.sampling
+      ~GeometryDataContainer.shape
+      ~GeometryDataContainer.vertices
+   
+   

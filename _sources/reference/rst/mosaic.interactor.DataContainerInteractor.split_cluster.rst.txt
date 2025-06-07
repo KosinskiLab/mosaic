@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.split\_cluster
+========================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.split_cluster

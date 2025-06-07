@@ -1,0 +1,6 @@
+﻿mosaic.parallel.TaskWorker.resultReady
+======================================
+
+.. currentmodule:: mosaic.parallel
+
+.. autoattribute:: TaskWorker.resultReady
