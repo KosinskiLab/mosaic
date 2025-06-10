@@ -1,0 +1,6 @@
+﻿mosaic.parallel.run\_in\_background
+===================================
+
+.. currentmodule:: mosaic.parallel
+
+.. autofunction:: run_in_background

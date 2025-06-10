@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.remove\_cluster
+=========================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.remove_cluster

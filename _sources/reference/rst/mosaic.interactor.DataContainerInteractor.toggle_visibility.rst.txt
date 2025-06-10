@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.toggle\_visibility
+============================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.toggle_visibility
