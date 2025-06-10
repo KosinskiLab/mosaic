@@ -9,7 +9,7 @@ from .parameter_widget import ParameterWidget
 from .trajectory_player import TrajectoryPlayer
 from .ribbon import RibbonToolBar, create_button
 from .volume_viewer import MultiVolumeViewer, VolumeViewer
-from .coordinate_system import BoundingBoxWidget, AxesWidget
+from .coordinate_system import AxesWidget, BoundingBoxManager
 from .container_list import ContainerListWidget, StyledListWidgetItem
 from .status_indicator import StatusIndicator, CursorModeHandler, ViewerModes
 from .settings import *

@@ -15,6 +15,7 @@ __all__ = [
     "QSlider_style",
     "QMessageBox_style",
     "QProgressBar_style",
+    "QToolButton_style",
 ]
 
 
@@ -389,5 +390,39 @@ QProgressBar_style = """
     QProgressBar::chunk {
         background-color: #4f46e5;
         border-radius: 4px;
+    }
+"""
+
+
+QToolButton_style = """
+    QToolButton {
+        min-width: 60px;
+        padding: 6px 4px;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+    QToolButton:hover {
+        background: #1a000000;
+    }
+    QToolButton:pressed {
+        background: rgba(0, 0, 0, 0.24);
+    }
+    QToolButton::menu-indicator {
+        image: url(none);
+        width: 0px;
+        subcontrol-position: right bottom;
+        subcontrol-origin: padding;
+        margin-left: 0px;
+    }
+    QToolButton::menu-button {
+        border: none;
+        width: 12px;
+        padding: 0px;
+    }
+    QToolButton::menu-button:hover {
+        background: transparent;
+    }
+    QToolButton::menu-button:hover {
+        background: rgba(0, 0, 0, 0.05);
     }
 """

@@ -16,7 +16,7 @@ from qtpy.QtWidgets import (
 import qtawesome as qta
 
 from .settings import create_setting_widget, get_layout_widget_value
-from ..stylesheets import QPushButton_style
+from ..stylesheets import QPushButton_style, QToolButton_style
 
 
 class SettingsToolButton(QToolButton):
@@ -39,38 +39,6 @@ class SettingsToolButton(QToolButton):
             self.settings_menu = SettingsMenu(settings_config, parent=self)
             self.settings_menu.settings_applied.connect(self._applied_settings)
             self.setMenu(self.settings_menu)
-
-        self.setStyleSheet(
-            """
-            QToolButton {
-                min-width: 60px;
-                padding: 6px 4px;
-                border-radius: 4px;
-                font-size: 11px;
-            }
-            QToolButton:hover {
-                background: #1a000000;
-            }
-            QToolButton::menu-indicator {
-                image: url(none);
-                width: 0px;
-                subcontrol-position: right bottom;
-                subcontrol-origin: padding;
-                margin-left: 0px;
-            }
-            QToolButton::menu-button {
-                border: none;
-                width: 12px;
-                padding: 0px;
-            }
-            QToolButton::menu-button:hover {
-                background: transparent;
-            }
-            QToolButton::menu-button:hover {
-                background: rgba(0, 0, 0, 0.05);
-            }
-        """
-        )
 
     def _apply(self):
         settings = self.settings_menu.get_current_settings()
@@ -294,6 +262,7 @@ def create_button(
         if callback:
             button.triggered.connect(callback)
 
+    button.setStyleSheet(QToolButton_style)
     button.setIconSize(QSize(20, 20))
     if tooltip:
         button.setToolTip(tooltip)

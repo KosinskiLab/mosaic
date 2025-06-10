@@ -8,7 +8,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import enum
 
-import vtk
+from vtk import vtkTextActor
 from qtpy.QtCore import Qt, QPoint
 from qtpy.QtWidgets import QWidget, QApplication
 from qtpy.QtGui import (
@@ -53,7 +53,7 @@ class StatusIndicator:
         self.interactor.GetRenderWindow().Render()
 
     def _create_actor(self, text):
-        text_actor = vtk.vtkTextActor()
+        text_actor = vtkTextActor()
         text_actor.SetInput(text)
 
         text_actor.GetPositionCoordinate().SetCoordinateSystemToNormalizedViewport()
@@ -63,7 +63,7 @@ class StatusIndicator:
         font = app.font()
 
         text_prop = text_actor.GetTextProperty()
-        text_prop.SetFontSize(12)
+        text_prop.SetFontSize(14)
         text_prop.SetFontFamilyAsString(font.family())
         text_prop.SetColor(107 / 255, 114 / 255, 128 / 255)
         text_prop.SetBackgroundOpacity(0.0)

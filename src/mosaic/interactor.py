@@ -51,8 +51,8 @@ def _cluster_modifier(keep_selection: bool = False, render: bool = True):
 
             result = func(self, indices=(*indices, *kwarg_indices), **kwargs)
 
+            self.data_changed.emit()
             if render:
-                self.data_changed.emit()
                 self.render()
 
             if not keep_selection:

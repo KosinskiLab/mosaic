@@ -96,6 +96,7 @@ Mosaic provides multiple interaction modes for selecting and modifying different
 
 
 **Viewing Mode (Default)**
+
 - Default camera navigation mode
 - Use mouse to rotate, pan, and zoom the 3D viewport
 - Press ``Esc`` to return to viewing mode from any other mode

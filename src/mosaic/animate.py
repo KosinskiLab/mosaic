@@ -87,18 +87,27 @@ class ExportManager:
         return clipboard.setImage(q_image)
 
     def capture_screenshot(
-        self, transparent_bg: bool = False, width: int = None, height: int = None
+        self,
+        transparent_bg: bool = False,
+        width: int = None,
+        height: int = None,
+        magnification: int = 2,
+        multisamples: int = 8,
     ):
-        """Capture screenshot of current VTK window with optional custom dimensions
+        """Capture high-quality screenshot of current VTK window
 
         Parameters
         ----------
         transparent_bg : bool, optional
             Whether to keep transparent background, by default False
         width : int, optional
-            Custom width for the screenshot, uses current window with by default.
+            Custom width for the screenshot, uses current window width by default.
         height : int, optional
             Custom height for the screenshot, uses current window height by default.
+        magnification : int, optional
+            Resolution multiplier for supersampling (1-8), by default 2
+        multisamples : int, optional
+            Number of multisamples for hardware antialiasing, by default 8
 
         Returns
         -------
@@ -107,20 +116,30 @@ class ExportManager:
         """
         render_window = self.vtk_widget.GetRenderWindow()
         render_window.SetAlphaBitPlanes(1)
-        render_window.SetMultiSamples(0)
+
+        original_multisamples = render_window.GetMultiSamples()
+        original_size = render_window.GetSize()
+
+        render_window.SetMultiSamples(multisamples)
 
         size_changed = False
-        original_size = render_window.GetSize()
-        if width != original_size[0] or height != original_size[1]:
-            new_width = width if width is not None else original_size[0]
-            new_height = height if height is not None else original_size[1]
-            render_window.SetSize(new_width, new_height)
+        target_width = width if width is not None else original_size[0]
+        target_height = height if height is not None else original_size[1]
+
+        # Apply magnification for supersampling
+        render_width = target_width * magnification
+        render_height = target_height * magnification
+
+        if render_width != original_size[0] or render_height != original_size[1]:
+            render_window.SetSize(render_width, render_height)
             render_window.Render()
             size_changed = True
 
         window_to_image = vtkWindowToImageFilter()
         window_to_image.SetInput(render_window)
         window_to_image.SetInputBufferTypeToRGBA()
+        window_to_image.SetScale(1)
+        window_to_image.ReadFrontBufferOff()
         window_to_image.Update()
 
         vtk_image = window_to_image.GetOutput()
@@ -129,11 +148,17 @@ class ExportManager:
         arr = numpy_support.vtk_to_numpy(vtk_image.GetPointData().GetScalars())
         arr = arr.reshape(img_height, img_width, -1)[::-1]
 
+        render_window.SetMultiSamples(original_multisamples)
+
         if size_changed:
             render_window.SetSize(*original_size)
             render_window.Render()
 
         ret = Image.fromarray(arr, "RGBA")
+
+        if magnification > 1:
+            ret = ret.resize((target_width, target_height), Image.LANCZOS)
+
         if transparent_bg:
             return ret
         return ret.convert("RGB")
