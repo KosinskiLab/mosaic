@@ -327,6 +327,7 @@ class ExportManager:
             "transparent_bg": not is_video,
             "width": width,
             "height": height,
+            "magnification": 1,
         }
         writer = FrameWriter(filename=filename)
         quality = max(min(quality / 10.0, 10), 1) if quality else None
