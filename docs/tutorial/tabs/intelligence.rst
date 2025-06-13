@@ -86,7 +86,7 @@ Prepares meshes for simulation:
 
 .. note::
 
-    The Trimem library for mesh equilibration (see :ref:`installation instructions <installation-dts>`).
+    Requires Trimem for mesh equilibration (see :ref:`installation instructions <installation-dts>`).
 
 Setup
 -----

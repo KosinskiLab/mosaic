@@ -53,9 +53,6 @@ QGroupBox_style = """
         left: 7px;
         padding: 0px 5px 0px 5px;
     }
-    QPushButton:focus {
-        outline: none;
-    }
 """
 
 QPushButton_style = """
@@ -221,7 +218,7 @@ QCheckBox_style = f"""
         border: 1px solid #cbd5e1;
     }}
     QCheckBox::indicator:checked {{
-        image: url('{_get_resource_path("checkbox-cross.svg")}')
+        image: url('{_get_resource_path("checkbox-checkmark.svg")}')
     }}
 """
 

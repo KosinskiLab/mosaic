@@ -412,7 +412,7 @@ class MultiVolumeViewer(QWidget):
 
         add_button = QPushButton()
         add_button.setIcon(qta.icon("fa5s.plus", color="#696c6f"))
-        add_button.setFixedWidth(20)
+        add_button.setFixedWidth(30)
         add_button.clicked.connect(self.add_viewer)
         self.primary.controls_layout.addWidget(add_button)
 
@@ -426,7 +426,7 @@ class MultiVolumeViewer(QWidget):
 
         remove_button = QPushButton()
         remove_button.setIcon(qta.icon("fa5s.trash", color="#696c6f"))
-        remove_button.setFixedWidth(20)
+        remove_button.setFixedWidth(30)
         remove_button.clicked.connect(lambda: self.remove_viewer(new_viewer))
         new_viewer.controls_layout.addWidget(remove_button)
 

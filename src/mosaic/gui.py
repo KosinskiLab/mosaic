@@ -909,7 +909,6 @@ class App(QMainWindow):
             return -1
 
         file_parameters = dialog.get_all_parameters()
-        large_files = False
         with ProgressDialog(filenames, title="Reading Files", parent=None) as pbar:
             for filename in pbar:
                 self._add_file_to_recent(filename)
@@ -930,7 +929,7 @@ class App(QMainWindow):
                 base, _ = splitext(basename(filename))
                 use_index = len(container) > 1
 
-                if len(container) > 10000:
+                if len(container) > 1000:
                     reply = QMessageBox.question(
                         self,
                         "Large number of objects detected",
@@ -954,7 +953,8 @@ class App(QMainWindow):
                     )
 
                     if data.vertices.shape[0] > 1e7:
-                        large_files = True
+                        if not show_large_file_warning():
+                            continue
 
                     name = base if not use_index else f"{index}_base"
                     if data.faces is None:
@@ -971,9 +971,6 @@ class App(QMainWindow):
                             sampling_rate=sampling,
                         )
                         self.cdata._models.data[index]._meta["name"] = name
-
-        if large_files:
-            show_large_file_warning()
 
         self.cdata.data.data_changed.emit()
         self.cdata.models.data_changed.emit()
@@ -1045,9 +1042,9 @@ class App(QMainWindow):
         return self._open_files([file_path])
 
 
-def show_large_file_warning():
+def show_large_file_warning() -> bool:
     if Settings.warnings.suppress_large_file_warning:
-        return None
+        return True
 
     msg_box = QMessageBox()
     msg_box.setIcon(QMessageBox.Icon.Warning)
@@ -1065,10 +1062,14 @@ def show_large_file_warning():
         "or process in batches."
     )
 
-    msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-    help_button = msg_box.addButton(
-        "Open Documentation", QMessageBox.ButtonRole.HelpRole
+    msg_box.setStandardButtons(
+        QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel
     )
+    msg_box.setDefaultButton(QMessageBox.StandardButton.Ok)
+    msg_box.button(QMessageBox.StandardButton.Ok).setText("Accept")
+    msg_box.button(QMessageBox.StandardButton.Cancel).setText("Skip File")
+
+    help_button = msg_box.addButton("Help", QMessageBox.ButtonRole.HelpRole)
 
     def open_documentation():
         import webbrowser
@@ -1082,7 +1083,9 @@ def show_large_file_warning():
     checkbox = QCheckBox("Don't show this warning again")
     msg_box.setCheckBox(checkbox)
 
-    msg_box.exec()
+    result = msg_box.exec()
 
     if checkbox.isChecked():
         Settings.warnings.suppress_large_file_warning = True
+
+    return result == QMessageBox.StandardButton.Ok

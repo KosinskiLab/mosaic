@@ -59,6 +59,19 @@ After setting up your environment, Mosaic can be installed from PyPI
    mosaic --version          # Smoke test to verify installation
 
 
+.. note::
+
+   Installing pymeshlab from PyPi has proven troublesome on some Linux distributions. If the Mosaic installation fails with pymeshlab-related issues, you can either build pymeshlab from GitHub
+
+   .. code-block:: bash
+
+      python3 -m pip install git+https://github.com/cnr-isti-vclab/PyMeshLab.git@main
+
+   or follow their `Tutorial <https://github.com/cnr-isti-vclab/PyMeshLab/wiki/How-to-install-the-last-nightly-version>`_ for installing the lastest binaries for your system.
+
+   After installing pymeshlab you have to install Mosaic again.
+
+
 Optional Dependencies
 ---------------------
 
