@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.merge\_cluster
+========================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.merge_cluster

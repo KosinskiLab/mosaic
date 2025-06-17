@@ -1,0 +1,6 @@
+﻿mosaic.container.DataContainer.new
+==================================
+
+.. currentmodule:: mosaic.container
+
+.. automethod:: DataContainer.new

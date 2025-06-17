@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.highlight\_clusters\_from\_selected\_points
+=====================================================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.highlight_clusters_from_selected_points
