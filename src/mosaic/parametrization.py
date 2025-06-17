@@ -1358,7 +1358,7 @@ class ConvexHull(TriangularMesh):
 
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(positions.copy())
-        pcd = pcd.voxel_down_sample(voxel_size=2 * voxel_size)
+        # pcd = pcd.voxel_down_sample(voxel_size=2 * voxel_size)
 
         points = np.asarray(pcd.points).copy()
         scale = points.max(axis=0)

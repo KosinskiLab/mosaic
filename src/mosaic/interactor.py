@@ -598,11 +598,11 @@ class DataContainerInteractor(QObject):
         if not len(indices):
             return -1
 
-        representation = representation.lower().replace("with", "_").replace(" ", "_")
+        representation = representation.lower().replace(" ", "_")
 
         if representation == "points":
             representation = "pointcloud"
-        elif representation == "points_normals":
+        elif representation == "points_with_normals":
             representation = "pointcloud_normals"
 
         for index in indices:
