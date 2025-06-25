@@ -283,8 +283,14 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         faces = vtk.util.numpy_support.vtk_to_numpy(new_cells.GetConnectivityArray())
         mesh = to_open3d(geometry.points, faces.reshape(-1, 3))
-        geometry._meta.update({"fit": TriangularMesh(mesh)})
 
+        new_mesh = TriangularMesh(mesh)
+        geometry.swap_data(
+            points=new_mesh.vertices,
+            normals=new_mesh.compute_vertex_normals(),
+            faces=new_mesh.triangles,
+            meta=geometry._meta | {"fit": new_mesh},
+        )
         return self.cleanup()
 
     def on_key_press(self, obj, event):

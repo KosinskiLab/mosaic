@@ -615,9 +615,18 @@ class PropertyAnalysisDialog(QDialog):
         geometries = self._get_selected_objects()
         for geometry in geometries:
             geometry_id = id(geometry)
-            if geometry_id in self.properties:
+
+            # Newly selected object
+            value = self.properties.get(geometry_id)
+            if value is None:
+                missing_geometries.append(geometry)
                 continue
-            missing_geometries.append(geometry)
+
+            # In case the object was modified during the dialog lifetime
+            # TODO: Add listener to data_changed to track changes in aggregated metrics
+            if hasattr(value, "size"):
+                if value.size != geometry.points.shape[0]:
+                    missing_geometries.append(geometry)
 
         property_name = self.property_map.get(self.property_combo.currentText())
         if property_name is None:

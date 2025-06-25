@@ -788,6 +788,14 @@ class TriangularMesh(Parametrization):
     def __init__(self, mesh):
         self.mesh = mesh
 
+        # We make sure the mesh is clean here to avoid segfaults from
+        # ill-defined meshes during curvature or distance computation
+        self.mesh.remove_non_manifold_edges()
+        self.mesh.remove_degenerate_triangles()
+        self.mesh.remove_duplicated_triangles()
+        self.mesh.remove_unreferenced_vertices()
+        self.mesh.remove_duplicated_vertices()
+
     def to_file(self, file_path):
         o3d.io.write_triangle_mesh(file_path, self.mesh)
 
@@ -958,15 +966,12 @@ class TriangularMesh(Parametrization):
     def compute_curvature(
         self, curvature: str = "gaussian", radius: int = 5
     ) -> np.ndarray:
-        vertices = np.asarray(self.mesh.vertices)
-        faces = np.asarray(self.mesh.triangles)
-
         use_k_ring = True
         if radius < 2:
             radius, use_k_ring = 2, False
 
         pd1, pd2, pv1, pv2 = igl.principal_curvature(
-            vertices, faces, radius=radius, use_k_ring=use_k_ring
+            self.vertices, self.triangles, radius=radius, use_k_ring=use_k_ring
         )
 
         curvature = curvature.lower()
