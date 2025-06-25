@@ -947,9 +947,9 @@ class App(QMainWindow):
 
                 for index, data in enumerate(container):
                     # data.sampling is typically 1 apart from parser.read_volume
-                    scale = np.divide(scale, data.sampling)
+                    scale_new = np.divide(scale, data.sampling)
                     data.vertices = np.multiply(
-                        np.subtract(data.vertices, offset), scale
+                        np.subtract(data.vertices, offset), scale_new
                     )
 
                     if data.vertices.shape[0] > 1e7:
