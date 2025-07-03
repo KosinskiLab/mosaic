@@ -497,9 +497,12 @@ class DataContainerInteractor(QObject):
 
         def on_parameters_changed(parameters):
             sampling_rate = parameters.pop("sampling_rate")
-            self.container.update_appearance(indices, parameters)
+            full_render = self.container.update_appearance(indices, parameters)
             for index in indices:
                 self.container.data[index]._sampling_rate = sampling_rate
+
+            if full_render:
+                return self.render()
             return self.render_vtk()
 
         dialog.parametersChanged.connect(on_parameters_changed)
@@ -621,12 +624,9 @@ class DataContainerInteractor(QObject):
                 "gaussian_density",
             ):
                 self.container.data[index] = geometry[...]
-                if hasattr(geometry, "_original_data"):
-                    self.container.data[index]._original_data = geometry._original_data
                 geometry = self.container.data[index]
 
             geometry.change_representation(representation)
-
         self.render()
 
     def merge(self):

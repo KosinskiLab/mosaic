@@ -610,7 +610,7 @@ class DataContainer:
             self.data[index].set_visibility(visible)
         return None
 
-    def update_appearance(self, indices: list, parameters: dict) -> None:
+    def update_appearance(self, indices: list, parameters: dict) -> bool:
         from .formats.parser import load_density
         from .geometry import VolumeGeometry
 
@@ -623,6 +623,7 @@ class DataContainer:
             sampling = volume.sampling_rate
             volume = volume.data * parameters.get("scale", 1.0)
 
+        full_render = False
         parameters["isovalue_percentile"] = (
             parameters.get("isovalue_percentile", 99) / 100
         )
@@ -632,6 +633,8 @@ class DataContainer:
 
             geometry = self.data[index]
             if volume is not None:
+                if not isinstance(geometry, VolumeGeometry):
+                    geometry = geometry[...]
                 state = geometry.__getstate__()
 
                 try:
@@ -642,12 +645,16 @@ class DataContainer:
                 if not data_recent:
                     state["volume"] = volume
                     state["volume_sampling_rate"] = sampling
-                    geometry = VolumeGeometry(vtk_actor=geometry._actor, **state)
+
+                    # New actor so make sure to re-render
+                    full_render = True
+                    geometry = VolumeGeometry(**state)
                     self.data[index] = geometry
 
             geometry.set_appearance(**parameters)
 
         self.highlight(indices)
+        return full_render
 
     def get_cluster_count(self) -> int:
         """Get number of geometries in container.
