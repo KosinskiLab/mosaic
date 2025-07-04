@@ -346,9 +346,7 @@ class Geometry:
         prop.SetDiffuse(self._appearance.get("diffuse", 0.7))
         prop.SetSpecular(self._appearance.get("specular", 0.2))
 
-    def create_actor(
-        self, actor=None, lod_points: int = 500000, lod_points_size: int = 3
-    ):
+    def create_actor(self, actor=None, lod_points: int = 5e6, lod_points_size: int = 3):
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(self._data)
 
@@ -359,7 +357,7 @@ class Geometry:
 
         if actor is None:
             actor = vtk.vtkLODActor()
-            actor.SetNumberOfCloudPoints(lod_points)
+            actor.SetNumberOfCloudPoints(int(lod_points))
             actor.GetProperty().SetPointSize(lod_points_size)
 
             # medium_filter = vtk.vtkMaskPoints()

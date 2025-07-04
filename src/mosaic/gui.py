@@ -105,14 +105,14 @@ class App(QMainWindow):
         render_window.SetPointSmoothing(False)
         render_window.SetLineSmoothing(False)
         render_window.SetPolygonSmoothing(False)
-        render_window.SetDesiredUpdateRate(60.0)
+        render_window.SetDesiredUpdateRate(30.0)
 
         # Setup GUI interactions
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         self.interactor.Initialize()
         self.interactor.AddObserver("RightButtonPressEvent", self.on_right_click)
         self.interactor.AddObserver("KeyPressEvent", self.on_key_press)
-        self.interactor.SetDesiredUpdateRate(60.0)
+        self.interactor.SetDesiredUpdateRate(30.0)
 
         self.cdata = MosaicData(self.vtk_widget)
 
