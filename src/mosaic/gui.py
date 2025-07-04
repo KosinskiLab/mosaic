@@ -442,6 +442,9 @@ class App(QMainWindow):
         save_file_action.triggered.connect(self.save_session)
         save_file_action.setShortcut("Ctrl+S")
 
+        close_file_action = QAction("Close Session", self)
+        close_file_action.triggered.connect(self.close_session)
+
         self.recent_file_actions = []
         self.recent_menu = QMenu("Recent Files", self)
         for i in range(Settings.ui.max_recent_files):
@@ -603,6 +606,7 @@ class App(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(new_session_action)
         file_menu.addAction(save_file_action)
+        file_menu.addAction(close_file_action)
 
         file_menu.addSeparator()
         file_menu.addAction(screenshot_action)
@@ -880,9 +884,11 @@ class App(QMainWindow):
         self.renderer.AddActor(self.status_indicator.text_actor)
         self.cdata.data.rendered_actors.clear()
         self.cdata.models.rendered_actors.clear()
+
         self.cdata.data.render()
         self.cdata.models.render()
-        self.set_camera_view("x")
+
+        self.set_camera_view("z")
 
     def load_session(self):
         file_dialog = QFileDialog()
@@ -891,6 +897,43 @@ class App(QMainWindow):
             return -1
 
         return self._load_session(file_path)
+
+    def close_session(self):
+
+        def _show_close_session_warning() -> bool:
+            msg_box = QMessageBox()
+            msg_box.setIcon(QMessageBox.Icon.Warning)
+            msg_box.setWindowTitle("Close Session")
+            msg_box.setText("Close Session Warning")
+            msg_box.setInformativeText(
+                "Are you sure you want to close the current session? "
+                "This action cannot be undone and all current work will be lost."
+            )
+            msg_box.setStandardButtons(
+                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel
+            )
+            msg_box.setDefaultButton(QMessageBox.StandardButton.Cancel)
+            msg_box.button(QMessageBox.StandardButton.Ok).setText("Close")
+            msg_box.button(QMessageBox.StandardButton.Cancel).setText("Keep")
+
+            result = msg_box.exec()
+            return result == QMessageBox.StandardButton.Ok
+
+        if not _show_close_session_warning():
+            return None
+
+        self.renderer.RemoveAllViewProps()
+        self.volume_viewer.close()
+
+        self.dataset_bbox.setChecked(False)
+        self.computed_bbox.setChecked(False)
+
+        self.cdata.reset()
+        self.cdata.data.render()
+        self.cdata.models.render()
+
+        self.renderer.AddActor(self.status_indicator.text_actor)
+        self.set_camera_view("z")
 
     def _open_files(self, filenames: List[str]):
         from mosaic.formats import open_file
@@ -976,7 +1019,9 @@ class App(QMainWindow):
         self.cdata.models.data_changed.emit()
         self.cdata.data.render()
         self.cdata.models.render()
-        return 0
+
+        # Make sure loaded objects are visible in scene
+        return self.set_camera_view("z")
 
     def open_files(self):
         filenames, _ = QFileDialog.getOpenFileNames(self, "Import Files")

@@ -56,7 +56,8 @@ class MosaicData(QObject):
             pickle.dump(state, ofile)
 
     def load_session(self, filename: str):
-        """Load application state from file.
+        """
+        Load application state from file.
 
         Parameters
         ----------
@@ -91,6 +92,16 @@ class MosaicData(QObject):
         self.shape = shape
         self.data.update(point_manager)
         self.models.update(model_manager)
+
+    def reset(self):
+        """
+        Reset the state of the class instance.
+        """
+        from .container import DataContainer
+
+        self.shape = None
+        self.data.update(DataContainer())
+        self.models.update(DataContainer())
 
     def _get_active_container(self):
         if self.active_picker == "data":
