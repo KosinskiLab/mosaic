@@ -1,6 +1,7 @@
 import re
 from os import listdir
 from typing import Union
+from platform import system
 from os.path import join, exists, basename
 
 import numpy as np
@@ -8,11 +9,36 @@ from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 
 from ..parallel import run_in_background
 from ..widgets.ribbon import create_button
+from ..stylesheets import QPushButton_style
 
 
 def on_run_complete(self, *args, **kwargs):
     self.cdata.data.render()
     self.cdata.models.render()
+
+
+def _getExistingDirectory(parent, text):
+    dialog = QFileDialog(parent)
+    dialog.setWindowTitle(text)
+
+    dialog.setFileMode(QFileDialog.Directory)
+
+    if system() == "Darwin":
+        dialog.setOptions(
+            QFileDialog.ShowDirsOnly
+            | QFileDialog.DontUseCustomDirectoryIcons
+            | QFileDialog.DontResolveSymlinks
+            | QFileDialog.DontUseNativeDialog
+        )
+    else:
+        dialog.setOptions(
+            QFileDialog.ShowDirsOnly
+            | QFileDialog.DontUseCustomDirectoryIcons
+            | QFileDialog.DontResolveSymlinks
+        )
+
+    dialog.setStyleSheet(QPushButton_style)
+    return dialog
 
 
 class IntelligenceTab(QWidget):
@@ -59,9 +85,7 @@ class IntelligenceTab(QWidget):
         self.ribbon.add_section("Template Matching", matching_actions)
 
         segmentation_actions = [
-            create_button(
-                "Add", "mdi.plus", self, self.add_cloud, "Merge selected clusters"
-            ),
+            create_button("Add", "mdi.plus", self, self.add_cloud, "Add test data"),
             create_button(
                 "Membrane",
                 "mdi.border-all-variant",
@@ -88,11 +112,11 @@ class IntelligenceTab(QWidget):
             msg = f"{index} is not a triangular mesh."
             return QMessageBox.warning(self, "Error", msg)
 
-        directory = QFileDialog.getExistingDirectory(
-            self,
-            "Select or create directory",
-            options=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
-        )
+        dialog = _getExistingDirectory(self, "Select or create directory")
+        if dialog.exec_() != QFileDialog.Accepted:
+            return None
+
+        directory = dialog.selectedFiles()[0]
         if not directory:
             return -1
 
@@ -106,11 +130,13 @@ class IntelligenceTab(QWidget):
         from ..meshing import setup_hmff
         from ..dialogs import HMFFDialog
 
-        directory = QFileDialog.getExistingDirectory(
-            self,
-            "Select directory with equilibrated meshes.",
-            options=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
+        dialog = _getExistingDirectory(
+            self, "Select directory with equilibrated meshes."
         )
+        if dialog.exec_() != QFileDialog.Accepted:
+            return None
+
+        directory = dialog.selectedFiles()[0]
         if not directory:
             return -1
 
@@ -150,12 +176,11 @@ class IntelligenceTab(QWidget):
         from ..geometry import GeometryTrajectory
         from ..parametrization import TriangularMesh
 
-        directory = QFileDialog.getExistingDirectory(
-            self,
-            "Select directory with DTS trajectory",
-            "",
-            QFileDialog.Option.ShowDirsOnly,
-        )
+        dialog = _getExistingDirectory(self, "Select directory with DTS trajectory")
+        if dialog.exec_() != QFileDialog.Accepted:
+            return None
+
+        directory = dialog.selectedFiles()[0]
         if not directory:
             return -1
 
@@ -206,13 +231,12 @@ class IntelligenceTab(QWidget):
         from ..meshing import mesh_to_cg
         from ..dialogs import MeshMappingDialog
 
-        save_dir = QFileDialog.getExistingDirectory(
-            self,
-            "Select output directory",
-            "",
-            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
-        )
-        if not save_dir:
+        dialog = _getExistingDirectory(self, "Select output directory")
+        if dialog.exec_() != QFileDialog.Accepted:
+            return None
+
+        directory = dialog.selectedFiles()[0]
+        if not directory:
             return -1
 
         fits = self.cdata.format_datalist("models", mesh_only=True)
@@ -225,7 +249,7 @@ class IntelligenceTab(QWidget):
         ret = mesh_to_cg(
             fit._meta["fit"].mesh,
             edge_length=edge_length,
-            output_directory=save_dir,
+            output_directory=directory,
             inclusions=mappings,
             include_normals=cast_ray,
             flip_normals=flip,

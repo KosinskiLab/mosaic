@@ -92,7 +92,7 @@ Interaction Modes
 Mosaic provides multiple interaction modes for selecting and modifying different types of data. The current mode is always displayed in the status bar at the bottom of the window and indicated by the cursor color.
 
 .. tip::
-   Every mode can be exited by pressing the key used to enter it or via ``Esc``. Modes can also be activated via the **Interaction** category in the menu bar.
+   Every mode can be exited by pressing the key used to enter it or via ``Esc``. Modes can also be activated via the **Actions** category in the menu bar.
 
 
 **Viewing Mode (Default)**

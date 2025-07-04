@@ -426,7 +426,7 @@ class App(QMainWindow):
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("File")
         view_menu = menu_bar.addMenu("View")
-        interact_menu = menu_bar.addMenu("Interaction")
+        interact_menu = menu_bar.addMenu("Actions")
         help_menu = menu_bar.addMenu("Help")
 
         # File menu actions
