@@ -347,7 +347,7 @@ class Geometry:
         prop.SetSpecular(self._appearance.get("specular", 0.2))
 
     def create_actor(
-        self, actor=None, lod_points: int = 100000, lod_points_size: int = 3
+        self, actor=None, lod_points: int = 500000, lod_points_size: int = 3
     ):
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(self._data)
