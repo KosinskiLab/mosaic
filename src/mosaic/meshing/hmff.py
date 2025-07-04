@@ -7,7 +7,11 @@ from os.path import join
 import numpy as np
 import matplotlib.pyplot as plt
 from tme import Density
-from tme.filters import BandPassFilter
+
+try:
+    from tme.filters import BandPassFilter
+except ImportError:
+    from tme.filters import BandPassReconstructed as BandPassFilter
 
 from ..parallel import run_in_background
 from ..formats.writer import write_topology_file
@@ -156,12 +160,11 @@ def setup_hmff(
             highpass=highpass_cutoff,
             sampling_rate=np.max(sampling),
             use_gaussian=True,
-            shape_is_real_fourier=True,
             return_real_fourier=True,
         )
         template_ft = np.fft.rfftn(data.data, s=data.shape)
 
-        mask = bpf(shape=template_ft.shape)["data"]
+        mask = bpf(shape=data.shape)["data"]
         np.multiply(template_ft, mask, out=template_ft)
         data = np.fft.irfftn(template_ft, s=data.shape).real
 
