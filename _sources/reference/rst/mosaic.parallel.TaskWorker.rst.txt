@@ -1,0 +1,74 @@
+﻿mosaic.parallel.TaskWorker
+==========================
+
+.. currentmodule:: mosaic.parallel
+
+.. autoclass:: TaskWorker
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TaskWorker.__init__
+      ~TaskWorker.blockSignals
+      ~TaskWorker.childEvent
+      ~TaskWorker.children
+      ~TaskWorker.connectNotify
+      ~TaskWorker.customEvent
+      ~TaskWorker.deleteLater
+      ~TaskWorker.disconnect
+      ~TaskWorker.disconnectNotify
+      ~TaskWorker.dumpObjectInfo
+      ~TaskWorker.dumpObjectTree
+      ~TaskWorker.dynamicPropertyNames
+      ~TaskWorker.event
+      ~TaskWorker.eventFilter
+      ~TaskWorker.findChild
+      ~TaskWorker.findChildren
+      ~TaskWorker.inherits
+      ~TaskWorker.installEventFilter
+      ~TaskWorker.isQuickItemType
+      ~TaskWorker.isSignalConnected
+      ~TaskWorker.isWidgetType
+      ~TaskWorker.isWindowType
+      ~TaskWorker.killTimer
+      ~TaskWorker.metaObject
+      ~TaskWorker.moveToThread
+      ~TaskWorker.objectName
+      ~TaskWorker.parent
+      ~TaskWorker.process
+      ~TaskWorker.property
+      ~TaskWorker.pyqtConfigure
+      ~TaskWorker.receivers
+      ~TaskWorker.removeEventFilter
+      ~TaskWorker.sender
+      ~TaskWorker.senderSignalIndex
+      ~TaskWorker.setObjectName
+      ~TaskWorker.setParent
+      ~TaskWorker.setProperty
+      ~TaskWorker.signalsBlocked
+      ~TaskWorker.startTimer
+      ~TaskWorker.thread
+      ~TaskWorker.timerEvent
+      ~TaskWorker.tr
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TaskWorker.destroyed
+      ~TaskWorker.errorOccurred
+      ~TaskWorker.objectNameChanged
+      ~TaskWorker.resultReady
+      ~TaskWorker.staticMetaObject
+      ~TaskWorker.warningOccurred
+   
+   

@@ -1,0 +1,6 @@
+﻿mosaic.tabs.ModelTab.show\_ribbon
+=================================
+
+.. currentmodule:: mosaic.tabs
+
+.. automethod:: ModelTab.show_ribbon
