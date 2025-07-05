@@ -84,7 +84,7 @@ class RenderingSettings:
     background_color: Tuple[float, float, float] = (0.1, 0.1, 0.1)
     background_color_alt: Tuple[float, float, float] = (1.0, 1.0, 1.0)
     use_gradient_background: bool = False
-    target_frame_rate: float = 60.0
+    target_fps: float = 30.0
     enable_fxaa: bool = True
     use_depth_peeling: bool = True
     max_depth_peels: int = 4

@@ -89,30 +89,31 @@ class App(QMainWindow):
         # Render Block
         self.vtk_widget = QVTKRenderWindowInteractor()
         self.renderer = vtk.vtkRenderer()
-        self.renderer.SetBackground(0.1, 0.1, 0.1)
-        self.renderer_next_background = (1.0, 1.0, 1.0)
+
+        self.renderer.SetBackground(*Settings.rendering.background_color)
+        self.renderer_next_background = Settings.rendering.background_color_alt
 
         # Check how these settings perform
         self.renderer.GradientBackgroundOff()
-        self.renderer.SetUseDepthPeeling(1)
-        self.renderer.SetOcclusionRatio(0.0)
-        self.renderer.SetMaximumNumberOfPeels(4)
-        self.renderer.SetUseFXAA(True)
+        self.renderer.SetUseDepthPeeling(Settings.rendering.use_depth_peeling)
+        self.renderer.SetOcclusionRatio(Settings.rendering.occlusion_ratio)
+        self.renderer.SetMaximumNumberOfPeels(Settings.rendering.max_depth_peels)
+        self.renderer.SetUseFXAA(Settings.rendering.enable_fxaa)
 
         render_window = self.vtk_widget.GetRenderWindow()
         render_window.AddRenderer(self.renderer)
-        render_window.SetMultiSamples(0)
-        render_window.SetPointSmoothing(False)
-        render_window.SetLineSmoothing(False)
-        render_window.SetPolygonSmoothing(False)
-        render_window.SetDesiredUpdateRate(30.0)
+        render_window.SetMultiSamples(Settings.rendering.multisamples)
+        render_window.SetPointSmoothing(Settings.rendering.point_smoothing)
+        render_window.SetLineSmoothing(Settings.rendering.line_smoothing)
+        render_window.SetPolygonSmoothing(Settings.rendering.polygon_smoothing)
+        render_window.SetDesiredUpdateRate(Settings.rendering.target_fps)
 
         # Setup GUI interactions
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         self.interactor.Initialize()
         self.interactor.AddObserver("RightButtonPressEvent", self.on_right_click)
         self.interactor.AddObserver("KeyPressEvent", self.on_key_press)
-        self.interactor.SetDesiredUpdateRate(30.0)
+        self.interactor.SetDesiredUpdateRate(Settings.rendering.target_fps)
 
         self.cdata = MosaicData(self.vtk_widget)
 

@@ -584,7 +584,11 @@ class DataContainerInteractor(QObject):
         self.deselect_points()
 
     def deselect_points(self):
-        self.highlight_selected_points(color=(0.7, 0.7, 0.7))
+        for cluster_index, point_ids in self.point_selection.items():
+            geometry = self.container.data[cluster_index]
+            color = geometry._appearance.get("base_color", (0.7, 0.7, 0.7))
+            self.container.highlight_points(cluster_index, point_ids, color)
+
         self.point_selection.clear()
 
     def highlight_selected_points(self, color):

@@ -186,8 +186,7 @@ class RibbonToolBar(QToolBar):
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         self.setFixedHeight(85)
 
-        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
-
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setStyleSheet(
             """
             QToolBar {

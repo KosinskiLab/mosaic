@@ -8,6 +8,7 @@ from .histogram_widget import HistogramWidget
 from .parameter_widget import ParameterWidget
 from .trajectory_player import TrajectoryPlayer
 from .ribbon import RibbonToolBar, create_button
+from .color_preview import ColorPreviewWidget, ColorButton
 from .volume_viewer import MultiVolumeViewer, VolumeViewer
 from .coordinate_system import AxesWidget, BoundingBoxManager
 from .container_list import ContainerListWidget, StyledListWidgetItem

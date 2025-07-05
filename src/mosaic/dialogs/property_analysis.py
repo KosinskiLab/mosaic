@@ -25,9 +25,8 @@ import pyqtgraph as pg
 import qtawesome as qta
 
 from ..widgets.settings import get_widget_value
-from ..widgets.color_preview import ColorPreviewWidget
-from ..widgets import ContainerListWidget, StyledListWidgetItem
 from ..stylesheets import QPushButton_style, QScrollArea_style
+from ..widgets import ContainerListWidget, StyledListWidgetItem, ColorPreviewWidget
 
 
 def _populate_list(geometries):

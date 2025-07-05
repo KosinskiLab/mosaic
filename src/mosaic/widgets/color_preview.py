@@ -6,8 +6,9 @@ Copyright (c) 2025 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtWidgets import QWidget
+from qtpy.QtCore import Signal
 from qtpy.QtGui import QColor, QPainter
+from qtpy.QtWidgets import QWidget, QPushButton, QColorDialog
 
 
 class ColorPreviewWidget(QWidget):
@@ -68,3 +69,37 @@ class ColorPreviewWidget(QWidget):
             next_x = int((i + 1) * stripe_width) if i < color_count - 1 else width
             rect_width = next_x - x_pos
             painter.fillRect(x_pos, 0, rect_width, height, color)
+
+
+class ColorButton(QPushButton):
+    """Widget to select color"""
+
+    valueChanged = Signal()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.update_color((0, 0, 0))
+        self.clicked.connect(self.choose_color)
+
+    def update_color(self, color):
+        self.current_color = [int(c * 255) for c in color]
+        rgb = ",".join([str(x) for x in self.current_color])
+        self.setStyleSheet(f"background-color: rgb({rgb})")
+        self.valueChanged.emit()
+
+    def choose_color(self):
+        color = QColor(*self.current_color)
+        color_dialog = QColorDialog.getColor(initial=color, parent=self)
+        if color_dialog.isValid():
+            color = (
+                color_dialog.red() / 255,
+                color_dialog.green() / 255,
+                color_dialog.blue() / 255,
+            )
+            self.update_color(color)
+        return color
+
+    def get_color(self, uint8: bool = False):
+        if uint8:
+            return self.current_color
+        return [x / 255 for x in self.current_color]

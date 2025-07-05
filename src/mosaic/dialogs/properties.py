@@ -30,6 +30,7 @@ from ..widgets import (
     create_button,
     create_setting_widget,
     get_widget_value,
+    ColorButton,
 )
 
 
@@ -120,16 +121,12 @@ class GeometryPropertiesDialog(QDialog):
         colors_group = QGroupBox("Colors")
         colors_layout = QFormLayout()
 
-        self.base_color_button = QPushButton()
-        self.update_color_button(self.base_color_button, self.base_color)
-        self.base_color_button.clicked.connect(lambda: self.choose_color("base"))
+        self.base_color_button = ColorButton()
+        self.base_color_button.update_color(self.base_color)
         colors_layout.addRow("Base Color:", self.base_color_button)
 
-        self.highlight_color_button = QPushButton()
-        self.update_color_button(self.highlight_color_button, self.highlight_color)
-        self.highlight_color_button.clicked.connect(
-            lambda: self.choose_color("highlight")
-        )
+        self.highlight_color_button = ColorButton()
+        self.highlight_color_button.update_color(self.highlight_color)
         colors_layout.addRow("Highlight Color:", self.highlight_color_button)
 
         colors_group.setLayout(colors_layout)
@@ -245,6 +242,8 @@ class GeometryPropertiesDialog(QDialog):
         self.sampling_x.textChanged.connect(self.emit_parameters)
         self.sampling_y.textChanged.connect(self.emit_parameters)
         self.sampling_z.textChanged.connect(self.emit_parameters)
+        self.base_color_button.valueChanged.connect(self.emit_parameters)
+        self.highlight_color_button.valueChanged.connect(self.emit_parameters)
 
     def emit_parameters(self):
         parameters = self.get_parameters()
@@ -261,40 +260,6 @@ class GeometryPropertiesDialog(QDialog):
         self.volume_path = file_name
         self.emit_parameters()
 
-    def update_color_button(self, button, color):
-        rgb = [int(c * 255) for c in color]
-        button.setStyleSheet(f"background-color: rgb({rgb[0]}, {rgb[1]}, {rgb[2]})")
-
-    def choose_color(self, color_type):
-        current_color = (
-            self.base_color if color_type == "base" else self.highlight_color
-        )
-        button = (
-            self.base_color_button
-            if color_type == "base"
-            else self.highlight_color_button
-        )
-
-        initial_color = QColor(
-            int(current_color[0] * 255),
-            int(current_color[1] * 255),
-            int(current_color[2] * 255),
-        )
-
-        color = QColorDialog.getColor(initial=initial_color, parent=self)
-        if color.isValid():
-            new_color = (
-                color.red() / 255,
-                color.green() / 255,
-                color.blue() / 255,
-            )
-            if color_type == "base":
-                self.base_color = new_color
-            else:
-                self.highlight_color = new_color
-            self.update_color_button(button, new_color)
-            self.emit_parameters()
-
     def get_parameters(self) -> dict:
         """Return current parameters"""
         return {
@@ -303,8 +268,8 @@ class GeometryPropertiesDialog(QDialog):
             "ambient": get_widget_value(self.ambient_spin),
             "diffuse": get_widget_value(self.diffuse_spin),
             "specular": get_widget_value(self.specular_spin),
-            "base_color": self.base_color,
-            "highlight_color": self.highlight_color,
+            "base_color": self.base_color_button.get_color(uint8=False),
+            "highlight_color": self.highlight_color_button.get_color(uint8=False),
             "scale": -1 if self.scale_negative.isChecked() else 1,
             "isovalue_percentile": get_widget_value(self.isovalue_spin) / 100,
             "volume_path": self.volume_path,

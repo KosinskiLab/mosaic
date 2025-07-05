@@ -13,6 +13,7 @@ import vtk
 import numpy as np
 from vtk.util import numpy_support
 
+from .actor import create_actor
 from .utils import find_closest_points, normals_to_rot, apply_quat, NORMAL_REFERENCE
 
 __all__ = ["Geometry", "VolumeGeometry", "GeometryTrajectory"]
@@ -68,7 +69,7 @@ class Geometry:
         if quaternions is not None:
             self.quaternions = quaternions
 
-        self._actor = self.create_actor(vtk_actor)
+        self._actor = self._create_actor(vtk_actor)
         self._appearance = {
             "size": 8,
             "opacity": 1.0,
@@ -346,7 +347,9 @@ class Geometry:
         prop.SetDiffuse(self._appearance.get("diffuse", 0.7))
         prop.SetSpecular(self._appearance.get("specular", 0.2))
 
-    def create_actor(self, actor=None, lod_points: int = 5e6, lod_points_size: int = 3):
+    def _create_actor(
+        self, actor=None, lod_points: int = 5e6, lod_points_size: int = 3
+    ):
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(self._data)
 
@@ -356,22 +359,7 @@ class Geometry:
         mapper.SetResolveCoincidentTopologyToPolygonOffset()
 
         if actor is None:
-            actor = vtk.vtkLODActor()
-            actor.SetNumberOfCloudPoints(int(lod_points))
-            actor.GetProperty().SetPointSize(lod_points_size)
-
-            # medium_filter = vtk.vtkMaskPoints()
-            # medium_filter.SetInputData(self._data)
-            # medium_filter.RandomModeOff()
-            # medium_filter.SetOnRatio(10)
-            # medium_filter.SetMaximumNumberOfPoints(5 * lod_points)
-            # medium_filter.SetSingleVertexPerCell(True)
-            # actor.SetMediumResFilter(medium_filter)
-
-            # low_filter = vtk.vtkOutlineFilter()
-            # low_filter.SetInputData(self._data)
-            # actor.SetLowResFilter(low_filter)
-
+            actor = create_actor()
         actor.SetMapper(mapper)
         return actor
 
