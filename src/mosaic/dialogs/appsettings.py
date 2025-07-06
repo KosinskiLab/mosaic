@@ -32,8 +32,6 @@ class AppSettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.settings = Settings.rendering
-
-        self.current_preset = "high"
         self.quality_kwargs = Settings.vtk.get_settings()
 
         self.setWindowTitle("Settings")
@@ -143,7 +141,7 @@ class AppSettingsDialog(QDialog):
             if description:
                 display_text += f" - {description}"
             self.preset_combo.addItem(display_text, preset_name)
-            if preset_name == self.current_preset:
+            if preset_name == Settings.vtk.preset:
                 cur_index = index
 
         self.preset_combo.setCurrentIndex(cur_index)
@@ -339,9 +337,8 @@ class AppSettingsDialog(QDialog):
         if not preset_name:
             return None
 
-        self.current_preset = preset_name
-
-        preset_config = QUALITY_PRESETS.get(self.current_preset, {})
+        Settings.vtk.preset = preset_name
+        preset_config = QUALITY_PRESETS.get(preset_name, {})
         quality_layout = self.quality_group.layout()
 
         self.lod_points_spin.blockSignals(True)

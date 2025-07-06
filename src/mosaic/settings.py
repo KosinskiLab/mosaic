@@ -146,6 +146,7 @@ class WarningSettings:
 class vtkActorSettings:
     """vtkActor settings."""
 
+    preset: str = "high"
     quality: str = "lod"
     lod_points: int = int(5e6)
     lod_points_size: int = int(3)
