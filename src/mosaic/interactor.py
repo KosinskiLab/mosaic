@@ -210,7 +210,7 @@ class DataContainerInteractor(QObject):
 
     def set_selection(self, selected_indices):
         selection = QItemSelection()
-        for index in selected_indices:
+        for index in set(selected_indices):
             index = self.data_list.model().index(index, 0)
             selection.select(index, index)
 
@@ -592,6 +592,8 @@ class DataContainerInteractor(QObject):
 
     def deselect_points(self):
         for cluster_index, point_ids in self.point_selection.items():
+            if not self.container._index_ok(cluster_index):
+                continue
             geometry = self.container.data[cluster_index]
             color = geometry._appearance.get("base_color", (0.7, 0.7, 0.7))
             self.container.highlight_points(cluster_index, point_ids, color)
