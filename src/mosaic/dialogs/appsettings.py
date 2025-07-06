@@ -76,7 +76,7 @@ class AppSettingsDialog(QDialog):
         self.tabs.addTab(
             self.setup_general_page(),
             qta.icon("fa5s.cog", color="#4f46e5"),
-            "Data",
+            "General",
         )
         self.tabs.addTab(
             self.setup_rendering_page(),
