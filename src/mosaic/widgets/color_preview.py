@@ -74,7 +74,7 @@ class ColorPreviewWidget(QWidget):
 class ColorButton(QPushButton):
     """Widget to select color"""
 
-    valueChanged = Signal()
+    colorChanged = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -82,10 +82,10 @@ class ColorButton(QPushButton):
         self.clicked.connect(self.choose_color)
 
     def update_color(self, color):
-        self.current_color = [int(c * 255) for c in color]
+        self.current_color = [int(float(c) * 255) for c in color]
         rgb = ",".join([str(x) for x in self.current_color])
         self.setStyleSheet(f"background-color: rgb({rgb})")
-        self.valueChanged.emit()
+        self.colorChanged.emit()
 
     def choose_color(self):
         color = QColor(*self.current_color)

@@ -51,7 +51,7 @@ def create_setting_widget(setting: Dict):
         widget.setRange(setting.get("min", 0.0), setting.get("max", 1e32))
         widget.setValue(setting.get("default", 0.0))
         widget.setSingleStep(setting.get("step", 1.0))
-        widget.setDecimals(4)
+        widget.setDecimals(setting.get("decimals", 4))
     elif setting["type"] == "slider":
         from .input_slider import SliderWithInput
 

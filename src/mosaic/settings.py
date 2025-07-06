@@ -6,8 +6,8 @@ Copyright (c) 2025 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Tuple, get_origin
 from dataclasses import dataclass, fields
+from typing import Tuple, get_origin, Dict
 
 from qtpy.QtCore import QSettings
 
@@ -66,6 +66,7 @@ class SettingsCategory:
     def __init__(self, category: str, dataclass: dataclass):
         self._qsettings = QSettings("Mosaic")
         self._category_name = category
+        self._fields = []
 
         # Dynamically add settings property to this instance
         for field in fields(dataclass):
@@ -75,6 +76,12 @@ class SettingsCategory:
                 value_type=field.type,
             )
             setattr(self.__class__, field.name, prop)
+
+            self._fields.append(field.name)
+
+    def get_settings(self) -> Dict:
+        """Return all settings associated with the class"""
+        return {field_name: getattr(self, field_name) for field_name in self._fields}
 
 
 @dataclass
@@ -135,6 +142,15 @@ class WarningSettings:
     suppress_large_file_warning: bool = False
 
 
+@dataclass
+class vtkActorSettings:
+    """vtkActor settings."""
+
+    quality: str = "lod"
+    lod_points: int = int(5e6)
+    lod_points_size: int = int(3)
+
+
 class SettingsManager:
     """Manages application settings with automatic persistence."""
 
@@ -145,13 +161,14 @@ class SettingsManager:
         self.ui = SettingsCategory("ui", UISettings)
         self.widgets = SettingsCategory("widgets", WidgetSettings)
         self.warnings = SettingsCategory("warnings", WarningSettings)
+        self.vtk = SettingsCategory("vtk", vtkActorSettings)
 
     def reset_to_defaults(self, category: str = None):
         """Reset settings to defaults."""
 
         categories = [category]
         if category is None:
-            categories = ["rendering", "ui", "widgets"]
+            categories = ["rendering", "ui", "widgets", "vtk"]
 
         for cat in categories:
             if not hasattr(self, cat):

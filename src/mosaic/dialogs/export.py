@@ -146,7 +146,6 @@ class ExportDialog(QDialog):
                     "description": "X voxel for coordinate transformation (RELION 5)",
                     "default": 64,
                     "min": 1,
-                    "max": 1024,
                     "parameter": "shape_x",
                 },
                 "shape_y": {
@@ -155,7 +154,6 @@ class ExportDialog(QDialog):
                     "description": "Y voxel for coordinate transformation (RELION 5)",
                     "default": 64,
                     "min": 1,
-                    "max": 1024,
                     "parameter": "shape_y",
                 },
                 "shape_z": {
@@ -164,7 +162,6 @@ class ExportDialog(QDialog):
                     "description": "Z voxel for coordinate transformation (RELION 5)",
                     "default": 64,
                     "min": 1,
-                    "max": 1024,
                     "parameter": "shape_z",
                 },
             },
@@ -385,7 +382,6 @@ volume_settings = {
         "description": "X dimension of the volume",
         "default": 64,
         "min": 1,
-        "max": 1024,
         "parameter": "shape_x",
     },
     "shape_y": {
@@ -394,7 +390,6 @@ volume_settings = {
         "description": "Y dimension of the volume",
         "default": 64,
         "min": 1,
-        "max": 1024,
         "parameter": "shape_y",
     },
     "shape_z": {
@@ -403,17 +398,17 @@ volume_settings = {
         "description": "Z dimension of the volume",
         "default": 64,
         "min": 1,
-        "max": 1024,
         "parameter": "shape_z",
     },
     "sampling": {
         "type": "float",
         "label": "Sampling Rate",
         "description": "Sampling rate in Ångströms",
-        "default": 1.0,
-        "min": 0.1,
-        "max": 100.0,
+        "notes": "Defaults to sampling rate of Geometry object",
+        "default": -1,
+        "min": -1,
         "step": 0.1,
+        "decimals": 8,
         "parameter": "sampling",
     },
 }

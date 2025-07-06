@@ -7,7 +7,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import vtk
-from typing import Dict, Any
+
+from .settings import Settings
 
 
 class ActorFactory:
@@ -23,19 +24,22 @@ class ActorFactory:
 
     def __init__(self):
         if not self._initialized:
-            self.quality = "lod"
-            self.quality_kwargs = {}
+            self.update_from_settings()
             ActorFactory._initialized = True
 
-    def set_quality(self, quality: str, **kwargs):
-        """Set the global rendering quality level.
+    def update_from_settings(self):
+        self.quality_kwargs = Settings.vtk.get_settings()
+        self.quality = self.quality_kwargs.pop("quality", None)
 
-        Args:
-            quality: One of "full", "lod", "lod_quadric"
-            **kwargs: Quality-specific parameters
-        """
-        self.quality = quality
-        self.quality_kwargs = kwargs
+    def is_synced(self) -> bool:
+        """Check whether ActorFactory settings are synced with appsettings"""
+
+        quality_kwargs = Settings.vtk.get_settings()
+        quality = quality_kwargs.pop("quality", None)
+
+        ret = self.quality == quality
+        ret = ret and self.quality_kwargs == quality_kwargs
+        return ret
 
     def create_actor(self) -> vtk.vtkActor:
         """Create an actor based on current quality settings.
@@ -81,14 +85,6 @@ class ActorFactory:
     def _create_quadric_lod_actor(self) -> vtk.vtkQuadricLODActor:
         """Create a Quadric Level-of-Detail actor."""
         return vtk.vtkQuadricLODActor()
-
-    def get_current_quality(self) -> str:
-        """Get the current quality setting."""
-        return self.quality
-
-    def get_quality_kwargs(self) -> Dict[str, Any]:
-        """Get the current quality parameters."""
-        return self.quality_kwargs.copy()
 
 
 QUALITY_PRESETS = {

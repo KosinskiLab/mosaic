@@ -340,11 +340,9 @@ class DataContainerInteractor(QObject):
     def _handle_export(self, *args, **kwargs):
         from .dialogs import ExportDialog
 
-        parameters = {"shape": self.container.metadata.get("shape")}
-
-        dialog = ExportDialog(parent=None, parameters=parameters)
-
         sampling, shape = 1, self.container.metadata.get("shape")
+        dialog = ExportDialog(parent=None, parameters={"shape": shape})
+
         if shape is not None:
             sampling = self.container.metadata.get("sampling_rate", 1)
             shape = np.rint(np.divide(shape, sampling)).astype(int)
@@ -352,8 +350,6 @@ class DataContainerInteractor(QObject):
             shape = (64, 64, 64)
 
         dialog.set_shape(shape)
-        dialog.set_sampling(sampling)
-
         dialog.export_requested.connect(self._wrap_export)
 
         return dialog.exec()
@@ -398,7 +394,7 @@ class DataContainerInteractor(QObject):
 
         center = 0
         if {"shape_x", "shape_y", "shape_z"}.issubset(export_data):
-            shape = tuple(export_data[x] for x in ["shape_x", "shape_y", "shape_y"])
+            shape = tuple(export_data[x] for x in ["shape_x", "shape_y", "shape_z"])
 
         data = {"points": [], "quaternions": []}
         for index in indices:
@@ -413,12 +409,15 @@ class DataContainerInteractor(QObject):
                 fit.to_file(f"{file_path}_{index}.{file_format}")
                 continue
 
-            points, quaternions = geometry.points, geometry.quaternions
-            if quaternions is None:
-                quaternions = np.zeros((points.shape[0], 4), fill_value=(1, 0, 0, 0))
+            points, quaternions = geometry.points, None
+            if file_format in point_formats:
+                points, quaternions = geometry.points, geometry.quaternions
 
-            sampling = export_data.get("sampling", None)
-            if sampling is None:
+            if quaternions is None:
+                quaternions = np.full((points.shape[0], 4), fill_value=(1, 0, 0, 0))
+
+            sampling = export_data.get("sampling", -1)
+            if sampling < 0:
                 sampling = geometry.sampling_rate
 
             if export_data.get("relion_5_format", False):
@@ -441,13 +440,21 @@ class DataContainerInteractor(QObject):
                 temp = np.rint(np.concatenate(data["points"]))
                 shape = temp.astype(int).max(axis=0) + 1
 
-            data = None
+            volume = None
             for index, points in enumerate(data["points"]):
-                data = points_to_volume(
-                    points, sampling_rate=1, shape=shape, weight=index + 1, out=data
+                volume = points_to_volume(
+                    points, sampling_rate=1, shape=shape, weight=index + 1, out=volume
                 )
+
+            # Try saving some memory on write. uint8 would be padded to 16 hence int8
+            dtype = np.float32
+            if index < np.iinfo(np.int8).max:
+                dtype = np.int8
+            elif index < np.iinfo(np.uint16).max:
+                dtype = np.uint16
+
             return write_density(
-                data,
+                volume.astype(dtype),
                 filename=f"{file_path}.{file_format}",
                 sampling_rate=sampling,
             )
@@ -646,6 +653,11 @@ class DataContainerInteractor(QObject):
         if not self.container._index_ok(index):
             return None
         return self.container.data[index]
+
+    def refresh_actors(self):
+        for index in range(self.container.get_cluster_count()):
+            self.container.data[index] = self.container.data[index][...]
+        return self.render()
 
     @_cluster_modifier()
     def change_visibility(self, **kwargs):

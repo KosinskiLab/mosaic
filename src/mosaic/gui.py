@@ -52,6 +52,7 @@ from .dialogs import (
     KeybindsDialog,
     ImportDataDialog,
     ProgressDialog,
+    AppSettingsDialog,
 )
 from .widgets import (
     MultiVolumeViewer,
@@ -88,25 +89,13 @@ class App(QMainWindow):
 
         # Render Block
         self.vtk_widget = QVTKRenderWindowInteractor()
+
+        self.cdata = MosaicData(self.vtk_widget)
+
         self.renderer = vtk.vtkRenderer()
-
-        self.renderer.SetBackground(*Settings.rendering.background_color)
-        self.renderer_next_background = Settings.rendering.background_color_alt
-
-        # Check how these settings perform
-        self.renderer.GradientBackgroundOff()
-        self.renderer.SetUseDepthPeeling(Settings.rendering.use_depth_peeling)
-        self.renderer.SetOcclusionRatio(Settings.rendering.occlusion_ratio)
-        self.renderer.SetMaximumNumberOfPeels(Settings.rendering.max_depth_peels)
-        self.renderer.SetUseFXAA(Settings.rendering.enable_fxaa)
-
-        render_window = self.vtk_widget.GetRenderWindow()
-        render_window.AddRenderer(self.renderer)
-        render_window.SetMultiSamples(Settings.rendering.multisamples)
-        render_window.SetPointSmoothing(Settings.rendering.point_smoothing)
-        render_window.SetLineSmoothing(Settings.rendering.line_smoothing)
-        render_window.SetPolygonSmoothing(Settings.rendering.polygon_smoothing)
-        render_window.SetDesiredUpdateRate(Settings.rendering.target_fps)
+        self.render_window = self.vtk_widget.GetRenderWindow()
+        self.render_window.AddRenderer(self.renderer)
+        self.apply_render_settings()
 
         # Setup GUI interactions
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
@@ -114,8 +103,6 @@ class App(QMainWindow):
         self.interactor.AddObserver("RightButtonPressEvent", self.on_right_click)
         self.interactor.AddObserver("KeyPressEvent", self.on_key_press)
         self.interactor.SetDesiredUpdateRate(Settings.rendering.target_fps)
-
-        self.cdata = MosaicData(self.vtk_widget)
 
         self.tab_bar = QWidget()
         self.tab_bar.setFixedHeight(40)
@@ -212,6 +199,37 @@ class App(QMainWindow):
 
         self.escape_shortcut = QShortcut(Qt.Key.Key_Escape, self.vtk_widget)
         self.escape_shortcut.activated.connect(self.handle_escape_key)
+
+    def apply_render_settings(self):
+        self.renderer.SetBackground(
+            *[float(x) for x in Settings.rendering.background_color]
+        )
+        self.renderer_next_background = [
+            float(x) for x in Settings.rendering.background_color_alt
+        ]
+
+        # Check how these settings perform
+        self.renderer.GradientBackgroundOff()
+        self.renderer.SetUseDepthPeeling(Settings.rendering.use_depth_peeling)
+        self.renderer.SetOcclusionRatio(Settings.rendering.occlusion_ratio)
+        self.renderer.SetMaximumNumberOfPeels(Settings.rendering.max_depth_peels)
+        self.renderer.SetUseFXAA(Settings.rendering.enable_fxaa)
+
+        self.render_window.SetMultiSamples(Settings.rendering.multisamples)
+        self.render_window.SetPointSmoothing(Settings.rendering.point_smoothing)
+        self.render_window.SetLineSmoothing(Settings.rendering.line_smoothing)
+        self.render_window.SetPolygonSmoothing(Settings.rendering.polygon_smoothing)
+        self.render_window.SetDesiredUpdateRate(Settings.rendering.target_fps)
+        self.render_window.Render()
+
+        if not hasattr(self, "cdata"):
+            return None
+
+        from .actor import ActorFactory
+
+        if not ActorFactory().is_synced():
+            ActorFactory().update_from_settings()
+            self.cdata.refresh_actors()
 
     def handle_escape_key(self, *args, **kwargs):
         """Handle escape key press - switch to viewing mode if not already in it."""
@@ -428,6 +446,7 @@ class App(QMainWindow):
         file_menu = menu_bar.addMenu("File")
         view_menu = menu_bar.addMenu("View")
         interact_menu = menu_bar.addMenu("Actions")
+        preference_menu = menu_bar.addMenu("Preferences")
         help_menu = menu_bar.addMenu("Help")
 
         # File menu actions
@@ -700,6 +719,10 @@ class App(QMainWindow):
         view_menu.addMenu(bbox_menu)
         view_menu.addSeparator()
 
+        show_settings = QAction("Settings", self)
+        show_settings.triggered.connect(self.show_app_settings)
+        preference_menu.addAction(show_settings)
+
         help_menu.addAction(show_keybinds_action)
 
         viewing_action = QAction("Viewing Mode\tEsc", self)
@@ -867,6 +890,12 @@ class App(QMainWindow):
         if visible:
             self._setup_trajectory_player()
         self.trajectory_dock.setVisible(visible)
+
+    def show_app_settings(self):
+        dialog = AppSettingsDialog(self)
+        dialog.settingsChanged.connect(self.apply_render_settings)
+        if dialog.exec() == 1:
+            return self.apply_render_settings()
 
     def _load_session(self, file_path: str):
         try:

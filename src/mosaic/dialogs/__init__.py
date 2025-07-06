@@ -5,6 +5,7 @@ from .progress import ProgressDialog
 from .histogram import HistogramDialog
 from .cropping import DistanceCropDialog
 from .import_data import ImportDataDialog
+from .appsettings import AppSettingsDialog
 from .backmapping import MeshMappingDialog
 from .tilt_control import TiltControlDialog
 from .matching import TemplateMatchingDialog

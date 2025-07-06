@@ -242,8 +242,8 @@ class GeometryPropertiesDialog(QDialog):
         self.sampling_x.textChanged.connect(self.emit_parameters)
         self.sampling_y.textChanged.connect(self.emit_parameters)
         self.sampling_z.textChanged.connect(self.emit_parameters)
-        self.base_color_button.valueChanged.connect(self.emit_parameters)
-        self.highlight_color_button.valueChanged.connect(self.emit_parameters)
+        self.base_color_button.colorChanged.connect(self.emit_parameters)
+        self.highlight_color_button.colorChanged.connect(self.emit_parameters)
 
     def emit_parameters(self):
         parameters = self.get_parameters()

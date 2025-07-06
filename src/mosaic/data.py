@@ -103,6 +103,13 @@ class MosaicData(QObject):
         self.data.update(DataContainer())
         self.models.update(DataContainer())
 
+    def refresh_actors(self):
+        """
+        Reinitialize all vtk actors to accomodate render setting changes.
+        """
+        self.data.refresh_actors()
+        self.models.refresh_actors()
+
     def _get_active_container(self):
         if self.active_picker == "data":
             return self.data
