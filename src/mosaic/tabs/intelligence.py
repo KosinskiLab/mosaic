@@ -23,6 +23,7 @@ def _getExistingDirectory(parent, text):
 
     dialog.setFileMode(QFileDialog.Directory)
 
+    # The native dialog on macOS omits the dialog text which can be confusing
     if system() == "Darwin":
         dialog.setOptions(
             QFileDialog.ShowDirsOnly

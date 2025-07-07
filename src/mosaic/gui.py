@@ -443,6 +443,7 @@ class App(QMainWindow):
         self._update_style()
 
         menu_bar = self.menuBar()
+
         file_menu = menu_bar.addMenu("File")
         view_menu = menu_bar.addMenu("View")
         interact_menu = menu_bar.addMenu("Actions")
@@ -719,7 +720,7 @@ class App(QMainWindow):
         view_menu.addMenu(bbox_menu)
         view_menu.addSeparator()
 
-        show_settings = QAction("Settings", self)
+        show_settings = QAction("Appearance", self)
         show_settings.triggered.connect(self.show_app_settings)
         preference_menu.addAction(show_settings)
 
