@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.trim
+==============================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.trim

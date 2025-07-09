@@ -1,0 +1,33 @@
+﻿mosaic.formats.parser.GeometryData
+==================================
+
+.. currentmodule:: mosaic.formats.parser
+
+.. autoclass:: GeometryData
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GeometryData.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GeometryData.faces
+      ~GeometryData.normals
+      ~GeometryData.quaternions
+      ~GeometryData.sampling
+      ~GeometryData.shape
+      ~GeometryData.vertices
+   
+   

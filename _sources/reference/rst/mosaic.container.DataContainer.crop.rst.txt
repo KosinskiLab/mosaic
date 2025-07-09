@@ -1,0 +1,6 @@
+﻿mosaic.container.DataContainer.crop
+===================================
+
+.. currentmodule:: mosaic.container
+
+.. automethod:: DataContainer.crop

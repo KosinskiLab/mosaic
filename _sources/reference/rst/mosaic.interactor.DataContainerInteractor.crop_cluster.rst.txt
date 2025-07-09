@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.crop\_cluster
+=======================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.crop_cluster
