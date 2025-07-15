@@ -77,18 +77,26 @@ class SegmentationTab(QWidget):
                 "mdi.map-marker-distance",
                 self,
                 self._distance_crop,
-                "Crop by Distance",
+                "Crop by distance",
             ),
         ]
         self.ribbon.add_section("Base Operations", cluster_actions)
 
         point_actions = [
             create_button(
+                "Partition",
+                "mdi.graph",
+                self,
+                self.cdata.data.partition,
+                "Partition points",
+                PARTITION_SETTINGS,
+            ),
+            create_button(
                 "Cluster",
                 "mdi.sitemap",
                 self,
                 self.cdata.data.cluster,
-                "Cluster Points",
+                "Cluster points",
                 CLUSTER_SETTINGS,
             ),
             create_button(
@@ -96,7 +104,7 @@ class SegmentationTab(QWidget):
                 "mdi.filter",
                 self,
                 self.cdata.data.remove_outliers,
-                "Remove Outliers",
+                "Remove outliers",
                 OUTLIER_SETTINGS,
             ),
             create_button(
@@ -131,14 +139,14 @@ class SegmentationTab(QWidget):
                 "mdi.graphql",
                 self,
                 self._show_distance_dialog,
-                "Analyse Distance Distributions",
+                "Analyse distance distributions",
             ),
             create_button(
                 "Properties",
                 "mdi.poll",
                 self,
                 self._show_property_dialog,
-                "Analyse Point Properties",
+                "Analyse object properties",
             ),
         ]
         self.ribbon.add_section("Analysis", analysis_actions)
@@ -518,13 +526,13 @@ DOWNSAMPLE_SETTINGS = {
 }
 
 
-CLUSTER_SETTINGS = {
-    "title": "Cluster Settings",
+PARTITION_SETTINGS = {
+    "title": "Partition Settings",
     "settings": [
         {
             "label": "Method",
             "type": "select",
-            "options": ["Connected Components", "DBSCAN", "K-Means", "Birch"],
+            "options": ["Connected Components", "Envelope", "Leiden"],
             "default": "Connected Components",
         },
     ],
@@ -541,6 +549,55 @@ CLUSTER_SETTINGS = {
                 "notes": "Defaults to the associated sampling rate of the cluster.",
             },
         ],
+        "Envelope": [
+            {
+                "label": "Distance",
+                "parameter": "distance",
+                "type": "float",
+                "description": "Distance between points to be considered connected.",
+                "default": -1.0,
+                "min": -1.0,
+                "max": 1e32,
+                "notes": "Defaults to the associated sampling rate of the cluster.",
+            },
+        ],
+        "Leiden": [
+            {
+                "label": "Distance",
+                "parameter": "distance",
+                "type": "float",
+                "description": "Distance between points to be considered connected.",
+                "default": -1.0,
+                "min": -1.0,
+                "max": 1e32,
+                "notes": "Defaults to the associated sampling rate of the cluster.",
+            },
+            {
+                "label": "Resolution (log10)",
+                "parameter": "resolution_parameter",
+                "type": "float",
+                "description": "Log10 of resolution parameter for graph clustering.",
+                "default": -7.3,
+                "min": -1e32,
+                "max": 1e32,
+                "decimals": 8,
+                "notes": "Smaller values yield larger clusters. Range: -8 to -2 for membranes.",
+            },
+        ],
+    },
+}
+
+CLUSTER_SETTINGS = {
+    "title": "Cluster Settings",
+    "settings": [
+        {
+            "label": "Method",
+            "type": "select",
+            "options": ["DBSCAN", "K-Means", "Birch"],
+            "default": "K-Means",
+        },
+    ],
+    "method_settings": {
         "DBSCAN": [
             {
                 "label": "Distance",

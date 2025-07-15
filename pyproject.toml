@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "mosaic-gui"
-version = "1.0.2"
+version = "1.0.2.post1"
 description = "mosaic"
 authors = ["Valentin Maurer <valentin.maurer@embl-hamburg.de>"]
 license = "GPL-2.0-only"
@@ -37,6 +37,7 @@ importlib_resources = "*"
 zmesh = ">=1.8.0"
 tqdm = ">=4.67.1"
 pyfqmr = ">=0.3.0"
+leidenalg = ">=0.9"
 
 [tool.poetry.group.optional.dependencies]
 membrain-seg = "==0.0.5"

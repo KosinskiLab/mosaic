@@ -239,6 +239,10 @@ class MosaicData(QObject):
         for i in range(interactor.data_list.count()):
             list_item = interactor.data_list.item(i)
 
+            # TODO: Add the geometry reference as list item data
+            if not container._index_ok(i):
+                continue
+
             if mesh_only:
                 is_mesh = isinstance(container.data[i]._meta.get("fit"), TriangularMesh)
                 if not is_mesh:

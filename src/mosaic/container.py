@@ -21,6 +21,8 @@ from .utils import (
     com_cluster_points,
     find_closest_points,
     birch_clustering,
+    leiden_clustering,
+    envelope_components,
 )
 
 __all__ = ["DataContainer"]
@@ -463,6 +465,23 @@ class DataContainer:
         return points[mask]
 
     @apply_over_indices
+    def envelope_components(self, geometry, distance: float = -1.0, **kwargs):
+        """Identify envelope components in a point cloud.
+
+        Parameters
+        ----------
+        geometry : :py:class:`mosaic.geometry.Geometry`
+            Cloud to cluster.
+        """
+        if np.any(np.array(distance) < 0):
+            distance = geometry.sampling_rate
+
+        components = envelope_components(geometry.points, distance=distance)
+        for component in components:
+            self.add(component, sampling_rate=geometry.sampling_rate)
+        return None
+
+    @apply_over_indices
     def connected_components(self, geometry, distance: float = -1.0, **kwargs):
         """Identify connected components in a point cloud.
 
@@ -475,6 +494,38 @@ class DataContainer:
             distance = geometry.sampling_rate
 
         components = connected_components(geometry.points, distance=distance)
+        for component in components:
+            self.add(component, sampling_rate=geometry.sampling_rate)
+        return 101
+
+    @apply_over_indices
+    def leiden(
+        self,
+        geometry,
+        distance: float = -1.0,
+        resolution_parameter: float = -5,
+        **kwargs,
+    ):
+        """Identify envelope components in a point cloud.
+
+        Parameters
+        ----------
+        geometry : :py:class:`mosaic.geometry.Geometry`
+            Cloud to cluster.
+        """
+        if np.any(np.array(distance) < 0):
+            distance = geometry.sampling_rate
+
+        resolution_parameter = 10**resolution_parameter
+        components = leiden_clustering(
+            geometry.points,
+            distance=distance,
+            resolution_parameter=resolution_parameter,
+            **kwargs,
+        )
+        if len(components) > 5000:
+            raise ValueError("Found more than 5k clusters. Try reducing resolution.")
+
         for component in components:
             self.add(component, sampling_rate=geometry.sampling_rate)
         return 101

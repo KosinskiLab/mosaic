@@ -691,7 +691,8 @@ class DataContainerInteractor(QObject):
         method : str
             Clustering method to use. Options are:
             - 'DBSCAN'
-            - 'Connected Components'
+            - 'K-Means'
+            - 'Birch'
         **kwargs
             Additional arguments passed to the chosen clustering method.
 
@@ -701,12 +702,41 @@ class DataContainerInteractor(QObject):
             List of point clouds, one for each identified cluster.
         """
         func = self.container.dbscan_cluster
-        if method == "Connected Components":
-            func = self.container.connected_components
-        elif method == "K-Means":
+        if method == "K-Means":
             func = self.container.split
         elif method == "Birch":
             func = self.container.birch_cluster
+
+        return func(**kwargs)
+
+    @run_in_background("Partition", callback=on_run_complete)
+    @_cluster_modifier(render=False)
+    def partition(self, method, **kwargs):
+        """
+        Partition point cloud using specified graph clustering method.
+
+        Parameters
+        ----------
+        point_cloud : ndarray
+            Input point cloud coordinates.
+        method : str
+            Method to use. Options are:
+            - 'Connected Components'
+            - 'Envelope'
+            - 'Leiden'
+        **kwargs
+            Additional arguments passed to the chosen clustering method.
+
+        Returns
+        -------
+        list
+            List of point clouds, one for each identified cluster.
+        """
+        func = self.container.connected_components
+        if method == "Leiden":
+            func = self.container.leiden
+        elif method == "Envelope":
+            func = self.container.envelope_components
 
         return func(**kwargs)
 

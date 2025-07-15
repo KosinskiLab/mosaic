@@ -24,7 +24,7 @@ __all__ = [
     "points_to_volume",
     "volume_to_points",
     "connected_components",
-    "connected_components_volume",
+    "envelope_components",
     "dbscan_clustering",
     "birch_clustering",
     "eigenvalue_outlier_removal",
@@ -162,6 +162,30 @@ def binary_opening(points, sampling_rate=1, iterations=1, structure=None, **kwar
     return [x + offset for x in volume_to_points(labels, sampling_rate)]
 
 
+def _get_adjacency_matrix(points, symmetric: bool = False, eps: float = 0.0):
+    # Leafsize needs to be tuned depending on the structure of the input data.
+    # Points typically originates from voxel membrane segmentation on regular grids.
+    # Leaf sizes between 8 - 16 work reasonably well.
+    tree = KDTree(
+        points,
+        leafsize=16,
+        compact_nodes=False,
+        balanced_tree=False,
+        copy_data=False,
+    )
+    pairs = tree.query_pairs(r=np.sqrt(3), eps=eps, output_type="ndarray")
+
+    n_points = points.shape[0]
+    adjacency = coo_matrix(
+        (np.ones(len(pairs)), (pairs[:, 0], pairs[:, 1])),
+        shape=(n_points, n_points),
+        dtype=np.int8,
+    )
+    if symmetric:
+        adjacency += adjacency.T
+    return adjacency
+
+
 def connected_components(points, distance=1, **kwargs):
     """
     Find connected components in point clouds using sparse graph representations.
@@ -180,54 +204,56 @@ def connected_components(points, distance=1, **kwargs):
     """
     points = np.divide(points, distance, out=points)
 
-    # Leafsize needs to be tuned depending on the structure of the input data.
-    # Points typically originates from voxel membrane segmentation on regular grids.
-    # Leaf sizes between 8 - 16 work reasonably well.
-    tree = KDTree(
-        points,
-        leafsize=16,
-        compact_nodes=False,
-        balanced_tree=False,
-        copy_data=False,
-    )
-    pairs = tree.query_pairs(r=np.sqrt(3), output_type="ndarray")
-
-    n_points = points.shape[0]
-    adjacency = coo_matrix(
-        (np.ones(len(pairs)), (pairs[:, 0], pairs[:, 1])),
-        shape=(n_points, n_points),
-        dtype=np.int8,
-    )
+    adjacency = _get_adjacency_matrix(points)
     points = np.multiply(points, distance, out=points)
     n_components, labels = sparse_connected_components(adjacency, directed=False)
     return [points[labels == i] for i in range(n_components)]
 
 
-def connected_components_volume(points, sampling_rate=1, **kwargs):
+def envelope_components(points, distance=1, **kwargs):
     """
-    Find connected components in point cloud using volumetric analysis.
+    Find envelope of a point cloud using sparse graph representations.
 
     Parameters
     ----------
     points : ndarray
         Input point cloud coordinates.
-    sampling_rate : float, optional
-        Spacing between volume voxels, by default 1.
-    **kwargs
-        Additional arguments passed to skimage.measure.label.
+    distance : tuple of float, optional
+        Distance between points to be considered connected, defaults to 1.
 
     Returns
     -------
-    list
-        List of point clouds, one for each connected component.
+    list of ndarray
+        Point cloud coordinates per connected component.
     """
-    from skimage.measure import label
+    points = np.divide(points, distance, out=points)
 
-    offset = points.min(axis=0)
-    volume = points_to_volume(points - offset, sampling_rate=sampling_rate)
-    labels = label(volume.astype(np.int32), background=0, **kwargs)
-    ret = [x + offset for x in volume_to_points(labels, sampling_rate)]
-    return ret
+    adjacency = _get_adjacency_matrix(points, symmetric=True, eps=0.1)
+    n0 = np.asarray(adjacency.sum(axis=0)).reshape(-1)
+
+    # This is a somewhat handwavy approximation of how many neighbors
+    # an envelope point should have, but appears stable in practice
+    points = points[n0 < (points.shape[1] ** 3 - 4)]
+    points = np.multiply(points, distance, out=points)
+    return connected_components(points, distance=distance, **kwargs)
+
+
+def leiden_clustering(points, distance=1, resolution_parameter: float = 0.00000005):
+    import leidenalg
+    import igraph as ig
+
+    points = np.divide(points, distance, out=points)
+
+    adjacency = _get_adjacency_matrix(points, eps=0.1)
+
+    sources, targets = adjacency.nonzero()
+    edges = list(zip(sources, targets))
+    g = ig.Graph(n=len(points), edges=edges)
+    partition = leidenalg.find_partition(
+        g, leidenalg.CPMVertexPartition, resolution_parameter=resolution_parameter
+    )
+    points = np.multiply(points, distance, out=points)
+    return [points[x] for x in partition]
 
 
 def dbscan_clustering(points, distance=100.0, min_points=500):

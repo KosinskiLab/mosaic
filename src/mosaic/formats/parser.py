@@ -138,13 +138,13 @@ def read_txt(filename: str):
     ret = []
 
     delimiter = None
-    if filename.endswith(("xyz", "csv")):
+    if filename.endswith("csv"):
         delimiter = ","
-    elif filename.endswith("txt"):
+    elif filename.endswith(("txt", "tsv")):
         delimiter = "\t"
 
     with open(filename, mode="r") as ifile:
-        data = ifile.read().split()
+        data = ifile.read().split("\n")
         data = [x.strip().split(delimiter) for x in data if x.strip()]
 
     header = ("x", "y", "z", *ascii_lowercase)[: len(data[0])]

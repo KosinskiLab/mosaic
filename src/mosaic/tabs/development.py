@@ -62,6 +62,7 @@ class DevelopmentTab(QWidget):
         super().__init__()
         self.cdata = cdata
         self.ribbon = ribbon
+        self.legend = kwargs.get("legend", None)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(5)
@@ -79,6 +80,20 @@ class DevelopmentTab(QWidget):
                 "mdi.test-tube",
                 self,
                 self.test_point_rendering_performance,
+                "Merge selected clusters",
+            ),
+            create_button(
+                "Outer",
+                "mdi.hexagon",
+                self,
+                self.get_outer,
+                "Merge selected clusters",
+            ),
+            create_button(
+                "Ward",
+                "mdi.hexagon",
+                self,
+                self.ward,
                 "Merge selected clusters",
             ),
         ]
@@ -119,3 +134,68 @@ class DevelopmentTab(QWidget):
 
         print(monitor.get_stats())
         return monitor
+
+    def get_outer(self):
+        cluster_indices = self.cdata.data._get_selected_indices()
+        if len(cluster_indices) == 0:
+            return None
+        geometry = self.cdata._data.data[cluster_indices[0]]
+
+        points = np.divide(geometry.points, geometry.sampling_rate)
+
+        from scipy.sparse import coo_matrix
+        from scipy.spatial import KDTree
+        from ..utils import connected_components
+
+        tree = KDTree(
+            points,
+            leafsize=16,
+            compact_nodes=False,
+            balanced_tree=False,
+            copy_data=False,
+        )
+        pairs = tree.query_pairs(r=np.sqrt(3), eps=0.1, output_type="ndarray")
+
+        n_points = points.shape[0]
+        adjacency = coo_matrix(
+            (np.ones(len(pairs)), (pairs[:, 0], pairs[:, 1])),
+            shape=(n_points, n_points),
+            dtype=np.int8,
+        )
+
+        adjacency = adjacency + adjacency.T
+        n0 = np.asarray(adjacency.sum(axis=0)).reshape(-1)
+
+        print(points.shape[1] ** 3 - 4)
+        rel_points = points[(n0 < 23) * (n0 > 9)]
+        points = connected_components(rel_points)
+        for point in points:
+            point = np.multiply(point, geometry.sampling_rate)
+            self.cdata._data.add(points=point, sampling_rate=geometry.sampling_rate)
+        self.cdata.data.render()
+
+    def ward(self):
+        cluster_indices = self.cdata.data._get_selected_indices()
+        if len(cluster_indices) == 0:
+            return None
+        geometry = self.cdata._data.data[cluster_indices[0]]
+
+        points = np.divide(geometry.points, geometry.sampling_rate)
+        from ..utils import _get_adjacency_matrix
+
+        adjacency = _get_adjacency_matrix(points, eps=0.1)
+        import igraph as ig
+        import leidenalg
+
+        sources, targets = adjacency.nonzero()
+        edges = list(zip(sources, targets))
+        g = ig.Graph(n=len(points), edges=edges)
+        partition = leidenalg.find_partition(
+            g, leidenalg.CPMVertexPartition, resolution_parameter=0.00000005
+        )
+        for community in partition:
+            print(community)
+            point = points[community]
+            point = np.multiply(point, geometry.sampling_rate)
+            self.cdata._data.add(points=point, sampling_rate=geometry.sampling_rate)
+        self.cdata.data.render()

@@ -48,10 +48,10 @@ def create_setting_widget(setting: Dict):
         widget.setValue(setting.get("default", 0))
     elif setting["type"] == "float":
         widget = QDoubleSpinBox()
+        widget.setDecimals(setting.get("decimals", 4))
         widget.setRange(setting.get("min", 0.0), setting.get("max", 1e32))
         widget.setValue(setting.get("default", 0.0))
         widget.setSingleStep(setting.get("step", 1.0))
-        widget.setDecimals(setting.get("decimals", 4))
     elif setting["type"] == "slider":
         from .input_slider import SliderWithInput
 
