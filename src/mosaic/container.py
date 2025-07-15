@@ -11,18 +11,18 @@ from typing import List, Tuple, Union, Dict, Callable
 
 import vtk
 import numpy as np
-from sklearn.cluster import KMeans
-
 from .utils import (
     statistical_outlier_removal,
-    dbscan_clustering,
     eigenvalue_outlier_removal,
-    connected_components,
     com_cluster_points,
     find_closest_points,
-    birch_clustering,
-    leiden_clustering,
+    compute_normals,
+    connected_components,
     envelope_components,
+    leiden_clustering,
+    dbscan_clustering,
+    birch_clustering,
+    kmeans_clustering,
 )
 
 __all__ = ["DataContainer"]
@@ -231,42 +231,6 @@ class DataContainer:
             self.add(self.data[index][...])
         return len(indices)
 
-    def split(self, indices: List[int], k=2) -> Tuple[int, int]:
-        """Split point cloud into k using K-means.
-
-        Parameters
-        ----------
-        indices : list of int
-            Single-element list with index of cloud to split.
-        k : int
-            Number of clusteres.
-
-        Returns
-        -------
-        tuple of int
-            Indices of resulting clouds, -1 if split failed.
-        """
-        if len(indices) != 1:
-            return -1
-
-        data = np.concatenate([self._get_cluster_points(i) for i in indices])
-        sampling_rate = self.data[indices[0]]._sampling_rate
-        clustering = KMeans(n_clusters=k, n_init="auto").fit(data)
-
-        self.remove(indices)
-
-        new_cluster = []
-        new_indices = np.asarray(clustering.labels_)
-        for new_clusters in np.unique(new_indices):
-            new_cluster.append(
-                self.add(
-                    data[np.where(new_indices == new_clusters)],
-                    sampling_rate=sampling_rate,
-                )
-            )
-
-        return tuple(new_cluster)
-
     @apply_over_indices
     def decimate(self, geometry, method: str = "core", **kwargs) -> int:
         """
@@ -465,113 +429,58 @@ class DataContainer:
         return points[mask]
 
     @apply_over_indices
-    def envelope_components(self, geometry, distance: float = -1.0, **kwargs):
-        """Identify envelope components in a point cloud.
-
-        Parameters
-        ----------
-        geometry : :py:class:`mosaic.geometry.Geometry`
-            Cloud to cluster.
-        """
-        if np.any(np.array(distance) < 0):
-            distance = geometry.sampling_rate
-
-        components = envelope_components(geometry.points, distance=distance)
-        for component in components:
-            self.add(component, sampling_rate=geometry.sampling_rate)
-        return None
-
-    @apply_over_indices
-    def connected_components(self, geometry, distance: float = -1.0, **kwargs):
-        """Identify connected components in a point cloud.
-
-        Parameters
-        ----------
-        geometry : :py:class:`mosaic.geometry.Geometry`
-            Cloud to cluster.
-        """
-        if np.any(np.array(distance) < 0):
-            distance = geometry.sampling_rate
-
-        components = connected_components(geometry.points, distance=distance)
-        for component in components:
-            self.add(component, sampling_rate=geometry.sampling_rate)
-        return 101
-
-    @apply_over_indices
-    def leiden(
+    def cluster(
         self,
         geometry,
-        distance: float = -1.0,
-        resolution_parameter: float = -5,
+        method: str,
+        drop_noise: bool = False,
+        use_points: bool = True,
+        use_normals: bool = False,
         **kwargs,
     ):
-        """Identify envelope components in a point cloud.
-
-        Parameters
-        ----------
-        geometry : :py:class:`mosaic.geometry.Geometry`
-            Cloud to cluster.
         """
-        if np.any(np.array(distance) < 0):
-            distance = geometry.sampling_rate
+        Perform clustering on geometry.
+        """
+        _mapping = {
+            "DBSCAN": dbscan_clustering,
+            "Birch": birch_clustering,
+            "K-Means": kmeans_clustering,
+            "Connected Components": connected_components,
+            "Envelope": envelope_components,
+            "Leiden": leiden_clustering,
+        }
+        func = _mapping.get(method)
+        if func is None:
+            raise ValueError(
+                f"method needs to be one of {', '.join(list(_mapping.keys()))}."
+            )
 
-        resolution_parameter = 10**resolution_parameter
-        components = leiden_clustering(
-            geometry.points,
-            distance=distance,
-            resolution_parameter=resolution_parameter,
-            **kwargs,
-        )
-        if len(components) > 5000:
-            raise ValueError("Found more than 5k clusters. Try reducing resolution.")
+        points = geometry.points
+        if method in ("Connected Components", "Envelope", "Leiden"):
+            distance = kwargs.pop("distance", -1)
+            if np.any(np.array(distance) < 0):
+                distance = geometry.sampling_rate
+            kwargs["distance"] = distance
+            points = np.divide(points, distance)
+        else:
+            points = np.divide(points, geometry.sampling_rate)
 
-        for component in components:
-            self.add(component, sampling_rate=geometry.sampling_rate)
+        data = points
+        if use_points and use_normals:
+            data = np.concatenate((points, geometry.normals), axis=1)
+        elif not use_points and use_normals:
+            data = geometry.normals
+
+        labels = func(data, **kwargs)
+        unique_labels = np.unique(labels)
+        if len(unique_labels) > 10000:
+            raise ValueError("Found more than 10k clusters. Try coarser clustering.")
+
+        for label in unique_labels:
+            if label == -1 and drop_noise:
+                continue
+            self.add(geometry[labels == label])
         return 101
-
-    @apply_over_indices
-    def dbscan_cluster(self, geometry, **kwargs):
-        """Perform DBSCAN clustering.
-
-        Parameters
-        ----------
-        geometry : :py:class:`mosaic.geometry.Geometry`
-            Cloud to cluster.
-        kwargs : dict
-            Keyword arguments passed to py:meth:`mosaic.utils.birch_clustering`
-
-        Returns
-        -------
-        ndarray
-            Clustered points.
-        """
-        ret = dbscan_clustering(geometry.points, **kwargs)
-        for component in ret:
-            self.add(component, sampling_rate=geometry._sampling_rate)
-        return None
-
-    @apply_over_indices
-    def birch_cluster(self, geometry, **kwargs):
-        """
-        Perform Birch clustering on the input points using skimage.
-
-        Parameters
-        ----------
-        geometry : ndarray
-            Input point cloud.
-        kwargs : dict
-            Keyword arguments passed to py:meth:`mosaic.utils.birch_clustering`
-
-        Returns
-        -------
-        list
-            List of clusters, where each cluster is an array of points.
-        """
-        ret = birch_clustering(geometry.points, **kwargs)
-        for component in ret:
-            self.add(component, sampling_rate=geometry._sampling_rate)
-        return None
 
     @apply_over_indices
     def remove_outliers(self, geometry, method="statistical", **kwargs):
@@ -600,6 +509,29 @@ class DataContainer:
             return None
 
         return self.add(geometry[mask])
+
+    @apply_over_indices
+    def compute_normals(self, geometry, method="Compute", k: int = 15, **kwargs):
+        """Compute normals of the point cloud.
+
+        Parameters
+        ----------
+        geometry : :py:class:`mosaic.geometry.Geometry`
+            Cloud to process.
+        k : int
+            Number of neighbors to consider.
+
+        Returns
+        -------
+        int
+            Index of newly added point cloud.
+        """
+        if method == "Flip":
+            geometry.normals *= -1
+            return None
+
+        geometry.normals = compute_normals(geometry.points, k=k)
+        return None
 
     def highlight(self, indices: Tuple[int]):
         """Highlight specified geometries.

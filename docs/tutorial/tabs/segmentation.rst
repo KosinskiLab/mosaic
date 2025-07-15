@@ -47,14 +47,6 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
             <i class="mdi mdi-map-marker-distance" style="font-size: 1.5rem;"></i>
 
-    .. grid-item-card:: Partition
-        :text-align: center
-        :link: #partition
-
-        .. raw:: html
-
-            <i class="mdi mdi-graph" style="font-size: 1.5rem;"></i>
-
     .. grid-item-card:: Cluster
         :text-align: center
         :link: #cluster
@@ -70,6 +62,14 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
         .. raw:: html
 
             <i class="mdi mdi-filter" style="font-size: 1.5rem;"></i>
+
+    .. grid-item-card:: Normals
+        :text-align: center
+        :link: #normals
+
+        .. raw:: html
+
+            <i class="mdi mdi-arrow-expand-up" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Trim
         :text-align: center
@@ -192,26 +192,6 @@ Trims points based on distance to other structures:
 
 .. _cluster:
 
-Partition
----------
-
-Partition points using sparse graph representations
-
-1. Select a cluster with multiple distinct structures
-2. Click **Cluster**
-3. Choose clustering method:
-
-   - **Connected Components**: Groups connected components (default). Particularly useful for postprocessing volume segmentations.
-   - **Envelope**: Retrieve boundaries of dense membrane segmentation.
-   - **Leiden**: Partition connected segmentations into distinct objects.
-
-4. Configure method-specific parameters:
-
-   :Leiden:
-      - **Resolution**: Clustering resolution. Lower values yield larger cluster.
-
-5. Click **OK** to apply partitioning
-
 Cluster
 -------
 
@@ -221,11 +201,17 @@ Groups points into separate clusters:
 2. Click **Cluster**
 3. Choose clustering method:
 
+   - **Connected Components**: Groups connected components (default). Particularly useful for postprocessing volume segmentations.
+   - **Envelope**: Retrieve boundaries of dense membrane segmentation.
+   - **Leiden**: Partition connected segmentations into distinct objects.
    - **DBSCAN**: Density-based clustering with distance and minimum points parameters
    - **K-Means**: Divides into a specified number of clusters
    - **Birch**: Hierarchical clustering using Clustering Feature Trees, ideal for large datasets
 
 4. Configure method-specific parameters:
+
+   :Leiden:
+      - **Resolution**: Clustering resolution. Lower values yield larger cluster.
 
    :DBSCAN:
       - **Distance**: Maximum distance between points in the same cluster
@@ -256,10 +242,30 @@ Removes noise points using statistical methods:
    - **Statistical**: Removes points based on distance to neighbors
    - **Eigenvalue**: Removes edge points using covariance analysis
 
-4. Configure parameters:
+4. Configure method-specific parameters:
 
    - **Neighbors**: Number of neighbors to consider for statistics
    - **Threshold**: Sensitivity of outlier detection (lower = more aggressive)
+
+
+.. _normals:
+
+Normals
+-------
+
+Modulate normals of a point cloud object
+
+1. Select a cluster
+2. Click **Normals**
+3. Choose method:
+
+   - **Compute**: Recompute normals by orienting point cloud normal vector field.
+   - **Flip**: Flip normals
+
+4. Configure method-specific parameters:
+
+   :Compute:
+      - **Neighbors**: Number of neighboring points to consider
 
 .. _trim:
 
@@ -274,7 +280,7 @@ Select points outside specified axis-aligned boundaries:
 4. Position the planes by dragging or use keyboard shortcuts:
 
    - ``X``: Align planes to X-axis
-   - ``Y``: Align planes to Y-axis
+   - ``C``: Align planes to Y-axis
    - ``Z``: Align planes to Z-axis
 
 5. Points between the planes are preserved

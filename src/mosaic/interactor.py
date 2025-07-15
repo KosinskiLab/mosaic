@@ -680,65 +680,8 @@ class DataContainerInteractor(QObject):
 
     @run_in_background("Clustering", callback=on_run_complete)
     @_cluster_modifier(render=False)
-    def cluster(self, method, **kwargs):
-        """
-        Cluster point cloud using specified clustering method.
-
-        Parameters
-        ----------
-        point_cloud : ndarray
-            Input point cloud coordinates.
-        method : str
-            Clustering method to use. Options are:
-            - 'DBSCAN'
-            - 'K-Means'
-            - 'Birch'
-        **kwargs
-            Additional arguments passed to the chosen clustering method.
-
-        Returns
-        -------
-        list
-            List of point clouds, one for each identified cluster.
-        """
-        func = self.container.dbscan_cluster
-        if method == "K-Means":
-            func = self.container.split
-        elif method == "Birch":
-            func = self.container.birch_cluster
-
-        return func(**kwargs)
-
-    @run_in_background("Partition", callback=on_run_complete)
-    @_cluster_modifier(render=False)
-    def partition(self, method, **kwargs):
-        """
-        Partition point cloud using specified graph clustering method.
-
-        Parameters
-        ----------
-        point_cloud : ndarray
-            Input point cloud coordinates.
-        method : str
-            Method to use. Options are:
-            - 'Connected Components'
-            - 'Envelope'
-            - 'Leiden'
-        **kwargs
-            Additional arguments passed to the chosen clustering method.
-
-        Returns
-        -------
-        list
-            List of point clouds, one for each identified cluster.
-        """
-        func = self.container.connected_components
-        if method == "Leiden":
-            func = self.container.leiden
-        elif method == "Envelope":
-            func = self.container.envelope_components
-
-        return func(**kwargs)
+    def cluster(self, **kwargs):
+        return self.container.cluster(**kwargs)
 
     @_cluster_modifier()
     def duplicate(self, **kwargs):
@@ -761,10 +704,6 @@ class DataContainerInteractor(QObject):
         return self.container.remove(**kwargs)
 
     @_cluster_modifier()
-    def split_cluster(self, **kwargs):
-        return self.container.split(**kwargs)
-
-    @_cluster_modifier()
     def sample_cluster(self, **kwargs):
         return self.container.sample(**kwargs)
 
@@ -779,6 +718,10 @@ class DataContainerInteractor(QObject):
     @_cluster_modifier()
     def remove_outliers(self, **kwargs):
         return self.container.remove_outliers(**kwargs)
+
+    @_cluster_modifier()
+    def compute_normals(self, **kwargs):
+        return self.container.compute_normals(**kwargs)
 
     def update(self, *args, **kwargs):
         _ = self.container.update(*args, **kwargs)

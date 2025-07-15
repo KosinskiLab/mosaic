@@ -32,6 +32,7 @@ __all__ = [
     "find_closest_points",
     "find_closest_points_cutoff",
     "com_cluster_points",
+    "compute_normals",
     "compute_bounding_box",
     "cmap_to_vtkctf",
     "get_cmap",
@@ -125,43 +126,6 @@ def volume_to_points(volume, sampling_rate, reverse_order: bool = False):
     return ret
 
 
-def binary_opening(points, sampling_rate=1, iterations=1, structure=None, **kwargs):
-    """
-    Uses binary erosion to break thin connections between structures,
-    then applies connected components to identify separate clusters.
-
-    Parameters
-    ----------
-    points : ndarray
-        Input point cloud coordinates.
-    sampling_rate : float, optional
-        Spacing between volume voxels, by default 1.
-    structure : ndarray, optional
-        Structuring element. If None, uses 3x3x3 cube, by default None.
-    **kwargs
-        Additional arguments passed to skimage.measure.label.
-
-    Returns
-    -------
-    list
-        List of point clouds, one for each separated component.
-    """
-    import numpy as np
-    from scipy import ndimage as ndi
-
-    offset = points.min(axis=0)
-    volume = points_to_volume(points - offset, sampling_rate=sampling_rate)
-
-    if structure is None:
-        structure = np.ones((3, 3, 3), dtype=bool)
-
-    ndi_volume = ndi.binary_opening(
-        volume.astype(bool), structure=structure, iterations=iterations
-    )
-    labels = volume * ndi_volume
-    return [x + offset for x in volume_to_points(labels, sampling_rate)]
-
-
 def _get_adjacency_matrix(points, symmetric: bool = False, eps: float = 0.0):
     # Leafsize needs to be tuned depending on the structure of the input data.
     # Points typically originates from voxel membrane segmentation on regular grids.
@@ -186,84 +150,96 @@ def _get_adjacency_matrix(points, symmetric: bool = False, eps: float = 0.0):
     return adjacency
 
 
-def connected_components(points, distance=1, **kwargs):
+def connected_components(data, **kwargs):
     """
     Find connected components in point clouds using sparse graph representations.
 
     Parameters
     ----------
     points : ndarray
-        Input point cloud coordinates.
+        Input data.
     distance : tuple of float, optional
         Distance between points to be considered connected, defaults to 1.
 
     Returns
     -------
-    list of ndarray
-        Point cloud coordinates per connected component.
+    ndarray
+        Cluster labels.
     """
-    points = np.divide(points, distance, out=points)
-
-    adjacency = _get_adjacency_matrix(points)
-    points = np.multiply(points, distance, out=points)
-    n_components, labels = sparse_connected_components(adjacency, directed=False)
-    return [points[labels == i] for i in range(n_components)]
+    adjacency = _get_adjacency_matrix(data)
+    return sparse_connected_components(adjacency, directed=False, return_labels=True)[1]
 
 
-def envelope_components(points, distance=1, **kwargs):
+def envelope_components(data, **kwargs):
     """
     Find envelope of a point cloud using sparse graph representations.
 
     Parameters
     ----------
-    points : ndarray
-        Input point cloud coordinates.
-    distance : tuple of float, optional
-        Distance between points to be considered connected, defaults to 1.
+    data : ndarray
+        Input data.
 
     Returns
     -------
-    list of ndarray
-        Point cloud coordinates per connected component.
+    ndarray
+        Cluster labels.
     """
-    points = np.divide(points, distance, out=points)
-
-    adjacency = _get_adjacency_matrix(points, symmetric=True, eps=0.1)
+    adjacency = _get_adjacency_matrix(data, symmetric=True, eps=0.1)
     n0 = np.asarray(adjacency.sum(axis=0)).reshape(-1)
 
     # This is a somewhat handwavy approximation of how many neighbors
     # an envelope point should have, but appears stable in practice
-    points = points[n0 < (points.shape[1] ** 3 - 4)]
-    points = np.multiply(points, distance, out=points)
-    return connected_components(points, distance=distance, **kwargs)
+    indices = np.where(n0 < (data.shape[1] ** 3 - 4))[0]
+    labels = connected_components(data[indices], **kwargs)
+
+    total_labels = np.full(data.shape[0], fill_value=-1)
+    for index, label in enumerate(np.unique(labels)):
+        selection = indices[labels == label]
+        total_labels[selection] = index
+    return total_labels
 
 
-def leiden_clustering(points, distance=1, resolution_parameter: float = 0.00000005):
+def leiden_clustering(data, resolution_parameter: float = -7.3, **kwargs):
+    """
+    Find Leiden partition of a point cloud using sparse graph representations.
+
+    Parameters
+    ----------
+    points : ndarray
+        Input data.
+    resolution_parameter : float
+        Log 10 of resolution parameter. Smaller values yield coarser clusters.
+
+    Returns
+    -------
+    ndarray
+        Cluster labels.
+    """
     import leidenalg
     import igraph as ig
 
-    points = np.divide(points, distance, out=points)
-
-    adjacency = _get_adjacency_matrix(points, eps=0.1)
+    adjacency = _get_adjacency_matrix(data, eps=0.1)
 
     sources, targets = adjacency.nonzero()
     edges = list(zip(sources, targets))
-    g = ig.Graph(n=len(points), edges=edges)
-    partition = leidenalg.find_partition(
-        g, leidenalg.CPMVertexPartition, resolution_parameter=resolution_parameter
+    g = ig.Graph(n=len(data), edges=edges)
+    partitions = leidenalg.find_partition(
+        g, leidenalg.CPMVertexPartition, resolution_parameter=10**resolution_parameter
     )
-    points = np.multiply(points, distance, out=points)
-    return [points[x] for x in partition]
+    labels = np.full(data.shape[0], fill_value=-1)
+    for index, partition in enumerate(partitions):
+        labels[partition] = index
+    return labels
 
 
-def dbscan_clustering(points, distance=100.0, min_points=500):
+def dbscan_clustering(data, distance=100.0, min_points=500):
     """
     Perform DBSCAN clustering on the input points.
 
     Parameters
     ----------
-    points : ndarray
-        Input point cloud.
+    data : ndarray
+        Input data
     distance : float, optional
         Maximum distance between two samples for one to be considered as in
         the neighborhood of the other, by default 40.
@@ -273,25 +249,24 @@ def dbscan_clustering(points, distance=100.0, min_points=500):
 
     Returns
     -------
-    list
-        List of clusters, where each cluster is an array of points.
+    ndarray
+        Cluster labels.
     """
     from sklearn.cluster import DBSCAN
 
-    labels = DBSCAN(eps=distance, min_samples=min_points).fit_predict(points)
-    return [points[labels == x] for x in np.unique(labels) if x != -1]
+    return DBSCAN(eps=distance, min_samples=min_points).fit_predict(data)
 
 
 def birch_clustering(
-    points, n_clusters: int = 3, threshold: float = 0.5, branching_factor: int = 50
+    data, n_clusters: int = 3, threshold: float = 0.5, branching_factor: int = 50
 ):
     """
     Perform Birch clustering on the input points using skimage.
 
     Parameters
     ----------
-    points : ndarray
-        Input point cloud.
+    data : ndarray
+        Input data.
     threshold: float, optional
         The radius of the subcluster obtained by merging a new sample
         and the closest subcluster should be lesser than the threshold.
@@ -306,15 +281,34 @@ def birch_clustering(
 
     Returns
     -------
-    list
-        List of clusters, where each cluster is an array of points.
+    ndarray
+        Cluster labels.
     """
     from sklearn.cluster import Birch
 
-    labels = Birch(
+    return Birch(
         n_clusters=n_clusters, threshold=threshold, branching_factor=branching_factor
-    ).fit_predict(points)
-    return [points[labels == x] for x in np.unique(labels) if x != -1]
+    ).fit_predict(data)
+
+
+def kmeans_clustering(data, k=2, **kwargs):
+    """Split point cloud into k using K-means.
+
+    Parameters
+    ----------
+    data : ndarray
+        Input data.
+    k : int
+        Number of clusteres.
+
+    Returns
+    -------
+    ndarray
+        Cluster labels.
+    """
+    from sklearn.cluster import KMeans
+
+    return KMeans(n_clusters=k, n_init="auto").fit_predict(data)
 
 
 def eigenvalue_outlier_removal(points, k_neighbors=300, thresh=0.05):
@@ -396,6 +390,17 @@ def find_closest_points_cutoff(positions1, positions2, cutoff=1):
 
     tree = KDTree(positions1)
     return tree.query_ball_point(positions2, cutoff)
+
+
+def compute_normals(points: np.ndarray, k: int = 15, return_pcd: bool = False):
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(points)
+    pcd.estimate_normals()
+    pcd.normalize_normals()
+    pcd.orient_normals_consistent_tangent_plane(k=k)
+    if return_pcd:
+        return pcd
+    return np.asarray(pcd.normals)
 
 
 def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:

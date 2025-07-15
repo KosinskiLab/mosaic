@@ -21,7 +21,7 @@ import open3d as o3d
 from scipy import optimize, interpolate
 from scipy.spatial import ConvexHull as scConvexHull
 
-from .utils import find_closest_points, com_cluster_points
+from .utils import find_closest_points, com_cluster_points, compute_normals
 from .meshing import (
     triangulate_refine_fair,
     fair_mesh,
@@ -758,14 +758,7 @@ class RBF(Parametrization):
         return positions_xyz
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(points)
-        pcd.estimate_normals()
-        pcd.normalize_normals()
-        pcd.orient_normals_consistent_tangent_plane(k=15)
-        normals = np.asarray(pcd.normals)
-        normals /= np.linalg.norm(normals, axis=1)[:, None]
-        return normals
+        return compute_normals(points, k=15)
 
     def points_per_sampling(self, sampling_density: float) -> int:
         (xmin, xmax), (ymin, ymax) = self.grid
@@ -855,16 +848,10 @@ class TriangularMesh(Parametrization):
 
         # Reduce membrane thickness
         voxel_size = np.max(voxel_size)
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(positions)
         if downsample_input:
             positions = com_cluster_points(positions, cutoff=4 * voxel_size)
-            pcd.points = o3d.utility.Vector3dVector(positions)
 
-        pcd.estimate_normals()
-        pcd.normalize_normals()
-        pcd.orient_normals_consistent_tangent_plane(k=k_neighbors)
-
+        pcd = compute_normals(positions, k=k_neighbors, return_pcd=True)
         mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
             pcd, o3d.utility.DoubleVector(radii)
         )
@@ -1361,17 +1348,8 @@ class ConvexHull(TriangularMesh):
 
         positions = np.asarray(positions, dtype=np.float64)
 
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(positions.copy())
-        # pcd = pcd.voxel_down_sample(voxel_size=2 * voxel_size)
-
-        points = np.asarray(pcd.points).copy()
-        scale = points.max(axis=0)
-        pcd.points = o3d.utility.Vector3dVector(points / scale)
-
-        pcd.estimate_normals()
-        pcd.normalize_normals()
-        pcd.orient_normals_consistent_tangent_plane(k=k_neighbors)
+        scale = positions.max(axis=0)
+        pcd = compute_normals(positions.copy() / scale, k=k_neighbors, return_pcd=True)
 
         try:
             with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Error):

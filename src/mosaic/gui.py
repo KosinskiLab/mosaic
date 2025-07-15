@@ -127,14 +127,11 @@ class App(QMainWindow):
         self.tab_ribbon = RibbonToolBar(self)
         data = {"cdata": self.cdata, "ribbon": self.tab_ribbon, "legend": self.legend}
 
-        from .tabs import DevelopmentTab
-
-        print("Dev tab present")
         self.tabs = [
             (SegmentationTab(**data), "Segmentation"),
             (ModelTab(**data), "Parametrization"),
             (IntelligenceTab(**data), "Intelligence"),
-            (DevelopmentTab(**data), "Development"),
+            # (DevelopmentTab(**data), "Development"),
         ]
 
         for index, (tab, name) in enumerate(self.tabs):

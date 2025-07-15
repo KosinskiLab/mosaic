@@ -84,14 +84,6 @@ class SegmentationTab(QWidget):
 
         point_actions = [
             create_button(
-                "Partition",
-                "mdi.graph",
-                self,
-                self.cdata.data.partition,
-                "Partition points",
-                PARTITION_SETTINGS,
-            ),
-            create_button(
                 "Cluster",
                 "mdi.sitemap",
                 self,
@@ -106,6 +98,14 @@ class SegmentationTab(QWidget):
                 self.cdata.data.remove_outliers,
                 "Remove outliers",
                 OUTLIER_SETTINGS,
+            ),
+            create_button(
+                "Normals",
+                "mdi.arrow-expand-up",
+                self,
+                self.cdata.data.compute_normals,
+                "Assign normals",
+                NORMAL_SETTINGS,
             ),
             create_button(
                 "Trim",
@@ -493,6 +493,31 @@ THINNING_SETTINGS = {
     ],
 }
 
+NORMAL_SETTINGS = {
+    "title": "Normal Settings",
+    "settings": [
+        {
+            "label": "Method",
+            "type": "select",
+            "options": ["Compute", "Flip"],
+            "default": "Compute",
+        },
+    ],
+    "method_settings": {
+        "Compute": [
+            {
+                "label": "Neighbors",
+                "parameter": "k",
+                "type": "number",
+                "description": "Number of neighboring points to consider for normal estimation",
+                "min": 3,
+                "max": 100,
+                "default": 15,
+            },
+        ],
+        "Flip": [],
+    },
+}
 
 DOWNSAMPLE_SETTINGS = {
     "title": "Downsample Settings",
@@ -525,15 +550,42 @@ DOWNSAMPLE_SETTINGS = {
     },
 }
 
-
-PARTITION_SETTINGS = {
-    "title": "Partition Settings",
+CLUSTER_SETTINGS = {
+    "title": "Cluster Settings",
     "settings": [
         {
             "label": "Method",
             "type": "select",
-            "options": ["Connected Components", "Envelope", "Leiden"],
+            "options": [
+                "Connected Components",
+                "Envelope",
+                "Leiden",
+                "DBSCAN",
+                "K-Means",
+                "Birch",
+            ],
             "default": "Connected Components",
+        },
+        {
+            "label": "Use Points",
+            "parameter": "use_points",
+            "type": "boolean",
+            "description": "Use spatial coordinates for clustering",
+            "default": True,
+        },
+        {
+            "label": "Use Normals",
+            "parameter": "use_normals",
+            "type": "boolean",
+            "description": "Use normal vectors for clustering",
+            "default": False,
+        },
+        {
+            "label": "Drop Noise",
+            "parameter": "drop_noise",
+            "type": "boolean",
+            "description": "Drop noise cluster if available.",
+            "default": True,
         },
     ],
     "method_settings": {
@@ -584,20 +636,6 @@ PARTITION_SETTINGS = {
                 "notes": "Smaller values yield larger clusters. Range: -8 to -2 for membranes.",
             },
         ],
-    },
-}
-
-CLUSTER_SETTINGS = {
-    "title": "Cluster Settings",
-    "settings": [
-        {
-            "label": "Method",
-            "type": "select",
-            "options": ["DBSCAN", "K-Means", "Birch"],
-            "default": "K-Means",
-        },
-    ],
-    "method_settings": {
         "DBSCAN": [
             {
                 "label": "Distance",
@@ -638,7 +676,7 @@ CLUSTER_SETTINGS = {
                 "parameter": "threshold",
                 "type": "float",
                 "description": "Radius for merging subclusters. Lower values create more clusters.",
-                "default": 0.5,
+                "default": 50.0,
             },
             {
                 "label": "Branching Factor",
