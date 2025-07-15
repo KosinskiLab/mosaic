@@ -65,9 +65,29 @@ Clean the Segmentation
 ^^^^^^^^^^^^^^^^^^^^^^
 
 1. Switch to the **Segmentation** tab
-2. Use the **Select** button to identify and **Remove** clusters corresponding to small artifacts
-3. Eliminate incorrectly segmented voxels using manual selection (press **r** key) and deletion (press **del** key)
-4. Select the central IAV VLP in the object browser and use the **Thin** button from the **Segmentation** tab with the *outer* option to extract the outer segmentation layer
+2. Remove clusters corresponding to small artifacts
+
+   1. In the **Object browser**, select the *Cluster* section.
+   2. Click the **Select** button from the **Base operations** menu, a window should open.
+   3. Use the slider at the bottom of the window to adjust the threshold for cluster selection. To remove small artifacts, drag the right slider to the left until only the central IAV VLP remains unselected.
+   4. Close the window, the selected clusters should now be highlighted in the **Object browser** as well in the viewer.
+   5. Press **delete** key or use **Remove** menu button to remove the selected clusters.
+3. Click the **Select** button from the **Base operations** menu, a window should open.
+4. Use the slider at the bottom of the window to adjust the threshold for cluster selection. To remove the small artifacts, drag the right slider to the left until only the central IAV VLP remains unselected.  
+5. Close the window, the selected clusters should now be highlighted in the **Object browser** as well in the viewer.  
+6. Press **delete** key or use **Remove** menu button to remove the selected clusters
+7. Eliminate incorrectly segmented voxels using manual selection
+
+   1. Press **r** key - the mouse cursor should change to a crosshair  
+   2. Click and drag to select the incorrectly segmented voxels at one end of the IAV VLP near the VLP end at the edge of the tomogram.
+   3. Press **delete** key or use **Remove** menu button to remove the selected voxels  
+8. Thin the segmentation.
+
+   1. Select the central IAV VLP in the Object Browser.
+   2. In the **Segmentation** tab, click the arrow next to the **Thin** button.
+   3. Choose the *outer* option to extract the outer segmentation layer.
+   4. Click **Apply** to apply the operation. A new object will appear in the *Model* section of the *Object Browser*.
+   5. Righ click on the previous object and click hide to clearly see the result of the thinning operation.
 
 .. raw:: html
 
@@ -100,7 +120,8 @@ Generate Initial Mesh
    - Hole Size: -1.0
    - Downsample: True
    - Smoothing Steps: 5
-4. Click *Apply* to fit the mesh, creating a new object in the *Model* section.
+4. Click *Apply* to fit the mesh, creating a new object in the *Model* section of the *Object Browser*.
+5. Right-click the new mesh object and select **Representation** to change its visualization to **Mesh** for better clarity.
 
 .. figure:: ../../_static/tutorial/iav_workflow/initial_mesh_5550.png
    :width: 100 %
@@ -112,7 +133,7 @@ Generate Initial Mesh
 Refine the Mesh
 ^^^^^^^^^^^^^^^
 
-Since one cap of the IAV VLP falls outside the tomogram, we'll extend it to mitigate boundary effects in subsequent simulations:
+Since one cap of the IAV VLP falls outside the tomogram, and we'll fill the mesh in that region to mitigate boundary effects in subsequent simulations:
 
 1. Sample points from the created mesh.
 
@@ -123,8 +144,6 @@ Since one cap of the IAV VLP falls outside the tomogram, we'll extend it to miti
      - Sampling: 30000
 
    - Click *Apply*.
-
-2. Manually remove the cap that would fall outside the tomogram using the selection tool.
 
 3. Create a new mesh from the cleaned samples.
 
@@ -142,7 +161,11 @@ Since one cap of the IAV VLP falls outside the tomogram, we'll extend it to miti
      - Downsample: True
      - Smoothing Steps: 5
 4. Click *Apply* to fit the mesh.
+5. Right-click the new mesh object and select **Representation** to change its visualization to **Mesh** for better clarity. Hide the segmentation object to see the mesh clearly and compare it with the original mesh.
 
+.. note::
+
+   Observe the filled cap of the IAV VLP, which extends beyond the original segmentation.
 .. raw:: html
 
    <div class="before-after-container" style="display: flex; gap: 10px;">
