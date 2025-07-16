@@ -643,25 +643,32 @@ class DataContainerInteractor(QObject):
     def _backup(self):
         # Save clusters and points that are modified by the operation
         self._merge_index = None
-        self._geometry_backup = {
-            i: self.get_geometry(i)[...] for i in self._get_selected_indices()
-        }
-        self._point_backup = {
-            i: self.get_geometry(i)[list(ix)] for i, ix in self.point_selection.items()
-        }
+        try:
+            self._geometry_backup = {
+                i: self.get_geometry(i)[...] for i in self._get_selected_indices()
+            }
+            self._point_backup = {
+                i: self.get_geometry(i)[list(ix)]
+                for i, ix in self.point_selection.items()
+            }
+        except Exception:
+            self._geometry_backup = None
+            self._point_backup = None
 
     def undo(self):
         if getattr(self, "_geometry_backup", None) is None:
             return None
 
         if getattr(self, "_merge_index", None) is not None:
-            print(self._merge_index)
             self.container.remove(self._merge_index)
 
         for i, geometry in self._geometry_backup.items():
             self.container.add(geometry)
 
         for i, geometry in self._point_backup.items():
+            if not self.container._index_ok(i):
+                self.container.add(geometry)
+                continue
             self.container.data[i] = geometry.merge((geometry, self.container.data[i]))
 
         self._geometry_backup = None
