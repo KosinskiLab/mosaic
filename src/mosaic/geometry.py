@@ -136,12 +136,13 @@ class Geometry:
 
         normals = None
         if isinstance(self.normals, np.ndarray):
-            if np.max(idx) < self.normals.shape[0]:
-                normals = self.normals[idx].copy()
+            normals = self.normals.copy()
+            if np.max(idx) < normals.shape[0]:
+                normals = normals[idx].copy()
 
         quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
         if quaternions is not None:
-            quaternions = self.quaternions
+            quaternions = self.quaternions.copy()
             if np.max(idx) < quaternions.shape[0]:
                 quaternions = quaternions[idx].copy()
 
@@ -165,23 +166,21 @@ class Geometry:
         if not len(geometries):
             raise ValueError("No geometries provided for merging")
 
-        points, quaternions = [], []
-        has_quat = any(geometry.quaternions is not None for geometry in geometries)
+        points, quaternions, normals = [], [], []
+
+        has_quat = any(
+            x._data.GetPointData().GetArray("OrientationQuaternion") is not None
+            for x in geometries
+        )
         has_normals = any(geometry.normals is not None for geometry in geometries)
         for geometry in geometries:
             points.append(geometry.points)
-            if not has_quat and not has_normals:
-                continue
 
-            quaternions = geometry.quaternions
-            if quaternions is None:
-                quaternions = np.full(
-                    (geometry.points.shape(0), 4), fill_value=(1, 0, 0, 0)
-                )
+            if has_quat:
+                quaternions.append(geometry.quaternions)
 
-            normals = geometry.normals
-            if normals is None:
-                normals = np.full_like(geometry.points, fill_value=NORMAL_REFERENCE)
+            if has_normals:
+                normals.append(geometry.normals)
 
         quaternions = np.concatenate(quaternions, axis=0) if has_quat else None
         normals = np.concatenate(normals, axis=0) if has_normals else None

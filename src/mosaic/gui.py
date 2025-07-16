@@ -460,6 +460,10 @@ class App(QMainWindow):
         add_file_action.triggered.connect(self.open_files)
         add_file_action.setShortcut("Ctrl+O")
 
+        undo_action = QAction("Undo", self)
+        undo_action.triggered.connect(self.cdata.data.undo)
+        undo_action.setShortcut("Ctrl+Z")
+
         save_file_action = QAction("Save Session", self)
         save_file_action.triggered.connect(self.save_session)
         save_file_action.setShortcut("Ctrl+S")
@@ -625,6 +629,8 @@ class App(QMainWindow):
         # Add actions to menus
         file_menu.addAction(add_file_action)
         file_menu.addMenu(self.recent_menu)
+        file_menu.addAction(undo_action)
+
         file_menu.addSeparator()
         file_menu.addAction(new_session_action)
         file_menu.addAction(save_file_action)

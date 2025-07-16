@@ -528,12 +528,10 @@ class DataContainerInteractor(QObject):
 
         self.deselect_points()
         self.container.remove(added_cluster)
-        self.render()
 
     def cluster_points(self):
         ret = self.container.add_selection(self.point_selection)
         self.deselect_points()
-        self.render()
         return ret
 
     def render(self):
@@ -642,14 +640,45 @@ class DataContainerInteractor(QObject):
             geometry.change_representation(representation)
         self.render()
 
+    def _backup(self):
+        # Save clusters and points that are modified by the operation
+        self._merge_index = None
+        self._geometry_backup = {
+            i: self.get_geometry(i)[...] for i in self._get_selected_indices()
+        }
+        self._point_backup = {
+            i: self.get_geometry(i)[list(ix)] for i, ix in self.point_selection.items()
+        }
+
+    def undo(self):
+        if getattr(self, "_geometry_backup", None) is None:
+            return None
+
+        if getattr(self, "_merge_index", None) is not None:
+            print(self._merge_index)
+            self.container.remove(self._merge_index)
+
+        for i, geometry in self._geometry_backup.items():
+            self.container.add(geometry)
+
+        for i, geometry in self._point_backup.items():
+            self.container.data[i] = geometry.merge((geometry, self.container.data[i]))
+
+        self._geometry_backup = None
+        self._point_backup = None
+        self._merge_index = None
+        self.render()
+
     def merge(self):
-        new_cluster = self.merge_cluster()
+        self._backup()
         point_cluster = self.cluster_points()
-        self.merge_cluster(indices=(new_cluster, point_cluster))
+        new_cluster = self.merge_cluster()
+        self._merge_index = self.merge_cluster(indices=(new_cluster, point_cluster))
 
     def remove(self):
-        self.remove_cluster()
+        self._backup()
         self.remove_points()
+        self.remove_cluster()
 
     def get_geometry(self, index: int):
         if not self.container._index_ok(index):

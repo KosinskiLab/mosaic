@@ -201,9 +201,9 @@ Groups points into separate clusters:
 2. Click **Cluster**
 3. Choose clustering method:
 
-   - **Connected Components**: Groups connected components (default). Particularly useful for postprocessing volume segmentations.
-   - **Envelope**: Retrieve boundaries of dense membrane segmentation.
-   - **Leiden**: Partition connected segmentations into distinct objects.
+   - **Connected Components**: Groups connected components (default). Particularly useful for postprocessing volume segmentations
+   - **Envelope**: Retrieve boundaries of dense membrane segmentation
+   - **Leiden**: Partition connected segmentations into distinct objects
    - **DBSCAN**: Density-based clustering with distance and minimum points parameters
    - **K-Means**: Divides into a specified number of clusters
    - **Birch**: Hierarchical clustering using Clustering Feature Trees, ideal for large datasets

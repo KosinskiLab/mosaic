@@ -3,7 +3,14 @@ from typing import List, Tuple, Literal
 import vtk
 import numpy as np
 from qtpy.QtCore import Qt, QEvent
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QMessageBox
+from qtpy.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QMessageBox,
+    QDockWidget,
+    QApplication,
+    QMainWindow,
+)
 
 from ..widgets.ribbon import create_button
 
@@ -190,10 +197,45 @@ class SegmentationTab(QWidget):
     def _show_property_dialog(self):
         from ..dialogs import PropertyAnalysisDialog
 
+        def _exit():
+            if self.property_dock:
+                self.property_dock.close()
+            self.property_dock = None
+
+        # Close dialog if it already exists
+        if getattr(self, "property_dock", None) is not None:
+            return _exit()
+
         dialog = PropertyAnalysisDialog(self.cdata, self.legend, parent=self)
         self.cdata.data.render_update.connect(dialog.populate_lists)
         self.cdata.models.render_update.connect(dialog.populate_lists)
-        return dialog.show()
+
+        self.property_dock = QDockWidget(self)
+        self.property_dock.setFeatures(
+            QDockWidget.DockWidgetClosable
+            | QDockWidget.DockWidgetFloatable
+            | QDockWidget.DockWidgetMovable
+        )
+
+        self.property_dock.setWidget(dialog)
+        main_window = None
+        for widget in QApplication.instance().topLevelWidgets():
+            if isinstance(widget, QMainWindow):
+                main_window = widget
+                break
+
+        if main_window is None:
+            QMessageBox.warning(
+                self, "Warning", "Could not determine application main window."
+            )
+            return dialog.show()
+        main_window.addDockWidget(Qt.RightDockWidgetArea, self.property_dock)
+
+        dialog.accepted.connect(_exit)
+        dialog.rejected.connect(_exit)
+
+        self.property_dock.show()
+        self.property_dock.raise_()
 
     def _distance_crop(self):
         from ..dialogs import DistanceCropDialog
