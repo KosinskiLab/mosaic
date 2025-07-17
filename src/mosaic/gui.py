@@ -261,8 +261,6 @@ class App(QMainWindow):
             self.toggle_selection_menu()
         elif key == "E":
             self._transition_modes(ViewerModes.PICKING)
-        elif key == "h":
-            self.cdata.data.toggle_visibility()
         elif key == "a":
             self._transition_modes(ViewerModes.DRAWING)
         elif key == "A":
@@ -863,25 +861,23 @@ class App(QMainWindow):
         dialog = AnimationComposerDialog(
             self.vtk_widget, self.volume_viewer, self.cdata
         )
-        return dialog.show()
+        dock = QDockWidget("Animation Composer", self)
+        dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
+        dock.setWidget(dialog)
 
-        # dock = QDockWidget("Animation Composer", self)
-        # dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
-        # dock.setWidget(dialog)
+        dock.setFeatures(
+            QDockWidget.DockWidgetClosable
+            | QDockWidget.DockWidgetFloatable
+            | QDockWidget.DockWidgetMovable
+        )
 
-        # dock.setFeatures(
-        #     QDockWidget.DockWidgetClosable |
-        #     QDockWidget.DockWidgetFloatable |
-        #     QDockWidget.DockWidgetMovable
-        # )
+        dialog.accepted.connect(dock.close)
+        dialog.rejected.connect(dock.close)
 
-        # dialog.accepted.connect(dock.close)
-        # dialog.rejected.connect(dock.close)
+        self.addDockWidget(Qt.RightDockWidgetArea, dock)
 
-        # self.addDockWidget(Qt.RightDockWidgetArea, dock)
-
-        # dock.raise_()
-        # dock.show()
+        dock.raise_()
+        dock.show()
 
     def _setup_volume_viewer(self):
         self.volume_dock = QDockWidget(self)

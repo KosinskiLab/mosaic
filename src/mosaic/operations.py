@@ -46,7 +46,7 @@ def decimate(geometry, method: str = "core", **kwargs):
     Returns
     -------
     :py:class:`mosaic.geometry.Geometry`
-        Decimated point cloud geometry.
+        Decimated geometry.
 
     Raises
     ------
@@ -119,7 +119,7 @@ def downsample(geometry, method: str = "radius", **kwargs):
     Returns
     -------
     :py:class:`mosaic.geometry.Geometry`
-        Downsampled point cloud geometry.
+        Downsampled geometry.
     """
     from .geometry import Geometry
 
@@ -165,7 +165,7 @@ def crop(geometry, distance: float, query: np.ndarray, keep_smaller: bool = True
     Returns
     -------
     :py:class:`mosaic.geometry.Geometry`
-        Cropped point cloud geometry.
+        Cropped geometry.
     """
     dist = geometry.compute_distance(query_points=query, cutoff=distance)
     if keep_smaller:
@@ -197,7 +197,7 @@ def sample(
     Returns
     -------
     :py:class:`mosaic.geometry.Geometry`
-        Sampled point cloud geometry.
+        Sampled geometry.
 
     Raises
     ------
@@ -242,7 +242,7 @@ def trim(geometry, min_value: float, max_value: float, axis: str = "z"):
     Returns
     -------
     :py:class:`mosaic.geometry.Geometry`
-        Trimmed point cloud geometry.
+        Trimmed geometry.
 
     Raises
     ------
@@ -303,7 +303,7 @@ def cluster(
     Returns
     -------
     List[:py:class:`mosaic.geometry.Geometry`]
-        List of clustered point cloud geometries, one per cluster.
+        List of geometries, one per cluster.
 
     Raises
     ------
@@ -415,11 +415,6 @@ def compute_normals(
         Only used when method='Compute'. Default is 15.
     **kwargs
         Additional parameters for normal computation.
-
-    Returns
-    -------
-    None
-        This method modifies the input geometry in-place and returns None.
     """
     from .utils import compute_normals
 
@@ -460,10 +455,6 @@ def visibility(geometry, visible: bool = True, **kwargs):
         Geometry to duplicate.
     visible: bool, optional
         Whether the Geometry instance should be visible or not.
-
-    Returns
-    -------
-    None
     """
     geometry.set_visibility(visible)
 

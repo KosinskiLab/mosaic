@@ -284,7 +284,11 @@ class ModelTab(QWidget):
             smooth = kwargs.pop("smooth", False)
 
         for index in selected_meshes:
-            mesh = self.cdata._models.data[index]._meta.get("fit", None)
+            geometry = self.cdata._models.get(index)
+            if geometry is None:
+                continue
+
+            mesh = geometry._meta.get("fit", None)
 
             mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
             if method == "edge length":
@@ -297,7 +301,13 @@ class ModelTab(QWidget):
                     func = mesh.subdivide_loop
                 mesh = func(**kwargs)
             else:
-                mesh = mesh.simplify_quadric_decimation(**kwargs)
+                method = kwargs.get("decimation_method", "Triangle Count").lower()
+                sampling = kwargs.get("sampling")
+                if method == "reduction factor":
+                    sampling = np.asarray(mesh.triangles).shape[0] // sampling
+
+                print(sampling)
+                mesh = mesh.simplify_quadric_decimation(int(sampling))
 
             self.cdata._add_fit(
                 fit=TriangularMesh(mesh),
@@ -539,12 +549,20 @@ REMESH_SETTINGS = {
         ],
         "Quadratic Decimation": [
             {
-                "label": "Triangles",
-                "parameter": "target_number_of_triangles",
-                "type": "number",
+                "label": "Method",
+                "parameter": "decimation_method",
+                "type": "select",
+                "options": ["Triangle Count", "Reduction Factor"],
+                "default": "Triangle Count",
+                "description": "Choose how to specify the decimation target.",
+            },
+            {
+                "label": "Sampling",
+                "parameter": "sampling",
+                "type": "float",
                 "default": 1000,
-                "min": 1,
-                "description": "Target number of triangles.",
+                "min": 0,
+                "description": "Numerical value for reduction method.",
             },
         ],
         "Subdivide": [

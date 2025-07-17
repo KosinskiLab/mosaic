@@ -29,7 +29,6 @@ KEYBIND_REGISTRY = {
     "Visualization": [
         ("A", "Toggle Drawing Mode"),
         ("D", "Toggle Renderer Background Color"),
-        ("H", "Toggle Visibility of Selected Clusters"),
     ],
     "Selection Operations": [
         ("M", "Merge Selected Cluster or Points"),
