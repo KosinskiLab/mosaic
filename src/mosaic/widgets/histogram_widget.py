@@ -206,6 +206,8 @@ class HistogramWidget(QWidget):
         self.max_value_input = QLineEdit()
 
         # Configure both inputs
+        validator = QDoubleValidator()
+        validator.setLocale(QLocale.c())
         for widget, label_text, callback in [
             (
                 self.min_value_input,
@@ -219,7 +221,7 @@ class HistogramWidget(QWidget):
             ),
         ]:
             label = QLabel(label_text)
-            widget.setValidator(QDoubleValidator())
+            widget.setValidator(validator)
             widget.setMinimumWidth(80)
             widget.editingFinished.connect(callback)
 
@@ -312,7 +314,6 @@ class HistogramWidget(QWidget):
 
     def _update_cutoff_values(self, lower_value=None, upper_value=None):
         """Central method to update cutoff values and propagate changes to all UI elements."""
-
         if lower_value is None:
             lower_value = self.lower_cutoff_line.value()
         if upper_value is None:
@@ -322,35 +323,38 @@ class HistogramWidget(QWidget):
         if range_span <= 0:
             return None
 
-        lower_value = min(lower_value, upper_value)
-        upper_value = max(lower_value, upper_value)
-        lower_value = max(self.min_value, lower_value)
-        upper_value = min(self.max_value, upper_value)
+        _lower_value = min(lower_value, upper_value)
+        _upper_value = max(lower_value, upper_value)
+        _lower_value = max(self.min_value, _lower_value)
+        _upper_value = min(self.max_value, _upper_value)
 
-        lower_percent = int(((lower_value - self.min_value) / range_span) * 100)
-        upper_percent = int(((upper_value - self.min_value) / range_span) * 100)
-        for element in [
+        lower_percent = int(((_lower_value - self.min_value) / range_span) * 100)
+        upper_percent = int(((_upper_value - self.min_value) / range_span) * 100)
+
+        block_elements = [
             self.lower_cutoff_line,
             self.upper_cutoff_line,
             self.range_slider,
-        ]:
+            self.min_value_input,
+            self.max_value_input,
+        ]
+
+        for element in block_elements:
             element.blockSignals(True)
 
-        self.lower_cutoff_line.setValue(lower_value)
-        self.upper_cutoff_line.setValue(upper_value)
+        self.lower_cutoff_line.setValue(_lower_value)
+        self.upper_cutoff_line.setValue(_upper_value)
 
-        self.min_value_input.setText(str(round(lower_value, 4)))
-        self.max_value_input.setText(str(round(upper_value, 4)))
+        locale = QLocale.c()
+        self.min_value_input.setText(locale.toString(float(_lower_value), "d"))
+        self.max_value_input.setText(locale.toString(float(_upper_value), "d"))
         self.range_slider.setValues(lower_percent, upper_percent)
-        for element in [
-            self.lower_cutoff_line,
-            self.upper_cutoff_line,
-            self.range_slider,
-        ]:
+
+        for element in block_elements:
             element.blockSignals(False)
 
         self.cutoff_changed.emit(
-            self._invert_scaling(lower_value), self._invert_scaling(upper_value)
+            self._invert_scaling(_lower_value), self._invert_scaling(_upper_value)
         )
 
     def _update_cutoff_positions(self, lower_value, upper_value):

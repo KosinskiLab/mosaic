@@ -169,10 +169,6 @@ class SegmentationTab(QWidget):
         return self.transfomer.show()
 
     def _show_histogram(self):
-        self._update_histogram()
-        self.histogram_window.show()
-
-    def _show_histogram(self):
         from ..dialogs import HistogramDialog
 
         dialog = HistogramDialog(parent=self)
@@ -180,7 +176,7 @@ class SegmentationTab(QWidget):
         dialog.histogram_widget.cutoff_changed.connect(
             self.cdata.data._on_cutoff_changed
         )
-        return dialog.exec()
+        return dialog.show()
 
     def _update_histogram(self):
         self.histogram_widget.update_histogram(self.cdata._data.get_cluster_size())

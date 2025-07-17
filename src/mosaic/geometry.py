@@ -154,6 +154,7 @@ class Geometry:
             sampling_rate=self._sampling_rate,
             meta=self._meta.copy(),
         )
+        ret.set_visibility(self.visible)
 
         # Avoid clashes from properties of classes inheriting from Geometry
         ret._appearance.update(
@@ -192,6 +193,7 @@ class Geometry:
             color=geometries[0]._appearance["base_color"],
             meta=geometries[0]._meta.copy(),
         )
+        ret.set_visibility(any(x.visible for x in geometries))
         ret._appearance.update(geometries[0]._appearance)
         return ret
 
