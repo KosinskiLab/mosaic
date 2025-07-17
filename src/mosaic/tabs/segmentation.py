@@ -484,7 +484,7 @@ class PlaneTrimmer:
         """Get the bounds of all visible geometry in the scene."""
         bounds = [float("inf"), float("-inf")] * 3
 
-        for i in range(self.data.container.get_cluster_count()):
+        for i in range(len(self.data.container)):
             if not self.data.container.data[i].visible:
                 continue
 
@@ -503,7 +503,7 @@ class PlaneTrimmer:
         """Update point selection based on current plane positions."""
         self.data.point_selection.clear()
 
-        for i in range(self.data.container.get_cluster_count()):
+        for i in range(len(self.data.container)):
             if not self.data.container.data[i].visible:
                 continue
 

@@ -148,7 +148,7 @@ class ModelTab(QWidget):
                 if fit is not None:
                     normals = fit.compute_normal(points)
 
-            self.cdata._data.new(points, normals=normals, sampling_rate=sampling)
+            self.cdata.data.add(points, normals=normals, sampling_rate=sampling)
         self.cdata.data.data_changed.emit()
         self.cdata.data.render()
         return None

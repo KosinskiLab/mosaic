@@ -110,6 +110,10 @@ class MosaicData(QObject):
         self.data.refresh_actors()
         self.models.refresh_actors()
 
+    def set_coloring_mode(self, mode: str):
+        self.data.set_coloring_mode(mode)
+        self.models.set_coloring_mode(mode)
+
     def _get_active_container(self):
         if self.active_picker == "data":
             return self.data
@@ -252,44 +256,23 @@ class MosaicData(QObject):
         return ret
 
     def sample_fit(self, sampling, sampling_method, normal_offset=0.0, **kwargs):
-        fit_indices = self.models._get_selected_indices()
+        from .operations import GeometryOperations
+
         tasks = []
+        fit_indices = self.models._get_selected_indices()
         for index in fit_indices:
-            if not self._models._index_ok(index):
+            geometry = self._models.get(index)
+            if geometry is None:
                 continue
-            geometry = self._models.data[index]
-            fit = geometry._meta.get("fit", None)
-            if fit is None:
-                continue
-            sampling_rate = geometry._sampling_rate
-            tasks.append((fit, sampling_rate, sampling, sampling_method, normal_offset))
+            tasks.append((geometry, sampling, sampling_method, normal_offset))
 
         # TODO: Handle processes in the Qt backend to avoid initialization overhead
         with mp.Pool(1) as pool:
-            results = pool.starmap(_sample_fit, tasks)
+            results = pool.starmap(GeometryOperations.sample, tasks)
 
-        for points, normals, sampling_rate in results:
-            if points is None:
+        for geometry in results:
+            if geometry is None:
                 continue
-            self._data.add(points=points, normals=normals, sampling_rate=sampling_rate)
+            self.data.add(geometry)
 
         return self.data.data_changed.emit()
-
-
-def _sample_fit(
-    fit, sampling_rate, sampling, sampling_method, normal_offset=0.0, **kwargs
-):
-    if fit is None:
-        return None, None, None
-
-    n_samples, extra_kwargs = sampling, {}
-    if sampling_method != "N points" and sampling_method != "Points":
-        n_samples = fit.points_per_sampling(sampling)
-        extra_kwargs["mesh_init_factor"] = 5
-
-    # We handle normal offset in sample to ensure equidistant spacing for meshes
-    extra_kwargs["normal_offset"] = normal_offset
-    points = fit.sample(int(n_samples), **extra_kwargs, **kwargs)
-    normals = fit.compute_normal(points)
-
-    return points, normals, sampling_rate

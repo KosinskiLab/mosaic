@@ -6,44 +6,11 @@ Copyright (c) 2024 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from functools import wraps
-from typing import List, Tuple, Union, Dict, Callable
+from typing import List, Tuple, Union
 
-import vtk
 import numpy as np
-from .utils import (
-    statistical_outlier_removal,
-    eigenvalue_outlier_removal,
-    com_cluster_points,
-    find_closest_points,
-    compute_normals,
-    connected_components,
-    envelope_components,
-    leiden_clustering,
-    dbscan_clustering,
-    birch_clustering,
-    kmeans_clustering,
-)
 
 __all__ = ["DataContainer"]
-
-
-def apply_over_indices(func: Callable) -> Callable:
-    @wraps(func)
-    def wrapper(self, indices: List[int], *args, **kwargs) -> None:
-        if isinstance(indices, int):
-            indices = [indices]
-        for index in indices:
-            if not self._index_ok(index):
-                continue
-            geometry = self.data[index]
-            new_points = func(self, geometry=geometry, *args, **kwargs)
-            if isinstance(new_points, np.ndarray):
-                geometry.swap_data(new_points)
-            elif new_points == 101:
-                self.remove(index)
-
-    return wrapper
 
 
 class DataContainer:
@@ -65,6 +32,9 @@ class DataContainer:
         self.metadata = {}
         self.base_color = base_color
         self.highlight_color = highlight_color
+
+    def __len__(self):
+        return len(self.data)
 
     def __getitem__(self, idx):
         """
@@ -148,7 +118,9 @@ class DataContainer:
         else:
             new_geometry = Geometry(points, color=color, **kwargs)
 
-        new_geometry._appearance["highlight_color"] = self.highlight_color
+        new_geometry.set_appearance(
+            base_color=color, highlight_color=self.highlight_color
+        )
         self.data.append(new_geometry)
         return len(self.data) - 1
 
@@ -169,368 +141,22 @@ class DataContainer:
         for index in sorted(indices, reverse=True):
             self.data.pop(index)
 
-    def new(self, data: Union[np.ndarray, List[int]], *args, **kwargs) -> int:
-        """Create new point cloud from existing data.
+    def get(self, index: int):
+        """Retrieve the Geometry object at index.
 
         Parameters
         ----------
-        data : np.ndarray or list of int
-            Points or indices of existing clouds to use.
+        index : int
+            Geometry object to retrieve.
 
         Returns
         -------
-        int
-            Index of new point cloud, -1 if creation failed.
-        """
-        if len(data) == 0:
-            return -1
-        if not isinstance(data, np.ndarray):
-            if "sampling_rate" not in kwargs:
-                kwargs["sampling_rate"] = self.data[data[0]]._sampling_rate
-
-            geometries = [self.data[i] for i in data]
-            data = np.concatenate([x.points for x in geometries])
-            kwargs["normals"] = np.concatenate([x.normals for x in geometries])
-
-        return self.add(data, *args, **kwargs)
-
-    def merge(self, indices: List[int]) -> int:
-        """Merge multiple geometries into one.
-
-        Parameters
-        ----------
-        indices : list of int
-            Indices of geometries to merge.
-
-        Returns
-        -------
-        int
-            Index of merged cloud, negative value if merge failed.
-        """
-        if len(indices) < 2:
-            return -1
-        indices = [x for x in indices if self._index_ok(x)]
-        new_index = self.new(indices)
-        self.remove(indices)
-        return new_index - len(indices)
-
-    def duplicate(self, indices: List[int]) -> int:
-        """Duplicate different geometries
-
-        Parameters
-        ----------
-        indices : list of int
-            Indices of geometries to merge.
-
-        Returns
-        -------
-        int
-            Number of added geometries.
-        """
-        for index in indices:
-            self.add(self.data[index][...])
-        return len(indices)
-
-    @apply_over_indices
-    def decimate(self, geometry, method: str = "core", **kwargs) -> int:
-        """
-        Decimate point cloud using specified method
-
-        Parameters
-        ----------
         geometry : :py:class:`mosaic.geometry.Geometry`
-            Cloud to decimate.
-        method : str
-            Method to use. Options are:
-            - 'outer' : Keep outer hull
-            - 'core' : Keep core
-            - 'inner' : Keep inner hull
-        **kwargs
-            Additional arguments passed to the chosen method.
-
-        Returns
-        -------
-        int
-            Index of newly added point cloud.
+            Selected geometry or None if index is invalid.
         """
-        from .parametrization import ConvexHull
 
-        points = geometry.points
-        cutoff = 4 * np.max(geometry._sampling_rate)
-        if method == "core":
-            points = com_cluster_points(points, cutoff)
-        elif method == "outer":
-            hull = ConvexHull.fit(
-                points,
-                elastic_weight=0,
-                curvature_weight=0,
-                volume_weight=0,
-                voxel_size=geometry._sampling_rate,
-            )
-            hull_points = hull.sample(int(0.5 * points.shape[0]))
-            _, indices = find_closest_points(points, hull_points)
-            points = points[np.unique(indices)]
-        elif method == "inner":
-            # Budget ray-casting using spherical coordinates
-            centroid = np.mean(points, axis=0)
-            centered_points = points - centroid
-
-            r = np.linalg.norm(centered_points, axis=1)
-            theta = np.arccos(centered_points[:, 2] / r)
-            phi = np.arctan2(centered_points[:, 1], centered_points[:, 0])
-
-            n_phi_bins = 360
-            theta_idx = np.digitize(theta, np.linspace(0, np.pi, n_phi_bins // 2))
-            phi_idx = np.digitize(phi, np.linspace(-np.pi, np.pi, n_phi_bins))
-            bin_id = theta_idx * n_phi_bins + phi_idx
-
-            inner_indices = []
-            for b in np.unique(bin_id):
-                mask = np.where(bin_id == b)[0]
-                inner_indices.append(mask[np.argmin(r[mask])])
-
-            points = points[inner_indices]
-        else:
-            print("Supported methods are 'inner', 'core' and 'outer.")
-
-        return self.add(points, sampling_rate=geometry._sampling_rate)
-
-    @apply_over_indices
-    def downsample(self, geometry, method: str = "radius", **kwargs) -> int:
-        """
-        Downsample point cloud using specified method
-
-        Parameters
-        ----------
-        geometry : :py:class:`mosaic.geometry.Geometry`
-            Cloud to decimate.
-        method : str
-            Method to use. Options are:
-            - 'radius' : Remove points that fall within radius of each other.
-            - 'number' : Randomly subsample points to number.
-        **kwargs
-            Additional arguments passed to the chosen method.
-
-        Returns
-        -------
-        int
-            Index of newly added point cloud.
-        """
-        points, normals = geometry.points, geometry.normals
-        if method.lower() == "radius":
-            import open3d as o3d
-
-            pcd = o3d.geometry.PointCloud()
-            pcd.points = o3d.utility.Vector3dVector(points)
-            pcd.normals = o3d.utility.Vector3dVector(normals)
-            pcd = pcd.voxel_down_sample(**kwargs)
-            points = np.asarray(pcd.points)
-            normals = np.asarray(pcd.normals)
-        else:
-            size = kwargs.get("size", 1000)
-            size = min(size, points.shape[0])
-            keep = np.random.choice(range(points.shape[0]), replace=False, size=size)
-            points, normals = points[keep], normals[keep]
-
-        return self.add(points, normals=normals, sampling_rate=geometry._sampling_rate)
-
-    @apply_over_indices
-    def crop(
-        self, geometry, distance: float, query: np.ndarray, keep_smaller: bool = True
-    ):
-        """Crop geometry based on distance to query points.
-
-        Parameters
-        ----------
-        geometry : :py:class:`mosaic.geometry.Geometry`
-            Cloud to crop.
-        query : np.ndarray
-            Points to compute distances to.
-        distance : float
-            Distance threshold for cropping.
-
-        Returns
-        -------
-        ndarray
-            Remaining points after cropping.
-        """
-        dist = geometry.compute_distance(query_points=query, cutoff=distance)
-        if keep_smaller:
-            return geometry.points[dist < distance]
-        return geometry.points[dist >= distance]
-
-    @apply_over_indices
-    def sample(self, geometry, sampling: float, method: str):
-        """Sample points from cloud.
-
-        Parameters
-        ----------
-        geometry : :py:class:`mosaic.geometry.Geometry`
-            Cloud to sample from.
-        sampling : float
-            Sampling rate or number of points.
-        method : str
-            Sampling method to use.
-
-        Returns
-        -------
-        ndarray
-            Sampled points.
-        """
-        cloud_fit = geometry._meta.get("fit", None)
-        if cloud_fit is None:
-            return geometry.points
-
-        n_samples, kwargs = sampling, {}
-        if method != "N points":
-            n_samples = cloud_fit.points_per_sampling(sampling)
-            kwargs["mesh_init_factor"] = 5
-
-        return cloud_fit.sample(int(n_samples), **kwargs)
-
-    @apply_over_indices
-    def trim(self, geometry, min_value, max_value, axis: str = "z"):
-        """Trim points based on axis-aligned bounds.
-
-        Parameters
-        ----------
-        geometry : :py:class:`mosaic.geometry.Geometry`
-            Cloud to trim.
-        min_value : float
-            Minimum bound value.
-        max_value : float
-            Maximum bound value.
-        axis : str, optional
-            Axis along which to trim, z by default.
-
-        Returns
-        -------
-        ndarray
-            Remaining points after trimming.
-
-        Raises
-        ------
-        ValueError
-            If an invalid trim_axis is provided.
-        """
-        _axis_map = {"x": 0, "y": 1, "z": 2}
-
-        trim_column = _axis_map.get(axis)
-        if trim_column is None:
-            raise ValueError(f"Value for trim axis must be in {_axis_map.keys()}.")
-
-        points = geometry.points
-
-        coordinate_colum = points[:, trim_column]
-        mask = np.logical_and(
-            coordinate_colum > min_value,
-            coordinate_colum < max_value,
-        )
-        return points[mask]
-
-    @apply_over_indices
-    def cluster(
-        self,
-        geometry,
-        method: str,
-        drop_noise: bool = False,
-        use_points: bool = True,
-        use_normals: bool = False,
-        **kwargs,
-    ):
-        """
-        Perform clustering on geometry.
-        """
-        _mapping = {
-            "DBSCAN": dbscan_clustering,
-            "Birch": birch_clustering,
-            "K-Means": kmeans_clustering,
-            "Connected Components": connected_components,
-            "Envelope": envelope_components,
-            "Leiden": leiden_clustering,
-        }
-        func = _mapping.get(method)
-        if func is None:
-            raise ValueError(
-                f"method needs to be one of {', '.join(list(_mapping.keys()))}."
-            )
-
-        points = geometry.points
-        if method in ("Connected Components", "Envelope", "Leiden"):
-            distance = kwargs.pop("distance", -1)
-            if np.any(np.array(distance) < 0):
-                distance = geometry.sampling_rate
-            kwargs["distance"] = distance
-            points = np.divide(points, distance)
-        else:
-            points = np.divide(points, geometry.sampling_rate)
-
-        data = points
-        if use_points and use_normals:
-            data = np.concatenate((points, geometry.normals), axis=1)
-        elif not use_points and use_normals:
-            data = geometry.normals
-
-        labels = func(data, **kwargs)
-        unique_labels = np.unique(labels)
-        if len(unique_labels) > 10000:
-            raise ValueError("Found more than 10k clusters. Try coarser clustering.")
-
-        for label in unique_labels:
-            if label == -1 and drop_noise:
-                continue
-            self.add(geometry[labels == label])
-        return 101
-
-    @apply_over_indices
-    def remove_outliers(self, geometry, method="statistical", **kwargs):
-        """Remove outliers from point cloud.
-
-        Parameters
-        ----------
-        geometry : :py:class:`mosaic.geometry.Geometry`
-            Cloud to process.
-        method : str, optional
-            'statistical' or 'eigenvalue', default 'statistical'.
-        **kwargs
-            Additional parameters for outlier removal.
-
-        Returns
-        -------
-        int
-            Index of newly added point cloud.
-        """
-        func = statistical_outlier_removal
-        if method == "eigenvalue":
-            func = eigenvalue_outlier_removal
-
-        mask = func(geometry.points, **kwargs)
-        if mask.sum() == 0:
-            return None
-
-        return self.add(geometry[mask])
-
-    @apply_over_indices
-    def compute_normals(self, geometry, method="Compute", k: int = 15, **kwargs):
-        """Compute normals of the point cloud.
-
-        Parameters
-        ----------
-        geometry : :py:class:`mosaic.geometry.Geometry`
-            Cloud to process.
-        k : int
-            Number of neighbors to consider.
-
-        Returns
-        -------
-        int
-            Index of newly added point cloud.
-        """
-        if method == "Flip":
-            geometry.normals *= -1
-            return None
-
-        geometry.normals = compute_normals(geometry.points, k=k)
+        if self._index_ok(index):
+            return self.data[index]
         return None
 
     def highlight(self, indices: Tuple[int]):
@@ -543,9 +169,6 @@ class DataContainer:
         """
         _highlighted = getattr(self, "_highlighted_indices", set())
         for index, geometry in enumerate(self.data):
-            if not self._index_ok(index):
-                continue
-
             appearance = geometry._appearance
             color = appearance.get("base_color", self.base_color)
             if index in indices:
@@ -573,25 +196,13 @@ class DataContainer:
         color : tuple of float
             RGB color for highlighting.
         """
-        if self._index_ok(index):
-            geometry = self.data[index]
-            if color is None:
-                color = geometry._appearance.get("highlight_color", (0.8, 0.2, 0.2))
-            geometry.color_points(point_ids, color)
+        geometry = self.get(index)
+        if geometry is None:
+            return None
 
-    def change_visibility(self, indices: Tuple[int], visible, **kwargs):
-        """Change visibility of specified geometries.
-
-        Parameters
-        ----------
-        indices : tuple of int
-            Indices of geometries to apply operation to.
-        """
-        for index in indices:
-            if not self._index_ok(index):
-                continue
-            self.data[index].set_visibility(visible)
-        return None
+        if color is None:
+            color = geometry._appearance.get("highlight_color", (0.8, 0.2, 0.2))
+        geometry.color_points(point_ids, color)
 
     def update_appearance(self, indices: list, parameters: dict) -> bool:
         from .formats.parser import load_density
@@ -611,10 +222,10 @@ class DataContainer:
             parameters.get("isovalue_percentile", 99) / 100
         )
         for index in indices:
-            if not self._index_ok(index):
+            geometry = self.get(index)
+            if geometry is None:
                 continue
 
-            geometry = self.data[index]
             if volume is not None:
                 if not isinstance(geometry, VolumeGeometry):
                     geometry = geometry[...]
@@ -638,16 +249,6 @@ class DataContainer:
 
         self.highlight(indices)
         return full_render
-
-    def get_cluster_count(self) -> int:
-        """Get number of geometries in container.
-
-        Returns
-        -------
-        int
-            Number of geometries.
-        """
-        return len(self.data)
 
     def get_cluster_size(self) -> List[int]:
         """Get number of points in each cloud.
@@ -680,90 +281,3 @@ class DataContainer:
         if 0 <= index < len(self.data):
             return True
         return False
-
-    def _get_cluster_points(self, index: int) -> np.ndarray:
-        """Get points from specified cloud.
-
-        Parameters
-        ----------
-        index : int
-            Index of target cloud.
-
-        Returns
-        -------
-        ndarray
-            Points from cloud, empty array if invalid index.
-        """
-        if self._index_ok(index):
-            return self.data[index].points
-        return np.array([])
-
-    def _get_cluster_index(self, actor) -> int:
-        """Get index of cloud containing actor.
-
-        Parameters
-        ----------
-        actor : vtkActor
-            Actor to search for.
-
-        Returns
-        -------
-        int or None
-            Index of cloud containing actor, None if not found.
-        """
-        for i, cluster in enumerate(self.data):
-            if cluster.actor == actor:
-                return i
-        return None
-
-    def add_selection(self, selected_point_ids: Dict[vtk.vtkActor, set]) -> int:
-        """Add new cloud from selected points.
-
-        Parameters
-        ----------
-        selected_point_ids : dict
-            Mapping of vtkActor to selected point IDs.
-
-        Returns
-        -------
-        int
-            Index of new cloud, -1 if creation failed.
-        """
-        new_cluster, remove_cluster, sampling = [], [], 1
-        for index, point_ids in selected_point_ids.items():
-            if not len(point_ids):
-                continue
-
-            if not self._index_ok(index):
-                continue
-
-            # Ignore selected points from invisible geometries
-            geometry = self.data[index]
-            if not geometry.visible:
-                continue
-
-            if geometry.points.shape[0] == 0:
-                continue
-
-            sampling = geometry.sampling_rate
-            mask = np.zeros(len(geometry.points), dtype=bool)
-            try:
-                mask[list(point_ids)] = True
-            except Exception as e:
-                print(e)
-                return -1
-
-            new_cluster.append((geometry.points[mask], geometry.normals[mask]))
-            inverse_mask = np.invert(mask)
-            if inverse_mask.sum() != 0:
-                geometry.subset(inverse_mask)
-            else:
-                remove_cluster.append(index)
-
-        self.remove(remove_cluster)
-
-        if len(new_cluster):
-            points = np.concatenate([x[0] for x in new_cluster])
-            normals = np.concatenate([x[1] for x in new_cluster])
-            return self.add(points, normals=normals, sampling_rate=sampling)
-        return -1

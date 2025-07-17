@@ -416,7 +416,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
     def _handle_spline_interaction(self, position, actor):
         """Handle spline interaction events"""
         try:
-            index = self.cdata.data.container._get_cluster_index(actor)
+            index = self.cdata.data.container.get_actors().index(actor)
         except Exception:
             index = None
 

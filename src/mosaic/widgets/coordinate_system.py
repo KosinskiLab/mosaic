@@ -89,12 +89,12 @@ class BoundingBoxManager:
 
         data_indices = [
             i
-            for i in range(self.cdata.data.container.get_cluster_count())
+            for i in range(len(self.cdata.data.container))
             if self.cdata.data.get_geometry(i).visible
         ]
         model_indices = [
             i
-            for i in range(self.cdata.models.container.get_cluster_count())
+            for i in range(len(self.cdata.models.container))
             if self.cdata.models.get_geometry(i).visible
         ]
         return self.show_selected_boxes(
@@ -180,13 +180,13 @@ class BoundingBoxManager:
         all_bounds = []
 
         # Collect bounds from all visible data
-        for i in range(self.cdata.data.container.get_cluster_count()):
+        for i in range(len(self.cdata.data.container)):
             if self.cdata.data.container.data[i].visible:
                 geometry = self.cdata.data.get_geometry(i)
                 bounds = geometry._data.GetBounds()
                 all_bounds.append(bounds)
 
-        for i in range(self.cdata.models.container.get_cluster_count()):
+        for i in range(len(self.cdata.models.container)):
             if self.cdata.models.container.data[i].visible:
                 geometry = self.cdata.models.get_geometry(i)
                 bounds = geometry._data.GetBounds()

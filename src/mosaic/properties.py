@@ -5,6 +5,8 @@ from typing import Callable, List, Union
 import numpy as np
 from .geometry import Geometry
 
+__all__ = ["GeometryProperties"]
+
 
 def get_mesh(func):
     @wraps(func)

@@ -587,6 +587,28 @@ class App(QMainWindow):
         reset_action.triggered.connect(self.tilt_dialog.reset_tilt)
         tilt_menu.addAction(reset_action)
 
+        coloring_menu = QMenu("Coloring", self)
+        coloring_group = QActionGroup(self)
+        coloring_group.setExclusive(True)
+
+        self.color_default_action = QAction("Default", self)
+        self.color_default_action.setCheckable(True)
+        self.color_default_action.setChecked(True)
+        self.color_default_action.triggered.connect(
+            lambda: self.cdata.set_coloring_mode("default")
+        )
+        coloring_group.addAction(self.color_default_action)
+
+        self.color_by_entity_action = QAction("By Entity", self)
+        self.color_by_entity_action.setCheckable(True)
+        self.color_by_entity_action.triggered.connect(
+            lambda: self.cdata.set_coloring_mode("entity")
+        )
+        coloring_group.addAction(self.color_by_entity_action)
+
+        coloring_menu.addAction(self.color_default_action)
+        coloring_menu.addAction(self.color_by_entity_action)
+
         legend_bar_menu = QMenu("Legend", self)
         legend_bar = QAction("Show", self)
         legend_bar.setCheckable(True)
@@ -629,7 +651,6 @@ class App(QMainWindow):
         # Add actions to menus
         file_menu.addAction(add_file_action)
         file_menu.addMenu(self.recent_menu)
-        file_menu.addAction(undo_action)
 
         file_menu.addSeparator()
         file_menu.addAction(new_session_action)
@@ -665,8 +686,12 @@ class App(QMainWindow):
         view_menu.addMenu(axes_menu)
         view_menu.addMenu(tilt_menu)
         view_menu.addMenu(legend_bar_menu)
+        view_menu.addMenu(coloring_menu)
+
+        view_menu.addSeparator()
         view_menu.addAction(show_scale_bar)
         view_menu.addAction(show_viewer_mode)
+
         view_menu.addSeparator()
 
         xy_action = QAction("XY-Plane", self)
@@ -783,6 +808,7 @@ class App(QMainWindow):
         interaction_target_menu.addAction(self.cluster_target_action)
         interaction_target_menu.addAction(self.model_target_action)
 
+        interact_menu.addAction(undo_action)
         interact_menu.addAction(viewing_action)
         interact_menu.addSeparator()
 
