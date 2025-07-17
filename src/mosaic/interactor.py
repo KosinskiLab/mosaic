@@ -820,8 +820,19 @@ class DataContainerInteractor(QObject):
         self.add(geometry)
         self.render()
 
-    def update(self, *args, **kwargs):
-        _ = self.container.update(*args, **kwargs)
+    def update(self, other):
+        if not isinstance(other, type(self.container)):
+            raise ValueError(
+                f"Can not update {type(self.container)} using {type(other)}."
+            )
+
+        self.container.clear()
+        self.container.metadata.update(other.metadata)
+        for index in range(len(other)):
+            geometry = other.get(index)
+            if geometry is None:
+                continue
+            self.add(geometry)
         self.data_changed.emit()
 
 
