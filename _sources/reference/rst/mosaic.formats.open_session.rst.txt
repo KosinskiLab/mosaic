@@ -1,0 +1,6 @@
+﻿mosaic.formats.open\_session
+============================
+
+.. currentmodule:: mosaic.formats
+
+.. autofunction:: open_session
