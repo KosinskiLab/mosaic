@@ -128,14 +128,9 @@ class MosaicData(QObject):
         return container.attach_area_picker()
 
     def activate_viewing_mode(self):
-        """Activate viewing mode for current active container.
-
-        Returns
-        -------
-        bool
-            Success status of mode activation
-        """
-        return self._get_active_container().activate_viewing_mode()
+        """Activate viewing mode for all contaienrs."""
+        self.data.activate_viewing_mode()
+        self.models.activate_viewing_mode()
 
     def highlight_clusters_from_selected_points(self):
         """Highlight clusters containing currently selected points.

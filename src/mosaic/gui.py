@@ -368,6 +368,10 @@ class App(QMainWindow):
         self._camera_direction = aligned_direction
         self.vtk_widget.GetRenderWindow().Render()
 
+    def reset_camera_view(self):
+        self._camera_view = None
+        self.set_camera_view("z")
+
     def swap_camera_view_direction(self, view_key):
         view = getattr(self, "_camera_view", None)
         if view is None:
@@ -935,20 +939,10 @@ class App(QMainWindow):
             return -1
 
         self._add_file_to_recent(file_path)
-        self.renderer.RemoveAllViewProps()
-        self.volume_viewer.close()
-
-        self.dataset_bbox.setChecked(False)
-        self.computed_bbox.setChecked(False)
-
-        self.renderer.AddActor(self.status_indicator.text_actor)
-        self.cdata.data.rendered_actors.clear()
-        self.cdata.models.rendered_actors.clear()
 
         self.cdata.data.render()
         self.cdata.models.render()
-
-        self.set_camera_view("z")
+        return self.reset_camera_view()
 
     def load_session(self):
         file_dialog = QFileDialog()
@@ -956,9 +950,11 @@ class App(QMainWindow):
         if not file_path:
             return -1
 
+        self.close_session(show_warning=False)
+
         return self._load_session(file_path)
 
-    def close_session(self):
+    def close_session(self, show_warning: bool = True):
 
         def _show_close_session_warning() -> bool:
             msg_box = QMessageBox()
@@ -979,14 +975,21 @@ class App(QMainWindow):
             result = msg_box.exec()
             return result == QMessageBox.StandardButton.Ok
 
-        if not _show_close_session_warning():
-            return None
+        if show_warning:
+            if not _show_close_session_warning():
+                return None
 
         self.renderer.RemoveAllViewProps()
         self.volume_viewer.close()
 
         self.dataset_bbox.setChecked(False)
         self.computed_bbox.setChecked(False)
+
+        if self.scale_bar.visible:
+            self.scale_bar.show()
+
+        if self.status_indicator.visible:
+            self.status_indicator.show()
 
         self.cdata.reset()
         self.cdata.data.render()

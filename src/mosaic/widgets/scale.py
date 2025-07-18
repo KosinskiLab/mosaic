@@ -15,7 +15,6 @@ class ScaleBarWidget:
     ):
         self.renderer = renderer
         self.interactor = interactor
-        self.visible = False
 
         self.scale_actor = vtk.vtkLegendScaleActor()
         self.scale_actor.AllAxesOff()
@@ -32,20 +31,19 @@ class ScaleBarWidget:
         self.scale_actor.GetLegendTitleProperty().SetFontSize(14)
         self.scale_actor.GetLegendTitleProperty().SetShadow(0)
 
-    def show(self):
-        if self.visible:
-            return None
+        self.hide()
 
-        self.renderer.AddActor(self.scale_actor)
+    def show(self):
         self.visible = True
+        self.renderer.AddActor(self.scale_actor)
         return self.interactor.GetRenderWindow().Render()
 
     def hide(self):
-        if not self.visible:
-            return None
-
-        self.renderer.RemoveActor(self.scale_actor)
         self.visible = False
+        try:
+            self.renderer.RemoveActor(self.scale_actor)
+        except Exception:
+            pass
         return self.interactor.GetRenderWindow().Render()
 
     def set_label_format(self, format_string: str):

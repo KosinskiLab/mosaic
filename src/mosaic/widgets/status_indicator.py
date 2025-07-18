@@ -36,21 +36,24 @@ class StatusIndicator:
     def __init__(self, renderer, interactor):
         self.renderer = renderer
         self.interactor = interactor
-
-        self.visible = True
         self.update_status()
 
-    def show(self):
+    def show(self, render: bool = True):
         """Show the status indicator."""
         self.visible = True
-        self.text_actor.VisibilityOn()
-        self.interactor.GetRenderWindow().Render()
+        self.renderer.AddActor(self.text_actor)
+        if render:
+            return self.interactor.GetRenderWindow().Render()
 
-    def hide(self):
+    def hide(self, render: bool = True):
         """Hide the status indicator."""
         self.visible = False
-        self.text_actor.VisibilityOff()
-        self.interactor.GetRenderWindow().Render()
+        try:
+            self.renderer.RemoveActor(self.text_actor)
+        except Exception:
+            pass
+        if render:
+            return self.interactor.GetRenderWindow().Render()
 
     def _create_actor(self, text):
         text_actor = vtkTextActor()
@@ -74,16 +77,10 @@ class StatusIndicator:
 
     def update_status(self, interaction="Viewing", status="Ready", **kwargs):
         """Update the status indicator with current mode and task status."""
-        try:
-            self.renderer.RemoveActor(self.text_actor)
-        except Exception:
-            pass
-
+        self.hide(render=False)
         # Create a new actor to prevent odd-line breaks from spacing
         self.text_actor = self._create_actor(f"Mode: {interaction} - {status}")
-        if self.visible:
-            self.renderer.AddActor(self.text_actor)
-            self.interactor.GetRenderWindow().Render()
+        return self.show(render=True)
 
 
 class CursorModeHandler:
