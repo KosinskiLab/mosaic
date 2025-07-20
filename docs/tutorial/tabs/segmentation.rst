@@ -206,7 +206,7 @@ Groups points into separate clusters:
    - **Leiden**: Partition connected segmentations into distinct objects
    - **DBSCAN**: Density-based clustering with distance and minimum points parameters
    - **K-Means**: Divides into a specified number of clusters
-   - **Birch**: Hierarchical clustering using Clustering Feature Trees, ideal for large datasets
+   - **Birch**: Hierarchical clustering
 
 4. Configure method-specific parameters:
 

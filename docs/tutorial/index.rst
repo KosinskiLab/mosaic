@@ -26,6 +26,7 @@ User Guide
 .. toctree::
    :caption: Practical Workflows
 
+   workflows/giardia
    workflows/iav
 
 .. toctree::

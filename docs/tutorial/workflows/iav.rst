@@ -37,6 +37,7 @@ The video below demonstrates the workflow from raw cryo-ET data to initial meshe
 ..  youtube:: -XyxZpJQoXA
    :width: 100%
 
+.. _membrane-segmentation:
 
 Membrane Segmentation
 ---------------------
