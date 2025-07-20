@@ -837,9 +837,9 @@ class DataContainerInteractor(QObject):
 
 
 _GEOMETRY_OPERATIONS = {
-    "decimate": {"remove_original": True},
-    "downsample": {"remove_original": True},
-    "remove_outliers": {"remove_original": True},
+    "decimate": {"remove_original": False},
+    "downsample": {"remove_original": False},
+    "remove_outliers": {"remove_original": False},
     "compute_normals": {"remove_original": False},
     "cluster": {"remove_original": True, "render": False, "background": True},
     "duplicate": {"remove_original": False},

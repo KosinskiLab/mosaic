@@ -527,8 +527,23 @@ THINNING_SETTINGS = {
             "type": "select",
             "options": ["outer", "core", "inner"],
             "default": "core",
+            "description": "Retrieve outer/inner hull or core points.",
         },
     ],
+    "method_settings": {
+        "core": [
+            {
+                "label": "Radius",
+                "parameter": "cutoff",
+                "type": "float",
+                "description": "Radius of sphere used for thinning.",
+                "default": 50,
+                "min": 0,
+                "max": 1e32,
+                "notes": "Larger radius yields coarser structures.",
+            },
+        ],
+    },
 }
 
 NORMAL_SETTINGS = {
@@ -539,6 +554,7 @@ NORMAL_SETTINGS = {
             "type": "select",
             "options": ["Compute", "Flip"],
             "default": "Compute",
+            "description": "Compute new or flip direction of existing normals.",
         },
     ],
     "method_settings": {

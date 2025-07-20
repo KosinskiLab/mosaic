@@ -57,9 +57,12 @@ def decimate(geometry, method: str = "core", **kwargs):
     from .parametrization import ConvexHull
 
     points = geometry.points
-    cutoff = 4 * np.max(geometry._sampling_rate)
 
     if method == "core":
+        cutoff = kwargs.get("cutoff", None)
+        if cutoff is None:
+            cutoff = 4 * np.max(geometry._sampling_rate)
+
         points = com_cluster_points(points, cutoff)
     elif method == "outer":
         hull = ConvexHull.fit(

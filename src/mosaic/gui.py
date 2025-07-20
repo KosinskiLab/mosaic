@@ -932,6 +932,8 @@ class App(QMainWindow):
             return self.apply_render_settings()
 
     def _load_session(self, file_path: str):
+        self.close_session(show_warning=False)
+
         try:
             self.cdata.load_session(file_path)
         except ValueError as e:
@@ -949,9 +951,6 @@ class App(QMainWindow):
         file_path, _ = file_dialog.getOpenFileName(self, "Open Session")
         if not file_path:
             return -1
-
-        self.close_session(show_warning=False)
-
         return self._load_session(file_path)
 
     def close_session(self, show_warning: bool = True):

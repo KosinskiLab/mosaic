@@ -1,7 +1,9 @@
 import textwrap
 from os import makedirs
-from os.path import join, splitext
+from os.path import join, splitext, basename
 
+import numpy as np
+from tme import Density
 from qtpy.QtWidgets import (
     QDialog,
     QTabWidget,
@@ -256,17 +258,17 @@ class MatchingTab(QWidget):
 
         rotational_uncertainty_label = QLabel("Rotational Uncertainty:")
         self.rotational_uncertainty = QLineEdit()
-        self.rotational_uncertainty.setPlaceholderText("e.g., 15")
+        self.rotational_uncertainty.setText("40")
         rotational_uncertainty_help = QLabel(
-            "Deviation from seed point normal in degree."
+            "Deviation from seed point normal in degrees."
         )
         rotational_uncertainty_help.setStyleSheet("color: #64748b; font-size: 10px;")
 
         translational_uncertainty_label = QLabel("Translational Uncertainty:")
         self.translational_uncertainty = QLineEdit()
-        self.translational_uncertainty.setPlaceholderText("e.g., 10,10,15")
+        self.translational_uncertainty.setText("10,10,15")
         translational_uncertainty_help = QLabel(
-            "x, y, z deviation from seed point in voxel."
+            "x, y, z deviation from seed point in voxels."
         )
         translational_uncertainty_help.setStyleSheet("color: #64748b; font-size: 10px;")
 
@@ -288,6 +290,10 @@ class MatchingTab(QWidget):
         self.filters_group = QGroupBox("Filters")
         self.filters_layout = QGridLayout(self.filters_group)
 
+        self.ctf_file = PathSelector(
+            "CTF File:", "Can be a path to mdoc, warp xml or tomostar file."
+        )
+
         lowpass_label = QLabel("Lowpass (Å):")
         self.lowpass_input = QLineEdit()
         self.lowpass_input.setPlaceholderText("e.g., 20")
@@ -298,7 +304,7 @@ class MatchingTab(QWidget):
 
         tilt_label = QLabel("Tilt Range:")
         self.tilt_input = QLineEdit()
-        self.tilt_input.setPlaceholderText("e.g., -60,60")
+        self.tilt_input.setPlaceholderText("e.g., 57,60")
         tilt_help = QLabel("Format: start_angle,stop_angle")
         tilt_help.setStyleSheet("color: #64748b; font-size: 10px;")
 
@@ -315,43 +321,29 @@ class MatchingTab(QWidget):
         whitening_label = QLabel("Spectral Whitening:")
         self.whitening_check = QCheckBox("Apply")
 
-        self.filters_layout.addWidget(lowpass_label, 0, 0)
-        self.filters_layout.addWidget(self.lowpass_input, 0, 1)
-        self.filters_layout.addWidget(highpass_label, 1, 0)
-        self.filters_layout.addWidget(self.highpass_input, 1, 1)
+        self.filters_layout.addWidget(self.ctf_file, 0, 0, 1, 2)
 
-        self.filters_layout.addWidget(tilt_label, 2, 0)
-        self.filters_layout.addWidget(self.tilt_input, 2, 1)
-        self.filters_layout.addWidget(tilt_help, 3, 1)
+        self.filters_layout.addWidget(lowpass_label, 1, 0)
+        self.filters_layout.addWidget(self.lowpass_input, 1, 1)
+        self.filters_layout.addWidget(highpass_label, 2, 0)
+        self.filters_layout.addWidget(self.highpass_input, 2, 1)
 
-        self.filters_layout.addWidget(axes_label, 4, 0)
-        self.filters_layout.addWidget(self.axes_input, 4, 1)
-        self.filters_layout.addWidget(axes_help, 5, 1)
+        self.filters_layout.addWidget(tilt_label, 3, 0)
+        self.filters_layout.addWidget(self.tilt_input, 3, 1)
 
-        self.filters_layout.addWidget(defocus_label, 6, 0)
-        self.filters_layout.addWidget(self.defocus_input, 6, 1)
+        self.filters_layout.addWidget(tilt_help, 4, 1)
+        self.filters_layout.addWidget(axes_label, 5, 0)
 
-        self.filters_layout.addWidget(whitening_label, 7, 0)
-        self.filters_layout.addWidget(self.whitening_check, 7, 1)
+        self.filters_layout.addWidget(self.axes_input, 5, 1)
+        self.filters_layout.addWidget(axes_help, 6, 1)
+
+        self.filters_layout.addWidget(defocus_label, 7, 0)
+        self.filters_layout.addWidget(self.defocus_input, 7, 1)
+
+        self.filters_layout.addWidget(whitening_label, 8, 0)
+        self.filters_layout.addWidget(self.whitening_check, 8, 1)
 
         self.scroll_layout.addWidget(self.filters_group)
-
-        # Additional Options group
-        self.options_group = QGroupBox("Additional Options")
-        self.options_layout = QGridLayout(self.options_group)
-
-        # Centering toggle
-        centering_label = QLabel("No Centering")
-        self.no_centering_check = QCheckBox("Apply")
-        self.no_centering_check.setChecked(True)
-        axes_help = QLabel("Do not center the template in the box.")
-        axes_help.setStyleSheet("color: #64748b; font-size: 10px;")
-
-        self.options_layout.addWidget(centering_label, 0, 0)
-        self.options_layout.addWidget(self.no_centering_check, 0, 1)
-        self.options_layout.addWidget(axes_help, 1, 1)
-
-        self.scroll_layout.addWidget(self.options_group)
 
         self.scroll_layout.addStretch()
         self.scroll_area.setWidget(self.scroll_content)
@@ -371,7 +363,7 @@ class MatchingTab(QWidget):
             "wedge_axes": self.axes_input.text(),
             "defocus": self.defocus_input.text(),
             "whitening": self.whitening_check.isChecked(),
-            "no_centering": self.no_centering_check.isChecked(),
+            "ctf_file": self.ctf_file.get_path(),
         }
 
 
@@ -395,8 +387,9 @@ class PeakCallingTab(QWidget):
         self.caller_combo = QComboBox()
         self.caller_combo.addItems(
             [
-                "PeakCallerScipy",
                 "PeakCallerMaximumFilter",
+                "PeakCallerRecursiveMasking",
+                "PeakCallerScipy",
             ]
         )
 
@@ -462,8 +455,8 @@ class ComputeTab(QWidget):
 
         backend_label = QLabel("Backend:")
         self.backend_combo = QComboBox()
-        self.backend_combo.addItems(["numpy", "cupy"])
-        self.backend_combo.setCurrentText("numpy")
+        self.backend_combo.addItems(["numpyfftw", "cupy"])
+        self.backend_combo.setCurrentText("numpyfftw")
 
         self.compute_layout.addWidget(cores_label, 0, 0)
         self.compute_layout.addWidget(self.cores_input, 0, 1)
@@ -539,7 +532,7 @@ class TemplateMatchingDialog(QDialog):
         ]
         self.help_text.setText(help_texts[index])
 
-    def handle_export(self):
+    def accept(self):
         data = self.input_tab.get_settings()
         preprocess = self.preprocess_tab.get_settings()
         peak_data = self.peak_tab.get_settings()
@@ -572,21 +565,25 @@ class TemplateMatchingDialog(QDialog):
 
             if preprocess["align_axis"] != "None":
                 axis_map = {"X": "0", "Y": "1", "Z": "2", "None": ""}
-                args.append(f"--align_axis {axis_map[preprocess['align_axis']]}")
-                args.append(f"--align_eigenvector {preprocess['align_eigenvector']}")
+                args.append(f"--align-axis {axis_map[preprocess['align_axis']]}")
+                args.append(f"--align-eigenvector {preprocess['align_eigenvector']}")
 
                 if preprocess["flip_template"]:
-                    args.append("--flip_axis")
+                    args.append("--flip-axis")
 
             if preprocess["lowpass"]:
                 args.append(f"--lowpass {preprocess['lowpass']}")
             if preprocess["highpass"]:
                 args.append(f"--highpass {preprocess['highpass']}")
             if preprocess["invert_template_contrast"]:
-                args.append("--invert_contrast")
+                args.append("--invert-contrast")
 
             args = "\n                    ".join([f"{x} \\" for x in args])
-            processed_template = f"{splitext(template_path)[0]}_processed.mrc"
+            processed_template = f"{splitext(basename(template_path))[0]}_processed.mrc"
+            processed_template = join(templates_dir, processed_template)
+            sampling_rate = np.max(
+                Density.from_file(target_path, use_memmap=True).sampling_rate
+            )
             generate_template = textwrap.dedent(
                 f"""
                 #!/bin/bash
@@ -597,8 +594,9 @@ class TemplateMatchingDialog(QDialog):
                 # Preprocess the template
                 preprocess.py \\
                     -m {data["template"]} \\
+                    --sampling-rate {sampling_rate} \\
                     {args}
-                    -o {join(templates_dir, processed_template)}
+                    -o {processed_template}
 
                 echo "Template preprocessing complete."
             """
@@ -612,41 +610,40 @@ class TemplateMatchingDialog(QDialog):
         matching = self.matching_tab.get_settings()
         if matching["orientations_file"]:
             args.append(f"--orientations {matching['orientations_file']}")
-            args.append(f"--orientations_scaling {matching['orientation_scaling']}")
-            args.append(f"--orientations_cone {matching['rotational_uncertainty']}")
+            args.append(f"--orientations-scaling {matching['orientation_scaling']}")
+            args.append(f"--orientations-cone {matching['rotational_uncertainty']}")
             args.append(
-                f"--orientations_uncertainty {matching['translational_uncertainty']}"
+                f"--orientations-uncertainty {matching['translational_uncertainty']}"
             )
 
+        if matching["ctf_file"]:
+            args.append(f"--ctf-file {matching['ctf-file']}")
         if matching["lowpass"]:
             args.append(f"--lowpass {matching['lowpass']}")
         if matching["highpass"]:
             args.append(f"--highpass {matching['highpass']}")
         if matching["wedge_axes"]:
-            args.append(f"--wedge_axes {matching['wedge_axes']}")
+            args.append(f"--wedge-axes {matching['wedge_axes']}")
         if matching["tilt_range"]:
-            args.append(f"--tilt_angles {matching['tilt_range']}")
+            args.append(f"--tilt-angles {matching['tilt_range']}")
         if matching["defocus"]:
             args.append(f"--defocus {matching['defocus']}")
         if matching["whitening"]:
             args.append("--whitening")
-        if matching["no_centering"]:
-            args.append("--no_centering")
 
         compute = self.compute_tab.get_settings()
-        if compute["backend"] == "cupy":
-            args.append("--use_gpu")
         args.append(f"--backend {compute['backend']}")
         if compute["memory"]:
             args.append(f"--memory {compute['memory']}")
-        args.append(f"-m {compute['cores']}")
+        args.append(f"-n {compute['cores']}")
 
-        output_basename = f"{splitext(target_path)[0]}_{splitext(template_path)[0]}"
+        output_basename = f"{splitext(basename(target_path))[0]}_"
+        output_basename += f"{splitext(basename(template_path))[0]}"
         match_output = join(match_dir, f"{output_basename}.pickle")
         if len(target_mask := data.get("target_mask", "")) > 0:
-            args.append(f"--target_mask {target_mask}")
+            args.append(f"--target-mask {target_mask}")
         if len(template_mask := data.get("template_mask", "")) > 0:
-            args.append(f"--template_mask {template_mask}")
+            args.append(f"--template-mask {template_mask}")
 
         args = "\n                ".join([f"{x} \\" for x in args])
         match_template = textwrap.dedent(
@@ -654,12 +651,12 @@ class TemplateMatchingDialog(QDialog):
             #!/bin/bash
 
             match_template.py \\
-                -m {data["tomogram"]} \\
-                -i {processed_template} \\
-                -s {matching["score_function"]} \\
-                -a {matching["angular_step"]} \\
+                --target {data["tomogram"]} \\
+                --template {processed_template} \\
+                --score {matching["score_function"]} \\
+                --angular-sampling {matching["angular_step"]} \\
                 {args}
-                -o {match_output}
+                --output {match_output}
 
             echo "Template matching complete. Results saved to {match_output}"
         """
@@ -676,12 +673,12 @@ class TemplateMatchingDialog(QDialog):
 
             # Extract peaks from matching results
             postprocess.py \\
-              --input_file {match_output} \\
-              --peak_caller {peak_data["peak_caller"]} \\
-              --num_peaks {peak_data["num_peaks"]} \\
-              --min_distance {peak_data["min_distance"]} \\
-              --output_format orientations \\
-              --output_prefix {peak_output_prefix}
+              --input-file {match_output} \\
+              --peak-caller {peak_data["peak_caller"]} \\
+              --num-peaks {peak_data["num_peaks"]} \\
+              --min-distance {peak_data["min_distance"]} \\
+              --output-format orientations \\
+              --output-prefix {peak_output_prefix}
 
             echo "Peak extraction complete. Results saved with prefix {peak_output_prefix}"
         """
@@ -725,4 +722,4 @@ class TemplateMatchingDialog(QDialog):
         with open(script_path, mode="w", encoding="utf-8") as ofile:
             ofile.write(master_script.strip() + "\n")
 
-        return self.accept()
+        return super().accept()
