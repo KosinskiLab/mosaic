@@ -183,7 +183,7 @@ We fit triangular meshes to the individual clusters to analyze their geometric p
 
 Alpha shapes are generalizations of convex hulls and well-suited for convex membrane morphologies, potentially with disconnected components. Reducing alpha allows the mesh to deviate from the convexity constraint, but typically at a cost of mesh quality and completeness.
 
-Therefore, other methods such as Ball Pivoting should be preferred in such cases. For the example shown in the Clustering section, we applied core-thinning using **Segmentation > Thin** with a radius of 40 and meshed the generated cluster using Ball Pivoting with a radius of 50. Poisson reconstruction also generates complete meshes, but with a different algorithm for mesh completion compared to alpha shapes and Ball Pivoting.
+To mesh non-convex membrane segmentations, other methods like Ball Pivoting should be preferred. For the example shown in the Clustering section, we applied core-thinning using **Segmentation > Thin** with a radius of 40 and meshed the generated cluster using Ball Pivoting with a radius of 50. Poisson reconstruction also generates complete meshes, but with a different algorithm for mesh completion.
 
 Once meshes are generated, we can analyze their geometric properties using **Segmentation > Properties**
 
