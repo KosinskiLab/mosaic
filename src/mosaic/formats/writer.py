@@ -26,7 +26,7 @@ class OrientationsWriter:
             formats = ", ".join([str(x) for x in _supported_formats.keys()])
             raise ValueError(f"Supported formats are {formats}.")
 
-        return func(file_path)
+        return func(file_path, **kwargs)
 
     def _to_txt(self, file_path):
         orientations = Orientations(
@@ -37,7 +37,7 @@ class OrientationsWriter:
         )
         return orientations.to_file(file_path, file_format="text")
 
-    def _to_star(self, file_path):
+    def _to_star(self, file_path, version : str = None):
         particle_header = [
             "data_particles",
             "",
@@ -50,6 +50,10 @@ class OrientationsWriter:
             "_rlnAnglePsi",
             "_mosaicGroup",
         ]
+        if version == "# version 50001":
+            particle_header[3] = "_rlnCenteredCoordinateXAngst"
+            particle_header[4] = "_rlnCenteredCoordinateYAngst"
+            particle_header[5] = "_rlnCenteredCoordinateZAngst"
 
         with open(file_path, "w") as f:
             f.write("\n".join(particle_header) + "\n")

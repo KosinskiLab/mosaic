@@ -502,6 +502,7 @@ class DataContainerInteractor(QObject):
         if {"shape_x", "shape_y", "shape_z"}.issubset(export_data):
             shape = tuple(export_data[x] for x in ["shape_x", "shape_y", "shape_z"])
 
+        orientation_kwargs = {}
         data = {"points": [], "quaternions": []}
         for index in indices:
             geometry = self.container.get(index)
@@ -529,6 +530,7 @@ class DataContainerInteractor(QObject):
             if export_data.get("relion_5_format", False):
                 center = np.divide(shape, 2).astype(int) if shape is not None else 0
                 center = np.multiply(center, sampling)
+                orientation_kwargs["version"] = "# version 50001"
                 sampling = 1
 
             points = np.subtract(np.divide(points, sampling), center)
@@ -592,7 +594,7 @@ class DataContainerInteractor(QObject):
             fname = f"{file_path}_{index}.{file_format}"
             if single_file:
                 fname = f"{file_path}.{file_format}"
-            orientations.to_file(fname, file_format=file_format)
+            orientations.to_file(fname, file_format=file_format, **orientation_kwargs)
 
     def _show_properties_dialog(self) -> int:
         from .dialogs import GeometryPropertiesDialog
