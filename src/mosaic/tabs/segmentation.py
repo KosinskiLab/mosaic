@@ -641,6 +641,16 @@ CLUSTER_SETTINGS = {
             "description": "Drop noise cluster if available.",
             "default": True,
         },
+        {
+            "label": "Radius",
+            "parameter": "downsampling_radius",
+            "type": "float",
+            "description": "Consider points within radius as one for clustering.",
+            "default": -1.0,
+            "min": -1.0,
+            "max": 1e32,
+            "notes": "Defaults to no downsampling.",
+        },
     ],
     "method_settings": {
         "Connected Components": [

@@ -11,6 +11,7 @@ from qtpy.QtWidgets import (
     QFormLayout,
     QDoubleSpinBox,
     QGridLayout,
+    QPushButton,
 )
 
 from mosaic.widgets import create_setting_widget
@@ -99,7 +100,13 @@ class AnimationSettings(QGroupBox):
         self.parameter_widgets.clear()
 
         for widget_settings in animation.get_settings():
-            widget = create_setting_widget(widget_settings)
+            if widget_settings["type"] == "button":
+                widget = QPushButton(widget_settings["text"])
+                widget.clicked.connect(widget_settings["callback"])
+            else:
+                widget = create_setting_widget(widget_settings)
+
+            signal = None
             if isinstance(widget, QComboBox):
                 signal = widget.currentTextChanged
             elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
@@ -108,7 +115,9 @@ class AnimationSettings(QGroupBox):
                 signal = widget.textChanged
 
             label = widget_settings["label"]
-            signal.connect(lambda x, lab=label: self.on_change(x, lab))
+
+            if signal is not None:
+                signal.connect(lambda x, lab=label: self.on_change(x, lab))
 
             label_clean = label.title().replace("_", " ")
             self.params_layout.addRow(f"{label_clean}:", widget)

@@ -142,6 +142,7 @@ class VolumeAnimation(BaseAnimation):
     def _init_parameters(self) -> Dict[str, Any]:
         self.parameters.clear()
         self.parameters["direction"] = "forward"
+        self.parameters["projection"] = "Off"
         self.update_parameters(
             axis=self.volume_viewer.primary.orientation_selector.currentText().lower()
         )
@@ -153,6 +154,7 @@ class VolumeAnimation(BaseAnimation):
             shape = self.volume_viewer.primary.get_dimensions()
             self.frames = shape[_mapping.get(new_axis, 0)]
             self.start_frame, self.stop_frame = 0, self.frames
+            kwargs["axis"] = new_axis.upper()
 
         return super().update_parameters(**kwargs)
 
@@ -185,7 +187,22 @@ class VolumeAnimation(BaseAnimation):
         ]
 
     def _update(self, frame: int) -> None:
-        self.volume_viewer.primary.slice_slider.setValue(frame)
+        if self.parameters["direction"] == "backward":
+            frame = self.stop_frame - frame
+
+        viewer = self.volume_viewer.primary
+
+        # We change the widgets rather than calling the underlying functions
+        # to ensure the GUI is updated accordingly for interactive views
+        current_orientation = viewer.get_orientation()
+        if current_orientation != self.parameters["axis"]:
+            viewer.orientation_selector.setCurrentText(self.parameters["axis"])
+
+        current_state = self.volume_viewer.primary.get_projection()
+        if current_state != self.parameters["projection"]:
+            viewer.project_selector.setCurrentText(self.parameters["projection"])
+
+        viewer.slice_slider.setValue(frame)
 
 
 class CameraAnimation(BaseAnimation):
@@ -295,7 +312,50 @@ class VisibilityAnimation(BaseAnimation):
                 "default": self.parameters.get("easing", "instant"),
                 "description": "Animation style (instant for immediate change)",
             },
+            {
+                "label": "Objects",
+                "type": "button",
+                "text": "Select",
+                "callback": self._open_object_selection_dialog,
+                "description": "Choose which objects should be affected by the animation",
+            },
         ]
+
+    def _open_object_selection_dialog(self, parent=None):
+        """Open dialog to select which objects should be affected"""
+        from mosaic.dialogs.selection import ActorSelectionDialog
+
+        try:
+            current_selection = self.parameters.get("selected_objects", [])
+            dialog = ActorSelectionDialog(
+                cdata=self.cdata, current_selection=current_selection, parent=parent
+            )
+
+            if dialog.exec():
+                selected_objects = dialog.get_selected_objects()
+                self.update_parameters(selected_objects=selected_objects)
+
+        except Exception as e:
+            print(f"Error opening object selection dialog: {e}")
+
+        return False
+
+    def _get_actors(self):
+        actors = []
+        object_ids = self.parameters.get("selected_objects", [])
+        try:
+            all_objects = {}
+            for name, obj in self.cdata.format_datalist("data"):
+                all_objects[id(obj)] = obj
+            for name, obj in self.cdata.format_datalist("models"):
+                all_objects[id(obj)] = obj
+
+            actors = [all_objects[x].actor for x in object_ids if x in all_objects]
+
+        except Exception as e:
+            print(f"Error getting actors for object IDs: {e}")
+
+        return actors
 
     def _update(self, frame: int) -> None:
         _, renderer = self._get_rendering_context(return_renderer=True)
@@ -323,12 +383,8 @@ class VisibilityAnimation(BaseAnimation):
         if self.parameters["easing"] == "instant":
             progress_adj = self.parameters["target_opacity"]
 
-        actors = renderer.GetActors()
-        actors.InitTraversal()
-        actor = actors.GetNextItem()
-        while actor:
+        for actor in self._get_actors():
             actor.GetProperty().SetOpacity(progress_adj)
-            actor = actors.GetNextItem()
 
 
 class WaypointAnimation(BaseAnimation):

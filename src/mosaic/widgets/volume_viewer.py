@@ -294,6 +294,7 @@ class VolumeViewer(QWidget):
         elif orientation == "Z":
             self.slice_mapper.SetOrientationToZ()
 
+        self._orientation = orientation
         dim = self._orientation_mapping.get(orientation, 0)
         self.slice_slider.setRange(*(0, dimensions[dim] - 1))
 
@@ -303,6 +304,12 @@ class VolumeViewer(QWidget):
 
         self.renderer.ResetCamera()
         self.vtk_widget.GetRenderWindow().Render()
+
+    def get_orientation(self):
+        return getattr(self, "_orientation", None)
+
+    def get_projection(self):
+        return getattr(self, "_projection", "Off")
 
     def get_dimensions(self):
         return self.volume.GetDimensions()
@@ -365,6 +372,7 @@ class VolumeViewer(QWidget):
         if self.volume is None:
             return
 
+        self._projection = state
         actors = self.renderer.GetActors()
         actors.InitTraversal()
 

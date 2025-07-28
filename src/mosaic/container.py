@@ -218,7 +218,7 @@ class DataContainer:
         """
         return [cluster.get_number_of_points() for cluster in self.data]
 
-    def _index_ok(self, index: int):
+    def _index_ok(self, index: int) -> bool:
         """Check if index is valid.
 
         Parameters

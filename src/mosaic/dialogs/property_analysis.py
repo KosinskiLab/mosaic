@@ -28,6 +28,8 @@ from ..widgets.settings import get_widget_value
 from ..stylesheets import QPushButton_style, QScrollArea_style
 from ..widgets import ContainerListWidget, StyledListWidgetItem, ColorPreviewWidget
 
+from ..dialogs.selection import ObjectSelectionWidget
+
 
 def _populate_list(geometries):
     target_list = ContainerListWidget(border=False)
@@ -58,33 +60,12 @@ class PropertyAnalysisDialog(QDialog):
         self._setup_styling()
 
     def _setup_ui(self):
-        from ..icons import dialog_selectall_icon, dialog_selectnone_icon
-
         main_layout = QVBoxLayout(self)
-
         self.main_splitter = QSplitter(Qt.Horizontal)
 
         # Object selection
-        self.objects_panel = QGroupBox("Objects")
-        objects_layout = QVBoxLayout()
-        quick_select_layout = QHBoxLayout()
-        select_all_btn = QPushButton("Select All")
-        select_all_btn.setIcon(dialog_selectall_icon)
-        select_all_btn.clicked.connect(lambda: self.objects_list.selectAll())
-        select_none_btn = QPushButton("Clear")
-        select_none_btn.setIcon(dialog_selectnone_icon)
-        select_none_btn.clicked.connect(lambda: self.objects_list.clearSelection())
-        quick_select_layout.addWidget(select_all_btn)
-        quick_select_layout.addWidget(select_none_btn)
-        objects_layout.addLayout(quick_select_layout)
-
-        self.objects_list = ContainerListWidget(border=False)
-        self.objects_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
-        self.populate_lists()
-        objects_layout.addWidget(self.objects_list)
-
-        self.objects_panel.setLayout(objects_layout)
-        self.main_splitter.addWidget(self.objects_panel)
+        self.objects_list = ObjectSelectionWidget(self.cdata)
+        self.main_splitter.addWidget(self.objects_list)
 
         self.tabs_container = QWidget()
         tabs_layout = QVBoxLayout(self.tabs_container)
@@ -121,23 +102,7 @@ class PropertyAnalysisDialog(QDialog):
         main_layout.addWidget(self.main_splitter)
 
     def populate_lists(self):
-        self.objects_list.clear()
-
-        clusters = self.cdata.format_datalist("data")
-        models = self.cdata.format_datalist("models")
-        for name, obj in clusters:
-            item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
-
-            item.setData(Qt.ItemDataRole.UserRole, obj)
-            item.setData(Qt.ItemDataRole.UserRole + 1, "cluster")
-            self.objects_list.addItem(item)
-
-        for name, obj in models:
-            item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
-
-            item.setData(Qt.ItemDataRole.UserRole, obj)
-            item.setData(Qt.ItemDataRole.UserRole + 1, "mesh")
-            self.objects_list.addItem(item)
+        return self.objects_list.populate_lists()
 
     def _setup_visualization_tab(self):
         from ..icons import dialog_accept_icon
