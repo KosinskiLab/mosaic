@@ -514,6 +514,8 @@ def triangulate_refine_fair(
     out_fs : ndarray, shape (M+Q, 3)
         Output faces after filling and fairing.
     """
+    vs = np.asarray(vs).copy()
+    fs = np.asarray(fs).copy()
     out_fs = close_holes(vs, fs, hole_len_thr, close_hole_fast)
     add_fids = np.arange(len(fs), len(out_fs))
 
