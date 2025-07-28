@@ -406,7 +406,7 @@ class DataContainerInteractor(QObject):
         duplicate_action.triggered.connect(self.duplicate)
         context_menu.addAction(duplicate_action)
         remove_action = QAction("Remove", self.data_list)
-        remove_action.triggered.connect(self.remove_cluster)
+        remove_action.triggered.connect(self.remove)
         context_menu.addAction(remove_action)
 
         formats = [

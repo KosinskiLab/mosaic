@@ -37,7 +37,7 @@ class OrientationsWriter:
         )
         return orientations.to_file(file_path, file_format="text")
 
-    def _to_star(self, file_path, version : str = None):
+    def _to_star(self, file_path, version: str = None):
         particle_header = [
             "data_particles",
             "",
