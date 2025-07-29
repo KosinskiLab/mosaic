@@ -339,8 +339,8 @@ def _robust_laplacian(
     .. [1] Code copied from https://github.com/kentechx/hole-filling
     .. [2] https://www.cs.cmu.edu/~kmcrane/Projects/NonmanifoldLaplace/NonmanifoldLaplace.pdf
     """
-    lin = get_mollified_edge_length(vs, fs, mollify_factor)
-    lin, fin = igl.intrinsic_delaunay_triangulation(lin.astype("f8"), fs)
+    lin = get_mollified_edge_length(vs, fs, mollify_factor).astype(np.float64)
+    lin, fin = igl.intrinsic_delaunay_triangulation(lin, fs)
     L = igl.cotmatrix_intrinsic(lin, fin)
     M = igl.massmatrix_intrinsic(lin, fin, igl.MASSMATRIX_TYPE_VORONOI)
 

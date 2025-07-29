@@ -84,13 +84,14 @@ DTS Simulations
 
 If you intend to use Mosaic for dynamically triangulated surface (DTS) simulations, please install these additional tools
 
-**FreeDTS**: Can be installed by following the instructions at https://github.com/weria-pezeshkian/FreeDTS. Alternatively, use our Python wrapper:
+**FreeDTS**: Can be installed by following the instructions at https://github.com/weria-pezeshkian/FreeDTS. Alternatively, use our Python wrapper
 
 .. code-block:: bash
 
    pip install pyfreedts
+   dts -h                # smoke test
 
-**Trimem**: Install from the repository at https://github.com/bio-phys/trimem:
+**Trimem**: Install from the repository at https://github.com/bio-phys/trimem
 
 .. code-block:: bash
 
@@ -103,13 +104,12 @@ On MacOS, libomp needs to be installed separately to install trimem
 
    brew install libomp
 
-   LIBOMP_PATH=/opt/homebrew/opt/libomp
-   CMAKE_POLICY_VERSION_MINIMUM=3.5 \
-   CXXFLAGS="-Xpreprocessor -fopenmp -I$LIBOMP_PATH/include" \
-   CFLAGS="-Xpreprocessor -fopenmp -I$LIBOMP_PATH/include" \
-   LDFLAGS="-L$LIBOMP_PATH/lib -Wl,-rpath,$LIBOMP_PATH/lib -lomp" \
-   CMAKE_ARGS="-DCMAKE_C_COMPILER=$(which clang) -DCMAKE_CXX_COMPILER=$(which clang++)" \
-
+   export LIBOMP_PATH=/opt/homebrew/opt/libomp
+   export CMAKE_POLICY_VERSION_MINIMUM=3.5
+   export CXXFLAGS="-Xpreprocessor -fopenmp -I$LIBOMP_PATH/include"
+   export CFLAGS="-Xpreprocessor -fopenmp -I$LIBOMP_PATH/include"
+   export LDFLAGS="-L$LIBOMP_PATH/lib -Wl,-rpath,$LIBOMP_PATH/lib -lomp"
+   export CMAKE_ARGS="-DCMAKE_C_COMPILER=$(which clang) -DCMAKE_CXX_COMPILER=$(which clang++)"
    pip install ./trimem/
 
 In some cases, the CMAKE version policy needs to be set explicitly
@@ -117,6 +117,24 @@ In some cases, the CMAKE version policy needs to be set explicitly
 .. code-block:: bash
 
    export CMAKE_POLICY_VERSION_MINIMUM=3.5
+
+You can smoke test your installation using
+
+.. code-block:: bash
+
+   mc_app run --help
+
+which should output similar to the message shown below
+
+.. code-block:: text
+
+   usage: mc_app run [-h] --conf CONF [--restart [RESTART]]
+   Run a simulation parametrized by a configuration file.
+
+   options:
+     -h, --help           show this help message and exit
+     --conf CONF          configuration file name (see `mc_app config --help`).
+     --restart [RESTART]  restart index.
 
 .. _installation-backmapping:
 

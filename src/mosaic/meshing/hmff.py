@@ -1,3 +1,4 @@
+import shutil
 import warnings
 import textwrap
 from os import makedirs
@@ -215,6 +216,10 @@ def setup_hmff(
     with open(topol_path, mode="w", encoding="utf-8") as ofile:
         ofile.write(f"{mesh} 1\n")
 
+    cmd = "DTS"
+    if shutil.which("dts"):
+        cmd = "dts"
+
     run_config = textwrap.dedent(
         f"""
         #!/bin/bash
@@ -223,7 +228,7 @@ def setup_hmff(
         mkdir -p  {directory}/TrajTSI
         ln -s {mesh} {directory}/TrajTSI/dts0.tsi
 
-        DTS -in {dts_config_path} \\
+        {cmd} -in {dts_config_path} \\
             -top {topol_path} \\
             -e {steps} \\
             -nt {threads} \\

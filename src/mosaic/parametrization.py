@@ -885,8 +885,6 @@ class TriangularMesh(Parametrization):
         new_vs, new_fs = triangulate_refine_fair(
             vs=np.asarray(mesh.vertices),
             fs=np.asarray(mesh.triangles),
-            # vs=np.asarray(mesh.vertices).copy(),
-            # fs=np.asarray(mesh.triangles).copy(),
             hole_len_thr=max_hole_size,
             alpha=elastic_weight,
             beta=curvature_weight,
