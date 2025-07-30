@@ -1025,11 +1025,10 @@ class App(QMainWindow):
 
                 try:
                     container = open_file(filename)
-                except ValueError as e:
-                    print(e)
+                except Exception as e:
                     if filename.endswith(".pickle"):
-                        print("Use Load Session to open session files.")
-                    continue
+                        raise ValueError("Use Load Session to open session files.")
+                    raise e
 
                 base, _ = splitext(basename(filename))
                 use_index = len(container) > 1

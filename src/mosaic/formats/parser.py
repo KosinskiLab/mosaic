@@ -119,7 +119,7 @@ class GeometryDataContainer:
         return data
 
 
-def _read_orientations(filename):
+def _read_orientations(filename: str):
     data = Orientations.from_file(filename)
     angles = Rotation.from_euler("zyz", data.rotations, degrees=True)
     normals = angles.apply(NORMAL_REFERENCE)
@@ -130,8 +130,15 @@ def _read_orientations(filename):
     }
 
 
-def read_star(filename):
-    return GeometryDataContainer(**_read_orientations(filename))
+def read_star(filename: str):
+    try:
+        ret = GeometryDataContainer(**_read_orientations(filename))
+    except KeyError as e:
+        raise ValueError(
+            f"Parsing {filename} raised the following exception {str(e)}. "
+            "STAR files exported in Relion5 format are not compatible with Mosaic. "
+        )
+    return ret
 
 
 def read_txt(filename: str):

@@ -17,7 +17,7 @@ First, install Mosaic according to the :doc:`installation instructions <../insta
 
 .. note::
 
-   Membrane segmentation, template-matching and the equilibration of coarse-grained model equilibration require a GPU to complete in reasonable time. You can download intermediate results of compute-intensive task and additional material from `ownCloud <https://oc.embl.de/index.php/s/fi7bJDRtAbVcOnt>`_.
+   Membrane segmentation, template-matching and the equilibration of coarse-grained model equilibration require a GPU to complete in reasonable time. You can download intermediate results of compute-intensive task and additional material from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_.
 
 We'll use publicly available cryo-ET data of an IAV VLP [1]_, which you can download from `EMDB-11075 <https://www.ebi.ac.uk/emdb/EMD-11075>`_ or via command line
 
@@ -55,7 +55,7 @@ The status indicator will change from "Ready" to "Membrane Segmentation." The re
 
 .. note::
 
-   Membrane segmentation requires a GPU. If unavailable, download the pre-computed segmentation `emd_11075_MemBrain_seg_v10_alpha.ckpt_segmented.mrc.gz <https://oc.embl.de/index.php/s/fi7bJDRtAbVcOnt>`_ and load it using File > Open.
+   Membrane segmentation requires a GPU. If unavailable, download the pre-computed segmentation `emd_11075_MemBrain_seg_v10_alpha.ckpt_segmented.mrc.gz <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_ and load it using File > Open.
 
 
 Mesh Creation
@@ -211,7 +211,7 @@ To assess edge-length distribution, import the meshes into Mosaic and use the **
 
 .. note::
 
-   Pre-computed equilibrated meshes are available from `ownCloud <https://oc.embl.de/index.php/s/fi7bJDRtAbVcOnt>`_.
+   Pre-computed equilibrated meshes are available from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_.
 
 
 HMFF Simulation
@@ -248,7 +248,7 @@ Run the simulation (takes less than five minutes with 8 threads):
 
 .. note::
 
-   Simulation outputs are available on `ownCloud <https://oc.embl.de/index.php/s/fi7bJDRtAbVcOnt>`_ in hmff/TrajTSI_Done.
+   Simulation outputs are available on `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_ in hmff/TrajTSI_Done.
 
 To analyze the refined mesh in Mosaic:
 
@@ -354,7 +354,7 @@ The following outlines how to perform constrained template matching using PyTME 
 
 .. note::
 
-   Template matching results are available from `ownCloud <https://oc.embl.de/index.php/s/fi7bJDRtAbVcOnt>`_.
+   Template matching results are available from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_.
 
 
 Refine Protein Picks
@@ -366,7 +366,7 @@ The template matching process generates coordinate files for HA and NA that need
 2. Visualize and manually refine the picks in Mosaic using the selection tool (or the GUI provided with PyTME).
 3. Remove HA picks that are within 7 voxels of NA picks to avoid clashes.
 
-Example filtering scripts are available from `ownCloud <https://oc.embl.de/index.php/s/fi7bJDRtAbVcOnt>`_, namely pytme/filter.py and pytme/resolve_clash.py.
+Example filtering scripts are available from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_, namely pytme/filter.py and pytme/resolve_clash.py.
 
 
 Coarse-Grained Martini Models
@@ -398,7 +398,7 @@ Open the file *martinize.sh* and add paths to PDB files for *NA_STRUCTURE* and *
 
 .. note::
 
-   The principal axis of both proteins is required to align with the z-axis. This can be achieved with different tools. An example script using PyTME is available from `ownCloud <https://oc.embl.de/index.php/s/fi7bJDRtAbVcOnt>`_, namely pytme/templates/rot_structures.py.
+   The principal axis of both proteins is required to align with the z-axis. This can be achieved with different tools. An example script using PyTME is available from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_, namely pytme/templates/rot_structures.py.
 
 Once the command above is completed, we can create a coarse-grained representation of the entire system using TS2CG [6]_
 
@@ -416,7 +416,7 @@ This creates system.gro, which can be used for molecular dynamics simulation or 
 Equilibration
 ^^^^^^^^^^^^^
 
-Gromacs [7]_ settings for Martini [8]_ model equilibration are available from `ownCloud <https://oc.embl.de/index.php/s/fi7bJDRtAbVcOnt>`_ in the ts2cg folder:
+Gromacs [7]_ settings for Martini [8]_ model equilibration are available from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_ in the ts2cg folder:
 
 .. code-block:: bash
 

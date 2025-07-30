@@ -102,3 +102,5 @@ class ProgressDialog:
         self.dialog.close()
         if exc_type is not None:
             QMessageBox.warning(None, "Error", str(exc_value))
+            # Omit traceback
+            return True
