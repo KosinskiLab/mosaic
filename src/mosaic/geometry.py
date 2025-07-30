@@ -245,6 +245,11 @@ class Geometry:
         normals_vtk = numpy_support.numpy_to_vtk(normals, deep=True)
         normals_vtk.SetName("Normals")
         self._data.GetPointData().SetNormals(normals_vtk)
+
+        # Update associated quaternions if available
+        quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
+        if quaternions is not None:
+            self.quaternions = normals_to_rot(self.normals, scalar_first=True)
         self._data.Modified()
 
     @property

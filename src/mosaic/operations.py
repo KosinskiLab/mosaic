@@ -439,7 +439,7 @@ def compute_normals(
     from .utils import compute_normals
 
     if method == "Flip":
-        geometry.normals *= -1
+        geometry.normals = geometry.normals * -1
         return None
     elif method == "Compute":
         geometry.normals = compute_normals(geometry.points, k=k, **kwargs)
