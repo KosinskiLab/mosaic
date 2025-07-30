@@ -449,9 +449,7 @@ class ComputeTab(QWidget):
 
         memory_label = QLabel("Memory Usage:")
         self.memory_input = QLineEdit()
-        self.memory_input.setPlaceholderText(
-            "e.g., 85% to use 85% of available memory."
-        )
+        self.memory_input.setPlaceholderText("e.g., 85 to use 85% of available memory.")
 
         backend_label = QLabel("Backend:")
         self.backend_combo = QComboBox()
@@ -629,12 +627,12 @@ class TemplateMatchingDialog(QDialog):
         if matching["defocus"]:
             args.append(f"--defocus {matching['defocus']}")
         if matching["whitening"]:
-            args.append("--whitening")
+            args.append("--whiten-spectrum")
 
         compute = self.compute_tab.get_settings()
         args.append(f"--backend {compute['backend']}")
         if compute["memory"]:
-            args.append(f"--memory {compute['memory']}")
+            args.append(f"--memory-scaling {compute['memory']}")
         args.append(f"-n {compute['cores']}")
 
         output_basename = f"{splitext(basename(target_path))[0]}_"

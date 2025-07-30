@@ -329,7 +329,7 @@ The following outlines how to perform constrained template matching using PyTME 
    - Set the path to the STAR file with seed points
    - Set Rotational Uncertainty to 15
    - Set Translational Uncertainty to (6,6,10) for HA and (6,6,12) for NA due to the longer stalk.
-   - Set Tilt Range to -60, 60
+   - Set Tilt Range to 60, 60 to create a wedge mask from -60 to 60 degrees.
    - Set Wedge Axes to 2, 0
    - Set Defocus to 30000
    - Set No Centering to checked
