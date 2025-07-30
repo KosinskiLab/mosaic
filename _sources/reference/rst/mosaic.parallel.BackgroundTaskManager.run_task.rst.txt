@@ -1,0 +1,6 @@
+﻿mosaic.parallel.BackgroundTaskManager.run\_task
+===============================================
+
+.. currentmodule:: mosaic.parallel
+
+.. automethod:: BackgroundTaskManager.run_task

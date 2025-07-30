@@ -1,0 +1,6 @@
+﻿mosaic.parallel.BackgroundTaskManager.shutdown
+==============================================
+
+.. currentmodule:: mosaic.parallel
+
+.. automethod:: BackgroundTaskManager.shutdown

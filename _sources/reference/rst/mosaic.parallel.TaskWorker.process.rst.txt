@@ -1,0 +1,6 @@
+﻿mosaic.parallel.TaskWorker.process
+==================================
+
+.. currentmodule:: mosaic.parallel
+
+.. automethod:: TaskWorker.process
