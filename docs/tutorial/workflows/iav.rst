@@ -49,6 +49,7 @@ Membrane Segmentation
    - Window Size: 160
    - Clustering: Enabled
    - Augmentation: Enabled
+   - Output Sampling: 12.0
 5. Click *Apply* and select the downloaded IAV VLP tomogram.
 
 The status indicator will change from "Ready" to "Membrane Segmentation." The results will automatically load into Mosaic when complete.

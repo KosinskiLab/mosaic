@@ -121,81 +121,25 @@ class GeometryDataContainer:
 
 def _read_orientations(filename: str):
     data = Orientations.from_file(filename)
-    angles = Rotation.from_euler("zyz", data.rotations, degrees=True)
+
+    # Remap as active (push) rotation
+    angles = Rotation.from_euler(
+        seq="ZYZ", angles=data.rotations, degrees=True
+    ).inv()
+
     normals = angles.apply(NORMAL_REFERENCE)
+    quaternions = angles.as_quat(scalar_first=True)
+
+    cluster = data.details.astype(int)
+    indices = [np.where(cluster == x) for x in np.unique(cluster)]
     return {
-        "vertices": [data.translations],
-        "normals": [normals],
-        "quaternions": [angles.as_quat(scalar_first=True)],
+        "vertices": [data.translations[x] for x in indices],
+        "normals": [normals[x] for x in indices],
+        "quaternions": [quaternions[x] for x in indices],
     }
-
-
-def _relion5_star_reader(filename: str):
-    from tme.parser import StarParser
-
-    parser = StarParser(filename, delimiter=None)
-
-    keyword_order = ("data_particles", "particles", "data")
-    for keyword in keyword_order:
-        ret = parser.get(keyword, None)
-        if ret is None:
-            ret = parser.get(f"{keyword}_", None)
-        if ret is not None:
-            break
-
-    if ret is None:
-        raise ValueError(
-            f"Could not find either {keyword_order} section found in {filename}."
-        )
-
-    translation = np.vstack(
-        (
-            ret["_rlnCenteredCoordinateXAngst"],
-            ret["_rlnCenteredCoordinateYAngst"],
-            ret["_rlnCenteredCoordinateZAngst"],
-        )
-    )
-    translation = translation.astype(np.float32).T
-
-    default_angle = np.zeros(translation.shape[0], dtype=np.float32)
-    for x in ("_rlnAngleRot", "_rlnAngleTilt", "_rlnAnglePsi"):
-        if x not in ret:
-            ret[x] = default_angle
-
-    rotation = np.vstack(
-        (ret["_rlnAngleRot"], ret["_rlnAngleTilt"], ret["_rlnAnglePsi"])
-    )
-    rotation = rotation.astype(np.float32).T
-
-    angles = Rotation.from_euler("zyz", rotation, degrees=True)
-    normals = angles.apply(NORMAL_REFERENCE)
-    return {
-        "vertices": [translation],
-        "normals": [normals],
-        "quaternions": [angles.as_quat(scalar_first=True)],
-    }
-
 
 def read_star(filename: str):
-    original_error, next_error = None, None
-
-    try:
-        ret = GeometryDataContainer(**_read_orientations(filename))
-        return ret
-    except KeyError as e:
-        original_error = e
-
-    try:
-        ret = GeometryDataContainer(**_relion5_star_reader(filename))
-        return ret
-    except Exception as e:
-        next_error = e
-        pass
-
-    raise ValueError(
-        f"Parsing {filename} raised the following exception {str(original_error)}. "
-        f"Parsin {filename} as Relion5 star file raised {str(next_error)}"
-    ) from original_error
+    return GeometryDataContainer(**_read_orientations(filename))
 
 
 def read_txt(filename: str):

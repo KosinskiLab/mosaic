@@ -371,7 +371,7 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
             with h5py.File(output_file, mode="r") as infile:
                 faces = infile["cells"][()]
                 vertices = infile["points"][()]
-        except Exception as e:
+        except Exception:
             warnings.warn(
                 f"{str(ret.stderr).strip()}\n\n"
                 f"Skipping calibration - Check Trimem installation."

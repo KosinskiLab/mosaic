@@ -13,68 +13,28 @@ class OrientationsWriter:
     ):
         self.entities = entities
         self.points = points
-        self.rotations = Rotation.from_quat(quaternions, scalar_first=True)
-        self.rotations = self.rotations.as_euler(seq="zyz", degrees=True)
+        rotations = Rotation.from_quat(quaternions, scalar_first=True).inv()
+        self.rotations = rotations.as_euler(seq="ZYZ", degrees=True)
 
     def to_file(self, file_path, file_format: str = None, **kwargs):
-        _supported_formats = {"tsv": self._to_txt, "star": self._to_star}
+        _supported_formats = ("tsv", "star")
 
         if file_format is None:
             file_format = get_extension(file_path)[1:]
-        func = _supported_formats.get(file_format, None)
-        if func is None:
-            formats = ", ".join([str(x) for x in _supported_formats.keys()])
+
+        if file_format not in _supported_formats:
+            formats = ", ".join([str(x) for x in _supported_formats])
             raise ValueError(f"Supported formats are {formats}.")
+        return self._write_orientations(file_path, **kwargs)
 
-        return func(file_path, **kwargs)
-
-    def _to_txt(self, file_path):
+    def _write_orientations(self, file_path, **kwargs):
         orientations = Orientations(
             translations=self.points,
             rotations=self.rotations,
             scores=np.zeros(self.rotations.shape[0]),
             details=self.entities,
         )
-        return orientations.to_file(file_path, file_format="text")
-
-    def _to_star(self, file_path, version: str = None):
-        particle_header = [
-            "data_particles",
-            "",
-            "loop_",
-            "_rlnCoordinateX",
-            "_rlnCoordinateY",
-            "_rlnCoordinateZ",
-            "_rlnAngleRot",
-            "_rlnAngleTilt",
-            "_rlnAnglePsi",
-            "_mosaicGroup",
-        ]
-        if version == "# version 50001":
-            particle_header[3] = "_rlnCenteredCoordinateXAngst"
-            particle_header[4] = "_rlnCenteredCoordinateYAngst"
-            particle_header[5] = "_rlnCenteredCoordinateZAngst"
-
-        with open(file_path, "w") as f:
-            f.write("\n".join(particle_header) + "\n")
-
-            for i in range(self.points.shape[0]):
-                x, y, z = self.points[i]
-                rot, tilt, psi = self.rotations[i]
-                mosaic_group = self.entities[i]
-
-                particle_data = [
-                    f"{x:.6f}",
-                    f"{y:.6f}",
-                    f"{z:.6f}",
-                    f"{rot:.6f}",
-                    f"{tilt:.6f}",
-                    f"{psi:.6f}",
-                    f"{mosaic_group}",
-                ]
-                f.write("\t".join(particle_data) + "\n")
-
-        return None
+        return orientations.to_file(file_path, **kwargs)
 
 
 def write_density(

@@ -69,7 +69,7 @@ After setting up your environment, Mosaic can be installed from PyPI
 
    or follow their `Tutorial <https://github.com/cnr-isti-vclab/PyMeshLab/wiki/How-to-install-the-last-nightly-version>`_ for installing the lastest binaries for your system.
 
-   After installing pymeshlab you have to install Mosaic again.
+   The last tested version is `2025.4.17.dev0 <https://github.com/cnr-isti-vclab/PyMeshLab/actions/runs/16443660017>`_. After installing pymeshlab you have to install Mosaic again.
 
 
 Optional Dependencies

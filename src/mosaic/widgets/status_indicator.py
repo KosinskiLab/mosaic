@@ -9,16 +9,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import enum
 
 from vtk import vtkTextActor
-from qtpy.QtCore import Qt, QPoint
+from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QWidget, QApplication
-from qtpy.QtGui import (
-    QCursor,
-    QColor,
-    QPixmap,
-    QPainter,
-    QPen,
-)
-
 
 class ViewerModes(enum.Enum):
     VIEWING = "Viewing"
@@ -78,6 +70,7 @@ class StatusIndicator:
     def update_status(self, interaction="Viewing", status="Ready", **kwargs):
         """Update the status indicator with current mode and task status."""
         self.hide(render=False)
+
         # Create a new actor to prevent odd-line breaks from spacing
         self.text_actor = self._create_actor(f"Mode: {interaction} - {status}")
         return self.show(render=True)
@@ -88,43 +81,16 @@ class CursorModeHandler:
         self.widget = widget
         self._current_mode = ViewerModes.VIEWING
 
-        self.cursor_colors = {
-            ViewerModes.VIEWING: None,
-            ViewerModes.SELECTION: QColor("#2196F3"),
-            ViewerModes.DRAWING: QColor("#FFC107"),
-            ViewerModes.PICKING: QColor("#9C27B0"),
-            ViewerModes.MESH_DELETE: QColor("#FFFFFF"),
-            ViewerModes.MESH_ADD: QColor("#CACACA"),
-            ViewerModes.CURVE: QColor("#ABABAB"),
-        }
-
+        # Custom cursors did not work well with macOS
         self.cursors = {
-            k: self._create_custom_cursor(v) for k, v in self.cursor_colors.items()
+            ViewerModes.VIEWING: Qt.CursorShape.ArrowCursor,
+            ViewerModes.SELECTION: Qt.CursorShape.CrossCursor,
+            ViewerModes.DRAWING: Qt.CursorShape.PointingHandCursor,
+            ViewerModes.PICKING: Qt.CursorShape.WhatsThisCursor,
+            ViewerModes.MESH_DELETE: Qt.CursorShape.ForbiddenCursor,
+            ViewerModes.MESH_ADD: Qt.CursorShape.PointingHandCursor,
+            ViewerModes.CURVE: Qt.CursorShape.CrossCursor,
         }
-
-    def _create_custom_cursor(self, color: QColor, size: int = 16) -> QCursor:
-        if color is None:
-            return Qt.CursorShape.ArrowCursor
-
-        pixmap = QPixmap(size, size)
-        pixmap.fill(Qt.GlobalColor.transparent)
-
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        pen = QPen(color)
-        pen.setWidth(1)
-        painter.setPen(pen)
-        painter.drawEllipse(1, 1, size - 2, size - 2)
-
-        pen.setWidth(1)
-        painter.setPen(pen)
-        center = size // 2
-        painter.drawLine(QPoint(center - 3, center), QPoint(center + 3, center))
-        painter.drawLine(QPoint(center, center - 3), QPoint(center, center + 3))
-        painter.end()
-
-        return QCursor(pixmap, size // 2, size // 2)
 
     def update_mode(self, mode: ViewerModes):
         self._current_mode = mode
