@@ -12,6 +12,7 @@ from vtk import vtkTextActor
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QWidget, QApplication
 
+
 class ViewerModes(enum.Enum):
     VIEWING = "Viewing"
     SELECTION = "Selection"

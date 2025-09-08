@@ -123,9 +123,7 @@ def _read_orientations(filename: str):
     data = Orientations.from_file(filename)
 
     # Remap as active (push) rotation
-    angles = Rotation.from_euler(
-        seq="ZYZ", angles=data.rotations, degrees=True
-    ).inv()
+    angles = Rotation.from_euler(seq="ZYZ", angles=data.rotations, degrees=True).inv()
 
     normals = angles.apply(NORMAL_REFERENCE)
     quaternions = angles.as_quat(scalar_first=True)
@@ -137,6 +135,7 @@ def _read_orientations(filename: str):
         "normals": [normals[x] for x in indices],
         "quaternions": [quaternions[x] for x in indices],
     }
+
 
 def read_star(filename: str):
     return GeometryDataContainer(**_read_orientations(filename))

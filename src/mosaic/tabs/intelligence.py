@@ -26,13 +26,10 @@ def _getExistingDirectory(parent, text):
     # The native dialog on macOS omits the dialog text which can be confusing
     if system() == "Darwin":
         dialog.setOptions(
-            QFileDialog.DontUseCustomDirectoryIcons
-            | QFileDialog.DontUseNativeDialog
+            QFileDialog.DontUseCustomDirectoryIcons | QFileDialog.DontUseNativeDialog
         )
     else:
-        dialog.setOptions(
-            QFileDialog.DontUseCustomDirectoryIcons
-        )
+        dialog.setOptions(QFileDialog.DontUseCustomDirectoryIcons)
 
     dialog.setStyleSheet(QPushButton_style)
     return dialog
