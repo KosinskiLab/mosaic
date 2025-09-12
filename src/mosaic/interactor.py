@@ -787,11 +787,13 @@ class DataContainerInteractor(QObject):
         new_cluster = self.merge_cluster()
         self.merge_cluster(indices=(new_cluster, point_cluster))
         self._merge_index = len(self.container.data) - 1
+        self.data_changed.emit()
 
     def remove(self):
         self._backup()
         self.remove_points()
         self.remove_cluster()
+        self.data_changed.emit()
 
     def refresh_actors(self):
         for index in range(len(self.container)):

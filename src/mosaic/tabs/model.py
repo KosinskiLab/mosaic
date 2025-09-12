@@ -60,9 +60,7 @@ class ModelTab(QWidget):
                 SAMPLE_SETTINGS,
             ),
             create_button("To Cluster", "mdi.plus", self, self._to_cluster),
-            create_button(
-                "Remove", "fa5s.trash", self, self.cdata.models.remove_cluster
-            ),
+            create_button("Remove", "fa5s.trash", self, self.cdata.models.remove),
         ]
         self.ribbon.add_section("Sampling", mesh_actions)
 

@@ -37,14 +37,14 @@ class TimelineBar(QWidget):
 
         self.slider.setStyleSheet(QSlider_style)
         container_layout.addWidget(self.slider)
-        layout.addWidget(self.slider_container)
+        layout.addWidget(self.slider_container, 1)
 
         self.spacer = QWidget()
         self.spacer.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
         )
         self.spacer.setStyleSheet("background: transparent;")
-        layout.addWidget(self.spacer)
+        layout.addWidget(self.spacer, 0)
 
     def setRange(self, min_val, max_val):
         self.slider.setRange(min_val, max_val)
@@ -60,7 +60,9 @@ class TimelineBar(QWidget):
         if max_frames > 0:
             ratio = frames / max_frames
             total_width = self.width()
-            self.slider_container.setFixedWidth(int(total_width * ratio))
+
+            self.spacer.setFixedWidth(int(total_width * (1 - ratio)))
+            self.updateGeometry()
 
 
 class TrajectoryRow(QFrame):
@@ -80,7 +82,7 @@ class TrajectoryRow(QFrame):
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(8)
 
-        name = basename(self.trajectory._meta.get("filename", "Unnamed Trajectory"))
+        name = basename(self.trajectory._meta.get("name", "Unnamed Trajectory"))
         if isinstance(name, (list, tuple)) and len(name) > 0:
             name = name[0]
         name_label = QLabel(str(name))
@@ -93,7 +95,7 @@ class TrajectoryRow(QFrame):
         self.timeline.setRange(0, self.trajectory.frames - 1)
         self.timeline.valueChanged.connect(self._update_frame)
         self.timeline.setRelativeWidth(self.trajectory.frames, self.max_frames)
-        layout.addWidget(self.timeline, 1)  # 1 = stretch factor
+        layout.addWidget(self.timeline, 1)
 
         # Right side: Frame counter
         self.frame_label = QLabel(f"0/{self.trajectory.frames-1}")
@@ -101,11 +103,11 @@ class TrajectoryRow(QFrame):
         self.frame_label.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
-        layout.addWidget(self.frame_label)
+        layout.addWidget(self.frame_label, 0)
 
-    def resizeEvent(self, event):
-        """Update relative width when the widget is resized."""
-        super().resizeEvent(event)
+    def showEvent(self, event):
+        """Update timeline when widget becomes visible."""
+        super().showEvent(event)
         self.timeline.setRelativeWidth(self.trajectory.frames, self.max_frames)
 
     def _update_frame(self, frame_idx):
