@@ -31,6 +31,7 @@ class Geometry:
         sampling_rate=None,
         meta=None,
         vtk_actor=None,
+        vertex_properties=None,
         **kwargs,
     ):
         self._points = vtk.vtkPoints()
@@ -70,6 +71,7 @@ class Geometry:
             self.quaternions = quaternions
 
         self._actor = self._create_actor(vtk_actor)
+        self._vertex_properties = vertex_properties
         self._appearance = {
             "size": 8,
             "opacity": 1.0,
@@ -80,6 +82,10 @@ class Geometry:
             "base_color": color,
         }
         self.set_appearance(**self._appearance)
+
+    @property
+    def vertex_properties(self):
+        return self._vertex_properties
 
     @property
     def sampling_rate(self):
@@ -515,6 +521,9 @@ class Geometry:
 
         if isinstance(meta, dict):
             self._meta.update(meta)
+
+            if "vertex_properties" in meta:
+                self._vertex_properties = meta["vertex_properties"]
 
         self.set_color()
         return self.change_representation(self._representation)

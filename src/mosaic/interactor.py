@@ -103,6 +103,7 @@ class DataContainerInteractor(QObject):
 
     data_changed = Signal()
     render_update = Signal()
+    vtk_pre_render = Signal()
 
     def __init__(self, container, vtk_widget, prefix="Cluster"):
         from .widgets import ContainerListWidget
@@ -687,7 +688,8 @@ class DataContainerInteractor(QObject):
         return self.render_update.emit()
 
     def render_vtk(self):
-        self.vtk_widget.GetRenderWindow().Render()
+        self.vtk_pre_render.emit()
+        return self.vtk_widget.GetRenderWindow().Render()
 
     def deselect(self):
         self.data_list.clearSelection()

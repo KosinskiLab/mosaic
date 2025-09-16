@@ -58,6 +58,27 @@ class PropertyAnalysisDialog(QDialog):
 
         self._setup_ui()
         self._setup_styling()
+        self.cdata.models.vtk_pre_render.connect(self._on_render_update)
+
+    def _on_render_update(self):
+        """Re-apply properties when models are re-rendered"""
+        if self.isVisible() and hasattr(self, "properties") and self.properties:
+            self.cdata.models.blockSignals(True)
+
+            try:
+                # Provoke cache miss for tracking inclusions on trajectories
+                self.property_parameters.clear()
+                self._preview(render=False, suppress_warning=True)
+            except Exception:
+                # Things like select at least one object
+                pass
+            finally:
+                self.cdata.models.blockSignals(False)
+
+    def closeEvent(self, event):
+        """Disconnect when dialog closes"""
+        self.cdata.models.vtk_pre_render.disconnect(self._on_render_update)
+        super().closeEvent(event)
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -354,6 +375,7 @@ class PropertyAnalysisDialog(QDialog):
                 "Height (Z-axis)",
                 "Number of Points",
             ],
+            "Custom": ["Vertex Properties"],
         }
         self.property_map = {
             # Distance
@@ -378,6 +400,8 @@ class PropertyAnalysisDialog(QDialog):
             # Projection
             "Projected Curvature": "projected_curvature",
             "Geodesic Distance": "geodesic_distance",
+            # Custom
+            "Vertex Properties": "vertex_property",
         }
 
         self.property_combo.addItems(properties.get(category, []))
@@ -389,9 +413,26 @@ class PropertyAnalysisDialog(QDialog):
             self.property_options_layout.removeRow(0)
 
         self.option_widgets = {}
+        if property_name == "Vertex Properties":
 
-        if property_name == "Custom Attribute":
-            return
+            geometries = [
+                item.data(Qt.ItemDataRole.UserRole)
+                for item in self.objects_list.allItems()
+            ]
+
+            # For now use all instead of shared vertex properties
+            properties = set()
+            for geometry in geometries:
+                properties |= set(geometry.vertex_properties.properties)
+
+            if len(properties) == 0:
+                return None
+
+            options = QComboBox()
+            options.addItems(sorted(list(properties)))
+
+            self.property_options_layout.addRow("Type:", options)
+            self.option_widgets["name"] = options
 
         elif property_name == "Curvature":
             curvature_combobox = QComboBox()
@@ -643,14 +684,15 @@ class PropertyAnalysisDialog(QDialog):
             QMessageBox.warning(self, "Error", str(e))
             self.properties.clear()
 
-    def _preview(self):
+    def _preview(self, render: bool = True, suppress_warning: bool = False):
         from ..utils import cmap_to_vtkctf
 
         geometries = self._get_selected_objects()
         if not geometries:
-            QMessageBox.warning(
-                self, "No Selection", "Please select at least one object."
-            )
+            if not suppress_warning:
+                QMessageBox.warning(
+                    self, "No Selection", "Please select at least one object."
+                )
             return None
 
         self._compute_properties()
@@ -685,8 +727,10 @@ class PropertyAnalysisDialog(QDialog):
             geometry.set_scalars(metric, lut, lut_range)
 
         self.legend.set_lookup_table(lut, self.property_combo.currentText())
-        self.cdata.data.render_vtk()
-        self.cdata.models.render_vtk()
+
+        if render:
+            self.cdata.data.render_vtk()
+            self.cdata.models.render_vtk()
 
     def _update_tab(self):
         current_tab_index = self.tabs_widget.currentIndex()

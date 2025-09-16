@@ -16,7 +16,7 @@ if system() == "Darwin":
 
 import vtk
 import numpy as np
-from qtpy.QtCore import Qt, QEvent
+from qtpy.QtCore import Qt, QEvent, QSize
 from qtpy.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -70,16 +70,10 @@ from .widgets import (
 
 
 class App(QMainWindow):
+
     def __init__(self):
         super().__init__()
-
-        # Adapt to screen size
-        screen = QGuiApplication.primaryScreen().geometry()
-        width = int(screen.width() * 0.9)
-        height = int(screen.height() * 0.9)
-        self.resize(width, height)
-        self.move((screen.width() - width) // 2, (screen.height() - height) // 2)
-        self.setWindowTitle("Mosaic")
+        self.setWindowState(Qt.WindowNoState)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -116,8 +110,6 @@ class App(QMainWindow):
         tab_layout = QHBoxLayout(self.tab_bar)
         tab_layout.setContentsMargins(16, 0, 16, 0)
         tab_layout.setSpacing(4)
-
-        # from mosaic.tabs import DevelopmentTab
 
         self.tab_button_group = QButtonGroup(self)
         self.tab_button_group.setExclusive(True)
@@ -182,24 +174,38 @@ class App(QMainWindow):
         list_wrapper.add_widget("cluster", "Cluster", self.cdata.data.data_list)
         list_wrapper.add_widget("model", "Model", self.cdata.models.data_list)
 
-        # self.list_wrapper2 = ObjectBrowserSidebar()
-
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(list_wrapper)
         splitter.addWidget(self.vtk_widget)
-        # splitter.addWidget(self.list_wrapper2)
         splitter.setSizes([200, self.width() - 200])
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
 
-        v_splitter = QSplitter(Qt.Orientation.Vertical)
-        v_splitter.addWidget(splitter)
-        v_splitter.setSizes([self.height()])
-        layout.addWidget(v_splitter)
+        layout.addWidget(splitter)
 
         self.actor_collection = vtk.vtkActorCollection()
         self.setup_menu()
 
         self.escape_shortcut = QShortcut(Qt.Key.Key_Escape, self.vtk_widget)
         self.escape_shortcut.activated.connect(self.handle_escape_key)
+
+    def sizeHint(self):
+        """Provide the preferred size for the main window."""
+        screen = QGuiApplication.primaryScreen().geometry()
+        width = int(screen.width() * 0.9)
+        height = int(screen.height() * 0.9)
+        return QSize(width, height)
+
+    def show(self):
+        """Override show to position after Qt sizes the window."""
+        self.resize(self.sizeHint())
+        super().show()
+
+        # Position after showing (when size is established)
+        screen = QGuiApplication.primaryScreen().geometry()
+        x = (screen.width() - self.width()) // 2
+        y = (screen.height() - self.height()) // 2
+        self.move(x, y)
 
     def apply_render_settings(self):
         self.renderer.SetBackground(
@@ -425,7 +431,7 @@ class App(QMainWindow):
         self.export_manager = ExportManager(
             self.vtk_widget, self.volume_viewer, self.cdata
         )
-        self.status_indicator = StatusIndicator(self.renderer, self.interactor)
+        self.status_indicator = StatusIndicator(self)
 
         self.bbox_manager = BoundingBoxManager(
             self.renderer, self.interactor, self.cdata
@@ -441,6 +447,8 @@ class App(QMainWindow):
         task_manager.task_failed.connect(
             lambda name, error: self.status_indicator.update_status(status="Ready")
         )
+        self._setup_volume_viewer()
+        self._setup_trajectory_player()
 
     def setup_menu(self):
         self._update_style()
@@ -634,14 +642,14 @@ class App(QMainWindow):
         self.volume_action.setCheckable(True)
         self.volume_action.setChecked(False)
         self.volume_action.triggered.connect(
-            lambda checked: self._set_volume_viewer(checked)
+            lambda checked: self.volume_dock.setVisible(checked)
         )
 
         self.trajectory_action = QAction("Trajectory Player", self)
         self.trajectory_action.setCheckable(True)
         self.trajectory_action.setChecked(False)
         self.trajectory_action.triggered.connect(
-            lambda checked: (self._set_trajectory_player(checked),)
+            lambda checked: self.trajectory_dock.setVisible(checked)
         )
 
         # Help menu
@@ -674,7 +682,7 @@ class App(QMainWindow):
             lambda checked: self.scale_bar.show() if checked else self.scale_bar.hide()
         )
 
-        show_viewer_mode = QAction("Viewer Mode", self)
+        show_viewer_mode = QAction("Status Bar", self)
         show_viewer_mode.setCheckable(True)
         show_viewer_mode.setChecked(True)
         show_viewer_mode.triggered.connect(
@@ -878,13 +886,15 @@ class App(QMainWindow):
         dialog.accepted.connect(dock.close)
         dialog.rejected.connect(dock.close)
 
+        self.volume_viewer.setMaximumHeight(100)
+        self.volume_viewer.setMinimumHeight(50)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
 
         dock.raise_()
         dock.show()
 
     def _setup_volume_viewer(self):
-        self.volume_dock = QDockWidget(self)
+        self.volume_dock = QDockWidget(parent=self)
         self.volume_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
         self.volume_dock.setTitleBarWidget(QWidget())
 
@@ -894,18 +904,10 @@ class App(QMainWindow):
             self.volume_dock,
             Qt.Orientation.Vertical,
         )
-        self.volume_dock.hide()
-
-    def _set_volume_viewer(self, visible):
-        if visible:
-            if self.volume_dock is None:
-                self._setup_volume_viewer()
-            self.volume_dock.setVisible(visible)
-        elif self.volume_dock is not None:
-            self.volume_dock.hide()
+        self.volume_dock.setVisible(False)
 
     def _setup_trajectory_player(self):
-        self.trajectory_dock = QDockWidget(self)
+        self.trajectory_dock = QDockWidget(parent=self)
         self.trajectory_dock.setFeatures(
             QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
         )
@@ -918,12 +920,7 @@ class App(QMainWindow):
             self.trajectory_dock,
             Qt.Orientation.Vertical,
         )
-        self.trajectory_dock.hide()
-
-    def _set_trajectory_player(self, visible):
-        if visible:
-            self._setup_trajectory_player()
-        self.trajectory_dock.setVisible(visible)
+        self.trajectory_dock.setVisible(False)
 
     def show_app_settings(self):
         dialog = AppSettingsDialog(self)
@@ -994,7 +991,6 @@ class App(QMainWindow):
         self.cdata.data.render()
         self.cdata.models.render()
 
-        self.renderer.AddActor(self.status_indicator.text_actor)
         self.set_camera_view("z")
 
     def _open_files(self, filenames: List[str]):

@@ -81,6 +81,9 @@ class ObjectSelectionWidget(QWidget):
     def selectedItems(self):
         return self.objects_list.selectedItems()
 
+    def allItems(self):
+        return [self.objects_list.item(i) for i in range(self.objects_list.count())]
+
     def get_selected_objects(self):
         """Get names of selected objects"""
         return [item.text() for item in self.objects_list.selectedItems()]

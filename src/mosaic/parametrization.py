@@ -778,16 +778,17 @@ class TriangularMesh(Parametrization):
         Triangular mesh.
     """
 
-    def __init__(self, mesh):
+    def __init__(self, mesh, repair: bool = True):
         self.mesh = mesh
 
         # We make sure the mesh is clean here to avoid segfaults from
         # ill-defined meshes during curvature or distance computation
-        self.mesh.remove_non_manifold_edges()
-        self.mesh.remove_degenerate_triangles()
-        self.mesh.remove_duplicated_triangles()
-        self.mesh.remove_unreferenced_vertices()
-        self.mesh.remove_duplicated_vertices()
+        if repair:
+            self.mesh.remove_non_manifold_edges()
+            self.mesh.remove_degenerate_triangles()
+            self.mesh.remove_duplicated_triangles()
+            self.mesh.remove_unreferenced_vertices()
+            self.mesh.remove_duplicated_vertices()
 
     def to_file(self, file_path):
         o3d.io.write_triangle_mesh(file_path, self.mesh)

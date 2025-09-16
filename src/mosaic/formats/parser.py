@@ -8,24 +8,18 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import warnings
 from string import ascii_lowercase
-
-from typing import List, Dict
 from dataclasses import dataclass
 import xml.etree.ElementTree as ET
+from typing import List, Dict, Any, Optional
 
 import numpy as np
 import open3d as o3d
 from scipy.spatial.transform import Rotation
 from tme import Density, Structure, Orientations
 
+from ._utils import _drop_prefix
 from ..meshing.utils import to_open3d
 from ..utils import volume_to_points, compute_bounding_box, NORMAL_REFERENCE
-
-
-def _drop_prefix(iterable, target_length: int):
-    if len(iterable) == target_length:
-        iterable.pop(0)
-    return iterable
 
 
 def _parse_data_array(data_array: ET.Element, dtype: type = float) -> np.ndarray:
@@ -47,6 +41,7 @@ class GeometryData:
     normals: np.ndarray = None
     faces: np.ndarray = None
     quaternions: np.ndarray = None
+    vertex_properties: "VertexPropertyContainer" = None
     shape: List[int] = None
     sampling: List[float] = (1, 1, 1)
 
@@ -57,6 +52,7 @@ class GeometryDataContainer:
     normals: List[np.ndarray] = None
     faces: List[np.ndarray] = None
     quaternions: List[np.ndarray] = None
+    vertex_properties: List["VertexPropertyContainer"] = None
     shape: List[int] = None
     sampling: List[float] = (1, 1, 1)
 
@@ -75,6 +71,9 @@ class GeometryDataContainer:
             self.normals = [
                 np.full_like(x, fill_value=NORMAL_REFERENCE) for x in self.vertices
             ]
+
+        if self.vertex_properties is None:
+            self.vertex_properties = [VertexPropertyContainer() for _ in self.vertices]
 
         for i in range(len(self.normals)):
             norm = np.linalg.norm(self.normals[i], axis=1)
@@ -110,6 +109,7 @@ class GeometryDataContainer:
             sampling=self.sampling,
             faces=self.faces[index] if self.faces is not None else None,
             quaternions=self.quaternions[index],
+            vertex_properties=self.vertex_properties[index],
         )
 
     @staticmethod
@@ -117,6 +117,114 @@ class GeometryDataContainer:
         if data is not None:
             return [x.astype(dtype) for x in data]
         return data
+
+
+class VertexPropertyContainer:
+    """Container for managing custom vertex properties with automatic synchronization."""
+
+    def __init__(self, properties: Optional[Dict[str, np.ndarray]] = None):
+        """
+        Initialize vertex property container.
+
+        Parameters
+        ----------
+        properties : dict of str -> np.ndarray, optional
+            Dictionary mapping property names to vertex data arrays
+        """
+        properties = {} if properties is None else properties
+        properties = {name: np.asarray(data) for name, data in properties.items()}
+
+        # We use len instead of size for future vector field support
+        self._n_vertices = max((*(len(x) for x in properties.values()), 0))
+        for name, data in properties.items():
+            if len(data) == self._n_vertices:
+                continue
+            raise ValueError(
+                f"Property '{name}' has {len(data)} values, "
+                f"but expected {self._n_vertices} to match vertex count"
+            )
+        self._properties = properties
+
+    def __getitem__(self, idx: str) -> "VertexPropertyContainer":
+        """Array-like indexing using int/bool numpy arrays, slices or ellipses."""
+        if not self._properties:
+            return VertexPropertyContainer()
+
+        if isinstance(idx, (int, np.integer)):
+            idx = [idx]
+        elif isinstance(idx, slice) or idx is ...:
+            idx = np.arange(self._n_vertices)[idx]
+
+        idx = np.asarray(idx)
+        if idx.dtype == bool:
+            idx = np.where(idx)[0]
+
+        return VertexPropertyContainer(
+            {k: v[idx].copy() for k, v in self._properties.items()}
+        )
+
+    @property
+    def properties(self):
+        """List available vertex properties."""
+        return list(self._properties.keys())
+
+    def get_property(self, name: str, default: Any = None) -> Optional[np.ndarray]:
+        """Get property data by name."""
+        return self._properties.get(name, default)
+
+    def remove_property(self, name: str) -> None:
+        _ = self._properties.pop(name, None)
+
+    def copy(self) -> "VertexPropertyContainer":
+        """Create a deep copy of the container."""
+        return self[...]
+
+    @classmethod
+    def merge(
+        cls, containers: List["VertexPropertyContainer"]
+    ) -> "VertexPropertyContainer":
+        """
+        Merge multiple property containers.
+
+        Parameters
+        ----------
+        containers : list of VertexPropertyContainer
+            Containers to merge
+
+        Returns
+        -------
+        VertexPropertyContainer
+            New container with merged properties
+        """
+        containers = [c for c in containers if c._properties]
+        if not containers:
+            return cls()
+
+        all_props = set(containers[0].properties)
+        common_props = set(containers[0].properties)
+        for container in containers[1:]:
+            container_props = set(container.properties)
+
+            common_props &= container_props
+            all_props |= container_props
+
+        if not common_props:
+            warnings.warn("No common properties found across containers to merge")
+            return cls()
+
+        dropped_props = all_props - common_props
+        if dropped_props:
+            warnings.warn(
+                f"Properties {sorted(dropped_props)} were not common across all "
+                f"containers and were dropped during merge"
+            )
+
+        merged_props = {}
+        for prop_name in common_props:
+            merged_props[prop_name] = np.concatenate(
+                [container.get_property(prop_name) for container in containers], axis=0
+            )
+        return cls(merged_props)
 
 
 def _read_orientations(filename: str):
@@ -200,24 +308,42 @@ def read_tsv(filename: str) -> GeometryDataContainer:
 
 def read_tsi(filename: str) -> GeometryDataContainer:
     data = _read_tsi_file(filename)
-    return _return_mesh(to_open3d(data["vertices"][:, 1:4], data["faces"][:, 1:4]))
+    mesh = to_open3d(data["vertices"][:, 1:4], data["faces"][:, 1:4])
+    vertex_properties = {}
+
+    if "inclusions" in data:
+        inclusions = np.zeros((len(data["vertices"])))
+        inclusion_type = data["inclusions"][:, 1]
+        inclusion_vert = data["inclusions"][:, 2].astype(int)
+        inclusions[inclusion_vert] = inclusion_type
+        vertex_properties = {"inclusion": inclusions}
+    return _return_mesh(mesh, vertex_properties=vertex_properties)
 
 
 def read_vtu(filename: str) -> GeometryDataContainer:
     data = _read_vtu_file(filename)
-    return _return_mesh(to_open3d(data["points"], data["connectivity"]))
+    mesh = to_open3d(data["points"], data["connectivity"])
+    return _return_mesh(mesh, vertex_properties=data.get("point_data", {}))
 
 
 def read_mesh(filename: str) -> GeometryDataContainer:
     return _return_mesh(o3d.io.read_triangle_mesh(filename))
 
 
-def _return_mesh(mesh: o3d.geometry.TriangleMesh) -> GeometryDataContainer:
+def _return_mesh(
+    mesh: o3d.geometry.TriangleMesh, vertex_properties: dict = None
+) -> GeometryDataContainer:
     mesh.compute_vertex_normals()
     vertices = np.asarray(mesh.vertices)
     faces = np.asarray(mesh.triangles)
     normals = np.asarray(mesh.vertex_normals)
-    return GeometryDataContainer(vertices=[vertices], faces=[faces], normals=[normals])
+
+    return GeometryDataContainer(
+        vertices=[vertices],
+        faces=[faces],
+        normals=[normals],
+        vertex_properties=[VertexPropertyContainer(vertex_properties)],
+    )
 
 
 def read_structure(filename: str) -> GeometryDataContainer:

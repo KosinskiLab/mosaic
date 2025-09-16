@@ -20,7 +20,6 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import numpy as np
 import open3d as o3d
-from scipy.spatial.distance import pdist
 
 __all__ = [
     "to_open3d",
@@ -51,12 +50,18 @@ def _compute_edge_lengths(filename):
 
 
 def compute_edge_lengths(mesh: o3d.geometry.TriangleMesh) -> np.ndarray:
-    vertices = np.asarray(mesh.vertices)
-    faces = np.asarray(mesh.triangles)
+    return _edge_lengths(
+        vertices=np.np.asarray(mesh.vertices),
+        faces=np.np.asarray(mesh.triangles),
+    ).ravel()
 
-    coordinates = vertices[faces]
-    distances = np.array([pdist(coordinates[x]) for x in range(faces.shape[0])])
-    return distances.ravel()
+
+def _edge_lengths(vertices, faces):
+    vertices = vertices[faces]
+    edge_01 = np.linalg.norm(vertices[:, 1] - vertices[:, 0], axis=1)
+    edge_02 = np.linalg.norm(vertices[:, 2] - vertices[:, 0], axis=1)
+    edge_12 = np.linalg.norm(vertices[:, 2] - vertices[:, 1], axis=1)
+    return np.column_stack([edge_01, edge_02, edge_12])
 
 
 def scale(mesh, scaling):

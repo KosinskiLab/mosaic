@@ -177,6 +177,10 @@ def geodesic_distance(
     return distance
 
 
+def vertex_property(geometry, name: str, *args, **kwargs):
+    return geometry.vertex_properties.get_property(name)
+
+
 class GeometryProperties:
     """Registry for property calculators."""
 
@@ -197,6 +201,7 @@ class GeometryProperties:
         "mesh_triangles": mesh_triangles,
         "projected_curvature": projected_curvature,
         "geodesic_distance": geodesic_distance,
+        "vertex_property": vertex_property,
     }
 
     @classmethod

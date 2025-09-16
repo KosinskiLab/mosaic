@@ -162,7 +162,11 @@ class IntelligenceTab(QWidget):
         return ret
 
     def _import_trajectory(
-        self, scale: float = 1.0, offset: Union[str, float] = 0.0, **kwargs
+        self,
+        scale: float = 1.0,
+        offset: Union[str, float] = 0.0,
+        drop_pbc: bool = False,
+        **kwargs,
     ):
         from ..meshing import to_open3d
         from ..formats import open_file
@@ -201,12 +205,34 @@ class IntelligenceTab(QWidget):
                 faces = container.faces.astype(int)
                 points = np.divide(np.subtract(container.vertices, offset), scale)
 
-                fit = TriangularMesh(to_open3d(points, faces))
-                ret.append({"fit": fit, "filename": filename})
+                from ..meshing.utils import _edge_lengths
+
+                if drop_pbc:
+                    points_norm = points - points.min(axis=0)
+
+                    box_stop = points_norm.max(axis=0)
+                    points_pbc = np.mod(points_norm, 0.85 * box_stop)
+
+                    dist_regular = _edge_lengths(points_norm, faces)
+                    dist_pbc = _edge_lengths(points_pbc, faces)
+
+                    keep = np.all(dist_pbc >= dist_regular, axis=-1)
+                    faces = faces[keep]
+
+                # Avoid detecting PBC as ill-defined meshes
+                fit = TriangularMesh(to_open3d(points, faces), repair=False)
+
+                ret.append(
+                    {
+                        "fit": fit,
+                        "filename": filename,
+                        "name": basename(directory),
+                        "vertex_properties": container.vertex_properties,
+                    }
+                )
 
         if len(ret) == 0:
-            print(f"No meshes found at: {directory}.")
-            return None
+            raise ValueError(f"No meshes found at: {directory}.")
 
         base = ret[0]["fit"]
         trajectory = GeometryTrajectory(
@@ -215,6 +241,7 @@ class IntelligenceTab(QWidget):
             sampling_rate=1 / scale,
             meta=ret[0].copy(),
             trajectory=ret,
+            vertex_properties=ret[0]["vertex_properties"],
         )
         trajectory.change_representation("mesh")
         self.cdata._models.add(trajectory)
@@ -304,6 +331,13 @@ IMPORT_SETTINGS = {
             "type": "text",
             "default": "0.0",
             "description": "Add offset as (points - offset) / scale ",
+        },
+        {
+            "label": "Remove PBC",
+            "parameter": "drop_pbc",
+            "type": "boolean",
+            "default": False,
+            "description": "Drop triangles arising from periodic boundaries.",
         },
     ],
 }

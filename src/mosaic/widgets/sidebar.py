@@ -1,7 +1,7 @@
 from typing import Optional
 
-from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve
-from PyQt6.QtWidgets import (
+from qtpy.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
+from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QSizePolicy,
     QScrollArea,
+    QSplitter,
 )
 import qtawesome as qta
 
@@ -95,7 +96,7 @@ class ObjectBrowserSidebar(QWidget):
     Provides direct widget support for maximum flexibility.
     """
 
-    visibility_changed = pyqtSignal(bool)
+    visibility_changed = Signal(bool)
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -300,21 +301,54 @@ class ObjectBrowserSidebar(QWidget):
 
     def toggle_collapse(self):
         """Toggle between collapsed and expanded states with animation."""
-        container = self.content_widget
-        if not self.collapsed:
-            self.previous_width = container.width()
+        splitter = self.parent()
 
-        start, stop, direction = container.width(), 40, "right"
-        if self.collapsed:
-            start, stop, direction = 40, self.previous_width, "left"
+        while splitter and not isinstance(splitter, QSplitter):
+            splitter = splitter.parent()
+
+        if not splitter:
+            return None
+
+        current_sizes = splitter.sizes()
+        if not self.collapsed:
+            # Store current width before collapsing
+            self.previous_width = current_sizes[0]
+            target_sizes = [60, current_sizes[1] + current_sizes[0] - 60]
+            direction = "right"
+        else:
+            # Restore previous width
+            target_width = getattr(self, "previous_width", 200)
+            target_sizes = [
+                target_width,
+                current_sizes[1] - target_width + current_sizes[0],
+            ]
+            direction = "left"
+
+        # Animate splitter sizes instead of widget width
+        self.animation.setStartValue(current_sizes[0])
+        self.animation.setEndValue(target_sizes[0])
+        self.animation.valueChanged.connect(
+            lambda width: self._animate_splitter_size(width, splitter)
+        )
 
         self.collapsed = not self.collapsed
-        self.animation.setStartValue(start)
-        self.animation.setEndValue(stop)
-
         self.animation.start()
         self.collapse_btn.set_direction(direction)
         self.visibility_changed.emit(self.collapsed)
+
+    def _animate_splitter_size(self, width, splitter):
+        """Update splitter size during animation."""
+        current_sizes = splitter.sizes()
+        total_width = sum(current_sizes)
+        new_sizes = [int(width), total_width - int(width)]
+        splitter.setSizes(new_sizes)
+
+        # Show/hide content based on width
+        show_content = width > 60
+        if hasattr(self, "title_label"):
+            self.title_label.setVisible(show_content)
+        if hasattr(self, "scroll_area"):
+            self.scroll_area.setVisible(show_content)
 
     def set_title(self, title: str):
         """Set the sidebar title."""

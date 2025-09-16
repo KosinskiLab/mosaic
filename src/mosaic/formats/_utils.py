@@ -16,3 +16,9 @@ def get_extension(filename: str) -> str:
     if extension.lower() == ".gz":
         _, extension = splitext(basename(base))
     return extension.lower()
+
+
+def _drop_prefix(iterable, target_length: int):
+    if len(iterable) == target_length:
+        iterable.pop(0)
+    return iterable
