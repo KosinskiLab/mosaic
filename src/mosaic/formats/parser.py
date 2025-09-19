@@ -311,12 +311,15 @@ def read_tsi(filename: str) -> GeometryDataContainer:
     mesh = to_open3d(data["vertices"][:, 1:4], data["faces"][:, 1:4])
     vertex_properties = {}
 
-    if "inclusions" in data:
-        inclusions = np.zeros((len(data["vertices"])))
-        inclusion_type = data["inclusions"][:, 1]
-        inclusion_vert = data["inclusions"][:, 2].astype(int)
-        inclusions[inclusion_vert] = inclusion_type
-        vertex_properties = {"inclusion": inclusions}
+    try:
+        if "inclusions" in data:
+            inclusions = np.zeros((len(data["vertices"])))
+            inclusion_type = data["inclusions"][:, 1]
+            inclusion_vert = data["inclusions"][:, 2].astype(int)
+            inclusions[inclusion_vert] = inclusion_type
+            vertex_properties = {"inclusion": inclusions}
+    except Exception:
+        pass
     return _return_mesh(mesh, vertex_properties=vertex_properties)
 
 

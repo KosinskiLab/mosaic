@@ -51,8 +51,8 @@ def _compute_edge_lengths(filename):
 
 def compute_edge_lengths(mesh: o3d.geometry.TriangleMesh) -> np.ndarray:
     return _edge_lengths(
-        vertices=np.np.asarray(mesh.vertices),
-        faces=np.np.asarray(mesh.triangles),
+        vertices=np.asarray(mesh.vertices),
+        faces=np.asarray(mesh.triangles),
     ).ravel()
 
 

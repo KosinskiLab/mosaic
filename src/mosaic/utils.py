@@ -509,3 +509,16 @@ def normals_to_rot(normals, target=NORMAL_REFERENCE, mode: str = "quat", **kwarg
 
 def apply_quat(quaternions, target=NORMAL_REFERENCE):
     return Rotation.from_quat(quaternions, scalar_first=True).apply(target)
+
+
+def _rot_from_quat(quat, scalar_first: bool = True) -> Rotation:
+    # In Mosaic we use scalar first (w,x,y,z) quaternion convention
+    # Pre scipy 1.4 the scalar_first argument was not supported raising a TypeError
+    # In this case we remap to (x,y,z,w) and use the old interface
+    try:
+        return Rotation.from_quat(quat, scalar_first=scalar_first)
+    except TypeError:
+        quat = np.atleast_2d(quat)
+        if scalar_first:
+            quat = quat[:, (1, 2, 3, 0)]
+        return Rotation.from_quat(quat)

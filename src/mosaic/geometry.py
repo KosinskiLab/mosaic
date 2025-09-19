@@ -384,7 +384,6 @@ class Geometry:
             scalars = np.repeat(scalars, self.points.shape[0])
 
         if scalars.size != self.points.shape[0]:
-            print(f"Needs {self.points.shape[0]} scalars, not {scalars.size}")
             return None
 
         mapper = self._actor.GetMapper()

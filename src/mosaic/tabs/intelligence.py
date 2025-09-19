@@ -205,9 +205,9 @@ class IntelligenceTab(QWidget):
                 faces = container.faces.astype(int)
                 points = np.divide(np.subtract(container.vertices, offset), scale)
 
-                from ..meshing.utils import _edge_lengths
-
                 if drop_pbc:
+                    from ..meshing.utils import _edge_lengths
+
                     points_norm = points - points.min(axis=0)
 
                     box_stop = points_norm.max(axis=0)

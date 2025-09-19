@@ -69,6 +69,8 @@ class PropertyAnalysisDialog(QDialog):
                 # Provoke cache miss for tracking inclusions on trajectories
                 self.property_parameters.clear()
                 self._preview(render=False, suppress_warning=True)
+                self._update_plot()
+                self._update_statistics()
             except Exception:
                 # Things like select at least one object
                 pass
@@ -408,7 +410,10 @@ class PropertyAnalysisDialog(QDialog):
         if self.property_combo.count() > 0:
             self._update_options(self.property_combo.currentText())
 
-    def _update_options(self, property_name):
+    def _update_options(self, property_name: str = None):
+        if property_name is None:
+            property_name = self.property_combo.currentText()
+
         while self.property_options_layout.rowCount() > 0:
             self.property_options_layout.removeRow(0)
 
@@ -423,10 +428,12 @@ class PropertyAnalysisDialog(QDialog):
             # For now use all instead of shared vertex properties
             properties = set()
             for geometry in geometries:
+                if geometry.vertex_properties is None:
+                    continue
                 properties |= set(geometry.vertex_properties.properties)
 
             if len(properties) == 0:
-                return None
+                return self.property_combo.clear()
 
             options = QComboBox()
             options.addItems(sorted(list(properties)))
@@ -633,9 +640,10 @@ class PropertyAnalysisDialog(QDialog):
                 if value.size != geometry.points.shape[0]:
                     missing_geometries.append(geometry)
 
+        # This could be explicity by making the compute / refresh buttons not
+        # clickable if the properties are invalid
         property_name = self.property_map.get(self.property_combo.currentText())
         if property_name is None:
-            print(f"{property_name} is missing from property_map.")
             return None
 
         options["property_name"] = property_name

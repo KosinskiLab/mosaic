@@ -77,6 +77,10 @@ class TrajectoryRow(QFrame):
         self.current_frame = 0
         self.setup_ui()
 
+    def set_maxframes(self, max_frames: int):
+        self.max_frames = max_frames
+        self.timeline.setRelativeWidth(self.trajectory.frames, self.max_frames)
+
     def setup_ui(self):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
@@ -94,7 +98,7 @@ class TrajectoryRow(QFrame):
         self.timeline = TimelineBar()
         self.timeline.setRange(0, self.trajectory.frames - 1)
         self.timeline.valueChanged.connect(self._update_frame)
-        self.timeline.setRelativeWidth(self.trajectory.frames, self.max_frames)
+        self.set_maxframes(self.max_frames)
         layout.addWidget(self.timeline, 1)
 
         # Right side: Frame counter
@@ -269,29 +273,39 @@ class TrajectoryPlayer(QWidget):
         main_layout.addWidget(trajectory_container, 1)
 
     def update_trajectories(self):
+        """Update trajectories from MosaicData models."""
         from ..geometry import GeometryTrajectory
 
-        """Update trajectories from MosaicData models."""
-        for i in reversed(range(self.rows_layout.count())):
-            self.rows_layout.itemAt(i).widget().setParent(None)
-
-        # Find all GeometryTrajectory instances and determine max frames
         geometry_trajectories = [
             model
             for model in self.cdata._models.data
             if isinstance(model, GeometryTrajectory)
         ]
 
-        if not geometry_trajectories:
-            self.current_frame_label.setText("0/0")
-            return
+        max_frames = 0
+        if len(geometry_trajectories):
+            max_frames = max(t.frames for t in geometry_trajectories)
 
-        max_frames = max(t.frames for t in geometry_trajectories)
+        # Remove trajectories that no longer exist
+        for i in reversed(range(self.rows_layout.count())):
+            widget = self.rows_layout.itemAt(i).widget()
+            try:
+                index = geometry_trajectories.index(widget.trajectory)
+                _ = geometry_trajectories.pop(index)
+                if max_frames != 0:
+                    widget.set_maxframes(max_frames)
+            except (IndexError, ValueError):
+                self.rows_layout.itemAt(i).widget().setParent(None)
+
+        if max_frames == 0:
+            self.current_frame_label.setText("0/0")
+            return None
+
+        # Add new trajectories
         for model in geometry_trajectories:
             row = TrajectoryRow(model, max_frames)
             row.frameChanged.connect(lambda: self.cdata.models.render_vtk())
             self.rows_layout.addWidget(row)
-
         self.current_frame_label.setText(f"0/{max_frames-1}")
 
     def sync_frame(self, frame_idx, from_row=False):

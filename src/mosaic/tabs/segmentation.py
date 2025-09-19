@@ -206,6 +206,9 @@ class SegmentationTab(QWidget):
         self.cdata.data.render_update.connect(dialog.populate_lists)
         self.cdata.models.render_update.connect(dialog.populate_lists)
 
+        self.cdata.models.render_update.connect(dialog._update_options)
+        self.cdata.models.render_update.connect(dialog._update_options)
+
         self.property_dock = QDockWidget(self)
         self.property_dock.setFeatures(
             QDockWidget.DockWidgetClosable
