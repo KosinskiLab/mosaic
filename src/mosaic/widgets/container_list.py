@@ -156,7 +156,7 @@ class StyledListWidgetItem(QListWidgetItem):
 
     def set_visible(self, visible):
         if visible != self.visible:
-            self._update_visibility_icon(visible)
+            self._update_icon(visible)
 
         if not visible:
             self.setForeground(self.invisible_color)

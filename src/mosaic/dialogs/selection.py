@@ -1,3 +1,5 @@
+from typing import List
+
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QDialog,
@@ -56,27 +58,59 @@ class ObjectSelectionWidget(QWidget):
 
         layout.addWidget(objects_panel)
 
-    def populate_lists(self):
-        """Same logic as PropertyAnalysisDialog.populate_lists()"""
+    def _make_items(self, data, data_type: str, ids: List[int]):
         from ..widgets import StyledListWidgetItem
 
-        self.objects_list.clear()
+        all_ids, new_items = [], []
+        for name, obj in data:
+            object_id = id(obj)
 
-        clusters = self.cdata.format_datalist("data")
-        for name, obj in clusters:
+            all_ids.append(object_id)
+            if object_id in ids:
+                item = self.get_item_by_id(object_id)
+                if item is not None:
+                    item.set_visible(obj.visible)
+                continue
             item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
             item.setData(Qt.ItemDataRole.UserRole, obj)
-            item.setData(Qt.ItemDataRole.UserRole + 1, "cluster")
+            item.setData(Qt.ItemDataRole.UserRole + 1, data_type)
             item.setData(Qt.ItemDataRole.UserRole + 2, id(obj))
-            self.objects_list.addItem(item)
+            new_items.append(item)
+        return all_ids, new_items
 
-        models = self.cdata.format_datalist("models")
-        for name, obj in models:
-            item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
-            item.setData(Qt.ItemDataRole.UserRole, obj)
-            item.setData(Qt.ItemDataRole.UserRole + 1, "model")
-            item.setData(Qt.ItemDataRole.UserRole + 2, id(obj))
+    def populate_lists(self):
+        ids = [item.data(Qt.ItemDataRole.UserRole + 2) for item in self.allItems()]
+
+        selected = [
+            item.data(Qt.ItemDataRole.UserRole + 2) for item in self.selectedItems()
+        ]
+
+        data = self.cdata.format_datalist("data")
+        all_ids, new_items = self._make_items(data, "cluster", ids)
+
+        data = self.cdata.format_datalist("models")
+        _all_ids, _new_items = self._make_items(data, "models", ids)
+
+        all_ids.extend(_all_ids)
+        new_items.extend(_new_items)
+
+        # Remove objects that have been deleted, add new items and keep selection
+        deleted_ids = set(ids) - set(all_ids)
+        for i in reversed(range(self.objects_list.count())):
+            item = self.objects_list.item(i)
+            if item.data(Qt.ItemDataRole.UserRole + 2) in deleted_ids:
+                _ = self.objects_list.takeItem(i)
+
+        for item in new_items:
             self.objects_list.addItem(item)
+        return self.set_selection(set(selected) & set(all_ids))
+
+    def get_item_by_id(self, obj_id: int):
+        for i in range(self.objects_list.count()):
+            item = self.objects_list.item(i)
+            if item.data(Qt.ItemDataRole.UserRole + 2) == obj_id:
+                return item
+        return None
 
     def selectedItems(self):
         return self.objects_list.selectedItems()
