@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.cluster\_points
+=========================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.cluster_points
