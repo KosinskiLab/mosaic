@@ -66,16 +66,22 @@ class ObjectSelectionWidget(QWidget):
             object_id = id(obj)
 
             all_ids.append(object_id)
-            if object_id in ids:
-                item = self.get_item_by_id(object_id)
-                if item is not None:
-                    item.set_visible(obj.visible)
-                continue
-            item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
+
+            item = self.get_item_by_id(object_id)
+
+            is_new = item is None
+            if is_new:
+                item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
+
+            # Sync properties of new and existing items
+            item.setText(name)
+            item.set_visible(obj.visible)
             item.setData(Qt.ItemDataRole.UserRole, obj)
             item.setData(Qt.ItemDataRole.UserRole + 1, data_type)
             item.setData(Qt.ItemDataRole.UserRole + 2, id(obj))
-            new_items.append(item)
+
+            if is_new:
+                new_items.append(item)
         return all_ids, new_items
 
     def populate_lists(self):

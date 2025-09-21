@@ -1063,12 +1063,14 @@ class App(QMainWindow):
                             normals=data.normals,
                             sampling_rate=sampling,
                             quaternions=data.quaternions,
+                            vertex_properties=data.vertex_properties,
                         )
                         self.cdata._data.data[index]._meta["name"] = name
                     else:
                         index = self.cdata._add_fit(
                             fit=TriangularMesh(to_open3d(data.vertices, data.faces)),
                             sampling_rate=sampling,
+                            vertex_properties=data.vertex_properties,
                         )
                         self.cdata._models.data[index]._meta["name"] = name
 

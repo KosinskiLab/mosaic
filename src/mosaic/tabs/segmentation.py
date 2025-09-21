@@ -203,11 +203,6 @@ class SegmentationTab(QWidget):
             return _exit()
 
         dialog = PropertyAnalysisDialog(self.cdata, self.legend, parent=self)
-        self.cdata.data.render_update.connect(dialog.populate_lists)
-        self.cdata.models.render_update.connect(dialog.populate_lists)
-
-        self.cdata.models.render_update.connect(dialog._update_options)
-        self.cdata.models.render_update.connect(dialog._update_options)
 
         self.property_dock = QDockWidget(self)
         self.property_dock.setFeatures(

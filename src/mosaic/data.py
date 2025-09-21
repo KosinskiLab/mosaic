@@ -147,7 +147,7 @@ class MosaicData(QObject):
         obj = self._get_active_container()
         return obj.activate_picking_mode()
 
-    def _add_fit(self, fit, sampling_rate=None, **kwargs):
+    def _add_fit(self, fit, sampling_rate=None, vertex_properties=None, **kwargs):
         if hasattr(fit, "mesh"):
             new_points = fit.vertices
             normals = fit.compute_vertex_normals()
@@ -159,6 +159,7 @@ class MosaicData(QObject):
             points=new_points,
             normals=normals,
             sampling_rate=sampling_rate,
+            vertex_properties=vertex_properties,
             meta={"fit": fit, "fit_kwargs": kwargs},
         )
         if hasattr(fit, "mesh"):

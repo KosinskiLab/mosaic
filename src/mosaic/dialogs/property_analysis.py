@@ -58,27 +58,33 @@ class PropertyAnalysisDialog(QDialog):
 
         self._setup_ui()
         self._setup_styling()
+
+        self.cdata.data.vtk_pre_render.connect(self._on_render_update)
         self.cdata.models.vtk_pre_render.connect(self._on_render_update)
 
     def _on_render_update(self):
         """Re-apply properties when models are re-rendered"""
-        if self.isVisible() and hasattr(self, "properties") and self.properties:
-            self.cdata.models.blockSignals(True)
+        self.cdata.data.blockSignals(True)
+        self.cdata.models.blockSignals(True)
+        try:
+            self.populate_lists()
+            self._update_property_list()
 
-            try:
-                # Provoke cache miss for tracking inclusions on trajectories
-                self.property_parameters.clear()
-                self._preview(render=False, suppress_warning=True)
-                self._update_plot()
-                self._update_statistics()
-            except Exception:
-                # Things like select at least one object
-                pass
-            finally:
-                self.cdata.models.blockSignals(False)
+            # Provoke cache miss for tracking inclusions on trajectories
+            self.property_parameters.clear()
+            self._preview(render=False, suppress_warning=True)
+            self._update_plot()
+            self._update_statistics()
+        except Exception:
+            # Things like select at least one object
+            pass
+        finally:
+            self.cdata.data.blockSignals(False)
+            self.cdata.models.blockSignals(False)
 
     def closeEvent(self, event):
         """Disconnect when dialog closes"""
+        self.cdata.data.vtk_pre_render.disconnect(self._on_render_update)
         self.cdata.models.vtk_pre_render.disconnect(self._on_render_update)
         super().closeEvent(event)
 
@@ -347,9 +353,11 @@ class PropertyAnalysisDialog(QDialog):
         button_layout.addWidget(apply_btn)
         layout.addLayout(button_layout)
 
-    def _update_property_list(self, category):
-        self.property_combo.clear()
+    def _update_property_list(self, category: str = None):
+        if category is None:
+            category = self.category_combo.currentText()
 
+        self.property_combo.clear()
         properties = {
             "Distance": [
                 "To Camera",

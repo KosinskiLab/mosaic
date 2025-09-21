@@ -178,6 +178,8 @@ def geodesic_distance(
 
 
 def vertex_property(geometry, name: str, *args, **kwargs):
+    if geometry.vertex_properties is None:
+        return None
     return geometry.vertex_properties.get_property(name)
 
 
