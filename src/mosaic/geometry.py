@@ -23,6 +23,29 @@ BASE_COLOR = (0.7, 0.7, 0.7)
 
 
 class Geometry:
+    """
+    VTK-based geometry representation for 3D point clouds and meshes.
+
+    Parameters
+    ----------
+    points : np.ndarray, optional
+        3D point coordinates.
+    quaternions : np.ndarray, optional
+        Orientation quaternions for each point (scalar first w,x,y,z).
+    color : tuple, optional
+        Base RGB color values, by default (0.7, 0.7, 0.7).
+    sampling_rate : np.ndarray, optional
+        Sampling rates along each axis.
+    meta : dict, optional
+        Metadata dictionary.
+    vtk_actor : vtk.vtkActor, optional
+        Custom VTK actor object.
+    vertex_properties : VertexPropertyContainer, optional
+        Additional vertex properties.
+    **kwargs
+        Additional keyword arguments including normals.
+    """
+
     def __init__(
         self,
         points=None,
@@ -100,6 +123,14 @@ class Geometry:
         self._sampling_rate = sampling_rate
 
     def __getstate__(self):
+        """
+        Get object state for pickling.
+
+        Returns
+        -------
+        dict
+            Serializable state dictionary.
+        """
         quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
         if quaternions is not None:
             quaternions = self.quaternions
@@ -116,6 +147,14 @@ class Geometry:
         }
 
     def __setstate__(self, state):
+        """
+        Restore object state from unpickling.
+
+        Parameters
+        ----------
+        state : dict
+            State dictionary to restore from.
+        """
         visible = state.pop("visible", True)
         appearance = state.pop("appearance", {})
         self.__init__(**state)
@@ -128,9 +167,7 @@ class Geometry:
         self.set_appearance(**appearance)
 
     def __getitem__(self, idx):
-        """
-        Array-like indexing of geometry using int/bool numpy arrays, slices or ellipses
-        """
+        """Array-like indexing using int/bool numpy arrays, slices or ellipses."""
         if isinstance(idx, (int, np.integer)):
             idx = [idx]
         elif isinstance(idx, slice) or idx is ...:
@@ -170,6 +207,24 @@ class Geometry:
 
     @classmethod
     def merge(cls, geometries):
+        """
+        Merge multiple geometry objects into a single geometry.
+
+        Parameters
+        ----------
+        geometries : list of Geometry
+            List of geometry objects to merge.
+
+        Returns
+        -------
+        Geometry
+            New geometry object containing merged data.
+
+        Raises
+        ------
+        ValueError
+            If no geometries provided for merging.
+        """
         if not len(geometries):
             raise ValueError("No geometries provided for merging")
 
@@ -205,18 +260,50 @@ class Geometry:
 
     @property
     def actor(self):
+        """
+        VTK actor object for rendering.
+
+        Returns
+        -------
+        vtk.vtkActor
+            VTK actor used for visualization.
+        """
         return self._actor
 
     @property
     def visible(self):
+        """
+        Visibility state of the geometry.
+
+        Returns
+        -------
+        bool
+            True if geometry is visible, False otherwise.
+        """
         return self.actor.GetVisibility()
 
     @property
     def points(self):
+        """
+        3D point coordinates of the geometry.
+
+        Returns
+        -------
+        np.ndarray
+            Point coordinates with shape (n_points, 3).
+        """
         return numpy_support.vtk_to_numpy(self._data.GetPoints().GetData())
 
     @points.setter
     def points(self, points: np.ndarray):
+        """
+        Set 3D point coordinates.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            Point coordinates with shape (n_points, 3).
+        """
         points = np.asarray(points, dtype=np.float32)
         if points.shape[1] != 3:
             warnings.warn("Only 3D point clouds are supported.")
@@ -236,6 +323,14 @@ class Geometry:
 
     @property
     def normals(self):
+        """
+        Normal vectors at each point.
+
+        Returns
+        -------
+        np.ndarray or None
+            Normal vectors with shape (n_points, 3), or None if not set.
+        """
         normals = self._data.GetPointData().GetNormals()
         if normals is not None:
             normals = np.asarray(normals)
@@ -243,6 +338,14 @@ class Geometry:
 
     @normals.setter
     def normals(self, normals: np.ndarray):
+        """
+        Set normal vectors.
+
+        Parameters
+        ----------
+        normals : np.ndarray
+            Normal vectors with shape (n_points, 3).
+        """
         normals = np.asarray(normals, dtype=np.float32)
         if normals.shape != self.points.shape:
             warnings.warn("Number of normals must match number of points.")
@@ -260,6 +363,14 @@ class Geometry:
 
     @property
     def quaternions(self):
+        """
+        Orientation quaternions for each point.
+
+        Returns
+        -------
+        np.ndarray or None
+            Quaternions in scalar-first format (n_points, 4), or None if not set.
+        """
         quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
         if quaternions is not None:
             quaternions = np.asarray(quaternions)
@@ -309,15 +420,28 @@ class Geometry:
         self._data.Modified()
 
     def set_color(self, color: Tuple[int] = None):
+        """
+        Set uniform color for all points in the geometry.
+
+        Parameters
+        ----------
+        color : tuple of int, optional
+            RGB color values. Uses base color if None.
+        """
         if color is None:
             color = self._appearance["base_color"]
         self.color_points(range(self._points.GetNumberOfPoints()), color=color)
 
     def set_visibility(self, visibility: bool = True):
-        return self.actor.SetVisibility(visibility)
+        """
+        Set geometry visibility in the scene.
 
-    def toggle_visibility(self):
-        return self.set_visibility(not self.visible)
+        Parameters
+        ----------
+        visibility : bool, optional
+            Whether geometry should be visible, by default True.
+        """
+        return self.actor.SetVisibility(visibility)
 
     def set_appearance(
         self,
@@ -330,6 +454,28 @@ class Geometry:
         color: Tuple[float] = None,
         **kwargs,
     ):
+        """
+        Set visual appearance properties of the geometry.
+
+        Parameters
+        ----------
+        size : int, optional
+            Point size for rendering.
+        opacity : float, optional
+            Transparency level (0.0 to 1.0).
+        render_spheres : bool, optional
+            Whether to render points as spheres.
+        ambient : float, optional
+            Ambient lighting coefficient.
+        diffuse : float, optional
+            Diffuse lighting coefficient.
+        specular : float, optional
+            Specular lighting coefficient.
+        color : tuple of float, optional
+            RGB color values.
+        **kwargs
+            Additional appearance parameters.
+        """
         params = {
             "size": size,
             "opacity": opacity,
@@ -347,6 +493,7 @@ class Geometry:
         self.set_color(color)
 
     def _set_appearance(self):
+        """Propagate appearance settings to VTK actor properties."""
         prop = self._actor.GetProperty()
 
         prop.SetRenderPointsAsSpheres(True)
@@ -362,6 +509,23 @@ class Geometry:
     def _create_actor(
         self, actor=None, lod_points: int = 5e6, lod_points_size: int = 3
     ):
+        """
+        Create VTK actor with appropriate mapper configuration.
+
+        Parameters
+        ----------
+        actor : vtk.vtkActor, optional
+            Existing actor to use.
+        lod_points : int, optional
+            Level of detail threshold for points, by default 5e6.
+        lod_points_size : int, optional
+            Point size for level of detail, by default 3.
+
+        Returns
+        -------
+        vtk.vtkActor
+            Configured VTK actor.
+        """
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(self._data)
 
@@ -376,9 +540,31 @@ class Geometry:
         return actor
 
     def get_number_of_points(self):
+        """
+        Get total number of points in the geometry.
+
+        Returns
+        -------
+        int
+            Number of points.
+        """
         return self._points.GetNumberOfPoints()
 
     def set_scalars(self, scalars, color_lut, scalar_range=None, use_point=False):
+        """
+        Set scalar data for coloring points.
+
+        Parameters
+        ----------
+        scalars : array-like
+            Scalar values for each point.
+        color_lut : vtk.vtkLookupTable
+            Color lookup table for mapping scalars to colors.
+        scalar_range : tuple, optional
+            Min and max scalar range for color mapping.
+        use_point : bool, optional
+            Whether to use point data for scalar mode, by default False.
+        """
         scalars = np.asarray(scalars).reshape(-1)
         if scalars.size == 1:
             scalars = np.repeat(scalars, self.points.shape[0])
@@ -478,6 +664,19 @@ class Geometry:
         self._data.Modified()
 
     def subset(self, indices):
+        """
+        Create a subset geometry from specified indices.
+
+        Parameters
+        ----------
+        indices : array-like
+            Indices of points to include in subset.
+
+        Returns
+        -------
+        Geometry
+            New geometry with swapped data from subset.
+        """
         subset = self[indices]
 
         _quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
@@ -495,6 +694,27 @@ class Geometry:
     def swap_data(
         self, points, normals=None, faces=None, quaternions=None, meta: Dict = None
     ):
+        """
+        Replace geometry data with new point cloud or mesh data.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            New 3D point coordinates.
+        normals : np.ndarray, optional
+            New normal vectors.
+        faces : np.ndarray, optional
+            New face connectivity indices.
+        quaternions : np.ndarray, optional
+            New orientation quaternions.
+        meta : dict, optional
+            New metadata dictionary.
+
+        Returns
+        -------
+        int
+            Result of representation change.
+        """
         self._points.Reset()
         self._cells.Reset()
         self._normals.Reset()
@@ -528,6 +748,26 @@ class Geometry:
         return self.change_representation(self._representation)
 
     def change_representation(self, representation: str = "pointcloud") -> int:
+        """
+        Change the visual representation mode of the geometry.
+
+        Parameters
+        ----------
+        representation : str, optional
+            Representation mode, by default "pointcloud".
+            Supported: "pointcloud", "gaussian_density", "pointcloud_normals",
+            "mesh", "wireframe", "normals", "surface", "basis".
+
+        Returns
+        -------
+        int
+            Success status (0 for success, -1 for failure).
+
+        Raises
+        ------
+        ValueError
+            If representation mode is not supported.
+        """
         supported = [
             "pointcloud",
             "gaussian_density",
@@ -727,6 +967,19 @@ class PointCloud(Geometry):
 
 
 class VolumeGeometry(Geometry):
+    """
+    Geometry class specialized for 3D volume rendering with isosurfaces.
+
+    Parameters
+    ----------
+    volume : np.ndarray, optional
+        3D volume data array.
+    volume_sampling_rate : np.ndarray, optional
+        Sampling rates for volume data, by default ones(3).
+    **kwargs
+        Additional keyword arguments passed to parent Geometry class.
+    """
+
     def __init__(
         self, volume: np.ndarray = None, volume_sampling_rate=np.ones(3), **kwargs
     ):
@@ -791,11 +1044,36 @@ class VolumeGeometry(Geometry):
         return state
 
     def update_isovalue(self, upper, lower: float = 0):
+        """
+        Update the isovalue for volume surface rendering.
+
+        Parameters
+        ----------
+        upper : float
+            Upper isovalue threshold.
+        lower : float, optional
+            Lower isovalue threshold, by default 0.
+        """
         return self._surface.SetValue(int(lower), upper)
 
     def update_isovalue_quantile(
         self, upper_quantile: float, lower_quantile: float = 0.0
     ):
+        """
+        Update isovalue using quantile-based thresholds.
+
+        Parameters
+        ----------
+        upper_quantile : float
+            Upper quantile threshold (0.0 to 1.0).
+        lower_quantile : float, optional
+            Lower quantile threshold (0.0 to 1.0), by default 0.0.
+
+        Raises
+        ------
+        ValueError
+            If upper quantile is not greater than lower quantile.
+        """
         lower_quantile = max(lower_quantile, 0)
         upper_quantile = min(upper_quantile, 1)
 
@@ -819,6 +1097,17 @@ class VolumeGeometry(Geometry):
 
 
 class GeometryTrajectory(Geometry):
+    """
+    Geometry class for displaying animated trajectory sequences.
+
+    Parameters
+    ----------
+    trajectory : list of dict
+        List of trajectory frames containing geometry data.
+    **kwargs
+        Additional keyword arguments passed to parent Geometry class.
+    """
+
     def __init__(self, trajectory: List[Dict], **kwargs):
         super().__init__(**kwargs)
         self._trajectory = trajectory
@@ -830,9 +1119,30 @@ class GeometryTrajectory(Geometry):
 
     @property
     def frames(self):
+        """
+        Number of frames in the trajectory.
+
+        Returns
+        -------
+        int
+            Total number of trajectory frames.
+        """
         return len(self._trajectory)
 
     def display_frame(self, frame_idx: int) -> bool:
+        """
+        Display specific trajectory frame.
+
+        Parameters
+        ----------
+        frame_idx : int
+            Index of frame to display.
+
+        Returns
+        -------
+        bool
+            True if frame was successfully displayed, False otherwise.
+        """
         if frame_idx < 0 or frame_idx > self.frames:
             return False
 

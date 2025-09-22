@@ -41,12 +41,12 @@ Mosaic is a software ecosystem that translates 3D electron microscopy data into 
 
        +++
 
-       .. button-ref:: index
+       .. button-ref:: reference/index
              :expand:
              :color: secondary
              :click-parent:
 
-             Coming soon
+             Under construction
 
 .. toctree::
    :maxdepth: 1
@@ -54,4 +54,5 @@ Mosaic is a software ecosystem that translates 3D electron microscopy data into 
    :titlesonly:
 
    User Guide <tutorial/index>
+   Reference <reference/index>
    Index <genindex>

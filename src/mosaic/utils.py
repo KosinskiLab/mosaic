@@ -10,15 +10,12 @@ import warnings
 from typing import List
 from functools import lru_cache
 
-import vtk
 import numpy as np
-import open3d as o3d
 
-from scipy import spatial
-from scipy.sparse import coo_matrix
-from scipy.sparse.csgraph import connected_components as sparse_connected_components
 from scipy.spatial import KDTree
+from scipy.sparse import coo_matrix
 from scipy.spatial.transform import Rotation
+from scipy.sparse.csgraph import connected_components as sparse_connected_components
 
 __all__ = [
     "points_to_volume",
@@ -333,7 +330,7 @@ def eigenvalue_outlier_removal(points, k_neighbors=300, thresh=0.05):
     ----------
     .. [1]  https://github.com/denabazazian/Edge_Extraction/blob/master/Difference_Eigenvalues.py
     """
-    tree = spatial.KDTree(points)
+    tree = KDTree(points)
     distances, indices = tree.query(points, k=k_neighbors + 1, workers=-1)
 
     points_centered = points[indices[:, 1:]] - points[:, np.newaxis, :]
@@ -369,6 +366,8 @@ def statistical_outlier_removal(points, k_neighbors=100, thresh=0.2):
     mask
         Boolean array with non-outlier points.
     """
+    import open3d as o3d
+
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points.astype(np.float64))
 
@@ -393,6 +392,8 @@ def find_closest_points_cutoff(positions1, positions2, cutoff=1):
 
 
 def compute_normals(points: np.ndarray, k: int = 15, return_pcd: bool = False):
+    import open3d as o3d
+
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points)
     pcd.estimate_normals()
@@ -452,6 +453,8 @@ def get_cmap(*args, **kwargs):
 
 
 def cmap_to_vtkctf(cmap, max_value, min_value, gamma: float = 1.0):
+    import vtk
+
     if np.allclose(min_value, max_value):
         offset = 0.01 * max_value + 1e-6
         max_value += offset
@@ -509,16 +512,3 @@ def normals_to_rot(normals, target=NORMAL_REFERENCE, mode: str = "quat", **kwarg
 
 def apply_quat(quaternions, target=NORMAL_REFERENCE):
     return Rotation.from_quat(quaternions, scalar_first=True).apply(target)
-
-
-def _rot_from_quat(quat, scalar_first: bool = True) -> Rotation:
-    # In Mosaic we use scalar first (w,x,y,z) quaternion convention
-    # Pre scipy 1.4 the scalar_first argument was not supported raising a TypeError
-    # In this case we remap to (x,y,z,w) and use the old interface
-    try:
-        return Rotation.from_quat(quat, scalar_first=scalar_first)
-    except TypeError:
-        quat = np.atleast_2d(quat)
-        if scalar_first:
-            quat = quat[:, (1, 2, 3, 0)]
-        return Rotation.from_quat(quat)

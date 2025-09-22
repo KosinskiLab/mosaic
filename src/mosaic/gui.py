@@ -8,11 +8,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 import os
 from typing import List
-from platform import system
 from os.path import splitext, basename
-
-if system() == "Darwin":
-    os.environ["OMP_NUM_THREADS"] = "1"
 
 import vtk
 import numpy as np
@@ -283,8 +279,6 @@ class App(QMainWindow):
         self.cdata.models.deselect()
 
     def _transition_modes(self, new_mode):
-        from mosaic.styles import MeshEditInteractorStyle, CurveBuilderInteractorStyle
-
         current_mode = self.cursor_handler.current_mode
         if current_mode in (
             ViewerModes.MESH_ADD,
@@ -307,6 +301,8 @@ class App(QMainWindow):
         if new_mode == ViewerModes.DRAWING:
             self.cdata.data.activate_drawing_mode()
         elif new_mode == ViewerModes.CURVE:
+            from .styles import CurveBuilderInteractorStyle
+
             style = CurveBuilderInteractorStyle(self, self.cdata)
             self.interactor.SetInteractorStyle(style)
             style.SetDefaultRenderer(self.renderer)
@@ -315,6 +311,8 @@ class App(QMainWindow):
         elif new_mode == ViewerModes.PICKING:
             self.cdata.activate_picking_mode()
         elif new_mode in (ViewerModes.MESH_ADD, ViewerModes.MESH_DELETE):
+            from .styles import MeshEditInteractorStyle
+
             style = MeshEditInteractorStyle(self, self.cdata)
             self.interactor.SetInteractorStyle(style)
             style.SetDefaultRenderer(self.renderer)

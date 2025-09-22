@@ -1,10 +1,5 @@
 import importlib
 
-# from .__version__ import __version__
-
-# Avoid issues with sphinx
-from . import dialogs
-
 _module_map = {
     ".animate": ["ExportManager"],
     ".interactor": ["DataContainerInteractor"],

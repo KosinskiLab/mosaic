@@ -19,15 +19,16 @@ __all__ = ["MosaicData"]
 
 
 class MosaicData(QObject):
+    """
+    Initialize MosaicData instance for managing application state.
+
+    Parameters
+    ----------
+    vtk_widget : VTKWidget
+        VTK widget instance for 3D visualization
+    """
 
     def __init__(self, vtk_widget):
-        """Initialize MosaicData instance for managing application state.
-
-        Parameters
-        ----------
-        vtk_widget : VTKWidget
-            VTK widget instance for 3D visualization
-        """
         super().__init__()
         from .container import DataContainer
         from .interactor import DataContainerInteractor

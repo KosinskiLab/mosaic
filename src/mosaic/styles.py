@@ -9,9 +9,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import vtk
 import numpy as np
 
-from .parametrization import TriangularMesh
-from .meshing import to_open3d, merge_meshes
-
 
 class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     def __init__(self, parent, cdata):
@@ -168,6 +165,9 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.highlight_selected_faces()
 
     def create_new_face(self):
+        from .parametrization import TriangularMesh
+        from .meshing import to_open3d, merge_meshes
+
         unique_geometries = self._selection_to_geometry()
 
         sampling, appearance, points, meshes = 1, {}, [], []
@@ -255,6 +255,9 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.parent.vtk_widget.GetRenderWindow().Render()
 
     def delete_selected_faces(self):
+        from .meshing import to_open3d
+        from .parametrization import TriangularMesh
+
         if not self.selected_faces:
             return
 

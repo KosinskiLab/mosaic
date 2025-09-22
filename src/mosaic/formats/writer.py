@@ -1,8 +1,8 @@
 from typing import Dict
 
 import numpy as np
-from scipy.spatial.transform import Rotation
 from tme import Orientations, Density
+from scipy.spatial.transform import Rotation
 
 from ._utils import get_extension
 
@@ -11,12 +11,41 @@ class OrientationsWriter:
     def __init__(
         self, points: np.ndarray, quaternions: np.ndarray, entities: np.ndarray
     ):
+        """
+        Initialize writer with point coordinates, quaternions, and entity labels.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            Array of 3D point coordinates.
+        quaternions : np.ndarray
+            Array of quaternion rotations.
+        entities : np.ndarray
+            Array of entity labels for each point.
+        """
         self.entities = entities
         self.points = points
         rotations = Rotation.from_quat(quaternions, scalar_first=True).inv()
         self.rotations = rotations.as_euler(seq="ZYZ", degrees=True)
 
     def to_file(self, file_path, file_format: str = None, **kwargs):
+        """
+        Write orientations data to file in specified format.
+
+        Parameters
+        ----------
+        file_path : str
+            Output file path.
+        file_format : str, optional
+            Output format, inferred from extension if None.
+        **kwargs
+            Additional keyword arguments passed to writer.
+
+        Raises
+        ------
+        ValueError
+            If the file format is not supported.
+        """
         _supported_formats = ("tsv", "star")
 
         if file_format is None:
@@ -28,6 +57,16 @@ class OrientationsWriter:
         return self._write_orientations(file_path, **kwargs)
 
     def _write_orientations(self, file_path, **kwargs):
+        """
+        Backend function for writing orientations to file.
+
+        Parameters
+        ----------
+        file_path : str
+            Output file path.
+        **kwargs
+            Additional keyword arguments passed to orientations writer.
+        """
         orientations = Orientations(
             translations=self.points,
             rotations=self.rotations,
@@ -40,6 +79,20 @@ class OrientationsWriter:
 def write_density(
     data: np.ndarray, filename: str, sampling_rate: float = 1, origin: float = 0
 ) -> None:
+    """
+    Write 3D density data to file (typically in CCP4/MRC format).
+
+    Parameters
+    ----------
+    data : np.ndarray
+        3D density array.
+    filename : str
+        Output file path.
+    sampling_rate : float, optional
+        Sampling rate per voxel, by default 1 Angstrom / Voxel.
+    origin : float, optional
+        Origin offset for the density data in Angstrom, by default 0.
+    """
     return Density(data, sampling_rate=sampling_rate, origin=origin).to_file(filename)
 
 

@@ -13,7 +13,6 @@ import xml.etree.ElementTree as ET
 from typing import List, Dict, Any, Optional
 
 import numpy as np
-import open3d as o3d
 from scipy.spatial.transform import Rotation
 from tme import Density, Structure, Orientations
 
@@ -23,7 +22,21 @@ from ..utils import volume_to_points, compute_bounding_box, NORMAL_REFERENCE
 
 
 def _parse_data_array(data_array: ET.Element, dtype: type = float) -> np.ndarray:
-    """Parse a DataArray element into a numpy array."""
+    """
+    Parse a DataArray element into a numpy array.
+
+    Parameters
+    ----------
+    data_array : ET.Element
+        XML element containing array data.
+    dtype : type, optional
+        Data type for parsing, by default float.
+
+    Returns
+    -------
+    np.ndarray
+        Parsed numpy array.
+    """
     rows = [row.strip() for row in data_array.text.strip().split("\n") if row.strip()]
     parsed_rows = [[dtype(x) for x in row.split()] for row in rows]
     data = np.array(parsed_rows)
@@ -31,12 +44,45 @@ def _parse_data_array(data_array: ET.Element, dtype: type = float) -> np.ndarray
 
 
 def _parse_dtype(xml_element) -> object:
-    data_type = float if xml_element.get("type", "").startswith("Float") else int
-    return data_type
+    """
+    Determine data type from XML element type attribute.
+
+    Parameters
+    ----------
+    xml_element : ET.Element
+        XML element to parse type from.
+
+    Returns
+    -------
+    object
+        Data type (float or int).
+    """
+    return float if xml_element.get("type", "").startswith("Float") else int
 
 
 @dataclass
 class GeometryData:
+    """
+    Container for single geometry entity data.
+
+    Parameters
+    ----------
+    vertices : np.ndarray, optional
+        3D vertex coordinates.
+    normals : np.ndarray, optional
+        Normal vectors at each vertex.
+    faces : np.ndarray, optional
+        Face connectivity indices.
+    quaternions : np.ndarray, optional
+        Orientation quaternions for each vertex.
+    vertex_properties : VertexPropertyContainer, optional
+        Additional vertex properties.
+    shape : List[int], optional
+        Bounding box dimensions.
+    sampling : List[float], optional
+        Sampling rates along each axis, by default (1, 1, 1).
+    """
+
     vertices: np.ndarray = None
     normals: np.ndarray = None
     faces: np.ndarray = None
@@ -48,6 +94,27 @@ class GeometryData:
 
 @dataclass
 class GeometryDataContainer:
+    """
+    Container for multiple geometry entities with automatic validation.
+
+    Parameters
+    ----------
+    vertices : List[np.ndarray], optional
+        List of vertex arrays for each geometry entity.
+    normals : List[np.ndarray], optional
+        List of normal arrays for each geometry entity.
+    faces : List[np.ndarray], optional
+        List of face arrays for each geometry entity.
+    quaternions : List[np.ndarray], optional
+        List of quaternion arrays for each geometry entity.
+    vertex_properties : List[VertexPropertyContainer], optional
+        List of vertex property containers for each geometry entity.
+    shape : List[int], optional
+        Bounding box dimensions.
+    sampling : List[float], optional
+        Sampling rates along each axis, by default (1, 1, 1).
+    """
+
     vertices: List[np.ndarray] = None
     normals: List[np.ndarray] = None
     faces: List[np.ndarray] = None
@@ -120,7 +187,14 @@ class GeometryDataContainer:
 
 
 class VertexPropertyContainer:
-    """Container for managing custom vertex properties with automatic synchronization."""
+    """
+    Container for managing custom vertex properties with automatic synchronization.
+
+    Parameters
+    ----------
+    properties : dict of str -> np.ndarray, optional
+        Dictionary mapping property names to vertex data arrays.
+    """
 
     def __init__(self, properties: Optional[Dict[str, np.ndarray]] = None):
         """
@@ -228,6 +302,19 @@ class VertexPropertyContainer:
 
 
 def _read_orientations(filename: str):
+    """
+    Read orientation data from file and convert to geometry format.
+
+    Parameters
+    ----------
+    filename : str
+        Path to orientation file.
+
+    Returns
+    -------
+    dict
+        Dictionary containing vertices, normals, and quaternions.
+    """
     data = Orientations.from_file(filename)
 
     # Remap as active (push) rotation
@@ -246,10 +333,36 @@ def _read_orientations(filename: str):
 
 
 def read_star(filename: str):
+    """
+    Read RELION star file format.
+
+    Parameters
+    ----------
+    filename : str
+        Path to star file.
+
+    Returns
+    -------
+    GeometryDataContainer
+        Parsed geometry data container.
+    """
     return GeometryDataContainer(**_read_orientations(filename))
 
 
 def read_txt(filename: str):
+    """
+    Read text-based point cloud files.
+
+    Parameters
+    ----------
+    filename : str
+        Path to text file (txt, csv, xyz).
+
+    Returns
+    -------
+    GeometryDataContainer
+        Parsed geometry data container.
+    """
     ret = []
 
     delimiter = None
@@ -299,6 +412,19 @@ def read_txt(filename: str):
 
 
 def read_tsv(filename: str) -> GeometryDataContainer:
+    """
+    Read tab-separated values file with orientation data.
+
+    Parameters
+    ----------
+    filename : str
+        Path to tsv file.
+
+    Returns
+    -------
+    GeometryDataContainer
+        Parsed geometry data container.
+    """
     with open(filename, mode="r") as infile:
         header = infile.readline()
     if "euler" not in header:
@@ -307,6 +433,19 @@ def read_tsv(filename: str) -> GeometryDataContainer:
 
 
 def read_tsi(filename: str) -> GeometryDataContainer:
+    """
+    Read topology surface information file format.
+
+    Parameters
+    ----------
+    filename : str
+        Path to tsi file.
+
+    Returns
+    -------
+    GeometryDataContainer
+        Parsed geometry data container.
+    """
     data = _read_tsi_file(filename)
     mesh = to_open3d(data["vertices"][:, 1:4], data["faces"][:, 1:4])
     vertex_properties = {}
@@ -324,18 +463,59 @@ def read_tsi(filename: str) -> GeometryDataContainer:
 
 
 def read_vtu(filename: str) -> GeometryDataContainer:
+    """
+    Read VTK unstructured grid XML file format.
+
+    Parameters
+    ----------
+    filename : str
+        Path to vtu file.
+
+    Returns
+    -------
+    GeometryDataContainer
+        Parsed geometry data container.
+    """
     data = _read_vtu_file(filename)
     mesh = to_open3d(data["points"], data["connectivity"])
     return _return_mesh(mesh, vertex_properties=data.get("point_data", {}))
 
 
 def read_mesh(filename: str) -> GeometryDataContainer:
+    """
+    Read 3D mesh files using Open3D.
+
+    Parameters
+    ----------
+    filename : str
+        Path to mesh file.
+
+    Returns
+    -------
+    GeometryDataContainer
+        Parsed geometry data container.
+    """
+    import open3d as o3d
+
     return _return_mesh(o3d.io.read_triangle_mesh(filename))
 
 
-def _return_mesh(
-    mesh: o3d.geometry.TriangleMesh, vertex_properties: dict = None
-) -> GeometryDataContainer:
+def _return_mesh(mesh, vertex_properties: dict = None) -> GeometryDataContainer:
+    """
+    Convert Open3D mesh to GeometryDataContainer.
+
+    Parameters
+    ----------
+    mesh : o3d.geometry.TriangleMesh
+        Open3D triangle mesh object.
+    vertex_properties : dict, optional
+        Vertex property data.
+
+    Returns
+    -------
+    GeometryDataContainer
+        Converted geometry data container.
+    """
     mesh.compute_vertex_normals()
     vertices = np.asarray(mesh.vertices)
     faces = np.asarray(mesh.triangles)
@@ -350,11 +530,37 @@ def _return_mesh(
 
 
 def read_structure(filename: str) -> GeometryDataContainer:
+    """
+    Read molecular structure files.
+
+    Parameters
+    ----------
+    filename : str
+        Path to structure file (pdb, cif, gro).
+
+    Returns
+    -------
+    GeometryDataContainer
+        Parsed geometry data container.
+    """
     data = Structure.from_file(filename)
     return GeometryDataContainer(vertices=[data.atom_coordinate])
 
 
 def read_volume(filename: str):
+    """
+    Read 3D volume data and convert to point cloud.
+
+    Parameters
+    ----------
+    filename : str
+        Path to volume file.
+
+    Returns
+    -------
+    GeometryDataContainer
+        Parsed geometry data container.
+    """
     volume = load_density(filename)
 
     ret = volume_to_points(volume.data, volume.sampling_rate, reverse_order=True)
@@ -478,6 +684,21 @@ def _read_vtu_file(file_path: str) -> Dict:
 
 
 def load_density(filename: str, **kwargs) -> Density:
+    """
+    Load 3D density data from file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to density file.
+    **kwargs
+        Additional keyword arguments passed to Density.from_file.
+
+    Returns
+    -------
+    Density
+        Loaded density object.
+    """
     volume = Density.from_file(filename, **kwargs)
 
     if np.allclose(volume.sampling_rate, 0):

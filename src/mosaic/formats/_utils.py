@@ -5,6 +5,8 @@ from os.path import splitext, basename
 
 
 class CompatibilityUnpickler(pickle.Unpickler):
+    """Custom unpickler for colabseg backwards compatibility."""
+
     def find_class(self, module: str, name: str) -> Any:
         if module.startswith("colabseg"):
             module = "mosaic" + module[len("colabseg") :]
@@ -12,6 +14,19 @@ class CompatibilityUnpickler(pickle.Unpickler):
 
 
 def get_extension(filename: str) -> str:
+    """
+    Extract file extension handling compressed files.
+
+    Parameters
+    ----------
+    filename : str
+        Path to file.
+
+    Returns
+    -------
+    str
+        File extension in lowercase
+    """
     base, extension = splitext(basename(filename))
     if extension.lower() == ".gz":
         _, extension = splitext(basename(base))
@@ -19,6 +34,21 @@ def get_extension(filename: str) -> str:
 
 
 def _drop_prefix(iterable, target_length: int):
+    """
+    Remove first element if iterable exceeds target length.
+
+    Parameters
+    ----------
+    iterable : list
+        List to potentially modify.
+    target_length : int
+        Target length threshold.
+
+    Returns
+    -------
+    list
+        Modified iterable with first element removed if needed.
+    """
     if len(iterable) == target_length:
         iterable.pop(0)
     return iterable

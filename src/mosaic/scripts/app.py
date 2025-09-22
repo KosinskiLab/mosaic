@@ -15,6 +15,8 @@ from importlib_resources import files
 if system() == "Darwin":
     os_environ["OMP_NUM_THREADS"] = "1"
 
+os_environ["JUPYTER_PLATFORM_DIRS"] = "1"
+
 from qtpy.QtGui import QIcon
 from qtpy.QtWidgets import QApplication
 

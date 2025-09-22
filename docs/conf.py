@@ -3,6 +3,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../mosaic"))
 from mosaic import __version__
+from mosaic.dialogs import *
 
 autodoc_mock_imports = [
     "qtpy",

@@ -26,6 +26,28 @@ FORMAT_MAPPING = {
 
 
 def open_file(filename: str, *args, **kwargs) -> GeometryDataContainer:
+    """
+    Open and parse a file based on its extension.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the file to be opened.
+    *args
+        Additional positional arguments passed to the parser function.
+    **kwargs
+        Additional keyword arguments passed to the parser function.
+
+    Returns
+    -------
+    GeometryDataContainer
+        Parsed geometry data container.
+
+    Raises
+    ------
+    ValueError
+        If the file extension is not supported.
+    """
     extension = get_extension(filename)[1:]
 
     func = None
@@ -41,6 +63,23 @@ def open_file(filename: str, *args, **kwargs) -> GeometryDataContainer:
 
 
 def open_session(filename: str, *args, **kwargs) -> Dict:
+    """
+    Open and deserialize a pickled session file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the session file to be opened.
+    *args
+        Additional positional arguments (unused).
+    **kwargs
+        Additional keyword arguments (unused).
+
+    Returns
+    -------
+    Dict
+        Deserialized session data.
+    """
     with open(filename, "rb") as ifile:
         unpickler = CompatibilityUnpickler(ifile)
         data = unpickler.load()
