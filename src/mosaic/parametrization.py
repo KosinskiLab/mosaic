@@ -42,9 +42,7 @@ def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.
             number_of_points=n_samples,
             init_factor=mesh_init_factor,
         )
-
-    positions_xyz = np.asarray(point_cloud.points)
-    return positions_xyz
+    return np.asarray(point_cloud.points)
 
 
 def _sample_from_chull(

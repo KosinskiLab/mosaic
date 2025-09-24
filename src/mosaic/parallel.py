@@ -6,13 +6,15 @@ Copyright (c) 2025 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import uuid
 import warnings
 from functools import wraps
-from typing import Callable, Any, Dict
+from collections import deque
+from typing import Callable, Any, Dict, Tuple
 
 from qtpy.QtGui import QAction
 from qtpy.QtWidgets import QMessageBox
-from qtpy.QtCore import QObject, Signal, QThread
+from qtpy.QtCore import QObject, Signal, QThread, Slot
 
 
 class TaskWorker(QObject):
@@ -48,6 +50,9 @@ class TaskWorker(QObject):
                 if "citation" in str(warning_item.message).lower():
                     continue
 
+                if warning_item.category is DeprecationWarning:
+                    continue
+
                 warning_msg += (
                     f"{warning_item.category.__name__}: {warning_item.message}\n"
                 )
@@ -61,10 +66,14 @@ class TaskWorker(QObject):
 class BackgroundTaskManager(QObject):
     """Manages execution of long-running tasks in background threads."""
 
-    task_started = Signal(str)
-    task_completed = Signal(str, object)
-    task_failed = Signal(str, str)
-    task_warning = Signal(str, str)
+    task_started = Signal(str, str)
+    task_completed = Signal(str, str, object)
+    task_failed = Signal(str, str, str)
+    task_warning = Signal(str, str, str)
+    task_queued = Signal(str, str, int)
+
+    # Internal signal for thread-safe queue processing
+    _process_queue_signal = Signal()
 
     _instance = None
 
@@ -78,29 +87,36 @@ class BackgroundTaskManager(QObject):
     def __init__(self):
         """Initialize the task manager."""
         super().__init__()
+
         self._active_tasks: Dict[str, QThread] = {}
         self._workers: Dict[str, TaskWorker] = {}
-        self._callbacks: Dict[str, Callable] = {}
+        self._callbacks: Dict[str, Tuple[Callable, object]] = {}
+        self._task_names: Dict[str, str] = {}
 
         self.task_completed.connect(self._dispatch_callback)
         self.task_failed.connect(self._default_error_handler)
         self.task_warning.connect(self._default_warning_handler)
 
-    def _dispatch_callback(self, task_name, result):
+        # Queue management
+        self._task_queue: deque = deque()
+        self._process_queue_signal.connect(self._process_queue_slot)
+        self._max_threads = max(2, QThread.idealThreadCount() - 1)
+
+    def _dispatch_callback(self, task_id: str, task_name: str, result):
         """Dispatch to the appropriate callback for this task."""
-        if task_name in self._callbacks:
-            callback, instance = self._callbacks.pop(task_name)
+        if task_id in self._callbacks:
+            callback, instance = self._callbacks.pop(task_id)
             callback(instance, result)
 
-    def _default_error_handler(self, task_name, error):
+    def _default_error_handler(self, task_id: str, task_name: str, error: str):
         """Default handler for task errors."""
         return self._default_messagebox(task_name, error, is_warning=False)
 
-    def _default_warning_handler(self, task_name, warning):
-        """Default handler for task errors."""
+    def _default_warning_handler(self, task_id: str, task_name: str, warning: str):
+        """Default handler for task warnings."""
         return self._default_messagebox(task_name, warning, is_warning=True)
 
-    def _default_messagebox(self, task_name, msg, is_warning: bool = False):
+    def _default_messagebox(self, task_name: str, msg: str, is_warning: bool = False):
         readable_name = task_name.replace("_", " ").title()
 
         msg_box = QMessageBox()
@@ -124,72 +140,94 @@ class BackgroundTaskManager(QObject):
         instance: object = None,
         *args,
         **kwargs,
-    ) -> bool:
+    ):
         """
-        Run a function in a background thread.
+        Run a function in a background thread, queuing if necessary.
 
         Parameters
         ----------
         name : str
-            A unique identifier for the task.
+            Display name for the task (no longer needs to be unique).
         func : callable
             The function to run.
         callback : callable, optional
-            callback function to call when task completes.
+            Callback function to call when task completes.
         instance : object, optional
-            Class instance to pass to the callback
+            Class instance to pass to the callback.
         *args: optional
             Positional arguments to pass to func.
-        **kwars : optional
+        **kwargs : optional
             Keyword arguments to pass to func.
 
-        Returns
-        -------
-        bool
-            True if task was started False otherwise.
         """
-        if name in self._active_tasks:
-            return False
+        task_id = str(uuid.uuid4())
+        self._task_names[task_id] = name
 
         if callback is not None:
-            self._callbacks[name] = (callback, instance)
+            self._callbacks[task_id] = (callback, instance)
 
-        self.task_started.emit(name)
+        if len(self._active_tasks) < self._max_threads:
+            return self._start_task(task_id, name, func, instance, *args, **kwargs)
 
+        self._task_queue.append((task_id, name, func, instance, args, kwargs))
+        queue_position = len(self._task_queue)
+        return self.task_queued.emit(task_id, name, queue_position)
+
+    def _start_task(
+        self,
+        task_id: str,
+        task_name: str,
+        func: Callable,
+        instance: object,
+        *args,
+        **kwargs,
+    ):
+        """Start a task immediately in a new thread."""
+        self.task_started.emit(task_id, task_name)
+
+        # Wasteful but safer with open3d
         thread = QThread()
         worker = TaskWorker(func, instance, *args, **kwargs)
         worker.moveToThread(thread)
 
         thread.started.connect(worker.process)
-        worker.resultReady.connect(lambda result: self._handle_completion(name, result))
-        worker.errorOccurred.connect(lambda error: self._handle_error(name, error))
+        worker.resultReady.connect(
+            lambda result: self._handle_completion(task_id, result)
+        )
+        worker.errorOccurred.connect(lambda error: self._handle_error(task_id, error))
         worker.warningOccurred.connect(
-            lambda warning: self._default_warning_handler(name, warning)
+            lambda warning: self._default_warning_handler(task_id, task_name, warning)
         )
 
-        self._active_tasks[name] = thread
-        self._workers[name] = worker
+        self._active_tasks[task_id] = thread
+        self._workers[task_id] = worker
+        return thread.start()
 
-        thread.start()
+    def _handle_completion(self, task_id: str, result: Any):
+        """Handle task completion and trigger queue processing."""
+        task_name = self._task_names.get(task_id, "Unknown Task")
 
-        return True
+        self._cleanup_task(task_id)
+        self.task_completed.emit(task_id, task_name, result)
+        self._process_queue_signal.emit()
 
-    def _handle_completion(self, name: str, result: Any):
-        self._cleanup_task(name)
-        self.task_completed.emit(name, result)
-
-    def _handle_error(self, name: str, error: str):
-        self._cleanup_task(name)
+    def _handle_error(self, task_id: str, error: str):
+        """Handle task error and trigger queue processing."""
+        task_name = self._task_names.get(task_id, "Unknown Task")
+        self._cleanup_task(task_id)
 
         # Also remove any registered callback
-        if name in self._callbacks:
-            self._callbacks.pop(name)
-        self.task_failed.emit(name, error)
+        if task_id in self._callbacks:
+            self._callbacks.pop(task_id)
 
-    def _cleanup_task(self, name: str):
-        if name in self._active_tasks:
-            thread = self._active_tasks.pop(name)
-            worker = self._workers.pop(name)
+        self.task_failed.emit(task_id, task_name, error)
+        self._process_queue_signal.emit()
+
+    def _cleanup_task(self, task_id: str):
+        """Clean up task resources."""
+        if task_id in self._active_tasks:
+            thread = self._active_tasks.pop(task_id)
+            worker = self._workers.pop(task_id)
 
             thread.started.disconnect()
             worker.resultReady.disconnect()
@@ -202,15 +240,33 @@ class BackgroundTaskManager(QObject):
                 thread.terminate()
                 thread.wait()
 
-    def is_task_running(self, name: str) -> bool:
-        return name in self._active_tasks
+        # Clean up task name mapping
+        if task_id in self._task_names:
+            self._task_names.pop(task_id)
+
+    @Slot()
+    def _process_queue_slot(self):
+        """Process queued tasks safely on the main thread."""
+        while len(self._active_tasks) < self._max_threads:
+            try:
+                task_id, task_name, func, instance, args, kwargs = (
+                    self._task_queue.popleft()
+                )
+                self._start_task(task_id, task_name, func, instance, *args, **kwargs)
+            except IndexError:
+                # Queue is empty
+                break
 
     def shutdown(self):
-        task_names = list(self._active_tasks.keys())
-        for name in task_names:
-            self._cleanup_task(name)
+        """Shutdown the task manager and clean up all resources."""
+        task_ids = list(self._active_tasks.keys())
+        for task_id in task_ids:
+            self._cleanup_task(task_id)
+
         self._active_tasks.clear()
         self._callbacks.clear()
+        self._task_names.clear()
+        self._task_queue.clear()
 
 
 def run_in_background(task_name: str = None, callback: Callable = None):

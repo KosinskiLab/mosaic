@@ -437,7 +437,7 @@ class App(QMainWindow):
 
         task_manager = BackgroundTaskManager.instance()
         task_manager.task_started.connect(
-            lambda name: self.status_indicator.update_status(status=name)
+            lambda _, name: self.status_indicator.update_status(status=name)
         )
         task_manager.task_completed.connect(
             lambda name, result: self.status_indicator.update_status(status="Ready")
@@ -841,8 +841,10 @@ class App(QMainWindow):
         """Update the menu radio buttons to reflect current selection target."""
         if self.model_target_action.isChecked():
             self.cluster_target_action.setChecked(True)
+            self.status_indicator.update_status(target="Clusters")
         else:
             self.model_target_action.setChecked(True)
+            self.status_indicator.update_status(target="Models")
 
     def simulate_key_press(self, key):
         self.vtk_widget.setFocus()

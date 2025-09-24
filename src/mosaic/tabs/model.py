@@ -124,8 +124,18 @@ class ModelTab(QWidget):
         return self.cdata.add_fit(method, **kwargs)
 
     @run_in_background("Sample Fit", callback=on_fit_complete)
-    def _sample_fit(self, *args, **kwargs):
-        return self.cdata.sample_fit(*args, **kwargs)
+    def _sample_fit(self, sampling, sampling_method, normal_offset=0.0, **kwargs):
+        from ..operations import GeometryOperations
+
+        indices = self.cdata.models._get_selected_indices()
+        for index in indices:
+            geometry = self.cdata._models.get(index)
+            if geometry is None:
+                continue
+            ret = GeometryOperations.sample(
+                geometry, sampling, sampling_method, normal_offset
+            )
+            self.cdata.data.add(ret)
 
     def _to_cluster(self, *args, **kwargs):
         indices = self.cdata.models._get_selected_indices()
@@ -145,6 +155,8 @@ class ModelTab(QWidget):
                 points = geometry.points
                 if fit is not None:
                     normals = fit.compute_normal(points)
+
+            normals = fit.compute_normal(points)
 
             self.cdata.data.add(points, normals=normals, sampling_rate=sampling)
         self.cdata.data.data_changed.emit()

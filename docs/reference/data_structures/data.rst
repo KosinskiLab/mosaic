@@ -38,7 +38,6 @@ Geometric Modeling
    :toctree: ../rst/
 
    MosaicData.add_fit
-   MosaicData.sample_fit
 
 Session Persistence
 ~~~~~~~~~~~~~~~~~~~
