@@ -45,7 +45,7 @@ class TextSpinnerLabel(QLabel):
         )
 
     def start(self):
-        self.timer.start(80)
+        self.timer.start(40)
 
     def stop(self):
         self.timer.stop()
@@ -92,16 +92,14 @@ class StatusIndicator:
 
         self.mode_label = QLabel("Viewing")
         self.mode_label.setMinimumWidth(80)
-        self.mode_label.setStyleSheet("""QLabel { font-weight: 500;}""")
 
         self.target_label = QLabel("Clusters")
         self.target_label.setMinimumWidth(80)
-        self.target_label.setStyleSheet("""QLabel { font-weight: 500;}""")
 
         self.spinner = TextSpinnerLabel()
+        self.spinner.setFixedWidth(10)
         self.task_label = QLabel("Ready")
         self.task_label.setMinimumWidth(80)
-        self.task_label.setStyleSheet("""QLabel { font-weight: 500;}""")
 
         separator1 = QLabel("")
         separator1.setStyleSheet("QLabel { padding: 0 14px; }")
