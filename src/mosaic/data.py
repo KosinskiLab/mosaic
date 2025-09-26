@@ -168,7 +168,9 @@ class MosaicData(QObject):
 
         return index
 
-    def format_datalist(self, type="data", mesh_only: bool = False):
+    def format_datalist(
+        self, type="data", mesh_only: bool = False, selected: bool = False
+    ):
         """Format data list for dialog display.
 
         Parameters
@@ -177,14 +179,14 @@ class MosaicData(QObject):
             Type of data to format ('data' or 'models'), by default 'data'
         mesh_only : bool, optional
             Whether to return only TriangularMesh instances for type 'models'.
+        selected : bool, optional
+            Whether to return only selected objects
 
         Returns
         -------
         list
             List of tuples containing (item_text, data_object) pairs
         """
-        from .parametrization import TriangularMesh
-
         if mesh_only and type != "models":
             mesh_only = False
 
@@ -192,8 +194,12 @@ class MosaicData(QObject):
         if type == "models":
             interactor, container = self.models, self._models
 
+        selection = range(interactor.data_list.count())
+        if selected:
+            selection = interactor._get_selected_indices()
+
         ret = []
-        for i in range(interactor.data_list.count()):
+        for i in selection:
             list_item = interactor.data_list.item(i)
 
             geometry = container.get(i)
@@ -201,6 +207,8 @@ class MosaicData(QObject):
                 continue
 
             if mesh_only:
+                from .parametrization import TriangularMesh
+
                 is_mesh = isinstance(geometry._meta.get("fit"), TriangularMesh)
                 if not is_mesh:
                     continue

@@ -340,7 +340,6 @@ class PropertyAnalysisDialog(QDialog):
         if category is None:
             category = self.category_combo.currentText()
 
-        self.property_combo.clear()
         properties = {
             "Distance": [
                 "To Camera",
@@ -396,8 +395,15 @@ class PropertyAnalysisDialog(QDialog):
             # Custom
             "Vertex Properties": "vertex_property",
         }
+        previous_text = self.property_combo.currentText()
 
+        self.property_combo.clear()
         self.property_combo.addItems(properties.get(category, []))
+        if previous_text is not None:
+            index = self.property_combo.findText(previous_text)
+            if index >= 0:
+                self.property_combo.setCurrentIndex(index)
+
         if self.property_combo.count() > 0:
             self._update_options(self.property_combo.currentText())
 
@@ -411,10 +417,7 @@ class PropertyAnalysisDialog(QDialog):
         self.option_widgets = {}
         if property_name == "Vertex Properties":
 
-            geometries = [
-                item.data(Qt.ItemDataRole.UserRole)
-                for item in self.objects_list.allItems()
-            ]
+            geometries = self._get_all_geometries()
 
             # For now use all instead of shared vertex properties
             properties = set()
@@ -596,21 +599,14 @@ class PropertyAnalysisDialog(QDialog):
     def _get_selected_geometries(self):
         return [x[1] for x in self._get_selection()]
 
-    def _get_selection(self):
-        ret = []
-        for index in self.cdata.data._get_selected_indices():
-            item = self.cdata.data.data_list.item(index)
-            if (geometry := self.cdata.data.get_geometry(index)) is None:
-                continue
-            ret.append((item, geometry))
+    def _get_all_geometries(self):
+        return [x[1] for x in self._get_selection(selected=False)]
 
-        for index in self.cdata.models._get_selected_indices():
-            item = self.cdata.models.data_list.item(index)
-            if (geometry := self.cdata.models.get_geometry(index)) is None:
-                continue
-            ret.append((item, geometry))
-
-        return ret
+    def _get_selection(self, selected: bool = True):
+        return [
+            *self.cdata.format_datalist("data", selected=selected),
+            *self.cdata.format_datalist("models", selected=selected),
+        ]
 
     def _compute_properties(self):
         from ..properties import GeometryProperties
@@ -762,15 +758,14 @@ class PropertyAnalysisDialog(QDialog):
         self.stats_table.setRowCount(len(selected_items))
 
         row_count, n_decimals = 0, 6
-        for index, (item, obj) in enumerate(selected_items):
-            obj = item.data(Qt.ItemDataRole.UserRole)
+        for index, (item_text, obj) in enumerate(selected_items):
 
             value = self.properties.get(id(obj))
             if value is None:
                 continue
 
             row_count += 1
-            item = QTableWidgetItem(item.text())
+            item = QTableWidgetItem(item_text)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             self.stats_table.setItem(index, 0, item)
 
@@ -815,12 +810,12 @@ class PropertyAnalysisDialog(QDialog):
 
         data_series = []
         all_values = []
-        for i, (item, obj) in enumerate(selected_items):
+        for i, (item_text, obj) in enumerate(selected_items):
             obj_id = id(obj)
             values = self.properties.get(obj_id)
             if values is not None:
                 all_values.append(values)
-                data_series.append((item.text(), obj, values, colors[i % len(colors)]))
+                data_series.append((item_text, obj, values, colors[i % len(colors)]))
 
         if not data_series:
             return None
