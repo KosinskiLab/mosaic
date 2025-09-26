@@ -14,7 +14,6 @@ try:
 except ImportError:
     from tme.filters import BandPassReconstructed as BandPassFilter
 
-from ..parallel import run_in_background
 from ..formats.writer import write_topology_file
 from ..meshing.utils import (
     equilibrate_edges,
@@ -67,7 +66,6 @@ def _equilibration_plot(instance, args, **kwargs):
     plt.close()
 
 
-@run_in_background("Equilibrate", callback=_equilibration_plot)
 def equilibrate_fit(geometry, directory: str, parameters: Dict):
     makedirs(directory, exist_ok=True)
     mesh_base = geometry._meta.get("fit").mesh
@@ -125,7 +123,6 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
     return dist_base, dist_remesh, dist_equil, filename
 
 
-@run_in_background("HMFF Setup")
 def setup_hmff(
     mesh_conf: Dict,
     directory: str,

@@ -118,7 +118,14 @@ class IntelligenceTab(QWidget):
         if not dialog.exec():
             return -1
 
-        return equilibrate_fit(geometry, directory, dialog.get_parameters())
+        submit_task(
+            "Equilibrate",
+            equilibrate_fit,
+            None,
+            geometry,
+            directory,
+            dialog.get_parameters(),
+        )
 
     def _setup_hmff(self):
         from ..meshing import setup_hmff
@@ -158,8 +165,14 @@ class IntelligenceTab(QWidget):
         if not dialog.exec():
             return -1
 
-        ret = setup_hmff(ret, directory=directory, **dialog.get_parameters())
-        return ret
+        submit_task(
+            "HMFF Setup",
+            setup_hmff,
+            None,
+            ret,
+            directory=directory,
+            **dialog.get_parameters(),
+        )
 
     def _import_trajectory(
         self,
@@ -267,15 +280,17 @@ class IntelligenceTab(QWidget):
             return -1
 
         fit, edge_length, mappings, cast_ray, flip = dialog.get_parameters()
-        ret = mesh_to_cg(
-            fit._meta["fit"].mesh,
+
+        submit_task(
+            "Coarse graining",
+            mesh_to_cg,
+            None,
             edge_length=edge_length,
             output_directory=directory,
             inclusions=mappings,
             include_normals=cast_ray,
             flip_normals=flip,
         )
-        return ret
 
     def _run_membrain(self, *args, **kwargs):
         from ..segmentation import run_membrainseg

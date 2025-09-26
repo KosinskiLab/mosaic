@@ -14,7 +14,6 @@ from qtpy.QtWidgets import (
     QFormLayout,
     QWidget,
     QMessageBox,
-    QSplitter,
     QTabWidget,
     QTableWidget,
     QHeaderView,
@@ -27,8 +26,6 @@ import qtawesome as qta
 from ..widgets.settings import get_widget_value
 from ..stylesheets import QPushButton_style, QScrollArea_style
 from ..widgets import ContainerListWidget, StyledListWidgetItem, ColorPreviewWidget
-
-from ..dialogs.selection import ObjectSelectionWidget
 
 
 def _populate_list(geometries):
@@ -50,7 +47,6 @@ class PropertyAnalysisDialog(QDialog):
         self.property_parameters = {}
 
         self.setWindowTitle("Property Analysis")
-        self.resize(900, 600)
 
         self.legend = legend
         self.color_preview = ColorPreviewWidget()
@@ -67,7 +63,6 @@ class PropertyAnalysisDialog(QDialog):
         self.cdata.data.blockSignals(True)
         self.cdata.models.blockSignals(True)
         try:
-            self.populate_lists()
             self._update_property_list()
 
             # Provoke cache miss for tracking inclusions on trajectories
@@ -90,11 +85,6 @@ class PropertyAnalysisDialog(QDialog):
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
-        self.main_splitter = QSplitter(Qt.Horizontal)
-
-        # Object selection
-        self.objects_list = ObjectSelectionWidget(self.cdata)
-        self.main_splitter.addWidget(self.objects_list)
 
         self.tabs_container = QWidget()
         tabs_layout = QVBoxLayout(self.tabs_container)
@@ -124,14 +114,7 @@ class PropertyAnalysisDialog(QDialog):
             "Statistics",
         )
         self.tabs_widget.currentChanged.connect(self._update_tab)
-
-        tabs_layout.addWidget(self.tabs_widget)
-        self.main_splitter.addWidget(self.tabs_container)
-        self.main_splitter.setSizes([300, 600])
-        main_layout.addWidget(self.main_splitter)
-
-    def populate_lists(self):
-        return self.objects_list.populate_lists()
+        main_layout.addWidget(self.tabs_widget)
 
     def _setup_visualization_tab(self):
         from ..icons import dialog_accept_icon
@@ -212,7 +195,7 @@ class PropertyAnalysisDialog(QDialog):
 
         apply_btn = QPushButton("Done")
         apply_btn.setIcon(dialog_accept_icon)
-        apply_btn.clicked.connect(self.accept)
+        apply_btn.clicked.connect(self.close)
         button_layout.addWidget(apply_btn)
         layout.addLayout(button_layout)
 
@@ -307,7 +290,7 @@ class PropertyAnalysisDialog(QDialog):
 
         apply_btn = QPushButton("Done")
         apply_btn.setIcon(dialog_accept_icon)
-        apply_btn.clicked.connect(self.accept)
+        apply_btn.clicked.connect(self.close)
         button_layout.addWidget(apply_btn)
         layout.addLayout(button_layout)
 
@@ -349,7 +332,7 @@ class PropertyAnalysisDialog(QDialog):
 
         apply_btn = QPushButton("Done")
         apply_btn.setIcon(dialog_accept_icon)
-        apply_btn.clicked.connect(self.accept)
+        apply_btn.clicked.connect(self.close)
         button_layout.addWidget(apply_btn)
         layout.addLayout(button_layout)
 
@@ -610,11 +593,24 @@ class PropertyAnalysisDialog(QDialog):
         reverse = self.invert_checkbox.isChecked()
         self.color_preview.set_colormap(cmap, reverse)
 
-    def _get_selected_objects(self):
-        return [
-            item.data(Qt.ItemDataRole.UserRole)
-            for item in self.objects_list.selectedItems()
-        ]
+    def _get_selected_geometries(self):
+        return [x[1] for x in self._get_selection()]
+
+    def _get_selection(self):
+        ret = []
+        for index in self.cdata.data._get_selected_indices():
+            item = self.cdata.data.data_list.item(index)
+            if (geometry := self.cdata.data.get_geometry(index)) is None:
+                continue
+            ret.append((item, geometry))
+
+        for index in self.cdata.models._get_selected_indices():
+            item = self.cdata.models.data_list.item(index)
+            if (geometry := self.cdata.models.get_geometry(index)) is None:
+                continue
+            ret.append((item, geometry))
+
+        return ret
 
     def _compute_properties(self):
         from ..properties import GeometryProperties
@@ -632,7 +628,7 @@ class PropertyAnalysisDialog(QDialog):
 
         # Assuming identical parameters, which geometric properties need computation
         missing_geometries = []
-        geometries = self._get_selected_objects()
+        geometries = self._get_selected_geometries()
         for geometry in geometries:
             geometry_id = id(geometry)
 
@@ -703,7 +699,7 @@ class PropertyAnalysisDialog(QDialog):
     def _preview(self, render: bool = True, suppress_warning: bool = False):
         from ..utils import cmap_to_vtkctf
 
-        geometries = self._get_selected_objects()
+        geometries = self._get_selected_geometries()
         if not geometries:
             if not suppress_warning:
                 QMessageBox.warning(
@@ -762,11 +758,11 @@ class PropertyAnalysisDialog(QDialog):
         )
 
     def _update_statistics(self):
-        selected_items = self.objects_list.selectedItems()
+        selected_items = self._get_selection()
         self.stats_table.setRowCount(len(selected_items))
 
         row_count, n_decimals = 0, 6
-        for index, item in enumerate(selected_items):
+        for index, (item, obj) in enumerate(selected_items):
             obj = item.data(Qt.ItemDataRole.UserRole)
 
             value = self.properties.get(id(obj))
@@ -804,7 +800,7 @@ class PropertyAnalysisDialog(QDialog):
         if self.tabs_widget.currentIndex() != 1:
             return None
 
-        selected_items = self.objects_list.selectedItems()
+        selected_items = self._get_selection()
         if not selected_items or not hasattr(self, "properties"):
             return None
 
@@ -819,8 +815,7 @@ class PropertyAnalysisDialog(QDialog):
 
         data_series = []
         all_values = []
-        for i, item in enumerate(selected_items):
-            obj = item.data(Qt.ItemDataRole.UserRole)
+        for i, (item, obj) in enumerate(selected_items):
             obj_id = id(obj)
             values = self.properties.get(obj_id)
             if values is not None:

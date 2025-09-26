@@ -7,6 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import uuid
+import warnings
 import concurrent
 from typing import Callable, Any, Dict
 
@@ -31,10 +32,43 @@ def _default_messagebox(task_name: str, msg: str, is_warning: bool = False):
     msg_box.exec()
 
 
+def _wrap_warnings(func, *args, **kwargs):
+    """Wrapper function that captures warnings and returns them with the result"""
+    with warnings.catch_warnings(record=True) as warning_list:
+        warnings.simplefilter("always")
+
+        try:
+            result = func(*args, **kwargs)
+
+            warning_msg = ""
+            for warning_item in warning_list:
+
+                # TODO: Manage citation warnings more rigorously
+                if "citation" in str(warning_item.message).lower():
+                    continue
+
+                if warning_item.category is DeprecationWarning:
+                    continue
+
+                warning_msg += (
+                    f"{warning_item.category.__name__}: {warning_item.message}\n"
+                )
+
+            return {
+                "result": result,
+                "warnings": warning_msg.rstrip() if warning_msg else None,
+            }
+
+        except Exception as e:
+            # Re-raise the exception so it's handled by the executor
+            raise e
+
+
 class BackgroundTaskManager(QObject):
     task_started = Signal(str, str)  # task_id, task_name
     task_completed = Signal(str, str, object)  # task_id, task_name, result
     task_failed = Signal(str, str, str)  # task_id, task_name, error
+    task_warning = Signal(str, str, str)  # task_id, task_name, warning
 
     running_tasks = Signal(int)  # running tasks
 
@@ -60,6 +94,17 @@ class BackgroundTaskManager(QObject):
         self.timer.timeout.connect(self._check_completed_tasks)
         self.timer.start(300)
 
+        self.task_failed.connect(self._default_error_handler)
+        self.task_warning.connect(self._default_warning_handler)
+
+    def _default_error_handler(self, task_id, task_name, error):
+        """Default handler for task errors."""
+        return _default_messagebox(task_name, error, is_warning=False)
+
+    def _default_warning_handler(self, task_id, task_name, warning):
+        """Default handler for task errors."""
+        return _default_messagebox(task_name, warning, is_warning=True)
+
     def submit_task(
         self, name: str, func: Callable, callback: Callable = None, *args, **kwargs
     ) -> str:
@@ -67,7 +112,10 @@ class BackgroundTaskManager(QObject):
         task_id = str(uuid.uuid4())
 
         self.task_info[task_id] = {"name": name, "callback": callback}
-        self.futures[task_id] = self.executor.submit(func, *args, **kwargs)
+
+        self.futures[task_id] = self.executor.submit(
+            _wrap_warnings, func, *args, **kwargs
+        )
 
         self.task_started.emit(task_id, name)
         self.running_tasks.emit(len(self.futures))
@@ -83,17 +131,22 @@ class BackgroundTaskManager(QObject):
                 task_name = task_info["name"]
 
                 try:
-                    result = future.result()
+                    ret = future.result()
+
+                    result = ret["result"]
+                    warnings_msg = ret["warnings"]
+
                     self.task_completed.emit(task_id, task_name, result)
 
                     if task_info["callback"]:
                         task_info["callback"](result)
 
+                    if warnings_msg is not None:
+                        self.task_warning.emit(task_id, task_name, warnings_msg)
+
                 except Exception as e:
                     error_msg = str(e)
                     self.task_failed.emit(task_id, task_name, error_msg)
-                    _default_messagebox(task_name, error_msg, is_warning=False)
-
                 completed_tasks.append(task_id)
 
         for task_id in completed_tasks:

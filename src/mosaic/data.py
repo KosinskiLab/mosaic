@@ -10,7 +10,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import pickle
 
-import numpy as np
 import multiprocessing as mp
 
 from qtpy.QtCore import QObject
@@ -168,49 +167,6 @@ class MosaicData(QObject):
         self.models.data_changed.emit()
 
         return index
-
-    def add_fit(self, method: str, **kwargs):
-        """Add parametric fit to selected data points.
-
-        Parameters
-        ----------
-        method : str
-            Name of the fitting method to use
-        **kwargs
-            Additional parameters for the fitting method
-        """
-        from .parametrization import PARAMETRIZATION_TYPE
-
-        method = method.lower()
-        cluster_indices = self.data._get_selected_indices()
-        if method not in PARAMETRIZATION_TYPE:
-            return -1
-
-        fit_object = PARAMETRIZATION_TYPE[method]
-        for index in cluster_indices:
-            if not self._data._index_ok(index):
-                continue
-
-            cloud = self._data.data[index]
-            if cloud._sampling_rate is None:
-                cloud._sampling_rate = 10
-            kwargs["voxel_size"] = np.max(cloud.sampling_rate)
-
-            n = cloud.points.shape[0]
-            if n < 50 and method not in ["convexhull", "spline"]:
-                raise ValueError(
-                    f"Cluster {index} contains insufficient points for fit ({n}<50)."
-                )
-
-            try:
-                fit = fit_object.fit(cloud.points, **kwargs)
-                if fit is None:
-                    continue
-
-                self._add_fit(fit=fit, sampling_rate=cloud._sampling_rate)
-
-            except Exception as e:
-                raise type(e)(f"Object {index}: {str(e)}") from e
 
     def format_datalist(self, type="data", mesh_only: bool = False):
         """Format data list for dialog display.

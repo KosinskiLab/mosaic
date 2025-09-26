@@ -32,13 +32,6 @@ User Interaction Management
    MosaicData.toggle_picking_mode
    MosaicData.highlight_clusters_from_selected_points
 
-Geometric Modeling
-~~~~~~~~~~~~~~~~~~
-.. autosummary::
-   :toctree: ../rst/
-
-   MosaicData.add_fit
-
 Session Persistence
 ~~~~~~~~~~~~~~~~~~~
 .. autosummary::
