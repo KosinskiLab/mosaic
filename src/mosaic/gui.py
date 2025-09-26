@@ -41,7 +41,7 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from .data import MosaicData
 from .settings import Settings
 from .animate import ExportManager
-from .parallel import BackgroundTaskManager
+from .parallel import BackgroundTaskManager, submit_task
 from .tabs import SegmentationTab, ModelTab, IntelligenceTab
 from .dialogs import (
     TiltControlDialog,
@@ -63,6 +63,11 @@ from .widgets import (
     CursorModeHandler,
     BoundingBoxManager,
 )
+
+
+def _import_libs():
+    from .parametrization import PARAMETRIZATION_TYPE
+    from .dialogs import PropertyAnalysisDialog
 
 
 class App(QMainWindow):
@@ -181,6 +186,7 @@ class App(QMainWindow):
 
         self.actor_collection = vtk.vtkActorCollection()
         self.setup_menu()
+        submit_task("Import", _import_libs, None)
 
         self.escape_shortcut = QShortcut(Qt.Key.Key_Escape, self.vtk_widget)
         self.escape_shortcut.activated.connect(self.handle_escape_key)
@@ -436,15 +442,13 @@ class App(QMainWindow):
         )
 
         task_manager = BackgroundTaskManager.instance()
+        task_manager.running_tasks.connect(
+            lambda n: self.status_indicator.update_status(busy=n >= 1)
+        )
         task_manager.task_started.connect(
-            lambda _, name: self.status_indicator.update_status(status=name)
+            lambda _, name: self.status_indicator.update_status(busy=True, task=name)
         )
-        task_manager.task_completed.connect(
-            lambda name, result: self.status_indicator.update_status(status="Ready")
-        )
-        task_manager.task_failed.connect(
-            lambda name, error: self.status_indicator.update_status(status="Ready")
-        )
+
         self._setup_volume_viewer()
         self._setup_trajectory_player()
 

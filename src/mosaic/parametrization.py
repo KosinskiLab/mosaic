@@ -1348,8 +1348,9 @@ class ConvexHull(TriangularMesh):
         positions = np.asarray(positions, dtype=np.float64)
 
         scale = positions.max(axis=0)
-        pcd = compute_normals(positions.copy() / scale, k=k_neighbors, return_pcd=True)
 
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(positions.copy() / scale)
         try:
             with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Error):
                 mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(

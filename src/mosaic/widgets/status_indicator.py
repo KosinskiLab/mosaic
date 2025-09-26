@@ -37,15 +37,13 @@ class TextSpinnerLabel(QLabel):
             """
             QLabel {
                 color: #d97706;
-                font-size: 12px;
                 font-weight: bold;
-                font-family: monospace;
             }
         """
         )
 
     def start(self):
-        self.timer.start(40)
+        self.timer.start(60)
 
     def stop(self):
         self.timer.stop()
@@ -57,7 +55,7 @@ class TextSpinnerLabel(QLabel):
 
 
 class StatusIndicator:
-    """Status indicator using QMainWindow status bar."""
+    """Status indicator using QMainWindownWindow status bar."""
 
     def __init__(self, main_window):
         """
@@ -91,20 +89,20 @@ class StatusIndicator:
         )
 
         self.mode_label = QLabel("Viewing")
-        self.mode_label.setMinimumWidth(80)
+        self.mode_label.setMinimumWidth(50)
 
         self.target_label = QLabel("Clusters")
-        self.target_label.setMinimumWidth(80)
+        self.target_label.setMinimumWidth(50)
 
         self.spinner = TextSpinnerLabel()
         self.spinner.setFixedWidth(10)
-        self.task_label = QLabel("Ready")
-        self.task_label.setMinimumWidth(80)
+        self.task_label = QLabel("Idle")
+        self.task_label.setMinimumWidth(50)
 
-        separator1 = QLabel("")
-        separator1.setStyleSheet("QLabel { padding: 0 14px; }")
-        separator2 = QLabel("")
-        separator2.setStyleSheet("QLabel { padding: 0 14px; }")
+        separator1 = QLabel("•")
+        separator1.setStyleSheet("QLabel { color: #9ca3af; padding: 0 10px; }")
+        separator2 = QLabel("•")
+        separator2.setStyleSheet("QLabel { color: #9ca3af; padding: 0 10px; }")
 
         status_bar.addPermanentWidget(self.mode_label)
         status_bar.addPermanentWidget(separator1)
@@ -116,7 +114,12 @@ class StatusIndicator:
         self.spinner.stop()
 
     def update_status(
-        self, interaction="Viewing", target=None, status="Ready", **kwargs
+        self,
+        interaction="Viewing",
+        target=None,
+        busy: bool = False,
+        task: str = None,
+        **kwargs,
     ):
         """
         Update the status indicator with current mode, target, and task status.
@@ -127,29 +130,28 @@ class StatusIndicator:
             Current interaction mode
         target: str, optional
             Current interaction target
-        status: str
+        status: bool
             Current task status
+        task: str
+            Name of most recent task
         """
         if not self.visible:
             return
 
-        self.mode_label.setText(interaction)
+        self.mode_label.setText(f"Mode: {interaction}")
         if target is not None:
             self.current_target = target
             self.target_label.setText(target)
 
-        self._update_task_styling(status)
-        if status != "Ready":
-            self.main_window.statusBar().showMessage(status, 3000)
-        elif hasattr(self, "_last_message"):
-            self.main_window.statusBar().clearMessage()
-        self._last_message = status
+        self._update_task_styling(busy)
+        if task is not None:
+            self.main_window.statusBar().showMessage(task, 3000)
 
-    def _update_task_styling(self, status):
+    def _update_task_styling(self, busy: bool = False):
         """Update task status - spinner handles the visual indication."""
-        self.task_label.setText(status if status == "Ready" else "Processing")
+        self.task_label.setText("Busy" if busy else "Idle")
 
-        if status == "Ready":
+        if not busy:
             return self.spinner.stop()
         return self.spinner.start()
 

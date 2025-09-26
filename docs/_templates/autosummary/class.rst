@@ -3,9 +3,12 @@
 .. currentmodule:: {{ module }}
 
 .. autoclass:: {{ objname }}
+   :members:
+   :show-inheritance:
 
    {% block attributes %}
    {% if attributes %}
+
    .. rubric:: {{ _('Attributes') }}
 
    .. autosummary::
@@ -19,22 +22,16 @@
    {% endblock %}
 
    {% block methods %}
-
    {% if methods %}
+
    .. rubric:: {{ _('Methods') }}
 
    .. autosummary::
       :toctree:
-
-      {% if '__call__' in members %}
-            {{ name }}.__call__
-      {% endif %}
-
       {% for item in methods %}
-         {% if not item.startswith('_') %}
+         {% if not item.startswith('_') and not item in inherited_members %}
             {{ name }}.{{ item }}
          {% endif %}
       {%- endfor %}
-
    {% endif %}
    {% endblock %}

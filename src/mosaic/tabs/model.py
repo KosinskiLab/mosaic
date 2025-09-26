@@ -3,14 +3,110 @@ from functools import partial
 import numpy as np
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog
 
-from ..parallel import run_in_background
-from ..widgets.ribbon import create_button
 from .. import meshing
+from ..parallel import submit_task
+from ..widgets.ribbon import create_button
 
 
 def on_fit_complete(self, *args, **kwargs):
     self.cdata.data.render()
     self.cdata.models.render()
+
+
+def _fit(method, geometry, **kwargs):
+    from ..parametrization import PARAMETRIZATION_TYPE
+
+    fit_object = PARAMETRIZATION_TYPE.get(method)
+    if fit_object is None:
+        raise ValueError(f"{method} is not supported ({PARAMETRIZATION_TYPE.keys()}).")
+
+    n = geometry.points.shape[0]
+    if n < 50 and method not in ["convexhull", "spline"]:
+        raise ValueError(f"Insufficient points for fit ({n}<50).")
+    return fit_object.fit(geometry.points, **kwargs)
+
+
+def _remesh(method, geometry, **kwargs):
+    from ..parametrization import TriangularMesh
+
+    mesh = geometry._meta.get("fit", None)
+
+    mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
+    if method == "edge length":
+        mesh = meshing.remesh(mesh=mesh, **kwargs)
+    elif method == "vertex clustering":
+        mesh = mesh.simplify_vertex_clustering(**kwargs)
+    elif method == "subdivide":
+        func = mesh.subdivide_midpoint
+        if kwargs.get("smooth"):
+            func = mesh.subdivide_loop
+        kwargs = {k: v for k, v in kwargs.items() if v != "smooth"}
+        mesh = func(**kwargs)
+    else:
+        method = kwargs.get("decimation_method", "Triangle Count").lower()
+        sampling = kwargs.get("sampling")
+        if method == "reduction factor":
+            sampling = np.asarray(mesh.triangles).shape[0] // sampling
+
+        mesh = mesh.simplify_quadric_decimation(int(sampling))
+    return TriangularMesh(mesh)
+
+
+def _project(
+    mesh,
+    geometries,
+    use_normals: bool = False,
+    invert_normals: bool = False,
+    update_normals: bool = False,
+):
+    from ..geometry import Geometry
+
+    new_geometries, projections, triangles = [], [], []
+    for geometry in geometries:
+        normals = geometry.normals if use_normals else None
+        if normals is not None:
+            normals = normals * (-1 if invert_normals else 1)
+
+        kwargs = {
+            "points": geometry.points,
+            "normals": normals,
+            "return_projection": True,
+            "return_indices": False,
+            "return_triangles": True,
+        }
+        _, projection, triangle = mesh.compute_distance(**kwargs)
+
+        normals = geometry.normals
+        if update_normals:
+            normals = mesh.compute_normal(projection)
+
+        projections.append(projection)
+        triangles.append(triangle)
+        new_geometries.append(
+            Geometry(
+                points=projection, normals=normals, sampling_rate=geometry.sampling_rate
+            )
+        )
+
+    if not len(projections):
+        return None
+
+    projections = np.concatenate(projections)
+    triangles = np.concatenate(triangles)
+    new_mesh = mesh.add_projections(projections, triangles, return_indices=False)
+
+    return new_mesh, new_geometries
+
+
+def _run_marching_cubes(filename, **kwargs):
+    from ..formats.parser import load_density
+    from ..parametrization import TriangularMesh
+
+    mesh_paths = meshing.mesh_volume(filename, **kwargs)
+    sampling = load_density(filename, use_memmap=True).sampling_rate
+
+    meshes = [TriangularMesh.from_file(x) for x in mesh_paths]
+    return meshes, sampling
 
 
 class ModelTab(QWidget):
@@ -28,7 +124,7 @@ class ModelTab(QWidget):
     def show_ribbon(self):
         self.ribbon.clear()
 
-        func = self._fit
+        func = self._fit_parallel
         fitting_actions = [
             create_button("Sphere", "mdi.circle", self, partial(func, "sphere")),
             create_button("Ellipse", "mdi.ellipse", self, partial(func, "ellipsoid")),
@@ -55,7 +151,7 @@ class ModelTab(QWidget):
                 "Sample",
                 "mdi.chart-scatter-plot",
                 self,
-                self._sample_fit,
+                self._sample_parallel,
                 "Sample from Fit",
                 SAMPLE_SETTINGS,
             ),
@@ -88,7 +184,7 @@ class ModelTab(QWidget):
                 "Remesh",
                 "mdi.repeat",
                 self,
-                self._remesh_meshes,
+                self._remesh_parallel,
                 "Remesh Mesh",
                 REMESH_SETTINGS,
             ),
@@ -103,39 +199,6 @@ class ModelTab(QWidget):
             # create_button("Skeleton", "mdi.vector-line", self, self._sceleton),
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
-
-    @run_in_background("Parametrization", callback=on_fit_complete)
-    def _fit(self, method: str, *args, **kwargs):
-        _conversion = {
-            "Alpha Shape": "convexhull",
-            "Ball Pivoting": "mesh",
-            "Poisson": "poissonmesh",
-            "Cluster Ball Pivoting": "clusterballpivoting",
-        }
-        method = _conversion.get(method, method)
-
-        if method == "mesh":
-            radii = kwargs.get("radii", None)
-            try:
-                kwargs["radii"] = [float(x) for x in radii.split(",")]
-            except Exception as e:
-                raise ValueError(f"Incorrect radius specification {radii}.") from e
-
-        return self.cdata.add_fit(method, **kwargs)
-
-    @run_in_background("Sample Fit", callback=on_fit_complete)
-    def _sample_fit(self, sampling, sampling_method, normal_offset=0.0, **kwargs):
-        from ..operations import GeometryOperations
-
-        indices = self.cdata.models._get_selected_indices()
-        for index in indices:
-            geometry = self.cdata._models.get(index)
-            if geometry is None:
-                continue
-            ret = GeometryOperations.sample(
-                geometry, sampling, sampling_method, normal_offset
-            )
-            self.cdata.data.add(ret)
 
     def _to_cluster(self, *args, **kwargs):
         indices = self.cdata.models._get_selected_indices()
@@ -211,120 +274,6 @@ class ModelTab(QWidget):
 
         return self.cdata.models.render()
 
-    @run_in_background("Project", callback=on_fit_complete)
-    def _project_on_mesh(
-        self,
-        use_normals: bool = False,
-        invert_normals: bool = False,
-        update_normals: bool = False,
-        **kwargs,
-    ):
-        selected_meshes = self._get_selected_meshes()
-        if len(selected_meshes) != 1:
-            raise ValueError("Please select one mesh for projection.")
-
-        selected_meshes = self._get_selected_meshes()
-
-        mesh = self.cdata._models.data[selected_meshes[0]]._meta.get("fit", None)
-        if mesh is None:
-            return None
-
-        projections, triangles = [], []
-        for index in self.cdata.data._get_selected_indices():
-            geometry = self.cdata._data.data[index]
-
-            normals = geometry.normals if use_normals else None
-            if normals is not None:
-                normals = normals * (-1 if invert_normals else 1)
-
-            kwargs = {
-                "points": geometry.points,
-                "normals": normals,
-                "return_projection": True,
-                "return_indices": False,
-                "return_triangles": True,
-            }
-            _, projection, triangle = mesh.compute_distance(**kwargs)
-
-            normals = geometry.normals
-            if update_normals:
-                normals = mesh.compute_normal(projection)
-
-            projections.append(projection)
-            triangles.append(triangle)
-            self.cdata._data.add(
-                points=projection,
-                normals=normals,
-                sampling_rate=geometry.sampling_rate,
-            )
-
-        if not len(projections):
-            return None
-
-        projections = np.concatenate(projections)
-        triangles = np.concatenate(triangles)
-        new_mesh = mesh.add_projections(projections, triangles, return_indices=False)
-
-        self.cdata._add_fit(
-            fit=new_mesh,
-            sampling_rate=self.cdata._models.data[selected_meshes[0]].sampling_rate,
-        )
-        self.cdata.data.data_changed.emit()
-        return self.cdata.models.data_changed.emit()
-
-    @run_in_background("Remesh", callback=on_fit_complete)
-    def _remesh_meshes(self, method, **kwargs):
-        from ..parametrization import TriangularMesh
-
-        selected_meshes = self._get_selected_meshes()
-        if len(selected_meshes) == 0:
-            return None
-
-        method = method.lower()
-        supported = (
-            "edge length",
-            "vertex clustering",
-            "quadratic decimation",
-            "subdivide",
-        )
-        if method not in (supported):
-            raise ValueError(f"{method} is not supported, chose one of {supported}.")
-
-        if method == "subdivide":
-            smooth = kwargs.pop("smooth", False)
-
-        for index in selected_meshes:
-            geometry = self.cdata._models.get(index)
-            if geometry is None:
-                continue
-
-            mesh = geometry._meta.get("fit", None)
-
-            mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
-            if method == "edge length":
-                mesh = meshing.remesh(mesh=mesh, **kwargs)
-            elif method == "vertex clustering":
-                mesh = mesh.simplify_vertex_clustering(**kwargs)
-            elif method == "subdivide":
-                func = mesh.subdivide_midpoint
-                if smooth:
-                    func = mesh.subdivide_loop
-                mesh = func(**kwargs)
-            else:
-                method = kwargs.get("decimation_method", "Triangle Count").lower()
-                sampling = kwargs.get("sampling")
-                if method == "reduction factor":
-                    sampling = np.asarray(mesh.triangles).shape[0] // sampling
-
-                print(sampling)
-                mesh = mesh.simplify_quadric_decimation(int(sampling))
-
-            self.cdata._add_fit(
-                fit=TriangularMesh(mesh),
-                sampling_rate=self.cdata._models.data[index].sampling_rate,
-            )
-        return self.cdata.models.data_changed.emit()
-
     def _merge_meshes(self):
         from ..parametrization import TriangularMesh
 
@@ -372,30 +321,152 @@ class ModelTab(QWidget):
         self.cdata.data.data_changed.emit()
         return self.cdata.data.render()
 
+    def _fit_parallel(self, method: str, *args, **kwargs):
+        _conversion = {
+            "Alpha Shape": "convexhull",
+            "Ball Pivoting": "mesh",
+            "Poisson": "poissonmesh",
+            "Cluster Ball Pivoting": "clusterballpivoting",
+        }
+        method = _conversion.get(method, method)
+
+        if method == "mesh":
+            radii = kwargs.get("radii", None)
+            try:
+                kwargs["radii"] = [float(x) for x in radii.split(",")]
+            except Exception as e:
+                raise ValueError(f"Incorrect radius specification {radii}.") from e
+
+        for index in self.cdata.data._get_selected_indices():
+            if (geometry := self.cdata.data.get_geometry(index)) is None:
+                continue
+
+            if geometry.sampling_rate is None:
+                geometry.sampling_rate = 10
+            kwargs["voxel_size"] = np.max(geometry.sampling_rate)
+
+            def _callback(fit):
+                self.cdata._add_fit(fit, sampling_rate=geometry.sampling_rate)
+                self.cdata.models.render()
+
+            submit_task(
+                "Parametrization",
+                _fit,
+                _callback,
+                method.lower(),
+                geometry,
+                **kwargs,
+            )
+
+    def _sample_parallel(self, sampling, sampling_method, normal_offset=0.0, **kwargs):
+        from ..operations import GeometryOperations
+
+        def _callback(*args, **kwargs):
+            self.cdata.data.add(*args, **kwargs)
+            self.cdata.data.render()
+
+        for index in self.cdata.models._get_selected_indices():
+            if (geometry := self.cdata.models.get_geometry(index)) is None:
+                continue
+
+            submit_task(
+                "Sample Fit",
+                GeometryOperations.sample,
+                _callback,
+                geometry,
+                sampling,
+                sampling_method,
+                normal_offset,
+                **kwargs,
+            )
+
+    def _remesh_parallel(self, method, **kwargs):
+        selected_meshes = self._get_selected_meshes()
+        if len(selected_meshes) == 0:
+            return None
+
+        method = method.lower()
+        supported = (
+            "edge length",
+            "vertex clustering",
+            "quadratic decimation",
+            "subdivide",
+        )
+        if method not in (supported):
+            raise ValueError(f"{method} is not supported, chose one of {supported}.")
+
+        for index in selected_meshes:
+            if (geometry := self.cdata.models.get_geometry(index)) is None:
+                continue
+
+            def _callback(fit):
+                self.cdata._add_fit(fit, sampling_rate=geometry.sampling_rate)
+                self.cdata.models.render()
+
+            submit_task("Remesh", _remesh, _callback, method, geometry, **kwargs)
+
+    def _project_on_mesh(
+        self,
+        use_normals: bool = False,
+        invert_normals: bool = False,
+        update_normals: bool = False,
+        **kwargs,
+    ):
+        selected_meshes = self._get_selected_meshes()
+        if len(selected_meshes) != 1:
+            raise ValueError("Please select one mesh for projection.")
+
+        geometry = self.cdata.models.get_geometry(selected_meshes[0])
+        if (mesh := geometry._meta.get("fit", None)) is None:
+            return None
+
+        geometries = []
+        for index in self.cdata.data._get_selected_indices():
+            if (geometry := self.cdata.data.get_geometry(index)) is None:
+                continue
+            geometries.append(geometry)
+
+        def _callback(ret):
+            new_mesh, new_geometries = ret
+
+            for new_geometry in new_geometries:
+                self.cdata.data.add(new_geometry)
+
+            self.cdata._add_fit(new_mesh, sampling_rate=geometry.sampling_rate)
+            self.cdata.data.render()
+            self.cdata.models.render()
+
+        submit_task(
+            "Project",
+            _project,
+            _callback,
+            mesh,
+            geometries,
+            use_normals,
+            invert_normals,
+            update_normals,
+        )
+
     def _mesh_volume(self, **kwargs):
         filename, _ = QFileDialog.getOpenFileName(self, "Select Meshes")
         if not filename:
             return -1
 
-        return self._run_marching_cubes(
-            filename, max_simplification_error=None, **kwargs
+        def _callback(ret):
+            meshes, sampling = ret
+            for mesh in meshes:
+                self.cdata._add_fit(
+                    fit=mesh,
+                    sampling_rate=sampling,
+                )
+            self.cdata.models.render()
+
+        submit_task(
+            "Mesh Volume",
+            _run_marching_cubes,
+            _callback,
+            filename,
         )
-
-    @run_in_background("Mesh Volume", callback=on_fit_complete)
-    def _run_marching_cubes(self, filename, **kwargs):
-        from ..meshing import mesh_volume
-        from ..formats.parser import load_density
-        from ..parametrization import TriangularMesh
-
-        mesh_paths = mesh_volume(filename, **kwargs)
-        sampling = load_density(filename, use_memmap=True).sampling_rate
-        for mesh_path in mesh_paths:
-            self.cdata._add_fit(
-                fit=TriangularMesh.from_file(mesh_path),
-                sampling_rate=sampling,
-            )
-
-        return self.cdata.models.data_changed.emit()
 
 
 SAMPLE_SETTINGS = {

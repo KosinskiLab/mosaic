@@ -138,59 +138,21 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
 
     Notes
     -----
-    On Darwin platforms this function will spawn a new process to avoid
-    instabilities from mosaic's Qt6 and pymeshlab's Qt5.
+    On Darwin platforms this used to spawn a new process to
+    avoid instabilities from mosaic's Qt6 and pymeshlab's Qt5 for
+    mosaic version <=1.0.4
     """
     mesh = mesh.remove_duplicated_vertices()
     mesh = mesh.remove_unreferenced_vertices()
     mesh = mesh.remove_degenerate_triangles()
 
-    if system() != "Darwin":
-        ret = _remesh(
-            np.asarray(mesh.vertices),
-            np.asarray(mesh.triangles),
-            target_edge_length=target_edge_length,
-            n_iter=n_iter,
-            featuredeg=featuredeg,
-        )
-    else:
-        with TemporaryDirectory() as temp_dir:
-            input_path = join(temp_dir, "input_mesh.ply")
-            output_path = join(temp_dir, "output_mesh.ply")
-            o3d.io.write_triangle_mesh(input_path, mesh)
-
-            script_path = join(temp_dir, "run_remesh.py")
-            script_content = textwrap.dedent(
-                f"""
-                import numpy as np
-                import open3d as o3d
-                from mosaic.meshing.utils import _remesh, to_open3d
-
-                mesh = o3d.io.read_triangle_mesh('{input_path}')
-                new_vertices, new_triangles = _remesh(
-                    np.asarray(mesh.vertices),
-                    np.asarray(mesh.triangles),
-                    target_edge_length={target_edge_length},
-                    n_iter={n_iter},
-                    featuredeg={featuredeg}
-                )
-                mesh = to_open3d(new_vertices, new_triangles)
-                o3d.io.write_triangle_mesh('{output_path}', mesh)
-            """
-            )
-
-            with open(script_path, "w") as f:
-                f.write(script_content)
-
-            ret = run([sys.executable, script_path], check=True)
-            if ret.stderr:
-                print(ret.stdout)
-                print(ret.stderr)
-                return None
-
-            mesh = o3d.io.read_triangle_mesh(output_path)
-            ret = (mesh.vertices, mesh.triangles)
-
+    ret = _remesh(
+        np.asarray(mesh.vertices),
+        np.asarray(mesh.triangles),
+        target_edge_length=target_edge_length,
+        n_iter=n_iter,
+        featuredeg=featuredeg,
+    )
     return to_open3d(*ret)
 
 

@@ -30,7 +30,8 @@ from qtpy.QtCore import (
     Signal,
     QEvent,
 )
-from .parallel import run_in_background
+from .parallel import submit_task
+
 
 __all__ = ["DataContainerInteractor"]
 
@@ -665,8 +666,6 @@ class DataContainerInteractor(QObject):
 
             visible = self.container.data[i].visible
             text = self.container.data[i]._meta.get("metadata_text", None)
-            if text is None:
-                text = _format_point_label(self.container.data[i].points.shape[0])
 
             type = "cluster"
             geometry = self.container.data[i]
@@ -859,15 +858,38 @@ for operation_name, config in _GEOMETRY_OPERATIONS.items():
     background = config.get("background", False)
 
     def create_method(op_name, remove_orig, render_flag, bg_task):
-        @_cluster_modifier(op_name, remove_original=remove_orig, render=render_flag)
         def method(self, **kwargs):
-            f"""Apply {op_name} operation to selected geometries."""
-            pass
+            f"""Apply {op_name} operation to selected geometries in background."""
+            from .operations import GeometryOperations
 
-        if bg_task:
-            method = run_in_background(op_name.title(), callback=on_run_complete)(
-                method
-            )
+            selected_indices = self._get_selected_indices()
+
+            for index in selected_indices:
+                if (geometry := self.get_geometry(index)) is None:
+                    continue
+
+                def _callback(ret):
+                    if ret is None:
+                        pass
+                    elif isinstance(ret, (List, Tuple)):
+                        _ = [self.add(x) for x in ret]
+                    else:
+                        self.add(ret)
+
+                    if remove_orig:
+                        self.container.remove(index)
+
+                    self.data_changed.emit()
+                    if render:
+                        self.render()
+
+                func = getattr(GeometryOperations, op_name)
+
+                if bg_task:
+                    return submit_task(
+                        op_name.title(), func, _callback, geometry, **kwargs
+                    )
+                return _callback(func(geometry, **kwargs))
 
         method.__name__ = method_name
         method.__doc__ = f"Apply {op_name} operation using GeometryOperations."
@@ -878,12 +900,3 @@ for operation_name, config in _GEOMETRY_OPERATIONS.items():
         method_name,
         create_method(operation_name, remove_original, render, background),
     )
-
-
-def _format_point_label(count):
-    if count <= 9999:
-        return f"{count} pts"
-    elif count < 1000000:
-        return f"{count/1000:.3g}k pts"
-    else:
-        return f"{count/1000000:.3g}M pts"

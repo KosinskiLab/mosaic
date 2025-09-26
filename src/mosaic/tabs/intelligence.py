@@ -7,7 +7,7 @@ from os.path import join, exists, basename
 import numpy as np
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
 
-from ..parallel import run_in_background
+from ..parallel import submit_task
 from ..widgets.ribbon import create_button
 from ..stylesheets import QPushButton_style
 
@@ -277,22 +277,29 @@ class IntelligenceTab(QWidget):
         )
         return ret
 
-    @run_in_background("Membrane Segmentation", callback=on_run_complete)
     def _run_membrain(self, *args, **kwargs):
-        from ..formats import open_file
         from ..segmentation import run_membrainseg
 
-        output_name = run_membrainseg(*args, **kwargs)
-        if output_name is None:
-            return QMessageBox.warning(None, "Error", "No segmentation was created.")
+        def _callback(output_name: str):
+            from ..formats import open_file
 
-        container = open_file(output_name)
-        for index in range(len(container)):
-            data = container[index]
+            if output_name is None:
+                return QMessageBox.warning(
+                    None, "Error", "No segmentation was created."
+                )
+
+            container = open_file(output_name)
+            for index in range(len(container)):
+                data = container[index]
             self.cdata._data.add(
                 points=data.vertices, normals=data.normals, sampling_rate=data.sampling
             )
-        self.cdata.data.data_changed.emit()
+            self.cdata.data.data_changed.emit()
+            self.cdata.data.render()
+
+        submit_task(
+            "Membrane Segmentation", run_membrainseg, _callback, *args, **kwargs
+        )
 
     def _run_membrane_segmentation(self, **kwargs):
         file_name, _ = QFileDialog.getOpenFileName(
