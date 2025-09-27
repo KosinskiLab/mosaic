@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.decimate
+==================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.decimate

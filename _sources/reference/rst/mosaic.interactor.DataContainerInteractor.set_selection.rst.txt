@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.set\_selection
+========================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.set_selection
