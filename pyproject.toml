@@ -42,6 +42,14 @@ leidenalg = ">=0.9"
 [tool.poetry.group.optional.dependencies]
 membrain-seg = "==0.0.5"
 
+[tool.poetry.group.test.dependencies]
+pytest = ">=7.0.0"
+pytest-xdist = ">=3.5.0"
+pytest-qt = ">=4.2.0"
+pytest-mock = ">=3.10.0"
+pytest-cov = ">=4.0.0"
+pytest-xvfb = ">=3.0.0"
+
 [tool.poetry.scripts]
 mosaic = "mosaic.scripts.app:main"
 

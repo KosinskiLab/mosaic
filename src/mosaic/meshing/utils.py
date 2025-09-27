@@ -6,17 +6,13 @@ Copyright (c) 2024 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import sys
 import h5py
 import warnings
 import textwrap
-from copy import deepcopy
 
-from os.path import join
 from subprocess import run
-from platform import system
 from typing import List, Dict
-from tempfile import NamedTemporaryFile, TemporaryDirectory
+from tempfile import NamedTemporaryFile
 
 import numpy as np
 import open3d as o3d
@@ -33,7 +29,6 @@ __all__ = [
     "compute_scale_factor_lower",
     "center_mesh",
     "to_tsi",
-    "visualize_ray_casting",
 ]
 
 
@@ -70,26 +65,7 @@ def scale(mesh, scaling):
     return to_open3d(vertices, triangles)
 
 
-def _remesh(
-    vertices, triangles, target_edge_length, n_iter=100, featuredeg=30, **kwargs
-):
-    """Remesh to target edge length"""
-    from pymeshlab import MeshSet, Mesh, PureValue
-
-    ms = MeshSet()
-    ms.add_mesh(Mesh(vertices, triangles))
-    ms.meshing_isotropic_explicit_remeshing(
-        targetlen=PureValue(target_edge_length),
-        iterations=n_iter,
-        featuredeg=featuredeg,
-        **kwargs,
-    )
-    ms.meshing_merge_close_vertices(threshold=PureValue(target_edge_length / 3))
-    remeshed = ms.current_mesh()
-    return remeshed.vertex_matrix(), remeshed.face_matrix()
-
-
-def _poisson_mesh(
+def poisson_mesh(
     positions: np.ndarray,
     voxel_size: float = None,
     depth: int = 9,
@@ -101,6 +77,15 @@ def _poisson_mesh(
     samplespernode=5.0,
     **kwargs,
 ):
+    """
+    Triangulate positions using Poisson reconstruction.
+
+    Notes
+    -----
+    On Darwin platforms this used to spawn a new process to
+    avoid instabilities from mosaic's Qt6 and pymeshlab's Qt5 for
+    mosaic version <=1.0.4
+    """
     from pymeshlab import MeshSet, Mesh
 
     voxel_size = 1 if voxel_size is None else voxel_size
@@ -129,7 +114,7 @@ def _poisson_mesh(
         ms.meshing_remove_selected_vertices_and_faces()
 
     mesh = ms.current_mesh()
-    return mesh.vertex_matrix() * voxel_size, mesh.face_matrix()
+    return to_open3d(mesh.vertex_matrix() * voxel_size, mesh.face_matrix())
 
 
 def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
@@ -142,94 +127,23 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
     avoid instabilities from mosaic's Qt6 and pymeshlab's Qt5 for
     mosaic version <=1.0.4
     """
+    from pymeshlab import MeshSet, Mesh, PureValue
+
     mesh = mesh.remove_duplicated_vertices()
     mesh = mesh.remove_unreferenced_vertices()
     mesh = mesh.remove_degenerate_triangles()
 
-    ret = _remesh(
-        np.asarray(mesh.vertices),
-        np.asarray(mesh.triangles),
-        target_edge_length=target_edge_length,
-        n_iter=n_iter,
+    ms = MeshSet()
+    ms.add_mesh(Mesh(np.asarray(mesh.vertices), np.asarray(mesh.triangles)))
+    ms.meshing_isotropic_explicit_remeshing(
+        targetlen=PureValue(target_edge_length),
+        iterations=n_iter,
         featuredeg=featuredeg,
+        **kwargs,
     )
-    return to_open3d(*ret)
-
-
-def poisson_mesh(
-    positions: np.ndarray,
-    voxel_size: float = None,
-    depth: int = 9,
-    k_neighbors=50,
-    smooth_iter=1,
-    pointweight=0.1,
-    deldist=1.5,
-    scale=1.2,
-    samplespernode=5.0,
-):
-    """
-    Triangulate positions using Poisson reconstruction.
-
-    Notes
-    -----
-    On Darwin platforms this function will spawn a new process to avoid
-    instabilities from mosaic's Qt6 and pymeshlab's Qt5.
-    """
-    if system() != "Darwin":
-        ret = _poisson_mesh(
-            positions=positions,
-            voxel_size=voxel_size,
-            depth=depth,
-            k_neighbors=k_neighbors,
-            smooth_iter=smooth_iter,
-            pointweight=pointweight,
-            deldist=deldist,
-            scale=scale,
-            samplespernode=samplespernode,
-        )
-    else:
-        with TemporaryDirectory() as temp_dir:
-            input_path = join(temp_dir, "input_pc.npy")
-            output_path = join(temp_dir, "output_mesh.ply")
-            np.save(input_path, positions)
-
-            script_path = join(temp_dir, "run_remesh.py")
-            script_content = textwrap.dedent(
-                f"""
-                import numpy as np
-                import open3d as o3d
-                from mosaic.meshing.utils import _poisson_mesh, to_open3d
-
-                positions = np.load('{input_path}')
-                new_vertices, new_triangles = _poisson_mesh(
-                    positions=positions,
-                    voxel_size={voxel_size},
-                    depth={depth},
-                    k_neighbors={k_neighbors},
-                    smooth_iter={smooth_iter},
-                    pointweight={pointweight},
-                    deldist={deldist},
-                    scale={scale},
-                    samplespernode={samplespernode},
-                )
-                mesh = to_open3d(new_vertices, new_triangles)
-                o3d.io.write_triangle_mesh('{output_path}', mesh)
-            """
-            )
-
-            with open(script_path, "w") as f:
-                f.write(script_content)
-
-            ret = run([sys.executable, script_path], check=True)
-            if ret.stderr:
-                print(ret.stdout)
-                print(ret.stderr)
-                return None
-
-            mesh = o3d.io.read_triangle_mesh(output_path)
-            ret = (mesh.vertices, mesh.triangles)
-
-    return to_open3d(*ret)
+    ms.meshing_merge_close_vertices(threshold=PureValue(target_edge_length / 3))
+    remeshed = ms.current_mesh()
+    return to_open3d(remeshed.vertex_matrix(), remeshed.face_matrix())
 
 
 def merge_meshes(vertices: List[np.ndarray], faces: List[np.ndarray]):
@@ -427,42 +341,3 @@ def to_tsi(vertices, faces, margin: int = 0) -> Dict:
         "n_faces": _faces.shape[0],
         "faces": _faces,
     }
-
-
-def visualize_ray_casting(mesh, points, normals, point_colors):
-    mesh_vis = deepcopy(mesh)
-    mesh_vis.compute_vertex_normals()
-
-    mesh_vis.paint_uniform_color((0.2, 0.4, 0.8))
-    vis = o3d.visualization.Visualizer()
-    vis.create_window()
-    vis.add_geometry(mesh_vis)
-
-    render_option = vis.get_render_option()
-    render_option.point_size = 15.0
-    render_option.line_width = 20.0
-    render_option.mesh_show_back_face = True
-    render_option.mesh_show_wireframe = True
-
-    for index, pc in enumerate(points):
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(pc)
-        pcd.paint_uniform_color(point_colors[index])
-        ray_lines = []
-        line_length = 300.0
-        for i in range(len(pc)):
-            line_points = [pc[i], pc[i] + normals[index][i] * line_length]
-            line = o3d.geometry.LineSet()
-            line.points = o3d.utility.Vector3dVector(line_points)
-            line.lines = o3d.utility.Vector2iVector([[0, 1]])
-            line.colors = o3d.utility.Vector3dVector([(0.26, 0.65, 0.44)])
-            ray_lines.append(line)
-        vis.add_geometry(pcd)
-        for line in ray_lines:
-            vis.add_geometry(line)
-    view_control = vis.get_view_control()
-    view_control.reset_camera_local_rotate()
-    view_control.set_up([1, 0, 0])
-    view_control.set_front([0, 0, 1])
-    vis.run()
-    vis.destroy_window()

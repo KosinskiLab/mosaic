@@ -8,14 +8,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 import sys
 import argparse
-from platform import system
-from os import environ as os_environ
 from importlib_resources import files
-
-if system() == "Darwin":
-    os_environ["OMP_NUM_THREADS"] = "1"
-
-os_environ["JUPYTER_PLATFORM_DIRS"] = "1"
 
 from qtpy.QtGui import QIcon
 from qtpy.QtWidgets import QApplication

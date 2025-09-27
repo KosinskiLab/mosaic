@@ -440,12 +440,11 @@ def compute_normals(
 
     if method == "Flip":
         geometry.normals = geometry.normals * -1
-        return None
     elif method == "Compute":
         geometry.normals = compute_normals(geometry.points, k=k, **kwargs)
-        return None
     else:
         raise ValueError(f"Unsupported method '{method}'. Use 'Compute' or 'Flip'.")
+    return geometry
 
 
 def duplicate(geometry, **kwargs):

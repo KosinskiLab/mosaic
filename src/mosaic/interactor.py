@@ -234,7 +234,7 @@ class DataContainerInteractor(QObject):
             kwargs["color"] = self.next_color()
         return self.container.add(*args, **kwargs)
 
-    def add_selection(self, selected_point_ids: Dict[vtk.vtkActor, set]) -> int:
+    def add_selection(self, selected_point_ids: Dict[vtk.vtkActor, np.ndarray]) -> int:
         """Add new cloud from selected points.
 
         Parameters
@@ -265,7 +265,7 @@ class DataContainerInteractor(QObject):
             sampling = geometry.sampling_rate
             mask = np.zeros(len(geometry.points), dtype=bool)
             try:
-                mask[list(point_ids)] = True
+                mask[point_ids] = True
             except Exception as e:
                 print(e)
                 return -1
@@ -351,13 +351,12 @@ class DataContainerInteractor(QObject):
 
     def _on_area_pick(self, obj, event):
         frustum = obj.GetFrustum()
-
         extractor = vtk.vtkExtractSelectedFrustum()
         extractor.SetFrustum(frustum)
 
         interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         if not interactor.GetShiftKey():
-            self.deselect_points()
+            self.point_selection.clear()
 
         for i, cluster in enumerate(self.container.data):
             extractor.SetInputData(cluster._data)
@@ -370,10 +369,13 @@ class DataContainerInteractor(QObject):
 
             selected_ids = output.GetPointData().GetArray("vtkOriginalPointIds")
             if selected_ids and selected_ids.GetNumberOfTuples() > 0:
-                ids_numpy = vtk.util.numpy_support.vtk_to_numpy(selected_ids)
+                ids = vtk.util.numpy_support.vtk_to_numpy(selected_ids)
+
                 if i not in self.point_selection:
-                    self.point_selection[i] = set()
-                self.point_selection[i].update(set(ids_numpy))
+                    self.point_selection[i] = np.array([], dtype=np.int32)
+
+                union = np.union1d(ids, self.point_selection[i])
+                self.point_selection[i] = union.astype(np.int32, copy=False)
 
         self.highlight_selected_points(color=None)
 
@@ -416,12 +418,23 @@ class DataContainerInteractor(QObject):
             "Gaussian Density",
             "Normals",
             "Basis",
-            "Points with Normals",
+        ]
+        formats_extended = [
             None,
             "Mesh",
             "Surface",
             "Wireframe",
         ]
+        for index in self._get_selected_indices():
+            if (geometry := self.get_geometry(index)) is None:
+                continue
+            try:
+                geometry._meta["fit"].vertices
+                formats.extend(formats_extended)
+                break
+            except Exception:
+                pass
+
         representation_menu = QMenu("Representation", context_menu)
         for format_name in formats:
             if format_name is None:
@@ -722,8 +735,6 @@ class DataContainerInteractor(QObject):
 
         if representation == "points":
             representation = "pointcloud"
-        elif representation == "points_with_normals":
-            representation = "pointcloud_normals"
 
         for index in indices:
             geometry = self.container.get(index)
@@ -735,7 +746,6 @@ class DataContainerInteractor(QObject):
             # Geometry.change_representation or an issue of vtk 9.3.1. Creating a copy
             # of the Geometry instance circumvents the issue.
             if representation in (
-                "pointcloud_normals",
                 "normals",
                 "basis",
                 "gaussian_density",
@@ -754,8 +764,7 @@ class DataContainerInteractor(QObject):
                 i: self.container.get(i)[...] for i in self._get_selected_indices()
             }
             self._point_backup = {
-                i: self.container.get(i)[list(ix)]
-                for i, ix in self.point_selection.items()
+                i: self.container.get(i)[ix] for i, ix in self.point_selection.items()
             }
         except Exception:
             self._geometry_backup = None
@@ -842,10 +851,10 @@ class DataContainerInteractor(QObject):
 
 
 _GEOMETRY_OPERATIONS = {
-    "decimate": {"remove_original": False},
-    "downsample": {"remove_original": False},
+    "decimate": {"remove_original": False, "background": True},
+    "downsample": {"remove_original": False, "background": True},
     "remove_outliers": {"remove_original": False},
-    "compute_normals": {"remove_original": False},
+    "compute_normals": {"remove_original": True, "background": True},
     "cluster": {"remove_original": True, "render": False, "background": True},
     "duplicate": {"remove_original": False},
     "visibility": {"remove_original": False},
@@ -863,7 +872,6 @@ for operation_name, config in _GEOMETRY_OPERATIONS.items():
             from .operations import GeometryOperations
 
             selected_indices = self._get_selected_indices()
-
             for index in selected_indices:
                 if (geometry := self.get_geometry(index)) is None:
                     continue
@@ -877,7 +885,7 @@ for operation_name, config in _GEOMETRY_OPERATIONS.items():
                         self.add(ret)
 
                     if remove_orig:
-                        self.container.remove(index)
+                        self.container.remove(geometry)
 
                     self.data_changed.emit()
                     if render:
@@ -886,10 +894,9 @@ for operation_name, config in _GEOMETRY_OPERATIONS.items():
                 func = getattr(GeometryOperations, op_name)
 
                 if bg_task:
-                    return submit_task(
-                        op_name.title(), func, _callback, geometry, **kwargs
-                    )
-                return _callback(func(geometry, **kwargs))
+                    submit_task(op_name.title(), func, _callback, geometry, **kwargs)
+                    continue
+                _callback(func(geometry, **kwargs))
 
         method.__name__ = method_name
         method.__doc__ = f"Apply {op_name} operation using GeometryOperations."

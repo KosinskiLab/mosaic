@@ -88,8 +88,12 @@ class Geometry:
         if normals is None and points is not None:
             normals = np.full_like(points, fill_value=NORMAL_REFERENCE)
 
-        self.points = points
-        self.normals = normals
+        if points is not None:
+            self.points = points
+
+        if normals is not None:
+            self.normals = normals
+
         if quaternions is not None:
             self.quaternions = quaternions
 
@@ -144,6 +148,7 @@ class Geometry:
             "visible": self.visible,
             "appearance": self._appearance,
             "representation": self._representation,
+            "vertex_properties": self.vertex_properties,
         }
 
     def __setstate__(self, state):
@@ -573,95 +578,112 @@ class Geometry:
             return None
 
         mapper = self._actor.GetMapper()
-        mapper.GetInput().GetPointData().SetScalars(numpy_support.numpy_to_vtk(scalars))
-        mapper.SetLookupTable(color_lut)
+        mapper.GetInput().GetPointData().SetScalars(
+            numpy_support.numpy_to_vtk(scalars, deep=False)
+        )
+
+        self._configure_scalar_mapper(mapper, color_lut, scalar_range, use_point)
+        self._actor.Modified()
+
+    def _update_scalars_from_ids(
+        self, point_ids, color_lut, scalar_range=None, use_point=False
+    ) -> bool:
+        """
+        Try to update existing scalar array in place for better performance.
+
+        Parameters
+        ----------
+        point_ids : array-like
+            Point indices to set to 1.0, all others set to 0.0
+        color_lut : vtk.vtkLookupTable
+            Color lookup table for mapping scalars to colors.
+        scalar_range : tuple, optional
+            Min and max scalar range for color mapping.
+        use_point : bool, optional
+            Whether to use point data for scalar mode, by default False.
+
+        Returns
+        -------
+        bool
+            True if successful, False if scalar array couldn't be reused.
+        """
+        mapper = self._actor.GetMapper()
+        cur_scalars = mapper.GetInput().GetPointData().GetScalars()
+
+        if not (cur_scalars is not None and cur_scalars.GetNumberOfComponents() == 1):
+            return False
+
+        scalars_np = vtk.util.numpy_support.vtk_to_numpy(cur_scalars)
+        if scalars_np.shape[0] != self._points.GetNumberOfPoints():
+            return False
+
+        scalars_np.fill(0.0)
+        scalars_np[point_ids] = 1.0
+        cur_scalars.Modified()
+
+        self._configure_scalar_mapper(mapper, color_lut, scalar_range, use_point)
+        self._actor.Modified()
+        return True
+
+    def _configure_scalar_mapper(
+        self, mapper, color_lut, scalar_range=None, use_point=False
+    ):
+        """
+        Configure mapper for scalar coloring with common settings.
+
+        Parameters
+        ----------
+        mapper : vtk.vtkMapper
+            The mapper to configure
+        color_lut : vtk.vtkLookupTable
+            Color lookup table for mapping scalars to colors.
+        scalar_range : tuple, optional
+            Min and max scalar range for color mapping.
+        use_point : bool, optional
+            Whether to use point data for scalar mode, by default False.
+        """
+        if color_lut is not None:
+            mapper.SetLookupTable(color_lut)
         if scalar_range is not None:
             mapper.SetScalarRange(*scalar_range)
         mapper.ScalarVisibilityOn()
         if use_point:
             mapper.SetScalarModeToUsePointData()
 
-        return self._actor.Modified()
-
     def color_points(self, point_ids: set, color: Tuple[float]):
         """
-        Color specific points in the geometry.
+        Color specific points in the geometry using set_scalars backend.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         point_ids : set
             Set of point indices to color
         color : tuple of float
             RGB color values (0-1) to apply to selected points
         """
-        mapper = self._actor.GetMapper()
-        prop = self._actor.GetProperty()
-        if self._representation in ("normals", "pointcloud_normals"):
-            mapper.ScalarVisibilityOff()
-            return prop.SetColor(*color)
-
-        # Remove highlight_color hue when switching back from modes above
-        prop.SetColor(*self._appearance["base_color"])
         n_points = self._points.GetNumberOfPoints()
-        point_ids = np.fromiter(
-            (pid for pid in point_ids if pid < n_points), dtype=np.int32
+        if not isinstance(point_ids, np.ndarray):
+            point_ids = np.array(list(point_ids), dtype=np.int32)
+
+        point_ids = point_ids.astype(np.int32, copy=False)
+        point_ids = point_ids[point_ids < n_points]
+
+        lut = vtk.vtkLookupTable()
+        lut.SetNumberOfTableValues(2)
+        lut.SetRange(0.0, 1.0)
+        lut.SetTableValue(0, *self._appearance["base_color"], 1.0)
+        lut.SetTableValue(1, *color, 1.0)
+        lut.Build()
+
+        success = self._update_scalars_from_ids(
+            point_ids, lut, scalar_range=(0.0, 1.0), use_point=True
         )
-
-        if not len(point_ids) or n_points == 0:
-            return
-
-        current_colors = self._data.GetPointData().GetScalars()
-        if (
-            current_colors is not None
-            and current_colors.GetName() == "Colors"
-            and current_colors.GetNumberOfTuples() == n_points
-            and current_colors.GetNumberOfComponents() == 3
-        ):
-            colors_np = vtk.util.numpy_support.vtk_to_numpy(current_colors)
-            colors_np = colors_np.reshape(n_points, 3)
-
-            base_color_uint8 = np.array(
-                [x * 255 for x in self._appearance["base_color"]], dtype=np.uint8
+        if not success:
+            scalars = np.zeros(n_points, dtype=np.float32)
+            scalars[point_ids] = 1.0
+            return self.set_scalars(
+                scalars, lut, scalar_range=(0.0, 1.0), use_point=True
             )
-            highlight_color_unit8 = np.array([x * 255 for x in color], dtype=np.uint8)
-
-            colors_np[:] = base_color_uint8
-            colors_np[point_ids] = highlight_color_unit8
-
-            current_colors.Modified()
-            return self._data.Modified()
-
-        colors = np.full(
-            (n_points, 3),
-            fill_value=[x * 255 for x in self._appearance["base_color"]],
-            dtype=np.uint8,
-        )
-        colors[point_ids] = [x * 255 for x in color]
-        return self.set_point_colors(colors)
-
-    def set_point_colors(self, colors):
-        """
-        Set individual colors for each point in the geometry.
-
-        Parameters:
-        -----------
-        colors : array-like
-            RGB colors for each point. Shape should be (n_points, 3) with values 0-255
-        """
-        if len(colors) != self._points.GetNumberOfPoints():
-            raise ValueError("Number of colors must match number of points")
-
-        colors_vtk = vtk.util.numpy_support.numpy_to_vtk(
-            colors,
-            deep=False,
-            array_type=vtk.VTK_UNSIGNED_CHAR,
-        )
-
-        colors_vtk.SetName("Colors")
-        colors_vtk.SetNumberOfComponents(3)
-
-        self._data.GetPointData().SetScalars(colors_vtk)
-        self._data.Modified()
 
     def subset(self, indices):
         """
@@ -771,7 +793,6 @@ class Geometry:
         supported = [
             "pointcloud",
             "gaussian_density",
-            "pointcloud_normals",
             "mesh",
             "wireframe",
             "normals",
@@ -797,25 +818,6 @@ class Geometry:
 
         clipping_planes = self._actor.GetMapper().GetClippingPlanes()
 
-        # Consistent normal rendering across representations
-        if representation in ("pointcloud_normals", "normals"):
-            arrow = vtk.vtkArrowSource()
-            arrow.SetTipResolution(6)
-            arrow.SetShaftResolution(6)
-            arrow.SetTipRadius(0.08)
-            arrow.SetShaftRadius(0.02)
-
-            normal_scale = 0.1 * np.max(self.sampling_rate)
-
-            glyph = vtk.vtkGlyph3D()
-            glyph.SetSourceConnection(arrow.GetOutputPort())
-            glyph.SetVectorModeToUseNormal()
-            glyph.SetScaleFactor(normal_scale)
-            glyph.SetColorModeToColorByScalar()
-            glyph.OrientOn()
-
-        self._appearance.update({"opacity": 1, "size": 8})
-
         mapper = vtk.vtkPolyDataMapper()
         if representation == "gaussian_density":
             mapper = vtk.vtkPointGaussianMapper()
@@ -827,10 +829,11 @@ class Geometry:
         mapper.SetResolveCoincidentTopologyToPolygonOffset()
 
         self._actor.SetMapper(mapper)
-        self._appearance["render_spheres"] = True
+        self._appearance.update({"opacity": 1, "size": 8, "render_spheres": True})
         if representation == "gaussian_density":
             self._appearance["render_spheres"] = False
 
+        scale = 15 * np.max(self.sampling_rate)
         mapper, prop = self._actor.GetMapper(), self._actor.GetProperty()
         prop.SetOpacity(self._appearance["opacity"])
         prop.SetPointSize(self._appearance["size"])
@@ -845,32 +848,32 @@ class Geometry:
             mapper.SetScalarVisibility(True)
             mapper.SetInputData(self._data)
 
-        elif representation == "pointcloud_normals":
-            vertex_glyph = vtk.vtkVertexGlyphFilter()
-            vertex_glyph.SetInputData(self._data)
-            vertex_glyph.Update()
-
-            glyph.SetInputConnection(vertex_glyph.GetOutputPort())
-            append = vtk.vtkAppendPolyData()
-            append.AddInputData(vertex_glyph.GetOutput())
-            append.AddInputConnection(glyph.GetOutputPort())
-            append.Update()
-            mapper.SetInputConnection(append.GetOutputPort())
-
         elif representation == "normals":
-            glyph.SetInputData(self._data)
-            mapper.SetInputConnection(glyph.GetOutputPort())
+            arrow = vtk.vtkArrowSource()
+            arrow.SetTipResolution(6)
+            arrow.SetShaftResolution(6)
+            arrow.SetTipRadius(0.08)
+            arrow.SetShaftRadius(0.02)
+
+            mapper = vtk.vtkGlyph3DMapper()
+            mapper.SetInputData(self._data)
+            mapper.SetSourceConnection(arrow.GetOutputPort())
+            mapper.SetOrientationArray("Normals")
+            mapper.SetOrientationModeToDirection()
+            mapper.SetScaleModeToNoDataScaling()
+            mapper.SetScaleFactor(scale)
+            mapper.OrientOn()
+
+            self._actor.SetMapper(mapper)
 
         elif representation == "basis":
             if self.quaternions is None:
                 print("Quaternions are required for basis representation.")
                 return -1
 
-            scale = 15 * np.max(self.sampling_rate)
             arrow_x = vtk.vtkArrowSource()
             arrow_y = vtk.vtkArrowSource()
             arrow_z = vtk.vtkArrowSource()
-
             for arrow in [arrow_x, arrow_y, arrow_z]:
                 arrow.SetTipResolution(6)
                 arrow.SetShaftResolution(6)
@@ -878,45 +881,31 @@ class Geometry:
                 arrow.SetShaftRadius(0.02)
 
             transform_x = vtk.vtkTransform()
-            transform_x.RotateY(-90)  # Rotate from Z to X
+            transform_x.RotateY(-90)
             transform_filter_x = vtk.vtkTransformPolyDataFilter()
             transform_filter_x.SetInputConnection(arrow_x.GetOutputPort())
             transform_filter_x.SetTransform(transform_x)
             transform_filter_x.Update()
+
             transform_y = vtk.vtkTransform()
-            transform_y.RotateZ(90)  # Rotate from Z to Y
+            transform_y.RotateZ(90)
             transform_filter_y = vtk.vtkTransformPolyDataFilter()
             transform_filter_y.SetInputConnection(arrow_y.GetOutputPort())
             transform_filter_y.SetTransform(transform_y)
             transform_filter_y.Update()
-            transform_scale = vtk.vtkTransform()
-            transform_scale.Scale(scale, scale, scale)
 
-            scale_filter_x = vtk.vtkTransformPolyDataFilter()
-            scale_filter_x.SetInputConnection(transform_filter_x.GetOutputPort())
-            scale_filter_x.SetTransform(transform_scale)
-            scale_filter_x.Update()
-            scale_filter_y = vtk.vtkTransformPolyDataFilter()
-            scale_filter_y.SetInputConnection(transform_filter_y.GetOutputPort())
-            scale_filter_y.SetTransform(transform_scale)
-            scale_filter_y.Update()
-            scale_filter_z = vtk.vtkTransformPolyDataFilter()
-            scale_filter_z.SetInputConnection(arrow_z.GetOutputPort())
-            scale_filter_z.SetTransform(transform_scale)
-            scale_filter_z.Update()
             append_filter = vtk.vtkAppendPolyData()
-            append_filter.AddInputConnection(scale_filter_x.GetOutputPort())
-            append_filter.AddInputConnection(scale_filter_y.GetOutputPort())
-            append_filter.AddInputConnection(scale_filter_z.GetOutputPort())
+            append_filter.AddInputConnection(transform_filter_x.GetOutputPort())
+            append_filter.AddInputConnection(transform_filter_y.GetOutputPort())
+            append_filter.AddInputConnection(arrow_z.GetOutputPort())
             append_filter.Update()
-
-            polydata = append_filter.GetOutput()
 
             mapper = vtk.vtkGlyph3DMapper()
             mapper.SetInputData(self._data)
-            mapper.SetSourceData(polydata)
+            mapper.SetSourceData(append_filter.GetOutput())
             mapper.SetOrientationArray("OrientationQuaternion")
             mapper.SetOrientationModeToQuaternion()
+            mapper.SetScaleFactor(scale)
             mapper.SetScaleModeToNoDataScaling()
             mapper.OrientOn()
 
@@ -952,7 +941,7 @@ class Geometry:
             mapper.SetClippingPlanes(clipping_planes)
 
         self._representation = representation
-        return 0
+        return self.set_appearance()
 
     def compute_distance(self, query_points: np.ndarray, k: int = 1, **kwargs):
         model = self._meta.get("fit", None)

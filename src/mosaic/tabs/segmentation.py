@@ -510,11 +510,9 @@ class PlaneTrimmer:
             origin2 = np.array(self.plane2.GetOrigin())
             dist1 = np.dot(points - origin1, np.array(self.plane1.GetNormal()))
             dist2 = np.dot(points - origin2, np.array(self.plane2.GetNormal()))
-            select = set(np.where((dist1 * dist2) < 0)[0])
+            self.data.point_selection[i] = np.where((dist1 * dist2) < 0)[0]
 
-            self.data.point_selection[i] = select
-
-        self.data.highlight_selected_points(color=(0.8, 0.2, 0.2))
+        self.data.highlight_selected_points(color=None)
 
 
 THINNING_SETTINGS = {

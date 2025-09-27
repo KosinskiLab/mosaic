@@ -77,18 +77,32 @@ class DataContainer:
         self.data.append(new_geometry)
         return len(self.data) - 1
 
-    def remove(self, indices: Union[int, List[int]]):
-        """Remove geometries at specified indices.
+    def remove(
+        self,
+        items: Union[int, List[int], object, List[object], List[Union[int, object]]],
+    ):
+        """Remove geometries at specified indices or by geometry objects.
 
         Parameters
         ----------
-        indices : int or list of int
-            Indices of geometries to remove.
+        items : int, list of int, geometry object, list of geometry objects, or mixed list
+            Indices of geometries to remove, geometry objects to remove, or a mixed list.
         """
-        if isinstance(indices, int):
-            indices = [indices]
+        if not isinstance(items, list):
+            items = [items]
 
-        indices = [x for x in indices if self._index_ok(x)]
+        indices = []
+        for item in items:
+            if isinstance(item, int):
+                indices.append(item)
+            else:
+                try:
+                    index = self.data.index(item)
+                    indices.append(index)
+                except ValueError:
+                    continue
+
+        indices = list(set(x for x in indices if self._index_ok(x)))
 
         # Reverse order to avoid potential shift issue
         for index in sorted(indices, reverse=True):
