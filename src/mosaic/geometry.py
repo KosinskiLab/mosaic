@@ -675,15 +675,13 @@ class Geometry:
         lut.SetTableValue(1, *color, 1.0)
         lut.Build()
 
-        success = self._update_scalars_from_ids(
-            point_ids, lut, scalar_range=(0.0, 1.0), use_point=True
-        )
+        kw = {"color_lut": lut, "scalar_range": (0.0, 1.0), "use_point": True}
+
+        success = self._update_scalars_from_ids(point_ids, **kw)
         if not success:
             scalars = np.zeros(n_points, dtype=np.float32)
             scalars[point_ids] = 1.0
-            return self.set_scalars(
-                scalars, lut, scalar_range=(0.0, 1.0), use_point=True
-            )
+            return self.set_scalars(scalars, **kw)
 
     def subset(self, indices):
         """

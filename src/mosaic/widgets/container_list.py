@@ -120,15 +120,15 @@ class StyledListWidgetItem(QListWidgetItem):
         """
         super().__init__(text, parent)
 
+        self.original_color = self.foreground()
+        self.visible_color = QColor(99, 102, 241)
+        self.invisible_color = QColor(128, 128, 128)
+
         self.visible = visible
         self.metadata = metadata or {}
 
         # Deactivate metadata label rendering
         _ = self.metadata.pop("metadata_text", None)
-
-        self.visible_color = QColor(99, 102, 241)
-        self.invisible_color = QColor(128, 128, 128)
-
         if editable:
             self.setFlags(self.flags() | Qt.ItemFlag.ItemIsEditable)
 
@@ -155,11 +155,8 @@ class StyledListWidgetItem(QListWidgetItem):
         self.setIcon(icon)
 
     def set_visible(self, visible):
-        if visible != self.visible:
-            self._update_icon(visible)
-
-        if not visible:
-            self.setForeground(self.invisible_color)
+        self._update_icon(visible)
+        self.setForeground(self.original_color if visible else self.invisible_color)
 
 
 class MetadataItemDelegate(QStyledItemDelegate):

@@ -13,7 +13,6 @@ from os.path import splitext
 from typing import Tuple, List, Dict
 
 import vtk
-from functools import wraps
 from qtpy.QtGui import QAction
 from qtpy.QtWidgets import (
     QListWidget,
@@ -34,69 +33,6 @@ from .parallel import submit_task
 
 
 __all__ = ["DataContainerInteractor"]
-
-
-def on_run_complete(self, *args, **kwargs):
-    self.data_changed.emit()
-    self.render()
-
-
-def _cluster_modifier(
-    operation_name: str,
-    keep_selection: bool = False,
-    render: bool = True,
-    remove_original: bool = False,
-):
-    def decorator(func):
-        @wraps(func)
-        def func_wrapper(self, **kwargs):
-            from .operations import GeometryOperations
-
-            indices = self._get_selected_indices()
-            kwarg_indices = kwargs.pop("indices", ())
-            if not isinstance(kwarg_indices, (Tuple, List)):
-                kwarg_indices = [kwarg_indices]
-
-            indices = (*indices, *kwarg_indices)
-            for index in indices:
-                geometry = self.container.get(index)
-                if geometry is None:
-                    continue
-
-                func = getattr(GeometryOperations, operation_name)
-
-                geometry = func(geometry, **kwargs)
-
-                if geometry is None:
-                    continue
-                elif isinstance(geometry, (List, Tuple)):
-                    _ = [self.add(x) for x in geometry]
-                else:
-                    self.add(geometry)
-
-            if remove_original:
-                self.container.remove(indices)
-
-            self.data_changed.emit()
-            if render:
-                self.render()
-
-            if not keep_selection:
-                return None
-
-            selection = QItemSelection()
-            for index in indices:
-                index = self.data_list.model().index(index, 0)
-                selection.select(index, index)
-
-            selection_model_flag = QItemSelectionModel.SelectionFlag
-            self.data_list.selectionModel().select(
-                selection, selection_model_flag.Clear | selection_model_flag.Select
-            )
-
-        return func_wrapper
-
-    return decorator
 
 
 class DataContainerInteractor(QObject):
@@ -700,6 +636,21 @@ class DataContainerInteractor(QObject):
         return self.render_update.emit()
 
     def render_vtk(self):
+        # TODO: Render needs an update to not require container and data_list
+        # to be constantly synced. Then this can be moved into render
+        try:
+            self.data_list.list_widget.blockSignals(True)
+            for i in range(self.data_list.count()):
+                if (geometry := self.container.get(i)) is None:
+                    continue
+                item = self.data_list.item(i)
+                item.set_visible(geometry.visible)
+        except Exception as e:
+            print(e)
+            pass
+        finally:
+            self.data_list.list_widget.blockSignals(False)
+
         self.vtk_pre_render.emit()
         return self.vtk_widget.GetRenderWindow().Render()
 
@@ -855,18 +806,24 @@ _GEOMETRY_OPERATIONS = {
     "downsample": {"remove_original": False, "background": True},
     "remove_outliers": {"remove_original": False},
     "compute_normals": {"remove_original": True, "background": True},
-    "cluster": {"remove_original": True, "render": False, "background": True},
+    "cluster": {"remove_original": True, "background": True},
     "duplicate": {"remove_original": False},
-    "visibility": {"remove_original": False},
+    "visibility": {
+        "remove_original": False,
+        "render": "vtk",
+        "background": False,
+        "batch": True,
+    },
 }
 
 for op_name, config in _GEOMETRY_OPERATIONS.items():
     method_name = config.get("method_name", op_name)
     remove_orig = config.get("remove_original", False)
-    render = config.get("render", True)
+    render = config.get("render", "full")
     background = config.get("background", False)
+    batch = config.get("batch", False)
 
-    def create_method(op_name, remove_orig, render_flag, bg_task):
+    def create_method(op_name, remove_orig, render_flag, bg_task, batch_flag):
         def method(self, **kwargs):
             f"""Apply {op_name} operation to selected geometries in background."""
             from .operations import GeometryOperations
@@ -874,6 +831,12 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
             selected_indices = kwargs.get("geometry_indices")
             if selected_indices is None:
                 selected_indices = self._get_selected_indices()
+
+            def _render_callback(*args, **kwargs):
+                if render_flag == "full":
+                    self.render()
+                elif render_flag == "vtk":
+                    self.render_vtk()
 
             for index in selected_indices:
                 if (geometry := self.get_geometry(index)) is None:
@@ -890,9 +853,8 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
                     if remove_orig:
                         self.container.remove(geometry)
 
-                    self.data_changed.emit()
-                    if render:
-                        self.render()
+                    if not batch_flag:
+                        _render_callback()
 
                 func = getattr(GeometryOperations, op_name)
 
@@ -901,6 +863,9 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
                     continue
                 _callback(func(geometry, **kwargs))
 
+            if batch_flag:
+                _render_callback()
+
         method.__name__ = method_name
         method.__doc__ = f"Apply {op_name} operation using GeometryOperations."
         return method
@@ -908,5 +873,5 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
     setattr(
         DataContainerInteractor,
         method_name,
-        create_method(op_name, remove_orig, render, background),
+        create_method(op_name, remove_orig, render, background, batch),
     )
