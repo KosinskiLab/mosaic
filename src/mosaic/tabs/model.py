@@ -40,7 +40,7 @@ def _remesh(method, geometry, **kwargs):
         func = mesh.subdivide_midpoint
         if kwargs.get("smooth"):
             func = mesh.subdivide_loop
-        kwargs = {k: v for k, v in kwargs.items() if v != "smooth"}
+        kwargs = {k: v for k, v in kwargs.items() if k != "smooth"}
         mesh = func(**kwargs)
     else:
         method = kwargs.get("decimation_method", "Triangle Count").lower()
@@ -564,6 +564,15 @@ REPAIR_SETTINGS = {
             "description": "Also optimize n-ring vertices for ill-defined boundaries.",
         },
         {
+            "label": "Flexibility",
+            "parameter": "anchoring",
+            "type": "float",
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "description": "Flexibility of inferred vertices. 1 is maximum.",
+        },
+        {
             "label": "Hole Size",
             "parameter": "max_hole_size",
             "type": "float",
@@ -682,16 +691,7 @@ MESH_SETTINGS = {
             ],
             "default": "Alpha Shape",
         },
-        *REPAIR_SETTINGS["settings"][:4],
-        {
-            "label": "Neighbors",
-            "parameter": "k_neighbors",
-            "type": "number",
-            "min": 1,
-            "default": 15,
-            "description": "Number of neighbors for normal estimations.",
-            "notes": "Consider decreasing this value for small point clouds.",
-        },
+        *REPAIR_SETTINGS["settings"][:5],
     ],
     "method_settings": {
         "Alpha Shape": [
@@ -745,6 +745,15 @@ MESH_SETTINGS = {
                 "description": "Pre-smoothing steps before fairing.",
                 "notes": "Improves repair but less impactful for topolgoy than weights.",
             },
+            {
+                "label": "Neighbors",
+                "parameter": "k_neighbors",
+                "type": "number",
+                "min": 1,
+                "default": 15,
+                "description": "Number of neighbors for normal estimations.",
+                "notes": "Consider decreasing this value for small point clouds.",
+            },
         ],
         "Cluster Ball Pivoting": [
             {
@@ -781,6 +790,15 @@ MESH_SETTINGS = {
                 "default": -1.0,
                 "description": "Drop vertices distant from input sample points.",
                 "notes": "This is post-normalization by the sampling rate.",
+            },
+            {
+                "label": "Neighbors",
+                "parameter": "k_neighbors",
+                "type": "number",
+                "min": 1,
+                "default": 15,
+                "description": "Number of neighbors for normal estimations.",
+                "notes": "Consider decreasing this value for small point clouds.",
             },
         ],
         "Poisson": [
@@ -832,6 +850,15 @@ MESH_SETTINGS = {
                 "default": -1.0,
                 "description": "Drop vertices distant from input sample points.",
                 "notes": "This is post-normalization by the sampling rate.",
+            },
+            {
+                "label": "Neighbors",
+                "parameter": "k_neighbors",
+                "type": "number",
+                "min": 1,
+                "default": 15,
+                "description": "Number of neighbors for normal estimations.",
+                "notes": "Consider decreasing this value for small point clouds.",
             },
         ],
     },

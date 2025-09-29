@@ -835,6 +835,8 @@ class TriangularMesh(Parametrization):
         elastic_weight: float = 1.0,
         curvature_weight: float = 0.0,
         volume_weight: float = 0.0,
+        anchoring: float = 1.0,
+        boundary_ring: int = 0,
         n_smoothing: int = 5,
         k_neighbors=50,
         **kwargs,
@@ -888,6 +890,8 @@ class TriangularMesh(Parametrization):
             alpha=elastic_weight,
             beta=curvature_weight,
             gamma=volume_weight,
+            anchoring=anchoring,
+            n_ring=boundary_ring,
         )
         mesh = to_open3d(new_vs, new_fs)
         mesh = mesh.remove_degenerate_triangles()
@@ -1336,8 +1340,8 @@ class ConvexHull(TriangularMesh):
         elastic_weight: float = 0,
         curvature_weight: float = 0,
         volume_weight: float = 0,
+        anchoring: float = 1.0,
         boundary_ring: int = 0,
-        k_neighbors=50,
         resampling_factor: float = 12.0,
         distance_cutoff: float = 2.0,
         **kwargs,
@@ -1393,7 +1397,6 @@ class ConvexHull(TriangularMesh):
         if len(vids) == 0:
             return cls(mesh=to_open3d(vs, fs))
 
-        vids = np.asarray(list(get_ring_vertices(vs, fs, vids, boundary_ring)))
         out_vs = fair_mesh(
             vs,
             fs,
@@ -1401,6 +1404,8 @@ class ConvexHull(TriangularMesh):
             alpha=elastic_weight,
             beta=curvature_weight,
             gamma=volume_weight,
+            anchoring=anchoring,
+            n_ring=boundary_ring,
         )
         return cls(mesh=to_open3d(out_vs, fs))
 

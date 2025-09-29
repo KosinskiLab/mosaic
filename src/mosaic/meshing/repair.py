@@ -249,11 +249,62 @@ def harmonic_deformation(vs, fs, vids, k=2):
     return np.ascontiguousarray(out_vs)
 
 
+def _fair_mesh(
+    vs: np.ndarray,
+    fs: np.ndarray,
+    vids: np.ndarray,
+    alpha=0.0,
+    anchoring=1.0,
+    beta=0.0,
+    gamma=0.0,
+):
+    """
+    Minimizes vertex displacement and polyharmonic energy of a mesh at vids.
+
+    Parameters
+    ----------
+    vs : ndarray, shape (N, 3)
+        Vertex coordinates.
+    fs : ndarray, shape (M, 3)
+        Face indices.
+    vids: ndarray (k)
+        Vertices to optimize
+    alpha : float, optional
+        k2 polyharmonic (smoothing) weighting factor. Default 0.0.
+    anchoring : float, optional
+        Position anchoring strength. 0.0 = strong anchoring, 1.0 = no anchoring. Default 1.0.
+    beta : float, optional
+        k3 polyharmonic weighting factor. Default 0.0.
+    gamma : float, optional
+        Internal mesh pressure. Default 0.0.
+    """
+    L, M = _robust_laplacian(vs, fs)
+    Q2 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)
+    Q4 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 3)
+
+    s = _create_weights(len(vs), vids, alpha)
+    a = _create_weights(len(vs), vids, anchoring)
+    b = _create_weights(len(vs), vids, beta)
+
+    displacement = M - a * M
+    Q = s * Q2 + b * Q4 + displacement
+    B = displacement @ vs
+
+    if gamma != 0:
+        B += gamma * igl.per_vertex_normals(vs, fs)
+
+    out_vs = np.ascontiguousarray(igl.spsolve(Q, B))
+    if np.any(np.isnan(out_vs)):
+        out_vs = vs
+    return out_vs
+
+
 def fair_mesh(
     vs: np.ndarray,
     fs: np.ndarray,
     vids: np.ndarray,
-    alpha=1,
+    alpha=0.0,
+    anchoring=1.0,
     beta=0.0,
     gamma=0.0,
     n_ring=0,
@@ -270,48 +321,39 @@ def fair_mesh(
     vids: ndarray (k)
         Vertices to optimize
     alpha : float, optional
-        k2 polyharmonic weighting factor.
+        k2 polyharmonic (smoothing) weighting factor. Default 0.0.
+    anchoring : float, optional
+        Position anchoring strength. 0.0 = strong anchoring, 1.0 = no anchoring. Default 1.0.
     beta : float, optional
-        k3 polyharmonic weighting factor.
+        k3 polyharmonic weighting factor. Default 0.0.
     gamma : float, optional
-        Internal mesh pressure.
+        Internal mesh pressure. Default 0.0.
     n_ring : int, optional
-        n_ring vertices around vids to consider for fairing.
+        n_ring vertices around vids to consider for fairing. Default 0.
     """
+    vs_center = np.mean(vs, axis=0)
+    vs = vs - vs_center
+
+    vs_scale = np.std(vs)
+    vs_scale = np.where(np.abs(vs_scale) <= 1e-6, 1, vs_scale)
+    vs = vs / vs_scale
+
     vids = np.asarray(vids)
     if n_ring > 0:
         vids = np.asarray(list(get_ring_vertices(vs, fs, vids, n=n_ring)))
 
-    L, M = _robust_laplacian(vs, fs)
-    Q2 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)
-    Q4 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 3)
-
-    a = _create_weights(len(vs), vids, alpha)
-    b = _create_weights(len(vs), vids, beta)
-
-    # Alpha is coupled to displacement to avoid mesh shrinkage
-    displacement = M - a * M
-    Q = a * Q2 + b * Q4 + displacement
-    B = displacement @ vs
-    out_vs = np.ascontiguousarray(igl.spsolve(Q, B))
-
-    if np.any(np.isnan(out_vs)):
-        return vs
-
-    if gamma == 0:
-        return out_vs
-
-    L, M = _robust_laplacian(out_vs, fs)
-    Q2 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)
-    Q4 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 3)
-
-    normals = igl.per_vertex_normals(vs, fs)
-
-    displacement = M - a * M
-    B = displacement @ vs + gamma * normals
-    Q = a * Q2 + b * Q4 + displacement
-
-    return np.ascontiguousarray(igl.spsolve(Q, B))
+    kwargs = {
+        "fs": fs,
+        "vids": vids,
+        "alpha": alpha,
+        "beta": beta,
+        "anchoring": anchoring,
+    }
+    out_vs = _fair_mesh(vs, **kwargs)
+    if gamma != 0:
+        # Two step produced more stable results
+        out_vs = _fair_mesh(out_vs, gamma=gamma, **kwargs)
+    return out_vs * vs_scale + vs_center
 
 
 def _robust_laplacian(
@@ -482,6 +524,7 @@ def triangulate_refine_fair(
     beta=0.0,
     gamma=0,
     n_ring: int = 0,
+    anchoring: float = 1.0,
 ):
     """
     Fill and fair holes in triangular meshes.
@@ -524,5 +567,14 @@ def triangulate_refine_fair(
     vids = np.arange(nv, len(vs))
 
     # Fair selected parts of the mesh
-    vs = fair_mesh(vs, fs, vids, alpha=alpha, beta=beta, gamma=gamma, n_ring=n_ring)
+    vs = fair_mesh(
+        vs,
+        fs,
+        vids,
+        alpha=alpha,
+        beta=beta,
+        gamma=gamma,
+        n_ring=n_ring,
+        anchoring=anchoring,
+    )
     return vs, fs
