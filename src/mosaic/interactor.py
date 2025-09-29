@@ -860,9 +860,9 @@ _GEOMETRY_OPERATIONS = {
     "visibility": {"remove_original": False},
 }
 
-for operation_name, config in _GEOMETRY_OPERATIONS.items():
-    method_name = config.get("method_name", operation_name)
-    remove_original = config.get("remove_original", False)
+for op_name, config in _GEOMETRY_OPERATIONS.items():
+    method_name = config.get("method_name", op_name)
+    remove_orig = config.get("remove_original", False)
     render = config.get("render", True)
     background = config.get("background", False)
 
@@ -871,7 +871,10 @@ for operation_name, config in _GEOMETRY_OPERATIONS.items():
             f"""Apply {op_name} operation to selected geometries in background."""
             from .operations import GeometryOperations
 
-            selected_indices = self._get_selected_indices()
+            selected_indices = kwargs.get("geometry_indices")
+            if selected_indices is None:
+                selected_indices = self._get_selected_indices()
+
             for index in selected_indices:
                 if (geometry := self.get_geometry(index)) is None:
                     continue
@@ -905,5 +908,5 @@ for operation_name, config in _GEOMETRY_OPERATIONS.items():
     setattr(
         DataContainerInteractor,
         method_name,
-        create_method(operation_name, remove_original, render, background),
+        create_method(op_name, remove_orig, render, background),
     )

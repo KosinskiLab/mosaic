@@ -143,6 +143,19 @@ class MosaicData(QObject):
         obj = self._get_active_container()
         return obj.highlight_clusters_from_selected_points()
 
+    def visibility_unselected(self, visible: bool = True):
+        """Hide clusters and models that are not selected."""
+        cluster = list(self.data.point_selection.keys())
+        cluster.extend(self.data._get_selected_indices())
+        cluster = set(cluster)
+
+        unselected = set(range(self.data.data_list.count())) - cluster
+        self.data.visibility(geometry_indices=list(unselected), visible=visible)
+
+        models = set(self.models._get_selected_indices())
+        unselected = set(range(self.models.data_list.count())) - models
+        self.models.visibility(geometry_indices=list(unselected), visible=visible)
+
     def activate_picking_mode(self):
         obj = self._get_active_container()
         return obj.activate_picking_mode()

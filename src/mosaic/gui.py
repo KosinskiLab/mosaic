@@ -263,6 +263,10 @@ class App(QMainWindow):
             self.cdata.data.merge()
         elif key == "e":
             self.cdata.highlight_clusters_from_selected_points()
+        elif key == "h":
+            self.cdata.visibility_unselected(visible=False)
+        elif key == "H":
+            self.cdata.visibility_unselected(visible=True)
         elif key == "s":
             self._transition_modes(ViewerModes.VIEWING)
             self.cdata.swap_area_picker()
@@ -779,6 +783,12 @@ class App(QMainWindow):
         expand_selection_action = QAction("Expand Selection\te", self)
         expand_selection_action.triggered.connect(lambda: self.simulate_key_press("e"))
 
+        hide_unselected_action = QAction("Hide Unselected\th", self)
+        hide_unselected_action.triggered.connect(lambda: self.simulate_key_press("h"))
+
+        show_unselected_action = QAction("Show Unselected\tShift+H", self)
+        show_unselected_action.triggered.connect(lambda: self.simulate_key_press("H"))
+
         picking_action = QAction("Pick Objects\tShift+E", self)
         picking_action.triggered.connect(lambda: self.simulate_key_press("E"))
 
@@ -832,6 +842,10 @@ class App(QMainWindow):
         interact_menu.addAction(merge_action)
         interact_menu.addAction(remove_action)
         interact_menu.addAction(expand_selection_action)
+        interact_menu.addSeparator()
+
+        interact_menu.addAction(hide_unselected_action)
+        interact_menu.addAction(show_unselected_action)
         interact_menu.addSeparator()
 
         interact_menu.addAction(drawing_action)
