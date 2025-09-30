@@ -64,6 +64,35 @@ def _wrap_warnings(func, *args, **kwargs):
             raise e
 
 
+class BatchContext:
+    def __init__(self, render_callback, delay: 500):
+        self.manager = BackgroundTaskManager.instance()
+        self.render_callback = render_callback
+        self.task_ids = []
+
+        self._delay = 500
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        QTimer.singleShot(self._delay, self._check_completion)
+
+    def _check_completion(self):
+        # Check if all tasks done
+        all_done = all(task_id not in self.manager.futures for task_id in self.task_ids)
+
+        if all_done:
+            self.render_callback()
+        else:
+            QTimer.singleShot(self._delay, self._check_completion)
+
+    def submit_task(self, name, func, callback, *args, **kwargs):
+        task_id = self.manager.submit_task(name, func, callback, *args, **kwargs)
+        self.task_ids.append(task_id)
+        return task_id
+
+
 class BackgroundTaskManager(QObject):
     task_started = Signal(str, str)  # task_id, task_name
     task_completed = Signal(str, str, object)  # task_id, task_name, result

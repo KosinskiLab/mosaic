@@ -88,19 +88,19 @@ class DataContainer:
         items : int, list of int, geometry object, list of geometry objects, or mixed list
             Indices of geometries to remove, geometry objects to remove, or a mixed list.
         """
-        if not isinstance(items, list):
+        from .geometry import Geometry
+
+        if not isinstance(items, (list, tuple)):
             items = [items]
 
         indices = []
         for item in items:
-            if isinstance(item, int):
-                indices.append(item)
-            else:
+            if isinstance(item, Geometry):
                 try:
-                    index = self.data.index(item)
-                    indices.append(index)
+                    item = self.data.index(item)
                 except ValueError:
                     continue
+            indices.append(item)
 
         indices = list(set(x for x in indices if self._index_ok(x)))
 

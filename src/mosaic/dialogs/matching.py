@@ -615,7 +615,7 @@ class TemplateMatchingDialog(QDialog):
             )
 
         if matching["ctf_file"]:
-            args.append(f"--ctf-file {matching['ctf-file']}")
+            args.append(f"--ctf-file {matching['ctf_file']}")
         if matching["lowpass"]:
             args.append(f"--lowpass {matching['lowpass']}")
         if matching["highpass"]:
@@ -698,7 +698,6 @@ class TemplateMatchingDialog(QDialog):
             if [ "{preprocess['skip_preprocessing']}" = "True" ]; then
                 echo "Skip preprocessing - using existing template"
             else
-                # Step 1: Preprocess template
                 echo "Preprocessing template..."
                 bash create_template.sh
                 echo "Template preprocessing done."
