@@ -158,12 +158,11 @@ def setup_hmff(
             highpass=highpass_cutoff,
             sampling_rate=np.max(sampling),
             use_gaussian=True,
-            return_real_fourier=True,
         )
         template_ft = np.fft.rfftn(data.data, s=data.shape)
 
-        mask = bpf(shape=data.shape)["data"]
-        np.multiply(template_ft, mask, out=template_ft)
+        mask = bpf(shape=data.shape, return_real_fourier=True)["data"]
+        template_ft = np.multiply(template_ft, mask, out=template_ft)
         data = np.fft.irfftn(template_ft, s=data.shape).real
 
         axis_map = {"x": 0, "y": 1, "z": 2}
