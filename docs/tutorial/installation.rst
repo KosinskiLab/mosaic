@@ -96,6 +96,7 @@ If you intend to use Mosaic for dynamically triangulated surface (DTS) simulatio
 .. code-block:: bash
 
    git clone --recurse-submodules https://github.com/bio-phys/trimem.git
+   export CMAKE_POLICY_VERSION_MINIMUM=3.5
    pip install trimem/
 
 On MacOS, libomp needs to be installed separately to install trimem
@@ -110,13 +111,7 @@ On MacOS, libomp needs to be installed separately to install trimem
    export CFLAGS="-Xpreprocessor -fopenmp -I$LIBOMP_PATH/include"
    export LDFLAGS="-L$LIBOMP_PATH/lib -Wl,-rpath,$LIBOMP_PATH/lib -lomp"
    export CMAKE_ARGS="-DCMAKE_C_COMPILER=$(which clang) -DCMAKE_CXX_COMPILER=$(which clang++)"
-   pip install ./trimem/
-
-In some cases, the CMAKE version policy needs to be set explicitly
-
-.. code-block:: bash
-
-   export CMAKE_POLICY_VERSION_MINIMUM=3.5
+   pip install trimem/
 
 You can smoke test your installation using
 

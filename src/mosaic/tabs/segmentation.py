@@ -171,15 +171,43 @@ class SegmentationTab(QWidget):
     def _show_histogram(self):
         from ..dialogs import HistogramDialog
 
-        dialog = HistogramDialog(parent=self)
-        dialog.update_histogram(self.cdata._data.get_cluster_size())
-        dialog.histogram_widget.cutoff_changed.connect(
-            self.cdata.data._on_cutoff_changed
-        )
-        return dialog.show()
+        def _exit():
+            if self.histogram_dock:
+                self.histogram_dock.close()
+            self.histogram_dock = None
 
-    def _update_histogram(self):
-        self.histogram_widget.update_histogram(self.cdata._data.get_cluster_size())
+        # Close dialog if it already exists
+        if getattr(self, "histogram_dock", None) is not None:
+            return _exit()
+
+        dialog = HistogramDialog(self.cdata, parent=self)
+
+        self.histogram_dock = QDockWidget(self)
+        self.histogram_dock.setFeatures(
+            QDockWidget.DockWidgetClosable
+            | QDockWidget.DockWidgetFloatable
+            | QDockWidget.DockWidgetMovable
+        )
+
+        self.histogram_dock.setWidget(dialog)
+        main_window = None
+        for widget in QApplication.instance().topLevelWidgets():
+            if isinstance(widget, QMainWindow):
+                main_window = widget
+                break
+
+        if main_window is None:
+            QMessageBox.warning(
+                self, "Warning", "Could not determine application main window."
+            )
+            return dialog.show()
+        main_window.addDockWidget(Qt.RightDockWidgetArea, self.histogram_dock)
+
+        dialog.accepted.connect(_exit)
+        dialog.rejected.connect(_exit)
+
+        self.histogram_dock.show()
+        self.histogram_dock.raise_()
 
     def _show_distance_dialog(self):
         from ..dialogs import DistanceAnalysisDialog

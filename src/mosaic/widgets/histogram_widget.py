@@ -20,6 +20,7 @@ from qtpy.QtWidgets import (
     QSpinBox,
     QSizePolicy,
     QComboBox,
+    QGridLayout,
 )
 
 from ..stylesheets import QSlider_style
@@ -145,7 +146,6 @@ class HistogramWidget(QWidget):
         self.bin_count = 20
 
         self.setup_ui()
-        self.resize(800, 400)
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -197,75 +197,53 @@ class HistogramWidget(QWidget):
 
     def _create_controls(self):
         """Create all control widgets and layouts"""
-        controls_layout = QHBoxLayout()
-        controls_layout.setSpacing(10)
+        controls_layout = QGridLayout()
+        controls_layout.setSpacing(8)
+        controls_layout.setContentsMargins(0, 0, 0, 0)
 
-        cutoff_layout = QHBoxLayout()
-        cutoff_layout.setSpacing(10)
         self.min_value_input = QLineEdit()
         self.max_value_input = QLineEdit()
+        self.transform_combo = QComboBox()
+        self.bin_count_spinner = QSpinBox()
 
-        # Configure both inputs
+        widget_width = 80
+        for widget in [self.min_value_input, self.max_value_input,
+                       self.transform_combo, self.bin_count_spinner]:
+            widget.setMinimumWidth(widget_width)
+
         validator = QDoubleValidator()
         validator.setLocale(QLocale.c())
-        for widget, label_text, callback in [
-            (
-                self.min_value_input,
-                "Min Value:",
-                lambda: self._handle_input_change(is_lower=True),
-            ),
-            (
-                self.max_value_input,
-                "Max Value:",
-                lambda: self._handle_input_change(is_lower=False),
-            ),
-        ]:
-            label = QLabel(label_text)
-            widget.setValidator(validator)
-            widget.setMinimumWidth(80)
-            widget.editingFinished.connect(callback)
+        self.min_value_input.setValidator(validator)
+        self.max_value_input.setValidator(validator)
 
-            cutoff_layout.addWidget(label)
-            cutoff_layout.addWidget(widget)
-
-        # Transform controls
-        transform_layout = QHBoxLayout()
-        transform_layout.setSpacing(6)
-
-        transform_label = QLabel("Transform:")
-        self.transform_combo = QComboBox()
         self.transform_combo.addItems(["Linear", "Log"])
-        self.transform_combo.setMinimumWidth(100)
         self.transform_combo.currentTextChanged.connect(self._draw_histogram)
 
-        transform_layout.addWidget(transform_label)
-        transform_layout.addWidget(self.transform_combo)
-
-        # Bin size controls
-        bin_layout = QHBoxLayout()
-        bin_layout.setSpacing(6)
-
-        bin_label = QLabel("Bins:")
-        self.bin_count_spinner = QSpinBox()
         self.bin_count_spinner.setRange(5, 100)
         self.bin_count_spinner.setValue(self.bin_count)
-        self.bin_count_spinner.setMinimumWidth(60)
         self.bin_count_spinner.valueChanged.connect(self._on_bin_count_changed)
 
-        bin_layout.addWidget(bin_label)
-        bin_layout.addWidget(self.bin_count_spinner)
+        self.min_value_input.editingFinished.connect(
+            lambda: self._handle_input_change(is_lower=True)
+        )
+        self.max_value_input.editingFinished.connect(
+            lambda: self._handle_input_change(is_lower=False)
+        )
 
-        controls_layout.addLayout(cutoff_layout)
-        controls_layout.addStretch(1)
-        controls_layout.addLayout(transform_layout)
-        controls_layout.addStretch(1)
-        controls_layout.addLayout(bin_layout)
+        controls_layout.addWidget(QLabel("Transform:"), 0, 0, Qt.AlignmentFlag.AlignRight)
+        controls_layout.addWidget(self.transform_combo, 0, 1)
+        controls_layout.addWidget(QLabel("Bins:"), 0, 3, Qt.AlignmentFlag.AlignRight)
+        controls_layout.addWidget(self.bin_count_spinner, 0, 4)
+
+        controls_layout.addWidget(QLabel("Min Value:"), 1, 0, Qt.AlignmentFlag.AlignRight)
+        controls_layout.addWidget(self.min_value_input, 1, 1)
+        controls_layout.addWidget(QLabel("Max Value:"), 1, 3, Qt.AlignmentFlag.AlignRight)
+        controls_layout.addWidget(self.max_value_input, 1, 4)
 
         return controls_layout
 
     def update_histogram(self, data):
         """Update the histogram with new data"""
-        data = np.asarray(data)
         self.data = np.asarray(data)
 
         if self.data.size == 0:
@@ -290,11 +268,7 @@ class HistogramWidget(QWidget):
 
         self.min_value = data.min() - 1
         self.max_value = data.max() + 1
-
-        self.min_value_input.setText(str(self.min_value))
-        self.max_value_input.setText(str(self.max_value))
-
-        self._update_cutoff_positions(self.min_value, self.max_value)
+        self._update_cutoff_values(self.min_value, None)
 
         y, x = np.histogram(data, bins=self.bin_count)
         bar_graph = pg.BarGraphItem(
@@ -323,13 +297,11 @@ class HistogramWidget(QWidget):
         if range_span <= 0:
             return None
 
-        _lower_value = min(lower_value, upper_value)
-        _upper_value = max(lower_value, upper_value)
-        _lower_value = max(self.min_value, _lower_value)
-        _upper_value = min(self.max_value, _upper_value)
+        lower_value = max(lower_value, self.min_value)
+        upper_value = min(max(upper_value, lower_value), self.max_value)
 
-        lower_percent = int(((_lower_value - self.min_value) / range_span) * 100)
-        upper_percent = int(((_upper_value - self.min_value) / range_span) * 100)
+        lower_percent = int(((lower_value - self.min_value) / range_span) * 100)
+        upper_percent = int(((upper_value - self.min_value) / range_span) * 100)
 
         block_elements = [
             self.lower_cutoff_line,
@@ -342,24 +314,20 @@ class HistogramWidget(QWidget):
         for element in block_elements:
             element.blockSignals(True)
 
-        self.lower_cutoff_line.setValue(_lower_value)
-        self.upper_cutoff_line.setValue(_upper_value)
+        self.lower_cutoff_line.setValue(lower_value)
+        self.upper_cutoff_line.setValue(upper_value)
 
         locale = QLocale.c()
-        self.min_value_input.setText(locale.toString(float(_lower_value), "d"))
-        self.max_value_input.setText(locale.toString(float(_upper_value), "d"))
+        self.min_value_input.setText(locale.toString(float(lower_value), "d"))
+        self.max_value_input.setText(locale.toString(float(upper_value), "d"))
         self.range_slider.setValues(lower_percent, upper_percent)
 
         for element in block_elements:
             element.blockSignals(False)
 
         self.cutoff_changed.emit(
-            self._invert_scaling(_lower_value), self._invert_scaling(_upper_value)
+            self._invert_scaling(lower_value), self._invert_scaling(upper_value)
         )
-
-    def _update_cutoff_positions(self, lower_value, upper_value):
-        """Update the positions of both cutoff lines."""
-        self._update_cutoff_values(lower_value, upper_value)
 
     def _on_slider_range_changed(self, lower_percent, upper_percent):
         """Handle range slider value changes."""

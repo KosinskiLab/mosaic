@@ -269,22 +269,6 @@ class DataContainerInteractor(QObject):
         self.container.highlight(selected_indices)
         self.render_vtk()
 
-    def _on_cutoff_changed(self, lower_cutoff, upper_cutoff=None):
-        cluster_sizes = self.container.get_cluster_size()
-        selection = QItemSelection()
-
-        if upper_cutoff is None:
-            upper_cutoff = max(cluster_sizes) + 1
-
-        for i in range(len(self.container)):
-            if (cluster_sizes[i] > lower_cutoff) & (cluster_sizes[i] < upper_cutoff):
-                index = self.data_list.model().index(i, 0)
-                selection.select(index, index)
-
-        self.data_list.selectionModel().select(
-            selection, QItemSelectionModel.SelectionFlag.ClearAndSelect
-        )
-
     def _on_area_pick(self, obj, event):
         frustum = obj.GetFrustum()
         extractor = vtk.vtkExtractSelectedFrustum()
@@ -740,6 +724,7 @@ class DataContainerInteractor(QObject):
         self._geometry_backup = None
         self._point_backup = None
         self._merge_index = None
+        self.data_changed.emit()
         self.render()
 
     def merge(self):

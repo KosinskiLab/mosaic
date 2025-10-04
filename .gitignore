@@ -65,3 +65,7 @@ Images
 .gitconfig
 .pickle
 Dockerfile
+
+tests
+Makefile
+pytest.ini
