@@ -183,53 +183,40 @@ class DataContainerInteractor(QObject):
         int
             Index of new cloud, -1 if creation failed.
         """
-        new_cluster, remove_cluster, sampling = [], [], 1
+        from .geometry import Geometry
+
+        new_cluster, remove_cluster = [], []
         for index, point_ids in selected_point_ids.items():
-            if not len(point_ids):
+            if (geometry := self.get_geometry(index)) is None:
                 continue
 
-            geometry = self.container.get(index)
-            if geometry is None:
-                return None
-
-            if not geometry.visible:
+            n_points = geometry.points.shape[0]
+            if not geometry.visible or n_points == 0 or point_ids.size == 0:
                 continue
 
-            if geometry.points.shape[0] == 0:
-                continue
+            new_cluster.append(geometry[point_ids])
 
-            sampling = geometry.sampling_rate
-            mask = np.zeros(len(geometry.points), dtype=bool)
-            try:
-                mask[point_ids] = True
-            except Exception as e:
-                print(e)
-                return -1
-
-            new_cluster.append((geometry.points[mask], geometry.normals[mask]))
-            inverse_mask = np.invert(mask)
-            if inverse_mask.sum() != 0:
-                geometry.subset(inverse_mask)
+            inverse = np.setdiff1d(np.arange(n_points), point_ids)
+            if inverse.size != 0:
+                self.container.data[index] = geometry[inverse]
             else:
+                # All points were selected, mark for removal
                 remove_cluster.append(index)
 
         self.container.remove(remove_cluster)
 
         if len(new_cluster):
-            points = np.concatenate([x[0] for x in new_cluster])
-            normals = np.concatenate([x[1] for x in new_cluster])
-            return self.add(points, normals=normals, sampling_rate=sampling)
+            return self.add(Geometry.merge(new_cluster))
         return -1
 
     def _add_point(self, point):
-        geometry = self.container.get(self._active_cluster)
-        if geometry is None:
+        if (geometry := self.get_geometry(self._active_cluster)) is None:
             return -1
 
+        # We call swap data to automatically handle other Geometry attributes
         geometry.swap_data(np.concatenate((geometry.points, np.asarray(point)[None])))
         self.data_changed.emit()
-        self.render()
-        return 0
+        return self.render()
 
     def activate_viewing_mode(self):
         self._interaction_mode = None
@@ -265,8 +252,7 @@ class DataContainerInteractor(QObject):
         self._on_cluster_selection_changed()
 
     def _on_cluster_selection_changed(self):
-        selected_indices = set(self._get_selected_indices())
-        self.container.highlight(selected_indices)
+        self.container.highlight(self._get_selected_indices())
         self.render_vtk()
 
     def _on_area_pick(self, obj, event):
@@ -283,8 +269,7 @@ class DataContainerInteractor(QObject):
             extractor.Update()
 
             output = extractor.GetOutput()
-            n_selected = output.GetNumberOfPoints()
-            if n_selected == 0:
+            if output.GetNumberOfPoints() == 0:
                 continue
 
             selected_ids = output.GetPointData().GetArray("vtkOriginalPointIds")
@@ -565,8 +550,7 @@ class DataContainerInteractor(QObject):
         added_cluster = self.add_selection(self.point_selection)
         if added_cluster == -1:
             return -1
-
-        self.deselect_points()
+        self.point_selection.clear()
         self.container.remove(added_cluster)
 
     def cluster_points(self):
@@ -638,15 +622,11 @@ class DataContainerInteractor(QObject):
         self.vtk_pre_render.emit()
         return self.vtk_widget.GetRenderWindow().Render()
 
-    def deselect(self):
-        self.data_list.clearSelection()
-        self.deselect_points()
-
     def deselect_points(self):
         for cluster_index, point_ids in self.point_selection.items():
-            if not self.container._index_ok(cluster_index):
+            if (geometry := self.get_geometry(cluster_index)) is None:
                 continue
-            geometry = self.container.data[cluster_index]
+
             color = geometry._appearance.get("base_color", (0.7, 0.7, 0.7))
             self.container.highlight_points(cluster_index, point_ids, color)
 
@@ -672,19 +652,14 @@ class DataContainerInteractor(QObject):
             representation = "pointcloud"
 
         for index in indices:
-            geometry = self.container.get(index)
-            if geometry is None:
+            if (geometry := self.get_geometry(index)) is None:
                 continue
 
             # BUG: Moving from pointcloud_normals to a different representation and
             # back breaks glyph rendering. This could be due to incorrect cleanup in
             # Geometry.change_representation or an issue of vtk 9.3.1. Creating a copy
             # of the Geometry instance circumvents the issue.
-            if representation in (
-                "normals",
-                "basis",
-                "gaussian_density",
-            ):
+            if representation in ("normals", "basis", "gaussian_density"):
                 self.container.data[index] = geometry[...]
                 geometry = self.container.data[index]
 
@@ -696,10 +671,10 @@ class DataContainerInteractor(QObject):
         self._merge_index = None
         try:
             self._geometry_backup = {
-                i: self.container.get(i)[...] for i in self._get_selected_indices()
+                i: self.get_geometry(i)[...] for i in self._get_selected_indices()
             }
             self._point_backup = {
-                i: self.container.get(i)[ix] for i, ix in self.point_selection.items()
+                i: self.get_geometry(i)[ix] for i, ix in self.point_selection.items()
             }
         except Exception:
             self._geometry_backup = None
@@ -784,6 +759,11 @@ class DataContainerInteractor(QObject):
                 continue
             self.add(geometry)
         self.data_changed.emit()
+
+    def deselect(self):
+        """Deselect on right-click"""
+        self.data_list.clearSelection()
+        self.deselect_points()
 
 
 _GEOMETRY_OPERATIONS = {

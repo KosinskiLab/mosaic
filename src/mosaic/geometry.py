@@ -314,9 +314,6 @@ class Geometry:
             warnings.warn("Only 3D point clouds are supported.")
             return -1
 
-        if self.points.shape[0] != 0:
-            points = np.concatenate((self.points, points))
-
         vertex_cells = vtk.vtkCellArray()
         idx = np.arange(points.shape[0], dtype=int)
         cells = np.column_stack((np.ones(idx.size, dtype=int), idx)).flatten()
@@ -682,34 +679,6 @@ class Geometry:
             scalars = np.zeros(n_points, dtype=np.float32)
             scalars[point_ids] = 1.0
             return self.set_scalars(scalars, **kw)
-
-    def subset(self, indices):
-        """
-        Create a subset geometry from specified indices.
-
-        Parameters
-        ----------
-        indices : array-like
-            Indices of points to include in subset.
-
-        Returns
-        -------
-        Geometry
-            New geometry with swapped data from subset.
-        """
-        subset = self[indices]
-
-        _quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
-        if _quaternions is not None:
-            _quaternions = subset.quaternions
-
-        kwargs = {
-            "points": subset.points,
-            "normals": subset.normals,
-            "quaternions": _quaternions,
-        }
-
-        return self.swap_data(**kwargs)
 
     def swap_data(
         self, points, normals=None, faces=None, quaternions=None, meta: Dict = None

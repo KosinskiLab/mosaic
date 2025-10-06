@@ -207,8 +207,12 @@ class HistogramWidget(QWidget):
         self.bin_count_spinner = QSpinBox()
 
         widget_width = 80
-        for widget in [self.min_value_input, self.max_value_input,
-                       self.transform_combo, self.bin_count_spinner]:
+        for widget in [
+            self.min_value_input,
+            self.max_value_input,
+            self.transform_combo,
+            self.bin_count_spinner,
+        ]:
             widget.setMinimumWidth(widget_width)
 
         validator = QDoubleValidator()
@@ -230,14 +234,20 @@ class HistogramWidget(QWidget):
             lambda: self._handle_input_change(is_lower=False)
         )
 
-        controls_layout.addWidget(QLabel("Transform:"), 0, 0, Qt.AlignmentFlag.AlignRight)
+        controls_layout.addWidget(
+            QLabel("Transform:"), 0, 0, Qt.AlignmentFlag.AlignRight
+        )
         controls_layout.addWidget(self.transform_combo, 0, 1)
         controls_layout.addWidget(QLabel("Bins:"), 0, 3, Qt.AlignmentFlag.AlignRight)
         controls_layout.addWidget(self.bin_count_spinner, 0, 4)
 
-        controls_layout.addWidget(QLabel("Min Value:"), 1, 0, Qt.AlignmentFlag.AlignRight)
+        controls_layout.addWidget(
+            QLabel("Min Value:"), 1, 0, Qt.AlignmentFlag.AlignRight
+        )
         controls_layout.addWidget(self.min_value_input, 1, 1)
-        controls_layout.addWidget(QLabel("Max Value:"), 1, 3, Qt.AlignmentFlag.AlignRight)
+        controls_layout.addWidget(
+            QLabel("Max Value:"), 1, 3, Qt.AlignmentFlag.AlignRight
+        )
         controls_layout.addWidget(self.max_value_input, 1, 4)
 
         return controls_layout
