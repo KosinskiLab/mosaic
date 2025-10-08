@@ -32,7 +32,6 @@ Visualization Control
 
    Geometry.set_color
    Geometry.set_visibility
-   Geometry.toggle_visibility
    Geometry.set_appearance
    Geometry.change_representation
 
@@ -42,7 +41,6 @@ Point Coloring
    :toctree: ../rst/
 
    Geometry.color_points
-   Geometry.set_point_colors
    Geometry.set_scalars
 
 Data Manipulation
@@ -51,7 +49,6 @@ Data Manipulation
    :toctree: ../rst/
 
    Geometry.swap_data
-   Geometry.subset
    Geometry.merge
 
 Utility Functions
@@ -61,7 +58,6 @@ Utility Functions
 
    Geometry.get_number_of_points
    Geometry.compute_distance
-   Geometry.create_actor
 
 
 VolumeGeometry

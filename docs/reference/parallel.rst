@@ -9,7 +9,6 @@ Task Management
 .. autosummary::
    :toctree: rst
    :nosignatures:
-   :inherited-members: QObject
 
    BackgroundTaskManager
 

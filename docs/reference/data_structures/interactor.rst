@@ -54,7 +54,6 @@ Cluster Management
    DataContainerInteractor.merge_cluster
    DataContainerInteractor.duplicate
    DataContainerInteractor.remove_cluster
-   DataContainerInteractor.split_cluster
 
 Visualization Control
 ~~~~~~~~~~~~~~~~~~~~~

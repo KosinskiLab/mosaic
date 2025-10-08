@@ -47,5 +47,4 @@ Volume Processing
 .. autosummary::
    :toctree: rst
 
-   mrc_to_pointcloud
    volume_to_pointcloud
