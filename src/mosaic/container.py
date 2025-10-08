@@ -194,8 +194,7 @@ class DataContainer:
             parameters.get("isovalue_percentile", 99) / 100
         )
         for index in indices:
-            geometry = self.get(index)
-            if geometry is None:
+            if (geometry := self.get(index)) is None:
                 continue
 
             if volume is not None:
@@ -219,7 +218,6 @@ class DataContainer:
 
             geometry.set_appearance(**parameters)
 
-        self.highlight(indices)
         return full_render
 
     def get_cluster_size(self) -> List[int]:

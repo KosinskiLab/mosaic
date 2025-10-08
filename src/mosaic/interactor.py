@@ -537,8 +537,10 @@ class DataContainerInteractor(QObject):
                 self.container.data[index]._sampling_rate = sampling_rate
 
             if full_render:
-                return self.render()
-            return self.render_vtk()
+                self.render()
+
+            # Make sure selection is maintained and invoke render_vtk afterwards
+            self.set_selection(indices)
 
         dialog.parametersChanged.connect(on_parameters_changed)
 

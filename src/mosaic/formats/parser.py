@@ -14,10 +14,8 @@ from typing import List, Dict, Any, Optional
 
 import numpy as np
 from scipy.spatial.transform import Rotation
-from tme import Density, Structure, Orientations
 
-from ._utils import _drop_prefix
-from ..meshing.utils import to_open3d
+from .. import meshing
 from ..utils import volume_to_points, compute_bounding_box, NORMAL_REFERENCE
 
 
@@ -315,6 +313,8 @@ def _read_orientations(filename: str):
     dict
         Dictionary containing vertices, normals, and quaternions.
     """
+    from tme import Orientations
+
     data = Orientations.from_file(filename)
 
     # Remap as active (push) rotation
@@ -325,10 +325,19 @@ def _read_orientations(filename: str):
 
     cluster = data.details.astype(int)
     indices = [np.where(cluster == x) for x in np.unique(cluster)]
+
+    try:
+        vertex_properties = [
+            VertexPropertyContainer({"pytme_score": data.scores[x]}) for x in indices
+        ]
+    except Exception:
+        vertex_properties = None
+
     return {
         "vertices": [data.translations[x] for x in indices],
         "normals": [normals[x] for x in indices],
         "quaternions": [quaternions[x] for x in indices],
+        "vertex_properties": vertex_properties,
     }
 
 
@@ -447,7 +456,7 @@ def read_tsi(filename: str) -> GeometryDataContainer:
         Parsed geometry data container.
     """
     data = _read_tsi_file(filename)
-    mesh = to_open3d(data["vertices"][:, 1:4], data["faces"][:, 1:4])
+    mesh = meshing.utils.to_open3d(data["vertices"][:, 1:4], data["faces"][:, 1:4])
     vertex_properties = {}
 
     try:
@@ -477,7 +486,7 @@ def read_vtu(filename: str) -> GeometryDataContainer:
         Parsed geometry data container.
     """
     data = _read_vtu_file(filename)
-    mesh = to_open3d(data["points"], data["connectivity"])
+    mesh = meshing.utils.to_open3d(data["points"], data["connectivity"])
     return _return_mesh(mesh, vertex_properties=data.get("point_data", {}))
 
 
@@ -543,6 +552,8 @@ def read_structure(filename: str) -> GeometryDataContainer:
     GeometryDataContainer
         Parsed geometry data container.
     """
+    from tme import Structure
+
     data = Structure.from_file(filename)
     return GeometryDataContainer(vertices=[data.atom_coordinate])
 
@@ -588,6 +599,8 @@ def _read_tsi_file(file_path: str) -> Dict:
     ----------
     .. [1] https://github.com/weria-pezeshkian/FreeDTS/wiki/Manual-for-version-1
     """
+    from ._utils import _drop_prefix
+
     _keys = ("version", "box", "n_vertices", "vertices", "n_faces", "faces")
     ret = {k: None for k in _keys}
 
@@ -683,7 +696,7 @@ def _read_vtu_file(file_path: str) -> Dict:
     return result
 
 
-def load_density(filename: str, **kwargs) -> Density:
+def load_density(filename: str, **kwargs) -> "Density":
     """
     Load 3D density data from file.
 
@@ -699,6 +712,8 @@ def load_density(filename: str, **kwargs) -> Density:
     Density
         Loaded density object.
     """
+    from tme import Density
+
     volume = Density.from_file(filename, **kwargs)
 
     if np.allclose(volume.sampling_rate, 0):

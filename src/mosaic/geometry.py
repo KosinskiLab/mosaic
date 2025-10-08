@@ -194,6 +194,9 @@ class Geometry:
             if np.max(idx) < quaternions.shape[0]:
                 quaternions = quaternions[idx].copy()
 
+        if (vertex_properties := self.vertex_properties) is not None:
+            vertex_properties = vertex_properties[idx]
+
         ret = Geometry(
             points=self.points[idx].copy(),
             normals=normals,
@@ -201,6 +204,7 @@ class Geometry:
             color=self._appearance["base_color"],
             sampling_rate=self._sampling_rate,
             meta=self._meta.copy(),
+            vertex_properties=vertex_properties,
         )
         ret.set_visibility(self.visible)
 

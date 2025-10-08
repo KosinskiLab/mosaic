@@ -175,7 +175,11 @@ class GeometryPropertiesDialog(QDialog):
         scale_layout.setContentsMargins(0, 0, 0, 0)
         self.scale_positive = QRadioButton("1")
         self.scale_negative = QRadioButton("-1")
-        self.scale_positive.setChecked(True)
+        if self.initial_properties.get("scale", 0) >= 0:
+            self.scale_positive.setChecked(True)
+        else:
+            self.scale_negative.setChecked(True)
+
         scale_layout.addWidget(self.scale_positive)
         scale_layout.addWidget(self.scale_negative)
         self.scale_widget.setEnabled(False)
