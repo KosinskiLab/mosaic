@@ -333,8 +333,7 @@ def cluster(
 
     points = geometry.points.copy()
 
-    downsample = downsampling_radius > 0
-    if downsample:
+    if downsampling_radius > 0:
         downsampled_geometry = downsample(
             geometry, method="radius", voxel_size=downsampling_radius
         )
@@ -362,7 +361,7 @@ def cluster(
     if len(unique_labels) > 10000:
         raise ValueError("Found more than 10k clusters. Try coarser clustering.")
 
-    if downsample:
+    if downsampling_radius > 0:
         _, indices = find_closest_points(downsampled_geometry.points, geometry.points)
         labels = labels[indices]
 

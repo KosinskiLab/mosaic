@@ -27,7 +27,6 @@ from .meshing import (
     fair_mesh,
     remesh,
     to_open3d,
-    get_ring_vertices,
     poisson_mesh,
 )
 

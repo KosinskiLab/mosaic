@@ -253,13 +253,19 @@ class Geometry:
             if has_normals:
                 normals.append(geometry.normals)
 
+        # Merging Geometries with different sampling rate is an underdetermined
+        # problem without user intervention. Computing the maximum of geometries
+        # makes the problem symmetric. In most workflows this should suffice, but
+        # we might need to show a warning moving forward.
+        sampling_rate = np.max(np.array([x.sampling_rate for x in geometries]), axis=0)
+
         quaternions = np.concatenate(quaternions, axis=0) if has_quat else None
         normals = np.concatenate(normals, axis=0) if has_normals else None
         ret = cls(
             points=np.concatenate(points, axis=0),
             normals=normals,
             quaternions=quaternions,
-            sampling_rate=geometries[0]._sampling_rate,
+            sampling_rate=sampling_rate,
             color=geometries[0]._appearance["base_color"],
             meta=geometries[0]._meta.copy(),
         )
