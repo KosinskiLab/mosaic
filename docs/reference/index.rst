@@ -18,6 +18,11 @@ API
    gui/tabs
 
 .. toctree::
+   :caption: Parametrization
+
+   parametrization
+
+.. toctree::
    :caption: File I/O
 
    formats

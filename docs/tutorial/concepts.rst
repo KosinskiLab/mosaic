@@ -50,8 +50,7 @@ The *Object Browser* is your central hub for managing all data in Mosaic. It dis
 - **Clusters**: Point cloud objects, e.g. a segmentation, where each point is defined by:
 
   - Position vector (X, Y, Z coordinates)
-  - Normal vector (surface orientation)
-  - For oriented data (e.g., protein picks): Full 3D orientation matrix
+  - Unit quaternion to describe orientation (scalar-first w, x, y, z)
 
 - **Models**: Geometric shapes and surfaces including:
 

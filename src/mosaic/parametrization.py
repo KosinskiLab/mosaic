@@ -56,9 +56,7 @@ def _sample_from_chull(
 
 
 class Parametrization(ABC):
-    """
-    A strategy class to represent picklable parametrizations of point clouds
-    """
+    """Abstract base class to represent picklable parametrizations."""
 
     def __init__(self, *args, **kwargs):
         pass
@@ -432,7 +430,7 @@ class Ellipsoid(Parametrization):
 
 class Cylinder(Parametrization):
     """
-    Parametrize a point cloud as a cylinder with improved stability.
+    Parametrize a point cloud as a cylinder.
 
     Parameters
     ----------
@@ -668,7 +666,7 @@ class Cylinder(Parametrization):
 
 class RBF(Parametrization):
     """
-    Parametrize a point cloud as sphere.
+    Parametrize a point cloud using radial basis functions.
 
     Parameters
     ----------

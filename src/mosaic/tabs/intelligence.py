@@ -306,9 +306,11 @@ class IntelligenceTab(QWidget):
             container = open_file(output_name)
             for index in range(len(container)):
                 data = container[index]
-            self.cdata._data.add(
-                points=data.vertices, normals=data.normals, sampling_rate=data.sampling
-            )
+                self.cdata._data.add(
+                    points=data.vertices,
+                    normals=data.normals,
+                    sampling_rate=data.sampling,
+                )
             self.cdata.data.data_changed.emit()
             self.cdata.data.render()
 
