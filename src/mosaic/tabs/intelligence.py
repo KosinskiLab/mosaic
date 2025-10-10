@@ -5,7 +5,7 @@ from platform import system
 from os.path import join, exists, basename
 
 import numpy as np
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox, QApplication
 
 from ..parallel import submit_task
 from ..widgets.ribbon import create_button
@@ -293,20 +293,24 @@ class IntelligenceTab(QWidget):
         )
 
     def _run_membrain(self, *args, **kwargs):
+        from ..gui import App
+        from ..formats import open_file
         from ..segmentation import run_membrainseg
 
         def _callback(output_name: str):
-            from ..formats import open_file
-
             if output_name is None:
                 return QMessageBox.warning(
                     None, "Error", "No segmentation was created."
                 )
 
+            # Preferred because it also updates viewport
+            app = QApplication.instance().activeWindow()
+            if isinstance(app, App):
+                return app._open_files([output_name])
+
             container = open_file(output_name)
-            for index in range(len(container)):
-                data = container[index]
-                self.cdata._data.add(
+            for data in container:
+                self.cdata.data.add(
                     points=data.vertices,
                     normals=data.normals,
                     sampling_rate=data.sampling,

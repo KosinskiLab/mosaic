@@ -1055,10 +1055,10 @@ class VolumeGeometry(Geometry):
     def change_representation(self, *args, **kwargs) -> int:
         return -1
 
-    def set_appearance(self, isovalue_percentile=0.99, **kwargs):
+    def set_appearance(self, isovalue_percentile=99.5, **kwargs):
         if hasattr(self, "_raw_volume"):
             self._appearance["isovalue_percentile"] = isovalue_percentile
-            self.update_isovalue_quantile(upper_quantile=isovalue_percentile)
+            self.update_isovalue_quantile(upper_quantile=isovalue_percentile / 100)
         super().set_appearance(**kwargs)
 
 

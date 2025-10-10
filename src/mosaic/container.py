@@ -190,9 +190,7 @@ class DataContainer:
             volume = volume.data * parameters.get("scale", 1.0)
 
         full_render = False
-        parameters["isovalue_percentile"] = (
-            parameters.get("isovalue_percentile", 99) / 100
-        )
+        parameters["isovalue_percentile"] = parameters.get("isovalue_percentile", 99.5)
         for index in indices:
             if (geometry := self.get(index)) is None:
                 continue

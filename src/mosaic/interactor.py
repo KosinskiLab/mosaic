@@ -161,7 +161,11 @@ class DataContainerInteractor(QObject):
             self.colors = [cmap(i)[:3] for i in range(cmap.N)]
 
         for i in range(len(self.container)):
-            self.container.update_appearance([i], {"base_color": self.next_color()})
+            if (geometry := self.get_geometry(i)) is None:
+                continue
+            self.container.update_appearance(
+                [i], geometry._appearance | {"base_color": self.next_color()}
+            )
         self.container.highlight([])
         return self.render_vtk()
 
@@ -262,7 +266,7 @@ class DataContainerInteractor(QObject):
 
         interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         if not interactor.GetShiftKey():
-            self.point_selection.clear()
+            self.deselect_points()
 
         for i, cluster in enumerate(self.container.data):
             extractor.SetInputData(cluster._data)
