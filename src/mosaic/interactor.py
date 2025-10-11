@@ -194,13 +194,12 @@ class DataContainerInteractor(QObject):
             if (geometry := self.get_geometry(index)) is None:
                 continue
 
-            n_points = geometry.points.shape[0]
+            n_points = geometry.get_number_of_points()
             if not geometry.visible or n_points == 0 or point_ids.size == 0:
                 continue
 
             new_cluster.append(geometry[point_ids])
-
-            inverse = np.setdiff1d(np.arange(n_points), point_ids)
+            inverse = np.setdiff1d(np.arange(n_points), point_ids, assume_unique=True)
             if inverse.size != 0:
                 self.container.data[index] = geometry[inverse]
             else:
@@ -208,7 +207,6 @@ class DataContainerInteractor(QObject):
                 remove_cluster.append(index)
 
         self.container.remove(remove_cluster)
-
         if len(new_cluster):
             return self.add(Geometry.merge(new_cluster))
         return -1
@@ -641,8 +639,7 @@ class DataContainerInteractor(QObject):
     def highlight_selected_points(self, color):
         for cluster_index, point_ids in self.point_selection.items():
             self.container.highlight_points(cluster_index, point_ids, color)
-
-        self.vtk_widget.GetRenderWindow().Render()
+        return self.render_vtk()
 
     def highlight_clusters_from_selected_points(self):
         return self.set_selection(list(self.point_selection.keys()))

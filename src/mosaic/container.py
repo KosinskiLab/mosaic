@@ -168,8 +168,7 @@ class DataContainer:
         color : tuple of float
             RGB color for highlighting.
         """
-        geometry = self.get(index)
-        if geometry is None:
+        if (geometry := self.get(index)) is None:
             return None
 
         if color is None:

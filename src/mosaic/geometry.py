@@ -165,10 +165,8 @@ class Geometry:
         self.__init__(**state)
         self.set_visibility(visible)
 
-        representation = state.get("representation", False)
-        if representation:
+        if representation := state.get("representation", False):
             self.change_representation(representation)
-
         self.set_appearance(**appearance)
 
     def __getitem__(self, idx):
@@ -181,37 +179,25 @@ class Geometry:
         idx = np.asarray(idx)
         if idx.dtype == bool:
             idx = np.where(idx)[0]
+        idx = idx[idx < self.get_number_of_points()]
 
-        normals = None
-        if isinstance(self.normals, np.ndarray):
-            normals = self.normals.copy()
-            if np.max(idx) < normals.shape[0]:
-                normals = normals[idx].copy()
+        state = self.__getstate__()
+        visible = state.pop("visible", True)
+        appearance = state.pop("appearance", {})
+        data_array = ("points", "normals", "quaternions")
+        for key in data_array:
+            if (value := state.get(key)) is not None:
+                state[key] = np.asarray(value)[idx].copy()
 
-        quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
-        if quaternions is not None:
-            quaternions = self.quaternions.copy()
-            if np.max(idx) < quaternions.shape[0]:
-                quaternions = quaternions[idx].copy()
+        if (vertex_properties := state.get("vertex_properties")) is not None:
+            state["vertex_properties"] = vertex_properties[idx]
 
-        if (vertex_properties := self.vertex_properties) is not None:
-            vertex_properties = vertex_properties[idx]
+        if "meta" in state:
+            state["meta"] = state["meta"].copy()
 
-        ret = Geometry(
-            points=self.points[idx].copy(),
-            normals=normals,
-            quaternions=quaternions,
-            color=self._appearance["base_color"],
-            sampling_rate=self._sampling_rate,
-            meta=self._meta.copy(),
-            vertex_properties=vertex_properties,
-        )
-        ret.set_visibility(self.visible)
-
-        # Avoid clashes from properties of classes inheriting from Geometry
-        ret._appearance.update(
-            {k: v for k, v in self._appearance.items() if k in ret._appearance}
-        )
+        ret = self.__class__(**state, color=self._appearance["base_color"])
+        ret.set_visibility(visible)
+        ret.set_appearance(**appearance)
         return ret
 
     @classmethod
@@ -236,6 +222,9 @@ class Geometry:
         """
         if not len(geometries):
             raise ValueError("No geometries provided for merging")
+
+        if len(geometries) == 1:
+            return geometries[0]
 
         points, quaternions, normals = [], [], []
 
@@ -994,6 +983,12 @@ class VolumeGeometry(Geometry):
         mapper.SetOrientationArray("OrientationQuaternion")
         mapper.OrientOn()
         self._actor.SetMapper(mapper)
+
+        if "upper_quantile" in kwargs and "lower_quantile" in kwargs:
+            self.update_isovalue_quantile(
+                upper_quantile=kwargs.get("upper_quantile"),
+                lower_quantile=kwargs.get("lower_quantile"),
+            )
 
     def __getstate__(self):
         state = super().__getstate__()

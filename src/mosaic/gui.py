@@ -431,6 +431,12 @@ class App(QMainWindow):
 
         self.volume_dock = None
         self.volume_viewer = MultiVolumeViewer(self.vtk_widget, legend=self.legend)
+        self.cdata.data.render_update.connect(
+            self.volume_viewer.primary.handle_projection_change
+        )
+        self.cdata.models.render_update.connect(
+            self.volume_viewer.primary.handle_projection_change
+        )
 
         self.cursor_handler = CursorModeHandler(self.vtk_widget)
         self.axes_widget = AxesWidget(self.renderer, self.interactor)

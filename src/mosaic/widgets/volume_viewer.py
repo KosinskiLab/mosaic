@@ -242,15 +242,6 @@ class VolumeViewer(QWidget):
         self.volume.SetSpacing(volume.sampling_rate)
         self.volume.AllocateScalars(vtk.VTK_FLOAT, 1)
 
-        # if volume.shape[1] == 20:
-        #     print("Change this back")
-
-        #     self.volume.SetOrigin(
-        #         -2 * 4.0,
-        #         (1320 -2) * volume.sampling_rate[1],
-        #         -1 * 5.24
-        #     )
-
         volume = numpy_support.numpy_to_vtk(
             volume.data.ravel(order="F"), deep=True, array_type=vtk.VTK_FLOAT
         )
@@ -368,9 +359,12 @@ class VolumeViewer(QWidget):
 
         return None
 
-    def handle_projection_change(self, state):
+    def handle_projection_change(self, state=None):
         if self.volume is None:
             return
+
+        if state is None:
+            state = self.project_selector.currentText()
 
         self._projection = state
         actors = self.renderer.GetActors()
