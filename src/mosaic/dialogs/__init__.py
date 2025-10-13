@@ -9,6 +9,7 @@ from .appsettings import AppSettingsDialog
 from .backmapping import MeshMappingDialog
 from .tilt_control import TiltControlDialog
 from .matching import TemplateMatchingDialog
+from .update import UpdateChecker, UpdateDialog
 from .properties import GeometryPropertiesDialog
 from .equilibration import MeshEquilibrationDialog
 from .distance_analysis import DistanceAnalysisDialog

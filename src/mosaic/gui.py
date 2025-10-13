@@ -12,7 +12,7 @@ from os.path import splitext, basename
 
 import vtk
 import numpy as np
-from qtpy.QtCore import Qt, QEvent, QSize
+from qtpy.QtCore import Qt, QEvent, QSize, QTimer
 from qtpy.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -190,6 +190,8 @@ class App(QMainWindow):
 
         self.escape_shortcut = QShortcut(Qt.Key.Key_Escape, self.vtk_widget)
         self.escape_shortcut.activated.connect(self.handle_escape_key)
+
+        QTimer.singleShot(2000, self._check_for_updates)
 
     def sizeHint(self):
         """Provide the preferred size for the main window."""
@@ -1171,6 +1173,23 @@ class App(QMainWindow):
         if file_path.endswith(".pickle"):
             return self._load_session(file_path)
         return self._open_files([file_path])
+
+    def _check_for_updates(self):
+        from .dialogs import UpdateChecker, UpdateDialog
+        from .__version__ import __version__
+
+        def _show_update_dialog(latest_version, release_notes):
+            if Settings.ui.skipped_version == latest_version:
+                return None
+            dialog = UpdateDialog(
+                __version__, latest_version, release_notes, parent=self
+            )
+            dialog.exec()
+
+        # We assign the thread to keep it alive
+        self.update_checker = UpdateChecker(__version__)
+        self.update_checker.update_available.connect(_show_update_dialog)
+        self.update_checker.start()
 
 
 def show_large_file_warning() -> bool:

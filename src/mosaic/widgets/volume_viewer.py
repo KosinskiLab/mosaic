@@ -235,7 +235,15 @@ class VolumeViewer(QWidget):
     def load_volume(self, file_path):
         from ..formats.parser import load_density
 
-        volume = load_density(file_path)
+        if file_path.endswith("pickle") or file_path.endswith("pickle.gz"):
+            from tme import Density
+            from tme.matching_utils import load_pickle
+
+            data = load_pickle(file_path)
+            volume = Density(data[0], sampling_rate=data[-1][2])
+
+        else:
+            volume = load_density(file_path)
 
         self.volume = vtk.vtkImageData()
         self.volume.SetDimensions(volume.shape)
@@ -295,6 +303,12 @@ class VolumeViewer(QWidget):
 
         self.renderer.ResetCamera()
         self.vtk_widget.GetRenderWindow().Render()
+
+    def get_slice(self):
+        try:
+            return int(self.slice_value_label.text())
+        except Exception:
+            return 0
 
     def get_orientation(self):
         return getattr(self, "_orientation", None)
@@ -357,7 +371,15 @@ class VolumeViewer(QWidget):
             *[0 if i != dim else origin + pos * spacing for i in range(3)]
         )
 
-        return None
+    def remove_existing_clipping_plane(self, mapper):
+        if (planes := mapper.GetClippingPlanes()) is None:
+            return None
+
+        planes.InitTraversal()
+        for j in range(planes.GetNumberOfItems()):
+            plane = planes.GetNextItem()
+            if plane == self.clipping_plane:
+                mapper.RemoveClippingPlane(self.clipping_plane)
 
     def handle_projection_change(self, state=None):
         if self.volume is None:
@@ -372,13 +394,15 @@ class VolumeViewer(QWidget):
 
         for i in range(actors.GetNumberOfItems()):
             actor = actors.GetNextActor()
-            actor.GetMapper().RemoveAllClippingPlanes()
+            mapper = actor.GetMapper()
+
+            self.remove_existing_clipping_plane(mapper)
             if state == "Off":
                 continue
 
             self.clipping_direction = 1 if state == "Project +" else -1
             self.update_clipping_plane()
-            actor.GetMapper().AddClippingPlane(self.clipping_plane)
+            mapper.AddClippingPlane(self.clipping_plane)
 
         self.vtk_widget.GetRenderWindow().Render()
 
@@ -417,9 +441,9 @@ class MultiVolumeViewer(QWidget):
         add_button.setFixedWidth(30)
         add_button.clicked.connect(self.add_viewer)
         self.primary.controls_layout.addWidget(add_button)
+        self.primary.close_button.clicked.connect(self._promote_new_primary)
 
         self.additional_viewers = []
-        self.primary.data_changed.connect(self._changed_primary)
 
     def add_viewer(self):
         """Add a new VolumeViewer instance"""
@@ -452,6 +476,7 @@ class MultiVolumeViewer(QWidget):
     def close(self):
         for viewer in self.additional_viewers:
             viewer.close_volume()
+        self.primary.close_button.clicked.disconnect()
         self.primary.close_volume()
 
     def _copy_from_primary(self, new_viewer: VolumeViewer) -> int:
@@ -462,5 +487,35 @@ class MultiVolumeViewer(QWidget):
 
         return new_viewer.swap_volume(volume)
 
-    def _changed_primary(self):
-        return [self._copy_from_primary(x) for x in self.additional_viewers]
+    def _promote_new_primary(self) -> int:
+        viewers = [
+            x for x in self.additional_viewers if getattr(x, "volume") is not None
+        ]
+
+        if not len(viewers):
+            return None
+
+        new_primary = viewers[0]
+
+        # Copy all state from the viewer being promoted
+        self.primary.swap_volume(new_primary.volume)
+        self.primary.change_orientation(new_primary.get_orientation())
+        self.primary.update_slice(new_primary.get_slice())
+        self.primary.handle_projection_change(new_primary.get_projection())
+
+        # Copy visual settings
+        self.primary.color_selector.setCurrentText(
+            new_primary.color_selector.currentText()
+        )
+        self.primary.min_contrast_slider.setValue(
+            new_primary.min_contrast_slider.value()
+        )
+        self.primary.max_contrast_slider.setValue(
+            new_primary.max_contrast_slider.value()
+        )
+        self.primary.gamma_slider.setValue(new_primary.gamma_slider.value())
+
+        if new_primary.is_visible != self.primary.is_visible:
+            self.primary.toggle_visibility()
+
+        self.remove_viewer(new_primary)

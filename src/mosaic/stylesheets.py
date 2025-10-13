@@ -362,9 +362,16 @@ QMessageBox_style = """
         padding: 6px 16px;
         min-width: 80px;
     }
-
-    QMessageBox QPushButton:default:hover {
-        background-color: #1a000000;
+    QMessageBox QPushButton:hover {
+        border: 1px solid #9ca3af;
+        background: #1a000000;
+    }
+    QMessageBox QPushButton:pressed {
+        border: 1px solid #9ca3af;
+        background: rgba(0, 0, 0, 0.24);
+    }
+    QMessageBox QPushButton:focus {
+        outline: none;
     }
     QMessageBox QCheckBox {
         color: #475569;
