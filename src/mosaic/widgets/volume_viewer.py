@@ -476,7 +476,10 @@ class MultiVolumeViewer(QWidget):
     def close(self):
         for viewer in self.additional_viewers:
             viewer.close_volume()
-        self.primary.close_button.clicked.disconnect()
+        try:
+            self.primary.close_button.clicked.disconnect(self._promote_new_primary)
+        except TypeError:
+            pass
         self.primary.close_volume()
 
     def _copy_from_primary(self, new_viewer: VolumeViewer) -> int:

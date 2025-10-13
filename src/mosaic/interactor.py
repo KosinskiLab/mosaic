@@ -172,7 +172,9 @@ class DataContainerInteractor(QObject):
     def add(self, *args, **kwargs):
         if kwargs.get("color", None) is None:
             kwargs["color"] = self.next_color()
-        return self.container.add(*args, **kwargs)
+        ret = self.container.add(*args, **kwargs)
+        self.data_changed.emit()
+        return ret
 
     def add_selection(self, selected_point_ids: Dict[vtk.vtkActor, np.ndarray]) -> int:
         """Add new cloud from selected points.

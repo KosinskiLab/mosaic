@@ -165,8 +165,9 @@ class Geometry:
         self.__init__(**state)
         self.set_visibility(visible)
 
-        if representation := state.get("representation", False):
-            self.change_representation(representation)
+        # Required to support loading VolumeGeometries
+        if state.get("representation") != self._representation:
+            self.change_representation(state.get("representation"))
         self.set_appearance(**appearance)
 
     def __getitem__(self, idx):
@@ -182,8 +183,6 @@ class Geometry:
         idx = idx[idx < self.get_number_of_points()]
 
         state = self.__getstate__()
-        visible = state.pop("visible", True)
-        appearance = state.pop("appearance", {})
         data_array = ("points", "normals", "quaternions")
         for key in data_array:
             if (value := state.get(key)) is not None:
@@ -195,9 +194,8 @@ class Geometry:
         if "meta" in state:
             state["meta"] = state["meta"].copy()
 
-        ret = self.__class__(**state, color=self._appearance["base_color"])
-        ret.set_visibility(visible)
-        ret.set_appearance(**appearance)
+        ret = self.__class__.__new__(self.__class__)
+        ret.__setstate__(state)
         return ret
 
     @classmethod
@@ -259,7 +257,7 @@ class Geometry:
             meta=geometries[0]._meta.copy(),
         )
         ret.set_visibility(any(x.visible for x in geometries))
-        ret._appearance.update(geometries[0]._appearance)
+        ret.set_appearance(**geometries[0]._appearance)
         return ret
 
     @property
@@ -1046,9 +1044,6 @@ class VolumeGeometry(Geometry):
         lower_value = np.quantile(self._raw_volume, self._lower_quantile)
         upper_value = np.quantile(self._raw_volume, self._upper_quantile)
         return self.update_isovalue(upper=upper_value, lower=lower_value)
-
-    def change_representation(self, *args, **kwargs) -> int:
-        return -1
 
     def set_appearance(self, isovalue_percentile=99.5, **kwargs):
         if hasattr(self, "_raw_volume"):
