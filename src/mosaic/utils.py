@@ -1,14 +1,14 @@
 """
 Utility functions.
 
-Copyright (c) 2023-2024 European Molecular Biology Laboratory
+Copyright (c) 2023-2025 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import warnings
-from typing import List
 from functools import lru_cache
+from typing import List, Optional
+
 
 import numpy as np
 
@@ -78,9 +78,14 @@ def points_to_volume(points, sampling_rate=1, shape=None, weight=1, out=None):
     return out
 
 
-def volume_to_points(volume, sampling_rate, reverse_order: bool = False):
+def volume_to_points(
+    volume,
+    sampling_rate,
+    reverse_order: bool = False,
+    max_cluster: Optional[int] = None,
+):
     """
-    Convert volumetric representation back to point clouds.
+    Convert volumetric segmentation to point clouds.
 
     Parameters
     ----------
@@ -88,40 +93,51 @@ def volume_to_points(volume, sampling_rate, reverse_order: bool = False):
         Input volumetric data with cluster labels.
     sampling_rate : float
         Spacing between volume voxels.
+    max_cluster : int
+        Maximum number of clusters to consider before raising an error. This avoid
+        accidentally loading a density volume instead of a segmentation. Default is
+        no cutoff.
 
     Returns
     -------
     list
         List of point clouds, one for each unique cluster label.
-        Returns None if more than 10k clusters are found.
     """
+    mask = volume != 0
 
-    points = np.where(volume > 0)
-    points_cluster = volume[points]
+    # Sanity check to avoid wasting time parsing densities instead of segmentations
+    if mask.sum() >= 0.7 * volume.size:
+        n_points = min(50 * 50 * 50, volume.size)
 
-    points = np.array(points, dtype=int).T
-    unique_clusters = np.unique(points_cluster)
+        rng = np.random.default_rng()
+        random_indices = rng.integers(0, volume.size, size=n_points)
+        clusters = np.unique(volume.flat[random_indices])
+        if max_cluster is not None and clusters.size > max_cluster:
+            raise ValueError(
+                f"Found {clusters.size} clusters (max: {max_cluster}). \n"
+                "Make sure you are opening a segmentation."
+            )
 
-    # This will barely (probably never) render anyways
-    if unique_clusters.size > 5e6:
+    points = np.flatnonzero(mask)
+    clusters, cluster_indices = np.unique(volume.flat[points], return_inverse=True)
+    if max_cluster is not None and clusters.size > max_cluster:
         raise ValueError(
-            "Found more than 50k cluster. Make sure you are loading a segmentation."
+            f"Found {clusters.size} clusters (max: {max_cluster}). \n"
+            "Make sure you are opening a segmentation."
         )
 
+    points = np.array(np.unravel_index(points, volume.shape)).T
+
     ret = []
-    for cluster in unique_clusters:
-        indices = np.where(points_cluster == cluster)
-        cluster_points = points[indices]
+    for index in range(len(clusters)):
+        cl_points = points[cluster_indices == index]
 
         if reverse_order:
-            indices = np.ravel_multi_index(
-                cluster_points[:, ::-1].T, volume.shape[::-1]
-            )
-            cluster_points = cluster_points[np.argsort(indices)]
+            indices = np.ravel_multi_index(cl_points[:, ::-1].T, volume.shape[::-1])
+            cl_points = cl_points[np.argsort(indices)]
 
-        cluster_points = np.multiply(cluster_points, sampling_rate)
-        ret.append(cluster_points)
-
+        cl_points = np.multiply(cl_points, sampling_rate)
+        ret.append(cl_points)
     return ret
 
 

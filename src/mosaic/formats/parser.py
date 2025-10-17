@@ -574,7 +574,9 @@ def read_volume(filename: str):
     """
     volume = load_density(filename)
 
-    ret = volume_to_points(volume.data, volume.sampling_rate, reverse_order=True)
+    ret = volume_to_points(
+        volume.data, volume.sampling_rate, reverse_order=True, max_cluster=10000
+    )
     shape = np.multiply(volume.shape, volume.sampling_rate)
     return GeometryDataContainer(
         vertices=ret, shape=shape, sampling=volume.sampling_rate

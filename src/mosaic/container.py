@@ -6,7 +6,7 @@ Copyright (c) 2024 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Dict
 
 import numpy as np
 
@@ -77,31 +77,15 @@ class DataContainer:
         self.data.append(new_geometry)
         return len(self.data) - 1
 
-    def remove(
-        self,
-        items: Union[int, List[int], object, List[object], List[Union[int, object]]],
-    ):
+    def remove(self, uuids_or_geometries: Union[List[str], List["Geometry"]]):
         """Remove geometries at specified indices or by geometry objects.
 
         Parameters
         ----------
-        items : int, list of int, geometry object, list of geometry objects, or mixed list
-            Indices of geometries to remove, geometry objects to remove, or a mixed list.
+        uuids_or_geometries : str, list of str, Geometry, or list of Geometry
+            UUIDs of geometries to remove or geometry objects to remove.
         """
-        from .geometry import Geometry
-
-        if not isinstance(items, (list, tuple)):
-            items = [items]
-
-        indices = []
-        for item in items:
-            if isinstance(item, Geometry):
-                try:
-                    item = self.data.index(item)
-                except ValueError:
-                    continue
-            indices.append(item)
-
+        indices = [self.uuid_to_index(x) for x in self._to_uuids(uuids_or_geometries)]
         indices = list(set(x for x in indices if self._index_ok(x)))
 
         # Reverse order to avoid potential shift issue
@@ -113,71 +97,120 @@ class DataContainer:
         self.data.clear()
         self.metadata.clear()
 
-    def get(self, index: int):
-        """Retrieve the Geometry object at index.
+    def uuid_to_index(self, uuid: str) -> int:
+        """Convert a uuid to an index in self.data."""
+        for index, geometry in enumerate(self.data):
+            if geometry.uuid == uuid:
+                return index
+        return None
+
+    def get(self, index_or_uuid):
+        """
+        Retrieve the Geometry object by index or UUID.
 
         Parameters
         ----------
-        index : int
-            Geometry object to retrieve.
+        index_or_uuid : int or str
+            Geometry index or UUID to retrieve.
 
         Returns
         -------
         geometry : :py:class:`mosaic.geometry.Geometry`
-            Selected geometry or None if index is invalid.
+            Selected geometry or None if not found.
         """
+        if isinstance(index_or_uuid, str):
+            index_or_uuid = self.uuid_to_index(index_or_uuid)
 
-        if self._index_ok(index):
-            return self.data[index]
+        if self._index_ok(index_or_uuid):
+            return self.data[index_or_uuid]
         return None
 
-    def highlight(self, indices: Tuple[int]):
-        """Highlight specified geometries.
+    def update(self, uuid_or_geometry, new_geometry) -> bool:
+        """
+        Update a geometry by UUID or geometry object.
 
         Parameters
         ----------
-        indices : tuple of int
-            Indices of clouds to highlight.
+        uuid_or_geometry : str or Geometry
+            UUID of geometry to update, or the geometry object itself
+        new_geometry : Geometry
+            New geometry to replace the old one
+
+        Returns
+        -------
+        bool
+            True if update succeeded, False if UUID not found
         """
-        _highlighted = getattr(self, "_highlighted_indices", set())
-        for index, geometry in enumerate(self.data):
-            appearance = geometry._appearance
-            color = appearance.get("base_color", self.base_color)
-            if index in indices:
-                color = appearance.get("highlight_color", self.highlight_color)
-            elif index not in _highlighted:
-                continue
+        uuid = self._to_uuid(uuid_or_geometry)
+        if (index := self.uuid_to_index(uuid)) is None:
+            return False
 
-            if not geometry.visible:
-                continue
+        if new_geometry.uuid != uuid:
+            new_geometry.uuid = uuid
 
-            geometry.set_color(color=color)
+        self.data[index] = new_geometry
+        return True
 
-        self._highlighted_indices = set(indices)
-        return None
-
-    def highlight_points(self, index: int, point_ids: set, color: Tuple[float]):
+    def highlight_points(self, uuid_or_geometry, point_ids: set, color: Tuple[float]):
         """Highlight specific points in a cloud.
 
         Parameters
         ----------
-        index : int
-            Index of target cloud.
+        uuid_or_geometry : int or str
+            UUID of geometry to update, or the geometry object itself
         point_ids : set
             IDs of points to highlight.
         color : tuple of float
             RGB color for highlighting.
         """
-        if (geometry := self.get(index)) is None:
+        if (geometry := self.get(self._to_uuid(uuid_or_geometry))) is None:
             return None
 
         if color is None:
             color = geometry._appearance.get("highlight_color", (0.8, 0.2, 0.2))
         geometry.color_points(point_ids, color)
 
-    def update_appearance(self, indices: list, parameters: dict) -> bool:
-        from .formats.parser import load_density
+    def highlight(self, uuids_or_geometries: Union[List[str], List["Geometry"]]):
+        """Highlight specified geometries.
+
+        Parameters
+        ----------
+        uuids_or_geometries : list of str or list of Geometry
+            UUIDs or geometry objects to highlight.
+        """
+        uuids = self._to_uuids(uuids_or_geometries)
+        _highlighted = getattr(self, "_highlighted_uuids", set())
+
+        for geometry in self.data:
+            appearance = geometry._appearance
+            color = appearance.get("base_color", self.base_color)
+            if geometry.uuid in uuids:
+                color = appearance.get("highlight_color", self.highlight_color)
+            elif geometry.uuid not in _highlighted:
+                continue
+
+            geometry.set_color(color=color)
+        self._highlighted_uuids = set(uuids)
+
+    def update_appearance(
+        self, uuids_or_geometries: Union[List[str], List["Geometry"]], parameters: Dict
+    ) -> bool:
+        """Update appearance parameters for specified geometries.
+
+        Parameters
+        ----------
+        uuids_or_geometries : list of str or list of Geometry
+            UUIDs or geometry objects to update
+        parameters : dict
+            Appearance parameters to update
+
+        Returns
+        -------
+        bool
+            True if full render required (actor was replaced)
+        """
         from .geometry import VolumeGeometry
+        from .formats.parser import load_density
 
         volume = parameters.get("volume", None)
         volume_path = parameters.get("volume_path", None)
@@ -190,8 +223,8 @@ class DataContainer:
 
         full_render = False
         parameters["isovalue_percentile"] = parameters.get("isovalue_percentile", 99.5)
-        for index in indices:
-            if (geometry := self.get(index)) is None:
+        for uuid in self._to_uuids(uuids_or_geometries):
+            if (geometry := self.get(uuid)) is None:
                 continue
 
             if volume is not None:
@@ -201,6 +234,8 @@ class DataContainer:
 
                 try:
                     data_recent = np.allclose(state["volume"], volume)
+                    # Check if representation has been switched in the meantime
+                    data_recent = data_recent and geometry._representation == "volume"
                 except Exception:
                     data_recent = False
 
@@ -211,21 +246,49 @@ class DataContainer:
                     # New actor so make sure to re-render
                     full_render = True
                     geometry = VolumeGeometry(**state)
-                    self.data[index] = geometry
+                    self.update(uuid, geometry)
 
             geometry.set_appearance(**parameters)
 
         return full_render
 
-    def get_cluster_size(self) -> List[int]:
-        """Get number of points in each cloud.
+    def _to_uuid(self, uuid_or_geometry):
+        """Convert UUID or Geometry to UUID.
+
+        Parameters
+        ----------
+        uuid_or_geometry : str or Geometry
+            UUID or geometry object
 
         Returns
         -------
-        list of int
-            Point count for each cloud.
+        str
+            UUID string
         """
-        return [cluster.get_number_of_points() for cluster in self.data]
+        from .geometry import Geometry
+
+        if isinstance(uuid_or_geometry, Geometry):
+            uuid_or_geometry = uuid_or_geometry.uuid
+        return uuid_or_geometry
+
+    def _to_uuids(
+        self, uuids_or_geometries: Union[List[str], List["Geometry"]]
+    ) -> List[str]:  # Fix return type
+        """Convert list of UUIDs or Geometries to UUIDs.
+
+        Parameters
+        ----------
+        uuids_or_geometries : list of str or list of Geometry
+            UUIDs or geometry objects
+
+        Returns
+        -------
+        list of str
+            UUIDs (strings)
+        """
+        if not isinstance(uuids_or_geometries, (list, tuple)):
+            uuids_or_geometries = [uuids_or_geometries]
+        return [self._to_uuid(x) for x in uuids_or_geometries]
 
     def _index_ok(self, index: int) -> bool:
         """Check if index is valid.

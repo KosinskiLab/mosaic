@@ -10,8 +10,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import pickle
 
-import multiprocessing as mp
-
 from qtpy.QtCore import QObject
 
 __all__ = ["MosaicData"]
@@ -51,7 +49,13 @@ class MosaicData(QObject):
         filename : str
             Path to save the application state.
         """
-        state = {"shape": self.shape, "_data": self._data, "_models": self._models}
+        state = {
+            "shape": self.shape,
+            "_data": self._data,
+            "_models": self._models,
+            "_data_tree": self.data.data_list.to_state(),
+            "_models_tree": self.models.data_list.to_state(),
+        }
         with open(filename, "wb") as ofile:
             pickle.dump(state, ofile)
 
@@ -68,30 +72,33 @@ class MosaicData(QObject):
         from .formats import open_file, open_session
 
         sampling = 1
+        cluster_tree, model_tree = None, None
         if filename.endswith("pickle"):
             data = open_session(filename)
             shape = data["shape"]
-            point_manager, model_manager = data["_data"], data["_models"]
+            cluster_container, model_container = data["_data"], data["_models"]
+            cluster_tree = data.get("_data_tree")
+            model_tree = data.get("_models_tree")
 
         else:
             container = open_file(filename)
 
             shape = container.shape
             sampling = container.sampling
-            point_manager, model_manager = DataContainer(), DataContainer()
+            cluster_container, model_container = DataContainer(), DataContainer()
             for data in container:
-                point_manager.add(
+                cluster_container.add(
                     points=data.vertices, normals=data.normals, sampling_rate=sampling
                 )
 
         metadata = {"shape": self.shape, "sampling_rate": sampling}
 
-        point_manager.metadata = metadata.copy()
-        model_manager.metadata = metadata.copy()
+        cluster_container.metadata = metadata.copy()
+        model_container.metadata = metadata.copy()
 
         self.shape = shape
-        self.data.update(point_manager)
-        self.models.update(model_manager)
+        self.data.update(cluster_container, tree_state=cluster_tree)
+        self.models.update(model_container, tree_state=model_tree)
 
     def reset(self):
         """
@@ -146,15 +153,19 @@ class MosaicData(QObject):
     def visibility_unselected(self, visible: bool = True):
         """Hide clusters and models that are not selected."""
         cluster = list(self.data.point_selection.keys())
-        cluster.extend(self.data._get_selected_indices())
+        cluster.extend(self.data._get_selected_uuids())
         cluster = set(cluster)
 
-        unselected = set(range(self.data.data_list.count())) - cluster
-        self.data.visibility(geometry_indices=list(unselected), visible=visible)
+        unselected = self.data.data_list.to_state().get_all_uuids() - cluster
+        self.data.visibility(
+            geometries=[self._data.get(x) for x in unselected], visible=visible
+        )
 
-        models = set(self.models._get_selected_indices())
-        unselected = set(range(self.models.data_list.count())) - models
-        self.models.visibility(geometry_indices=list(unselected), visible=visible)
+        models = set(self.models._get_selected_uuids())
+        unselected = self.models.data_list.to_state().get_all_uuids() - models
+        self.models.visibility(
+            geometries=[self._models.get(x) for x in unselected], visible=visible
+        )
 
     def activate_picking_mode(self):
         obj = self._get_active_container()
@@ -207,16 +218,13 @@ class MosaicData(QObject):
         if type == "models":
             interactor, container = self.models, self._models
 
-        selection = range(interactor.data_list.count())
+        selection = [x.uuid for x in container.data]
         if selected:
-            selection = interactor._get_selected_indices()
+            selection = interactor._get_selected_uuids()
 
         ret = []
         for i in selection:
-            list_item = interactor.data_list.item(i)
-
-            geometry = container.get(i)
-            if geometry is None:
+            if (geometry := container.get(i)) is None:
                 continue
 
             if mesh_only:
@@ -226,27 +234,5 @@ class MosaicData(QObject):
                 if not is_mesh:
                     continue
 
-            ret.append((list_item.text(), geometry))
+            ret.append((geometry._meta.get("name", ""), geometry))
         return ret
-
-    def sample_fit(self, sampling, sampling_method, normal_offset=0.0, **kwargs):
-        from .operations import GeometryOperations
-
-        tasks = []
-        fit_indices = self.models._get_selected_indices()
-        for index in fit_indices:
-            geometry = self._models.get(index)
-            if geometry is None:
-                continue
-            tasks.append((geometry, sampling, sampling_method, normal_offset))
-
-        # TODO: Handle processes in the Qt backend to avoid initialization overhead
-        with mp.Pool(1) as pool:
-            results = pool.starmap(GeometryOperations.sample, tasks)
-
-        for geometry in results:
-            if geometry is None:
-                continue
-            self.data.add(geometry)
-
-        return self.data.data_changed.emit()

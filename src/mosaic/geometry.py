@@ -7,6 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import warnings
+from uuid import uuid4
 from typing import Tuple, List, Dict
 
 import vtk
@@ -57,6 +58,8 @@ class Geometry:
         vertex_properties=None,
         **kwargs,
     ):
+        self.uuid = str(uuid4())
+
         self._points = vtk.vtkPoints()
         self._points.SetDataTypeToFloat()
 
@@ -149,6 +152,7 @@ class Geometry:
             "appearance": self._appearance,
             "representation": self._representation,
             "vertex_properties": self.vertex_properties,
+            "uuid": self.uuid,
         }
 
     def __setstate__(self, state):
@@ -160,10 +164,14 @@ class Geometry:
         state : dict
             State dictionary to restore from.
         """
+        uuid = state.pop("uuid", None)
         visible = state.pop("visible", True)
         appearance = state.pop("appearance", {})
         self.__init__(**state)
         self.set_visibility(visible)
+
+        if uuid is not None:
+            self.uuid = uuid
 
         # Required to support loading VolumeGeometries
         if state.get("representation") != self._representation:
@@ -194,6 +202,7 @@ class Geometry:
         if "meta" in state:
             state["meta"] = state["meta"].copy()
 
+        _ = state.pop("uuid", None)
         ret = self.__class__.__new__(self.__class__)
         ret.__setstate__(state)
         return ret
@@ -221,11 +230,11 @@ class Geometry:
         if not len(geometries):
             raise ValueError("No geometries provided for merging")
 
+        geometries = [x for x in geometries if isinstance(x, Geometry)]
         if len(geometries) == 1:
             return geometries[0]
 
         points, quaternions, normals = [], [], []
-
         has_quat = any(
             x._data.GetPointData().GetArray("OrientationQuaternion") is not None
             for x in geometries
@@ -564,9 +573,11 @@ class Geometry:
         use_point : bool, optional
             Whether to use point data for scalar mode, by default False.
         """
-        scalars = np.asarray(scalars).reshape(-1)
+        scalars = np.asarray(scalars).ravel()
         if scalars.size == 1:
-            scalars = np.repeat(scalars, self.points.shape[0])
+            scalars = np.full(
+                (self.get_number_of_points()), fill_value=scalars, dtype=scalars.dtype
+            )
 
         if scalars.size != self.points.shape[0]:
             return None
@@ -987,6 +998,7 @@ class VolumeGeometry(Geometry):
                 upper_quantile=kwargs.get("upper_quantile"),
                 lower_quantile=kwargs.get("lower_quantile"),
             )
+        self._representation = "volume"
 
     def __getstate__(self):
         state = super().__getstate__()

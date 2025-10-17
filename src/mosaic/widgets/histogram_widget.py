@@ -165,6 +165,7 @@ class HistogramWidget(QWidget):
         self.range_slider.rangeChanged.connect(self._on_slider_range_changed)
         self.range_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.range_slider.setMinimumHeight(30)
+        self.range_slider.setRange(0, 100)
 
         main_layout.addWidget(self.histogram_plot)
         main_layout.addLayout(controls_layout)
@@ -294,7 +295,6 @@ class HistogramWidget(QWidget):
 
         label = "Cluster Size" + (" (log scale)" if log_scale else "")
         self.histogram_plot.setLabel("bottom", label)
-        self.range_slider.setRange(0, 100)
 
     def _update_cutoff_values(self, lower_value=None, upper_value=None):
         """Central method to update cutoff values and propagate changes to all UI elements."""

@@ -88,36 +88,27 @@ class BoundingBoxManager:
         """Show bounding boxes for all visible objects"""
 
         data_indices = [
-            i
-            for i in range(len(self.cdata.data.container))
-            if self.cdata.data.get_geometry(i).visible
+            i for i in self.cdata.data.get_selected_geometries() if i.visible
         ]
         model_indices = [
-            i
-            for i in range(len(self.cdata.models.container))
-            if self.cdata.models.get_geometry(i).visible
+            i for i in self.cdata.models.get_selected_geometries() if i.visible
         ]
         return self.show_selected_boxes(
-            data_indices=data_indices, model_indices=model_indices
+            data_geometries=data_indices, model_geometries=model_indices
         )
 
-    def show_selected_boxes(self, *args, data_indices=None, model_indices=None):
+    def show_selected_boxes(self, *args, data_geometries=None, model_geometries=None):
         """Show bounding boxes for selected objects only"""
         self.clear_object_boxes()
 
-        if data_indices is None:
-            data_indices = self.cdata.data._get_selected_indices()
+        if data_geometries is None:
+            data_geometries = self.cdata.data.get_selected_geometries()
 
-        if model_indices is None:
-            model_indices = self.cdata.models._get_selected_indices()
+        if model_geometries is None:
+            model_geometries = self.cdata.models.get_selected_geometries()
 
-        for index in data_indices:
-            geometry = self.cdata.data.get_geometry(index)
-            self._create_object_box(geometry)
-
-        for index in model_indices:
-            geometry = self.cdata.models.get_geometry(index)
-            self._create_object_box(geometry)
+        _ = [self._create_object_box(x) for x in data_geometries]
+        _ = [self._create_object_box(x) for x in model_geometries]
 
         self.renderer.GetRenderWindow().Render()
 
@@ -181,14 +172,14 @@ class BoundingBoxManager:
 
         # Collect bounds from all visible data
         for i in range(len(self.cdata.data.container)):
-            if self.cdata.data.container.data[i].visible:
-                geometry = self.cdata.data.get_geometry(i)
+            geometry = self.cdata.data.container.get(i)
+            if geometry.visible:
                 bounds = geometry._data.GetBounds()
                 all_bounds.append(bounds)
 
         for i in range(len(self.cdata.models.container)):
-            if self.cdata.models.container.data[i].visible:
-                geometry = self.cdata.models.get_geometry(i)
+            geometry = self.cdata.models.container.get(i)
+            if geometry.visible:
                 bounds = geometry._data.GetBounds()
                 all_bounds.append(bounds)
 

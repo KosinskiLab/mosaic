@@ -34,6 +34,9 @@ from qtpy.QtGui import (
     QGuiApplication,
     QActionGroup,
     QKeyEvent,
+    QDropEvent,
+    QCursor,
+    QDragEnterEvent,
 )
 import qtawesome as qta
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
@@ -192,6 +195,70 @@ class App(QMainWindow):
         self.escape_shortcut.activated.connect(self.handle_escape_key)
 
         QTimer.singleShot(2000, self._check_for_updates)
+
+        self.setAcceptDrops(True)
+        self._drag_active = False
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            valid_files = False
+            for url in event.mimeData().urls():
+                if url.isLocalFile():
+                    valid_files = True
+                    break
+
+            if valid_files:
+                event.acceptProposedAction()
+                self._drag_active = True
+                QApplication.setOverrideCursor(QCursor(Qt.DragCopyCursor))
+                self.setStyleSheet(
+                    self.styleSheet()
+                    + """
+                    QMainWindow {
+                        border: 2px dashed rgba(99, 102, 241, 0.3);
+                    }
+                    """
+                )
+        return super().dragEnterEvent(event)
+
+    def dragLeaveEvent(self, event):
+        self._drag_active = False
+        QApplication.restoreOverrideCursor()
+        self._update_style()
+
+    def dropEvent(self, event: QDropEvent):
+        self._drag_active = False
+        QApplication.restoreOverrideCursor()
+        self._update_style()
+
+        if not event.mimeData().hasUrls():
+            event.ignore()
+            return None
+
+        event.acceptProposedAction()
+
+        file_paths = []
+        for url in event.mimeData().urls():
+            if url.isLocalFile():
+                file_paths.append(url.toLocalFile())
+
+        if not file_paths:
+            return None
+
+        session_files = [f for f in file_paths if f.lower().endswith(".pickle")]
+        data_files = [f for f in file_paths if not f.lower().endswith(".pickle")]
+
+        if session_files:
+            if len(session_files) > 1:
+                QMessageBox.warning(
+                    self,
+                    "Multiple Session Files",
+                    "Only one session file can be loaded at a time. ",
+                )
+            self._load_session(session_files[0])
+
+        if len(data_files):
+            self._open_files(data_files)
 
     def sizeHint(self):
         """Provide the preferred size for the main window."""
@@ -1020,9 +1087,7 @@ class App(QMainWindow):
         self.set_camera_view("z")
 
     def _open_files(self, filenames: List[str]):
-        from mosaic.formats import open_file
-        from mosaic.meshing import to_open3d
-        from mosaic.parametrization import TriangularMesh
+        from .formats import open_file
 
         if isinstance(filenames, str):
             filenames = [
@@ -1054,7 +1119,6 @@ class App(QMainWindow):
 
                 base, _ = splitext(basename(filename))
                 use_index = len(container) > 1
-
                 if len(container) > 1000:
                     reply = QMessageBox.question(
                         self,
@@ -1093,6 +1157,9 @@ class App(QMainWindow):
                         )
                         self.cdata._data.data[index]._meta["name"] = name
                     else:
+                        from .meshing import to_open3d
+                        from .parametrization import TriangularMesh
+
                         index = self.cdata._add_fit(
                             fit=TriangularMesh(to_open3d(data.vertices, data.faces)),
                             sampling_rate=sampling,

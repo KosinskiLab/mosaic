@@ -45,41 +45,41 @@ def create_setting_widget(setting: Dict):
     if setting["type"] == "number":
         widget = QSpinBox()
         widget.setRange(int(setting.get("min", 0)), int(setting.get("max", 1 << 30)))
-        widget.setValue(setting.get("default", 0))
+        set_widget_value(widget, setting.get("default", 0))
     elif setting["type"] == "float":
         widget = QDoubleSpinBox()
         widget.setDecimals(setting.get("decimals", 4))
         widget.setRange(setting.get("min", 0.0), setting.get("max", 1e32))
-        widget.setValue(setting.get("default", 0.0))
+        set_widget_value(widget, setting.get("default", 0.0))
         widget.setSingleStep(setting.get("step", 1.0))
     elif setting["type"] == "slider":
         from .input_slider import SliderWithInput
 
         widget = SliderWithInput(Qt.Orientation.Horizontal)
         widget.setRange(int(setting.get("min", 0)), int(setting.get("max", 1)))
-        widget.setValue(int(setting.get("default", 0)))
+        set_widget_value(widget, int(setting.get("default", 0)))
     elif setting["type"] == "select":
         widget = QComboBox()
         widget.addItems(setting["options"])
         if "default" in setting:
-            widget.setCurrentText(setting["default"])
+            set_widget_value(widget, setting["default"])
     elif setting["type"] == "MappedComboBox":
         from . import MappedComboBox
 
         widget = MappedComboBox(choices=setting["choices"])
         if "default" in setting:
-            widget.setCurrentText(setting["default"])
+            set_widget_value(widget, setting["default"])
     elif setting["type"] == "PathSelector":
         from . import PathSelector
 
         widget = PathSelector()
         if "default" in setting:
-            widget.set_path(setting["default"])
+            set_widget_value(widget, setting["default"])
         widget.setMinimumWidth(200)
 
     elif setting["type"] == "boolean":
         widget = QCheckBox()
-        widget.setChecked(setting.get("default", False))
+        set_widget_value(widget, setting.get("default", False))
         widget.setMinimumHeight(25)
     elif setting["type"] == "text":
         widget = QLineEdit()
@@ -90,7 +90,7 @@ def create_setting_widget(setting: Dict):
             validator.setNotation(QDoubleValidator.Notation.StandardNotation)
             validator.setBottom(float(setting.get("min", 0.0)))
             widget.setValidator(validator)
-        widget.setText(str(setting.get("default", 0)))
+        set_widget_value(widget, str(setting.get("default", 0)))
         widget.setMinimumWidth(100)
     else:
         raise ValueError(f"Could not create widget from {setting}.")
@@ -122,6 +122,26 @@ def get_widget_value(widget):
         return widget.value()
     except Exception:
         return None
+
+
+def set_widget_value(widget, value):
+    from .path_selector import PathSelector
+
+    if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
+        widget.setValue(value)
+    elif isinstance(widget, QComboBox):
+        widget.setCurrentText(str(value))
+    elif isinstance(widget, QCheckBox):
+        widget.setChecked(bool(value))
+    elif isinstance(widget, QLineEdit):
+        widget.setText(str(value))
+    elif isinstance(widget, PathSelector):
+        widget.set_path(value)
+    else:
+        try:
+            widget.setValue(value)
+        except Exception:
+            pass
 
 
 def get_layout_widget_value(layout):

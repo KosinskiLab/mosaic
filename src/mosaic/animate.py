@@ -263,9 +263,9 @@ class ExportManager:
                 for geometry in _get_trajectories(self.cdata._models.data):
                     geometry.display_frame(frame_idx)
 
-                selected_indices = self.cdata.models._get_selected_indices()
-                if selected_indices:
-                    return self.cdata.models.set_selection(selected_indices)
+                uuids = self.cdata.models._get_selected_uuids()
+                if uuids:
+                    return self.cdata.models.set_selection_by_uuids(uuids)
                 return self.cdata.models.render_vtk()
 
             if use_reveal and frame_idx is None:

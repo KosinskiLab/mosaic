@@ -12,6 +12,5 @@ from .matching import TemplateMatchingDialog
 from .update import UpdateChecker, UpdateDialog
 from .properties import GeometryPropertiesDialog
 from .equilibration import MeshEquilibrationDialog
-from .distance_analysis import DistanceAnalysisDialog
 from .property_analysis import PropertyAnalysisDialog
 from .operation import *

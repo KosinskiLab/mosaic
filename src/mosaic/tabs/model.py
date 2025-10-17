@@ -201,14 +201,7 @@ class ModelTab(QWidget):
         self.ribbon.add_section("Mesh Operations", mesh_actions)
 
     def _to_cluster(self, *args, **kwargs):
-        indices = self.cdata.models._get_selected_indices()
-
-        for index in indices:
-            if not self.cdata._models._index_ok(index):
-                continue
-
-            geometry = self.cdata._models.data[index]
-
+        for geometry in self.cdata.models.get_selected_geometries():
             fit = geometry._meta.get("fit", None)
             normals, sampling = None, geometry._sampling_rate
             if hasattr(fit, "mesh"):
@@ -230,11 +223,11 @@ class ModelTab(QWidget):
         from ..parametrization import TriangularMesh
 
         ret = []
-        for index in self.cdata.models._get_selected_indices():
-            fit = self.cdata._models.data[index]._meta.get("fit", None)
+        for geometry in self.cdata.models.get_selected_geometries():
+            fit = geometry._meta.get("fit", None)
             if not isinstance(fit, TriangularMesh):
                 continue
-            ret.append(index)
+            ret.append(geometry)
         return ret
 
     def _repair_mesh(
@@ -248,8 +241,8 @@ class ModelTab(QWidget):
     ):
         from ..parametrization import TriangularMesh
 
-        for index in self._get_selected_meshes():
-            fit = self.cdata._models.data[index]._meta.get("fit", None)
+        for geometry in self._get_selected_meshes():
+            fit = geometry._meta.get("fit", None)
             if not hasattr(fit, "vertices"):
                 continue
 
@@ -269,7 +262,7 @@ class ModelTab(QWidget):
             )
             self.cdata._add_fit(
                 fit=TriangularMesh(meshing.to_open3d(vs, fs)),
-                sampling_rate=self.cdata._models.data[index].sampling_rate,
+                sampling_rate=geometry.sampling_rate,
             )
 
         return self.cdata.models.render()
@@ -337,12 +330,7 @@ class ModelTab(QWidget):
             except Exception as e:
                 raise ValueError(f"Incorrect radius specification {radii}.") from e
 
-        for index in self.cdata.data._get_selected_indices():
-            if (geometry := self.cdata.data.get_geometry(index)) is None:
-                continue
-
-            if geometry.sampling_rate is None:
-                geometry.sampling_rate = 10
+        for geometry in self.cdata.data.get_selected_geometries():
             kwargs["voxel_size"] = np.max(geometry.sampling_rate)
 
             def _callback(fit):
@@ -365,10 +353,7 @@ class ModelTab(QWidget):
             self.cdata.data.add(*args, **kwargs)
             self.cdata.data.render()
 
-        for index in self.cdata.models._get_selected_indices():
-            if (geometry := self.cdata.models.get_geometry(index)) is None:
-                continue
-
+        for geometry in self.cdata.models.get_selected_geometries():
             submit_task(
                 "Sample Fit",
                 GeometryOperations.sample,
@@ -395,9 +380,7 @@ class ModelTab(QWidget):
         if method not in (supported):
             raise ValueError(f"{method} is not supported, chose one of {supported}.")
 
-        for index in selected_meshes:
-            if (geometry := self.cdata.models.get_geometry(index)) is None:
-                continue
+        for geometry in selected_meshes:
 
             def _callback(fit):
                 self.cdata._add_fit(fit, sampling_rate=geometry.sampling_rate)
@@ -416,15 +399,9 @@ class ModelTab(QWidget):
         if len(selected_meshes) != 1:
             raise ValueError("Please select one mesh for projection.")
 
-        geometry = self.cdata.models.get_geometry(selected_meshes[0])
-        if (mesh := geometry._meta.get("fit", None)) is None:
+        mesh = selected_meshes[0]
+        if mesh._meta.get("fit", None) is None:
             return None
-
-        geometries = []
-        for index in self.cdata.data._get_selected_indices():
-            if (geometry := self.cdata.data.get_geometry(index)) is None:
-                continue
-            geometries.append(geometry)
 
         def _callback(ret):
             new_mesh, new_geometries = ret
@@ -432,7 +409,7 @@ class ModelTab(QWidget):
             for new_geometry in new_geometries:
                 self.cdata.data.add(new_geometry)
 
-            self.cdata._add_fit(new_mesh, sampling_rate=geometry.sampling_rate)
+            self.cdata._add_fit(new_mesh, sampling_rate=mesh.sampling_rate)
             self.cdata.data.render()
             self.cdata.models.render()
 
@@ -441,7 +418,7 @@ class ModelTab(QWidget):
             _project,
             _callback,
             mesh,
-            geometries,
+            self.cdata.data.get_selected_geometries(),
             use_normals,
             invert_normals,
             update_normals,

@@ -1,4 +1,4 @@
-from qtpy.QtWidgets import QDialog, QVBoxLayout
+from qtpy.QtWidgets import QDialog, QVBoxLayout, QGroupBox
 
 from ..widgets import HistogramWidget
 
@@ -8,40 +8,40 @@ class HistogramDialog(QDialog):
         super().__init__(parent)
         self.cdata = cdata
 
-        self.setWindowTitle("Select Clusters by Size")
-
         layout = QVBoxLayout(self)
-        self._histogram_widget = HistogramWidget()
-        layout.addWidget(self._histogram_widget)
+        group = QGroupBox("Select")
+        group_layout = QVBoxLayout(group)
 
-        self.cdata.data.data_changed.connect(self.update_histogram)
+        self.histogram_widget = HistogramWidget()
+        group_layout.addWidget(self.histogram_widget)
+        layout.addWidget(group)
+
+        self.cdata.data.render_update.connect(self.update_histogram)
         self.histogram_widget.cutoff_changed.connect(self._on_cutoff_changed)
         self.update_histogram()
 
+    def get_cluster_size(self):
+        return [x.get_number_of_points() for x in self.cdata._data.data]
+
     def update_histogram(self, data=None):
-        if data is None:
-            data = self.cdata._data.get_cluster_size()
-        self.histogram_widget.update_histogram(data)
+        self.histogram_widget.update_histogram(self.get_cluster_size())
 
     def _on_cutoff_changed(self, lower_cutoff, upper_cutoff=None):
-        cluster_sizes = self.cdata._data.get_cluster_size()
+        cluster_sizes = self.get_cluster_size()
         if upper_cutoff is None:
             upper_cutoff = max(cluster_sizes) + 1
 
-        indices = []
-        for i in range(len(self.cdata._data)):
-            if (cluster_sizes[i] > lower_cutoff) & (cluster_sizes[i] < upper_cutoff):
-                indices.append(i)
-        self.cdata.data.set_selection(indices)
-
-    @property
-    def histogram_widget(self):
-        return self._histogram_widget
+        uuids = []
+        for geometry in self.cdata._data.data:
+            n_points = geometry.get_number_of_points()
+            if (n_points > lower_cutoff) & (n_points < upper_cutoff):
+                uuids.append(geometry.uuid)
+        self.cdata.data.set_selection_by_uuid(uuids)
 
     def closeEvent(self, event):
         """Disconnect when dialog closes"""
         try:
-            self.cdata.data.data_changed.disconnect(self.update_histogram)
+            self.cdata.data.render_update.disconnect(self.update_histogram)
             self.histogram_widget.cutoff_changed.disconnect(self._on_cutoff_changed)
         except (TypeError, RuntimeError):
             pass  # Already disconnected

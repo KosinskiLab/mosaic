@@ -6,7 +6,6 @@ Copyright (c) 2024 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtGui import QColor
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import (
     QVBoxLayout,
@@ -15,7 +14,6 @@ from qtpy.QtWidgets import (
     QPushButton,
     QGroupBox,
     QFileDialog,
-    QColorDialog,
     QRadioButton,
     QHBoxLayout,
     QWidget,
@@ -198,10 +196,16 @@ class GeometryPropertiesDialog(QDialog):
         self.isovalue_spin.setEnabled(False)
         volume_layout.addRow("Isovalue:", self.isovalue_spin)
 
+        self.attach_button = QPushButton("Reattach")
+        self.attach_button.setEnabled(False)
+        self.attach_button.setToolTip("Reattach volume after representation change.")
+        volume_layout.addRow("", self.attach_button)
+
         volume_path = self.initial_properties.get("volume_path", None)
         if volume_path is not None:
             self.scale_widget.setEnabled(True)
             self.isovalue_spin.setEnabled(True)
+            self.attach_button.setEnabled(True)
 
         volume_group.setLayout(volume_layout)
         layout.addWidget(volume_group)
@@ -248,6 +252,7 @@ class GeometryPropertiesDialog(QDialog):
         self.sampling_z.textChanged.connect(self.emit_parameters)
         self.base_color_button.colorChanged.connect(self.emit_parameters)
         self.highlight_color_button.colorChanged.connect(self.emit_parameters)
+        self.attach_button.clicked.connect(self.emit_parameters)
 
     def emit_parameters(self):
         parameters = self.get_parameters()
@@ -261,6 +266,7 @@ class GeometryPropertiesDialog(QDialog):
             return
         self.scale_widget.setEnabled(True)
         self.isovalue_spin.setEnabled(True)
+        self.attach_button.setEnabled(True)
         self.volume_path = file_name
         self.emit_parameters()
 

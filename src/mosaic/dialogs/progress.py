@@ -85,13 +85,12 @@ class ProgressDialog:
 
     def __next__(self):
         try:
-            # Draw progress bar before processing first element
             self.update_progress()
-            item = next(self.iterator)
             self.current += 1
-            self.update_progress()
+            item = next(self.iterator)
             return item
         except StopIteration:
+            self.update_progress()
             self.dialog.close()
             raise
 

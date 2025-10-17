@@ -1,20 +1,45 @@
-from qtpy.QtCore import Qt, QRect
-from qtpy.QtGui import QColor, QFont, QFontMetrics
+from uuid import uuid4
+from typing import Dict, List
+from dataclasses import dataclass, field
+
+from qtpy.QtGui import QColor, QIcon, QPixmap, QPainter
+from qtpy.QtCore import Qt, QRect, QByteArray, QItemSelection, QItemSelectionModel
 from qtpy.QtWidgets import (
     QFrame,
     QVBoxLayout,
-    QLabel,
-    QListWidget,
-    QSizePolicy,
+    QTreeWidget,
+    QTreeWidgetItem,
     QApplication,
-    QListWidgetItem,
     QStyledItemDelegate,
-    QStyleOptionViewItem,
+    QStyle,
+    QAbstractItemView,
 )
+from qtpy.QtSvg import QSvgRenderer
 import qtawesome as qta
 
 
-class ContainerListWidget(QFrame):
+@dataclass()
+class TreeState:
+    """Minimal tree structure tracking."""
+
+    #: {'Group 1': ['uuid1', 'uuid2'], ...}
+    groups: Dict[str, List[str]] = field(default_factory=dict)
+    #: {'Group 1', 'uuid1', ...}
+    root_order: Dict[str, int] = field(default_factory=dict)
+    #: ['uuid3', 'uuid4', ...]
+    root_items: List[str] = field(default_factory=list)
+
+    def get_all_uuids(self):
+        """Get all UUIDs currently in the tree."""
+        uuids = set(self.root_items)
+        for group_uuids in self.groups.values():
+            uuids.update(group_uuids)
+        return uuids
+
+
+class ContainerTreeWidget(QFrame):
+    """Drop-in replacement for ContainerListWidget using QTreeWidget for grouping support."""
+
     def __init__(self, title: str = None, border: bool = True):
         super().__init__()
         self.setFrameStyle(QFrame.Shape.NoFrame)
@@ -25,68 +50,76 @@ class ContainerListWidget(QFrame):
 
         self.title = title
         app = QApplication.instance()
-        app.paletteChanged.connect(self.updateStyleSheet)
-        if self.title is not None:
-            self.setSizePolicy(
-                QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Expanding
-            )
+        app.paletteChanged.connect(self.update_style)
 
-            title_label = QLabel(self.title)
-            title_label.setStyleSheet(
-                """
-                QLabel {
-                    font-weight: 600;
-                    font-size: 14px;
-                    padding-left: 8px;
-                    padding-top: 8px;
-                    border: 0px solid transparent;
-                }
-            """
-            )
-            layout.addWidget(title_label)
-
-        self.list_widget = QListWidget()
-        self.list_widget.setFrameStyle(QFrame.Shape.NoFrame)
-        self.list_widget.setHorizontalScrollBarPolicy(
+        self.tree_widget = QTreeWidget()
+        self.tree_widget.setHeaderHidden(True)
+        self.tree_widget.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
+        self.tree_widget.setIndentation(5)
+        self.tree_widget.setAnimated(True)
+        self.tree_widget.setRootIsDecorated(False)
+        self.tree_widget.setItemsExpandable(True)
+        self.tree_widget.setExpandsOnDoubleClick(False)
 
-        self.list_widget.setItemDelegate(MetadataItemDelegate(self.list_widget))
-        self.list_widget.setStyleSheet(
+        self.tree_widget.itemClicked.connect(self._on_item_clicked)
+
+        self.tree_widget.setDragEnabled(False)
+        self.tree_widget.setAcceptDrops(True)
+        self.tree_widget.setDropIndicatorShown(True)
+        self.tree_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+
+        self.tree_widget.setItemDelegate(MetadataItemDelegate(self.tree_widget))
+
+        self.tree_widget.setStyleSheet(
             """
-            QScrollBar:vertical {
+            QTreeWidget {
                 border: none;
-                background: transparent;
-                width: 8px;
-                margin: 4px 0px;
+                background-color: transparent;
+                outline: none;
+                padding: 4px 0px;
+                font-size: 13px;
             }
-            QScrollBar::handle:vertical {
-                background: rgba(209, 213, 219, 0.5);
-                border-radius: 4px;
-                min-height: 24px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: rgba(209, 213, 219, 0.8);
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-            }
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-                background: none;
-            }
-            QLineEdit {
-                background-color: rgba(99, 102, 241, 1.0);
+            QTreeWidget::item {
+                border-radius: 6px;
                 border: none;
                 padding: 4px 0px;
+                margin: 2px 0px;
+                outline: none;
+            }
+            QTreeWidget::item:hover {
+                background-color: rgba(0, 0, 0, 0.0);
+            }
+            QTreeWidget::item:selected {
+                background-color: rgba(0, 0, 0, 0.0);
+                font-weight: 500;
+            }
+            QLineEdit {
+                background-color: white;
+                border: 1px solid #4f46e5;
+                border-radius: 6px;
+                padding: 0px 3px;
+                margin: 0px 8px;
+                selection-background-color: rgba(99, 102, 241, 0.6);
+                font-size: 13px;
             }
         """
         )
 
-        layout.addWidget(self.list_widget)
+        layout.addWidget(self.tree_widget)
         if border:
-            self.updateStyleSheet()
+            self.update_style()
 
-    def updateStyleSheet(self):
+    def selected_items(self):
+        # We specifically omit GroupTreeWidgetItem
+        return [
+            item
+            for item in self.tree_widget.selectedItems()
+            if isinstance(item, StyledTreeWidgetItem)
+        ]
+
+    def update_style(self):
         return self.setStyleSheet(
             """
             QFrame {
@@ -97,44 +130,362 @@ class ContainerListWidget(QFrame):
         """
         )
 
-    def __getattr__(self, name):
-        return getattr(self.list_widget, name)
+    def to_state(self) -> TreeState:
+        """Extract current tree structure as TreeState object."""
+        state = TreeState()
 
+        for item, parent, _ in self.traverse(reverse=False):
 
-class StyledListWidgetItem(QListWidgetItem):
-    def __init__(self, text, visible=True, metadata=None, parent=None, editable=False):
-        """
-        Create a styled list widget item with type-specific icons.
+            # GroupTreeWidgetItem structure is evident from parent
+            if not isinstance(item, StyledTreeWidgetItem):
+                continue
+
+            if (uuid := item.metadata.get("uuid")) is None:
+                continue
+
+            group_name = getattr(parent, "group_name", None)
+
+            if parent is None:
+                state.root_items.append(uuid)
+            elif isinstance(parent, GroupTreeWidgetItem):
+                if group_name not in state.groups:
+                    state.groups[group_name] = []
+                state.groups[group_name].append(uuid)
+                uuid = parent.metadata.get("uuid")
+
+            if uuid not in state.root_order:
+                state.root_order[uuid] = (len(state.root_order), group_name)
+
+        return state
+
+    def apply_state(self, state: TreeState, uuid_to_items: Dict):
+        """Apply tree structure to existing items.
 
         Parameters
         ----------
-        text : str
-            The display text for the item
-        visible : bool
-            Whether the item is visible
-        metadata : dict
-            Additional metadata for the item
-        parent : QWidget
-            Parent widget
-
+        state : :py:class:`TreeState`
+            Desired tree structure
+        uuid_to_items : dict
+            Map of UUID to QTreeWidgetItem
         """
-        super().__init__(text, parent)
+        self.tree_widget.clear()
 
-        self.original_color = self.foreground()
+        order = dict(sorted(state.root_order.items(), key=lambda x: x[1][0]))
+
+        for uuid, (_, group_name) in order.items():
+            if group_name is None:
+                self.tree_widget.addTopLevelItem(uuid_to_items[uuid])
+                continue
+
+            group_item = self.create_group(group_name)
+            uuids = [x for x in state.groups.get(group_name, []) if x in uuid_to_items]
+            for uuid in uuids:
+                group_item.addChild(uuid_to_items[uuid])
+
+    def update(self, uuid_to_items):
+        """
+        Update tree incrementally based on provided items.
+
+        Parameters
+        ----------
+        uuid_to_items : dict
+            Map from UUID to QTreeWidgetItem to be added/updated
+        """
+        try:
+            self.tree_widget.blockSignals(True)
+            existing_uuids = self._process_tree_items(uuid_to_items)
+        finally:
+            self.tree_widget.blockSignals(False)
+        for uuid, item in uuid_to_items.items():
+            if uuid in existing_uuids:
+                continue
+            self.tree_widget.addTopLevelItem(item)
+
+    def _move_items_to_parent(self, items, new_parent):
+        """Move items to a new parent (or root if None).
+
+        Parameters
+        ----------
+        items : list of QTreeWidgetItem
+            Items to move
+        new_parent : GroupTreeWidgetItem or None
+            New parent, or None for root level
+        """
+        for item in items:
+            if old_parent := item.parent():
+                old_parent.removeChild(item)
+            else:
+                index = self.tree_widget.indexOfTopLevelItem(item)
+                self.tree_widget.takeTopLevelItem(index)
+
+            if new_parent:
+                new_parent.addChild(item)
+            else:
+                self.tree_widget.addTopLevelItem(item)
+
+    def group_selected(self, group_name: str):
+        """Create a new group with currently selected items.
+
+        Parameters
+        ----------
+        group_name : str
+            Name for the new group
+
+        Returns
+        -------
+        GroupTreeWidgetItem or None
+            The created group item, or None if no items selected
+        """
+        if not (selected_items := self.selected_items()):
+            return None
+
+        group_item = self.create_group(group_name)
+        try:
+            self.tree_widget.blockSignals(True)
+            self._move_items_to_parent(selected_items, group_item)
+        finally:
+            self.tree_widget.blockSignals(False)
+
+        group_item.setExpanded(True)
+        self._select_group_children(group_item)
+        return group_item
+
+    def ungroup_selected(self) -> int:
+        """Move selected items to root level (removing them from their groups).
+
+        Returns
+        -------
+        int
+            Number of items ungrouped
+        """
+        if not (selected_items := self.selected_items()):
+            return 0
+
+        try:
+            self.tree_widget.blockSignals(True)
+            self._move_items_to_parent(selected_items, None)
+        finally:
+            self.tree_widget.blockSignals(False)
+
+        self._set_selection(selected_items)
+        return len(selected_items)
+
+    def traverse(self, reverse=False):
+        """Generator that yields all (item, parent, index) tuples.
+
+        Parameters
+        ----------
+        reverse : bool
+            If True, iterate in reverse order (useful for mutations)
+        """
+        items = []
+
+        # Collect all items with their metadata
+        for i in range(self.tree_widget.topLevelItemCount()):
+            item = self.tree_widget.topLevelItem(i)
+            items.append((item, None, i))
+
+            if isinstance(item, GroupTreeWidgetItem):
+                for j in range(item.childCount()):
+                    child = item.child(j)
+                    items.append((child, item, j))
+
+        # Yield in requested order
+        if reverse:
+            yield from reversed(items)
+        else:
+            yield from items
+
+    def _process_tree_items(self, uuid_to_items):
+        """Walk tree, replace existing items, and remove invalid items."""
+        existing_uuids = set()
+
+        for item, parent, index in self.traverse(reverse=True):
+            if isinstance(item, StyledTreeWidgetItem):
+                uuid = item.metadata.get("uuid")
+                # Remove non existing items
+                if uuid not in uuid_to_items:
+                    if parent is not None:
+                        parent.removeChild(item)
+                    else:
+                        self.tree_widget.takeTopLevelItem(index)
+                    continue
+
+                # Update visibility status and metadata
+                item.update(uuid_to_items[uuid])
+                existing_uuids.add(uuid)
+
+            # Remove empty groups
+            elif isinstance(item, GroupTreeWidgetItem):
+                if item.childCount() == 0:
+                    self.tree_widget.takeTopLevelItem(index)
+        return existing_uuids
+
+    def __getattr__(self, name):
+        """Forward all other attributes to tree_widget for compatibility."""
+        return getattr(self.tree_widget, name)
+
+    def addItem(self, item):
+        self.tree_widget.addTopLevelItem(item)
+
+    def create_group(self, name: str):
+        """Create a new group at the root level."""
+        group_item = GroupTreeWidgetItem(name)
+        self.tree_widget.addTopLevelItem(group_item)
+        group_item.setExpanded(True)
+        return group_item
+
+    def _on_item_clicked(self, item, column):
+        """Handle item clicks - toggle expand/collapse for groups and select children."""
+        if not isinstance(item, GroupTreeWidgetItem):
+            return
+
+        cursor_pos = self.tree_widget.mapFromGlobal(self.tree_widget.cursor().pos())
+        item_rect = self.tree_widget.visualItemRect(item)
+
+        # If clicking on arrow area, toggle expand/collapse
+        if (cursor_pos.x() - item_rect.left()) <= 40:
+            item.setExpanded(not item.isExpanded())
+            item.update_icon(item.isExpanded())
+        self._select_group_children(item)
+
+    def _set_selection(self, items):
+        """Set selection to specific items.
+
+        Parameters
+        ----------
+        items : list of QTreeWidgetItem or single QTreeWidgetItem
+            Items to select
+        """
+        if not isinstance(items, (list, tuple)):
+            items = [items]
+
+        selection = QItemSelection()
+        for item in items:
+            if item is None:
+                continue
+            index = self.tree_widget.indexFromItem(item)
+            selection.select(index, index)
+
+        self.tree_widget.selectionModel().select(
+            selection, QItemSelectionModel.SelectionFlag.ClearAndSelect
+        )
+
+    def _select_group_children(self, group_item):
+        """Select all children of a group and the group itself."""
+        if not isinstance(group_item, GroupTreeWidgetItem):
+            return None
+
+        items_to_select = [group_item]
+
+        for i in range(group_item.childCount()):
+            child = group_item.child(i)
+            if isinstance(child, StyledTreeWidgetItem):
+                items_to_select.append(child)
+
+        self._set_selection(items_to_select)
+
+
+class GroupTreeWidgetItem(QTreeWidgetItem):
+    """Special tree widget item representing a group."""
+
+    def __init__(self, name: str, parent=None):
+        super().__init__(parent, [name])
+        self.group_name = name
+        self.arrow_color = "#6b7280"
+
+        self.update_icon()
+
+        # Groups can be renamed but not dragged
+        self.setFlags(
+            Qt.ItemFlag.ItemIsEnabled
+            | Qt.ItemFlag.ItemIsDropEnabled
+            | Qt.ItemFlag.ItemIsEditable
+            | Qt.ItemFlag.ItemIsSelectable
+        )
+        self.metadata = {"uuid": str(uuid4())}
+
+    def update_icon(self, expanded: bool = True):
+        """Update the icon based on expanded state."""
+
+        path = "M7,5 L11,9 L7,13"
+        if expanded:
+            path = "M5,7 L9,11 L13,7"
+
+        svg_template = f"""
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
+                <rect width="18" height="18" fill="transparent" />
+                <path stroke="{self.arrow_color}" stroke-width="2" fill="none" d="{path}" />
+            </svg>"""
+
+        svg_bytes = QByteArray(svg_template.encode())
+        renderer = QSvgRenderer(svg_bytes)
+        pixmap = QPixmap(18, 18)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(pixmap)
+        renderer.render(painter)
+        painter.end()
+        icon = QIcon(pixmap)
+        self.setIcon(0, icon)
+
+    def setData(self, column, role, value):
+        """Update group_name when text is changed."""
+        if role == Qt.ItemDataRole.EditRole:
+            self.group_name = value
+        return super().setData(column, role, value)
+
+
+class StyledTreeWidgetItem(QTreeWidgetItem):
+    """
+    Create a styled tree widget item with type-specific icons.
+
+    Parameters
+    ----------
+    text : str
+        The display text for the item
+    visible : bool
+        Whether the item is visible
+    metadata : dict
+        Additional metadata for the item
+    parent : QWidget or QTreeWidgetItem
+        Parent widget or parent tree item
+    editable : bool
+        Whether the item is editable
+    """
+
+    def __init__(self, text, visible=True, metadata=None, parent=None, editable=False):
+
+        super().__init__(parent, [text])
+
+        self.original_color = self.foreground(0)
         self.visible_color = QColor(99, 102, 241)
         self.invisible_color = QColor(128, 128, 128)
 
-        self.visible = visible
         self.metadata = metadata or {}
 
-        # Deactivate metadata label rendering
         _ = self.metadata.pop("metadata_text", None)
         if editable:
             self.setFlags(self.flags() | Qt.ItemFlag.ItemIsEditable)
 
-        self._update_icon(visible)
+        # Items can be dragged and selected, but do not accept drops
+        # to prevent creating hierarchies of StyledTreeWidgetItem
+        self.setFlags(
+            self.flags() | Qt.ItemFlag.ItemIsDragEnabled | Qt.ItemFlag.ItemIsSelectable
+        )
+        self.setFlags(self.flags() & ~Qt.ItemFlag.ItemIsDropEnabled)
 
-    def _update_icon(self, visible):
+        self.set_visible(visible)
+
+    def update(self, other: "StyledTreeWidgetItem"):
+        if other is None:
+            return None
+
+        self.metadata = other.metadata.copy()
+        self.setText(0, other.text())
+
+        self.set_visible(other.visible)
+
+    def update_icon(self, visible):
         """Update the item icon based on type and visibility."""
         self.visible = visible
 
@@ -151,54 +502,98 @@ class StyledListWidgetItem(QListWidgetItem):
             icon_name = "mdi.shape-outline"
 
         color = self.visible_color if visible else self.invisible_color
-        icon = qta.icon(icon_name, color=color, scale_factor=0.7)
-        self.setIcon(icon)
+        icon = qta.icon(icon_name, color=color, scale_factor=0.85)
+        self.setIcon(0, icon)
 
     def set_visible(self, visible):
-        self._update_icon(visible)
-        self.setForeground(self.original_color if visible else self.invisible_color)
+        """Update visibility state and icon."""
+        self.update_icon(visible)
+        self.setForeground(0, self.original_color if visible else self.invisible_color)
+
+    def text(self):
+        """Get item text for backward compatibility."""
+        return super().text(0)
+
+    def setData(self, *args):
+        if len(args) == 2:
+            index, (column, value) = 0, args
+        elif len(args) == 3:
+            index, column, value = args
+        else:
+            return None
+        return super().setData(index, column, value)
+
+    def data(self, *args):
+        if len(args) == 1:
+            index, column = 0, *args
+        elif len(args) == 2:
+            index, column = args
+        else:
+            return None
+        return super().data(index, column)
 
 
 class MetadataItemDelegate(QStyledItemDelegate):
+    """Delegate for custom selection/hover painting."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
     def paint(self, painter, option, index):
-        original_rect = QRect(option.rect)
+        tree_widget = self.parent()
+        item = tree_widget.itemFromIndex(index)
 
-        list_widget = self.parent()
-        item = list_widget.item(index.row())
+        # Calculate content rect extending to right edge
+        content_rect = QRect(
+            option.rect.left() + 6,
+            option.rect.top() + 2,
+            option.rect.width() - 6,
+            option.rect.height() - 4,
+        )
 
-        if not isinstance(item, StyledListWidgetItem):
-            return super().paint(painter, option, index)
-
-        metadata_text = item.metadata.get("metadata_text", "")
-
-        metadata_font = QFont(painter.font())
-        metadata_font.setPointSize(8)
-        fm = QFontMetrics(metadata_font)
-        metadata_width = min(fm.horizontalAdvance(metadata_text), 55)
-
-        modified_option = QStyleOptionViewItem(option)
-        modified_option.rect.setWidth(option.rect.width() - metadata_width)
-
-        super().paint(painter, modified_option, index)
+        # Draw hover/selection background
         painter.save()
-
-        metadata_font = QFont(painter.font())
-        metadata_font.setPointSize(8)
-        painter.setFont(metadata_font)
-        painter.setPen(QColor(107, 114, 128))
-
-        metadata_rect = QRect(
-            original_rect.right() - metadata_width,
-            original_rect.top(),
-            metadata_width,
-            original_rect.height(),
-        )
-        painter.drawText(
-            metadata_rect,
-            int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
-            metadata_text,
-        )
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        if option.state & QStyle.StateFlag.State_Selected:
+            painter.setBrush(QColor(99, 102, 241, int(0.3 * 255)))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRoundedRect(content_rect, 6, 6)
+        elif option.state & QStyle.StateFlag.State_MouseOver:
+            painter.setBrush(QColor(0, 0, 0, int(0.1 * 255)))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRoundedRect(content_rect, 6, 6)
         painter.restore()
+
+        # Draw icon
+        icon_size = 20
+        icon = index.data(Qt.ItemDataRole.DecorationRole)
+        if icon and not icon.isNull():
+            icon_rect = QRect(
+                option.rect.left() + 12,
+                option.rect.top() + (option.rect.height() - icon_size) // 2,
+                icon_size,
+                icon_size,
+            )
+            icon.paint(painter, icon_rect)
+
+        # Draw text
+        painter.save()
+        text = index.data(Qt.ItemDataRole.DisplayRole)
+        if isinstance(item, StyledTreeWidgetItem) and not item.visible:
+            painter.setPen(QColor(128, 128, 128))
+        else:
+            painter.setPen(option.palette.color(option.palette.ColorRole.Text))
+
+        text_rect = QRect(
+            option.rect.left() + 12 + icon_size + 4,
+            option.rect.top(),
+            option.rect.width() - icon_size - 28,
+            option.rect.height(),
+        )
+        painter.drawText(text_rect, int(Qt.AlignmentFlag.AlignVCenter), text)
+        painter.restore()
+
+
+# Backward compatibility aliases
+ContainerListWidget = ContainerTreeWidget
+StyledListWidgetItem = StyledTreeWidgetItem

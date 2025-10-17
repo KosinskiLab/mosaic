@@ -142,13 +142,6 @@ class SegmentationTab(QWidget):
 
         analysis_actions = [
             create_button(
-                "Distances",
-                "mdi.graphql",
-                self,
-                self._show_distance_dialog,
-                "Analyse distance distributions",
-            ),
-            create_button(
                 "Properties",
                 "mdi.poll",
                 self,
@@ -168,28 +161,50 @@ class SegmentationTab(QWidget):
             return self.transfomer.clean()
         return self.transfomer.show()
 
-    def _show_histogram(self):
-        from ..dialogs import HistogramDialog
+    def _create_or_toggle_dock(
+        self, dock_attr_name, dialog_widget, dock_area=Qt.RightDockWidgetArea
+    ):
+        """
+        Helper method to create or toggle a docked dialog.
+
+        Parameters
+        ----------
+        dock_attr_name : str
+            The attribute name to store the dock widget (e.g., 'histogram_dock')
+        dialog_widget : QWidget
+            The dialog widget to display in the dock
+        dock_area : Qt.DockWidgetArea, optional
+            Where to dock the widget, default is RightDockWidgetArea
+        """
 
         def _exit():
-            if self.histogram_dock:
-                self.histogram_dock.close()
-            self.histogram_dock = None
+            dock = getattr(self, dock_attr_name, None)
+            if dock:
+                if widget := dock.widget():
+                    widget.close()
+                dock.close()
+                dock.deleteLater()
+            setattr(self, dock_attr_name, None)
 
-        # Close dialog if it already exists
-        if getattr(self, "histogram_dock", None) is not None:
+        if getattr(self, dock_attr_name, None) is not None:
             return _exit()
 
-        dialog = HistogramDialog(self.cdata, parent=self)
-
-        self.histogram_dock = QDockWidget(self)
-        self.histogram_dock.setFeatures(
+        dock = QDockWidget(self)
+        dock.setFeatures(
             QDockWidget.DockWidgetClosable
             | QDockWidget.DockWidgetFloatable
             | QDockWidget.DockWidgetMovable
         )
+        dock.setWidget(dialog_widget)
 
-        self.histogram_dock.setWidget(dialog)
+        # Handle cleanup when dock is closed via X button
+        dock.visibilityChanged.connect(lambda visible: _exit() if not visible else None)
+
+        if hasattr(dialog_widget, "accepted"):
+            dialog_widget.accepted.connect(_exit)
+        if hasattr(dialog_widget, "rejected"):
+            dialog_widget.rejected.connect(_exit)
+
         main_window = None
         for widget in QApplication.instance().topLevelWidgets():
             if isinstance(widget, QMainWindow):
@@ -200,64 +215,24 @@ class SegmentationTab(QWidget):
             QMessageBox.warning(
                 self, "Warning", "Could not determine application main window."
             )
-            return dialog.show()
-        main_window.addDockWidget(Qt.RightDockWidgetArea, self.histogram_dock)
+            return dialog_widget.show()
 
-        dialog.accepted.connect(_exit)
-        dialog.rejected.connect(_exit)
+        main_window.addDockWidget(dock_area, dock)
+        setattr(self, dock_attr_name, dock)
+        dock.show()
+        dock.raise_()
 
-        self.histogram_dock.show()
-        self.histogram_dock.raise_()
+    def _show_histogram(self):
+        from ..dialogs import HistogramDialog
 
-    def _show_distance_dialog(self):
-        from ..dialogs import DistanceAnalysisDialog
-
-        fits = self.cdata.format_datalist("models")
-        clusters = self.cdata.format_datalist("data")
-
-        dialog = DistanceAnalysisDialog(clusters, fits=fits, parent=self)
-        return dialog.show()
+        dialog = HistogramDialog(self.cdata, parent=self)
+        self._create_or_toggle_dock("histogram_dock", dialog)
 
     def _show_property_dialog(self):
         from ..dialogs import PropertyAnalysisDialog
 
-        def _exit():
-            if self.property_dock:
-                self.property_dock.close()
-            self.property_dock = None
-
-        # Close dialog if it already exists
-        if getattr(self, "property_dock", None) is not None:
-            return _exit()
-
         dialog = PropertyAnalysisDialog(self.cdata, self.legend, parent=self)
-
-        self.property_dock = QDockWidget(self)
-        self.property_dock.setFeatures(
-            QDockWidget.DockWidgetClosable
-            | QDockWidget.DockWidgetFloatable
-            | QDockWidget.DockWidgetMovable
-        )
-
-        self.property_dock.setWidget(dialog)
-        main_window = None
-        for widget in QApplication.instance().topLevelWidgets():
-            if isinstance(widget, QMainWindow):
-                main_window = widget
-                break
-
-        if main_window is None:
-            QMessageBox.warning(
-                self, "Warning", "Could not determine application main window."
-            )
-            return dialog.show()
-        main_window.addDockWidget(Qt.RightDockWidgetArea, self.property_dock)
-
-        dialog.accepted.connect(_exit)
-        dialog.rejected.connect(_exit)
-
-        self.property_dock.show()
-        self.property_dock.raise_()
+        self._create_or_toggle_dock("property_dock", dialog)
 
     def _distance_crop(self):
         from ..dialogs import DistanceCropDialog
@@ -297,7 +272,7 @@ class SegmentationTab(QWidget):
 class ClusterTransformer:
     def __init__(self, data):
         self.data = data
-        self.original_points = None
+        self.geometry = None
         self.transform_widget = None
         self.selected_cluster = None
 
@@ -313,35 +288,37 @@ class ClusterTransformer:
         self.transform_widget.Off()
         self.transform_widget.SetEnabled(0)
 
-        self.original_points = None
+        self.geometry = None
+        self.points = None
+        self.normals = None
+
         self.transform_widget = None
         self.selected_cluster = None
         self.data.vtk_widget.GetRenderWindow().Render()
 
     def show(self):
-        selected_items = self.data.data_list.selectedItems()
-        if not selected_items:
-            return
+        geometries = self.data.get_selected_geometries()
+        if not geometries:
+            return None
 
         self.setup()
-        self.selected_cluster = self.data.data_list.row(selected_items[0])
 
-        geometry = self.data.get_geometry(self.selected_cluster)
+        self.geometry = geometries[0]
 
-        points = geometry.points
+        points = self.geometry.points
         mins = np.min(points, axis=0)
         maxs = np.max(points, axis=0)
 
         bounds = []
         padding = np.maximum(
-            np.multiply(maxs - mins, 0.55), 20 * geometry.sampling_rate
+            np.multiply(maxs - mins, 0.55), 20 * self.geometry.sampling_rate
         )
         for min_val, max_val, pad in zip(mins, maxs, padding):
             bounds.extend([min_val - pad, max_val + pad])
 
         # Transforms are w.r.t baseline orientation
         self.points = points.copy()
-        self.normals = geometry.normals.copy()
+        self.normals = self.geometry.normals.copy()
         self.transform_widget.PlaceWidget(bounds)
         self.transform_widget.On()
         self.data.vtk_widget.GetRenderWindow().Render()
@@ -382,9 +359,7 @@ class ClusterTransformer:
             new_normals = np.matmul(new_normals, rotation.T, out=new_normals)
 
         new_points = np.add(new_points, translation, out=new_points)
-        self.data.container.data[self.selected_cluster].swap_data(
-            new_points, normals=new_normals
-        )
+        self.geometry.swap_data(new_points, normals=new_normals)
         self.data.render()
 
 
@@ -409,8 +384,7 @@ class PlaneTrimmer:
         self.plane1, self.plane2 = None, None
 
     def show(self, state=None):
-        if len(self.data.container.data) == 0:
-            print("Load cluster data before launching trimmer widget.")
+        if len(self.data.container) == 0:
             return None
 
         self._setup()
@@ -530,15 +504,16 @@ class PlaneTrimmer:
         self.data.point_selection.clear()
 
         for i in range(len(self.data.container)):
-            if not self.data.container.data[i].visible:
+            geometry = self.data.container.get(i)
+            if not geometry.visible:
                 continue
 
-            points = self.data.container.data[i].points
+            points = geometry.points
             origin1 = np.array(self.plane1.GetOrigin())
             origin2 = np.array(self.plane2.GetOrigin())
             dist1 = np.dot(points - origin1, np.array(self.plane1.GetNormal()))
             dist2 = np.dot(points - origin2, np.array(self.plane2.GetNormal()))
-            self.data.point_selection[i] = np.where((dist1 * dist2) < 0)[0]
+            self.data.point_selection[geometry.uuid] = np.where((dist1 * dist2) < 0)[0]
 
         self.data.highlight_selected_points(color=None)
 

@@ -95,13 +95,12 @@ class IntelligenceTab(QWidget):
         from ..dialogs import MeshEquilibrationDialog
         from ..meshing import equilibrate_fit
 
-        indices = self.cdata.models._get_selected_indices()
-        if len(indices) != 1:
+        geometries = self.cdata.models.get_selected_geometries()
+        if len(geometries) != 1:
             msg = "Can only equilibrate a single mesh at a time."
             return QMessageBox.warning(self, "Error", msg)
 
-        index = indices[0]
-        geometry = self.cdata._models.data[index]
+        geometry = geometries[0]
         if not hasattr(geometry._meta.get("fit", None), "mesh"):
             msg = f"{index} is not a triangular mesh."
             return QMessageBox.warning(self, "Error", msg)
@@ -340,7 +339,7 @@ class IntelligenceTab(QWidget):
         self.cdata.data.add(points=points, sampling_rate=1)
 
         self.cdata.data.render()
-        self.cdata.models.render()
+        # self.cdata.models.render()
 
 
 IMPORT_SETTINGS = {

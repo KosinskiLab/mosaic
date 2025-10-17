@@ -23,7 +23,7 @@ from qtpy.QtWidgets import (
 import pyqtgraph as pg
 import qtawesome as qta
 
-from ..widgets.settings import get_widget_value
+from ..widgets.settings import get_widget_value, set_widget_value
 from ..stylesheets import QPushButton_style, QScrollArea_style
 from ..widgets import ContainerListWidget, StyledListWidgetItem, ColorPreviewWidget
 
@@ -79,8 +79,11 @@ class PropertyAnalysisDialog(QDialog):
 
     def closeEvent(self, event):
         """Disconnect when dialog closes"""
-        self.cdata.data.vtk_pre_render.disconnect(self._on_render_update)
-        self.cdata.models.vtk_pre_render.disconnect(self._on_render_update)
+        try:
+            self.cdata.data.vtk_pre_render.disconnect(self._on_render_update)
+            self.cdata.models.vtk_pre_render.disconnect(self._on_render_update)
+        except Exception:
+            pass
         super().closeEvent(event)
 
     def _setup_ui(self):
@@ -345,6 +348,7 @@ class PropertyAnalysisDialog(QDialog):
                 "To Camera",
                 "To Cluster",
                 "To Model",
+                "To Self",
             ],
             "Surface": [
                 "Curvature",
@@ -374,6 +378,7 @@ class PropertyAnalysisDialog(QDialog):
             "To Camera": "distance",
             "To Cluster": "distance",
             "To Model": "distance",
+            "To Self": "distance",
             # Surface
             "Curvature": "mesh_curvature",
             "Edge Length": "mesh_edge_length",
@@ -397,6 +402,7 @@ class PropertyAnalysisDialog(QDialog):
         }
         previous_text = self.property_combo.currentText()
 
+        self.property_combo.blockSignals(True)
         self.property_combo.clear()
         self.property_combo.addItems(properties.get(category, []))
         if previous_text is not None:
@@ -406,10 +412,19 @@ class PropertyAnalysisDialog(QDialog):
 
         if self.property_combo.count() > 0:
             self._update_options(self.property_combo.currentText())
+        self.property_combo.blockSignals(False)
 
     def _update_options(self, property_name: str = None):
         if property_name is None:
             property_name = self.property_combo.currentText()
+
+        previous_parameters = {}
+        if hasattr(self, "option_widgets"):
+            previous_parameters = {
+                k: get_widget_value(w)
+                for k, w in self.option_widgets.items()
+                if not isinstance(w, (QListWidget, ContainerListWidget))
+            }
 
         while self.property_options_layout.rowCount() > 0:
             self.property_options_layout.removeRow(0)
@@ -512,21 +527,36 @@ class PropertyAnalysisDialog(QDialog):
             self.option_widgets["k_start"] = neighbor_start
             self.option_widgets["k"] = neighbor_end
 
-        elif property_name == "To Cluster":
-            target_group = QGroupBox("Target Clusters")
+        elif property_name in ("To Cluster", "To Self"):
+
+            target_group = QGroupBox("Options")
             target_layout = QVBoxLayout(target_group)
 
-            target_list = _populate_list(self.cdata.format_datalist("data"))
-            target_layout.addWidget(target_list)
+            if property_name == "To Cluster":
 
-            # Checkboxes
-            all_targets_checkbox = QCheckBox("Compare to All")
-            include_self_checkbox = QCheckBox("Include Within-Cluster Distance")
+                target_list = _populate_list(self.cdata.format_datalist("data"))
+                target_layout.addWidget(target_list)
 
-            checkbox_layout = QHBoxLayout()
-            checkbox_layout.addWidget(all_targets_checkbox)
-            checkbox_layout.addWidget(include_self_checkbox)
-            target_layout.addLayout(checkbox_layout)
+                # Checkboxes
+                all_targets_checkbox = QCheckBox("Compare to All")
+                include_self_checkbox = QCheckBox("Include Within-Cluster Distance")
+                all_targets_checkbox.stateChanged.connect(
+                    lambda state: self.toggle_all_targets(state, target_list)
+                )
+
+                checkbox_layout = QHBoxLayout()
+                checkbox_layout.addWidget(all_targets_checkbox)
+                checkbox_layout.addWidget(include_self_checkbox)
+                target_layout.addLayout(checkbox_layout)
+
+                self.option_widgets["queries"] = target_list
+                self.option_widgets["include_self"] = include_self_checkbox
+                self.option_widgets["compare_to_all"] = all_targets_checkbox
+
+            if property_name == "To Self":
+                self_checkbox = QCheckBox()
+                self_checkbox.setChecked(True)
+                self.option_widgets["only_self"] = self_checkbox
 
             # KNN range
             neighbor_layout = QHBoxLayout()
@@ -544,6 +574,8 @@ class PropertyAnalysisDialog(QDialog):
             neighbor_end.setRange(1, 255)
             neighbor_end.setValue(1)
 
+            neighbor_start.valueChanged.connect(lambda x: neighbor_end.setRange(x, 255))
+
             knn_layout.addWidget(neighbor_start)
             knn_layout.addWidget(neighbor_to_label)
             knn_layout.addWidget(neighbor_end)
@@ -551,14 +583,8 @@ class PropertyAnalysisDialog(QDialog):
             neighbor_layout.addLayout(knn_layout)
             target_layout.addLayout(neighbor_layout)
 
-            all_targets_checkbox.stateChanged.connect(
-                lambda state: self.toggle_all_targets(state, target_list)
-            )
-
             self.property_options_layout.addRow(target_group)
 
-            self.option_widgets["queries"] = target_list
-            self.option_widgets["include_self"] = include_self_checkbox
             self.option_widgets["k_start"] = neighbor_start
             self.option_widgets["k"] = neighbor_end
 
@@ -580,6 +606,13 @@ class PropertyAnalysisDialog(QDialog):
 
             self.property_options_layout.addRow(target_group)
             self.option_widgets["queries"] = target_list
+            self.option_widgets["compare_to_all"] = all_targets_checkbox
+
+        # Avoid re-entering parameters over and over
+        for k in self.option_widgets.keys():
+            if k not in previous_parameters:
+                continue
+            set_widget_value(self.option_widgets[k], previous_parameters[k])
 
     def toggle_all_targets(self, state, target_list):
         target_list.setEnabled(not bool(state))
@@ -824,8 +857,9 @@ class PropertyAnalysisDialog(QDialog):
         all_scalar = not isinstance(all_values[0], np.ndarray)
         if all_scalar:
             all_values = np.asarray(all_values)
-            return self._create_categorical_plot(data_series, all_values, plot_type)
-        return self._create_plot(data_series, all_values, plot_mode, plot_type)
+            self._create_categorical_plot(data_series, all_values, plot_type)
+        else:
+            self._create_plot(data_series, all_values, plot_mode, plot_type)
 
     def _create_categorical_plot(self, data_series, values, plot_type):
         """Create a categorical plot with names on x-axis for single values"""

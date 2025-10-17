@@ -55,6 +55,13 @@ def _sample_from_chull(
     return _sample_from_mesh(mesh, n_samples, mesh_init_factor)
 
 
+def _normalize(arr: np.ndarray):
+    arr = np.atleast_2d(arr)
+    norm = np.linalg.norm(arr, axis=1, keepdims=True)
+    norm = np.where(norm > 1e-6, norm, 1)
+    return np.divide(arr, norm, out=arr)
+
+
 class Parametrization(ABC):
     """Abstract base class to represent picklable parametrizations."""
 
@@ -82,7 +89,7 @@ class Parametrization(ABC):
         """
 
     @abstractmethod
-    def sample(self, n_samples: int, *args, **kwargs):
+    def sample(self, n_samples: int, normal_offset: float = 0.0, *args, **kwargs):
         """
         Samples points from the surface of the parametrization.
 
@@ -90,6 +97,8 @@ class Parametrization(ABC):
         ----------
         n_samples : int
             Number of samples to draw
+        normal_offset : float, optional
+            Offset points by normal_offset times their normal vector.
         *args : List
             Additional arguments
         **kwargs : Dict
@@ -98,7 +107,7 @@ class Parametrization(ABC):
         Returns
         -------
         np.ndarray
-            Sampled points.
+            Point coordinates (n, 3).
         """
 
     @abstractmethod
@@ -118,7 +127,9 @@ class Parametrization(ABC):
         """
 
     @abstractmethod
-    def points_per_sampling(self, sampling_density: float) -> int:
+    def points_per_sampling(
+        self, sampling_density: float, normal_offset: float = None
+    ) -> int:
         """
         Computes the approximate number of random samples
         required to achieve a given spatial sampling_density.
@@ -127,6 +138,8 @@ class Parametrization(ABC):
         ----------
         sampling_density : float
             Average distance between points.
+        normal_offset : float, optional
+            Compute number of samples on offset parametrization, instead of current.
 
         Returns
         -------
@@ -148,7 +161,9 @@ class Parametrization(ABC):
         np.ndarray
             Distances between points and the parametrization.
         """
-        return np.full_like(points, fill_value=0)
+        samples = self.sample(n_samples=points.shape[0] * 4)
+        distances, _ = find_closest_points(samples, points, k=1)
+        return distances
 
 
 class Sphere(Parametrization):
@@ -179,12 +194,7 @@ class Sphere(Parametrization):
         return cls(radius=radius, center=x[:3])
 
     def sample(
-        self,
-        n_samples: int,
-        normal_offset: float = 0.0,
-        radius: np.ndarray = None,
-        center: np.ndarray = None,
-        mesh_init_factor: int = None,
+        self, n_samples: int, normal_offset: float = 0.0, **kwargs
     ) -> np.ndarray:
         """
         Samples points from the surface of a sphere.
@@ -193,62 +203,44 @@ class Sphere(Parametrization):
         ----------
         n_samples : int
             Number of samples to draw
-        radius : np.ndarray, optional
-            Radius of the sphere
-        center : np.ndarray, optional
-            Center of the sphere along each axis
-        mesh_init_factor : int, optional
-            Number of times the mesh should be initialized for Poisson sampling.
-            Five appears to be a reasonable number. Higher values typically yield
-            better sampling.
+        normal_offset : float, optional
+            Offset points by normal_offset times their normal vector.
 
         Returns
         -------
         np.ndarray
-            Sampled points.
+            Point coordinates (n, 3).
         """
-        center = self.center if center is None else center
-        radius = self.radius if radius is None else radius
+        radius = self.radius
 
         indices = np.arange(0, n_samples, dtype=float) + 0.5
         phi = np.arccos(1 - 2 * indices / n_samples)
         theta = np.pi * (1 + 5**0.5) * indices
 
+        if normal_offset is not None:
+            radius = radius + normal_offset
+
         positions_xyz = np.column_stack(
             [np.cos(theta) * np.sin(phi), np.sin(theta) * np.sin(phi), np.cos(phi)]
         )
         positions_xyz = np.multiply(positions_xyz, radius)
-        positions_xyz = np.add(positions_xyz, center)
-
-        if mesh_init_factor is not None:
-            positions_xyz = _sample_from_chull(
-                positions_xyz=positions_xyz,
-                mesh_init_factor=mesh_init_factor,
-                n_samples=n_samples,
-            )
-        if normal_offset != 0:
-            positions_xyz = np.add(
-                positions_xyz,
-                np.multiply(self.compute_normal(positions_xyz), normal_offset),
-            )
-
-        return positions_xyz
+        return np.add(positions_xyz, self.center)
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
         normals = (points - self.center) / self.radius
-        normals /= np.linalg.norm(normals, axis=1)[:, None]
-        return normals
+        return _normalize(normals)
 
     def compute_distance(self, points: np.ndarray, **kwargs) -> np.ndarray:
         centered = np.linalg.norm(points - self.center, axis=1)
         return np.abs(centered - self.radius)
 
-    def points_per_sampling(self, sampling_density: float) -> int:
-        n_points = np.multiply(
-            np.square(np.pi),
-            np.ceil(np.power(np.divide(self.radius, sampling_density), 2)),
-        )
-        return int(n_points)
+    def points_per_sampling(
+        self, sampling_density: float, normal_offset: float = None
+    ) -> int:
+        radius = self.radius
+        if normal_offset is not None:
+            radius = radius + normal_offset
+        return int(4 * np.ceil(np.power(radius / sampling_density, 2)))
 
 
 class Ellipsoid(Parametrization):
@@ -322,14 +314,7 @@ class Ellipsoid(Parametrization):
         return cls(radii=radii, center=center, orientations=evecs)
 
     def sample(
-        self,
-        n_samples: int,
-        radii: np.ndarray = None,
-        center: np.ndarray = None,
-        orientations: np.ndarray = None,
-        normal_offset: float = 0.0,
-        sample_mesh: bool = True,
-        mesh_init_factor: int = 5,
+        self, n_samples: int, normal_offset: float = 0.0, **kwargs
     ) -> np.ndarray:
         """
         Samples points from the surface of an ellisoid.
@@ -338,88 +323,52 @@ class Ellipsoid(Parametrization):
         ----------
         n_samples : int
             Number of samples to draw
-        radii : np.ndarray
-            Radii of the ellipse along each axis
-        center : np.ndarray
-            Center of the ellipse along each axis
-        orientations : np.ndarray
-            Square orientation matrix
-        sample_mesh : bool, optional
-            Whether the samples should be drawn from a triangular mesh instead.
-            This can yield more equidistantly spaced points.
-        mesh_init_factor : int, optional
-            Number of times the mesh should be initialized for Poisson sampling.
-            Five appears to be a reasonable number. Higher values typically yield
-            better sampling.
+        normal_offset : float, optional
+            Offset points by normal_offset times their normal vector.
 
         Returns
         -------
         np.ndarray
-            Sampled points.
+            Point coordinates (n, 3).
         """
-        radii = self.radii if radii is None else radii
-        center = self.center if center is None else center
-        orientations = self.orientations if orientations is None else orientations
+        radii = self.radii
+        if normal_offset is not None:
+            radii = [x + normal_offset for x in radii]
 
-        positions_xyz = np.zeros((n_samples, self.center.size))
+        points = Sphere(center=(0, 0, 0), radius=1).sample(n_samples) * radii
 
-        remaining = n_samples
-        batch_size = min(n_samples * 5, 10000)
-        radii_fourth, r_min = np.power(radii, 4), np.min(radii)
-        while remaining > 0:
-            points = np.random.normal(size=(batch_size, 3))
-            np.divide(points, np.linalg.norm(points, axis=1, keepdims=True), out=points)
-            np.multiply(points, radii, out=points)
-
-            p = r_min * np.sqrt(np.divide(np.square(points), radii_fourth).sum(axis=1))
-            u = np.random.uniform(0, 1, size=batch_size)
-
-            points = points[u <= p]
-            n_accepted = min(points.shape[0], remaining)
-
-            n_add = n_samples - remaining
-            positions_xyz[n_add : (n_add + n_accepted)] = points[:n_accepted]
-            remaining -= n_accepted
-
-        positions_xyz = positions_xyz.dot(orientations.T)
-        positions_xyz = np.add(positions_xyz, center)
-
-        if sample_mesh:
-            positions_xyz = _sample_from_chull(
-                positions_xyz=positions_xyz,
-                mesh_init_factor=mesh_init_factor,
-                n_samples=n_samples,
-            )
-        if normal_offset != 0:
-            positions_xyz = np.add(
-                positions_xyz,
-                np.multiply(self.compute_normal(positions_xyz), normal_offset),
-            )
-
-        return positions_xyz
+        # For each point, find lambda such that the point lies on ellipsoid
+        # This is solving: (λx)²/a² + (λy)²/b² + (λz)²/c² = 1
+        lambda_vals = 1.0 / np.sqrt(np.sum((points / radii) ** 2, axis=1))
+        positions_xyz = points * lambda_vals[:, np.newaxis]
+        return positions_xyz.dot(self.orientations.T) + self.center
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
         norm_points = (points - self.center).dot(np.linalg.inv(self.orientations.T))
 
         normals = np.divide(np.multiply(norm_points, 2), np.square(self.radii))
         normals = np.dot(normals, self.orientations.T)
-        normals /= np.linalg.norm(normals, axis=1)[:, None]
-        return normals
+        return _normalize(normals)
 
     def compute_distance(self, points: np.ndarray, **kwargs) -> float:
         # Approximate as projected deviation from unit sphere
         norm_points = (points - self.center).dot(np.linalg.inv(self.orientations.T))
         norm_points /= np.linalg.norm(norm_points / self.radii, axis=1)[:, None]
         norm_points = np.dot(norm_points, self.orientations.T) + self.center
-        ret = np.linalg.norm(points - norm_points, axis=1)
-        return ret
+        return np.linalg.norm(points - norm_points, axis=1)
 
-    def points_per_sampling(self, sampling_density: float) -> int:
+    def points_per_sampling(
+        self, sampling_density: float, normal_offset: float = None
+    ) -> int:
         area_points = np.pi * np.square(sampling_density)
 
-        area_ellipsoid = np.power(self.radii[0] * self.radii[1], 1.6075)
-        area_ellipsoid += np.power(self.radii[0] * self.radii[2], 1.6075)
-        area_ellipsoid += np.power(self.radii[1] * self.radii[2], 1.6075)
+        radii = self.radii
+        if normal_offset is not None:
+            radii = [x + normal_offset for x in radii]
+
+        area_ellipsoid = np.power(radii[0] * radii[1], 1.6075)
+        area_ellipsoid += np.power(radii[0] * radii[2], 1.6075)
+        area_ellipsoid += np.power(radii[1] * radii[2], 1.6075)
 
         area_ellipsoid = np.power(np.divide(area_ellipsoid, 3), 1 / 1.6075)
         area_ellipsoid *= 4 * np.pi
@@ -577,42 +526,29 @@ class Cylinder(Parametrization):
         normals : np.ndarray
             Computed surface normals.
         """
-        points = np.asarray(points)
-        diff = points - self.centers
+        diff = np.asarray(points) - self.centers
         axis = self.orientations[:, 2]
-        proj = np.dot(diff, axis)[:, np.newaxis] * axis
-        perp = diff - proj
+        perp = diff - np.dot(diff, axis)[:, np.newaxis] * axis
         norms = np.linalg.norm(perp, axis=1, keepdims=True)
-        normals = np.where(norms > 1e-10, perp / norms, axis)
-        return normals
+        normals = np.where(norms > 1e-6, perp / norms, axis)
+        return _normalize(normals)
 
     def sample(
         self,
         n_samples: int,
-        centers: np.ndarray = None,
-        orientations: np.ndarray = None,
-        radius: float = None,
-        height: float = None,
         normal_offset: float = 0.0,
-        sample_mesh: bool = False,
         mesh_init_factor: int = None,
+        **kwargs,
     ) -> np.ndarray:
         """
         Sample points from the surface of a cylinder.
 
         Parameters
         ----------
-        centers : np.ndarray
-            Center coordinates of the cylinder in X and Y.
-        orientations : np.ndarray
-            Square orientation matrix
-        radius: float
-            Radius of the cylinder.
-        height : float
-            Height of the cylinder.
-        sample_mesh : bool, optional
-            Whether the samples should be drawn from a triangular mesh instead.
-            This can yield more equidistantly spaced points.
+        n_samples : int
+            Number of samples to draw
+        normal_offset : float, optional
+            Offset points by normal_offset times their normal vector.
         mesh_init_factor : int, optional
             Number of times the mesh should be initialized for Poisson sampling.
             Five appears to be a reasonable number. Higher values typically yield
@@ -621,12 +557,12 @@ class Cylinder(Parametrization):
         Returns
         -------
         np.ndarray
-            Array of sampled points from the cylinder surface.
+            Point coordinates (n, 3).
         """
-        centers = self.centers if centers is None else centers
-        orientations = self.orientations if orientations is None else orientations
-        radius = self.radius if radius is None else radius
-        height = self.height if height is None else height
+        radius, height = self.radius, self.height
+        if normal_offset is not None:
+            radius = radius + normal_offset
+            height = height + normal_offset
 
         n_samples = int(np.ceil(np.sqrt(n_samples)))
         theta = np.linspace(0, 2 * np.pi, n_samples)
@@ -634,32 +570,32 @@ class Cylinder(Parametrization):
 
         mesh = np.asarray(np.meshgrid(theta, h)).reshape(2, -1).T
 
-        x = radius * np.cos(mesh[:, 0])
-        y = radius * np.sin(mesh[:, 0])
-        z = mesh[:, 1]
-        samples = np.column_stack((x, y, z))
+        positions_xyz = np.column_stack(
+            [
+                radius * np.cos(mesh[:, 0]),
+                radius * np.sin(mesh[:, 0]),
+                mesh[:, 1],
+            ]
+        )
 
-        samples = samples.dot(orientations.T)
-        samples += centers
-
-        if sample_mesh:
-            samples = _sample_from_chull(
-                positions_xyz=samples,
+        positions_xyz = positions_xyz.dot(self.orientations.T) + self.centers
+        if mesh_init_factor is not None:
+            positions_xyz = _sample_from_chull(
+                positions_xyz=positions_xyz,
                 mesh_init_factor=mesh_init_factor,
                 n_samples=n_samples,
             )
+        return positions_xyz
 
-        if normal_offset != 0:
-            samples = np.add(
-                samples, np.multiply(self.compute_normal(samples), normal_offset)
-            )
-
-        return samples
-
-    def points_per_sampling(self, sampling_density: float) -> int:
+    def points_per_sampling(
+        self, sampling_density: float, normal_offset: float = None
+    ) -> int:
         area_points = np.square(sampling_density)
-        area = 2 * self.radius * (self.radius + self.height)
 
+        radius, height = self.radius, self.height
+        if normal_offset is not None:
+            radius, height = radius + normal_offset, height + normal_offset
+        area = 2 * radius * (radius + height)
         n_points = np.ceil(np.divide(area, area_points))
         return int(n_points)
 
@@ -730,6 +666,21 @@ class RBF(Parametrization):
     def sample(
         self, n_samples: int, normal_offset: float = 0.0, **kwargs
     ) -> np.ndarray:
+        """
+        Sample points from the RBF.
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of samples to draw
+        normal_offset : float, optional
+            Offset points by normal_offset times their normal vector.
+
+        Returns
+        -------
+        np.ndarray
+            Point coordinates (n, 3).
+        """
         (xmin, xmax), (ymin, ymax) = self.grid
 
         n_samples = int(np.ceil(np.sqrt(n_samples)))
@@ -753,9 +704,10 @@ class RBF(Parametrization):
         return positions_xyz
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        return compute_normals(points, k=15)
+        normals = compute_normals(points, k=15)
+        return _normalize(normals)
 
-    def points_per_sampling(self, sampling_density: float) -> int:
+    def points_per_sampling(self, sampling_density: float, **kwargs) -> int:
         (xmin, xmax), (ymin, ymax) = self.grid
         surface_area = (xmax - xmin) * (ymax - xmin)
 
@@ -912,9 +864,8 @@ class TriangularMesh(Parametrization):
         ----------
         n_samples : int
             Number of samples to draw
-        sample_mesh : bool, optional
-            Whether the samples should be drawn from a triangular mesh instead.
-            This can yield more equidistantly spaced points.
+        normal_offset : float, optional
+            Offset points by normal_offset times their normal vector.
         mesh_init_factor : int, optional
             Number of times the mesh should be initialized for Poisson sampling.
             Five appears to be a reasonable number. Higher values typically yield
@@ -923,7 +874,7 @@ class TriangularMesh(Parametrization):
         Returns
         -------
         np.ndarray
-            Sampled points.
+            Point coordinates (n, 3).
         """
         mesh = self.mesh
         if normal_offset != 0:
@@ -947,8 +898,7 @@ class TriangularMesh(Parametrization):
         points_tensor = o3d.core.Tensor(points, dtype=o3d.core.Dtype.Float32)
         closest_info = scene.compute_closest_points(points_tensor)
 
-        normals = closest_info["primitive_normals"].numpy()
-        return normals / np.linalg.norm(normals, axis=1, keepdims=True)
+        return _normalize(closest_info["primitive_normals"].numpy())
 
     def compute_curvature(
         self, curvature: str = "gaussian", radius: int = 5
@@ -973,9 +923,20 @@ class TriangularMesh(Parametrization):
         self.mesh.compute_vertex_normals()
         return np.asarray(self.mesh.vertex_normals).copy()
 
-    def points_per_sampling(self, sampling_density: float) -> int:
-        area_per_sample = np.square(sampling_density)
-        n_points = np.ceil(np.divide(self.mesh.get_surface_area(), area_per_sample))
+    def points_per_sampling(
+        self, sampling_density: float, normal_offset: float = None
+    ) -> int:
+        area_per_sample = np.pi * np.square(sampling_density)
+
+        mesh = self.mesh
+        if normal_offset is not None:
+            self.mesh.compute_vertex_normals()
+            mesh = to_open3d(
+                np.add(self.vertices, normal_offset * np.asarray(mesh.vertex_normals)),
+                self.triangles,
+            )
+
+        n_points = np.ceil(np.divide(mesh.get_surface_area(), area_per_sample))
         return int(n_points)
 
     def compute_distance(
@@ -1450,14 +1411,13 @@ class SplineCurve(Parametrization):
         self, n_samples: int, normal_offset: float = 0.0, **kwargs
     ) -> np.ndarray:
         t = np.linspace(0, 1, n_samples)
-        points = np.column_stack([spline(t) for spline in self._splines])
+        positions_xyz = np.column_stack([spline(t) for spline in self._splines])
 
         if normal_offset != 0:
-            points = np.add(
-                points, np.multiply(self.compute_normal(points), normal_offset)
-            )
+            normals = self.compute_normal(positions_xyz)
+            positions_xyz = np.add(positions_xyz, np.multiply(normals, normal_offset))
 
-        return points
+        return positions_xyz
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
         params = np.linspace(0, 1, len(points))
@@ -1468,9 +1428,9 @@ class SplineCurve(Parametrization):
         normals = np.zeros_like(tangents)
         normals[:, 0] = -tangents[:, 1]
         normals[:, 1] = tangents[:, 0]
-        return normals
+        return _normalize(normals)
 
-    def points_per_sampling(self, sampling_density: float) -> int:
+    def points_per_sampling(self, sampling_density: float, **kwargs) -> int:
         curve_points = self.sample(1000)
         segments = curve_points[1:] - curve_points[:-1]
         length = np.sum(np.linalg.norm(segments, axis=1))

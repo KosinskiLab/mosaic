@@ -215,7 +215,7 @@ def sample(
 
     n_samples, extra_kwargs = sampling, {}
     if method != "Points":
-        n_samples = fit.points_per_sampling(sampling)
+        n_samples = fit.points_per_sampling(sampling, normal_offset)
         extra_kwargs["mesh_init_factor"] = 5
 
     # We handle normal offset in sample to ensure equidistant spacing for meshes

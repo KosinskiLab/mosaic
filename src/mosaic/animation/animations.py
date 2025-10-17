@@ -131,9 +131,9 @@ class TrajectoryAnimation(BaseAnimation):
             return None
 
         self._trajectory.display_frame(frame)
-        selected_indices = self.cdata.models._get_selected_indices()
-        if selected_indices:
-            self.cdata.models.set_selection(selected_indices)
+        uuids = self.cdata.models._get_selected_uuids()
+        if uuids:
+            self.cdata.models.set_selection_by_uuids(uuids)
 
 
 class VolumeAnimation(BaseAnimation):

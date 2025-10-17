@@ -72,19 +72,21 @@ def mesh_triangles(fit, **kwargs):
 
 def distance(
     geometry: Geometry,
-    queries: List[Union[np.ndarray, Geometry]],
+    queries: List[Union[np.ndarray, Geometry]] = [],
     k: int = 1,
     k_start: int = 1,
     include_self: bool = False,
+    only_self: bool = False,
     *args,
     **kwargs,
 ):
     from mosaic.utils import find_closest_points
 
-    if not isinstance(queries, List):
-        queries = [
-            queries,
-        ]
+    if not isinstance(queries, (list, tuple)):
+        queries = [queries]
+
+    if only_self:
+        queries, include_self = [geometry], True
 
     distance = None
     for query in queries:
