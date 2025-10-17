@@ -175,6 +175,8 @@ class PropertyAnalysisDialog(QDialog):
         options_layout.addLayout(colormap_layout)
         options_layout.addWidget(self.color_preview)
         options_layout.addLayout(checkbox_layout)
+
+        options_group.setFixedHeight(200)
         options_group.setLayout(options_layout)
         layout.addWidget(options_group)
 

@@ -619,26 +619,15 @@ class DataContainerInteractor(QObject):
     def merge(self):
         from .geometry import Geometry
 
-        from time import time
-
-        start = time()
         self._backup()
-        print(time() - start)
-
         point_cluster = self.add_selection(self.point_selection)
-        print(time() - start)
         self.deselect_points()
-        print(time() - start)
 
         merge = [*self.get_selected_geometries(), self.container.get(point_cluster)]
-        print(time() - start)
         merged_geometry = Geometry.merge(merge)
-        print(time() - start)
 
         self.container.remove(merge)
-        print(time() - start)
         new_index = self.add(merged_geometry)
-        print(time() - start)
         self._merge_uuid = self.container.get(new_index).uuid
 
         self.render()
