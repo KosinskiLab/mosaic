@@ -147,6 +147,7 @@ class DataContainerInteractor(QObject):
             # Consider adding bidrecitional uuid lookup to render instead
             if item.text() != geometry._meta.get("name"):
                 geometry._meta["name"] = item.text()
+                self.data_changed.emit()
                 self.render()
 
     def next_color(self):
@@ -259,8 +260,7 @@ class DataContainerInteractor(QObject):
                 items.append(item)
 
         self.data_list._set_selection(items)
-        if len(self._get_selected_uuids()) == 0:
-            self._highlight_selection()
+        self._highlight_selection()
 
     def _on_cluster_selection_changed(self):
         # This is of course not ideal but prevents unhighlight/highlight

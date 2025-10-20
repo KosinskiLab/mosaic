@@ -259,15 +259,25 @@ class GeometryPropertiesDialog(QDialog):
         self.parametersChanged.emit(parameters)
 
     def browse_volume(self):
+        from ..formats.parser import load_density
+
         file_name, _ = QFileDialog.getOpenFileName(
             self, "Select Volume File", "", "MRC Files (*.mrc);;All Files (*.*)"
         )
         if not file_name:
             return
+
+        # Auto determine scale
+        self.volume_path = file_name
+        volume = load_density(self.volume_path)
+        non_negative = (volume.data > 0).sum()
+        if non_negative < volume.data.size // 2:
+            self.scale_negative.setChecked(True)
+
         self.scale_widget.setEnabled(True)
         self.isovalue_spin.setEnabled(True)
         self.attach_button.setEnabled(True)
-        self.volume_path = file_name
+
         self.emit_parameters()
 
     def get_parameters(self) -> dict:

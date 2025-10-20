@@ -153,7 +153,8 @@ class PropertyAnalysisDialog(QDialog):
         layout.addWidget(property_group)
 
         options_group = QGroupBox("Visualization Options")
-        options_layout = QVBoxLayout()
+        options_group.setFixedHeight(150)
+        options_layout = QVBoxLayout(options_group)
 
         colormap_layout = QHBoxLayout()
         colormap_layout.addWidget(QLabel("Color Map:"))
@@ -175,9 +176,6 @@ class PropertyAnalysisDialog(QDialog):
         options_layout.addLayout(colormap_layout)
         options_layout.addWidget(self.color_preview)
         options_layout.addLayout(checkbox_layout)
-
-        options_group.setFixedHeight(200)
-        options_group.setLayout(options_layout)
         layout.addWidget(options_group)
 
         # Dialog Control Buttons
@@ -247,6 +245,10 @@ class PropertyAnalysisDialog(QDialog):
         self.plot_widget.setBackground(None)
         plot_layout.addWidget(self.plot_widget)
 
+        options_group = QGroupBox("Visualization Options")
+        options_group.setFixedHeight(150)
+        options_layout = QVBoxLayout(options_group)
+
         strat_layout = QHBoxLayout()
         self.plot_title = QLabel("Stratification")
         self.plot_mode_combo = QComboBox()
@@ -254,7 +256,7 @@ class PropertyAnalysisDialog(QDialog):
         self.plot_mode_combo.currentTextChanged.connect(self._update_plot)
         strat_layout.addWidget(self.plot_title)
         strat_layout.addWidget(self.plot_mode_combo)
-        plot_layout.addLayout(strat_layout)
+        options_layout.addLayout(strat_layout)
 
         alpha_layout = QHBoxLayout()
         alpha_layout.addWidget(QLabel("Alpha:"))
@@ -263,7 +265,7 @@ class PropertyAnalysisDialog(QDialog):
         self.alpha_slider.setValue(128)
         self.alpha_slider.valueChanged.connect(self._update_plot)
         alpha_layout.addWidget(self.alpha_slider)
-        plot_layout.addLayout(alpha_layout)
+        options_layout.addLayout(alpha_layout)
 
         colormap_layout = QHBoxLayout()
         colormap_layout.addWidget(QLabel("Color Palette:"))
@@ -272,8 +274,10 @@ class PropertyAnalysisDialog(QDialog):
         self.analysis_colormap_combo.addItems(self.color_preview.colormaps)
         self.analysis_colormap_combo.currentTextChanged.connect(self._update_plot)
         colormap_layout.addWidget(self.analysis_colormap_combo)
-        plot_layout.addLayout(colormap_layout)
+        options_layout.addLayout(colormap_layout)
+
         layout.addWidget(plot_group)
+        layout.addWidget(options_group)
 
         # Dialog Control Buttons
         button_layout = QHBoxLayout()
@@ -855,13 +859,18 @@ class PropertyAnalysisDialog(QDialog):
         if not data_series:
             return None
 
-        self.plot_widget.clear()
-        all_scalar = not isinstance(all_values[0], np.ndarray)
-        if all_scalar:
-            all_values = np.asarray(all_values)
-            self._create_categorical_plot(data_series, all_values, plot_type)
-        else:
-            self._create_plot(data_series, all_values, plot_mode, plot_type)
+        try:
+            self.plot_widget.setUpdatesEnabled(False)
+
+            self.plot_widget.clear()
+            all_scalar = not isinstance(all_values[0], np.ndarray)
+            if all_scalar:
+                all_values = np.asarray(all_values)
+                self._create_categorical_plot(data_series, all_values, plot_type)
+            else:
+                self._create_plot(data_series, all_values, plot_mode, plot_type)
+        finally:
+            self.plot_widget.setUpdatesEnabled(True)
 
     def _create_categorical_plot(self, data_series, values, plot_type):
         """Create a categorical plot with names on x-axis for single values"""
@@ -901,9 +910,7 @@ class PropertyAnalysisDialog(QDialog):
                     name=name,
                 )
             plot.addItem(scatter)
-
-        legend = plot.addLegend(offset=(-10, 10))
-        legend.setPos(plot.getViewBox().screenGeometry().width() - 20, 0)
+        plot.addLegend(offset=(-10, 10))
 
     def _create_plot(self, data_series, all_values, plot_mode, plot_type):
         """Create either histogram, density or line plot based on plot_type"""
@@ -935,9 +942,7 @@ class PropertyAnalysisDialog(QDialog):
             plot = self.plot_widget.addPlot(row=0, col=0)
             plot.setLabel("left", y_label)
             plot.setLabel("bottom", x_label)
-
-            legend = plot.addLegend(offset=(-10, 10))
-            legend.setPos(plot.getViewBox().screenGeometry().width() - 20, 0)
+            plot.addLegend(offset=(-10, 10))
 
             for i, (name, obj, values, color) in enumerate(data_series):
                 if plot_type == "Histogram":

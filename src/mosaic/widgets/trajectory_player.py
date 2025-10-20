@@ -9,6 +9,7 @@ from qtpy.QtWidgets import (
     QLabel,
     QFrame,
     QSizePolicy,
+    QGroupBox,
 )
 import qtawesome as qta
 
@@ -81,18 +82,23 @@ class TrajectoryRow(QFrame):
         self.max_frames = max_frames
         self.timeline.setRelativeWidth(self.trajectory.frames, self.max_frames)
 
+    def set_name_from_trajectory(self, trajectory):
+        try:
+            name = trajectory._meta.get("name", "Unnamed Trajectory")
+            self.name_label.setText(name)
+        except Exception:
+            pass
+
     def setup_ui(self):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(8)
 
-        name = basename(self.trajectory._meta.get("name", "Unnamed Trajectory"))
-        if isinstance(name, (list, tuple)) and len(name) > 0:
-            name = name[0]
-        name_label = QLabel(str(name))
-        name_label.setMinimumWidth(150)
-        name_label.setMaximumWidth(200)
-        layout.addWidget(name_label)
+        self.name_label = QLabel()
+        self.name_label.setMinimumWidth(150)
+        self.name_label.setMaximumWidth(200)
+        self.set_name_from_trajectory(self.trajectory)
+        layout.addWidget(self.name_label)
 
         # Center: Timeline with integrated slider
         self.timeline = TimelineBar()
@@ -167,8 +173,15 @@ class TrajectoryPlayer(QWidget):
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(8, 8, 8, 8)
-        main_layout.setSpacing(4)
+        main_layout.setContentsMargins(4, 4, 4, 4)
+        main_layout.setSpacing(0)
+
+        group = QGroupBox("Trajectory Player")
+        group_layout = QVBoxLayout(group)
+        group_layout.setSpacing(4)
+        group_layout.setContentsMargins(0, 4, 0, 4)
+
+        main_layout.addWidget(group)
 
         # Controls section with frame counter on right
         controls_container = QWidget()
@@ -250,7 +263,7 @@ class TrajectoryPlayer(QWidget):
 
         controls_layout.addWidget(frame_container)
 
-        main_layout.addWidget(controls_container)
+        group_layout.addWidget(controls_container)
 
         self.trajectory_area = QWidget()
         self.trajectory_area.setLayout(QHBoxLayout())
@@ -270,7 +283,7 @@ class TrajectoryPlayer(QWidget):
         container_layout.setContentsMargins(0, 0, 0, 0)
         container_layout.addWidget(self.trajectory_area)
 
-        main_layout.addWidget(trajectory_container, 1)
+        group_layout.addWidget(trajectory_container, 1)
 
     def update_trajectories(self):
         """Update trajectories from MosaicData models."""
@@ -291,7 +304,8 @@ class TrajectoryPlayer(QWidget):
             widget = self.rows_layout.itemAt(i).widget()
             try:
                 index = geometry_trajectories.index(widget.trajectory)
-                _ = geometry_trajectories.pop(index)
+                trajectory = geometry_trajectories.pop(index)
+                widget.set_name_from_trajectory(trajectory)
                 if max_frames != 0:
                     widget.set_maxframes(max_frames)
             except (IndexError, ValueError):

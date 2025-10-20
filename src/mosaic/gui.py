@@ -8,7 +8,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 import os
 from typing import List
-from os.path import splitext, basename
+from os.path import extsep, basename
 
 import vtk
 import numpy as np
@@ -794,9 +794,15 @@ class App(QMainWindow):
         xz_action = QAction("XZ-Plane", self)
         xz_action.setText("Front View (XZ)\tc")
         xz_action.triggered.connect(lambda: self.simulate_key_press("c"))
+
+        flip_action = QAction("Flip View lambda", self)
+        flip_action.setText("Flip View Axis \tv")
+        flip_action.triggered.connect(lambda: self.simulate_key_press("v"))
+
         view_menu.addAction(xy_action)
         view_menu.addAction(yz_action)
         view_menu.addAction(xz_action)
+        view_menu.addAction(flip_action)
         view_menu.addSeparator()
 
         view_menu.addAction(self.volume_action)
@@ -1117,7 +1123,7 @@ class App(QMainWindow):
                         raise ValueError("Use Load Session to open session files.")
                     raise e
 
-                base, _ = splitext(basename(filename))
+                base, _ = basename(filename).split(extsep, 1)
                 use_index = len(container) > 1
                 if len(container) > 1000:
                     reply = QMessageBox.question(
@@ -1146,7 +1152,7 @@ class App(QMainWindow):
                         if not show_large_file_warning():
                             continue
 
-                    name = base if not use_index else f"{index}_base"
+                    name = base if not use_index else f"{index}_{base}"
                     if data.faces is None:
                         index = self.cdata.data.add(
                             points=data.vertices,

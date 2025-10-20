@@ -179,7 +179,7 @@ class Geometry:
         self.set_appearance(**appearance)
 
     def __getitem__(self, idx):
-        """Array-like indexing using int/bool numpy arrays, slices or ellipses."""
+        """Array-like indexing using int/bool numpy arrays, slices or ellipsis."""
         if isinstance(idx, (int, np.integer)):
             idx = [idx]
         elif isinstance(idx, slice) or idx is ...:
@@ -438,7 +438,9 @@ class Geometry:
         """
         if color is None:
             color = self._appearance["base_color"]
-        self.color_points(range(self._points.GetNumberOfPoints()), color=color)
+        self.color_points(
+            np.arange(self._points.GetNumberOfPoints(), dtype=np.int32), color=color
+        )
 
     def set_visibility(self, visibility: bool = True):
         """
@@ -661,14 +663,14 @@ class Geometry:
 
         Parameters
         ----------
-        point_ids : set
+        point_ids : np.ndarray
             Set of point indices to color
         color : tuple of float
             RGB color values (0-1) to apply to selected points
         """
         n_points = self._points.GetNumberOfPoints()
         if not isinstance(point_ids, np.ndarray):
-            point_ids = np.array(list(point_ids), dtype=np.int32)
+            point_ids = np.asarray(point_ids, dtype=np.int32)
 
         point_ids = point_ids.astype(np.int32, copy=False)
         point_ids = point_ids[point_ids < n_points]

@@ -17,6 +17,7 @@ from qtpy.QtWidgets import (
     QPushButton,
     QFileDialog,
     QLabel,
+    QGroupBox,
 )
 import qtawesome as qta
 
@@ -51,8 +52,8 @@ class VolumeViewer(QWidget):
         self.slice = vtk.vtkImageSlice()
         self.volume = None
 
-        self.label = QLabel("Volume")
-        self.open_button = QPushButton("Open")
+        # self.label = QLabel("Volume Viewer")
+        self.open_button = QPushButton("Load")
         self.open_button.clicked.connect(self.open_volume)
         self.close_button = QPushButton("Close")
         self.close_button.clicked.connect(self.close_volume)
@@ -119,7 +120,7 @@ class VolumeViewer(QWidget):
 
         # Create layout
         self.controls_layout = QHBoxLayout()
-        self.controls_layout.addWidget(self.label)
+        # self.controls_layout.addWidget(self.label)
         self.controls_layout.addWidget(self.open_button)
         self.controls_layout.addWidget(self.close_button)
         self.controls_layout.addWidget(self.orientation_selector)
@@ -425,8 +426,14 @@ class MultiVolumeViewer(QWidget):
         )
 
         self.layout = QVBoxLayout(self)
-        self.layout.setSpacing(5)
-        self.layout.setContentsMargins(0, 0, 0, 5)
+        self.layout.setSpacing(0)
+        self.layout.setContentsMargins(4, 4, 4, 4)
+
+        self.viewer_group = QGroupBox("Volume Viewer")
+        self.viewer_layout = QVBoxLayout(self.viewer_group)
+        self.layout.addWidget(self.viewer_group)
+        self.viewer_layout.setSpacing(4)
+        self.viewer_layout.setContentsMargins(0, 4, 0, 4)
 
         self.primary = VolumeViewer(self.vtk_widget, self.legend)
         current_margins = self.primary.layout().contentsMargins()
@@ -434,7 +441,8 @@ class MultiVolumeViewer(QWidget):
             current_margins.left(), 0, current_margins.right(), 0
         )
         self.primary_margins = self.primary.layout().contentsMargins()
-        self.layout.addWidget(self.primary)
+        self.viewer_layout.addWidget(self.primary)
+        # self.layout.addWidget(self.primary)
 
         add_button = QPushButton()
         add_button.setIcon(qta.icon("fa5s.plus", color="#696c6f"))
@@ -464,7 +472,7 @@ class MultiVolumeViewer(QWidget):
 
         self._copy_from_primary(new_viewer)
         self.additional_viewers.append(new_viewer)
-        self.layout.addWidget(new_viewer)
+        self.viewer_layout.addWidget(new_viewer)
 
     def remove_viewer(self, viewer):
         """Remove a specific viewer"""
