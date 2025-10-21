@@ -942,6 +942,8 @@ class PropertyAnalysisDialog(QDialog):
             plot = self.plot_widget.addPlot(row=0, col=0)
             plot.setLabel("left", y_label)
             plot.setLabel("bottom", x_label)
+
+            plot.disableAutoRange()
             plot.addLegend(offset=(-10, 10))
 
             for i, (name, obj, values, color) in enumerate(data_series):
@@ -992,6 +994,9 @@ class PropertyAnalysisDialog(QDialog):
                     )
 
                 plot.addItem(item)
+
+            plot.enableAutoRange()
+            plot.autoRange()
             return None
 
         # For separate plots mode
@@ -1077,6 +1082,8 @@ class PropertyAnalysisDialog(QDialog):
 
     def _export_plot(self):
         """Save the current plot as an image"""
+        from pyqtgraph.exporters import ImageExporter
+
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Save Plot", "", "PNG Files (*.png);;All Files (*.*)"
         )
@@ -1085,7 +1092,7 @@ class PropertyAnalysisDialog(QDialog):
             return None
 
         try:
-            exporter = pg.exporters.ImageExporter(self.plot_widget.scene())
+            exporter = ImageExporter(self.plot_widget.scene())
             exporter.parameters()["width"] = 1920
             exporter.parameters()["height"] = 1080
             exporter.parameters()["antialias"] = True

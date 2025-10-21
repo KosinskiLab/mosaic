@@ -353,7 +353,6 @@ QSlider_style = """
 
 QMessageBox_style = """
     QMessageBox QLabel {
-        color: #334155;
         font-size: 13px;
     }
     QMessageBox QPushButton {

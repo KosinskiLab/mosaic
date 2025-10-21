@@ -1,8 +1,9 @@
 import warnings
+
+from shutil import which
 from pathlib import Path
 from typing import Tuple
 from subprocess import run
-from os import makedirs
 from os.path import splitext, join, basename
 
 import numpy as np
@@ -90,10 +91,15 @@ def run_membrainseg(
         "Running MemBrain - Corresponding Citation: "
         "[1] Lamm, L. et al. (2024) bioRxiv, doi.org/10.1101/2024.01.05.574336."
     )
+    if which("membrain") is None:
+        raise ValueError(
+            "The 'membrain' executable was not found in PATH. "
+            "Please ensure MemBrain is installed and accessible."
+        )
+
     if out_folder is None:
         out_folder = str(Path.home().joinpath("mosaic/segmentations/membrain"))
-
-    makedirs(out_folder, exist_ok=True)
+    Path(out_folder).mkdir(parents=True, exist_ok=True)
 
     cmd = [
         "membrain",
