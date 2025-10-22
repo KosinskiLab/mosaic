@@ -89,12 +89,10 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             return index
 
     def _get_data_from_actor(self, actor):
-        index = self._get_actor_index(actor, "model")
-        if index is not None:
-            return self.cdata._models.data[index], index
-        index = self._get_actor_index(actor, "cluster")
-        if index is not None:
-            return self.cdata._data.data[index], index
+        if (index := self._get_actor_index(actor, "model")) is not None:
+            return self.cdata._models.get(index), index
+        if (index := self._get_actor_index(actor, "cluster")) is not None:
+            return self.cdata._data.get(index), index
         return None, None
 
     def _selection_to_geometry(self):
@@ -170,36 +168,37 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         unique_geometries = self._selection_to_geometry()
 
-        sampling, appearance, points, meshes = 1, {}, [], []
+        sampling, appearance, points, geoms = 1, {}, [], []
         for index, (geometry, point_ids) in unique_geometries.items():
             geometry.color_points(
                 point_ids, geometry._appearance.get("base_color", (0.7, 0.7, 0.7))
             )
             points.append(geometry.points[point_ids].copy())
-            fit = geometry._meta.get("fit", None)
-            if hasattr(fit, "mesh"):
-                meshes.append((fit.mesh, index))
-                sampling = geometry._sampling_rate
+
+            if isinstance((fit := geometry._meta.get("fit")), TriangularMesh):
+                geoms.append(geometry)
+                sampling = np.maximum(sampling, geometry.sampling_rate)
                 appearance.update(geometry._appearance)
 
-        shape = (-1, 3)
-        vertices = np.concatenate(points).reshape(*shape)
-        faces = np.arange(vertices.size // shape[1]).reshape(*shape)
-        meshes.append((to_open3d(vertices, faces), None))
+        if len(geoms) == 0:
+            return None
 
+        vertices = np.concatenate(points).reshape(-1, 3)
+        faces = np.arange(vertices.size // 3).reshape(-1, 3)
+
+        meshes = [*[x._meta["fit"].mesh for x in geoms], to_open3d(vertices, faces)]
         vertices, faces = merge_meshes(
-            vertices=[np.asarray(x.vertices) for (x, _) in meshes],
-            faces=[np.asarray(x.triangles) for (x, _) in meshes],
+            vertices=[np.asarray(x.vertices) for x in meshes],
+            faces=[np.asarray(x.triangles) for x in meshes],
         )
 
         fit = TriangularMesh(to_open3d(vertices, faces))
         index = self.cdata._add_fit(fit=fit, points=vertices, sampling_rate=sampling)
-        if self.cdata._models._index_ok(index):
-            geometry = self.cdata._models.data[index]
+        if (geometry := self.cdata._models.get(index)) is not None:
             geometry.change_representation("mesh")
             geometry.set_appearance(**appearance)
 
-        self.cdata._models.remove([index for (_, index) in meshes])
+        self.cdata._models.remove(geoms)
         self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
 

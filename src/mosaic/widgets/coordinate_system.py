@@ -87,12 +87,8 @@ class BoundingBoxManager:
     def show_all_object_boxes(self):
         """Show bounding boxes for all visible objects"""
 
-        data_indices = [
-            i for i in self.cdata.data.get_selected_geometries() if i.visible
-        ]
-        model_indices = [
-            i for i in self.cdata.models.get_selected_geometries() if i.visible
-        ]
+        data_indices = [i for i in self.cdata._data.data if i.visible]
+        model_indices = [i for i in self.cdata._models.data if i.visible]
         return self.show_selected_boxes(
             data_geometries=data_indices, model_geometries=model_indices
         )

@@ -239,7 +239,10 @@ class ContainerTreeWidget(QFrame):
         if not (selected_items := self.selected_items()):
             return None
 
-        group_item = self.create_group(group_name)
+        first_item = selected_items[0]
+        insert_index = self.tree_widget.indexOfTopLevelItem(first_item)
+
+        group_item = self.create_group(group_name, insert_index=insert_index)
         try:
             self.tree_widget.blockSignals(True)
             self._move_items_to_parent(selected_items, group_item)
@@ -328,10 +331,21 @@ class ContainerTreeWidget(QFrame):
     def addItem(self, item):
         self.tree_widget.addTopLevelItem(item)
 
-    def create_group(self, name: str):
-        """Create a new group at the root level."""
+    def create_group(self, name: str, insert_index: int = None):
+        """Create a new group at the root level.
+
+        Parameters
+        ----------
+        name : str
+            Name for the new group
+        insert_index : int, optional
+            Index at which to insert the group. If None, appends to end.
+        """
         group_item = GroupTreeWidgetItem(name)
-        self.tree_widget.addTopLevelItem(group_item)
+        if insert_index is not None and insert_index >= 0:
+            self.tree_widget.insertTopLevelItem(insert_index, group_item)
+        else:
+            self.tree_widget.addTopLevelItem(group_item)
         group_item.setExpanded(True)
         return group_item
 

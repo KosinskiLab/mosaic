@@ -53,7 +53,7 @@ def _remesh(method, geometry, **kwargs):
 
 
 def _project(
-    mesh,
+    mesh_geometry,
     geometries,
     use_normals: bool = False,
     invert_normals: bool = False,
@@ -61,6 +61,7 @@ def _project(
 ):
     from ..geometry import Geometry
 
+    mesh = mesh_geometry._meta["fit"]
     new_geometries, projections, triangles = [], [], []
     for geometry in geometries:
         normals = geometry.normals if use_normals else None
@@ -275,8 +276,10 @@ class ModelTab(QWidget):
         if len(selected_meshes) < 2:
             return None
 
-        for index in selected_meshes:
-            meshes.append(self.cdata._models.data[index]._meta.get("fit"))
+        sampling_rate = 1
+        for geometry in selected_meshes:
+            sampling_rate = np.maximum(sampling_rate, geometry.sampling_rate)
+            meshes.append(geometry._meta.get("fit"))
 
         vertices, faces = meshing.merge_meshes(
             vertices=[x.vertices for x in meshes],
@@ -284,7 +287,7 @@ class ModelTab(QWidget):
         )
         self.cdata._add_fit(
             fit=TriangularMesh(meshing.to_open3d(vertices, faces)),
-            sampling_rate=self.cdata._models.data[index].sampling_rate,
+            sampling_rate=sampling_rate,
         )
         self.cdata._models.remove(selected_meshes)
 

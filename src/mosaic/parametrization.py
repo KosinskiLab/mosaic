@@ -19,7 +19,6 @@ import igl
 import numpy as np
 import open3d as o3d
 from scipy import optimize, interpolate
-from scipy.spatial import ConvexHull as scConvexHull
 
 from .utils import find_closest_points, com_cluster_points, compute_normals
 from .meshing import (
@@ -47,12 +46,8 @@ def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.
 def _sample_from_chull(
     positions_xyz: np.ndarray, n_samples: int, mesh_init_factor: int = None
 ) -> np.ndarray:
-    hull = scConvexHull(positions_xyz)
-    mesh = o3d.geometry.TriangleMesh()
-    mesh.vertices = o3d.utility.Vector3dVector(positions_xyz[hull.vertices])
-    mesh.triangles = o3d.utility.Vector3iVector(hull.simplices)
-
-    return _sample_from_mesh(mesh, n_samples, mesh_init_factor)
+    chull = ConvexHull.fit(positions_xyz)
+    return _sample_from_mesh(chull.mesh, n_samples, mesh_init_factor)
 
 
 def _normalize(arr: np.ndarray):
@@ -537,7 +532,7 @@ class Cylinder(Parametrization):
         self,
         n_samples: int,
         normal_offset: float = 0.0,
-        mesh_init_factor: int = None,
+        mesh_init_factor: int = 5,
         **kwargs,
     ) -> np.ndarray:
         """
@@ -564,12 +559,13 @@ class Cylinder(Parametrization):
             radius = radius + normal_offset
             height = height + normal_offset
 
-        n_samples = int(np.ceil(np.sqrt(n_samples)))
-        theta = np.linspace(0, 2 * np.pi, n_samples)
-        h = np.linspace(-height / 2, height / 2, n_samples)
+        base_samples = int(np.ceil(np.sqrt(n_samples)))
+        theta = np.linspace(0, 2 * np.pi, base_samples)
+        h = np.linspace(-height / 2, height / 2, base_samples)
 
         mesh = np.asarray(np.meshgrid(theta, h)).reshape(2, -1).T
 
+        # This does not sample the poles so we need _sample_from_chull
         positions_xyz = np.column_stack(
             [
                 radius * np.cos(mesh[:, 0]),
@@ -579,13 +575,11 @@ class Cylinder(Parametrization):
         )
 
         positions_xyz = positions_xyz.dot(self.orientations.T) + self.centers
-        if mesh_init_factor is not None:
-            positions_xyz = _sample_from_chull(
-                positions_xyz=positions_xyz,
-                mesh_init_factor=mesh_init_factor,
-                n_samples=n_samples,
-            )
-        return positions_xyz
+        return _sample_from_chull(
+            positions_xyz=positions_xyz,
+            mesh_init_factor=mesh_init_factor,
+            n_samples=n_samples,
+        )
 
     def points_per_sampling(
         self, sampling_density: float, normal_offset: float = None
@@ -998,9 +992,9 @@ class TriangularMesh(Parametrization):
             n_invalid = valid_hits.size - np.sum(valid_hits)
             if n_invalid > 0:
                 warnings.warn(
-                    f"{n_invalid} of {valid_hits.size} did not intersect with the mesh. "
-                    f"Check the accuracy of the associated normal vectors. Falling back to "
-                    "Euclidean distance for those cases."
+                    f"{n_invalid} of {valid_hits.size} points did not intersect with "
+                    "the mesh. Check the accuracy of the associated normal vectors. "
+                    "Falling back to Euclidean distance for those cases."
                 )
 
             projected_points = np.copy(points)
@@ -1119,12 +1113,10 @@ class TriangularMesh(Parametrization):
                     new_triangles.append(all_indices[simplex])
 
             except Exception as e:
-                warnings.warn(str(e))
-                warnings.warn("Falling back to star triangulation instead.")
+                warnings.warn(f"Encountered {e}. Falling back to star triangulation.")
 
-                # Fallback: Star triangulation adding erach point one by one.
+                # Fallback: Star triangulation adding each point one by one
                 current_triangle_indices = [[v1_idx, v2_idx, v3_idx]]
-
                 for i, new_vertex_idx in enumerate(tri_point_indices):
                     next_triangle_indices = []
 
@@ -1319,12 +1311,12 @@ class ConvexHull(TriangularMesh):
                     pcd, alpha
                 )
         except Exception as e:
-            print(e)
-            print("Falling back to scConvexHull.")
+            from scipy.spatial import ConvexHull as scConvexHull
+
+            warnings.warn(f"Encountered {e}. Falling back to scConvexHull.")
 
             hull = scConvexHull(positions, qhull_options="Qs")
-            mesh = to_open3d(positions[hull.vertices], hull.simplices)
-            return cls(mesh=mesh)
+            return cls(mesh=to_open3d(positions[hull.vertices], hull.simplices))
 
         mesh.vertices = o3d.utility.Vector3dVector(
             np.multiply(np.asarray(mesh.vertices), scale)

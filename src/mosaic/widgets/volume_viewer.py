@@ -236,16 +236,7 @@ class VolumeViewer(QWidget):
     def load_volume(self, file_path):
         from ..formats.parser import load_density
 
-        if file_path.endswith("pickle") or file_path.endswith("pickle.gz"):
-            from tme import Density
-            from tme.matching_utils import load_pickle
-
-            data = load_pickle(file_path)
-            volume = Density(data[0], sampling_rate=data[-1][2])
-
-        else:
-            volume = load_density(file_path)
-
+        volume = load_density(file_path)
         self.volume = vtk.vtkImageData()
         self.volume.SetDimensions(volume.shape)
         self.volume.SetSpacing(volume.sampling_rate)

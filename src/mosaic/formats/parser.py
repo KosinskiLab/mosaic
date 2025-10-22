@@ -375,7 +375,7 @@ def read_txt(filename: str):
     ret = []
 
     delimiter = None
-    if filename.endswith("csv"):
+    if filename.endswith(("csv", "xyz")):
         delimiter = ","
     elif filename.endswith(("txt", "tsv")):
         delimiter = "\t"
