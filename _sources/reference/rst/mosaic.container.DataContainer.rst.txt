@@ -1,0 +1,32 @@
+﻿mosaic.container.DataContainer
+==============================
+
+.. currentmodule:: mosaic.container
+
+.. autoclass:: DataContainer
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DataContainer.__init__
+      ~DataContainer.add
+      ~DataContainer.clear
+      ~DataContainer.get
+      ~DataContainer.get_actors
+      ~DataContainer.highlight
+      ~DataContainer.highlight_points
+      ~DataContainer.remove
+      ~DataContainer.update
+      ~DataContainer.update_appearance
+      ~DataContainer.uuid_to_index
+   
+   
+
+   
+   
+   

@@ -1,0 +1,6 @@
+﻿mosaic.geometry.Geometry.compute\_distance
+==========================================
+
+.. currentmodule:: mosaic.geometry
+
+.. automethod:: Geometry.compute_distance
