@@ -412,24 +412,41 @@ class DataContainerInteractor(QObject):
             if hasattr(fit, "mesh"):
                 enabled_categories.append("mesh")
 
-        # Shape and sampling are given if MosaicData.open_file loaded a volume.
-        # For convenience, outputs will be handled w.r.t to the initial volume
-        sampling, shape = 1, self.container.metadata.get("shape")
+        sampling, shape = (1, 1, 1), (1, 1, 1)
+        for geometry in self.get_selected_geometries():
+            sampling = np.maximum(sampling, geometry.sampling_rate)
+            bounds = geometry._data.GetBounds()
+            geom_shape = (
+                bounds[1] - bounds[0],
+                bounds[3] - bounds[2],
+                bounds[5] - bounds[4],
+            )
+            geom_shape = np.divide(geom_shape, geometry.sampling_rate)
+            shape = np.maximum(shape, geom_shape)
+
+        sampling = max(sampling)
+        shape = np.asarray(shape).astype(int) + 1
+
+        # Shape is stored when opening files through the GUI
+        if (container_shape := self.container.metadata.get("shape")) is not None:
+            # Cleaned segmentations will be smaller. However, it makes sense to store
+            # them w.r.t to the intial volume. If they are larger it means the user
+            # added points which should be reflected in the default value
+            shape = np.maximum(shape, container_shape)
+
+        shape = tuple(int(x) for x in shape)
         dialog = ExportDialog(
             parent=None,
-            parameters={"shape": shape},
             enabled_categories=enabled_categories,
+            parameters={
+                "shape_x": shape[0],
+                "shape_y": shape[1],
+                "shape_z": shape[2],
+                "sampling": sampling,
+            },
         )
 
-        if shape is not None:
-            sampling = self.container.metadata.get("sampling_rate", 1)
-            shape = np.rint(np.divide(shape, sampling)).astype(int)
-        else:
-            shape = (64, 64, 64)
-
-        dialog.set_shape(shape)
         dialog.export_requested.connect(self._wrap_export)
-
         return dialog.exec()
 
     def _wrap_export(self, export_data):

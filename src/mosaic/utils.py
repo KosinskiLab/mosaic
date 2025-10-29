@@ -68,8 +68,8 @@ def points_to_volume(points, sampling_rate=1, shape=None, weight=1, out=None):
     if shape is None:
         shape = positions.max(axis=0) + 1
 
-    valid_positions = np.sum(np.logical_and(positions < shape, positions >= 0), axis=1)
-    positions = positions[valid_positions == positions.shape[1], :]
+    valid_mask = np.all((positions >= 0) & (positions < shape), axis=1)
+    positions = positions[valid_mask]
 
     if out is None:
         out = np.zeros(tuple(int(x) for x in shape), dtype=np.float32)

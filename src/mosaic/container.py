@@ -104,7 +104,7 @@ class DataContainer:
                 return index
         return None
 
-    def get(self, index_or_uuid):
+    def get(self, index_or_uuid: Union[int, str]):
         """
         Retrieve the Geometry object by index or UUID.
 
@@ -252,7 +252,7 @@ class DataContainer:
 
         return full_render
 
-    def _to_uuid(self, uuid_or_geometry):
+    def _to_uuid(self, uuid_or_geometry: Union[str, "Geometry"]) -> str:
         """Convert UUID or Geometry to UUID.
 
         Parameters
@@ -273,7 +273,7 @@ class DataContainer:
 
     def _to_uuids(
         self, uuids_or_geometries: Union[List[str], List["Geometry"]]
-    ) -> List[str]:  # Fix return type
+    ) -> List[str]:
         """Convert list of UUIDs or Geometries to UUIDs.
 
         Parameters

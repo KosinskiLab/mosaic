@@ -15,7 +15,13 @@ import numpy as np
 from vtk.util import numpy_support
 
 from .actor import create_actor
-from .utils import find_closest_points, normals_to_rot, apply_quat, NORMAL_REFERENCE
+from .utils import (
+    find_closest_points,
+    normals_to_rot,
+    apply_quat,
+    NORMAL_REFERENCE,
+    points_to_volume,
+)
 
 __all__ = ["Geometry", "VolumeGeometry", "GeometryTrajectory"]
 
@@ -818,6 +824,25 @@ class Geometry:
         if representation == "pointcloud":
             prop.SetRepresentationToPoints()
             mapper.SetInputData(self._data)
+
+        elif representation == "pointcloud_mesh":
+            _volume = points_to_volume(self.points, self.sampling_rate)
+
+            volume = vtk.vtkImageData()
+            volume.SetSpacing(self.sampling_rate)
+            volume.SetDimensions(_volume.shape)
+            volume.AllocateScalars(vtk.VTK_FLOAT, 1)
+            _volume = numpy_support.numpy_to_vtk(
+                _volume.ravel(order="F"), deep=False, array_type=vtk.VTK_FLOAT
+            )
+            volume.GetPointData().SetScalars(_volume)
+
+            flying_edges = vtk.vtkFlyingEdges3D()
+            flying_edges.SetInputData(volume)
+            flying_edges.SetValue(0, self._meta.get("isovalue", 0.5))
+            flying_edges.ComputeNormalsOn()
+            mapper.SetInputConnection(flying_edges.GetOutputPort())
+            prop.SetRepresentationToSurface()
 
         elif representation == "gaussian_density":
             mapper.SetSplatShaderCode("")

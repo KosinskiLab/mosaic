@@ -75,83 +75,6 @@ class StyleableButton(QPushButton):
         )
 
 
-from typing import Tuple, Dict
-from qtpy.QtCore import Qt, Signal
-from qtpy.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QFrame,
-    QScrollArea,
-    QWidget,
-    QGroupBox,
-    QGridLayout,
-)
-import qtawesome as qta
-
-from ..widgets import DialogFooter
-from ..stylesheets import QGroupBox_style, QPushButton_style, QScrollArea_style
-from ..widgets import create_setting_widget, get_widget_value
-
-
-class StyleableButton(QPushButton):
-    def __init__(
-        self, icon_name, title, description=None, is_compact=False, parent=None
-    ):
-        super().__init__(parent)
-
-        layout = QVBoxLayout(self)
-
-        icon_size = 32
-        size = (150, 100)
-        margin = 8, 12, 8, 12
-        if is_compact:
-            icon_size = 24
-            size = (70, 70)
-            margin = (6, 8, 6, 8)
-
-        layout.setContentsMargins(*margin)
-        layout.setSpacing(4)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        icon = qta.icon(icon_name, color="#696c6f")
-        icon_label = QLabel()
-        icon_label.setPixmap(icon.pixmap(icon_size, icon_size))
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(icon_label)
-
-        title_label = QLabel(title)
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title_label)
-
-        if description and not is_compact:
-            desc_label = QLabel(description)
-            desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            desc_label.setStyleSheet("color: #696c6f; font-size: 11px;")
-            desc_label.setWordWrap(True)
-            layout.addWidget(desc_label)
-
-        self.setMinimumSize(*size)
-        self.setCheckable(True)
-        self.setStyleSheet(
-            """
-            QPushButton {
-                border: 1px solid #d1d5db;
-                border-radius: 6px;
-                text-align: center;
-            }
-            QPushButton:checked {
-                border: 1px solid #4f46e5;
-            }
-            QPushButton:hover:!checked {
-                background-color: #1a000000;
-            }
-        """
-        )
-
-
 class ExportDialog(QDialog):
     export_requested = Signal(dict)
 
@@ -164,7 +87,6 @@ class ExportDialog(QDialog):
         if enabled_categories is None:
             enabled_categories = ["pointcloud", "mesh", "volume"]
         self.enabled_categories = set(enabled_categories)
-
         self.format_categories = {
             "pointcloud": {
                 "icon": "mdi.dots-grid",
@@ -276,6 +198,9 @@ class ExportDialog(QDialog):
         self.current_settings = {}
         self.show_advanced = False
 
+        # Set parameters before drawing dialog
+        self.set_defaults(list(parameters.keys()), list(parameters.values()))
+
         self.setup_ui()
         self.setStyleSheet(QGroupBox_style + QPushButton_style + QScrollArea_style)
 
@@ -285,19 +210,6 @@ class ExportDialog(QDialog):
             for index, key in enumerate(keys):
                 if key in settings_dict:
                     settings_dict[key]["default"] = values[index]
-
-    def set_shape(self, shape: Tuple[int]):
-        if shape is None:
-            return None
-        return self.set_defaults(("shape_x", "shape_y", "shape_z"), shape)
-
-    def set_sampling(self, sampling: Tuple[float]):
-        if sampling is None:
-            return None
-
-        if not isinstance(sampling, Tuple):
-            sampling = (sampling,)
-        return self.set_defaults(("sampling",), (max(sampling),))
 
     def setup_ui(self):
         from ..icons import icon_color

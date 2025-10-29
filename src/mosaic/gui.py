@@ -1152,6 +1152,8 @@ class App(QMainWindow):
                         if not show_large_file_warning():
                             continue
 
+                    data_shape = np.divide(data.shape, data.sampling)
+
                     name = base if not use_index else f"{index}_{base}"
                     if data.faces is None:
                         index = self.cdata.data.add(
@@ -1162,6 +1164,13 @@ class App(QMainWindow):
                             vertex_properties=data.vertex_properties,
                         )
                         self.cdata._data.data[index]._meta["name"] = name
+
+                        if "shape" not in self.cdata._data.metadata:
+                            self.cdata._data.metadata["shape"] = data_shape
+                        self.cdata._data.metadata["shape"] = np.maximum(
+                            self.cdata._data.metadata["shape"], data_shape
+                        )
+
                     else:
                         from .meshing import to_open3d
                         from .parametrization import TriangularMesh
@@ -1172,6 +1181,12 @@ class App(QMainWindow):
                             vertex_properties=data.vertex_properties,
                         )
                         self.cdata._models.data[index]._meta["name"] = name
+
+                        if "shape" not in self.cdata._models.metadata:
+                            self.cdata._models.metadata["shape"] = data_shape
+                        self.cdata._models.metadata["shape"] = np.maximum(
+                            self.cdata._models.metadata["shape"], data_shape
+                        )
 
         self.cdata.data.data_changed.emit()
         self.cdata.models.data_changed.emit()
