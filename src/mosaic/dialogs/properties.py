@@ -6,6 +6,8 @@ Copyright (c) 2024 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from os.path import exists
+
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import (
     QVBoxLayout,
@@ -45,7 +47,9 @@ class GeometryPropertiesDialog(QDialog):
             "highlight_color", (0.8, 0.2, 0.2)
         )
         self.initial_properties = initial_properties or {}
-        self.volume_path = self.initial_properties.get("volume_path", None)
+        volume_path = self.initial_properties.get("volume_path", None)
+        if exists(volume_path):
+            self.volume_path = volume_path
 
         self.setup_ui()
         self.connect_signals()
