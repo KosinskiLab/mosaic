@@ -172,6 +172,7 @@ def setup_hmff(
             data = data / data.max(axis=axis, keepdims=True)
 
         volume_path = join(directory, "density.mrc")
+        data = data.astype(np.float32)
         Density(data, origin=origin, sampling_rate=sampling).to_file(volume_path)
 
     warnings.warn(

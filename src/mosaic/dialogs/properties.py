@@ -47,9 +47,12 @@ class GeometryPropertiesDialog(QDialog):
             "highlight_color", (0.8, 0.2, 0.2)
         )
         self.initial_properties = initial_properties or {}
-        volume_path = self.initial_properties.get("volume_path", None)
-        if exists(volume_path):
-            self.volume_path = volume_path
+        self.volume_path = self.initial_properties.get("volume_path", None)
+        try:
+            if not exists(self.volume_path):
+                self.volume_path = None
+        except Exception:
+            pass
 
         self.setup_ui()
         self.connect_signals()

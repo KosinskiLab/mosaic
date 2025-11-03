@@ -20,10 +20,12 @@ def _fit(method, geometry, **kwargs):
     if fit_object is None:
         raise ValueError(f"{method} is not supported ({PARAMETRIZATION_TYPE.keys()}).")
 
-    n = geometry.points.shape[0]
+    points, *_ = geometry.get_point_data()
+
+    n = points.shape[0]
     if n < 50 and method not in ["convexhull", "spline"]:
         raise ValueError(f"Insufficient points for fit ({n}<50).")
-    return fit_object.fit(geometry.points, **kwargs)
+    return fit_object.fit(points, **kwargs)
 
 
 def _remesh(method, geometry, **kwargs):
@@ -348,8 +350,11 @@ class ModelTab(QWidget):
         for geometry in self.cdata.data.get_selected_geometries():
             kwargs["voxel_size"] = np.max(geometry.sampling_rate)
 
+            if method == "flyingedges" and kwargs.get("distance", -1) != -1:
+                kwargs["voxel_size"] = kwargs.get("distance")
+
             def _callback(fit):
-                self.cdata._add_fit(fit, sampling_rate=geometry.sampling_rate)
+                self.cdata._add_fit(fit, sampling_rate=kwargs["voxel_size"])
                 self.cdata.models.render()
 
             submit_task(
@@ -852,6 +857,18 @@ MESH_SETTINGS = {
                 "default": 15,
                 "description": "Number of neighbors for normal estimations.",
                 "notes": "Consider decreasing this value for small point clouds.",
+            },
+        ],
+        "Flying Edges": [
+            {
+                "label": "Distance",
+                "parameter": "distance",
+                "type": "float",
+                "description": "Distance between points to be considered connected.",
+                "default": -1.0,
+                "min": -1.0,
+                "max": 1e32,
+                "notes": "Defaults to the sampling rate of the object.",
             },
         ],
     },
