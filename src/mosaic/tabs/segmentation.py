@@ -161,78 +161,19 @@ class SegmentationTab(QWidget):
             return self.transfomer.clean()
         return self.transfomer.show()
 
-    def _create_or_toggle_dock(
-        self, dock_attr_name, dialog_widget, dock_area=Qt.RightDockWidgetArea
-    ):
-        """
-        Helper method to create or toggle a docked dialog.
-
-        Parameters
-        ----------
-        dock_attr_name : str
-            The attribute name to store the dock widget (e.g., 'histogram_dock')
-        dialog_widget : QWidget
-            The dialog widget to display in the dock
-        dock_area : Qt.DockWidgetArea, optional
-            Where to dock the widget, default is RightDockWidgetArea
-        """
-
-        def _exit():
-            dock = getattr(self, dock_attr_name, None)
-            if dock:
-                if widget := dock.widget():
-                    widget.close()
-                dock.close()
-                dock.deleteLater()
-            setattr(self, dock_attr_name, None)
-
-        if getattr(self, dock_attr_name, None) is not None:
-            return _exit()
-
-        dock = QDockWidget(self)
-        dock.setFeatures(
-            QDockWidget.DockWidgetClosable
-            | QDockWidget.DockWidgetFloatable
-            | QDockWidget.DockWidgetMovable
-        )
-        dock.setWidget(dialog_widget)
-
-        # Handle cleanup when dock is closed via X button
-        dock.visibilityChanged.connect(lambda visible: _exit() if not visible else None)
-
-        if hasattr(dialog_widget, "accepted"):
-            dialog_widget.accepted.connect(_exit)
-        if hasattr(dialog_widget, "rejected"):
-            dialog_widget.rejected.connect(_exit)
-
-        main_window = None
-        for widget in QApplication.instance().topLevelWidgets():
-            if isinstance(widget, QMainWindow):
-                main_window = widget
-                break
-
-        if main_window is None:
-            QMessageBox.warning(
-                self, "Warning", "Could not determine application main window."
-            )
-            return dialog_widget.show()
-
-        main_window.addDockWidget(dock_area, dock)
-        setattr(self, dock_attr_name, dock)
-        dock.show()
-        dock.raise_()
-
     def _show_histogram(self):
         from ..dialogs import HistogramDialog
+        from ..widgets.dock import create_or_toggle_dock
 
         dialog = HistogramDialog(self.cdata, parent=self)
-        self._create_or_toggle_dock("histogram_dock", dialog)
+        create_or_toggle_dock(self, "histogram_dock", dialog)
 
     def _show_property_dialog(self):
         from ..dialogs import PropertyAnalysisDialog
+        from ..widgets.dock import create_or_toggle_dock
 
         dialog = PropertyAnalysisDialog(self.cdata, self.legend, parent=self)
-        self._create_or_toggle_dock("property_dock", dialog)
+        create_or_toggle_dock(self, "property_dock", dialog)
 
     def _distance_crop(self):
         from ..dialogs import DistanceCropDialog

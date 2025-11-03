@@ -20,6 +20,7 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QWidget,
     QStackedWidget,
+    QScrollArea,
 )
 import qtawesome as qta
 
@@ -60,50 +61,35 @@ class GeometryPropertiesDialog(QDialog):
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 8, 0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        ribbon = RibbonToolBar()
-        pages = (
-            self.setup_appearance_page(),
-            self.setup_volume_page(),
-            self.setup_sampling_page(),
-        )
-        self.stacked_widget = QStackedWidget()
-        for page in pages:
-            self.stacked_widget.addWidget(page)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.NoFrame)
 
-        appearance_btn = create_button(
-            "Appearance",
-            "fa5s.palette",
-            callback=lambda: self.stacked_widget.setCurrentIndex(0),
-        )
-        volume_btn = create_button(
-            "Model",
-            "fa5s.cube",
-            callback=lambda: self.stacked_widget.setCurrentIndex(1),
-        )
-        sampling_btn = create_button(
-            "Sampling",
-            "fa5s.compress-arrows-alt",
-            callback=lambda: self.stacked_widget.setCurrentIndex(2),
-        )
+        container = QWidget()
+        content_layout = QVBoxLayout(container)
+        content_layout.setContentsMargins(8, 8, 8, 8)
+        content_layout.setSpacing(16)
 
-        ribbon.add_section("Properties", [appearance_btn])
-        ribbon.add_section("", [volume_btn])
-        ribbon.add_section("", [sampling_btn])
+        content_layout.addWidget(self.create_display_group())
+        content_layout.addWidget(self.create_colors_group())
+        content_layout.addWidget(self.create_lighting_group())
+        content_layout.addWidget(self.create_volume_group())
+        content_layout.addWidget(self.create_sampling_group())
+        content_layout.addStretch()
 
-        main_layout.addWidget(ribbon)
-        main_layout.addWidget(self.stacked_widget)
+        scroll.setWidget(container)
+        main_layout.addWidget(scroll)
 
         footer = DialogFooter(dialog=self)
         main_layout.addWidget(footer)
 
-    def setup_appearance_page(self):
-        page = QWidget()
-        layout = QVBoxLayout(page)
+        self.setMinimumWidth(250)
 
-        appearance_group = QGroupBox("Display")
-        appearance_layout = QFormLayout(appearance_group)
+    def create_display_group(self):
+        group = QGroupBox("Display")
+        layout = QFormLayout(group)
 
         self.size_spin = create_setting_widget(
             {
@@ -113,67 +99,61 @@ class GeometryPropertiesDialog(QDialog):
                 "default": self.initial_properties.get("size", 8),
             }
         )
-        appearance_layout.addRow("Point Size:", self.size_spin)
+        layout.addRow("Point Size:", self.size_spin)
 
         base_settings = {"type": "float", "min": 0.0, "max": 1.0, "step": 0.1}
         self.opacity_spin = create_setting_widget(
             base_settings | {"default": self.initial_properties.get("opacity", 0.3)}
         )
-        appearance_layout.addRow("Opacity:", self.opacity_spin)
-        layout.addWidget(appearance_group)
+        layout.addRow("Opacity:", self.opacity_spin)
 
-        # Colors Group
-        colors_group = QGroupBox("Colors")
-        colors_layout = QFormLayout()
+        return group
+
+    def create_colors_group(self):
+        group = QGroupBox("Colors")
+        layout = QFormLayout(group)
 
         self.base_color_button = ColorButton()
         self.base_color_button.update_color(self.base_color)
-        colors_layout.addRow("Base Color:", self.base_color_button)
+        layout.addRow("Base Color:", self.base_color_button)
 
         self.highlight_color_button = ColorButton()
         self.highlight_color_button.update_color(self.highlight_color)
-        colors_layout.addRow("Highlight Color:", self.highlight_color_button)
+        layout.addRow("Highlight Color:", self.highlight_color_button)
 
-        colors_group.setLayout(colors_layout)
-        layout.addWidget(colors_group)
+        return group
 
-        # Lighting Group
-        lighting_group = QGroupBox("Lighting")
-        lighting_layout = QFormLayout()
+    def create_lighting_group(self):
+        group = QGroupBox("Lighting")
+        layout = QFormLayout(group)
+
+        base_settings = {"type": "float", "min": 0.0, "max": 1.0, "step": 0.1}
 
         self.ambient_spin = create_setting_widget(
             base_settings | {"default": self.initial_properties.get("ambient", 0.3)}
         )
-        lighting_layout.addRow("Ambient:", self.ambient_spin)
+        layout.addRow("Ambient:", self.ambient_spin)
 
         self.diffuse_spin = create_setting_widget(
             base_settings | {"default": self.initial_properties.get("diffuse", 0.3)}
         )
-        lighting_layout.addRow("Diffuse:", self.diffuse_spin)
+        layout.addRow("Diffuse:", self.diffuse_spin)
 
         self.specular_spin = create_setting_widget(
             base_settings | {"default": self.initial_properties.get("specular", 0.3)}
         )
-        lighting_layout.addRow("Specular:", self.specular_spin)
+        layout.addRow("Specular:", self.specular_spin)
 
-        lighting_group.setLayout(lighting_layout)
-        layout.addWidget(lighting_group)
+        return group
 
-        layout.addStretch()
-        return page
-
-    def setup_volume_page(self):
-        page = QWidget()
-        layout = QVBoxLayout(page)
-
-        # Volume Group
-        volume_group = QGroupBox("Volume Settings")
-        volume_layout = QFormLayout()
+    def create_volume_group(self):
+        group = QGroupBox("Volume")
+        layout = QFormLayout(group)
 
         self.browse_button = QPushButton()
         self.browse_button.setIcon(qta.icon("fa5s.folder-open"))
         self.browse_button.clicked.connect(self.browse_volume)
-        volume_layout.addRow("Volume:", self.browse_button)
+        layout.addRow("Volume:", self.browse_button)
 
         self.scale_widget = QWidget()
         scale_layout = QHBoxLayout(self.scale_widget)
@@ -188,7 +168,7 @@ class GeometryPropertiesDialog(QDialog):
         scale_layout.addWidget(self.scale_positive)
         scale_layout.addWidget(self.scale_negative)
         self.scale_widget.setEnabled(False)
-        volume_layout.addRow("Scaling:", self.scale_widget)
+        layout.addRow("Scaling:", self.scale_widget)
 
         self.isovalue_spin = create_setting_widget(
             {
@@ -201,12 +181,12 @@ class GeometryPropertiesDialog(QDialog):
             }
         )
         self.isovalue_spin.setEnabled(False)
-        volume_layout.addRow("Isovalue:", self.isovalue_spin)
+        layout.addRow("Isovalue:", self.isovalue_spin)
 
         self.attach_button = QPushButton("Reattach")
         self.attach_button.setEnabled(False)
         self.attach_button.setToolTip("Reattach volume after representation change.")
-        volume_layout.addRow("", self.attach_button)
+        layout.addRow("", self.attach_button)
 
         volume_path = self.initial_properties.get("volume_path", None)
         if volume_path is not None:
@@ -214,35 +194,25 @@ class GeometryPropertiesDialog(QDialog):
             self.isovalue_spin.setEnabled(True)
             self.attach_button.setEnabled(True)
 
-        volume_group.setLayout(volume_layout)
-        layout.addWidget(volume_group)
-        layout.addStretch()
-        return page
+        return group
 
-    def setup_sampling_page(self):
-        page = QWidget()
-        layout = QVBoxLayout(page)
+    def create_sampling_group(self):
+        group = QGroupBox("Sampling")
+        layout = QFormLayout(group)
 
         sampling_rate = self.initial_properties.get("sampling_rate", (1.0, 1.0, 1.0))
 
-        # Sampling Group
-        sampling_group = QGroupBox("Sampling Rates")
-        sampling_layout = QFormLayout()
-
         base = {"type": "text", "min": 0}
         self.sampling_x = create_setting_widget(base | {"default": sampling_rate[0]})
-        sampling_layout.addRow("X Sampling:", self.sampling_x)
+        layout.addRow("X:", self.sampling_x)
 
         self.sampling_y = create_setting_widget(base | {"default": sampling_rate[1]})
-        sampling_layout.addRow("Y Sampling:", self.sampling_y)
+        layout.addRow("Y:", self.sampling_y)
 
         self.sampling_z = create_setting_widget(base | {"default": sampling_rate[2]})
-        sampling_layout.addRow("Z Sampling:", self.sampling_z)
+        layout.addRow("Z:", self.sampling_z)
 
-        sampling_group.setLayout(sampling_layout)
-        layout.addWidget(sampling_group)
-        layout.addStretch()
-        return page
+        return group
 
     def connect_signals(self):
         """Connect all widget signals to update parameters"""

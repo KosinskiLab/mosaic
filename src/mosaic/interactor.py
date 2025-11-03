@@ -392,7 +392,9 @@ class DataContainerInteractor(QObject):
         _representation = {x._representation for x in selected}
         if len(_representation) == 1:
             _inverse_map = {v: k for k, v in _formap_map.items()}
-            _representation = _inverse_map.get(_representation.pop()).title()
+            _representation = _inverse_map.get(_representation.pop())
+            if _representation is not None:
+                _representation = _representation.title()
         else:
             _representation = None
 
@@ -515,6 +517,7 @@ class DataContainerInteractor(QObject):
 
     def _show_properties_dialog(self) -> int:
         from .dialogs import GeometryPropertiesDialog
+        from .widgets.dock import create_or_toggle_dock
 
         uuids = self._get_selected_uuids()
         if not len(uuids):
@@ -542,8 +545,11 @@ class DataContainerInteractor(QObject):
 
         dialog.parametersChanged.connect(on_parameters_changed)
 
-        if dialog.exec() == QDialog.DialogCode.Rejected:
-            on_parameters_changed(base_parameters)
+        if hasattr(dialog, "rejected"):
+            dialog.rejected.connect(lambda: on_parameters_changed(base_parameters))
+
+        create_or_toggle_dock(self, "properties_dock", dialog, Qt.RightDockWidgetArea)
+
         return 1
 
     def _uuid_to_items(self):
