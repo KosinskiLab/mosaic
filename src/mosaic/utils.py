@@ -41,7 +41,9 @@ __all__ = [
 NORMAL_REFERENCE = (0, 0, 1)
 
 
-def points_to_volume(points, sampling_rate=1, shape=None, weight=1, out=None):
+def points_to_volume(
+    points, sampling_rate=1, shape=None, weight=1, out=None, use_offset: bool = False
+):
     """
     Convert point cloud to a volumetric representation.
 
@@ -57,13 +59,21 @@ def points_to_volume(points, sampling_rate=1, shape=None, weight=1, out=None):
         Weight value for each individual point. Defaults to one.
     out : ndarray, optional
         Array to place result into.
+    use_offset: bool
+        Move points to origin and return the corresponding offset.
 
     Returns
     -------
     ndarray
         volume ndarray of point densities
+    ndarray
+        Array of offsets if use_offset is True.
     """
+    # positions = np.divide(points, sampling_rate).astype(int)
     positions = np.rint(np.divide(points, sampling_rate)).astype(int)
+    if use_offset:
+        offset = positions.min(axis=0)
+        positions -= offset
 
     if shape is None:
         shape = positions.max(axis=0) + 1
@@ -75,6 +85,8 @@ def points_to_volume(points, sampling_rate=1, shape=None, weight=1, out=None):
         out = np.zeros(tuple(int(x) for x in shape), dtype=np.float32)
 
     out[tuple(positions.T)] = weight
+    if use_offset:
+        return out, offset
     return out
 
 

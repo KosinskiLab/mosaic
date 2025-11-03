@@ -12,7 +12,7 @@ from os.path import extsep, basename
 
 import vtk
 import numpy as np
-from qtpy.QtCore import Qt, QEvent, QSize, QTimer
+from qtpy.QtCore import Qt, QEvent, QSize, QTimer, QThread
 from qtpy.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -44,7 +44,7 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from .data import MosaicData
 from .settings import Settings
 from .animate import ExportManager
-from .parallel import BackgroundTaskManager, submit_task
+from .parallel import BackgroundTaskManager
 from .tabs import SegmentationTab, ModelTab, IntelligenceTab
 from .dialogs import (
     TiltControlDialog,
@@ -68,9 +68,12 @@ from .widgets import (
 )
 
 
-def _import_libs():
-    from .parametrization import PARAMETRIZATION_TYPE
-    from .dialogs import PropertyAnalysisDialog
+class ImportThread(QThread):
+    def run(self):
+        from .meshing.utils import to_open3d
+        from .parametrization import TriangularMesh
+        from .dialogs import PropertyAnalysisDialog
+        from .parametrization import PARAMETRIZATION_TYPE
 
 
 class App(QMainWindow):
@@ -189,7 +192,9 @@ class App(QMainWindow):
 
         self.actor_collection = vtk.vtkActorCollection()
         self.setup_menu()
-        submit_task("Import", _import_libs, None)
+
+        self._import_thread = ImportThread()
+        self._import_thread.start()
 
         self.escape_shortcut = QShortcut(Qt.Key.Key_Escape, self.vtk_widget)
         self.escape_shortcut.activated.connect(self.handle_escape_key)
@@ -1092,101 +1097,96 @@ class App(QMainWindow):
 
         self.set_camera_view("z")
 
-    def _open_files(self, filenames: List[str]):
+    def _open_file(self, filename, parameters):
         from .formats import open_file
 
-        if isinstance(filenames, str):
-            filenames = [
-                filenames,
-            ]
+        offset = parameters.get("offset", 0)
+        scale = parameters.get("scale", 1)
+        sampling = parameters.get("sampling_rate", 1)
 
+        try:
+            container = open_file(filename)
+        except Exception as e:
+            if filename.endswith(".pickle"):
+                raise ValueError("Use Load Session to open session files.")
+            raise e
+
+        base, _ = basename(filename).split(extsep, 1)
+        use_index = len(container) > 1
+        if len(container) > 1000:
+            reply = QMessageBox.question(
+                self,
+                "Large number of objects detected",
+                f"File '{basename(filename)}' contains {len(container):,} objects.\n\n"
+                "This may indicate:\n"
+                "- Raw EM data instead of segmentations or meshes\n"
+                "- Incorrectly formatted file\n"
+                "- You are dealing with a large dataset\n"
+                "Processing will require considerable compute capabilities.\n\n"
+                "Do you want to continue?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return None
+
+        for index, data in enumerate(container):
+            # data.sampling is typically 1 apart from parser.read_volume
+            scale_new = np.divide(scale, data.sampling)
+            data.vertices = np.multiply(np.subtract(data.vertices, offset), scale_new)
+
+            if data.vertices.shape[0] > 1e7:
+                if not show_large_file_warning():
+                    continue
+
+            data_shape = np.divide(data.shape, data.sampling)
+
+            name = base if not use_index else f"{index}_{base}"
+            if data.faces is None:
+                index = self.cdata.data.add(
+                    points=data.vertices,
+                    normals=data.normals,
+                    sampling_rate=sampling,
+                    quaternions=data.quaternions,
+                    vertex_properties=data.vertex_properties,
+                )
+                mosaic_container = self.cdata._data
+
+            else:
+                from .meshing import to_open3d
+                from .parametrization import TriangularMesh
+
+                index = self.cdata._add_fit(
+                    fit=TriangularMesh(to_open3d(data.vertices, data.faces)),
+                    sampling_rate=sampling,
+                    vertex_properties=data.vertex_properties,
+                )
+                mosaic_container = self.cdata._models
+
+            geometry = mosaic_container.get(index)
+            geometry._meta["name"] = name
+            if parameters.get("render_as_surface", False):
+                geometry.change_representation("surface")
+
+            if "shape" not in mosaic_container.metadata:
+                mosaic_container.metadata["shape"] = data_shape
+            mosaic_container.metadata["shape"] = np.maximum(
+                mosaic_container.metadata["shape"], data_shape
+            )
+
+    def _open_files(self, filenames: List[str]):
         dialog = ImportDataDialog(self)
-        dialog.set_files(filenames)
+        if isinstance(filenames, str):
+            filenames = [filenames]
 
+        dialog.set_files(filenames)
         if not dialog.exec():
             return -1
 
         file_parameters = dialog.get_all_parameters()
         with ProgressDialog(filenames, title="Reading Files", parent=None) as pbar:
             for filename in pbar:
+                self._open_file(filename, file_parameters[filename])
                 self._add_file_to_recent(filename)
-                parameters = file_parameters[filename]
-
-                offset = parameters.get("offset", 0)
-                scale = parameters.get("scale", 1)
-                sampling = parameters.get("sampling_rate", 1)
-
-                try:
-                    container = open_file(filename)
-                except Exception as e:
-                    if filename.endswith(".pickle"):
-                        raise ValueError("Use Load Session to open session files.")
-                    raise e
-
-                base, _ = basename(filename).split(extsep, 1)
-                use_index = len(container) > 1
-                if len(container) > 1000:
-                    reply = QMessageBox.question(
-                        self,
-                        "Large number of objects detected",
-                        f"File '{basename(filename)}' contains {len(container):,} objects.\n\n"
-                        "This may indicate:\n"
-                        "- Raw EM data instead of segmentations or meshes\n"
-                        "- Incorrectly formatted file\n"
-                        "- You are dealing with a large dataset\n"
-                        "Processing will require considerable compute capabilities.\n\n"
-                        "Do you want to continue?",
-                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    )
-                    if reply != QMessageBox.StandardButton.Yes:
-                        continue
-
-                for index, data in enumerate(container):
-                    # data.sampling is typically 1 apart from parser.read_volume
-                    scale_new = np.divide(scale, data.sampling)
-                    data.vertices = np.multiply(
-                        np.subtract(data.vertices, offset), scale_new
-                    )
-
-                    if data.vertices.shape[0] > 1e7:
-                        if not show_large_file_warning():
-                            continue
-
-                    data_shape = np.divide(data.shape, data.sampling)
-
-                    name = base if not use_index else f"{index}_{base}"
-                    if data.faces is None:
-                        index = self.cdata.data.add(
-                            points=data.vertices,
-                            normals=data.normals,
-                            sampling_rate=sampling,
-                            quaternions=data.quaternions,
-                            vertex_properties=data.vertex_properties,
-                        )
-                        self.cdata._data.data[index]._meta["name"] = name
-
-                        if "shape" not in self.cdata._data.metadata:
-                            self.cdata._data.metadata["shape"] = data_shape
-                        self.cdata._data.metadata["shape"] = np.maximum(
-                            self.cdata._data.metadata["shape"], data_shape
-                        )
-
-                    else:
-                        from .meshing import to_open3d
-                        from .parametrization import TriangularMesh
-
-                        index = self.cdata._add_fit(
-                            fit=TriangularMesh(to_open3d(data.vertices, data.faces)),
-                            sampling_rate=sampling,
-                            vertex_properties=data.vertex_properties,
-                        )
-                        self.cdata._models.data[index]._meta["name"] = name
-
-                        if "shape" not in self.cdata._models.metadata:
-                            self.cdata._models.metadata["shape"] = data_shape
-                        self.cdata._models.metadata["shape"] = np.maximum(
-                            self.cdata._models.metadata["shape"], data_shape
-                        )
 
         self.cdata.data.data_changed.emit()
         self.cdata.models.data_changed.emit()

@@ -107,7 +107,7 @@ class SettingsMenu(QMenu):
         self.general_form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
         self.general_form.setFormAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        # Check wheter settings differentiate between different methods
+        # Check whether settings differentiate between different methods
         offset, self.method_combo = 0, None
         base_settings = self.config["settings"][0]
         if "options" in base_settings:
@@ -169,8 +169,6 @@ class SettingsMenu(QMenu):
             widget = create_setting_widget(setting)
             self.method_layout.addRow(f"{setting['label']}:", widget)
             self.current_method_widgets.append(widget)
-
-        # self.method_container.updateGeometry()
         self.adjustSize()
 
     def apply_settings(self):

@@ -175,7 +175,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             )
             points.append(geometry.points[point_ids].copy())
 
-            if isinstance((fit := geometry._meta.get("fit")), TriangularMesh):
+            if isinstance((fit := geometry.model), TriangularMesh):
                 geoms.append(geometry)
                 sampling = np.maximum(sampling, geometry.sampling_rate)
                 appearance.update(geometry._appearance)
@@ -186,7 +186,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         vertices = np.concatenate(points).reshape(-1, 3)
         faces = np.arange(vertices.size // 3).reshape(-1, 3)
 
-        meshes = [*[x._meta["fit"].mesh for x in geoms], to_open3d(vertices, faces)]
+        meshes = [*[x.model.mesh for x in geoms], to_open3d(vertices, faces)]
         vertices, faces = merge_meshes(
             vertices=[np.asarray(x.vertices) for x in meshes],
             faces=[np.asarray(x.triangles) for x in meshes],
@@ -286,12 +286,12 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         faces = vtk.util.numpy_support.vtk_to_numpy(new_cells.GetConnectivityArray())
         mesh = to_open3d(geometry.points, faces.reshape(-1, 3))
 
-        new_mesh = TriangularMesh(mesh)
         geometry.swap_data(
             points=new_mesh.vertices,
             normals=new_mesh.compute_vertex_normals(),
             faces=new_mesh.triangles,
-            meta=geometry._meta | {"fit": new_mesh},
+            meta=geometry._meta,
+            model=TriangularMesh(mesh),
         )
         return self.cleanup()
 

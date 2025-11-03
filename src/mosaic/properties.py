@@ -11,7 +11,7 @@ __all__ = ["GeometryProperties"]
 def get_mesh(func):
     @wraps(func)
     def wrapper(geometry: Geometry, *args, **kwargs):
-        fit = geometry._meta.get("fit")
+        fit = geometry.model
         if not hasattr(fit, "mesh"):
             return None
         return func(fit, *args, **kwargs)
@@ -146,8 +146,7 @@ def projected_curvature(
     elif len(queries) > 1:
         warnings.warn("Using the first query instance.")
 
-    fit = queries[0]._meta.get("fit")
-    if fit is None:
+    if (fit := queries[0].model) is None:
         return None
 
     curvature = fit.compute_curvature(curvature=curvature, radius=radius, **kwargs)
@@ -163,8 +162,7 @@ def geodesic_distance(
     elif len(queries) > 1:
         warnings.warn("Using the first query instance.")
 
-    fit = queries[0]._meta.get("fit")
-    if fit is None:
+    if (fit := queries[0].model) is None:
         return None
 
     _, indices = fit.compute_distance(points=geometry.points, return_indices=True)

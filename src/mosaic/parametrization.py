@@ -20,7 +20,12 @@ import numpy as np
 import open3d as o3d
 from scipy import optimize, interpolate
 
-from .utils import find_closest_points, com_cluster_points, compute_normals
+from .utils import (
+    find_closest_points,
+    com_cluster_points,
+    compute_normals,
+    points_to_volume,
+)
 from .meshing import (
     triangulate_refine_fair,
     fair_mesh,
@@ -28,6 +33,19 @@ from .meshing import (
     to_open3d,
     poisson_mesh,
 )
+
+__all__ = [
+    "Sphere",
+    "Ellipsoid",
+    "Cylinder",
+    "RBF",
+    "TriangularMesh",
+    "PoissonMesh",
+    "ClusteredBallPivotingMesh",
+    "ConvexHull",
+    "FlyingEdges",
+    "SplineCurve",
+]
 
 
 def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.ndarray:
@@ -734,6 +752,14 @@ class TriangularMesh(Parametrization):
     def to_file(self, file_path):
         o3d.io.write_triangle_mesh(file_path, self.mesh)
 
+    def subset(self, idx):
+        all_indices = np.arange(len(self.vertices))
+        indices_to_remove = np.setdiff1d(all_indices, idx)
+
+        new_mesh = to_open3d(self.vertices.copy(), self.triangles.copy())
+        new_mesh.remove_vertices_by_index(indices_to_remove)
+        return TriangularMesh(new_mesh, repair=False)
+
     @classmethod
     def from_file(cls, file_path):
         return cls(mesh=o3d.io.read_triangle_mesh(file_path))
@@ -1364,6 +1390,63 @@ class FairHull(ConvexHull):
     pass
 
 
+class FlyingEdges(TriangularMesh):
+    """
+    Represent a point cloud as triangular mesh.
+
+    Parameters
+    ----------
+    mesh : open3d.cpu.pybind.geometry.TriangleMesh
+        Triangular mesh.
+    """
+
+    @classmethod
+    def fit(
+        cls,
+        positions: np.ndarray,
+        voxel_size: float = 10,
+        **kwargs,
+    ):
+        import vtk
+        from vtk.util import numpy_support
+
+        voxel_size = tuple(voxel_size for _ in range(positions.shape[1]))
+
+        _volume, offset = points_to_volume(positions, voxel_size, use_offset=True)
+
+        pad = tuple(1 if x == 1 else 0 for x in _volume.shape)
+        if any(pad):
+            full_pad = tuple((0, x) for x in pad)
+            _volume = np.pad(_volume, full_pad)
+
+        volume = vtk.vtkImageData()
+        volume.SetSpacing(voxel_size)
+        volume.SetDimensions(_volume.shape)
+        volume.AllocateScalars(vtk.VTK_FLOAT, 1)
+        _volume = numpy_support.numpy_to_vtk(
+            _volume.ravel(order="F"), deep=False, array_type=vtk.VTK_FLOAT
+        )
+        volume.GetPointData().SetScalars(_volume)
+
+        flying_edges = vtk.vtkFlyingEdges3D()
+        flying_edges.SetInputData(volume)
+        flying_edges.SetValue(0, 0.5)
+        flying_edges.ComputeNormalsOn()
+        flying_edges.Update()
+
+        polydata = flying_edges.GetOutput()
+        vertices_vtk = polydata.GetPoints().GetData()
+        vertices = numpy_support.vtk_to_numpy(vertices_vtk)
+
+        polys = polydata.GetPolys()
+        cells = numpy_support.vtk_to_numpy(polys.GetData())
+
+        vertices = np.add(vertices, offset * voxel_size)
+
+        faces = cells.reshape(-1, 4)[:, 1:]
+        return cls(mesh=to_open3d(vertices, faces), repair=False)
+
+
 class SplineCurve(Parametrization):
     """
     Parametrize a point cloud as a spline curve.
@@ -1440,4 +1523,5 @@ PARAMETRIZATION_TYPE = {
     "rbf": RBF,
     "convexhull": ConvexHull,
     "spline": SplineCurve,
+    "flyingedges": FlyingEdges,
 }

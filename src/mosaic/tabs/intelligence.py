@@ -101,8 +101,8 @@ class IntelligenceTab(QWidget):
             return QMessageBox.warning(self, "Error", msg)
 
         geometry = geometries[0]
-        if not hasattr(geometry._meta.get("fit", None), "mesh"):
-            msg = f"{index} is not a triangular mesh."
+        if not hasattr(geometry.model, "mesh"):
+            msg = f"{geometry} is not a triangular mesh."
             return QMessageBox.warning(self, "Error", msg)
 
         dialog = _getExistingDirectory(self, "Select or create directory")
@@ -254,6 +254,7 @@ class IntelligenceTab(QWidget):
             meta=ret[0].copy(),
             trajectory=ret,
             vertex_properties=ret[0]["vertex_properties"],
+            model=base,
         )
         trajectory.change_representation("mesh")
         self.cdata._models.add(trajectory)

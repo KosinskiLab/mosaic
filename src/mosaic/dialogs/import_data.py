@@ -10,7 +10,7 @@ from qtpy.QtWidgets import (
 )
 
 from ..stylesheets import QPushButton_style
-from ..widgets.settings import create_setting_widget
+from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
 
 
 class ImportDataDialog(QDialog):
@@ -122,6 +122,9 @@ class ImportDataDialog(QDialog):
         grid_layout.addWidget(self.sampling_y, 5, 2)
         grid_layout.addWidget(self.sampling_z, 5, 3)
 
+        checkbox_layout = QHBoxLayout()
+        checkbox_layout.setSpacing(0)
+
         axis_label = QLabel("Configure per Axis")
         axis_settings = {
             "label": "Configure per Axis",
@@ -133,8 +136,29 @@ class ImportDataDialog(QDialog):
         self.axis_checkbox.toggled.connect(self.toggle_per_axis_mode)
         self.axis_checkbox.setChecked(False)
 
+        checkbox_layout.addWidget(self.axis_checkbox)
+        checkbox_layout.addSpacing(20)
+
+        surface_label = QLabel("Render as Surface")
+        surface_settings = {
+            "label": "Render as Surface",
+            "type": "boolean",
+            "default": False,
+            "description": "Render input as surface instead of points. Improves "
+            "rendering performance for large inputs.",
+        }
+        self.surface_checkbox = create_setting_widget(surface_settings)
+        self.surface_checkbox.setChecked(False)
+
+        checkbox_layout.addWidget(surface_label)
+        checkbox_layout.addSpacing(20)
+        checkbox_layout.addWidget(self.surface_checkbox)
+
+        checkbox_layout.addStretch()
+
+        # A bit hacky but makes everything appear aligned
         grid_layout.addWidget(axis_label, 6, 0)
-        grid_layout.addWidget(self.axis_checkbox, 6, 1)
+        grid_layout.addLayout(checkbox_layout, 6, 1, 1, 3)
 
         self.scale_x.textChanged.connect(
             lambda text: self._propagate_value(text, self.scale_y, self.scale_z)
@@ -214,7 +238,7 @@ class ImportDataDialog(QDialog):
     def set_files(self, filenames):
         from ..formats._utils import get_extension
         from ..formats.reader import FORMAT_MAPPING
-        from ..formats.parser import load_density, read_volume
+        from ..formats.parser import read_volume, _load_density_header
 
         self.filenames = filenames
         self.current_file_index = 0
@@ -225,15 +249,15 @@ class ImportDataDialog(QDialog):
         for file in filenames:
             extension = get_extension(file)[1:]
             if extension in FORMAT_MAPPING.get(read_volume):
-                volume = load_density(file, use_memmap=True)
-                self.scale_x.setText(f"{volume.sampling_rate[0]}")
-                self.sampling_x.setText(f"{volume.sampling_rate[0]}")
+                shape, sampling_rate = _load_density_header(file)
+                self.scale_x.setText(f"{sampling_rate[0]}")
+                self.sampling_x.setText(f"{sampling_rate[0]}")
 
-                self.scale_y.setText(f"{volume.sampling_rate[1]}")
-                self.sampling_y.setText(f"{volume.sampling_rate[1]}")
+                self.scale_y.setText(f"{sampling_rate[1]}")
+                self.sampling_y.setText(f"{sampling_rate[1]}")
 
-                self.scale_z.setText(f"{volume.sampling_rate[2]}")
-                self.sampling_z.setText(f"{volume.sampling_rate[2]}")
+                self.scale_z.setText(f"{sampling_rate[2]}")
+                self.sampling_z.setText(f"{sampling_rate[2]}")
 
             self.file_parameters[file] = self._get_current_parameters()
 
@@ -261,20 +285,21 @@ class ImportDataDialog(QDialog):
     def _get_current_parameters(self):
         return {
             "scale": (
-                float(self.scale_x.text()),
-                float(self.scale_y.text()),
-                float(self.scale_z.text()),
+                get_widget_value(self.scale_x),
+                get_widget_value(self.scale_y),
+                get_widget_value(self.scale_z),
             ),
             "offset": (
-                float(self.offset_x.text()),
-                float(self.offset_y.text()),
-                float(self.offset_z.text()),
+                get_widget_value(self.offset_x),
+                get_widget_value(self.offset_y),
+                get_widget_value(self.offset_z),
             ),
             "sampling_rate": (
-                float(self.sampling_x.text()),
-                float(self.sampling_y.text()),
-                float(self.sampling_z.text()),
+                get_widget_value(self.sampling_x),
+                get_widget_value(self.sampling_y),
+                get_widget_value(self.sampling_z),
             ),
+            "render_as_surface": get_widget_value(self.surface_checkbox),
         }
 
     def load_file_parameters(self, filename):
@@ -287,17 +312,17 @@ class ImportDataDialog(QDialog):
         offset = params["offset"]
         sampling_rate = params["sampling_rate"]
 
-        self.scale_x.setText(str(scale[0]))
-        self.scale_y.setText(str(scale[1]))
-        self.scale_z.setText(str(scale[2]))
+        set_widget_value(self.scale_x, str(scale[0]))
+        set_widget_value(self.scale_y, str(scale[1]))
+        set_widget_value(self.scale_z, str(scale[2]))
 
-        self.offset_x.setText(str(offset[0]))
-        self.offset_y.setText(str(offset[1]))
-        self.offset_z.setText(str(offset[2]))
+        set_widget_value(self.offset_x, str(offset[0]))
+        set_widget_value(self.offset_y, str(offset[1]))
+        set_widget_value(self.offset_z, str(offset[2]))
 
-        self.sampling_x.setText(str(sampling_rate[0]))
-        self.sampling_y.setText(str(sampling_rate[1]))
-        self.sampling_z.setText(str(sampling_rate[2]))
+        set_widget_value(self.sampling_x, str(sampling_rate[0]))
+        set_widget_value(self.sampling_y, str(sampling_rate[1]))
+        set_widget_value(self.sampling_z, str(sampling_rate[2]))
 
     def next_file(self):
         self.save_current_parameters()

@@ -27,10 +27,11 @@ def _fit(method, geometry, **kwargs):
 
 
 def _remesh(method, geometry, **kwargs):
+    import pyfqmr
+    from ..meshing.utils import to_open3d
     from ..parametrization import TriangularMesh
 
-    mesh = geometry._meta.get("fit", None)
-
+    mesh = geometry.model
     mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
     if method == "edge length":
         mesh = meshing.remesh(mesh=mesh, **kwargs)
@@ -48,7 +49,17 @@ def _remesh(method, geometry, **kwargs):
         if method == "reduction factor":
             sampling = np.asarray(mesh.triangles).shape[0] // sampling
 
-        mesh = mesh.simplify_quadric_decimation(int(sampling))
+        simplifier = pyfqmr.Simplify()
+        simplifier.setMesh(np.asarray(mesh.vertices), np.asarray(mesh.triangles))
+        simplifier.simplify_mesh(
+            target_count=int(sampling),
+            aggressiveness=5.5,
+            preserve_border=True,
+            verbose=False,
+        )
+
+        vertices, faces, normals = simplifier.getMesh()
+        mesh = to_open3d(vertices, faces)
     return TriangularMesh(mesh)
 
 
@@ -61,7 +72,7 @@ def _project(
 ):
     from ..geometry import Geometry
 
-    mesh = mesh_geometry._meta["fit"]
+    mesh = mesh_geometry.model
     new_geometries, projections, triangles = [], [], []
     for geometry in geometries:
         normals = geometry.normals if use_normals else None
@@ -203,7 +214,7 @@ class ModelTab(QWidget):
 
     def _to_cluster(self, *args, **kwargs):
         for geometry in self.cdata.models.get_selected_geometries():
-            fit = geometry._meta.get("fit", None)
+            fit = geometry.model
             normals, sampling = None, geometry._sampling_rate
             if hasattr(fit, "mesh"):
                 points = fit.vertices
@@ -225,7 +236,7 @@ class ModelTab(QWidget):
 
         ret = []
         for geometry in self.cdata.models.get_selected_geometries():
-            fit = geometry._meta.get("fit", None)
+            fit = geometry.model
             if not isinstance(fit, TriangularMesh):
                 continue
             ret.append(geometry)
@@ -243,7 +254,7 @@ class ModelTab(QWidget):
         from ..parametrization import TriangularMesh
 
         for geometry in self._get_selected_meshes():
-            fit = geometry._meta.get("fit", None)
+            fit = geometry.model
             if not hasattr(fit, "vertices"):
                 continue
 
@@ -279,7 +290,7 @@ class ModelTab(QWidget):
         sampling_rate = 1
         for geometry in selected_meshes:
             sampling_rate = np.maximum(sampling_rate, geometry.sampling_rate)
-            meshes.append(geometry._meta.get("fit"))
+            meshes.append(geometry.model)
 
         vertices, faces = meshing.merge_meshes(
             vertices=[x.vertices for x in meshes],
@@ -300,12 +311,12 @@ class ModelTab(QWidget):
         if len(selected_meshes) == 0:
             return None
 
-        for index in selected_meshes:
+        for geometry in selected_meshes:
             import trimesh
             import skeletor as sk
             from ..utils import com_cluster_points
 
-            mesh = self.cdata._models.data[index]._meta.get("fit", None)
+            mesh = geometry.model
             mesh = trimesh.Trimesh(mesh.vertices, mesh.triangles)
             mesh = sk.pre.fix_mesh(mesh)
             skel = sk.skeletonize.by_wavefront(mesh, waves=5, step_size=1)
@@ -323,6 +334,7 @@ class ModelTab(QWidget):
             "Ball Pivoting": "mesh",
             "Poisson": "poissonmesh",
             "Cluster Ball Pivoting": "clusterballpivoting",
+            "Flying Edges": "flyingedges",
         }
         method = _conversion.get(method, method)
 
@@ -403,7 +415,7 @@ class ModelTab(QWidget):
             raise ValueError("Please select one mesh for projection.")
 
         mesh = selected_meshes[0]
-        if mesh._meta.get("fit", None) is None:
+        if mesh.model is None:
             return None
 
         def _callback(ret):
@@ -668,6 +680,7 @@ MESH_SETTINGS = {
                 "Ball Pivoting",
                 "Cluster Ball Pivoting",
                 "Poisson",
+                "Flying Edges",
             ],
             "default": "Alpha Shape",
         },

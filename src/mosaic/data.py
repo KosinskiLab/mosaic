@@ -184,7 +184,8 @@ class MosaicData(QObject):
             normals=normals,
             sampling_rate=sampling_rate,
             vertex_properties=vertex_properties,
-            meta={"fit": fit, "fit_kwargs": kwargs},
+            model=fit,
+            meta={"fit_kwargs": kwargs},
         )
         if hasattr(fit, "mesh"):
             self._models.data[index].change_representation("surface")
@@ -230,7 +231,7 @@ class MosaicData(QObject):
             if mesh_only:
                 from .parametrization import TriangularMesh
 
-                is_mesh = isinstance(geometry._meta.get("fit"), TriangularMesh)
+                is_mesh = isinstance(geometry.model, TriangularMesh)
                 if not is_mesh:
                     continue
 

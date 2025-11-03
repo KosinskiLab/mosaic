@@ -68,7 +68,7 @@ def _equilibration_plot(instance, args, **kwargs):
 
 def equilibrate_fit(geometry, directory: str, parameters: Dict):
     makedirs(directory, exist_ok=True)
-    mesh_base = geometry._meta.get("fit").mesh
+    mesh_base = geometry.model.mesh
 
     mesh_base = mesh_base.remove_duplicated_vertices()
     mesh_base = mesh_base.remove_unreferenced_vertices()

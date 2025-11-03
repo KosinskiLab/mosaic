@@ -282,32 +282,48 @@ class DataContainerInteractor(QObject):
 
     def _on_area_pick(self, obj, event):
         frustum = obj.GetFrustum()
-        extractor = vtk.vtkExtractSelectedFrustum()
-        extractor.SetFrustum(frustum)
-
         interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         if not interactor.GetShiftKey():
             self.deselect_points()
 
-        for geometry in self.container.data:
-            extractor.SetInputData(geometry._data)
-            extractor.Update()
+        num_planes = frustum.GetNumberOfPlanes()
+        plane_norm = np.empty((num_planes, 3), dtype=np.float32)
+        plane_orig = np.empty((num_planes, 3), dtype=np.float32)
 
-            output = extractor.GetOutput()
-            if output.GetNumberOfPoints() == 0:
+        for i in range(num_planes):
+            plane = frustum.GetPlane(i)
+            plane_norm[i] = plane.GetNormal()
+            plane_orig[i] = plane.GetOrigin()
+
+        frustum_min, frustum_max = _compute_frustum_bound(plane_norm, plane_orig)
+        for geometry in self.container.data:
+            bounds = geometry._data.GetBounds()
+            if not _bounds_in_frustum(bounds, plane_norm, plane_orig):
+                continue
+
+            points = geometry.points
+            mask = (
+                (points[:, 0] >= frustum_min[0])
+                & (points[:, 0] <= frustum_max[0])
+                & (points[:, 1] >= frustum_min[1])
+                & (points[:, 1] <= frustum_max[1])
+                & (points[:, 2] >= frustum_min[2])
+                & (points[:, 2] <= frustum_max[2])
+            )
+            if not mask.any():
+                continue
+
+            ids = np.where(mask)[0]
+            ids = ids[_points_in_frustum(points[ids], plane_norm, plane_orig)]
+            if len(ids) == 0:
                 continue
 
             uuid = geometry.uuid
-            selected_ids = output.GetPointData().GetArray("vtkOriginalPointIds")
-            if selected_ids and selected_ids.GetNumberOfTuples() > 0:
-                ids = vtk.util.numpy_support.vtk_to_numpy(selected_ids)
+            if uuid not in self.point_selection:
+                self.point_selection[uuid] = np.array([], dtype=np.int32)
 
-                if uuid not in self.point_selection:
-                    self.point_selection[uuid] = np.array([], dtype=np.int32)
-
-                union = np.union1d(ids, self.point_selection[uuid])
-                self.point_selection[uuid] = union.astype(np.int32, copy=False)
-
+            union = np.union1d(ids, self.point_selection[uuid])
+            self.point_selection[uuid] = union.astype(np.int32, copy=False)
         self.highlight_selected_points(color=None)
 
     def _pick_prop(self, event_pos):
@@ -331,6 +347,12 @@ class DataContainerInteractor(QObject):
         # Make sure right click also selects group members
         self.data_list._select_group_children(item)
         context_menu = QMenu(self.data_list)
+        context_menu.setWindowFlags(
+            context_menu.windowFlags()
+            | Qt.FramelessWindowHint
+            | Qt.NoDropShadowWindowHint
+        )
+        context_menu.setAttribute(Qt.WA_TranslucentBackground)
 
         show_action = QAction("Show", self.data_list)
         show_action.triggered.connect(lambda: self.visibility(visible=True))
@@ -351,29 +373,50 @@ class DataContainerInteractor(QObject):
             "Gaussian Density",
             "Normals",
             "Basis",
-        ]
-        formats_extended = [
             None,
-            "Mesh",
             "Surface",
+        ]
+        extended_formats = [
+            "Mesh",
             "Wireframe",
         ]
-        for geometry in self.get_selected_geometries():
-            try:
-                geometry._meta["fit"].vertices
-                formats.extend(formats_extended)
-                break
-            except Exception:
-                pass
+
+        selected = self.get_selected_geometries()
+        if any(hasattr(x.model, "mesh") for x in selected):
+            formats.extend(extended_formats)
+
+        _formap_map = {k: k.lower().replace(" ", "_") for k in formats if k is not None}
+        _formap_map["Points"] = "pointcloud"
+
+        # Only show checkbox if there is a majority representation
+        _representation = {x._representation for x in selected}
+        if len(_representation) == 1:
+            _inverse_map = {v: k for k, v in _formap_map.items()}
+            _representation = _inverse_map.get(_representation.pop()).title()
+        else:
+            _representation = None
 
         representation_menu = QMenu("Representation", context_menu)
+        representation_menu.setWindowFlags(
+            representation_menu.windowFlags()
+            | Qt.FramelessWindowHint
+            | Qt.NoDropShadowWindowHint
+        )
+        representation_menu.setAttribute(Qt.WA_TranslucentBackground)
+
         for format_name in formats:
             if format_name is None:
                 representation_menu.addSeparator()
                 continue
             action = QAction(format_name, representation_menu)
+            action.setCheckable(True)
+            if format_name == _representation:
+                action.setChecked(True)
+
             action.triggered.connect(
-                lambda checked, f=format_name: self.change_representation(f)
+                lambda checked, f=format_name: self.change_representation(
+                    _formap_map[f]
+                )
             )
             representation_menu.addAction(action)
         context_menu.addMenu(representation_menu)
@@ -408,7 +451,7 @@ class DataContainerInteractor(QObject):
 
         enabled_categories = ["pointcloud", "volume"]
         for geometry in self.get_selected_geometries():
-            fit = geometry._meta.get("fit", None)
+            fit = geometry.model
             if hasattr(fit, "mesh"):
                 enabled_categories.append("mesh")
 
@@ -514,8 +557,8 @@ class DataContainerInteractor(QObject):
                 name = f"{self.prefix} {i}"
 
             item_type = "cluster"
-            if (fit := geometry._meta.get("fit", None)) is not None:
-                item_type = "mesh" if hasattr(fit, "mesh") else "parametric"
+            if geometry.model is not None:
+                item_type = "mesh" if hasattr(geometry.model, "mesh") else "parametric"
                 if item_type == "mesh" and hasattr(geometry, "_trajectory"):
                     item_type = "trajectory"
 
@@ -557,6 +600,9 @@ class DataContainerInteractor(QObject):
         return self.vtk_widget.GetRenderWindow().Render()
 
     def deselect_points(self):
+        if len(self.point_selection) == 0:
+            return None
+
         for uuid, point_ids in self.point_selection.items():
             if (geometry := self.container.get(uuid)) is None:
                 continue
@@ -575,14 +621,8 @@ class DataContainerInteractor(QObject):
         return self.set_selection_by_uuid(list(self.point_selection.keys()))
 
     def change_representation(self, representation: str):
-        geometries = self.get_selected_geometries()
-        if not len(geometries):
+        if not len(geometries := self.get_selected_geometries()):
             return -1
-
-        representation = representation.lower().replace(" ", "_")
-
-        if representation == "points":
-            representation = "pointcloud"
 
         for geometry in geometries:
             # BUG: Moving from pointcloud_normals to a different representation and
@@ -594,6 +634,8 @@ class DataContainerInteractor(QObject):
                 geometry = self.container.get(geometry.uuid)
 
             geometry.change_representation(representation)
+
+        self._highlight_selection()
         self.render()
 
     def _backup(self):
@@ -716,7 +758,7 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
 
     def create_method(op_name, remove_orig, render_flag, bg_task, batch_flag):
         def method(self, **kwargs):
-            f"""Apply {op_name} operation to selected geometries in background."""
+            f"""Apply {op_name} operation to selected geometries."""
             from .operations import GeometryOperations
 
             def _render_callback(*args, **kwargs):
@@ -768,7 +810,7 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
 
 
 def _export_data(geometries, metadata, file_path: str, export_data: Dict):
-    from .utils import points_to_volume
+    from .utils import points_to_volume, normals_to_rot
     from .formats import OrientationsWriter, write_density
 
     mesh_formats = ("obj", "stl", "ply")
@@ -794,23 +836,17 @@ def _export_data(geometries, metadata, file_path: str, export_data: Dict):
     data = {"points": [], "quaternions": []}
     for index, geometry in enumerate(geometries):
         if file_format in mesh_formats:
-            fit = geometry._meta.get("fit", None)
+            fit = geometry.model
             if not hasattr(fit, "mesh"):
                 raise ValueError(f"Selected geometry {index} is not a mesh.")
             fit.to_file(f"{file_path}_{index}.{file_format}")
             continue
 
-        points, quaternions = geometry.points, None
-        if file_format in point_formats:
-            points, quaternions = geometry.points, geometry.quaternions
+        points, normals, quaternions = geometry.get_point_data()
+        if file_format in point_formats and quaternions is None:
+            quaternions = normals_to_rot(normals, scalar_first=True)
 
-        if quaternions is None:
-            quaternions = np.full((points.shape[0], 4), fill_value=(1, 0, 0, 0))
-
-        sampling = export_data.get("sampling", -1)
-        if sampling < 0:
-            sampling = geometry.sampling_rate
-
+        sampling = export_data.get("sampling", geometry.sampling_rate)
         if export_data.get("relion_5_format", False):
             center = np.divide(shape, 2).astype(int) if shape is not None else 0
             center = np.multiply(center, sampling)
@@ -829,8 +865,8 @@ def _export_data(geometries, metadata, file_path: str, export_data: Dict):
 
     if file_format in volume_formats:
         if shape is None:
-            temp = np.rint(np.concatenate(data["points"]))
-            shape = temp.astype(int).max(axis=0) + 1
+            shape = np.rint(np.concatenate(data["points"]))
+            shape = shape.astype(int).max(axis=0) + 1
 
         volume = None
         for index, points in enumerate(data["points"]):
@@ -879,3 +915,56 @@ def _export_data(geometries, metadata, file_path: str, export_data: Dict):
         if single_file:
             fname = f"{file_path}.{file_format}"
         orientations.to_file(fname, file_format=file_format, **orientation_kwargs)
+
+
+def _compute_frustum_bound(plane_normals, plane_origins, tol=1e-6):
+    from itertools import combinations
+
+    vertices = []
+    for i, j, k in combinations(range(len(plane_normals)), 3):
+        A = np.array([plane_normals[i], plane_normals[j], plane_normals[k]])
+        b = np.array(
+            [
+                np.dot(plane_normals[i], plane_origins[i]),
+                np.dot(plane_normals[j], plane_origins[j]),
+                np.dot(plane_normals[k], plane_origins[k]),
+            ]
+        )
+
+        if abs(np.linalg.det(A)) > np.finfo(np.float32).resolution:
+            vertex = np.linalg.solve(A, b)
+            vertices.append(vertex)
+
+    vertices = np.array(vertices)
+    return vertices.min(axis=0), vertices.max(axis=0)
+
+
+def _points_in_frustum(points, plane_normals, plane_origins):
+    mask = np.ones(len(points), dtype=bool)
+    for normal, origin in zip(plane_normals, plane_origins):
+        distances = (points - origin) @ normal
+        mask &= distances <= 0
+    return mask
+
+
+def _bounds_in_frustum(bounds, plane_normals, plane_origins):
+    xmin, xmax, ymin, ymax, zmin, zmax = bounds
+    corners = np.array(
+        [
+            [xmin, ymin, zmin],
+            [xmax, ymin, zmin],
+            [xmin, ymax, zmin],
+            [xmax, ymax, zmin],
+            [xmin, ymin, zmax],
+            [xmax, ymin, zmax],
+            [xmin, ymax, zmax],
+            [xmax, ymax, zmax],
+        ],
+        dtype=np.float32,
+    )
+
+    for normal, origin in zip(plane_normals, plane_origins):
+        distances = np.dot(corners - origin, normal)
+        if np.all(distances > 0):
+            return False
+    return True

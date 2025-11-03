@@ -25,6 +25,7 @@ from mosaic.stylesheets import (
     QGroupBox_style,
     QListWidget_style,
     QToolButton_style,
+    QMenu_style,
 )
 
 
@@ -54,6 +55,7 @@ def main():
         + QGroupBox_style
         + QListWidget_style
         + QToolButton_style
+        + QMenu_style
     )
 
     from mosaic.gui import App

@@ -429,3 +429,19 @@ QToolButton_style = """
         background: rgba(0, 0, 0, 0.05);
     }
 """
+
+QMenu_style = f"""
+    QMenu {{
+        border: 1px solid #1a000000;
+        border-radius: 8px;
+        padding: 4px;
+    }}
+    QMenu::separator {{
+        height: 1px;
+        background-color: #1a000000;
+        margin: 4px 8px;
+    }}
+    QMenu::indicator:checked {{
+        image: url('{_get_resource_path("checkbox-checkmark.svg")}');
+    }}
+"""

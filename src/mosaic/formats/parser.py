@@ -698,7 +698,31 @@ def _read_vtu_file(file_path: str) -> Dict:
     return result
 
 
-def load_density(filename: str, **kwargs) -> "Density":
+def _load_density_header(filename: str):
+    import mrcfile
+
+    with mrcfile.open(filename, header_only=True, permissive=True) as mrc:
+        data_shape = mrc.header.nz, mrc.header.ny, mrc.header.nx
+
+        # mapc := column; mapr := row; maps := section;
+        crs_index = tuple(int(mrc.header[x]) - 1 for x in ("mapc", "mapr", "maps"))
+        if not (0 in crs_index and 1 in crs_index and 2 in crs_index):
+            raise ValueError(f"Malformatted CRS array in {filename}")
+
+        sampling_rate = mrc.voxel_size.astype(
+            [("x", "<f4"), ("y", "<f4"), ("z", "<f4")]
+        ).view(("<f4", 3))
+        sampling_rate = np.array(sampling_rate)[::-1]
+
+    non_standard_crs = not np.all(crs_index == (0, 1, 2))
+    if non_standard_crs:
+        data_shape = np.take(data_shape, crs_index)
+        sampling_rate = np.take(sampling_rate, crs_index)
+
+    return data_shape[::-1], sampling_rate[::-1]
+
+
+def load_density(filename: str, **kwargs):
     """
     Load 3D density data from file.
 

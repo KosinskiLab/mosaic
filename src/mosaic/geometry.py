@@ -15,13 +15,8 @@ import numpy as np
 from vtk.util import numpy_support
 
 from .actor import create_actor
-from .utils import (
-    find_closest_points,
-    normals_to_rot,
-    apply_quat,
-    NORMAL_REFERENCE,
-    points_to_volume,
-)
+from .utils import find_closest_points, normals_to_rot, apply_quat, NORMAL_REFERENCE
+
 
 __all__ = ["Geometry", "VolumeGeometry", "GeometryTrajectory"]
 
@@ -38,6 +33,8 @@ class Geometry:
     points : np.ndarray, optional
         3D point coordinates.
     quaternions : np.ndarray, optional
+        Normal vectors for each point (x,y,z).
+    quaternions : np.ndarray, optional
         Orientation quaternions for each point (scalar first w,x,y,z).
     color : tuple, optional
         Base RGB color values, by default (0.7, 0.7, 0.7).
@@ -49,6 +46,8 @@ class Geometry:
         Custom VTK actor object.
     vertex_properties : VertexPropertyContainer, optional
         Additional vertex properties.
+    model : :py:class:`mosaic.parametrization.Parametrization`
+        Model fitted to geometry data.
     **kwargs
         Additional keyword arguments including normals.
     """
@@ -56,12 +55,14 @@ class Geometry:
     def __init__(
         self,
         points=None,
+        normals=None,
         quaternions=None,
         color=BASE_COLOR,
         sampling_rate=None,
         meta=None,
         vtk_actor=None,
         vertex_properties=None,
+        model=None,
         **kwargs,
     ):
         self.uuid = str(uuid4())
@@ -79,10 +80,7 @@ class Geometry:
         self._data.SetVerts(self._cells)
 
         self.sampling_rate = sampling_rate
-        self._meta = {} if meta is None else meta
-        self._representation = "pointcloud"
 
-        normals = kwargs.get("normals")
         if quaternions is not None:
             _normals = apply_quat(quaternions)
             if normals is not None:
@@ -106,6 +104,11 @@ class Geometry:
         if quaternions is not None:
             self.quaternions = quaternions
 
+        self._model = model
+        self._cache = {}
+        self._meta = {} if meta is None else meta
+        self._representation = "pointcloud"
+
         self._actor = self._create_actor(vtk_actor)
         self._vertex_properties = vertex_properties
         self._appearance = {
@@ -118,6 +121,10 @@ class Geometry:
             "base_color": color,
         }
         self.set_appearance(**self._appearance)
+
+    @property
+    def model(self):
+        return self._model
 
     @property
     def vertex_properties(self):
@@ -144,13 +151,11 @@ class Geometry:
         dict
             Serializable state dictionary.
         """
-        quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
-        if quaternions is not None:
-            quaternions = self.quaternions
+        points, normals, quaternions = self.get_point_data()
 
         return {
-            "points": self.points,
-            "normals": self.normals,
+            "points": points,
+            "normals": normals,
             "quaternions": quaternions,
             "sampling_rate": self.sampling_rate,
             "meta": self._meta,
@@ -159,6 +164,7 @@ class Geometry:
             "representation": self._representation,
             "vertex_properties": self.vertex_properties,
             "uuid": self.uuid,
+            "model": self.model,
         }
 
     def __setstate__(self, state):
@@ -173,11 +179,19 @@ class Geometry:
         uuid = state.pop("uuid", None)
         visible = state.pop("visible", True)
         appearance = state.pop("appearance", {})
+
+        # Compatibility with pre 1.0.12
+        if "fit" in state.get("meta", {}):
+            state["model"] = state["meta"].pop("fit")
+
         self.__init__(**state)
         self.set_visibility(visible)
 
         if uuid is not None:
             self.uuid = uuid
+
+        if "mesh" in state.get("cache", {}):
+            self._cache["mesh"] = state["cache"]["mesh"]
 
         # Required to support loading VolumeGeometries
         if state.get("representation") != self._representation:
@@ -197,16 +211,32 @@ class Geometry:
         idx = idx[idx < self.get_number_of_points()]
 
         state = self.__getstate__()
-        data_array = ("points", "normals", "quaternions")
-        for key in data_array:
-            if (value := state.get(key)) is not None:
-                state[key] = np.asarray(value)[idx].copy()
-
         if (vertex_properties := state.get("vertex_properties")) is not None:
             state["vertex_properties"] = vertex_properties[idx]
 
         if "meta" in state:
             state["meta"] = state["meta"].copy()
+
+        # Update underlying point data if available
+        data_array = ("points", "normals", "quaternions")
+        _point_data = self._cache.get("point_data")
+        _is_surface = self._representation in ("mesh", "wireframe", "surface")
+        if _is_surface and _point_data is not None:
+
+            # Update mesh representatin in subset
+            if "mesh" in self._cache:
+                state["cache"] = {"mesh": self._cache["mesh"].subset(idx)}
+
+            # Map points to closest vertex in the mesh (now in self.points)
+            _, indices = find_closest_points(self.points, _point_data[0], k=1)
+
+            # We dont need a copy in this case because the data is not modified
+            idx = np.in1d(indices, idx)
+            state |= {k: x for k, x in zip(data_array, _point_data)}
+
+        for key in data_array:
+            if (value := state.get(key)) is not None:
+                state[key] = np.asarray(value)[idx].copy()
 
         _ = state.pop("uuid", None)
         ret = self.__class__.__new__(self.__class__)
@@ -233,27 +263,23 @@ class Geometry:
         ValueError
             If no geometries provided for merging.
         """
+        geometries = [x for x in geometries if isinstance(x, Geometry)]
         if not len(geometries):
             raise ValueError("No geometries provided for merging")
-
-        geometries = [x for x in geometries if isinstance(x, Geometry)]
-        if len(geometries) == 1:
+        elif len(geometries) == 1:
             return geometries[0]
 
-        points, quaternions, normals = [], [], []
-        has_quat = any(
-            x._data.GetPointData().GetArray("OrientationQuaternion") is not None
-            for x in geometries
-        )
-        has_normals = any(geometry.normals is not None for geometry in geometries)
+        points, quat, normals, meshes = [], [], [], []
         for geometry in geometries:
-            points.append(geometry.points)
+            _points, _normals, _quaternions = geometry.get_point_data()
 
-            if has_quat:
-                quaternions.append(geometry.quaternions)
+            points.append(_points)
+            normals.append(_normals)
+            if _quaternions is not None:
+                quat.append(_quaternions)
 
-            if has_normals:
-                normals.append(geometry.normals)
+            if (mesh := geometry._cache.get("mesh")) is not None:
+                meshes.append(mesh)
 
         # Merging Geometries with different sampling rate is an underdetermined
         # problem without user intervention. Computing the maximum of geometries
@@ -261,18 +287,36 @@ class Geometry:
         # we might need to show a warning moving forward.
         sampling_rate = np.max(np.array([x.sampling_rate for x in geometries]), axis=0)
 
-        quaternions = np.concatenate(quaternions, axis=0) if has_quat else None
-        normals = np.concatenate(normals, axis=0) if has_normals else None
-        ret = cls(
-            points=np.concatenate(points, axis=0),
-            normals=normals,
-            quaternions=quaternions,
-            sampling_rate=sampling_rate,
-            color=geometries[0]._appearance["base_color"],
-            meta=geometries[0]._meta.copy(),
-        )
-        ret.set_visibility(any(x.visible for x in geometries))
-        ret.set_appearance(**geometries[0]._appearance)
+        # Use majority representation for new class
+        representation = [x._representation for x in geometries]
+        representation = max(set(representation), key=representation.count)
+        appearance = [
+            x._appearance for x in geometries if x._representation == representation
+        ][0]
+
+        cache = {}
+        if len(meshes):
+            from .parametrization import TriangularMesh
+            from .meshing import merge_meshes, to_open3d
+
+            vertices, faces = merge_meshes(
+                vertices=[x.vertices for x in meshes],
+                faces=[x.triangles for x in meshes],
+            )
+            cache["mesh"] = TriangularMesh(to_open3d(vertices, faces), repair=False)
+
+        state = {
+            "points": np.concatenate(points, axis=0),
+            "normals": np.concatenate(normals, axis=0) if len(normals) else None,
+            "quaternions": np.concatenate(quat, axis=0) if len(quat) else None,
+            "sampling_rate": sampling_rate,
+            "visible": any(x.visible for x in geometries),
+            "representation": representation,
+            "cache": cache,
+            "appearance": appearance,
+        }
+        ret = cls.__new__(cls)
+        ret.__setstate__(state)
         return ret
 
     @property
@@ -676,7 +720,7 @@ class Geometry:
         """
         n_points = self._points.GetNumberOfPoints()
         if not isinstance(point_ids, np.ndarray):
-            point_ids = np.asarray(point_ids, dtype=np.int32)
+            point_ids = np.asarray(point_ids, dtype=np.int32, copy=False)
 
         point_ids = point_ids.astype(np.int32, copy=False)
         point_ids = point_ids[point_ids < n_points]
@@ -697,7 +741,13 @@ class Geometry:
             return self.set_scalars(scalars, **kw)
 
     def swap_data(
-        self, points, normals=None, faces=None, quaternions=None, meta: Dict = None
+        self,
+        points,
+        normals=None,
+        faces=None,
+        quaternions=None,
+        model=None,
+        meta: Dict = None,
     ):
         """
         Replace geometry data with new point cloud or mesh data.
@@ -712,6 +762,8 @@ class Geometry:
             New face connectivity indices.
         quaternions : np.ndarray, optional
             New orientation quaternions.
+        model : :py:class:`mosaic.parametrization.Parametrization`
+            Model fitted to geometry data.
         meta : dict, optional
             New metadata dictionary.
 
@@ -743,6 +795,7 @@ class Geometry:
         if faces is not None:
             self._set_faces(faces)
 
+        self._model = model
         if isinstance(meta, dict):
             self._meta.update(meta)
 
@@ -791,15 +844,24 @@ class Geometry:
             raise ValueError(
                 f"Supported representations are {supported} - got {representation}."
             )
-
-        if representation in ["mesh", "wireframe", "surface"]:
-            if not hasattr(self._meta.get("fit", None), "mesh"):
-                print(
-                    "Points and face data required for surface/wireframe representation."
-                )
-                return -1
-
         clipping_planes = self._actor.GetMapper().GetClippingPlanes()
+
+        # Use fitted mesh representation or create a new one
+        to_mesh = self.is_mesh_representation(representation)
+        if to_mesh:
+            mesh = self.model
+            if mesh is None and "mesh" in self._cache:
+                mesh = self._cache["mesh"]
+
+            if not hasattr(mesh, "mesh"):
+                from .parametrization import FlyingEdges
+
+                try:
+                    mesh = FlyingEdges.fit(self.points, np.max(self.sampling_rate))
+                except Exception as e:
+                    warnings.warn(f"Failed to mesh object: {str(e)}.")
+                    return None
+                self._cache["mesh"] = mesh
 
         mapper = vtk.vtkPolyDataMapper()
         if representation == "gaussian_density":
@@ -816,6 +878,25 @@ class Geometry:
         if representation == "gaussian_density":
             self._appearance["render_spheres"] = False
 
+        # Backup to support treating point clouds as mesh
+        if self._cache.get("point_data") is not None and not to_mesh:
+            self._points = vtk.vtkPoints()
+            self._points.SetDataTypeToFloat()
+
+            self._cells = vtk.vtkCellArray()
+            self._normals = vtk.vtkFloatArray()
+            self._normals.SetNumberOfComponents(3)
+            self._normals.SetName("Normals")
+
+            self._data = vtk.vtkPolyData()
+            self._data.SetPoints(self._points)
+            self._data.SetVerts(self._cells)
+
+            self.points, self.normals, quaternions = self.get_point_data()
+            if quaternions is not None:
+                self.quaternions = quaternions
+            self._cache["point_data"] = None
+
         scale = 15 * np.max(self.sampling_rate)
         mapper, prop = self._actor.GetMapper(), self._actor.GetProperty()
         prop.SetOpacity(self._appearance["opacity"])
@@ -824,25 +905,6 @@ class Geometry:
         if representation == "pointcloud":
             prop.SetRepresentationToPoints()
             mapper.SetInputData(self._data)
-
-        elif representation == "pointcloud_mesh":
-            _volume = points_to_volume(self.points, self.sampling_rate)
-
-            volume = vtk.vtkImageData()
-            volume.SetSpacing(self.sampling_rate)
-            volume.SetDimensions(_volume.shape)
-            volume.AllocateScalars(vtk.VTK_FLOAT, 1)
-            _volume = numpy_support.numpy_to_vtk(
-                _volume.ravel(order="F"), deep=False, array_type=vtk.VTK_FLOAT
-            )
-            volume.GetPointData().SetScalars(_volume)
-
-            flying_edges = vtk.vtkFlyingEdges3D()
-            flying_edges.SetInputData(volume)
-            flying_edges.SetValue(0, self._meta.get("isovalue", 0.5))
-            flying_edges.ComputeNormalsOn()
-            mapper.SetInputConnection(flying_edges.GetOutputPort())
-            prop.SetRepresentationToSurface()
 
         elif representation == "gaussian_density":
             mapper.SetSplatShaderCode("")
@@ -913,24 +975,28 @@ class Geometry:
 
             self._actor.SetMapper(mapper)
 
-        elif representation in ("mesh", "wireframe", "surface"):
+        elif to_mesh:
+            # Avoid computing quaternions
+            quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
+            if quaternions is not None:
+                quaternions = self.quaternions
+
+            # No backup if we are dealing with a fitted mesh
+            if not np.array_equal(mesh.vertices, self.points):
+                self._cache["point_data"] = self.get_point_data()
+
             self._cells.Reset()
             self._points.Reset()
 
-            mesh = self._meta.get("fit", None)
-            if not hasattr(mesh, "vertices"):
-                return None
             self.points = mesh.vertices
             self._set_faces(mesh.triangles)
             self.normals = mesh.compute_vertex_normals()
 
-            if representation == "surface":
-                self._original_verts = self._data.GetVerts()
+            if representation in ("surface", "wireframe"):
                 self._data.SetVerts(None)
-            mapper.SetInputData(self._data)
 
+            mapper.SetInputData(self._data)
             if representation == "wireframe":
-                self._data.SetVerts(None)
                 prop.SetRepresentationToWireframe()
             else:
                 prop.SetRepresentationToSurface()
@@ -946,13 +1012,26 @@ class Geometry:
         return self.set_appearance()
 
     def compute_distance(self, query_points: np.ndarray, k: int = 1, **kwargs):
-        model = self._meta.get("fit", None)
-        if hasattr(model, "compute_distance"):
-            return model.compute_distance(query_points)
+        if hasattr(self.model, "compute_distance"):
+            return self.model.compute_distance(query_points)
 
         return find_closest_points(self.points, query_points, k=k)[0]
 
+    def is_mesh_representation(self, representation: str = None) -> bool:
+        if representation is None:
+            representation = self._representation
+        return representation in ("mesh", "surface", "wireframe")
 
+    def get_point_data(self):
+        if (point_data := self._cache.get("point_data")) is None:
+            quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
+            if quaternions is not None:
+                quaternions = self.quaternions
+            return self.points, self.normals, quaternions
+        return point_data
+
+
+# For backwards compatibility
 class PointCloud(Geometry):
     pass
 
@@ -1142,17 +1221,19 @@ class GeometryTrajectory(Geometry):
             return False
 
         appearance = self._appearance.copy()
-        meta = self._trajectory[frame_idx]
 
-        mesh = meta.get("fit", None)
-        if not hasattr(mesh, "mesh"):
+        meta = self._trajectory[frame_idx]
+        model = meta.get("fit")
+        if not hasattr(model, "mesh"):
             return False
 
+        meta = {k: v for k, v in meta.items() if k != "fit"}
         self.swap_data(
-            points=mesh.vertices,
-            faces=mesh.triangles,
-            normals=mesh.compute_vertex_normals(),
+            points=model.vertices,
+            faces=model.triangles,
+            normals=model.compute_vertex_normals(),
             meta=meta,
+            model=model,
         )
         self.set_appearance(**appearance)
         return True

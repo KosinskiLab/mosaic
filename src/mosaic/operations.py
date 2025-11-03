@@ -7,6 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from typing import List, Optional
+from functools import wraps
 
 import numpy as np
 from .utils import (
@@ -25,6 +26,45 @@ from .utils import (
 __all__ = ["GeometryOperations"]
 
 
+def use_point_data(*, destructive=True):
+    """
+    Decorator to ensure operations work on underlying point cloud data.
+
+    When a geometry is in mesh representation, operations should work on the
+    original point cloud data (stored in _point_data), not the mesh vertices.
+    This decorator transparently handles that conversion.
+    """
+
+    def decorator(operation):
+
+        @wraps(operation)
+        def wrapper(geometry, **kwargs):
+            from .geometry import Geometry
+
+            temp_geometry = geometry
+            if is_mesh := geometry.is_mesh_representation():
+                points, normals, quaternions = geometry.get_point_data()
+                temp_geometry = Geometry(
+                    points=points,
+                    normals=normals,
+                    quaternions=quaternions,
+                    sampling_rate=geometry.sampling_rate,
+                )
+
+            # This is particularly useful for connected component clustering
+            # on large segmentations to avoid recomputing meshes
+            if is_mesh and not destructive:
+                temp_geometry._cache["mesh"] = geometry._cache["mesh"]
+                temp_geometry.change_representation(geometry._representation)
+
+            return operation(temp_geometry, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+@use_point_data()
 def decimate(geometry, method: str = "core", **kwargs):
     """
     Reduces the number of points in a point cloud by keeping only representative
@@ -101,6 +141,7 @@ def decimate(geometry, method: str = "core", **kwargs):
     return Geometry(points, sampling_rate=geometry._sampling_rate)
 
 
+@use_point_data()
 def downsample(geometry, method: str = "radius", **kwargs):
     """
     Reduces point density by removing points based on spatial or random criteria.
@@ -148,6 +189,7 @@ def downsample(geometry, method: str = "radius", **kwargs):
     return Geometry(points, normals=normals, sampling_rate=geometry._sampling_rate)
 
 
+@use_point_data()
 def crop(geometry, distance: float, query: np.ndarray, keep_smaller: bool = True):
     """
     Filters points based on their distance to a set of query points.
@@ -179,6 +221,7 @@ def crop(geometry, distance: float, query: np.ndarray, keep_smaller: bool = True
     return geometry[mask]
 
 
+@use_point_data()
 def sample(
     geometry, sampling: float, method: str, normal_offset: float = 0.0, **kwargs
 ):
@@ -209,8 +252,7 @@ def sample(
     """
     from .geometry import Geometry
 
-    fit = geometry._meta.get("fit", None)
-    if fit is None:
+    if (fit := geometry.model) is None:
         return None
 
     n_samples, extra_kwargs = sampling, {}
@@ -226,6 +268,7 @@ def sample(
     return Geometry(points, normals=normals, sampling_rate=geometry._sampling_rate)
 
 
+@use_point_data()
 def trim(geometry, min_value: float, max_value: float, axis: str = "z"):
     """
     Filters points that fall within specified bounds along a coordinate axis.
@@ -268,6 +311,7 @@ def trim(geometry, min_value: float, max_value: float, axis: str = "z"):
     return geometry[mask]
 
 
+@use_point_data(destructive=False)
 def cluster(
     geometry,
     method: str,
@@ -376,6 +420,7 @@ def cluster(
     return result_geometries
 
 
+@use_point_data()
 def remove_outliers(geometry, method: str = "statistical", **kwargs):
     """
     Filters out points that are statistical outliers based on local neighborhoods.
@@ -414,6 +459,7 @@ def remove_outliers(geometry, method: str = "statistical", **kwargs):
     return geometry[mask]
 
 
+@use_point_data()
 def compute_normals(
     geometry, method: str = "Compute", k: int = 15, **kwargs
 ) -> Optional:
@@ -443,7 +489,7 @@ def compute_normals(
         geometry.normals = compute_normals(geometry.points, k=k, **kwargs)
     else:
         raise ValueError(f"Unsupported method '{method}'. Use 'Compute' or 'Flip'.")
-    return geometry
+    return duplicate(geometry)
 
 
 def duplicate(geometry, **kwargs):
@@ -481,8 +527,10 @@ class GeometryOperations:
     """Registry for geometry operation functions."""
 
     @classmethod
-    def register(cls, operation_name: str, func):
+    def register(cls, operation_name: str, func, decorator=None):
         """Register an operation function."""
+        if decorator is not None:
+            func = decorator(func)
         setattr(cls, operation_name, staticmethod(func))
 
 
