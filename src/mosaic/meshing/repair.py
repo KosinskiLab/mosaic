@@ -11,7 +11,7 @@ Copyright (c) 2024 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Tuple
+from typing import Tuple, Union
 
 import igl
 import numpy as np
@@ -254,7 +254,7 @@ def _fair_mesh(
     fs: np.ndarray,
     vids: np.ndarray,
     alpha=0.0,
-    anchoring=1.0,
+    anchoring: Union[float, tuple[float, ...]] = 1.0,
     beta=0.0,
     gamma=0.0,
 ):
@@ -271,8 +271,9 @@ def _fair_mesh(
         Vertices to optimize
     alpha : float, optional
         k2 polyharmonic (smoothing) weighting factor. Default 0.0.
-    anchoring : float, optional
-        Position anchoring strength. 0.0 = strong anchoring, 1.0 = no anchoring. Default 1.0.
+    anchoring : float or tuple of float
+        Position anchoring strength. 0.0 = strong anchoring, 1.0 = no anchoring.
+        Can be defined for all axes or per-axis.
     beta : float, optional
         k3 polyharmonic weighting factor. Default 0.0.
     gamma : float, optional
@@ -282,20 +283,38 @@ def _fair_mesh(
     Q2 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)
     Q4 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 3)
 
-    s = _create_weights(len(vs), vids, alpha)
-    a = _create_weights(len(vs), vids, anchoring)
-    b = _create_weights(len(vs), vids, beta)
+    if np.isscalar(anchoring) or len(anchoring) == 1:
+        anchoring = [anchoring, anchoring, anchoring]
 
-    displacement = M - a * M
-    Q = s * Q2 + b * Q4 + displacement
-    B = displacement @ vs
+    anchoring = np.asarray(anchoring)
+    if anchoring.size != 3:
+        raise ValueError(
+            f"Expected anchoring weights to have len 3, got {anchoring.size}"
+        )
 
     if gamma != 0:
-        B += gamma * igl.per_vertex_normals(vs, fs)
+        normals = igl.per_vertex_normals(vs, fs)
 
-    out_vs = np.ascontiguousarray(igl.spsolve(Q, B))
-    if np.any(np.isnan(out_vs)):
-        out_vs = vs
+    # Solve each axis separately with its own anchoring
+    axis_range = range(3)
+    if np.unique(anchoring).size == 1:
+        anchoring = (anchoring[0],)
+        axis_range = ((0, 1, 2),)
+
+    out_vs = np.zeros_like(vs)
+    for axis, anch in zip(axis_range, anchoring):
+        s = _create_weights(len(vs), vids, alpha * anch)
+        a = _create_weights(len(vs), vids, anch)
+        b = _create_weights(len(vs), vids, beta * anch)
+
+        displacement = M - a * M
+        Q = s * Q2 + b * Q4 + displacement
+        B = displacement @ vs[:, axis]
+
+        if gamma != 0:
+            B += gamma * normals[:, axis]
+
+        out_vs[:, axis] = igl.spsolve(Q, B)
     return out_vs
 
 

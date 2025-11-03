@@ -563,11 +563,12 @@ REPAIR_SETTINGS = {
         {
             "label": "Flexibility",
             "parameter": "anchoring",
-            "type": "float",
-            "default": 1.0,
-            "min": 0.0,
-            "max": 1.0,
-            "description": "Flexibility of inferred vertices. 1 is maximum.",
+            "type": "float_list",
+            "default": "1,0",
+            "min": "0,0",
+            "max": "1,0",
+            "description": "Flexibility of inferred vertices. 1 is maximum. Can be "
+            "specified for all axes, e.g., 1, or per-axis, e.g., 1;1;0.5.",
         },
         {
             "label": "Hole Size",

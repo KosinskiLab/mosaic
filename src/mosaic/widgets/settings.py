@@ -81,10 +81,10 @@ def create_setting_widget(setting: Dict):
         widget = QCheckBox()
         set_widget_value(widget, setting.get("default", False))
         widget.setMinimumHeight(25)
-    elif setting["type"] == "text":
+    elif setting["type"] in ("text", "float_list"):
         widget = QLineEdit()
         default_value = setting.get("default", None)
-        if isinstance(default_value, (float, np.float32)):
+        if np.isscalar(default_value) and setting["type"] != "float_list":
             validator = QDoubleValidator()
             validator.setLocale(QLocale.c())
             validator.setNotation(QDoubleValidator.Notation.StandardNotation)
@@ -111,10 +111,15 @@ def get_widget_value(widget):
         return widget.isChecked()
     elif isinstance(widget, QLineEdit):
         validator = widget.validator()
+        value = widget.text().strip()
         if validator:
-            return float(widget.text().replace(",", "."))
+            return float(value.replace(",", "."))
         else:
-            return widget.text()
+            try:
+                return [float(x.strip().replace(",", ".")) for x in value.split(";")]
+            except Exception:
+                pass
+            return value
     elif isinstance(widget, PathSelector):
         return widget.get_path()
 
