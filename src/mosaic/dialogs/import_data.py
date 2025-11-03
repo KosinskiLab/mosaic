@@ -32,7 +32,7 @@ class ImportDataDialog(QDialog):
         )
 
         self.setWindowTitle("Import Parameters")
-        self.setMinimumWidth(600)
+        self.setMaximumWidth(650)
         layout = QVBoxLayout()
         layout.setSpacing(15)
 
@@ -262,13 +262,15 @@ class ImportDataDialog(QDialog):
             self.file_parameters[file] = self._get_current_parameters()
 
     def update_file_display(self):
+        from os.path import basename
+
         if not self.filenames:
             self.filename_label.setText("No files selected")
             self.progress_label.setText("File 0 of 0")
             return
 
         filename = self.filenames[self.current_file_index]
-        self.filename_label.setText(filename)
+        self.filename_label.setText(basename(filename))
         self.progress_label.setText(
             f"File {self.current_file_index + 1} of {len(self.filenames)}"
         )

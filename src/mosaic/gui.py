@@ -1139,7 +1139,6 @@ class App(QMainWindow):
                     continue
 
             data_shape = np.divide(data.shape, data.sampling)
-
             name = base if not use_index else f"{index}_{base}"
             if data.faces is None:
                 index = self.cdata.data.add(
@@ -1167,7 +1166,7 @@ class App(QMainWindow):
             if parameters.get("render_as_surface", False):
                 geometry.change_representation("surface")
 
-            if "shape" not in mosaic_container.metadata:
+            if mosaic_container.metadata.get("shape") is None:
                 mosaic_container.metadata["shape"] = data_shape
             mosaic_container.metadata["shape"] = np.maximum(
                 mosaic_container.metadata["shape"], data_shape

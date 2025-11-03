@@ -7,9 +7,6 @@ from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QMessageBox,
-    QDockWidget,
-    QApplication,
-    QMainWindow,
 )
 
 from ..widgets.ribbon import create_button

@@ -163,7 +163,7 @@ def merge_meshes(vertices: List[np.ndarray], faces: List[np.ndarray]):
         faces=np.concatenate([face + vertex_ct[i] for i, face in enumerate(faces)]),
     )
     mesh = mesh.remove_duplicated_vertices()
-    return np.asarray(mesh.vertices), np.asarray(mesh.faces)
+    return np.asarray(mesh.vertices), np.asarray(mesh.triangles)
 
 
 def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):

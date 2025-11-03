@@ -9,8 +9,9 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import numpy as np
+from typing import Dict
 from os.path import splitext
-from typing import Tuple, List, Dict
+
 
 import vtk
 from qtpy.QtGui import QAction
@@ -517,7 +518,6 @@ class DataContainerInteractor(QObject):
 
     def _show_properties_dialog(self) -> int:
         from .dialogs import GeometryPropertiesDialog
-        from .widgets.dock import create_or_toggle_dock
 
         uuids = self._get_selected_uuids()
         if not len(uuids):
@@ -545,11 +545,8 @@ class DataContainerInteractor(QObject):
 
         dialog.parametersChanged.connect(on_parameters_changed)
 
-        if hasattr(dialog, "rejected"):
-            dialog.rejected.connect(lambda: on_parameters_changed(base_parameters))
-
-        create_or_toggle_dock(self, "properties_dock", dialog, Qt.RightDockWidgetArea)
-
+        if dialog.exec() == QDialog.DialogCode.Rejected:
+            on_parameters_changed(base_parameters)
         return 1
 
     def _uuid_to_items(self):
@@ -765,6 +762,7 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
     def create_method(op_name, remove_orig, render_flag, bg_task, batch_flag):
         def method(self, **kwargs):
             f"""Apply {op_name} operation to selected geometries."""
+            from .geometry import Geometry
             from .operations import GeometryOperations
 
             def _render_callback(*args, **kwargs):
@@ -780,19 +778,30 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
                 if geometry is None:
                     continue
 
-                def _callback(ret, geom=geometry):
+                is_mesh = geometry.is_mesh_representation()
+
+                def _callback(ret, geom=geometry, mesh=is_mesh):
                     if ret is None:
-                        pass
-                    elif isinstance(ret, (List, Tuple)):
-                        _ = [self.add(x) for x in ret]
-                    else:
-                        self.add(ret)
+                        return None
+
+                    if isinstance(ret, Geometry):
+                        ret = (ret,)
+
+                    for new_geom in ret:
+                        if mesh:
+                            new_geom.change_representation("surface")
+                        self.add(new_geom)
 
                     if remove_orig:
                         self.container.remove(geom)
 
                     if not batch_flag:
                         _render_callback()
+
+                # Save some time on pickling
+                if remove_orig and geometry.is_mesh_representation():
+                    geometry.change_representation("pointcloud")
+                    geometry._cache.clear()
 
                 func = getattr(GeometryOperations, op_name)
 

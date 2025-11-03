@@ -190,8 +190,8 @@ class Geometry:
         if uuid is not None:
             self.uuid = uuid
 
-        if "mesh" in state.get("cache", {}):
-            self._cache["mesh"] = state["cache"]["mesh"]
+        if (cache := state.get("cache")) is not None:
+            self._cache = cache
 
         # Required to support loading VolumeGeometries
         if state.get("representation") != self._representation:
@@ -200,39 +200,59 @@ class Geometry:
 
     def __getitem__(self, idx):
         """Array-like indexing using int/bool numpy arrays, slices or ellipsis."""
+        full_copy = ... is idx
+
+        n_points = self.get_number_of_points()
         if isinstance(idx, (int, np.integer)):
             idx = [idx]
         elif isinstance(idx, slice) or idx is ...:
-            idx = np.arange(self.get_number_of_points())[idx]
+            idx = np.arange(n_points)[idx]
 
         idx = np.asarray(idx)
         if idx.dtype == bool:
             idx = np.where(idx)[0]
-        idx = idx[idx < self.get_number_of_points()]
+        idx = idx[idx < n_points]
 
         state = self.__getstate__()
-        if (vertex_properties := state.get("vertex_properties")) is not None:
-            state["vertex_properties"] = vertex_properties[idx]
-
         if "meta" in state:
             state["meta"] = state["meta"].copy()
 
-        # Update underlying point data if available
+        # Check if we are subsetting a valid mesh representation
+        _mesh = self._cache.get("mesh")
+        _data = self._cache.get("point_data")
         data_array = ("points", "normals", "quaternions")
-        _point_data = self._cache.get("point_data")
-        _is_surface = self._representation in ("mesh", "wireframe", "surface")
-        if _is_surface and _point_data is not None:
+        if _mesh is not None and _data is not None:
 
-            # Update mesh representatin in subset
-            if "mesh" in self._cache:
-                state["cache"] = {"mesh": self._cache["mesh"].subset(idx)}
+            indices = self._cache.get("vmap", None)
+            state["cache"] = {"mesh": _mesh.subset(idx)}
 
-            # Map points to closest vertex in the mesh (now in self.points)
-            _, indices = find_closest_points(self.points, _point_data[0], k=1)
+            old_vmap = indices is None or indices.shape[0] != _data[0].shape[0]
+            if not full_copy and old_vmap:
+                # Map points to closest vertex in the mesh (now in self.points)
+                _, indices = find_closest_points(self.points, _data[0], k=1)
+                self._cache["vmap"] = indices
 
-            # We dont need a copy in this case because the data is not modified
-            idx = np.in1d(indices, idx)
-            state |= {k: x for k, x in zip(data_array, _point_data)}
+            if not full_copy:
+                indices = self._cache.get("vmap")
+
+                # Subset to points that are associated with a kept vertex
+                keep = np.in1d(indices, idx)
+
+                # Update vmap to point to new vertex ids
+                inverse_map = np.empty(np.max(idx) + 1, dtype=np.int32)
+                inverse_map[idx] = np.arange(len(idx))
+                state["cache"]["vmap"] = inverse_map[indices[keep]]
+
+                idx = keep
+            else:
+                idx = ...
+
+            # This will be copied to point_data in __setstate__
+            # when setting the representation
+            state |= {k: x for k, x in zip(data_array, _data)}
+
+        if (vertex_properties := state.get("vertex_properties")) is not None:
+            state["vertex_properties"] = vertex_properties[idx]
 
         for key in data_array:
             if (value := state.get(key)) is not None:
@@ -895,7 +915,9 @@ class Geometry:
             self.points, self.normals, quaternions = self.get_point_data()
             if quaternions is not None:
                 self.quaternions = quaternions
-            self._cache["point_data"] = None
+
+            # Discard the mesh representation and associated data
+            self._cache.clear()
 
         scale = 15 * np.max(self.sampling_rate)
         mapper, prop = self._actor.GetMapper(), self._actor.GetProperty()

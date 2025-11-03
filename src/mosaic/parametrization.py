@@ -753,11 +753,16 @@ class TriangularMesh(Parametrization):
         o3d.io.write_triangle_mesh(file_path, self.mesh)
 
     def subset(self, idx):
-        all_indices = np.arange(len(self.vertices))
-        indices_to_remove = np.setdiff1d(all_indices, idx)
+        new_vertices = self.vertices[idx].copy()
 
-        new_mesh = to_open3d(self.vertices.copy(), self.triangles.copy())
-        new_mesh.remove_vertices_by_index(indices_to_remove)
+        old_to_new = np.full(len(self.vertices), -1, dtype=np.int32)
+        old_to_new[idx] = np.arange(len(idx))
+
+        triangle_mask = np.all(np.isin(self.triangles, idx), axis=1)
+        valid_triangles = self.triangles[triangle_mask]
+
+        new_triangles = old_to_new[valid_triangles].copy()
+        new_mesh = to_open3d(new_vertices, new_triangles)
         return TriangularMesh(new_mesh, repair=False)
 
     @classmethod
