@@ -84,7 +84,9 @@ def create_setting_widget(setting: Dict):
     elif setting["type"] in ("text", "float_list"):
         widget = QLineEdit()
         default_value = setting.get("default", None)
-        if np.isscalar(default_value) and setting["type"] != "float_list":
+
+        widget.setProperty("setting_type", setting["type"])
+        if not isinstance(default_value, str) and setting["type"] != "float_list":
             validator = QDoubleValidator()
             validator.setLocale(QLocale.c())
             validator.setNotation(QDoubleValidator.Notation.StandardNotation)
@@ -114,12 +116,9 @@ def get_widget_value(widget):
         value = widget.text().strip()
         if validator:
             return float(value.replace(",", "."))
-        else:
-            try:
-                return [float(x.strip().replace(",", ".")) for x in value.split(";")]
-            except Exception:
-                pass
-            return value
+        if widget.property("setting_type") == "float_list":
+            return [float(x.strip().replace(",", ".")) for x in value.split(";")]
+        return value
     elif isinstance(widget, PathSelector):
         return widget.get_path()
 
