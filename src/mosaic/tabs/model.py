@@ -363,6 +363,7 @@ class ModelTab(QWidget):
                 _callback,
                 method.lower(),
                 geometry,
+                sequential=method == "poissonmesh",
                 **kwargs,
             )
 

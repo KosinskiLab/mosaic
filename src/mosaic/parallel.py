@@ -116,6 +116,12 @@ class BackgroundTaskManager(QObject):
             max_workers=max(2, QThread.idealThreadCount() - 1)
         )
 
+        # Some operations manage their own threads. This limits the number
+        # of such processes to 1
+        self.sequential_executor = concurrent.futures.ProcessPoolExecutor(
+            max_workers=1
+        )
+
         self.task_info: Dict[str, Dict[str, Any]] = {}
         self.futures: Dict[str, concurrent.futures.Future] = {}
 
@@ -140,15 +146,16 @@ class BackgroundTaskManager(QObject):
         """Submit a task to the executor"""
         task_id = str(uuid.uuid4())
 
+        sequential = kwargs.get("sequential")
         self.task_info[task_id] = {"name": name, "callback": callback}
 
-        self.futures[task_id] = self.executor.submit(
-            _wrap_warnings, func, *args, **kwargs
-        )
+        executor = self.executor if not sequential else self.sequential_executor
+        self.futures[task_id] = executor.submit(_wrap_warnings, func, *args, **kwargs)
 
         self.task_started.emit(task_id, name)
         self.running_tasks.emit(len(self.futures))
         return task_id
+
 
     def _check_completed_tasks(self):
         """Check for completed futures and handle results"""
