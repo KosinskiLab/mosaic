@@ -462,11 +462,7 @@ class DataContainerInteractor(QObject):
         for geometry in self.get_selected_geometries():
             sampling = np.maximum(sampling, geometry.sampling_rate)
             bounds = geometry._data.GetBounds()
-            geom_shape = (
-                bounds[1] - bounds[0],
-                bounds[3] - bounds[2],
-                bounds[5] - bounds[4],
-            )
+            geom_shape = (bounds[1], bounds[3], bounds[5])
             geom_shape = np.divide(geom_shape, geometry.sampling_rate)
             shape = np.maximum(shape, geom_shape)
 

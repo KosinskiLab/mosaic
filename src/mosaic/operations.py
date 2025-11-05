@@ -36,11 +36,18 @@ def use_point_data(operation):
     """
 
     @wraps(operation)
-    def wrapper(geometry, **kwargs):
+    def wrapper(geometry, *args, **kwargs):
         from .geometry import Geometry
 
         temp_geometry = geometry
-        if is_mesh := geometry.is_mesh_representation():
+        has_mesh_model = hasattr(geometry.model, "vertices")
+        is_mesh_representation = geometry.is_mesh_representation()
+
+        # In this case, geometry.points, normals and quaternions contains the
+        # information from the mesh representation. Not the underlying point
+        # cloud the object should represent. If we are dealing with an actual
+        # model however, its fine to use the geometry attributes directly
+        if is_mesh_representation and not has_mesh_model:
             points, normals, quaternions = geometry.get_point_data()
             temp_geometry = Geometry(
                 points=points,
@@ -49,11 +56,14 @@ def use_point_data(operation):
                 sampling_rate=geometry.sampling_rate,
             )
 
-        results = operation(temp_geometry, **kwargs)
-        if not is_mesh:
+        results = operation(temp_geometry, *args, **kwargs)
+
+        # We do not care about the representation in this case. However when
+        # we explicitly start with a surface representation for rendering purposes
+        # we make sure this is propagated.
+        if not is_mesh_representation or has_mesh_model:
             return results
 
-        # Remeshing is typically more efficient than subsetting
         if isinstance(results, Geometry):
             results.change_representation("surface")
         elif isinstance(results, (tuple, list)):

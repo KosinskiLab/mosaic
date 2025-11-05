@@ -740,7 +740,7 @@ class Geometry:
         """
         n_points = self._points.GetNumberOfPoints()
         if not isinstance(point_ids, np.ndarray):
-            point_ids = np.asarray(point_ids, dtype=np.int32, copy=False)
+            point_ids = np.asarray(point_ids, dtype=np.int32)
 
         point_ids = point_ids.astype(np.int32, copy=False)
         point_ids = point_ids[point_ids < n_points]

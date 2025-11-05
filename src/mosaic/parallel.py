@@ -118,9 +118,7 @@ class BackgroundTaskManager(QObject):
 
         # Some operations manage their own threads. This limits the number
         # of such processes to 1
-        self.sequential_executor = concurrent.futures.ProcessPoolExecutor(
-            max_workers=1
-        )
+        self.sequential_executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
 
         self.task_info: Dict[str, Dict[str, Any]] = {}
         self.futures: Dict[str, concurrent.futures.Future] = {}
@@ -155,7 +153,6 @@ class BackgroundTaskManager(QObject):
         self.task_started.emit(task_id, name)
         self.running_tasks.emit(len(self.futures))
         return task_id
-
 
     def _check_completed_tasks(self):
         """Check for completed futures and handle results"""

@@ -337,6 +337,7 @@ class ModelTab(QWidget):
             "Poisson": "poissonmesh",
             "Cluster Ball Pivoting": "clusterballpivoting",
             "Flying Edges": "flyingedges",
+            "Marching Cubes": "marchingcubes",
         }
         method = _conversion.get(method, method)
 
@@ -363,7 +364,7 @@ class ModelTab(QWidget):
                 _callback,
                 method.lower(),
                 geometry,
-                sequential=method == "poissonmesh",
+                sequential=method in ("poissonmesh", "marchingcubes"),
                 **kwargs,
             )
 
@@ -675,6 +676,35 @@ REMESH_SETTINGS = {
     },
 }
 
+MESHVOLUME_SETTINGS = {
+    "title": "Meshing Settings",
+    "settings": [
+        {
+            "label": "Simplifcation Factor",
+            "parameter": "simplification_factor",
+            "type": "number",
+            "default": 100,
+            "min": 1,
+            "description": "Reduce initial mesh by x times the number of triangles.",
+        },
+        {
+            "label": "Workers",
+            "parameter": "num_workers",
+            "type": "number",
+            "default": 8,
+            "min": 1,
+            "description": "Number of parallel workers to use.",
+        },
+        {
+            "label": "Close Dataset Edges",
+            "parameter": "closed_dataset_edges",
+            "type": "boolean",
+            "default": True,
+            "description": "Close mesh at at dataset edges.",
+        },
+    ],
+}
+
 MESH_SETTINGS = {
     "title": "Mesh Settings",
     "settings": [
@@ -688,6 +718,7 @@ MESH_SETTINGS = {
                 "Cluster Ball Pivoting",
                 "Poisson",
                 "Flying Edges",
+                "Marching Cubes",
             ],
             "default": "Alpha Shape",
         },
@@ -873,37 +904,8 @@ MESH_SETTINGS = {
                 "notes": "Defaults to the sampling rate of the object.",
             },
         ],
+        "Marching Cubes": MESHVOLUME_SETTINGS["settings"],
     },
-}
-
-
-MESHVOLUME_SETTINGS = {
-    "title": "Meshing Settings",
-    "settings": [
-        {
-            "label": "Simplifcation Factor",
-            "parameter": "simplification_factor",
-            "type": "number",
-            "default": 100,
-            "min": 1,
-            "description": "Reduce initial mesh by x times the number of triangles.",
-        },
-        {
-            "label": "Workers",
-            "parameter": "num_workers",
-            "type": "number",
-            "default": 8,
-            "min": 1,
-            "description": "Number of parallel workers to use.",
-        },
-        {
-            "label": "Close Dataset Edges",
-            "parameter": "closed_dataset_edges",
-            "type": "boolean",
-            "default": True,
-            "description": "Close mesh at at dataset edges.",
-        },
-    ],
 }
 
 

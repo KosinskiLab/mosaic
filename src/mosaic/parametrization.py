@@ -1395,6 +1395,58 @@ class FairHull(ConvexHull):
     pass
 
 
+class MarchingCubes(TriangularMesh):
+    """
+    Represent a point cloud as triangular mesh.
+
+    Parameters
+    ----------
+    mesh : open3d.cpu.pybind.geometry.TriangleMesh
+        Triangular mesh.
+    """
+
+    @classmethod
+    def fit(
+        cls,
+        positions: np.ndarray,
+        voxel_size: float = 10,
+        simplification_factor=100,
+        closed_dataset_edges=True,
+        num_workers: int = 8,
+        **kwargs,
+    ):
+        from tempfile import mkstemp, TemporaryDirectory
+        from .meshing.volume import mesh_volume
+        from .formats.writer import write_density
+
+        voxel_size = tuple(voxel_size for _ in range(positions.shape[1]))
+
+        _volume, offset = points_to_volume(positions, voxel_size, use_offset=True)
+
+        pad = tuple(1 if x == 1 else 0 for x in _volume.shape)
+        if any(pad):
+            full_pad = tuple((0, x) for x in pad)
+            _volume = np.pad(_volume, full_pad)
+        _volume = _volume.astype(np.int8)
+
+        _, filename = mkstemp()
+        write_density(_volume, filename, sampling_rate=voxel_size)
+
+        odir = TemporaryDirectory()
+        mesh_paths = mesh_volume(
+            filename,
+            simplification_factor=simplification_factor,
+            closed_dataset_edges=closed_dataset_edges,
+            num_workers=num_workers,
+            output_dir=odir.name,
+        )
+        mesh = TriangularMesh.from_file(mesh_paths[0])
+        vs = mesh.vertices + offset * voxel_size
+
+        odir.cleanup()
+        return cls(mesh=to_open3d(vs, mesh.triangles))
+
+
 class FlyingEdges(TriangularMesh):
     """
     Represent a point cloud as triangular mesh.
@@ -1435,7 +1487,7 @@ class FlyingEdges(TriangularMesh):
 
         flying_edges = vtk.vtkFlyingEdges3D()
         flying_edges.SetInputData(volume)
-        flying_edges.SetValue(0, 0.5)
+        flying_edges.SetValue(0, 0.1)
         flying_edges.ComputeNormalsOn()
         flying_edges.Update()
 
@@ -1529,4 +1581,5 @@ PARAMETRIZATION_TYPE = {
     "convexhull": ConvexHull,
     "spline": SplineCurve,
     "flyingedges": FlyingEdges,
+    "marchingcubes": MarchingCubes,
 }

@@ -350,6 +350,9 @@ def fair_mesh(
     n_ring : int, optional
         n_ring vertices around vids to consider for fairing. Default 0.
     """
+    if alpha == beta == gamma == 0.0:
+        return vs
+
     vs_center = np.mean(vs, axis=0)
     vs = vs - vs_center
 
