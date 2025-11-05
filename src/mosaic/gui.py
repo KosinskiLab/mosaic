@@ -215,7 +215,8 @@ class App(QMainWindow):
             if valid_files:
                 event.acceptProposedAction()
                 self._drag_active = True
-                QApplication.setOverrideCursor(QCursor(Qt.DragCopyCursor))
+                if QApplication.overrideCursor() is None:
+                    QApplication.setOverrideCursor(QCursor(Qt.DragCopyCursor))
                 self.setStyleSheet(
                     self.styleSheet()
                     + """
@@ -227,9 +228,12 @@ class App(QMainWindow):
         return super().dragEnterEvent(event)
 
     def dragLeaveEvent(self, event):
-        self._drag_active = False
-        QApplication.restoreOverrideCursor()
-        self._update_style()
+        pos = self.mapFromGlobal(QCursor.pos())
+        if not self.rect().contains(pos):
+            self._drag_active = False
+            QApplication.restoreOverrideCursor()
+            self._update_style()
+        super().dragLeaveEvent(event)
 
     def dropEvent(self, event: QDropEvent):
         self._drag_active = False
