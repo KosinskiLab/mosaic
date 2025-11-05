@@ -144,7 +144,7 @@ class BackgroundTaskManager(QObject):
         """Submit a task to the executor"""
         task_id = str(uuid.uuid4())
 
-        sequential = kwargs.get("sequential")
+        sequential = kwargs.get("sequential", False)
         self.task_info[task_id] = {"name": name, "callback": callback}
 
         executor = self.executor if not sequential else self.sequential_executor

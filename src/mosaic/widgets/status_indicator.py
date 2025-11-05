@@ -117,7 +117,7 @@ class StatusIndicator:
         self,
         interaction="Viewing",
         target=None,
-        busy: bool = False,
+        busy: bool = None,
         task: str = None,
         **kwargs,
     ):
@@ -143,7 +143,9 @@ class StatusIndicator:
             self.current_target = target
             self.target_label.setText(target)
 
-        self._update_task_styling(busy)
+        if busy is not None:
+            self._update_task_styling(busy)
+
         if task is not None:
             self.main_window.statusBar().showMessage(task, 3000)
 
