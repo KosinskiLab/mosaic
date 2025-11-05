@@ -298,6 +298,9 @@ class DataContainerInteractor(QObject):
 
         frustum_min, frustum_max = _compute_frustum_bound(plane_norm, plane_orig)
         for geometry in self.container.data:
+            if not geometry.visible:
+                continue
+
             bounds = geometry._data.GetBounds()
             if not _bounds_in_frustum(bounds, plane_norm, plane_orig):
                 continue

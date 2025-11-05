@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "mosaic-gui"
-version = "1.0.14"
+version = "1.0.15"
 description = "mosaic"
 authors = ["Valentin Maurer <valentin.maurer@embl-hamburg.de>"]
 license = "GPL-2.0-only"

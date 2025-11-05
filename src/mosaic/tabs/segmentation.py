@@ -439,20 +439,36 @@ class PlaneTrimmer:
 
     def _update_selection(self):
         """Update point selection based on current plane positions."""
-        self.data.point_selection.clear()
+        from ..interactor import (
+            _bounds_in_frustum,
+            _points_in_frustum,
+        )
 
-        for i in range(len(self.data.container)):
-            geometry = self.data.container.get(i)
+        self.data.point_selection.clear()
+        plane_norm = np.empty((2, 3), dtype=np.float32)
+        plane_orig = np.empty((2, 3), dtype=np.float32)
+
+        plane_norm[0] = self.plane1.GetNormal()
+        plane_norm[1] = self.plane2.GetNormal()
+        plane_orig[0] = self.plane1.GetOrigin()
+        plane_orig[1] = self.plane2.GetOrigin()
+
+        for geometry in self.data.container.data:
             if not geometry.visible:
                 continue
 
-            points = geometry.points
-            origin1 = np.array(self.plane1.GetOrigin())
-            origin2 = np.array(self.plane2.GetOrigin())
-            dist1 = np.dot(points - origin1, np.array(self.plane1.GetNormal()))
-            dist2 = np.dot(points - origin2, np.array(self.plane2.GetNormal()))
-            self.data.point_selection[geometry.uuid] = np.where((dist1 * dist2) < 0)[0]
+            bounds = geometry._data.GetBounds()
+            if not _bounds_in_frustum(bounds, plane_norm, plane_orig):
+                continue
 
+            points = geometry.points
+            ids = np.where(
+                np.invert(_points_in_frustum(points, plane_norm, plane_orig))
+            )[0]
+            if len(ids) == 0:
+                continue
+
+            self.data.point_selection[geometry.uuid] = ids
         self.data.highlight_selected_points(color=None)
 
 
