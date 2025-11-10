@@ -1,0 +1,6 @@
+﻿mosaic.formats.reader.open\_file
+================================
+
+.. currentmodule:: mosaic.formats.reader
+
+.. autofunction:: open_file

@@ -1,0 +1,6 @@
+﻿mosaic.formats.reader.open\_session
+===================================
+
+.. currentmodule:: mosaic.formats.reader
+
+.. autofunction:: open_session
