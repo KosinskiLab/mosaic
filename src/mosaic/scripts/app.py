@@ -7,6 +7,7 @@ Copyright (c) 2024 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 import sys
+import signal
 import argparse
 from importlib_resources import files
 
@@ -37,7 +38,6 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Mosaic")
     app.setApplicationDisplayName("Mosaic")
-
     icon = QIcon(str(files("mosaic.data").joinpath("data/mosaic.icns")))
     app.setWindowIcon(icon)
 
@@ -57,6 +57,8 @@ def main():
         + QToolButton_style
         + QMenu_style
     )
+
+    signal.signal(signal.SIGINT, lambda *args: app.quit())
 
     from mosaic.gui import App
 

@@ -624,9 +624,10 @@ class PropertyAnalysisDialog(QDialog):
         target_list.setEnabled(not bool(state))
 
         if bool(state):
-            for i in range(target_list.count()):
-                item = target_list.item(i)
-                item.setSelected(True)
+            items = []
+            for item, parent, _ in target_list.traverse(reverse=False):
+                items.append(item)
+            target_list._set_selection(item)
         else:
             target_list.clearSelection()
 

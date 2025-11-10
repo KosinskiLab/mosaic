@@ -116,12 +116,12 @@ class BackgroundTaskManager(QObject):
             max_workers=max(2, QThread.idealThreadCount() - 1)
         )
 
-        # Some operations manage their own threads. This limits the number
-        # of such processes to 1
         self.sequential_executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
 
         self.task_info: Dict[str, Dict[str, Any]] = {}
         self.futures: Dict[str, concurrent.futures.Future] = {}
+
+        self._initialize()
 
         self.timer = QTimer()
         self.timer.timeout.connect(self._check_completed_tasks)
@@ -129,6 +129,45 @@ class BackgroundTaskManager(QObject):
 
         self.task_failed.connect(self._default_error_handler)
         self.task_warning.connect(self._default_warning_handler)
+
+    def _initialize(self):
+        """Initialize or reinitialize executors"""
+        for task_id in list(self.futures.keys()):
+            if task_id in self.task_info:
+                task_name = self.task_info[task_id]["name"]
+                self.task_failed.emit(
+                    task_id,
+                    task_name,
+                    "Task cancelled: executor was broken by worker crash",
+                )
+            if task_id in self.futures:
+                try:
+                    self.futures[task_id].cancel()
+                except Exception:
+                    pass
+
+        self._shutdown()
+        self.executor = concurrent.futures.ProcessPoolExecutor(
+            max_workers=max(2, QThread.idealThreadCount() - 1)
+        )
+
+        # Avoid collision with operations managing their own threads
+        self.sequential_executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
+        self.running_tasks.emit(0)
+
+    def _shutdown(self):
+        self.futures.clear()
+        self.task_info.clear()
+
+        try:
+            self.executor.shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            pass
+
+        try:
+            self.sequential_executor.shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            pass
 
     def _default_error_handler(self, task_id, task_name, error):
         """Default handler for task errors."""
@@ -157,6 +196,7 @@ class BackgroundTaskManager(QObject):
     def _check_completed_tasks(self):
         """Check for completed futures and handle results"""
         completed_tasks = []
+        executor_broken = False
 
         for task_id, future in self.futures.items():
             if future.done():
@@ -177,6 +217,12 @@ class BackgroundTaskManager(QObject):
                     if warnings_msg is not None:
                         self.task_warning.emit(task_id, task_name, warnings_msg)
 
+                except concurrent.futures.process.BrokenProcessPool as e:
+                    # Worker died from segfault or similar fatal error
+                    error_msg = f"Worker process died unexpectedly: {str(e)}"
+                    self.task_failed.emit(task_id, task_name, error_msg)
+                    executor_broken = True
+
                 except Exception as e:
                     error_msg = str(e)
                     self.task_failed.emit(task_id, task_name, error_msg)
@@ -186,6 +232,9 @@ class BackgroundTaskManager(QObject):
             _ = self.futures.pop(task_id)
             _ = self.task_info.pop(task_id)
             self.running_tasks.emit(len(self.futures))
+
+        if executor_broken:
+            self._initialize()
 
 
 def submit_task(name, func, callback, *args, **kwargs):
