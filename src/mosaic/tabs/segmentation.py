@@ -119,12 +119,12 @@ class SegmentationTab(QWidget):
                 "Trim points using planes",
             ),
             create_button(
-                "Thin",
+                "Skeletonize",
                 "mdi.dots-horizontal",
                 self,
-                self.cdata.data.decimate,
+                self.cdata.data.skeletonize,
                 "Reduce cluster to outer, core or inner points.",
-                THINNING_SETTINGS,
+                SKELETONIZE_SETTINGS,
             ),
             create_button(
                 "Downsample",
@@ -162,7 +162,9 @@ class SegmentationTab(QWidget):
         from ..dialogs import HistogramDialog
         from ..widgets.dock import create_or_toggle_dock
 
-        dialog = HistogramDialog(self.cdata, parent=self)
+        dialog = None
+        if getattr(self, "histogram_dock", None) is None:
+            dialog = HistogramDialog(self.cdata, parent=self)
         create_or_toggle_dock(self, "histogram_dock", dialog)
 
     def _show_property_dialog(self):
@@ -472,28 +474,70 @@ class PlaneTrimmer:
         self.data.highlight_selected_points(color=None)
 
 
-THINNING_SETTINGS = {
-    "title": "Thinning Settings",
+SKELETONIZE_SETTINGS = {
+    "title": "Skeletonize Settings",
     "settings": [
         {
             "label": "Method",
             "type": "select",
-            "options": ["outer", "core", "inner"],
+            "options": ["core", "boundary", "outer", "outer_hull"],
             "default": "core",
-            "description": "Retrieve outer/inner hull or core points.",
+            "description": "Structural feature to extract.",
+            "notes": (
+                "Core: Extracts medial axis/centerline through the middle of structures. "
+                "Boundary: Extracts both inner and outer boundaries for hollow structures. "
+                "Outer: Extracts outer boundary via skeletonization + convex hull for smoothness. "
+                "Outer Hull: Fast convex hull approximation (legacy method, no skeletonization)."
+            ),
         },
     ],
     "method_settings": {
         "core": [
             {
-                "label": "Radius",
-                "parameter": "cutoff",
+                "label": "Sigma",
+                "parameter": "sigma",
                 "type": "float",
-                "description": "Radius of sphere used for thinning.",
-                "default": 50,
-                "min": 0,
-                "max": 1e32,
-                "notes": "Larger radius yields coarser structures.",
+                "description": "Gaussian smoothing for Hessian computation.",
+                "default": 1.0,
+                "min": 0.1,
+                "max": 10.0,
+                "notes": "Higher sigma produces smoother skeletons.",
+            },
+        ],
+        "boundary": [
+            {
+                "label": "Sigma",
+                "parameter": "sigma",
+                "type": "float",
+                "description": "Gaussian smoothing for Hessian computation.",
+                "default": 1.0,
+                "min": 0.1,
+                "max": 10.0,
+                "notes": "Higher sigma produces smoother boundaries.",
+            },
+        ],
+        "outer": [
+            {
+                "label": "Sigma",
+                "parameter": "sigma",
+                "type": "float",
+                "description": "Gaussian smoothing for Hessian computation.",
+                "default": 1.0,
+                "min": 0.1,
+                "max": 10.0,
+                "notes": "Higher sigma produces smoother results before convex hull fitting.",
+            },
+        ],
+        "outer_hull": [
+            {
+                "label": "Sample fraction",
+                "parameter": "sample_fraction",
+                "type": "float",
+                "description": "Fraction of points to sample from convex hull.",
+                "default": 0.5,
+                "min": 0.1,
+                "max": 1.0,
+                "notes": "Controls density of output points on the convex hull surface.",
             },
         ],
     },
@@ -532,8 +576,13 @@ DOWNSAMPLE_SETTINGS = {
         {
             "label": "Method",
             "type": "select",
-            "options": ["Radius", "Number"],
+            "options": ["Radius", "Number", "Center of Mass"],
             "default": "Radius",
+            "notes": (
+                "Radius: Uniform voxel grid downsampling. "
+                "Number: Random subsampling to target count. "
+                "Center of Mass: Replace nearby points by their centroid."
+            ),
         },
     ],
     "method_settings": {
@@ -543,6 +592,8 @@ DOWNSAMPLE_SETTINGS = {
                 "parameter": "voxel_size",
                 "type": "float",
                 "default": 40.0,
+                "notes": "Points within this radius are merged into one point per "
+                "voxel. Larger values produce coarser results.",
             },
         ],
         "Number": [
@@ -552,6 +603,17 @@ DOWNSAMPLE_SETTINGS = {
                 "type": "number",
                 "min": 1,
                 "default": 1000,
+                "notes": "Randomly selects this many points from the input.",
+            },
+        ],
+        "Center of Mass": [
+            {
+                "label": "Radius",
+                "parameter": "radius",
+                "type": "float",
+                "default": 40.0,
+                "notes": "Points within this radius are clustered and replaced by "
+                " their centroid. Larger values produce coarser results.",
             },
         ],
     },
@@ -598,11 +660,11 @@ CLUSTER_SETTINGS = {
             "label": "Radius",
             "parameter": "downsampling_radius",
             "type": "float",
-            "description": "Consider points within radius as one for clustering.",
+            "description": "Consider points within radius as neighbors for clustering.",
             "default": -1.0,
             "min": -1.0,
             "max": 1e32,
-            "notes": "Defaults to no downsampling.",
+            "notes": "Defaults to sampling rate of object.",
         },
     ],
     "method_settings": {

@@ -35,6 +35,9 @@ def create_or_toggle_dock(
     if getattr(instance, dock_attr_name, None) is not None:
         return _exit()
 
+    if dialog_widget is None:
+        return None
+
     dock = QDockWidget()
     dock.setFeatures(
         QDockWidget.DockWidgetClosable

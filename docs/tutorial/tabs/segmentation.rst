@@ -79,9 +79,9 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
             <i class="mdi mdi-scissors-cutting" style="font-size: 1.5rem;"></i>
 
-    .. grid-item-card:: Thin
+    .. grid-item-card:: Skeletonize
         :text-align: center
-        :link: #thin
+        :link: #skeletonize
 
         .. raw:: html
 
@@ -94,14 +94,6 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
         .. raw:: html
 
             <i class="mdi mdi-focus-field-horizontal" style="font-size: 1.5rem;"></i>
-
-    .. grid-item-card:: Distances
-        :text-align: center
-        :link: #distances
-
-        .. raw:: html
-
-            <i class="mdi mdi-graphql" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Properties
         :text-align: center
@@ -288,18 +280,19 @@ Select points outside specified axis-aligned boundaries:
 
 .. _thin:
 
-Thin
-----
+Skeletonize
+-----------
 
-Reduces point density while preserving structure:
+Skeletonize point cloud:
 
 1. Select a cluster
-2. Click **Thin**
-3. Choose thinning method:
+2. Click **Skeletonize**
+3. Choose method:
 
-   - **Outer**: Keep surface/hull points
-   - **Core**: Keep central/medoid points
-   - **Inner**: Keep interior points using ray-casting
+   - **Core**: Classical internal skeleton.
+   - **Boundary**: Exo-like skeleton of boundaries.
+   - **Outer**: Outer exo-like skeleton.
+   - **Outer_Hull**: Legacy method to compute the outer hull of a point cloud. Used to be listed unter **Thin** pre v1.0.16.
 
 4. Click **OK** to apply thinning
 
@@ -325,28 +318,6 @@ Reduces the number of points while maintaining overall structure:
 5. Click **OK** to apply downsampling
 
 .. _distances:
-
-Distances
----------
-
-Analyzes distance distributions between clusters:
-
-1. Click **Distances**
-2. In the dialog:
-
-   - Select source clusters/models to measure from
-   - Select target clusters/models to measure to
-   - Configure distance calculation parameters
-
-3. View results:
-
-   - Distance histograms and statistics
-   - Minimum, maximum, mean, and standard deviation
-   - Export data as CSV for external analysis
-
-4. Use results to inform clustering or filtering decisions
-
-.. _statistics:
 
 
 Properties

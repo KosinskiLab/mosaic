@@ -1,5 +1,6 @@
 import numpy as np
-from qtpy.QtCore import Qt, QTimer
+from qtpy.QtGui import QLinearGradient
+from qtpy.QtCore import Qt, QTimer, QSize, QPointF
 from qtpy.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -19,6 +20,8 @@ from qtpy.QtWidgets import (
     QHeaderView,
     QTableWidgetItem,
     QFileDialog,
+    QDoubleSpinBox,
+    QStyledItemDelegate,
 )
 import pyqtgraph as pg
 import qtawesome as qta
@@ -39,12 +42,169 @@ def _populate_list(geometries):
     return target_list
 
 
+class ColormapItemDelegate(QStyledItemDelegate):
+    """Custom delegate to show colormap preview in combobox items"""
+
+    def __init__(self, color_preview_widget, parent=None):
+        super().__init__(parent)
+        self.color_preview = color_preview_widget
+        self.icon_size = QSize(100, 20)
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+
+        colormap_name = index.data(Qt.ItemDataRole.DisplayRole)
+
+        rect = option.rect
+        gradient_rect = rect.adjusted(rect.width() - 110, 3, -5, -3)
+        colors = self.color_preview.generate_gradient(colormap_name, 10)
+
+        gradient = QLinearGradient(
+            QPointF(gradient_rect.left(), gradient_rect.top()),
+            QPointF(gradient_rect.right(), gradient_rect.top()),
+        )
+        for i, color in enumerate(colors):
+            gradient.setColorAt(i / (len(colors) - 1), color)
+
+        painter.save()
+        painter.fillRect(gradient_rect, gradient)
+        painter.restore()
+
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        size.setHeight(max(size.height(), 26))
+        return size
+
+
+class ColorScaleSettingsDialog(QDialog):
+    """Dialog for configuring color scale thresholds"""
+
+    def __init__(self, parent=None):
+        from ..stylesheets import (
+            QGroupBox_style,
+            QPushButton_style,
+            QDoubleSpinBox_style,
+            QCheckBox_style,
+        )
+        from ..icons import (
+            dialog_accept_icon,
+            dialog_reject_icon,
+            dialog_margin,
+            footer_margin,
+        )
+
+        super().__init__(parent)
+        self.setWindowTitle("Color Scale Settings")
+        self.setModal(True)
+
+        self._dialog_accept_icon = dialog_accept_icon
+        self._dialog_reject_icon = dialog_reject_icon
+        self._dialog_margin = dialog_margin
+        self._footer_margin = footer_margin
+
+        # Default threshold values
+        self.lower_enabled = False
+        self.upper_enabled = False
+        self.lower_value = 0.0
+        self.upper_value = 1.0
+
+        self._setup_ui()
+        self.setStyleSheet(
+            QGroupBox_style + QPushButton_style + QDoubleSpinBox_style + QCheckBox_style
+        )
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(*self._dialog_margin)
+
+        # Threshold settings group
+        threshold_group = QGroupBox("Threshold Settings")
+        threshold_layout = QVBoxLayout(threshold_group)
+
+        # Lower threshold
+        self.lower_checkbox = QCheckBox("Enable Lower Threshold")
+        self.lower_checkbox.stateChanged.connect(self._update_spinbox_states)
+        threshold_layout.addWidget(self.lower_checkbox)
+
+        lower_value_layout = QFormLayout()
+        lower_value_layout.setContentsMargins(20, 5, 0, 10)
+        self.lower_spinbox = QDoubleSpinBox()
+        self.lower_spinbox.setRange(-1e10, 1e10)
+        self.lower_spinbox.setDecimals(6)
+        self.lower_spinbox.setValue(0.0)
+        self.lower_spinbox.setEnabled(False)
+        lower_value_layout.addRow("Minimum Value:", self.lower_spinbox)
+        threshold_layout.addLayout(lower_value_layout)
+
+        # Upper threshold
+        self.upper_checkbox = QCheckBox("Enable Upper Threshold")
+        self.upper_checkbox.stateChanged.connect(self._update_spinbox_states)
+        threshold_layout.addWidget(self.upper_checkbox)
+
+        upper_value_layout = QFormLayout()
+        upper_value_layout.setContentsMargins(20, 5, 0, 0)
+        self.upper_spinbox = QDoubleSpinBox()
+        self.upper_spinbox.setRange(-1e10, 1e10)
+        self.upper_spinbox.setDecimals(6)
+        self.upper_spinbox.setValue(1.0)
+        self.upper_spinbox.setEnabled(False)
+        upper_value_layout.addRow("Maximum Value:", self.upper_spinbox)
+        threshold_layout.addLayout(upper_value_layout)
+
+        layout.addWidget(threshold_group)
+
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.setContentsMargins(*self._footer_margin)
+
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setIcon(self._dialog_reject_icon)
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+
+        apply_btn = QPushButton("Apply")
+        apply_btn.setIcon(self._dialog_accept_icon)
+        apply_btn.clicked.connect(self.accept)
+        button_layout.addWidget(apply_btn)
+
+        layout.addLayout(button_layout)
+
+    def _update_spinbox_states(self):
+        """Enable/disable spinboxes based on checkbox states"""
+        self.lower_spinbox.setEnabled(self.lower_checkbox.isChecked())
+        self.upper_spinbox.setEnabled(self.upper_checkbox.isChecked())
+
+    def get_settings(self):
+        """Return the current threshold settings"""
+        return {
+            "lower_enabled": self.lower_checkbox.isChecked(),
+            "upper_enabled": self.upper_checkbox.isChecked(),
+            "lower_value": self.lower_spinbox.value(),
+            "upper_value": self.upper_spinbox.value(),
+        }
+
+    def set_settings(self, settings):
+        """Apply threshold settings"""
+        self.lower_checkbox.setChecked(settings.get("lower_enabled", False))
+        self.upper_checkbox.setChecked(settings.get("upper_enabled", False))
+        self.lower_spinbox.setValue(settings.get("lower_value", 0.0))
+        self.upper_spinbox.setValue(settings.get("upper_value", 1.0))
+
+
 class PropertyAnalysisDialog(QDialog):
     def __init__(self, cdata, legend=None, parent=None):
         super().__init__(parent)
         self.cdata = cdata
         self.properties = {}
         self.property_parameters = {}
+
+        # Threshold settings
+        self.threshold_settings = {
+            "lower_enabled": False,
+            "upper_enabled": False,
+            "lower_value": 0.0,
+            "upper_value": 1.0,
+        }
 
         self.setWindowTitle("Property Analysis")
 
@@ -119,8 +279,37 @@ class PropertyAnalysisDialog(QDialog):
         self.tabs_widget.currentChanged.connect(self._update_tab)
         main_layout.addWidget(self.tabs_widget)
 
+    def _create_colormap_combo(self, with_settings_button=False):
+        """Create a colormap combo widget with optional settings button"""
+        colormap_combo = QComboBox()
+        colormap_combo.addItems(self.color_preview.colormaps.copy())
+
+        def _open_colormap_settings():
+            """Open dialog to configure color scale thresholds"""
+            dialog = ColorScaleSettingsDialog(self)
+            dialog.set_settings(self.threshold_settings)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                self.threshold_settings = dialog.get_settings()
+                # Reapply visualization with new thresholds
+                if self.properties:
+                    self._preview()
+
+        colormap_delegate = ColormapItemDelegate(self.color_preview, colormap_combo)
+        colormap_combo.setItemDelegate(colormap_delegate)
+        if with_settings_button:
+            settings_btn = QPushButton()
+            settings_btn.setIcon(qta.icon("mdi.cog", color="#4f46e5"))
+            settings_btn.setToolTip("Color Scale Settings")
+            settings_btn.setFixedSize(28, 28)
+            settings_btn.clicked.connect(_open_colormap_settings)
+            return colormap_combo, settings_btn
+
+        return colormap_combo
+
     def _setup_visualization_tab(self):
         from ..icons import dialog_accept_icon
+        from ..widgets.settings import format_tooltip
 
         layout = QVBoxLayout(self.visualization_tab)
 
@@ -159,42 +348,58 @@ class PropertyAnalysisDialog(QDialog):
         colormap_layout = QHBoxLayout()
         colormap_layout.addWidget(QLabel("Color Map:"))
 
-        self.colormap_combo = QComboBox()
-        self.colormap_combo.addItems(self.color_preview.colormaps.copy())
-        self.colormap_combo.currentTextChanged.connect(self._update_colormap_preview)
-        colormap_layout.addWidget(self.colormap_combo)
+        self.colormap_combo, self.colormap_settings_btn = self._create_colormap_combo(
+            with_settings_button=True
+        )
+        colormap_layout.addWidget(self.colormap_combo, 1)
+        colormap_layout.addWidget(self.colormap_settings_btn)
 
         checkbox_layout = QHBoxLayout()
-        self.normalize_checkbox = QCheckBox("Normalize per Object")
+        self.normalize_checkbox = QCheckBox("Normalize")
+        self.normalize_checkbox.setToolTip(
+            format_tooltip(
+                label="Normalize",
+                description="Scale values to 0-1 per object.",
+            )
+        )
         checkbox_layout.addWidget(self.normalize_checkbox)
-        self.quantile_checkbox = QCheckBox("Compute Quantiles")
+        checkbox_layout.addStretch()
+
+        self.quantile_checkbox = QCheckBox("Use Quantiles")
+        self.quantile_checkbox.setToolTip(
+            format_tooltip(
+                label="Use Quantiles",
+                description="Plot quantiles instead of raw values.",
+            )
+        )
         checkbox_layout.addWidget(self.quantile_checkbox)
+        checkbox_layout.addStretch()
+
         self.invert_checkbox = QCheckBox("Invert Colors")
-        self.invert_checkbox.stateChanged.connect(self._update_colormap_preview)
+        self.invert_checkbox.setToolTip(
+            format_tooltip(
+                label="Invert Colors",
+                description="Invert color map.",
+            )
+        )
         checkbox_layout.addWidget(self.invert_checkbox)
 
         options_layout.addLayout(colormap_layout)
-        options_layout.addWidget(self.color_preview)
         options_layout.addLayout(checkbox_layout)
         layout.addWidget(options_group)
 
         # Dialog Control Buttons
         button_layout = QHBoxLayout()
-        refresh_btn = QPushButton("Compute")
-        refresh_btn.setIcon(qta.icon("mdi.monitor", color="#4f46e5"))
+        refresh_btn = QPushButton("Refresh")
+        refresh_btn.setIcon(qta.icon("mdi.refresh", color="#4f46e5"))
         refresh_btn.clicked.connect(self._preview)
         button_layout.addWidget(refresh_btn)
         button_layout.addStretch()
 
-        show_dist_btn = QPushButton("Show Distribution")
-        show_dist_btn.setIcon(qta.icon("mdi.chart-bell-curve", color="#4f46e5"))
-        show_dist_btn.clicked.connect(lambda: self.tabs_widget.setCurrentIndex(1))
-        button_layout.addWidget(show_dist_btn)
-
-        export_btn = QPushButton("Export Data")
-        export_btn.setIcon(qta.icon("mdi.download", color="#4f46e5"))
-        export_btn.clicked.connect(self._export_data)
-        button_layout.addWidget(export_btn)
+        self.visualize_export_btn = QPushButton("Export Data")
+        self.visualize_export_btn.setIcon(qta.icon("mdi.download", color="#4f46e5"))
+        self.visualize_export_btn.clicked.connect(self._export_data)
+        button_layout.addWidget(self.visualize_export_btn)
 
         apply_btn = QPushButton("Done")
         apply_btn.setIcon(dialog_accept_icon)
@@ -203,7 +408,6 @@ class PropertyAnalysisDialog(QDialog):
         layout.addLayout(button_layout)
 
         self._update_property_list("Distance")
-        self._update_colormap_preview()
 
     def _setup_analysis_tab(self):
         from ..icons import dialog_accept_icon
@@ -270,8 +474,9 @@ class PropertyAnalysisDialog(QDialog):
         colormap_layout = QHBoxLayout()
         colormap_layout.addWidget(QLabel("Color Palette:"))
 
-        self.analysis_colormap_combo = QComboBox()
-        self.analysis_colormap_combo.addItems(self.color_preview.colormaps)
+        self.analysis_colormap_combo = self._create_colormap_combo(
+            with_settings_button=False
+        )
         self.analysis_colormap_combo.currentTextChanged.connect(self._update_plot)
         colormap_layout.addWidget(self.analysis_colormap_combo)
         options_layout.addLayout(colormap_layout)
@@ -287,15 +492,10 @@ class PropertyAnalysisDialog(QDialog):
         button_layout.addWidget(refresh_btn)
         button_layout.addStretch()
 
-        save_plot_btn = QPushButton("Save Plot")
-        save_plot_btn.setIcon(qta.icon("mdi.content-save", color="#4f46e5"))
-        save_plot_btn.clicked.connect(self._export_plot)
-        button_layout.addWidget(save_plot_btn)
-
-        export_btn = QPushButton("Export Data")
-        export_btn.setIcon(qta.icon("mdi.download", color="#4f46e5"))
-        export_btn.clicked.connect(self._export_data)
-        button_layout.addWidget(export_btn)
+        self.analysis_export_btn = QPushButton("Export Plot")
+        self.analysis_export_btn.setIcon(qta.icon("mdi.download", color="#4f46e5"))
+        self.analysis_export_btn.clicked.connect(self._export_plot)
+        button_layout.addWidget(self.analysis_export_btn)
 
         apply_btn = QPushButton("Done")
         apply_btn.setIcon(dialog_accept_icon)
@@ -329,15 +529,10 @@ class PropertyAnalysisDialog(QDialog):
         button_layout.addWidget(refresh_btn)
         button_layout.addStretch()
 
-        save_plot_btn = QPushButton("Save Plot")
-        save_plot_btn.setIcon(qta.icon("mdi.content-save", color="#4f46e5"))
-        save_plot_btn.clicked.connect(self._export_plot)
-        button_layout.addWidget(save_plot_btn)
-
-        export_btn = QPushButton("Export Data")
-        export_btn.setIcon(qta.icon("mdi.download", color="#4f46e5"))
-        export_btn.clicked.connect(self._export_data)
-        button_layout.addWidget(export_btn)
+        self.statistics_export_btn = QPushButton("Export Statistics")
+        self.statistics_export_btn.setIcon(qta.icon("mdi.download", color="#4f46e5"))
+        self.statistics_export_btn.clicked.connect(self._export_statistics)
+        button_layout.addWidget(self.statistics_export_btn)
 
         apply_btn = QPushButton("Done")
         apply_btn.setIcon(dialog_accept_icon)
@@ -631,11 +826,6 @@ class PropertyAnalysisDialog(QDialog):
         else:
             target_list.clearSelection()
 
-    def _update_colormap_preview(self):
-        cmap = self.colormap_combo.currentText()
-        reverse = self.invert_checkbox.isChecked()
-        self.color_preview.set_colormap(cmap, reverse)
-
     def _get_selected_geometries(self):
         return [x[1] for x in self._get_selection()]
 
@@ -732,6 +922,36 @@ class PropertyAnalysisDialog(QDialog):
             QMessageBox.warning(self, "Error", str(e))
             self.properties.clear()
 
+    def _apply_threshold_clipping(self, properties):
+        """Apply threshold clipping to property values"""
+        if (
+            not self.threshold_settings["lower_enabled"]
+            and not self.threshold_settings["upper_enabled"]
+        ):
+            return properties
+
+        clipped_properties = {}
+        for k, v in properties.items():
+            v_clipped = v.copy() if isinstance(v, np.ndarray) else v
+
+            if self.threshold_settings["lower_enabled"]:
+                lower_val = self.threshold_settings["lower_value"]
+                if isinstance(v_clipped, np.ndarray):
+                    v_clipped = np.maximum(v_clipped, lower_val)
+                else:
+                    v_clipped = max(v_clipped, lower_val)
+
+            if self.threshold_settings["upper_enabled"]:
+                upper_val = self.threshold_settings["upper_value"]
+                if isinstance(v_clipped, np.ndarray):
+                    v_clipped = np.minimum(v_clipped, upper_val)
+                else:
+                    v_clipped = min(v_clipped, upper_val)
+
+            clipped_properties[k] = v_clipped
+
+        return clipped_properties
+
     def _preview(self, render: bool = True, suppress_warning: bool = False):
         from ..utils import cmap_to_vtkctf
 
@@ -751,7 +971,8 @@ class PropertyAnalysisDialog(QDialog):
         properties = self.properties
         if self.normalize_checkbox.isChecked():
             properties = {
-                k: (v - v.min()) / (v.max() - v.min()) for k, v in properties.items()
+                k: (v - v.min()) / (v.max() - v.min()) if (v.max() - v.min()) > 0 else v
+                for k, v in properties.items()
             }
 
         if self.quantile_checkbox.isChecked():
@@ -761,6 +982,7 @@ class PropertyAnalysisDialog(QDialog):
             bins = np.percentile(valid_curvatures, np.linspace(0, 100, n_bins + 1))
             properties = {k: np.digitize(v, bins) - 1 for k, v in properties.items()}
 
+        properties = self._apply_threshold_clipping(properties)
         values = [x for x in properties.values() if x is not None]
         if len(values) == 0:
             return None
@@ -1065,15 +1287,32 @@ class PropertyAnalysisDialog(QDialog):
 
         try:
             with open(file_path, mode="w", encoding="utf-8") as ofile:
-                ofile.write(f"source,{property_name}\n")
+                per_point = all(
+                    self.properties.get(id(geom)).size == geom.get_number_of_points()
+                    for name, geom in selected_items
+                    if self.properties.get(id(geom)) is not None
+                )
+
+                header = f"source,{property_name}\n"
+                if per_point:
+                    header = f"source,point_id,x,y,z,{property_name}\n"
+                ofile.write(header)
 
                 for name, geom in selected_items:
                     values = self.properties.get(id(geom))
                     if values is None:
-                        return None
+                        continue
 
                     values = np.asarray(values).reshape(-1)
-                    lines = "\n".join([f"{name},{v}" for v in values])
+                    if per_point:
+                        lines = "\n".join(
+                            [
+                                f"{name},{pid},{p[0]},{p[1]},{p[2]},{v}"
+                                for pid, (p, v) in enumerate(zip(geom.points, values))
+                            ]
+                        )
+                    else:
+                        lines = "\n".join([f"{name},{v}" for v in values])
                     ofile.write(lines + "\n")
 
             QMessageBox.information(self, "Success", "Data exported successfully")
@@ -1102,6 +1341,43 @@ class PropertyAnalysisDialog(QDialog):
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save plot: {str(e)}")
+
+    def _export_statistics(self):
+        """Export statistics table to a CSV file"""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Export Statistics", "", "CSV Files (*.csv);;All Files (*.*)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, mode="w", encoding="utf-8") as ofile:
+                headers = []
+                for col in range(self.stats_table.columnCount()):
+                    header_item = self.stats_table.horizontalHeaderItem(col)
+                    value = f"Column{col}"
+                    if header_item is not None:
+                        value = header_item.text()
+                    headers.append(value)
+                ofile.write(",".join(headers) + "\n")
+
+                for row in range(self.stats_table.rowCount()):
+                    row_data = []
+                    for col in range(self.stats_table.columnCount()):
+                        item = self.stats_table.item(row, col)
+                        value = ""
+                        if item is not None:
+                            value = item.text()
+                        row_data.append(value)
+
+                    ofile.write(",".join(row_data) + "\n")
+            QMessageBox.information(self, "Success", "Statistics exported successfully")
+
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Error", f"Failed to export statistics: {str(e)}"
+            )
 
     def _setup_styling(self):
         base_style = """

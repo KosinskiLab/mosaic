@@ -8,13 +8,11 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import numpy as np
 import pyqtgraph as pg
-from qtpy.QtCore import Qt, Signal, QLocale
 from qtpy.QtGui import QColor, QDoubleValidator
+from qtpy.QtCore import Qt, Signal, QLocale, QSize
 from qtpy.QtWidgets import (
     QWidget,
-    QHBoxLayout,
     QVBoxLayout,
-    QSlider,
     QLineEdit,
     QLabel,
     QSpinBox,
@@ -23,115 +21,154 @@ from qtpy.QtWidgets import (
     QGridLayout,
 )
 
-from ..stylesheets import QSlider_style
 
-
-class RangeSlider(QWidget):
-    """A custom slider that allows selecting a range with two handles."""
+class DualHandleSlider(QWidget):
+    """A slider with two handles for selecting a range, with visual feedback."""
 
     rangeChanged = Signal(float, float)
 
-    def __init__(self, orientation=Qt.Orientation.Horizontal, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.orientation = orientation
-        self.lower_value = 0
-        self.upper_value = 100
+        self.min_val = 0.0
+        self.max_val = 100.0
+        self.lower_pos = 0.0
+        self.upper_pos = 100.0
 
-        layout = (
-            QHBoxLayout() if orientation == Qt.Orientation.Horizontal else QVBoxLayout()
-        )
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(layout)
+        self.setMinimumHeight(40)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-        self.lower_slider = QSlider(orientation)
-        self.upper_slider = QSlider(orientation)
+        # Track which handle is being dragged
+        self.dragging_handle = None
+        self.handle_radius = 8
 
-        # Emulate range slider appearance
-        self._apply_slider_styles()
-
-        for slider, value, callback in [
-            (self.lower_slider, 0, self._lower_slider_changed),
-            (self.upper_slider, 100, self._upper_slider_changed),
-        ]:
-            slider.setRange(0, 100)
-            slider.setValue(value)
-            slider.valueChanged.connect(callback)
-            layout.addWidget(slider)
-
-    def _apply_slider_styles(self):
-        """Apply custom styles to achieve right-side coloring for lower slider."""
-        lower_slider_style = (
-            QSlider_style
-            + """
-        QSlider::sub-page:horizontal {
-            background: #e2e8f0;
-            border-radius: 2px;
-        }
-        QSlider::sub-page:horizontal:disabled {
-            background: #f1f5f9;
-        }
-        QSlider::add-page:horizontal {
-            background: #94a3b8;
-            border-radius: 2px;
-        }
-        QSlider::add-page:horizontal:disabled {
-            background: #cbd5e1;
-        }
-        """
-        )
-
-        upper_slider_style = (
-            QSlider_style
-            + """
-        QSlider::sub-page:horizontal {
-            background: #94a3b8;
-            border-radius: 2px;
-        }
-        QSlider::sub-page:horizontal:disabled {
-            background: #cbd5e1;
-        }
-        QSlider::add-page:horizontal {
-            background: #e2e8f0;
-            border-radius: 2px;
-        }
-        QSlider::add-page:horizontal:disabled {
-            background: #f1f5f9;
-        }
-        """
-        )
-
-        self.lower_slider.setStyleSheet(lower_slider_style)
-        self.upper_slider.setStyleSheet(upper_slider_style)
-
-    def _lower_slider_changed(self, value):
-        if value > self.upper_slider.value():
-            self.lower_slider.setValue(self.upper_slider.value())
-            return
-
-        self.lower_value = value
-        self.rangeChanged.emit(self.lower_value, self.upper_value)
-
-    def _upper_slider_changed(self, value):
-        if value < self.lower_slider.value():
-            self.upper_slider.setValue(self.lower_slider.value())
-            return
-
-        self.upper_value = value
-        self.rangeChanged.emit(self.lower_value, self.upper_value)
+        self.inactive_color = QColor(226, 232, 240)
+        self.active_color = QColor(148, 163, 184)
+        self.handle_color = QColor(255, 255, 255)
+        self.border_color = QColor(79, 70, 229)
 
     def setRange(self, minimum, maximum):
-        self.lower_slider.setRange(minimum, maximum)
-        self.upper_slider.setRange(minimum, maximum)
+        """Set the range of values the slider represents."""
+        self.min_val = minimum
+        self.max_val = maximum
+        self.update()
 
     def setValues(self, lower, upper):
-        # Block signals to avoid triggering callbacks
-        for slider, value in [(self.lower_slider, lower), (self.upper_slider, upper)]:
-            slider.blockSignals(True)
-            slider.setValue(value)
-            slider.blockSignals(False)
+        """Set both handle positions."""
+        self.lower_pos = np.clip(lower, self.min_val, self.max_val)
+        self.upper_pos = np.clip(upper, self.min_val, self.max_val)
+        if self.lower_pos > self.upper_pos:
+            self.lower_pos, self.upper_pos = self.upper_pos, self.lower_pos
+        self.update()
 
-        self.lower_value = lower
-        self.upper_value = upper
+    def _value_to_pixel(self, value):
+        """Convert a value to pixel position."""
+        if self.max_val == self.min_val:
+            return self.handle_radius
+        margin = self.handle_radius * 2
+        width = self.width() - margin * 2
+        normalized = (value - self.min_val) / (self.max_val - self.min_val)
+        return margin + normalized * width
+
+    def _pixel_to_value(self, pixel):
+        """Convert pixel position to value."""
+        margin = self.handle_radius * 2
+        width = self.width() - margin * 2
+        if width <= 0:
+            return self.min_val
+        normalized = (pixel - margin) / width
+        normalized = np.clip(normalized, 0, 1)
+        return self.min_val + normalized * (self.max_val - self.min_val)
+
+    def paintEvent(self, event):
+        """Draw the slider with range visualization."""
+        from qtpy.QtGui import QPainter, QPen, QBrush
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Draw track
+        track_y = self.height() // 2
+        margin = self.handle_radius * 2
+        track_width = self.width() - margin * 2
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(self.inactive_color))
+        painter.drawRoundedRect(margin, track_y - 2, track_width, 4, 2, 2)
+
+        lower_x = self._value_to_pixel(self.lower_pos)
+        upper_x = self._value_to_pixel(self.upper_pos)
+        range_width = upper_x - lower_x
+
+        painter.setBrush(QBrush(self.active_color))
+        painter.drawRoundedRect(int(lower_x), track_y - 2, int(range_width), 4, 2, 2)
+
+        for pos in [self.lower_pos, self.upper_pos]:
+            x = self._value_to_pixel(pos)
+
+            painter.setBrush(QBrush(self.handle_color))
+            painter.drawEllipse(
+                int(x - self.handle_radius),
+                track_y - self.handle_radius,
+                self.handle_radius * 2,
+                self.handle_radius * 2,
+            )
+
+            painter.setPen(QPen(self.border_color, 1))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawEllipse(
+                int(x - self.handle_radius),
+                track_y - self.handle_radius,
+                self.handle_radius * 2,
+                self.handle_radius * 2,
+            )
+
+    def mousePressEvent(self, event):
+        """Start dragging a handle."""
+        if event.button() != Qt.LeftButton:
+            return
+
+        x = event.pos().x()
+        lower_x = self._value_to_pixel(self.lower_pos)
+        upper_x = self._value_to_pixel(self.upper_pos)
+
+        # Check which handle is closer
+        dist_to_lower = abs(x - lower_x)
+        dist_to_upper = abs(x - upper_x)
+
+        if dist_to_lower < self.handle_radius * 2:
+            self.dragging_handle = "lower"
+        elif dist_to_upper < self.handle_radius * 2:
+            self.dragging_handle = "upper"
+        else:
+            # Click on track - move nearest handle
+            if dist_to_lower < dist_to_upper:
+                self.dragging_handle = "lower"
+                self.lower_pos = self._pixel_to_value(x)
+            else:
+                self.dragging_handle = "upper"
+                self.upper_pos = self._pixel_to_value(x)
+            self.update()
+            self.rangeChanged.emit(self.lower_pos, self.upper_pos)
+
+    def mouseMoveEvent(self, event):
+        """Drag the active handle."""
+        if self.dragging_handle is None:
+            return
+
+        value = self._pixel_to_value(event.pos().x())
+
+        if self.dragging_handle == "lower":
+            self.lower_pos = min(value, self.upper_pos)
+        else:
+            self.upper_pos = max(value, self.lower_pos)
+
+        self.update()
+        self.rangeChanged.emit(self.lower_pos, self.upper_pos)
+
+    def mouseReleaseEvent(self, event):
+        """Stop dragging."""
+        if event.button() == Qt.LeftButton:
+            self.dragging_handle = None
 
 
 class HistogramWidget(QWidget):
@@ -158,43 +195,29 @@ class HistogramWidget(QWidget):
         self.histogram_plot.setLabel("bottom", "Cluster Size")
         self.histogram_plot.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        controls_layout = self._create_controls()
-        self.lower_cutoff_line, self.upper_cutoff_line = self._create_cutoff_lines()
+        # Visual reference but no longer moveable since v1.0.16
+        self.lower_cutoff_line = pg.InfiniteLine(
+            angle=90,
+            movable=False,
+            pen=pg.mkPen(QColor(70, 130, 180), width=2, style=Qt.PenStyle.DashLine),
+        )
+        self.upper_cutoff_line = pg.InfiniteLine(
+            angle=90,
+            movable=False,
+            pen=pg.mkPen(QColor(220, 70, 70), width=2, style=Qt.PenStyle.DashLine),
+        )
+        self.histogram_plot.addItem(self.lower_cutoff_line)
+        self.histogram_plot.addItem(self.upper_cutoff_line)
 
-        self.range_slider = RangeSlider(Qt.Orientation.Horizontal)
-        self.range_slider.rangeChanged.connect(self._on_slider_range_changed)
+        controls_layout = self._create_controls()
+
+        self.range_slider = DualHandleSlider()
+        self.range_slider.rangeChanged.connect(self._update_cutoff_values)
         self.range_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.range_slider.setMinimumHeight(30)
-        self.range_slider.setRange(0, 100)
 
         main_layout.addWidget(self.histogram_plot)
         main_layout.addLayout(controls_layout)
         main_layout.addWidget(self.range_slider)
-
-    def _create_cutoff_lines(self):
-        line_configs = [
-            {
-                "color": QColor(70, 130, 180),
-                "callback": lambda: self._handle_cutoff_drag(is_lower=True),
-            },
-            {
-                "color": QColor(220, 70, 70),
-                "callback": lambda: self._handle_cutoff_drag(is_lower=False),
-            },
-        ]
-
-        lines = []
-        for config in line_configs:
-            line = pg.InfiniteLine(
-                angle=90,
-                movable=True,
-                pen=pg.mkPen(config["color"], width=2, style=Qt.PenStyle.DotLine),
-            )
-            line.sigDragged.connect(config["callback"])
-            self.histogram_plot.addItem(line)
-            lines.append(line)
-
-        return lines
 
     def _create_controls(self):
         """Create all control widgets and layouts"""
@@ -235,20 +258,14 @@ class HistogramWidget(QWidget):
             lambda: self._handle_input_change(is_lower=False)
         )
 
-        controls_layout.addWidget(
-            QLabel("Transform:"), 0, 0, Qt.AlignmentFlag.AlignRight
-        )
+        controls_layout.addWidget(QLabel("Scale:"), 0, 0, Qt.AlignmentFlag.AlignRight)
         controls_layout.addWidget(self.transform_combo, 0, 1)
         controls_layout.addWidget(QLabel("Bins:"), 0, 3, Qt.AlignmentFlag.AlignRight)
         controls_layout.addWidget(self.bin_count_spinner, 0, 4)
 
-        controls_layout.addWidget(
-            QLabel("Min Value:"), 1, 0, Qt.AlignmentFlag.AlignRight
-        )
+        controls_layout.addWidget(QLabel("Min:"), 1, 0, Qt.AlignmentFlag.AlignRight)
         controls_layout.addWidget(self.min_value_input, 1, 1)
-        controls_layout.addWidget(
-            QLabel("Max Value:"), 1, 3, Qt.AlignmentFlag.AlignRight
-        )
+        controls_layout.addWidget(QLabel("Max:"), 1, 3, Qt.AlignmentFlag.AlignRight)
         controls_layout.addWidget(self.max_value_input, 1, 4)
 
         return controls_layout
@@ -277,16 +294,21 @@ class HistogramWidget(QWidget):
         if log_scale:
             data = np.log10(self.data[self.data > 0])
 
-        self.min_value = data.min() - 1
-        self.max_value = data.max() + 1
-        self._update_cutoff_values(self.min_value, None)
+        if data.size == 0:
+            return None
 
+        self.min_value = data.min() * 0.999
+        self.max_value = data.max() * 1.001
+
+        self._update_cutoff_values()
         y, x = np.histogram(data, bins=self.bin_count)
+
+        bin_centers = (x[:-1] + x[1:]) / 2
         bar_graph = pg.BarGraphItem(
-            x=x[:-1],
+            x=bin_centers,
             height=y,
             width=(x[1] - x[0]) * 0.8,
-            brush=QColor(70, 130, 180),
+            brush=QColor(148, 163, 184),
         )
         self.histogram_plot.addItem(bar_graph)
 
@@ -297,62 +319,39 @@ class HistogramWidget(QWidget):
         self.histogram_plot.setLabel("bottom", label)
 
     def _update_cutoff_values(self, lower_value=None, upper_value=None):
-        """Central method to update cutoff values and propagate changes to all UI elements."""
+        """Update cutoff values and propagate changes to UI elements."""
         if lower_value is None:
-            lower_value = self.lower_cutoff_line.value()
+            lower_value = self.range_slider.lower_pos
         if upper_value is None:
-            upper_value = self.upper_cutoff_line.value()
-
-        range_span = self.max_value - self.min_value
-        if range_span <= 0:
-            return None
+            upper_value = self.range_slider.upper_pos
 
         lower_value = max(lower_value, self.min_value)
-        upper_value = min(max(upper_value, lower_value), self.max_value)
+        upper_value = min(upper_value, self.max_value)
+        bounds = (self.range_slider.min_val, self.range_slider.max_val)
+        if bounds != (self.min_value, self.max_value):
+            lower_value = self.min_value
+            upper_value = self.max_value
 
-        lower_percent = int(((lower_value - self.min_value) / range_span) * 100)
-        upper_percent = int(((upper_value - self.min_value) / range_span) * 100)
-
-        block_elements = [
-            self.lower_cutoff_line,
-            self.upper_cutoff_line,
-            self.range_slider,
-            self.min_value_input,
-            self.max_value_input,
-        ]
-
-        for element in block_elements:
+        block = [self.range_slider, self.min_value_input, self.max_value_input]
+        for element in block:
             element.blockSignals(True)
 
         self.lower_cutoff_line.setValue(lower_value)
         self.upper_cutoff_line.setValue(upper_value)
 
-        locale = QLocale.c()
-        self.min_value_input.setText(locale.toString(float(lower_value), "d"))
-        self.max_value_input.setText(locale.toString(float(upper_value), "d"))
-        self.range_slider.setValues(lower_percent, upper_percent)
+        self.range_slider.setRange(self.min_value, self.max_value)
+        self.range_slider.setValues(lower_value, upper_value)
 
-        for element in block_elements:
+        locale = QLocale.c()
+        self.min_value_input.setText(locale.toString(float(lower_value), "f", 2))
+        self.max_value_input.setText(locale.toString(float(upper_value), "f", 2))
+
+        for element in block:
             element.blockSignals(False)
 
         self.cutoff_changed.emit(
             self._invert_scaling(lower_value), self._invert_scaling(upper_value)
         )
-
-    def _on_slider_range_changed(self, lower_percent, upper_percent):
-        """Handle range slider value changes."""
-        range_span = self.max_value - self.min_value
-        lower_value = self.min_value + (lower_percent / 100.0) * range_span
-        upper_value = self.min_value + (upper_percent / 100.0) * range_span
-        self._update_cutoff_values(lower_value, upper_value)
-
-    def _handle_cutoff_drag(self, is_lower):
-        """Handle dragging of cutoff lines."""
-        line = self.lower_cutoff_line if is_lower else self.upper_cutoff_line
-        if is_lower:
-            self._update_cutoff_values(lower_value=line.value())
-        else:
-            self._update_cutoff_values(upper_value=line.value())
 
     def _handle_input_change(self, is_lower):
         """Handle changes to either min/max input field."""

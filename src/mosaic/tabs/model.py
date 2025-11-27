@@ -170,7 +170,6 @@ class ModelTab(QWidget):
                 SAMPLE_SETTINGS,
             ),
             create_button("To Cluster", "mdi.plus", self, self._to_cluster),
-            create_button("Remove", "fa5s.trash", self, self.cdata.models.remove),
         ]
         self.ribbon.add_section("Sampling", mesh_actions)
 
@@ -282,7 +281,7 @@ class ModelTab(QWidget):
         return self.cdata.models.render()
 
     def _merge_meshes(self):
-        from ..parametrization import TriangularMesh
+        from ..parametrization import merge
 
         meshes, selected_meshes = [], self._get_selected_meshes()
 
@@ -294,14 +293,7 @@ class ModelTab(QWidget):
             sampling_rate = np.maximum(sampling_rate, geometry.sampling_rate)
             meshes.append(geometry.model)
 
-        vertices, faces = meshing.merge_meshes(
-            vertices=[x.vertices for x in meshes],
-            faces=[x.triangles for x in meshes],
-        )
-        self.cdata._add_fit(
-            fit=TriangularMesh(meshing.to_open3d(vertices, faces)),
-            sampling_rate=sampling_rate,
-        )
+        self.cdata._add_fit(fit=merge(meshes), sampling_rate=sampling_rate)
         self.cdata._models.remove(selected_meshes)
 
         self.cdata.models.data_changed.emit()
@@ -879,8 +871,7 @@ MESH_SETTINGS = {
                 "type": "float",
                 "min": -1.0,
                 "default": -1.0,
-                "description": "Drop vertices distant from input sample points.",
-                "notes": "This is post-normalization by the sampling rate.",
+                "description": "Drop vertices further than distance from input.",
             },
             {
                 "label": "Neighbors",

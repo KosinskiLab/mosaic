@@ -425,7 +425,6 @@ class DataContainerInteractor(QObject):
                 )
             )
             representation_menu.addAction(action)
-        context_menu.addMenu(representation_menu)
 
         context_menu.addSeparator()
 
@@ -440,6 +439,7 @@ class DataContainerInteractor(QObject):
             lambda: (self.data_list.ungroup_selected(), self.render())
         )
         context_menu.addAction(ungroup_action)
+        context_menu.addMenu(representation_menu)
 
         context_menu.addSeparator()
         export_menu = QAction("Export As", self.data_list)
@@ -737,7 +737,7 @@ class DataContainerInteractor(QObject):
 
 
 _GEOMETRY_OPERATIONS = {
-    "decimate": {"remove_original": False, "background": True},
+    "skeletonize": {"remove_original": False, "background": True},
     "downsample": {"remove_original": False, "background": True},
     "remove_outliers": {"remove_original": False, "background": True},
     "compute_normals": {"remove_original": True, "background": True},

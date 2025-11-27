@@ -1,3 +1,4 @@
+from qtpy.QtCore import QSize
 from qtpy.QtWidgets import QDialog, QVBoxLayout, QGroupBox
 
 from ..widgets import HistogramWidget
@@ -20,6 +21,9 @@ class HistogramDialog(QDialog):
         self.histogram_widget.cutoff_changed.connect(self._on_cutoff_changed)
         self.update_histogram()
 
+    def sizeHint(self):
+        return QSize(350, 350)
+
     def get_cluster_size(self):
         return [x.get_number_of_points() for x in self.cdata._data.data]
 
@@ -34,7 +38,7 @@ class HistogramDialog(QDialog):
         uuids = []
         for geometry in self.cdata._data.data:
             n_points = geometry.get_number_of_points()
-            if (n_points > lower_cutoff) & (n_points < upper_cutoff):
+            if (n_points >= lower_cutoff) & (n_points <= upper_cutoff):
                 uuids.append(geometry.uuid)
         self.cdata.data.set_selection_by_uuid(uuids)
 

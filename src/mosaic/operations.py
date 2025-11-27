@@ -74,21 +74,22 @@ def use_point_data(operation):
 
 
 @use_point_data
-def decimate(geometry, method: str = "core", **kwargs):
+def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
     """
-    Reduces the number of points in a point cloud by keeping only representative
-    points based on the selected method.
+    Extract structural skeleton from point cloud.
 
     Parameters
     ----------
     geometry : :py:class:`mosaic.geometry.Geometry`
         Input data.
-    method : str, optional
-        Method to use. Options are:
-        - 'outer' : Keep outer hull points using convex hull
-        - 'core' : Keep core points using clustering
-        - 'inner' : Keep inner points using spherical ray-casting
-        Default is 'core'.
+    method : {'outer', 'core', 'boundary'}, optional
+        Structural feature to extract:
+        - 'outer': Outer boundaries
+        - 'core': Medial axis/centerline
+        - 'boundary': Inner/outer boundaries
+        - 'outer_hull': Outer boundaries using a convex hull
+    sigma : float, optional
+        Gaussian smoothing for Hessian computation.
     **kwargs
         Additional arguments passed to the chosen method.
 
@@ -104,50 +105,41 @@ def decimate(geometry, method: str = "core", **kwargs):
     """
     from .geometry import Geometry
     from .parametrization import ConvexHull
+    from .utils import skeletonize as _skeletonize
+    from .utils import points_to_volume, volume_to_points
+
+    methods = ("core", "outer", "boundary", "outer_hull")
+    if method not in methods:
+        supported = ",".join([f"'{x}'" for x in methods])
+        raise ValueError(f"method must be {supported} got '{method}'.")
+
+    skeleton_method = method
+    if method == "outer":
+        skeleton_method = "boundary"
 
     points = geometry.points
+    if method in ("core", "boundary", "outer"):
+        vol, offset = points_to_volume(
+            geometry.points, geometry.sampling_rate, use_offset=True
+        )
+        skeleton = _skeletonize(vol, mode=skeleton_method, sigma=sigma)
+        points = volume_to_points(skeleton, geometry.sampling_rate)[0]
+        points = np.add(points, offset * geometry.sampling_rate)
 
-    if method == "core":
-        cutoff = kwargs.get("cutoff", None)
-        if cutoff is None:
-            cutoff = 4 * np.max(geometry._sampling_rate)
-
-        points = com_cluster_points(points, cutoff)
-    elif method == "outer":
+    if method in ("outer", "outer_hull"):
         hull = ConvexHull.fit(
             points,
             elastic_weight=0,
             curvature_weight=0,
             volume_weight=0,
-            voxel_size=geometry._sampling_rate,
+            voxel_size=geometry.sampling_rate,
         )
-        hull_points = hull.sample(int(0.5 * points.shape[0]))
+        sample_frac = kwargs.get("sample_fraction", 0.5)
+        hull_points = hull.sample(int(sample_frac * points.shape[0]))
         _, indices = find_closest_points(points, hull_points)
         points = points[np.unique(indices)]
-    elif method == "inner":
-        # Budget ray-casting using spherical coordinates
-        centroid = np.mean(points, axis=0)
-        centered_points = points - centroid
 
-        r = np.linalg.norm(centered_points, axis=1)
-        theta = np.arccos(centered_points[:, 2] / r)
-        phi = np.arctan2(centered_points[:, 1], centered_points[:, 0])
-
-        n_phi_bins = 360
-        theta_idx = np.digitize(theta, np.linspace(0, np.pi, n_phi_bins // 2))
-        phi_idx = np.digitize(phi, np.linspace(-np.pi, np.pi, n_phi_bins))
-        bin_id = theta_idx * n_phi_bins + phi_idx
-
-        inner_indices = []
-        for b in np.unique(bin_id):
-            mask = np.where(bin_id == b)[0]
-            inner_indices.append(mask[np.argmin(r[mask])])
-
-        points = points[inner_indices]
-    else:
-        raise ValueError("Supported methods are 'inner', 'core' and 'outer'.")
-
-    return Geometry(points, sampling_rate=geometry._sampling_rate)
+    return Geometry(points, sampling_rate=geometry.sampling_rate)
 
 
 @use_point_data
@@ -162,6 +154,7 @@ def downsample(geometry, method: str = "radius", **kwargs):
     method : str, optional
         Method to use. Options are:
         - 'radius' : Remove points that fall within radius of each other using voxel downsampling
+        - 'core' : Replace points that fall within radius of each other by theor centroid.
         - 'number' : Randomly subsample points to target number
         Default is 'radius'.
     **kwargs
@@ -177,7 +170,6 @@ def downsample(geometry, method: str = "radius", **kwargs):
     from .geometry import Geometry
 
     points, normals = geometry.points, geometry.normals
-
     if method.lower() == "radius":
         import open3d as o3d
 
@@ -192,8 +184,14 @@ def downsample(geometry, method: str = "radius", **kwargs):
         size = min(size, points.shape[0])
         keep = np.random.choice(range(points.shape[0]), replace=False, size=size)
         points, normals = points[keep], normals[keep]
+    elif method.lower() == "center of mass":
+        cutoff = kwargs.get("radius", None)
+        if cutoff is None:
+            cutoff = 4 * np.max(geometry.sampling_rate)
+        normals = None
+        points = com_cluster_points(points, cutoff)
     else:
-        raise ValueError("Supported methods are 'radius' and 'number'.")
+        raise ValueError("Supported are 'radius', 'center of mass', and 'number'.")
 
     return Geometry(points, normals=normals, sampling_rate=geometry._sampling_rate)
 
@@ -275,49 +273,6 @@ def sample(
     normals = fit.compute_normal(points)
 
     return Geometry(points, normals=normals, sampling_rate=geometry._sampling_rate)
-
-
-@use_point_data
-def trim(geometry, min_value: float, max_value: float, axis: str = "z"):
-    """
-    Filters points that fall within specified bounds along a coordinate axis.
-
-    Parameters
-    ----------
-    geometry : :py:class:`mosaic.geometry.Geometry`
-        Input data.
-    min_value : float
-        Minimum bound value (inclusive).
-    max_value : float
-        Maximum bound value (inclusive).
-    axis : str, optional
-        Axis along which to trim ('x', 'y', or 'z').
-        Default is 'z'.
-
-    Returns
-    -------
-    :py:class:`mosaic.geometry.Geometry`
-        Trimmed geometry.
-
-    Raises
-    ------
-    ValueError
-        If an invalid axis is provided.
-    """
-    _axis_map = {"x": 0, "y": 1, "z": 2}
-
-    trim_column = _axis_map.get(axis.lower())
-    if trim_column is None:
-        raise ValueError(f"Axis must be one of {list(_axis_map.keys())}, got '{axis}'.")
-
-    points = geometry.points
-    coordinate_column = points[:, trim_column]
-    mask = np.logical_and(
-        coordinate_column >= min_value,
-        coordinate_column <= max_value,
-    )
-
-    return geometry[mask]
 
 
 @use_point_data
@@ -543,11 +498,10 @@ class GeometryOperations:
 
 
 for operation_name, operation_func in [
-    ("decimate", decimate),
+    ("skeletonize", skeletonize),
     ("downsample", downsample),
     ("crop", crop),
     ("sample", sample),
-    ("trim", trim),
     ("cluster", cluster),
     ("remove_outliers", remove_outliers),
     ("compute_normals", compute_normals),

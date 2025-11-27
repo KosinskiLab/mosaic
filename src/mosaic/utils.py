@@ -12,6 +12,7 @@ from typing import List, Optional
 
 import numpy as np
 
+from scipy import ndimage
 from scipy.spatial import KDTree
 from scipy.sparse import coo_matrix
 from scipy.spatial.transform import Rotation
@@ -36,6 +37,7 @@ __all__ = [
     "normals_to_rot",
     "apply_quat",
     "NORMAL_REFERENCE",
+    "skeletonize",
 ]
 
 NORMAL_REFERENCE = (0, 0, 1)
@@ -353,8 +355,8 @@ def eigenvalue_outlier_removal(points, k_neighbors=300, thresh=0.05):
 
     Returns
     -------
-    ndarray
-        Filtered point cloud with outliers removed.
+    mask
+        Boolean array with non-outlier points.
 
     References
     ----------
@@ -542,3 +544,200 @@ def normals_to_rot(normals, target=NORMAL_REFERENCE, mode: str = "quat", **kwarg
 
 def apply_quat(quaternions, target=NORMAL_REFERENCE):
     return Rotation.from_quat(quaternions, scalar_first=True).apply(target)
+
+
+def skeletonize(
+    mask: np.ndarray,
+    sigma: float = 1.0,
+    mode: str = "core",
+    batch_size: int = 100000,
+) -> np.ndarray:
+    """
+    Skeletonize a membrane segmentation using distance transform and Hessian analysis.
+
+    Parameters
+    ----------
+    mask : np.ndarray
+        Binary mask where non-zero values represent structures of interest.
+    sigma : float, optional
+        Gaussian smoothing sigma applied to Hessian components. Default is 1.0.
+    mode : {'core', 'boundary'}, optional
+        Type of skeleton to extract:
+        - 'core': Extract centerline/medial axis of the structure (default)
+        - 'boundary': Extract skeleton along the boundary
+    batch_size : int
+        Number of coordinates to process per chunk. Larger values require
+        more memory.
+
+    Returns
+    -------
+    np.ndarray
+        Binary skeleton
+
+    References
+    ----------
+    .. [1]  Martinez-Sanchez, A. et al (2014) JSB,
+            https://doi.org/10.1016/j.jsb.2014.02.015
+    .. [2]  Lamm, L. et al. (2024) bioRxiv, doi.org/10.1101/2024.01.05.574336.
+
+    Notes
+    -----
+    The original implementation is from [1]_. [2]_ adapted the code based on which
+    we created this implementation, which produces very similar results but optimized
+    for CPU runtime, numerical stability, and small memory footprint.
+    """
+    dist = -ndimage.distance_transform_edt(mask)
+    if mode in ("outer", "inner"):
+        mode = "boundary"
+
+    if mode == "boundary":
+        dist *= -1
+    elif mode != "core":
+        raise ValueError(f"mode must be 'core' or 'boundary', got '{mode}'")
+
+    batch_size = max(int(batch_size), 1)
+    grads = [ndimage.sobel(dist, axis=i) for i in range(3)]
+
+    # Upper tri of hessian
+    hessian = np.zeros((6, *dist.shape))
+    hessian[0] = ndimage.gaussian_filter(ndimage.sobel(grads[0], axis=0), sigma)
+    hessian[1] = ndimage.gaussian_filter(ndimage.sobel(grads[1], axis=1), sigma)
+    hessian[2] = ndimage.gaussian_filter(ndimage.sobel(grads[2], axis=2), sigma)
+    hessian[3] = ndimage.gaussian_filter(ndimage.sobel(grads[0], axis=1), sigma)
+    hessian[4] = ndimage.gaussian_filter(ndimage.sobel(grads[0], axis=2), sigma)
+    hessian[5] = ndimage.gaussian_filter(ndimage.sobel(grads[1], axis=2), sigma)
+
+    ndim = dist.ndim
+    max_eigval = np.zeros(dist.shape)
+    max_eigvec = np.zeros((*dist.shape, ndim))
+
+    coords = np.argwhere(mask)
+    n_points = min(batch_size, coords.shape[0])
+
+    H = np.zeros((n_points, ndim, ndim))
+    ix = np.arange(H.shape[0], dtype=np.int32)
+    for start in range(0, coords.shape[0], batch_size):
+        stop = min(start + batch_size, coords.shape[0])
+
+        x, y, z = coords[start:stop].T
+
+        # Crop H for the last iteration otherwise reuse
+        if H.shape[0] != x.shape[0]:
+            H = H[: x.shape[0]]
+            ix = ix[: x.shape[0]]
+
+        H[:, 0, 0] = hessian[0, x, y, z]
+        H[:, 0, 1] = hessian[3, x, y, z]
+        H[:, 0, 2] = hessian[4, x, y, z]
+
+        H[:, 1, 0] = hessian[3, x, y, z]
+        H[:, 1, 1] = hessian[1, x, y, z]
+        H[:, 1, 2] = hessian[5, x, y, z]
+
+        H[:, 2, 0] = hessian[4, x, y, z]
+        H[:, 2, 1] = hessian[5, x, y, z]
+        H[:, 2, 2] = hessian[2, x, y, z]
+
+        eigenvals, eigenvecs = np.linalg.eig(H)
+        max_idx = np.argmax(np.abs(eigenvals), axis=-1)
+        max_eigval[x, y, z] = eigenvals[ix, max_idx]
+        max_eigvec[x, y, z] = eigenvecs[ix, :, max_idx]
+
+    max_eigval = ndimage.gaussian_filter(max_eigval, sigma=1.0)
+    return nonmax_suppression_trilinear(
+        max_eigval, max_eigvec[..., 0], max_eigvec[..., 1], max_eigvec[..., 2], mask
+    )
+
+
+def nonmax_suppression_trilinear(
+    values: np.ndarray,
+    vx: np.ndarray,
+    vy: np.ndarray,
+    vz: np.ndarray,
+    mask: np.ndarray,
+    interp_factor: float = 0.71,
+) -> np.ndarray:
+    """
+    Perform non-maximum suppression with trilinear interpolation along principal directions.
+
+    Identifies local maxima by comparing each voxel's value to interpolated values along
+    the forward and backward directions of its principal eigenvector. Voxels that are
+    local maxima are retained in the skeleton.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        3D array of eigenvalues at each voxel.
+    vx : np.ndarray
+        X-component of the principal eigenvector at each voxel.
+    vy : np.ndarray
+        Y-component of the principal eigenvector at each voxel.
+    vz : np.ndarray
+        Z-component of the principal eigenvector at each voxel.
+    mask : np.ndarray
+        Binary mask indicating regions of interest (1 for foreground, 0 for background).
+    interp_factor : float, optional
+        Interpolation distance factor along eigenvector direction. Default is 0.71.
+
+    Returns
+    -------
+    np.ndarray
+        Binary 3D array where True indicates skeleton voxels (local maxima).
+
+    Notes
+    -----
+    A 1-voxel margin is excluded from processing to avoid edge effects. Trilinear
+    interpolation is used for sub-voxel precision when comparing along eigenvector
+    directions.
+
+    References
+    ----------
+    .. [1]  Martinez-Sanchez, A. et al (2014) JSB,
+            https://doi.org/10.1016/j.jsb.2014.02.015
+    .. [2]  Lamm, L. et al. (2024) bioRxiv, doi.org/10.1101/2024.01.05.574336.
+    """
+    subset = tuple(slice(1, s - 1) for s in values.shape)
+    inner_mask = np.zeros_like(mask)
+    inner_mask[subset] = mask[subset]
+
+    coords = np.argwhere(inner_mask)
+
+    x, y, z = coords.T
+    val = values[x, y, z]
+    dx = np.abs(vx[x, y, z] * interp_factor)
+    dy = np.abs(vy[x, y, z] * interp_factor)
+    dz = np.abs(vz[x, y, z] * interp_factor)
+
+    fx = x + np.sign(vx[x, y, z]).astype(int)
+    fy = y + np.sign(vy[x, y, z]).astype(int)
+    fz = z + np.sign(vz[x, y, z]).astype(int)
+
+    bx = x - np.sign(vx[x, y, z]).astype(int)
+    by = y - np.sign(vy[x, y, z]).astype(int)
+    bz = z - np.sign(vz[x, y, z]).astype(int)
+
+    val_forward = (
+        values[x, y, z] * (1 - dx) * (1 - dy) * (1 - dz)
+        + values[fx, y, z] * dx * (1 - dy) * (1 - dz)
+        + values[x, fy, z] * (1 - dx) * dy * (1 - dz)
+        + values[x, y, fz] * (1 - dx) * (1 - dy) * dz
+        + values[fx, fy, z] * dx * dy * (1 - dz)
+        + values[fx, y, fz] * dx * (1 - dy) * dz
+        + values[x, fy, fz] * (1 - dx) * dy * dz
+        + values[fx, fy, fz] * dx * dy * dz
+    )
+    val_backward = (
+        values[x, y, z] * (1 - dx) * (1 - dy) * (1 - dz)
+        + values[bx, y, z] * dx * (1 - dy) * (1 - dz)
+        + values[x, by, z] * (1 - dx) * dy * (1 - dz)
+        + values[x, y, bz] * (1 - dx) * (1 - dy) * dz
+        + values[bx, by, z] * dx * dy * (1 - dz)
+        + values[bx, y, bz] * dx * (1 - dy) * dz
+        + values[x, by, bz] * (1 - dx) * dy * dz
+        + values[bx, by, bz] * dx * dy * dz
+    )
+    is_max = (val > val_forward) & (val > val_backward)
+
+    result = np.zeros_like(values, dtype=bool)
+    result[x[is_max], y[is_max], z[is_max]] = True
+    return result

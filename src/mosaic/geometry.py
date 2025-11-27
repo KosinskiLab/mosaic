@@ -316,14 +316,9 @@ class Geometry:
 
         cache = {}
         if len(meshes):
-            from .parametrization import TriangularMesh
-            from .meshing import merge_meshes, to_open3d
+            from .parametrization import merge
 
-            vertices, faces = merge_meshes(
-                vertices=[x.vertices for x in meshes],
-                faces=[x.triangles for x in meshes],
-            )
-            cache["mesh"] = TriangularMesh(to_open3d(vertices, faces), repair=False)
+            cache["mesh"] = merge(meshes)
 
         state = {
             "points": np.concatenate(points, axis=0),

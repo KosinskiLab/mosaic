@@ -1,6 +1,5 @@
 from typing import Dict
 
-import numpy as np
 from qtpy.QtCore import Qt, QLocale
 from qtpy.QtGui import QDoubleValidator
 from qtpy.QtWidgets import (

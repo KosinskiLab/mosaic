@@ -11,7 +11,7 @@ import warnings
 import textwrap
 
 from subprocess import run
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from tempfile import NamedTemporaryFile
 
 import numpy as np
@@ -76,7 +76,7 @@ def poisson_mesh(
     scale=1.2,
     samplespernode=5.0,
     **kwargs,
-):
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Triangulate positions using Poisson reconstruction.
 
@@ -87,9 +87,6 @@ def poisson_mesh(
     mosaic version <=1.0.4
     """
     from pymeshlab import MeshSet, Mesh
-
-    voxel_size = 1 if voxel_size is None else voxel_size
-    positions = np.divide(np.asarray(positions, dtype=np.float64), voxel_size)
 
     ms = MeshSet()
     ms.add_mesh(Mesh(positions))
@@ -114,7 +111,7 @@ def poisson_mesh(
         ms.meshing_remove_selected_vertices_and_faces()
 
     mesh = ms.current_mesh()
-    return to_open3d(mesh.vertex_matrix() * voxel_size, mesh.face_matrix())
+    return mesh.vertex_matrix(), mesh.face_matrix()
 
 
 def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):

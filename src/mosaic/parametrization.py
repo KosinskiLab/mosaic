@@ -26,13 +26,7 @@ from .utils import (
     compute_normals,
     points_to_volume,
 )
-from .meshing import (
-    triangulate_refine_fair,
-    fair_mesh,
-    remesh,
-    to_open3d,
-    poisson_mesh,
-)
+from . import meshing
 
 __all__ = [
     "Sphere",
@@ -46,33 +40,6 @@ __all__ = [
     "FlyingEdges",
     "SplineCurve",
 ]
-
-
-def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.ndarray:
-    if mesh_init_factor is None:
-        point_cloud = mesh.sample_points_uniformly(
-            number_of_points=n_samples,
-        )
-    else:
-        point_cloud = mesh.sample_points_poisson_disk(
-            number_of_points=n_samples,
-            init_factor=mesh_init_factor,
-        )
-    return np.asarray(point_cloud.points)
-
-
-def _sample_from_chull(
-    positions_xyz: np.ndarray, n_samples: int, mesh_init_factor: int = None
-) -> np.ndarray:
-    chull = ConvexHull.fit(positions_xyz)
-    return _sample_from_mesh(chull.mesh, n_samples, mesh_init_factor)
-
-
-def _normalize(arr: np.ndarray):
-    arr = np.atleast_2d(arr)
-    norm = np.linalg.norm(arr, axis=1, keepdims=True)
-    norm = np.where(norm > 1e-6, norm, 1)
-    return np.divide(arr, norm, out=arr)
 
 
 class Parametrization(ABC):
@@ -762,7 +729,7 @@ class TriangularMesh(Parametrization):
         valid_triangles = self.triangles[triangle_mask]
 
         new_triangles = old_to_new[valid_triangles].copy()
-        new_mesh = to_open3d(new_vertices, new_triangles)
+        new_mesh = meshing.to_open3d(new_vertices, new_triangles)
         return TriangularMesh(new_mesh, repair=False)
 
     @classmethod
@@ -781,7 +748,7 @@ class TriangularMesh(Parametrization):
         return state
 
     def __setstate__(self, state):
-        mesh = to_open3d(state["vertices"], state["triangles"])
+        mesh = meshing.to_open3d(state["vertices"], state["triangles"])
         attrs = ("vertex_normals", "vertex_colors", "triangle_normals")
         for attr in attrs:
             if attr not in state:
@@ -857,7 +824,7 @@ class TriangularMesh(Parametrization):
             return cls(mesh=mesh)
 
         # Hole triangulation and fairing
-        new_vs, new_fs = triangulate_refine_fair(
+        new_vs, new_fs = meshing.triangulate_refine_fair(
             vs=np.asarray(mesh.vertices),
             fs=np.asarray(mesh.triangles),
             hole_len_thr=max_hole_size,
@@ -867,7 +834,7 @@ class TriangularMesh(Parametrization):
             anchoring=anchoring,
             n_ring=boundary_ring,
         )
-        mesh = to_open3d(new_vs, new_fs)
+        mesh = meshing.to_open3d(new_vs, new_fs)
         mesh = mesh.remove_degenerate_triangles()
         if n_smoothing > 0:
             mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
@@ -904,7 +871,7 @@ class TriangularMesh(Parametrization):
         mesh = self.mesh
         if normal_offset != 0:
             self.mesh.compute_vertex_normals()
-            mesh = to_open3d(
+            mesh = meshing.to_open3d(
                 np.add(self.vertices, normal_offset * np.asarray(mesh.vertex_normals)),
                 self.triangles,
             )
@@ -956,7 +923,7 @@ class TriangularMesh(Parametrization):
         mesh = self.mesh
         if normal_offset is not None:
             self.mesh.compute_vertex_normals()
-            mesh = to_open3d(
+            mesh = meshing.to_open3d(
                 np.add(self.vertices, normal_offset * np.asarray(mesh.vertex_normals)),
                 self.triangles,
             )
@@ -1083,7 +1050,7 @@ class TriangularMesh(Parametrization):
         triangle_indices = triangle_indices[keep]
 
         if len(projections) == 0:
-            return to_open3d(self.vertices.copy(), self.triangles.copy())
+            return meshing.to_open3d(self.vertices.copy(), self.triangles.copy())
 
         n_vertices = self.vertices.shape[0]
         vertices = np.vstack((self.vertices, projections))
@@ -1162,7 +1129,7 @@ class TriangularMesh(Parametrization):
             if i not in processed_triangles:
                 new_triangles.append(triangles[i].tolist())
 
-        new_mesh = TriangularMesh(to_open3d(vertices, np.array(new_triangles)))
+        new_mesh = TriangularMesh(meshing.to_open3d(vertices, np.array(new_triangles)))
         if return_indices:
             return new_mesh, new_indices
         return new_mesh
@@ -1245,9 +1212,14 @@ class PoissonMesh(TriangularMesh):
         samplespernode=5.0,
         **kwargs,
     ):
-        mesh = poisson_mesh(
+        voxel_size = 1 if voxel_size is None else voxel_size
+
+        positions = np.asarray(positions, dtype=np.float64)
+        positions = np.divide(positions, voxel_size)
+        deldist = deldist / voxel_size
+
+        vs, fs = meshing.poisson_mesh(
             positions=positions,
-            voxel_size=voxel_size,
             depth=depth,
             k_neighbors=k_neighbors,
             smooth_iter=smooth_iter,
@@ -1256,7 +1228,7 @@ class PoissonMesh(TriangularMesh):
             scale=scale,
             samplespernode=samplespernode,
         )
-        return cls(mesh=mesh)
+        return cls(mesh=meshing.to_open3d(vs * voxel_size, fs))
 
 
 class ClusteredBallPivotingMesh(TriangularMesh):
@@ -1298,7 +1270,9 @@ class ClusteredBallPivotingMesh(TriangularMesh):
 
         mesh = ms.current_mesh()
         return cls(
-            mesh=to_open3d(mesh.vertex_matrix() * voxel_size, mesh.face_matrix())
+            mesh=meshing.to_open3d(
+                mesh.vertex_matrix() * voxel_size, mesh.face_matrix()
+            )
         )
 
 
@@ -1347,7 +1321,7 @@ class ConvexHull(TriangularMesh):
             warnings.warn(f"Encountered {e}. Falling back to scConvexHull.")
 
             hull = scConvexHull(positions, qhull_options="Qs")
-            return cls(mesh=to_open3d(positions[hull.vertices], hull.simplices))
+            return cls(mesh=meshing.to_open3d(positions[hull.vertices], hull.simplices))
 
         mesh.vertices = o3d.utility.Vector3dVector(
             np.multiply(np.asarray(mesh.vertices), scale)
@@ -1368,7 +1342,7 @@ class ConvexHull(TriangularMesh):
             return cls(mesh=mesh)
 
         # Fair vertices that are distant to input points
-        mesh = remesh(mesh, resampling_factor * voxel_size)
+        mesh = meshing.remesh(mesh, resampling_factor * voxel_size)
         vs, fs = np.asarray(mesh.vertices), np.asarray(mesh.triangles)
         distances, _ = find_closest_points(positions, vs)
 
@@ -1376,9 +1350,9 @@ class ConvexHull(TriangularMesh):
             0
         ]
         if len(vids) == 0:
-            return cls(mesh=to_open3d(vs, fs))
+            return cls(mesh=meshing.to_open3d(vs, fs))
 
-        out_vs = fair_mesh(
+        out_vs = meshing.fair_mesh(
             vs,
             fs,
             vids=vids,
@@ -1388,7 +1362,7 @@ class ConvexHull(TriangularMesh):
             anchoring=anchoring,
             n_ring=boundary_ring,
         )
-        return cls(mesh=to_open3d(out_vs, fs))
+        return cls(mesh=meshing.to_open3d(out_vs, fs))
 
 
 class FairHull(ConvexHull):
@@ -1444,7 +1418,7 @@ class MarchingCubes(TriangularMesh):
         vs = mesh.vertices + offset * voxel_size
 
         odir.cleanup()
-        return cls(mesh=to_open3d(vs, mesh.triangles))
+        return cls(mesh=meshing.to_open3d(vs, mesh.triangles))
 
 
 class FlyingEdges(TriangularMesh):
@@ -1501,7 +1475,7 @@ class FlyingEdges(TriangularMesh):
         vertices = np.add(vertices, offset * voxel_size)
 
         faces = cells.reshape(-1, 4)[:, 1:]
-        return cls(mesh=to_open3d(vertices, faces), repair=False)
+        return cls(mesh=meshing.to_open3d(vertices, faces), repair=False)
 
 
 class SplineCurve(Parametrization):
@@ -1568,6 +1542,44 @@ class SplineCurve(Parametrization):
         length = np.sum(np.linalg.norm(segments, axis=1))
         n_points = int(np.ceil(length / sampling_density))
         return n_points
+
+
+def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.ndarray:
+    if mesh_init_factor is None:
+        point_cloud = mesh.sample_points_uniformly(
+            number_of_points=n_samples,
+        )
+    else:
+        point_cloud = mesh.sample_points_poisson_disk(
+            number_of_points=n_samples,
+            init_factor=mesh_init_factor,
+        )
+    return np.asarray(point_cloud.points)
+
+
+def _sample_from_chull(
+    positions_xyz: np.ndarray, n_samples: int, mesh_init_factor: int = None
+) -> np.ndarray:
+    chull = ConvexHull.fit(positions_xyz)
+    return _sample_from_mesh(chull.mesh, n_samples, mesh_init_factor)
+
+
+def _normalize(arr: np.ndarray):
+    arr = np.atleast_2d(arr)
+    norm = np.linalg.norm(arr, axis=1, keepdims=True)
+    norm = np.where(norm > 1e-6, norm, 1)
+    return np.divide(arr, norm, out=arr)
+
+
+def merge(models: Tuple[Parametrization]) -> Parametrization:
+    # Right now this only really makes sense for meshes
+    if all(isinstance(x, TriangularMesh) for x in models):
+        vertices, faces = meshing.merge_meshes(
+            vertices=[x.vertices for x in models],
+            faces=[x.triangles for x in models],
+        )
+        return TriangularMesh(meshing.to_open3d(vertices, faces), repair=False)
+    return None
 
 
 PARAMETRIZATION_TYPE = {
