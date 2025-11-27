@@ -740,7 +740,7 @@ class PropertyAnalysisDialog(QDialog):
 
                 # Checkboxes
                 all_targets_checkbox = QCheckBox("Compare to All")
-                include_self_checkbox = QCheckBox("Include Within-Cluster Distance")
+                include_self_checkbox = QCheckBox("Within-Cluster Distance")
                 all_targets_checkbox.stateChanged.connect(
                     lambda state: self.toggle_all_targets(state, target_list)
                 )
@@ -822,7 +822,7 @@ class PropertyAnalysisDialog(QDialog):
             items = []
             for item, parent, _ in target_list.traverse(reverse=False):
                 items.append(item)
-            target_list._set_selection(item)
+            target_list._set_selection(items)
         else:
             target_list.clearSelection()
 
