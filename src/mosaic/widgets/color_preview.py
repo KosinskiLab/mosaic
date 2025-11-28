@@ -6,9 +6,78 @@ Copyright (c) 2025 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtCore import Signal
-from qtpy.QtGui import QColor, QPainter
-from qtpy.QtWidgets import QWidget, QPushButton, QColorDialog
+from typing import List
+
+from qtpy.QtCore import Qt, Signal, QPointF
+from qtpy.QtGui import QColor, QPainter, QLinearGradient
+from qtpy.QtWidgets import (
+    QWidget,
+    QPushButton,
+    QColorDialog,
+    QStyledItemDelegate,
+    QComboBox,
+)
+
+
+class ColorPreview(QComboBox):
+    def __init__(self, colormaps: List[str], *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.set_colormaps(colormaps)
+        delegate = ColormapItemDelegate(self)
+        self.setItemDelegate(delegate)
+
+    def set_colormaps(self, colormaps: List[str]):
+        self.clear()
+        self.addItems(colormaps)
+
+    def generate_gradient(self, cmap_name: str, n_colors: int = None):
+        from ..utils import get_cmap
+
+        cmap = get_cmap(cmap_name)
+
+        count = cmap.N
+        if n_colors is not None:
+            count = min(n_colors + 1, count)
+
+        ret = []
+        for i in range(count):
+            pos = int(cmap.N * i / (count - 1))
+            ret.append(QColor(*(int(x * 255) for x in cmap(pos))))
+        return ret
+
+
+class ColormapItemDelegate(QStyledItemDelegate):
+    """Custom delegate to show colormap preview in combobox items"""
+
+    def __init__(self, color_preview: ColorPreview):
+        super().__init__(color_preview)
+        self.color_preview = color_preview
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+
+        colormap_name = index.data(Qt.ItemDataRole.DisplayRole)
+
+        rect = option.rect
+        gradient_rect = rect.adjusted(rect.width() - 110, 3, -5, -3)
+        colors = self.color_preview.generate_gradient(colormap_name, 10)
+
+        gradient = QLinearGradient(
+            QPointF(gradient_rect.left(), gradient_rect.top()),
+            QPointF(gradient_rect.right(), gradient_rect.top()),
+        )
+        for i, color in enumerate(colors):
+            gradient.setColorAt(i / (len(colors) - 1), color)
+
+        painter.save()
+        painter.fillRect(gradient_rect, gradient)
+        painter.restore()
+
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        size.setHeight(max(size.height(), 26))
+        return size
 
 
 class ColorPreviewWidget(QWidget):

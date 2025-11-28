@@ -292,7 +292,7 @@ Skeletonize point cloud:
    - **Core**: Classical internal skeleton.
    - **Boundary**: Exo-like skeleton of boundaries.
    - **Outer**: Outer exo-like skeleton.
-   - **Outer_Hull**: Legacy method to compute the outer hull of a point cloud. Used to be listed unter **Thin** pre v1.0.16.
+   - **Outer_Hull**: Legacy method to compute the outer hull of a point cloud. Used to be listed under **Thin** pre v1.0.16.
 
 4. Click **OK** to apply thinning
 

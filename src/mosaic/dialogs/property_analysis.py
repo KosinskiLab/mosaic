@@ -1,6 +1,13 @@
+"""
+Dialog to analyze and interactively visualize properties of Geometry objects.
+
+Copyright (c) 2025 European Molecular Biology Laboratory
+
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
+
 import numpy as np
-from qtpy.QtGui import QLinearGradient
-from qtpy.QtCore import Qt, QTimer, QSize, QPointF
+from qtpy.QtCore import Qt, QTimer, QSize
 from qtpy.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -21,7 +28,6 @@ from qtpy.QtWidgets import (
     QTableWidgetItem,
     QFileDialog,
     QDoubleSpinBox,
-    QStyledItemDelegate,
 )
 import pyqtgraph as pg
 import qtawesome as qta
@@ -29,6 +35,7 @@ import qtawesome as qta
 from ..widgets.settings import get_widget_value, set_widget_value
 from ..stylesheets import QPushButton_style, QScrollArea_style
 from ..widgets import ContainerListWidget, StyledListWidgetItem, ColorPreviewWidget
+from ..widgets.color_preview import ColorPreview
 
 
 def _populate_list(geometries):
@@ -40,40 +47,6 @@ def _populate_list(geometries):
         item.setData(Qt.ItemDataRole.UserRole, obj)
         target_list.addItem(item)
     return target_list
-
-
-class ColormapItemDelegate(QStyledItemDelegate):
-    """Custom delegate to show colormap preview in combobox items"""
-
-    def __init__(self, color_preview_widget, parent=None):
-        super().__init__(parent)
-        self.color_preview = color_preview_widget
-        self.icon_size = QSize(100, 20)
-
-    def paint(self, painter, option, index):
-        super().paint(painter, option, index)
-
-        colormap_name = index.data(Qt.ItemDataRole.DisplayRole)
-
-        rect = option.rect
-        gradient_rect = rect.adjusted(rect.width() - 110, 3, -5, -3)
-        colors = self.color_preview.generate_gradient(colormap_name, 10)
-
-        gradient = QLinearGradient(
-            QPointF(gradient_rect.left(), gradient_rect.top()),
-            QPointF(gradient_rect.right(), gradient_rect.top()),
-        )
-        for i, color in enumerate(colors):
-            gradient.setColorAt(i / (len(colors) - 1), color)
-
-        painter.save()
-        painter.fillRect(gradient_rect, gradient)
-        painter.restore()
-
-    def sizeHint(self, option, index):
-        size = super().sizeHint(option, index)
-        size.setHeight(max(size.height(), 26))
-        return size
 
 
 class ColorScaleSettingsDialog(QDialog):
@@ -218,6 +191,9 @@ class PropertyAnalysisDialog(QDialog):
         self.cdata.data.vtk_pre_render.connect(self._on_render_update)
         self.cdata.models.vtk_pre_render.connect(self._on_render_update)
 
+    def sizeHint(self):
+        return QSize(400, 350)
+
     def _on_render_update(self):
         """Re-apply properties when models are re-rendered"""
         self.cdata.data.blockSignals(True)
@@ -281,8 +257,20 @@ class PropertyAnalysisDialog(QDialog):
 
     def _create_colormap_combo(self, with_settings_button=False):
         """Create a colormap combo widget with optional settings button"""
-        colormap_combo = QComboBox()
-        colormap_combo.addItems(self.color_preview.colormaps.copy())
+        colormap = ColorPreview(
+            colormaps=(
+                "viridis",
+                "plasma",
+                "magma",
+                "inferno",
+                "cividis",
+                "turbo",
+                "jet",
+                "coolwarm",
+                "RdBu",
+                "RdYlBu",
+            )
+        )
 
         def _open_colormap_settings():
             """Open dialog to configure color scale thresholds"""
@@ -295,17 +283,14 @@ class PropertyAnalysisDialog(QDialog):
                 if self.properties:
                     self._preview()
 
-        colormap_delegate = ColormapItemDelegate(self.color_preview, colormap_combo)
-        colormap_combo.setItemDelegate(colormap_delegate)
         if with_settings_button:
             settings_btn = QPushButton()
             settings_btn.setIcon(qta.icon("mdi.cog", color="#4f46e5"))
             settings_btn.setToolTip("Color Scale Settings")
             settings_btn.setFixedSize(28, 28)
             settings_btn.clicked.connect(_open_colormap_settings)
-            return colormap_combo, settings_btn
-
-        return colormap_combo
+            return colormap, settings_btn
+        return colormap
 
     def _setup_visualization_tab(self):
         from ..icons import dialog_accept_icon
@@ -351,6 +336,7 @@ class PropertyAnalysisDialog(QDialog):
         self.colormap_combo, self.colormap_settings_btn = self._create_colormap_combo(
             with_settings_button=True
         )
+        self.colormap_combo.currentTextChanged.connect(self._preview)
         colormap_layout.addWidget(self.colormap_combo, 1)
         colormap_layout.addWidget(self.colormap_settings_btn)
 
@@ -362,6 +348,8 @@ class PropertyAnalysisDialog(QDialog):
                 description="Scale values to 0-1 per object.",
             )
         )
+        self.normalize_checkbox.checkStateChanged.connect(self._preview)
+
         checkbox_layout.addWidget(self.normalize_checkbox)
         checkbox_layout.addStretch()
 
@@ -372,6 +360,8 @@ class PropertyAnalysisDialog(QDialog):
                 description="Plot quantiles instead of raw values.",
             )
         )
+        self.quantile_checkbox.checkStateChanged.connect(self._preview)
+
         checkbox_layout.addWidget(self.quantile_checkbox)
         checkbox_layout.addStretch()
 
@@ -382,6 +372,7 @@ class PropertyAnalysisDialog(QDialog):
                 description="Invert color map.",
             )
         )
+        self.invert_checkbox.checkStateChanged.connect(self._preview)
         checkbox_layout.addWidget(self.invert_checkbox)
 
         options_layout.addLayout(colormap_layout)
@@ -474,11 +465,11 @@ class PropertyAnalysisDialog(QDialog):
         colormap_layout = QHBoxLayout()
         colormap_layout.addWidget(QLabel("Color Palette:"))
 
-        self.analysis_colormap_combo = self._create_colormap_combo(
+        self.vis_colormap_combo = self._create_colormap_combo(
             with_settings_button=False
         )
-        self.analysis_colormap_combo.currentTextChanged.connect(self._update_plot)
-        colormap_layout.addWidget(self.analysis_colormap_combo)
+        self.vis_colormap_combo.currentTextChanged.connect(self._update_plot)
+        colormap_layout.addWidget(self.vis_colormap_combo)
         options_layout.addLayout(colormap_layout)
 
         layout.addWidget(plot_group)
@@ -1064,10 +1055,10 @@ class PropertyAnalysisDialog(QDialog):
         plot_type = getattr(self, "current_plot_type", "Density")
         plot_mode = getattr(self, "plot_mode_combo", lambda: "Combined").currentText()
         alpha = getattr(self, "alpha_slider", lambda: 150).value()
-        colormap = getattr(
-            self, "analysis_colormap_combo", lambda: "viridis"
-        ).currentText()
-        colors = self.color_preview.generate_gradient(colormap, len(selected_items))
+        colormap = getattr(self, "vis_colormap_combo", lambda: "viridis").currentText()
+        colors = self.vis_colormap_combo.generate_gradient(
+            colormap, len(selected_items)
+        )
         colors = [pg.mkColor(c.red(), c.green(), c.blue(), alpha) for c in colors]
 
         data_series = []
