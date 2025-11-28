@@ -699,27 +699,35 @@ def _read_vtu_file(file_path: str) -> Dict:
 
 
 def _load_density_header(filename: str):
-    import mrcfile
 
-    with mrcfile.open(filename, header_only=True, permissive=True) as mrc:
-        data_shape = mrc.header.nz, mrc.header.ny, mrc.header.nx
+    try:
+        import mrcfile
 
-        # mapc := column; mapr := row; maps := section;
-        crs_index = tuple(int(mrc.header[x]) - 1 for x in ("mapc", "mapr", "maps"))
-        if not (0 in crs_index and 1 in crs_index and 2 in crs_index):
-            raise ValueError(f"Malformatted CRS array in {filename}")
+        with mrcfile.open(filename, header_only=True, permissive=True) as mrc:
+            data_shape = mrc.header.nz, mrc.header.ny, mrc.header.nx
 
-        sampling_rate = mrc.voxel_size.astype(
-            [("x", "<f4"), ("y", "<f4"), ("z", "<f4")]
-        ).view(("<f4", 3))
-        sampling_rate = np.array(sampling_rate)[::-1]
+            # mapc := column; mapr := row; maps := section;
+            crs_index = tuple(int(mrc.header[x]) - 1 for x in ("mapc", "mapr", "maps"))
+            if not (0 in crs_index and 1 in crs_index and 2 in crs_index):
+                raise ValueError(f"Malformatted CRS array in {filename}")
 
-    non_standard_crs = not np.all(crs_index == (0, 1, 2))
-    if non_standard_crs:
-        data_shape = np.take(data_shape, crs_index)
-        sampling_rate = np.take(sampling_rate, crs_index)
+            sampling_rate = mrc.voxel_size.astype(
+                [("x", "<f4"), ("y", "<f4"), ("z", "<f4")]
+            ).view(("<f4", 3))
+            sampling_rate = np.array(sampling_rate)[::-1]
 
-    return data_shape[::-1], sampling_rate[::-1]
+        non_standard_crs = not np.all(crs_index == (0, 1, 2))
+        if non_standard_crs:
+            data_shape = np.take(data_shape, crs_index)
+            sampling_rate = np.take(sampling_rate, crs_index)
+
+        return data_shape[::-1], sampling_rate[::-1]
+
+    # Fallback for cases supported by Density.from_file and not mrcfile
+    except Exception as e:
+        print(e)
+        density = load_density(filename)
+        return density.data.shape, density.sampling_rate
 
 
 def load_density(filename: str, **kwargs):

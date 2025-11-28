@@ -18,7 +18,7 @@ FORMAT_MAPPING = {
     read_tsv: ["tsv"],
     read_txt: ["txt", "xyz", "csv"],
     read_mesh: ["obj", "ply", "stl", "off", "gltf", "glb," "fbx"],
-    read_volume: ["mrc", "em", "map", "h5", "mrc.gz", "em.gz", "map.gz"],
+    read_volume: ["mrc", "em", "map", "h5", "mrc.gz", "em.gz", "map.gz", "nrrd"],
     read_tsi: ["q", "tsi"],
     read_vtu: ["vtu"],
     read_structure: ["pdb", "cif", "gro"],
