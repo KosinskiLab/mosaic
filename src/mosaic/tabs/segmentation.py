@@ -656,16 +656,6 @@ CLUSTER_SETTINGS = {
             "description": "Drop noise cluster if available.",
             "default": True,
         },
-        {
-            "label": "Radius",
-            "parameter": "downsampling_radius",
-            "type": "float",
-            "description": "Consider points within radius as neighbors for clustering.",
-            "default": -1.0,
-            "min": -1.0,
-            "max": 1e32,
-            "notes": "Defaults to sampling rate of object.",
-        },
     ],
     "method_settings": {
         "Connected Components": [
@@ -720,7 +710,7 @@ CLUSTER_SETTINGS = {
                 "label": "Distance",
                 "parameter": "distance",
                 "type": "float",
-                "description": "Distance between neighbors in a cluster.",
+                "description": "Expected distance between neighbors in a cluster.",
                 "default": 100.0,
             },
             {

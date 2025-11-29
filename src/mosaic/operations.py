@@ -282,7 +282,6 @@ def cluster(
     drop_noise: bool = False,
     use_points: bool = True,
     use_normals: bool = False,
-    downsampling_radius: float = -1.0,
     **kwargs,
 ) -> List:
     """
@@ -309,9 +308,6 @@ def cluster(
     use_normals : bool, optional
         If True, include normal vectors in clustering features.
         Default is False.
-    downsampling_radius : float, optional
-        Downsample point cloud based on radius and perform clustering. Subsequently
-        all points are assigned to the nearest cluster in the downsampled set.
     **kwargs
         Additional arguments passed to the chosen clustering method.
 
@@ -341,12 +337,6 @@ def cluster(
 
     points = geometry.points.copy()
 
-    if downsampling_radius > 0:
-        downsampled_geometry = downsample(
-            geometry, method="radius", voxel_size=downsampling_radius
-        )
-        points = downsampled_geometry.points
-
     distance = geometry.sampling_rate
     if method in ("Connected Components", "Envelope", "Leiden"):
         distance = kwargs.pop("distance", -1)
@@ -354,7 +344,6 @@ def cluster(
             distance = geometry.sampling_rate
         kwargs["distance"] = distance
 
-    distance = np.maximum(distance, downsampling_radius)
     points = np.divide(points, distance)
 
     # Prepare feature data for clustering
@@ -368,10 +357,6 @@ def cluster(
     unique_labels = np.unique(labels)
     if len(unique_labels) > 10000:
         raise ValueError("Found more than 10k clusters. Try coarser clustering.")
-
-    if downsampling_radius > 0:
-        _, indices = find_closest_points(downsampled_geometry.points, geometry.points)
-        labels = labels[indices]
 
     # Create geometry objects for each cluster
     result_geometries = []

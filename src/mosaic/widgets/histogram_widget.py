@@ -320,27 +320,32 @@ class HistogramWidget(QWidget):
 
     def _update_cutoff_values(self, lower_value=None, upper_value=None):
         """Update cutoff values and propagate changes to UI elements."""
+
         if lower_value is None:
             lower_value = self.range_slider.lower_pos
+            if self.range_slider.min_val != self.min_value:
+                lower_value = self.min_value
+
         if upper_value is None:
             upper_value = self.range_slider.upper_pos
+            if self.range_slider.max_val != self.max_value:
+                upper_value = self.max_value
+
+        if lower_value > upper_value:
+            lower_value, upper_value = upper_value, lower_value
 
         lower_value = max(lower_value, self.min_value)
         upper_value = min(upper_value, self.max_value)
-        bounds = (self.range_slider.min_val, self.range_slider.max_val)
-        if bounds != (self.min_value, self.max_value):
-            lower_value = self.min_value
-            upper_value = self.max_value
 
         block = [self.range_slider, self.min_value_input, self.max_value_input]
         for element in block:
             element.blockSignals(True)
 
-        self.lower_cutoff_line.setValue(lower_value)
-        self.upper_cutoff_line.setValue(upper_value)
-
         self.range_slider.setRange(self.min_value, self.max_value)
         self.range_slider.setValues(lower_value, upper_value)
+
+        self.lower_cutoff_line.setValue(lower_value)
+        self.upper_cutoff_line.setValue(upper_value)
 
         locale = QLocale.c()
         self.min_value_input.setText(locale.toString(float(lower_value), "f", 2))
