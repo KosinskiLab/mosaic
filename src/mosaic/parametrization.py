@@ -1315,10 +1315,8 @@ class ConvexHull(TriangularMesh):
                 mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(
                     pcd, alpha
                 )
-        except Exception as e:
+        except Exception:
             from scipy.spatial import ConvexHull as scConvexHull
-
-            warnings.warn(f"Encountered {e}. Falling back to scConvexHull.")
 
             hull = scConvexHull(positions, qhull_options="Qs")
             return cls(mesh=meshing.to_open3d(positions[hull.vertices], hull.simplices))
@@ -1445,10 +1443,10 @@ class FlyingEdges(TriangularMesh):
 
         _volume, offset = points_to_volume(positions, voxel_size, use_offset=True)
 
-        pad = tuple(1 if x == 1 else 0 for x in _volume.shape)
-        if any(pad):
-            full_pad = tuple((0, x) for x in pad)
-            _volume = np.pad(_volume, full_pad)
+        # Pad volume to ensure closed edges
+        pad_width = 2
+        _volume = np.pad(_volume, pad_width, mode="constant", constant_values=0)
+        offset = offset - pad_width
 
         volume = vtk.vtkImageData()
         volume.SetSpacing(voxel_size)

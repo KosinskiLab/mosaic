@@ -31,6 +31,10 @@ def create_or_toggle_dock(
             dock.close()
             dock.deleteLater()
         setattr(instance, dock_attr_name, None)
+        try:
+            dialog_widget.close()
+        except Exception:
+            pass
 
     if getattr(instance, dock_attr_name, None) is not None:
         return _exit()

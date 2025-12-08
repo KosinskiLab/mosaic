@@ -962,12 +962,18 @@ class PropertyAnalysisDialog(QDialog):
         properties = self.properties
         if self.normalize_checkbox.isChecked():
             properties = {
-                k: (v - v.min()) / (v.max() - v.min()) if (v.max() - v.min()) > 0 else v
+                k: (
+                    (v - np.min(v)) / (np.max(v) - np.min(v))
+                    if (np.max(v) - np.min(v)) > 0
+                    else v
+                )
                 for k, v in properties.items()
             }
 
         if self.quantile_checkbox.isChecked():
-            all_curvatures = np.concatenate([v.flatten() for v in properties.values()])
+            all_curvatures = np.concatenate(
+                [np.asarray(v).flatten() for v in properties.values()]
+            )
             valid_curvatures = all_curvatures[~np.isnan(all_curvatures)]
             n_bins = min(valid_curvatures.size // 10, 100)
             bins = np.percentile(valid_curvatures, np.linspace(0, 100, n_bins + 1))
