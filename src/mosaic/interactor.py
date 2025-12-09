@@ -685,6 +685,10 @@ class DataContainerInteractor(QObject):
         self.deselect_points()
 
         merge = [*self.get_selected_geometries(), self.container.get(point_cluster)]
+        merge = [x for x in merge if isinstance(x, Geometry)]
+        if not len(merge):
+            return None
+
         merged_geometry = Geometry.merge(merge)
 
         self.container.remove(merge)

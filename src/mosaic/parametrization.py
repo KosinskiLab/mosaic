@@ -1571,13 +1571,17 @@ def _normalize(arr: np.ndarray):
 
 def merge(models: Tuple[Parametrization]) -> Parametrization:
     # Right now this only really makes sense for meshes
+    if not len(models):
+        return None
+
     if all(isinstance(x, TriangularMesh) for x in models):
         vertices, faces = meshing.merge_meshes(
             vertices=[x.vertices for x in models],
             faces=[x.triangles for x in models],
         )
         return TriangularMesh(meshing.to_open3d(vertices, faces), repair=False)
-    return None
+    warnings.warn("Currently only mesh merging is supported.")
+    return models[0]
 
 
 PARAMETRIZATION_TYPE = {

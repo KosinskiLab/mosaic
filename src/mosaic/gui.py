@@ -561,7 +561,9 @@ class App(QMainWindow):
         add_file_action.setShortcut("Ctrl+O")
 
         undo_action = QAction("Undo", self)
-        undo_action.triggered.connect(self.cdata.data.undo)
+        undo_action.triggered.connect(
+            lambda: (self.cdata.data.undo(), self.cdata.models.undo())
+        )
         undo_action.setShortcut("Ctrl+Z")
 
         save_file_action = QAction("Save Session", self)

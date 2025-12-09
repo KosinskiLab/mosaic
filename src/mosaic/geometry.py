@@ -289,17 +289,27 @@ class Geometry:
         elif len(geometries) == 1:
             return geometries[0]
 
-        points, quat, normals, meshes = [], [], [], []
+        data = {
+            "points": [],
+            "quaternions": [],
+            "normals": [],
+            "isosurfaces": [],
+            "models": [],
+        }
+
         for geometry in geometries:
             _points, _normals, _quaternions = geometry.get_point_data()
 
-            points.append(_points)
-            normals.append(_normals)
+            data["points"].append(_points)
+            data["normals"].append(_normals)
             if _quaternions is not None:
-                quat.append(_quaternions)
+                data["quaternions"].append(_quaternions)
 
             if (mesh := geometry._cache.get("mesh")) is not None:
-                meshes.append(mesh)
+                data["isosurfaces"].append(mesh)
+
+            if (model := geometry.model) is not None:
+                data["models"].append(model)
 
         # Merging Geometries with different sampling rate is an underdetermined
         # problem without user intervention. Computing the maximum of geometries
@@ -315,21 +325,30 @@ class Geometry:
         ][0]
 
         cache = {}
-        if len(meshes):
+        if len(data["isosurfaces"]):
             from .parametrization import merge
 
-            cache["mesh"] = merge(meshes)
+            cache["mesh"] = merge(data.pop("isosurfaces"))
+
+        model = None
+        if len(data["models"]):
+            from .parametrization import merge
+
+            model = merge(data.pop("models"))
 
         state = {
-            "points": np.concatenate(points, axis=0),
-            "normals": np.concatenate(normals, axis=0) if len(normals) else None,
-            "quaternions": np.concatenate(quat, axis=0) if len(quat) else None,
             "sampling_rate": sampling_rate,
             "visible": any(x.visible for x in geometries),
             "representation": representation,
             "cache": cache,
             "appearance": appearance,
+            "model": model,
         }
+        state |= {
+            k: np.concatenate(data[k]) if len(data[k]) else None
+            for k in ("points", "quaternions", "normals")
+        }
+
         ret = cls.__new__(cls)
         ret.__setstate__(state)
         return ret

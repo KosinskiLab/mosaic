@@ -51,17 +51,38 @@ def _remesh(method, geometry, **kwargs):
         if method == "reduction factor":
             sampling = np.asarray(mesh.triangles).shape[0] // sampling
 
-        simplifier = pyfqmr.Simplify()
-        simplifier.setMesh(np.asarray(mesh.vertices), np.asarray(mesh.triangles))
-        simplifier.simplify_mesh(
-            target_count=int(sampling),
-            aggressiveness=5.5,
-            preserve_border=True,
-            verbose=False,
-        )
+        if kwargs.get("smooth", False):
+            mesh = mesh.simplify_quadric_decimation(int(sampling))
+        else:
+            simplifier = pyfqmr.Simplify()
+            simplifier.setMesh(np.asarray(mesh.vertices), np.asarray(mesh.triangles))
+            simplifier.simplify_mesh(
+                target_count=int(sampling),
+                aggressiveness=5.5,
+                preserve_border=True,
+                verbose=False,
+            )
 
-        vertices, faces, normals = simplifier.getMesh()
-        mesh = to_open3d(vertices, faces)
+            vertices, faces, normals = simplifier.getMesh()
+            mesh = to_open3d(vertices, faces)
+    return TriangularMesh(mesh)
+
+
+def _smooth(method, geometry, **kwargs):
+    from ..parametrization import TriangularMesh
+
+    mesh = geometry.model
+    mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
+
+    n_iterations = int(kwargs.get("n_iterations", 10))
+    if method == "taubin":
+        mesh = mesh.filter_smooth_taubin(n_iterations)
+    elif method == "laplacian":
+        mesh = mesh.filter_smooth_laplacian(n_iterations)
+    elif method == "average":
+        mesh = mesh.filter_smooth_simple(n_iterations)
+    else:
+        raise ValueError(f"Unsupported smoothing method: {method}")
     return TriangularMesh(mesh)
 
 
@@ -110,17 +131,6 @@ def _project(
     new_mesh = mesh.add_projections(projections, triangles, return_indices=False)
 
     return new_mesh, new_geometries
-
-
-def _run_marching_cubes(filename, **kwargs):
-    from ..formats.parser import load_density
-    from ..parametrization import TriangularMesh
-
-    mesh_paths = meshing.mesh_volume(filename, **kwargs)
-    sampling = load_density(filename, use_memmap=True).sampling_rate
-
-    meshes = [TriangularMesh.from_file(x) for x in mesh_paths]
-    return meshes, sampling
 
 
 class ModelTab(QWidget):
@@ -175,17 +185,6 @@ class ModelTab(QWidget):
 
         mesh_actions = [
             create_button(
-                "Merge", "mdi.merge", self, self._merge_meshes, "Merge Meshes"
-            ),
-            create_button(
-                "Volume",
-                "mdi.cube-outline",
-                self,
-                self._mesh_volume,
-                "Mesh Volume",
-                MESHVOLUME_SETTINGS,
-            ),
-            create_button(
                 "Repair",
                 "mdi.auto-fix",
                 self,
@@ -200,6 +199,14 @@ class ModelTab(QWidget):
                 self._remesh_parallel,
                 "Remesh Mesh",
                 REMESH_SETTINGS,
+            ),
+            create_button(
+                "Smooth",
+                "mdi.blur",
+                self,
+                self._smooth_parallel,
+                "Smooth Mesh",
+                SMOOTH_SETTINGS,
             ),
             create_button(
                 "Project",
@@ -280,25 +287,6 @@ class ModelTab(QWidget):
 
         return self.cdata.models.render()
 
-    def _merge_meshes(self):
-        from ..parametrization import merge
-
-        meshes, selected_meshes = [], self._get_selected_meshes()
-
-        if len(selected_meshes) < 2:
-            return None
-
-        sampling_rate = 1
-        for geometry in selected_meshes:
-            sampling_rate = np.maximum(sampling_rate, geometry.sampling_rate)
-            meshes.append(geometry.model)
-
-        self.cdata._add_fit(fit=merge(meshes), sampling_rate=sampling_rate)
-        self.cdata._models.remove(selected_meshes)
-
-        self.cdata.models.data_changed.emit()
-        return self.cdata.models.render()
-
     def _sceleton(self):
         selected_meshes = self._get_selected_meshes()
 
@@ -360,6 +348,24 @@ class ModelTab(QWidget):
                 **kwargs,
             )
 
+    def _smooth_parallel(self, method, **kwargs):
+        selected_meshes = self._get_selected_meshes()
+        if len(selected_meshes) == 0:
+            return None
+
+        method = method.lower()
+        supported = ("taubin", "laplacian", "average")
+        if method not in supported:
+            raise ValueError(f"{method} is not supported, chose one of {supported}.")
+
+        for geometry in selected_meshes:
+
+            def _callback(fit):
+                self.cdata._add_fit(fit, sampling_rate=geometry.sampling_rate)
+                self.cdata.models.render()
+
+            submit_task("Smooth", _smooth, _callback, method, geometry, **kwargs)
+
     def _sample_parallel(self, sampling, sampling_method, normal_offset=0.0, **kwargs):
         from ..operations import GeometryOperations
 
@@ -388,7 +394,7 @@ class ModelTab(QWidget):
         supported = (
             "edge length",
             "vertex clustering",
-            "quadratic decimation",
+            "decimation",
             "subdivide",
         )
         if method not in (supported):
@@ -584,12 +590,12 @@ REMESH_SETTINGS = {
             "parameter": "method",
             "type": "select",
             "options": [
+                "Decimation",
                 "Edge Length",
-                "Vertex Clustering",
-                "Quadratic Decimation",
                 "Subdivide",
+                "Vertex Clustering",
             ],
-            "default": "Edge Length",
+            "default": "Decimation",
         },
     ],
     "method_settings": {
@@ -629,22 +635,29 @@ REMESH_SETTINGS = {
                 "description": "Radius within which vertices are clustered.",
             },
         ],
-        "Quadratic Decimation": [
+        "Decimation": [
             {
                 "label": "Method",
                 "parameter": "decimation_method",
                 "type": "select",
                 "options": ["Triangle Count", "Reduction Factor"],
-                "default": "Triangle Count",
+                "default": "Reduction Factor",
                 "description": "Choose how to specify the decimation target.",
             },
             {
                 "label": "Sampling",
                 "parameter": "sampling",
                 "type": "float",
-                "default": 1000,
+                "default": 10,
                 "min": 0,
                 "description": "Numerical value for reduction method.",
+            },
+            {
+                "label": "Smooth",
+                "parameter": "smooth",
+                "type": "boolean",
+                "default": True,
+                "description": "Use quadratic decimation instead of pyfqmr.",
             },
         ],
         "Subdivide": [
@@ -668,33 +681,57 @@ REMESH_SETTINGS = {
     },
 }
 
-MESHVOLUME_SETTINGS = {
-    "title": "Meshing Settings",
+
+SMOOTH_SETTINGS = {
+    "title": "Smooth Settings",
     "settings": [
         {
-            "label": "Simplifcation Factor",
-            "parameter": "simplification_factor",
-            "type": "number",
-            "default": 100,
-            "min": 1,
-            "description": "Reduce initial mesh by x times the number of triangles.",
-        },
-        {
-            "label": "Workers",
-            "parameter": "num_workers",
-            "type": "number",
-            "default": 8,
-            "min": 1,
-            "description": "Number of parallel workers to use.",
-        },
-        {
-            "label": "Close Dataset Edges",
-            "parameter": "closed_dataset_edges",
-            "type": "boolean",
-            "default": True,
-            "description": "Close mesh at at dataset edges.",
+            "label": "Method",
+            "parameter": "method",
+            "type": "select",
+            "options": [
+                "Taubin",
+                "Laplacian",
+                "Average",
+            ],
+            "default": "Taubin",
         },
     ],
+    "method_settings": {
+        "Taubin": [
+            {
+                "label": "Iterations",
+                "parameter": "number_of_iterations",
+                "type": "number",
+                "default": 10,
+                "min": 1,
+                "description": "Number of smoothing iterations.",
+                "notes": "Taubin filter prevents mesh shrinkage by applying two Laplacian filters with different parameters.",
+            },
+        ],
+        "Laplacian": [
+            {
+                "label": "Iterations",
+                "parameter": "number_of_iterations",
+                "type": "number",
+                "default": 10,
+                "min": 1,
+                "description": "Number of smoothing iterations.",
+                "notes": "May lead to mesh shrinkage with high iteration counts.",
+            },
+        ],
+        "Average": [
+            {
+                "label": "Iterations",
+                "parameter": "number_of_iterations",
+                "type": "number",
+                "default": 5,
+                "min": 1,
+                "description": "Number of smoothing iterations.",
+                "notes": "Simplest filter - vertices are replaced by the average of adjacent vertices.",
+            },
+        ],
+    },
 }
 
 MESH_SETTINGS = {
@@ -895,7 +932,31 @@ MESH_SETTINGS = {
                 "notes": "Defaults to the sampling rate of the object.",
             },
         ],
-        "Marching Cubes": MESHVOLUME_SETTINGS["settings"],
+        "Marching Cubes": [
+            {
+                "label": "Simplifcation Factor",
+                "parameter": "simplification_factor",
+                "type": "number",
+                "default": 100,
+                "min": 1,
+                "description": "Reduce initial mesh by x times the number of triangles.",
+            },
+            {
+                "label": "Workers",
+                "parameter": "num_workers",
+                "type": "number",
+                "default": 8,
+                "min": 1,
+                "description": "Number of parallel workers to use.",
+            },
+            {
+                "label": "Close Dataset Edges",
+                "parameter": "closed_dataset_edges",
+                "type": "boolean",
+                "default": True,
+                "description": "Close mesh at at dataset edges.",
+            },
+        ],
     },
 }
 
