@@ -1,0 +1,92 @@
+﻿mosaic.widgets.StyledListWidgetItem
+===================================
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: StyledListWidgetItem
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~StyledListWidgetItem.__init__
+      ~StyledListWidgetItem.addChild
+      ~StyledListWidgetItem.addChildren
+      ~StyledListWidgetItem.background
+      ~StyledListWidgetItem.checkState
+      ~StyledListWidgetItem.child
+      ~StyledListWidgetItem.childCount
+      ~StyledListWidgetItem.childIndicatorPolicy
+      ~StyledListWidgetItem.clone
+      ~StyledListWidgetItem.columnCount
+      ~StyledListWidgetItem.data
+      ~StyledListWidgetItem.emitDataChanged
+      ~StyledListWidgetItem.flags
+      ~StyledListWidgetItem.font
+      ~StyledListWidgetItem.foreground
+      ~StyledListWidgetItem.icon
+      ~StyledListWidgetItem.indexOfChild
+      ~StyledListWidgetItem.insertChild
+      ~StyledListWidgetItem.insertChildren
+      ~StyledListWidgetItem.isDisabled
+      ~StyledListWidgetItem.isExpanded
+      ~StyledListWidgetItem.isFirstColumnSpanned
+      ~StyledListWidgetItem.isHidden
+      ~StyledListWidgetItem.isSelected
+      ~StyledListWidgetItem.parent
+      ~StyledListWidgetItem.read
+      ~StyledListWidgetItem.removeChild
+      ~StyledListWidgetItem.setBackground
+      ~StyledListWidgetItem.setCheckState
+      ~StyledListWidgetItem.setChildIndicatorPolicy
+      ~StyledListWidgetItem.setData
+      ~StyledListWidgetItem.setDisabled
+      ~StyledListWidgetItem.setExpanded
+      ~StyledListWidgetItem.setFirstColumnSpanned
+      ~StyledListWidgetItem.setFlags
+      ~StyledListWidgetItem.setFont
+      ~StyledListWidgetItem.setForeground
+      ~StyledListWidgetItem.setHidden
+      ~StyledListWidgetItem.setIcon
+      ~StyledListWidgetItem.setSelected
+      ~StyledListWidgetItem.setSizeHint
+      ~StyledListWidgetItem.setStatusTip
+      ~StyledListWidgetItem.setText
+      ~StyledListWidgetItem.setTextAlignment
+      ~StyledListWidgetItem.setToolTip
+      ~StyledListWidgetItem.setWhatsThis
+      ~StyledListWidgetItem.set_visible
+      ~StyledListWidgetItem.sizeHint
+      ~StyledListWidgetItem.sortChildren
+      ~StyledListWidgetItem.statusTip
+      ~StyledListWidgetItem.takeChild
+      ~StyledListWidgetItem.takeChildren
+      ~StyledListWidgetItem.text
+      ~StyledListWidgetItem.textAlignment
+      ~StyledListWidgetItem.toolTip
+      ~StyledListWidgetItem.treeWidget
+      ~StyledListWidgetItem.type
+      ~StyledListWidgetItem.update
+      ~StyledListWidgetItem.update_icon
+      ~StyledListWidgetItem.whatsThis
+      ~StyledListWidgetItem.write
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~StyledListWidgetItem.DontShowIndicator
+      ~StyledListWidgetItem.DontShowIndicatorWhenChildless
+      ~StyledListWidgetItem.ShowIndicator
+      ~StyledListWidgetItem.Type
+      ~StyledListWidgetItem.UserType
+   
+   

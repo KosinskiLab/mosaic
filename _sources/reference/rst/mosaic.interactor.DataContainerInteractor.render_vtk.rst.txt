@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.render\_vtk
+=====================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.render_vtk
