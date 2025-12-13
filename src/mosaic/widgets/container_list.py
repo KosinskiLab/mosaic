@@ -363,13 +363,42 @@ class ContainerTreeWidget(QFrame):
             item.update_icon(item.isExpanded())
         self._select_group_children(item)
 
-    def _set_selection(self, items):
+    def _select_group_children(self, group_item):
+        """Select all children of a group and the group itself.
+
+        Parameters
+        ----------
+        group_item : GroupTreeWidgetItem
+            The group to select
+        """
+        if not isinstance(group_item, GroupTreeWidgetItem):
+            return None
+
+        items_to_select = [group_item]
+
+        for i in range(group_item.childCount()):
+            child = group_item.child(i)
+            if isinstance(child, StyledTreeWidgetItem):
+                items_to_select.append(child)
+
+        modifiers = QApplication.keyboardModifiers()
+        selection_flag = QItemSelectionModel.SelectionFlag.ClearAndSelect
+        if modifiers & Qt.KeyboardModifier.ControlModifier:
+            selection_flag = QItemSelectionModel.SelectionFlag.Select
+
+        self._set_selection(items_to_select, selection_flag)
+
+    def _set_selection(
+        self, items, selection_flag=QItemSelectionModel.SelectionFlag.ClearAndSelect
+    ):
         """Set selection to specific items.
 
         Parameters
         ----------
         items : list of QTreeWidgetItem or single QTreeWidgetItem
             Items to select
+        selection_flag : QItemSelectionModel.SelectionFlag
+            Selection behavior (ClearAndSelect, Select, Toggle, etc.)
         """
         if not isinstance(items, (list, tuple)):
             items = [items]
@@ -381,23 +410,7 @@ class ContainerTreeWidget(QFrame):
             index = self.tree_widget.indexFromItem(item)
             selection.select(index, index)
 
-        self.tree_widget.selectionModel().select(
-            selection, QItemSelectionModel.SelectionFlag.ClearAndSelect
-        )
-
-    def _select_group_children(self, group_item):
-        """Select all children of a group and the group itself."""
-        if not isinstance(group_item, GroupTreeWidgetItem):
-            return None
-
-        items_to_select = [group_item]
-
-        for i in range(group_item.childCount()):
-            child = group_item.child(i)
-            if isinstance(child, StyledTreeWidgetItem):
-                items_to_select.append(child)
-
-        self._set_selection(items_to_select)
+        self.tree_widget.selectionModel().select(selection, selection_flag)
 
 
 class GroupTreeWidgetItem(QTreeWidgetItem):
