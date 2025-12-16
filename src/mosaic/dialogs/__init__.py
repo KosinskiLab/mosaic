@@ -13,4 +13,5 @@ from .update import UpdateChecker, UpdateDialog
 from .properties import GeometryPropertiesDialog
 from .equilibration import MeshEquilibrationDialog
 from .property_analysis import PropertyAnalysisDialog
+from .batch import BatchImportDialog, BatchNavigatorDialog
 from .operation import *

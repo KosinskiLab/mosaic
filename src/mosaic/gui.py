@@ -52,6 +52,8 @@ from .dialogs import (
     ImportDataDialog,
     ProgressDialog,
     AppSettingsDialog,
+    BatchImportDialog,
+    BatchNavigatorDialog,
 )
 from .widgets import (
     MultiVolumeViewer,
@@ -760,6 +762,14 @@ class App(QMainWindow):
         file_menu.addAction(close_file_action)
 
         file_menu.addSeparator()
+        batch_import_action = QAction("Batch Import", self)
+        batch_import_action.triggered.connect(lambda : BatchImportDialog(self).exec())
+        batch_navigator_action = QAction("Batch Navigator", self)
+        batch_navigator_action.triggered.connect(self.open_batch_navigator)
+        file_menu.addAction(batch_import_action)
+        file_menu.addAction(batch_navigator_action)
+
+        file_menu.addSeparator()
         file_menu.addAction(screenshot_action)
         file_menu.addAction(clipboard_action)
         file_menu.addAction(clipboard_window_action)
@@ -946,6 +956,22 @@ class App(QMainWindow):
 
         interact_menu.addAction(mesh_add_action)
         interact_menu.addAction(mesh_delete_action)
+
+    def open_batch_navigator(self):
+        """Open the batch navigator dialog."""
+        from .widgets.dock import create_or_toggle_dock
+
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Select Session Files",
+            "",
+            "Pickle Files (*.pickle)"
+        )
+        if not files:
+            return
+
+        dialog = BatchNavigatorDialog(files, self)
+        create_or_toggle_dock(self, "batch_navigator", dialog)
 
     def toggle_selection_menu(self):
         """Update the menu radio buttons to reflect current selection target."""
