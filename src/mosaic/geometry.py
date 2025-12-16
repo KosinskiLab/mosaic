@@ -92,9 +92,6 @@ class Geometry:
                     )
             normals = _normals
 
-        if normals is None and points is not None:
-            normals = np.full_like(points, fill_value=NORMAL_REFERENCE)
-
         if points is not None:
             self.points = points
 
@@ -424,7 +421,9 @@ class Geometry:
             Normal vectors with shape (n_points, 3), or None if not set.
         """
         normals = self._data.GetPointData().GetNormals()
-        if normals is not None:
+        if normals is None:
+            normals = np.full_like(self.points, fill_value=NORMAL_REFERENCE)
+        elif normals is not None:
             normals = np.asarray(normals)
         return normals
 
@@ -1063,7 +1062,12 @@ class Geometry:
             quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
             if quaternions is not None:
                 quaternions = self.quaternions
-            return self.points, self.normals, quaternions
+
+            normals = self._data.GetPointData().GetNormals()
+            if normals is not None:
+                normals = self.normals
+
+            return self.points, normals, quaternions
         return point_data
 
 

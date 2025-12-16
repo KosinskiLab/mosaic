@@ -11,7 +11,7 @@ from qtpy.QtWidgets import (
     QPushButton,
     QFrame,
 )
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, QThread
 import qtawesome as qta
 
 from mosaic.settings import Settings
@@ -126,6 +126,17 @@ class AppSettingsDialog(QDialog):
             }
         )
         perf_layout.addRow("Target Frame Rate", self.target_fps_spin)
+
+        self.n_workers_spin = create_setting_widget(
+            {
+                "type": "number",
+                "min": 1,
+                "max": QThread.idealThreadCount(),
+                "step": 1,
+                "default": rendering.parallel_worker,
+            }
+        )
+        perf_layout.addRow("Parallel Workers", self.n_workers_spin)
 
         perf_group.setLayout(perf_layout)
         layout.addWidget(perf_group)
@@ -286,6 +297,7 @@ class AppSettingsDialog(QDialog):
         self.widget_settings_map = {
             # vtk rendering settings
             self.target_fps_spin: (Settings.rendering, "target_fps", float),
+            self.n_workers_spin: (Settings.rendering, "parallel_worker", int),
             self.fxaa_check: (Settings.rendering, "enable_fxaa", bool),
             self.multisamples_spin: (Settings.rendering, "multisamples", int),
             self.point_smooth_check: (Settings.rendering, "point_smoothing", bool),

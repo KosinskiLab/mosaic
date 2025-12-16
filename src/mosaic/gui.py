@@ -320,6 +320,8 @@ class App(QMainWindow):
             ActorFactory().update_from_settings()
             self.cdata.refresh_actors()
 
+        BackgroundTaskManager.instance()._initialize()
+
     def handle_escape_key(self, *args, **kwargs):
         """Handle escape key press - switch to viewing mode if not already in it."""
         self._transition_modes(self.cursor_handler.current_mode)
@@ -551,7 +553,6 @@ class App(QMainWindow):
         view_menu = menu_bar.addMenu("View")
         interact_menu = menu_bar.addMenu("Actions")
         preference_menu = menu_bar.addMenu("Preferences")
-        help_menu = menu_bar.addMenu("Help")
 
         # File menu actions
         new_session_action = QAction("Load Session", self)
@@ -763,7 +764,7 @@ class App(QMainWindow):
 
         file_menu.addSeparator()
         batch_import_action = QAction("Batch Import", self)
-        batch_import_action.triggered.connect(lambda : BatchImportDialog(self).exec())
+        batch_import_action.triggered.connect(lambda: BatchImportDialog(self).exec())
         batch_navigator_action = QAction("Batch Navigator", self)
         batch_navigator_action.triggered.connect(self.open_batch_navigator)
         file_menu.addAction(batch_import_action)
@@ -873,8 +874,7 @@ class App(QMainWindow):
         show_settings = QAction("Appearance", self)
         show_settings.triggered.connect(self.show_app_settings)
         preference_menu.addAction(show_settings)
-
-        help_menu.addAction(show_keybinds_action)
+        preference_menu.addAction(show_keybinds_action)
 
         viewing_action = QAction("Viewing Mode\tEsc", self)
         viewing_action.triggered.connect(lambda: self.handle_escape_key())
@@ -962,10 +962,7 @@ class App(QMainWindow):
         from .widgets.dock import create_or_toggle_dock
 
         files, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Select Session Files",
-            "",
-            "Pickle Files (*.pickle)"
+            self, "Select Session Files", "", "Pickle Files (*.pickle)"
         )
         if not files:
             return

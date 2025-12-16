@@ -29,10 +29,13 @@ class SearchWidget(QWidget):
 
         # Add search icon as left action
         search_icon = qta.icon("mdi.magnify", color="#6b7280")
-        self.search_input.addAction(search_icon, QLineEdit.ActionPosition.LeadingPosition)
+        self.search_input.addAction(
+            search_icon, QLineEdit.ActionPosition.LeadingPosition
+        )
 
         # Styling
-        self.search_input.setStyleSheet("""
+        self.search_input.setStyleSheet(
+            """
             QLineEdit {
                 border: 1px solid #d1d5db;
                 border-radius: 4px;
@@ -43,7 +46,8 @@ class SearchWidget(QWidget):
                 outline: none;
                 border: 1px solid #4f46e5;
             }
-        """)
+        """
+        )
 
         layout.addWidget(self.search_input)
 

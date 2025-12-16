@@ -8,6 +8,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from os.path import join, basename, splitext
 
+import numpy as np
+
 from qtpy.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -20,10 +22,76 @@ from qtpy.QtWidgets import (
     QGroupBox,
     QCheckBox,
 )
-from ..stylesheets import QPushButton_style, QGroupBox_style, QScrollArea_style
-from ..widgets import ContainerListWidget, StyledTreeWidgetItem, PathSelector, SearchWidget
-from .import_data import ImportDataDialog
+from qtpy.QtCore import QCoreApplication
+
 from .progress import ProgressDialog
+from .import_data import ImportDataDialog
+from ..stylesheets import (
+    QPushButton_style,
+    QGroupBox_style,
+    QScrollArea_style,
+    QMessageBox_style,
+)
+from ..widgets import (
+    ContainerListWidget,
+    StyledTreeWidgetItem,
+    PathSelector,
+    SearchWidget,
+)
+
+
+def _create_session(filepath, output_path, parameters):
+    """
+    Worker function to create a session from a single file.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the input segmentation file
+    parameters : dict
+        Import parameters for this file
+    output_path : str
+        Path to save the session file
+    """
+    import pickle
+    from ..formats import open_file
+    from ..container import DataContainer
+
+    offset = parameters.get("offset", 0)
+    scale = parameters.get("scale", 1)
+    sampling = parameters.get("sampling_rate", 1)
+
+    shape = None
+    cluster_container = DataContainer()
+    for data in open_file(filepath):
+        scale_new = np.divide(scale, data.sampling)
+        data.vertices = np.multiply(np.subtract(data.vertices, offset), scale_new)
+
+        cluster_container.add(
+            points=data.vertices, normals=data.normals, sampling_rate=sampling
+        )
+        data_shape = np.divide(data.shape, data.sampling)
+
+        if shape is None:
+            shape = data_shape
+        shape = np.maximum(shape, data_shape)
+
+    metadata = {"shape": shape, "sampling_rate": sampling}
+    cluster_container.metadata = metadata.copy()
+
+    state = {
+        "shape": shape,
+        "_data": cluster_container,
+        "_models": DataContainer(),
+        "_data_tree": None,
+        "_models_tree": None,
+    }
+    with open(output_path, "wb") as ofile:
+        pickle.dump(state, ofile)
+
+
+def _strip_filepath(path: str) -> str:
+    return basename(path).split(".")[0]
 
 
 class BatchImportDialog(QDialog):
@@ -37,7 +105,9 @@ class BatchImportDialog(QDialog):
         self.file_parameters = {}
         self.setup_ui()
 
-        self.setStyleSheet(QPushButton_style + QGroupBox_style + QScrollArea_style)
+        self.setStyleSheet(
+            QPushButton_style + QGroupBox_style + QScrollArea_style + QMessageBox_style
+        )
 
     def setup_ui(self):
         from ..icons import dialog_accept_icon, dialog_reject_icon
@@ -55,7 +125,6 @@ class BatchImportDialog(QDialog):
         input_layout = QVBoxLayout(input_group)
         input_layout.setSpacing(8)
 
-        # File count label
         count_layout = QHBoxLayout()
         count_layout.addWidget(QLabel("Selected:"))
         self.file_count_label = QLabel("0 files")
@@ -120,7 +189,7 @@ class BatchImportDialog(QDialog):
         if not files:
             return
 
-        self.input_files = files
+        self.input_files = sorted(files)
         self._update_file_list()
         self.params_btn.setEnabled(True)
         self._update_process_button()
@@ -129,7 +198,7 @@ class BatchImportDialog(QDialog):
         self.file_list.tree_widget.clear()
         for filepath in self.input_files:
             item = StyledTreeWidgetItem(
-                basename(filepath),
+                _strip_filepath(filepath),
                 visible=True,
                 metadata={"filepath": filepath},
             )
@@ -154,8 +223,10 @@ class BatchImportDialog(QDialog):
             self.file_parameters = dialog.get_all_parameters()
 
     def _process_batch(self):
-        self.output_dir = self.output_selector.get_path()
+        from time import sleep
+        from ..parallel import submit_task, BackgroundTaskManager
 
+        self.output_dir = self.output_selector.get_path()
         if not self.file_parameters:
             reply = QMessageBox.question(
                 self,
@@ -170,57 +241,42 @@ class BatchImportDialog(QDialog):
             dialog.set_files(self.input_files)
             self.file_parameters = dialog.get_all_parameters()
 
-        results = []
-        errors = []
-
-        with ProgressDialog(
+        self._completed_count = 0
+        progress_dialog = ProgressDialog(
             self.input_files, title="Creating Sessions", parent=self
-        ) as pbar:
-            for filepath in pbar:
-                try:
-                    output_path = self._create_session(filepath)
-                    results.append(output_path)
-                except Exception as e:
-                    errors.append((filepath, str(e)))
+        )
 
-        self._show_results(results, errors)
+        def callback(result):
+            self._completed_count += 1
+            progress_dialog.update_progress(self._completed_count)
+            if self._completed_count >= len(self.input_files):
+                progress_dialog.close()
 
-    def _create_session(self, filepath):
-        """Create a session from a single file."""
-        parameters = self.file_parameters.get(filepath, {})
+        session_files, task_index = [], 0
+        while self._completed_count < len(self.input_files):
+            n_tasks = len(BackgroundTaskManager.instance().futures)
+            if (n_tasks <= 4) and task_index < len(self.input_files):
+                filepath = self.input_files[task_index]
+                base_name = splitext(_strip_filepath(filepath))[0]
+                output_path = join(self.output_dir, f"{base_name}_session.pickle")
 
-        self.main_window.close_session(show_warning=False)
-        self.main_window._open_file(filepath, parameters)
+                submit_task(
+                    name=f"import_{_strip_filepath(filepath)}",
+                    func=_create_session,
+                    callback=callback,
+                    filepath=filepath,
+                    parameters=self.file_parameters.get(filepath, {}),
+                    output_path=output_path,
+                )
+                session_files.append(output_path)
+                task_index += 1
 
-        base_name = splitext(basename(filepath))[0]
-        output_path = join(self.output_dir, f"{base_name}_session.pickle")
-
-        self.main_window.cdata.to_file(output_path)
-
-        return output_path
-
-    def _show_results(self, results, errors):
-        """Show batch processing results."""
-        total = len(self.input_files)
-        success = len(results)
-        failed = len(errors)
-
-        msg = "Batch Import Complete\n\n"
-        msg += f"Successfully processed: {success}/{total}\n"
-
-        if errors:
-            msg += f"Failed: {failed}\n\n"
-            msg += "Failed files:\n"
-            for filepath, error in errors[:5]:
-                msg += f"• {basename(filepath)}: {error}\n"
-            if len(errors) > 5:
-                msg += f"... and {len(errors) - 5} more"
-
-        QMessageBox.information(self, "Batch Import Complete", msg)
+            QCoreApplication.processEvents()
+            sleep(0.25)
 
         reply = QMessageBox.question(
             self,
-            "Open Navigator",
+            "Batch Import Complete",
             "Would you like to open the Batch Navigator to review the sessions?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
@@ -228,7 +284,7 @@ class BatchImportDialog(QDialog):
             self.accept()
             from ..widgets.dock import create_or_toggle_dock
 
-            widget = BatchNavigatorDialog(results, self.main_window)
+            widget = BatchNavigatorDialog(sorted(session_files), self.main_window)
             return create_or_toggle_dock(self.main_window, "batch_navigator", widget)
         self.reject()
 
@@ -241,14 +297,25 @@ class BatchNavigatorDialog(QWidget):
         self.main_window = main_window
         self.current_index = -1
 
+        self._session_modified = False
         self.setWindowTitle("Batch Navigator")
-        self.session_files = sorted([f for f in session_files if f.endswith('.pickle')])
+        self.session_files = sorted([f for f in session_files if f.endswith(".pickle")])
 
         self.setup_ui()
-        self.setStyleSheet(QPushButton_style + QGroupBox_style + QScrollArea_style)
+        self.setStyleSheet(
+            QPushButton_style + QGroupBox_style + QScrollArea_style + QMessageBox_style
+        )
 
         if self.session_files:
             self._load_session_at_index(0)
+
+        if hasattr(main_window, "cdata"):
+            main_window.cdata.data.data_changed.connect(self._mark_modified)
+            main_window.cdata.models.data_changed.connect(self._mark_modified)
+
+    def _mark_modified(self):
+        """Mark current session as modified."""
+        self._session_modified = True
 
     def setup_ui(self):
         from ..icons import dialog_accept_icon
@@ -293,7 +360,9 @@ class BatchNavigatorDialog(QWidget):
         self.discard_btn = QPushButton("Discard Changes")
         self.discard_btn.setIcon(qta.icon("mdi.undo-variant", color="#4f46e5"))
         self.discard_btn.clicked.connect(self._discard_changes)
-        self.discard_btn.setToolTip("Reload current session, discarding unsaved changes")
+        self.discard_btn.setToolTip(
+            "Reload current session, discarding unsaved changes"
+        )
 
         self.save_btn = QPushButton("Save Current")
         self.save_btn.setIcon(dialog_accept_icon)
@@ -355,9 +424,10 @@ class BatchNavigatorDialog(QWidget):
         if new_index == self.current_index:
             return
 
-        if self.current_index >= 0 and self.auto_save_checkbox.isChecked():
+        if self.auto_save_checkbox.isChecked() and self._session_modified:
             self._save_current()
         self._load_session_at_index(new_index)
+        self._session_modified = False
 
     def _save_current(self):
         """Save the currently loaded session."""

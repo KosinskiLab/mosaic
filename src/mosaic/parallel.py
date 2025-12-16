@@ -12,7 +12,8 @@ import concurrent
 from typing import Callable, Any, Dict
 
 from qtpy.QtWidgets import QMessageBox
-from qtpy.QtCore import QObject, Signal, QTimer, QThread
+from qtpy.QtCore import QObject, Signal, QTimer
+from .settings import Settings
 
 
 def _default_messagebox(task_name: str, msg: str, is_warning: bool = False):
@@ -112,12 +113,6 @@ class BackgroundTaskManager(QObject):
     def __init__(self):
         super().__init__()
 
-        self.executor = concurrent.futures.ProcessPoolExecutor(
-            max_workers=max(2, QThread.idealThreadCount() - 1)
-        )
-
-        self.sequential_executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
-
         self.task_info: Dict[str, Dict[str, Any]] = {}
         self.futures: Dict[str, concurrent.futures.Future] = {}
 
@@ -148,7 +143,7 @@ class BackgroundTaskManager(QObject):
 
         self._shutdown()
         self.executor = concurrent.futures.ProcessPoolExecutor(
-            max_workers=max(2, QThread.idealThreadCount() - 1)
+            max_workers=Settings.rendering.parallel_worker
         )
 
         # Avoid collision with operations managing their own threads

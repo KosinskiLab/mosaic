@@ -128,24 +128,28 @@ class GeometryDataContainer:
             "faces": int,
             "quaternions": np.float32,
         }
-        for attr_name, dtype in dtype_map.items():
-            attr = getattr(self, attr_name)
-            setattr(self, attr_name, self._to_dtype(attr, dtype))
 
         if self.normals is None:
-            self.normals = [
-                np.full_like(x, fill_value=NORMAL_REFERENCE) for x in self.vertices
-            ]
-
-        if self.vertex_properties is None:
-            self.vertex_properties = [VertexPropertyContainer() for _ in self.vertices]
+            self.normals = [None for x in self.vertices]
 
         for i in range(len(self.normals)):
+            if self.normals[i] is None:
+                continue
             norm = np.linalg.norm(self.normals[i], axis=1)
             mask = norm < 1e-12
             norm[mask] = 1
             self.normals[i][mask] = NORMAL_REFERENCE
             self.normals[i] = self.normals[i] / norm[:, None]
+
+        if self.quaternions is None:
+            self.quaternions = [None for x in self.vertices]
+
+        if self.vertex_properties is None:
+            self.vertex_properties = [VertexPropertyContainer() for _ in self.vertices]
+
+        for attr_name, dtype in dtype_map.items():
+            attr = getattr(self, attr_name)
+            setattr(self, attr_name, self._to_dtype(attr, dtype))
 
         if self.shape is None:
             self.shape, _ = compute_bounding_box(self.vertices)
@@ -156,9 +160,6 @@ class GeometryDataContainer:
         if self.faces is not None:
             if len(self.vertices) != len(self.faces):
                 raise ValueError("Faces need to be specified for each vertex set.")
-
-        if self.quaternions is None:
-            self.quaternions = [None for x in self.vertices]
 
     def __len__(self):
         return len(self.vertices)
@@ -179,8 +180,16 @@ class GeometryDataContainer:
 
     @staticmethod
     def _to_dtype(data: List[np.ndarray], dtype=np.float32):
-        if data is not None:
-            return [x.astype(dtype) for x in data]
+        try:
+            n_elements = len(data)
+        except Exception:
+            n_elements = 0
+
+        for i in range(n_elements):
+            try:
+                data[i] = data[i].astype(dtype)
+            except Exception:
+                pass
         return data
 
 
@@ -574,10 +583,10 @@ def read_volume(filename: str):
     """
     volume = load_density(filename)
 
+    shape = np.multiply(volume.shape, volume.sampling_rate)
     ret = volume_to_points(
         volume.data, volume.sampling_rate, reverse_order=True, max_cluster=10000
     )
-    shape = np.multiply(volume.shape, volume.sampling_rate)
     return GeometryDataContainer(
         vertices=ret, shape=shape, sampling=volume.sampling_rate
     )
