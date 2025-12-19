@@ -322,8 +322,11 @@ class OperationCardWidget(QFrame):
         if not files:
             return
 
-        self.input_files = sorted(files, key=natural_sort_key)
+        self.input_files = files
+
+        # Auto populate to avoid incorrect inputs
         self._update_file_list()
+        self._configure_parameters(show=False)
         self.update_summary()
 
     def _update_file_list(self):
@@ -344,7 +347,7 @@ class OperationCardWidget(QFrame):
 
         self.params_btn.setEnabled(True)
 
-    def _configure_parameters(self):
+    def _configure_parameters(self, show: bool = True):
         """Open dialog to configure import parameters for each file."""
         if not self.input_files:
             return
@@ -352,9 +355,12 @@ class OperationCardWidget(QFrame):
         dialog = ImportDataDialog(self)
         dialog.set_files(self.input_files)
 
+        if not show:
+            self.file_parameters = dialog.get_all_parameters()
+            return None
+
         if dialog.exec():
             self.file_parameters = dialog.get_all_parameters()
-            self.update_summary()
 
     def update_summary(self):
         """Update the parameter summary text."""

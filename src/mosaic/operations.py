@@ -492,11 +492,11 @@ def remesh(geometry, method, **kwargs):
     from .geometry import Geometry
     from .parametrization import TriangularMesh
 
-    if not isinstance(geometry.model, TriangularMesh):
+    if not isinstance(mesh := geometry.model, TriangularMesh):
         return None
 
     method = method.lower()
-    mesh = geometry.model.mesh
+    mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
     if method == "edge length":
         mesh = meshing.remesh(mesh=mesh, **kwargs)
     elif method == "vertex clustering":
@@ -532,24 +532,18 @@ def remesh(geometry, method, **kwargs):
     else:
         raise ValueError(f"Unsupported remeshing method: {method}")
 
-    model = TriangularMesh(mesh)
-    return Geometry(
-        points=model.vertices,
-        normals=model.compute_vertex_normals(),
-        sampling_rate=geometry.sampling_rate,
-        model=model,
-    )
+    return Geometry(sampling_rate=geometry.sampling_rate, model=TriangularMesh(mesh))
 
 
 def smooth(geometry, method, **kwargs):
     from .geometry import Geometry
     from .parametrization import TriangularMesh
 
-    if not isinstance(geometry.model, TriangularMesh):
+    if not isinstance(mesh := geometry.model, TriangularMesh):
         return None
 
     method = method.lower()
-    mesh = geometry.model.mesh
+    mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
     n_iterations = int(kwargs.get("n_iterations", 10))
     if method == "taubin":
         mesh = mesh.filter_smooth_taubin(n_iterations)
@@ -560,13 +554,7 @@ def smooth(geometry, method, **kwargs):
     else:
         raise ValueError(f"Unsupported smoothing method: {method}")
 
-    model = TriangularMesh(mesh)
-    return Geometry(
-        points=model.vertices,
-        normals=model.compute_vertex_normals(),
-        sampling_rate=geometry.sampling_rate,
-        model=model,
-    )
+    return Geometry(sampling_rate=geometry.sampling_rate, model=TriangularMesh(mesh))
 
 
 def fit(geometry, method, **kwargs):

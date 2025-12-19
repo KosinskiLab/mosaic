@@ -13,7 +13,7 @@ from typing import Callable, Any, Dict
 
 from .settings import Settings
 from qtpy.QtWidgets import QMessageBox
-from qtpy.QtCore import QObject, Signal, QTimer, QThread
+from qtpy.QtCore import QObject, Signal, QTimer
 
 
 def _default_messagebox(task_name: str, msg: str, is_warning: bool = False):
@@ -35,50 +35,35 @@ def _default_messagebox(task_name: str, msg: str, is_warning: bool = False):
 
 def _wrap_warnings(func, *args, **kwargs):
     """Wrapper function that captures warnings, stdout, and stderr."""
-    import io
-    import sys
 
-    stdout_capture = io.StringIO()
-    stderr_capture = io.StringIO()
+    with warnings.catch_warnings(record=True) as warning_list:
+        warnings.simplefilter("always")
 
-    old_stdout = sys.stdout
-    old_stderr = sys.stderr
+        try:
+            result = func(*args, **kwargs)
 
-    sys.stdout = stdout_capture
-    sys.stderr = stderr_capture
+            warning_msg = ""
+            for warning_item in warning_list:
 
-    try:
-        with warnings.catch_warnings(record=True) as warning_list:
-            warnings.simplefilter("always")
+                if "citation" in str(warning_item.message).lower():
+                    continue
 
-            try:
-                result = func(*args, **kwargs)
+                if warning_item.category is DeprecationWarning:
+                    continue
 
-                warning_msg = ""
-                for warning_item in warning_list:
+                warning_msg += (
+                    f"{warning_item.category.__name__}: {warning_item.message}\n"
+                )
 
-                    if "citation" in str(warning_item.message).lower():
-                        continue
+            return {
+                "result": result,
+                "warnings": warning_msg.rstrip() if warning_msg else None,
+                "stdout": "",
+                "stderr": "",
+            }
 
-                    if warning_item.category is DeprecationWarning:
-                        continue
-
-                    warning_msg += (
-                        f"{warning_item.category.__name__}: {warning_item.message}\n"
-                    )
-
-                return {
-                    "result": result,
-                    "warnings": warning_msg.rstrip() if warning_msg else None,
-                    "stdout": stdout_capture.getvalue(),
-                    "stderr": stderr_capture.getvalue(),
-                }
-
-            except Exception as e:
-                raise e
-    finally:
-        sys.stdout = old_stdout
-        sys.stderr = old_stderr
+        except Exception as e:
+            raise e
 
 
 def _default_error_handler(task_id, task_name, error):
@@ -89,6 +74,17 @@ def _default_error_handler(task_id, task_name, error):
 def _default_warning_handler(task_id, task_name, warning):
     """Default handler for task errors."""
     return _default_messagebox(task_name, warning, is_warning=True)
+
+
+def _init_worker():
+    """Initialize worker process with single-threaded BLAS."""
+    import os
+
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+    os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 
 class BackgroundTaskManager(QObject):
@@ -145,10 +141,12 @@ class BackgroundTaskManager(QObject):
 
         self._shutdown()
         self.executor = concurrent.futures.ProcessPoolExecutor(
-            max_workers=int(Settings.rendering.parallel_worker)
+            max_workers=int(Settings.rendering.parallel_worker),
         )
         self.executor_pipeline = concurrent.futures.ProcessPoolExecutor(
-            max_workers=int(Settings.rendering.pipeline_worker), max_tasks_per_child=1
+            max_workers=int(Settings.rendering.pipeline_worker),
+            max_tasks_per_child=1,
+            initializer=_init_worker,
         )
 
         self.running_tasks.emit(len(self.futures))
@@ -365,7 +363,6 @@ class BackgroundTaskManager(QObject):
         for task_id in completed_tasks:
             _ = self.futures.pop(task_id, None)
 
-            # We want to access this information from the control center
             if task_id in self.task_info:
                 task_info = self.task_info.pop(task_id)
 

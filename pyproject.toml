@@ -53,6 +53,7 @@ pytest-xvfb = ">=3.0.0"
 
 [tool.poetry.scripts]
 mosaic = "mosaic.scripts.app:main"
+mosaic-pipeline = "mosaic.scripts.pipeline:main"
 
 [tool.poetry.urls]
 "Homepage" = "https://github.com/KosinskiLab/mosaic"

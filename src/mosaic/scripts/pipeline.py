@@ -7,11 +7,11 @@ from mosaic.pipeline.executor import generate_runs, execute_run
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
-def execute_run_wrapper(run_config):
+def run_wrapper(run_config, skip_complete: bool = False):
 
     run_id = run_config["run_id"]
     try:
-        execute_run(run_config)
+        execute_run(run_config, skip_complete)
         return run_id, None
     except Exception as e:
         return run_id, str(e)
@@ -19,7 +19,7 @@ def execute_run_wrapper(run_config):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Execute Mosaic pipelines from command line",
+        description="Execute Mosaic pipelines from the command line",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -31,21 +31,24 @@ Examples:
     )
     parser.add_argument("config", type=Path, help="Pipeline configuration JSON file")
     parser.add_argument(
-        "--workers",
         "-w",
+        "--workers",
         type=int,
         default=1,
         help="Number of parallel workers (default: 1)",
     )
     parser.add_argument(
-        "--index",
         "-i",
+        "--index",
         type=int,
         default=None,
         help="Run specific index (for job arrays)",
     )
     parser.add_argument(
-        "--dry-run", "-n", action="store_true", help="List runs without executing"
+        "--skip-complete", action="store_true", help="Do not run completed jobs again"
+    )
+    parser.add_argument(
+        "-n", "--dry-run", action="store_true", help="List runs without executing"
     )
 
     args = parser.parse_args()
@@ -87,7 +90,9 @@ Examples:
 
     completed = 0
     with ProcessPoolExecutor(max_workers=args.workers, max_tasks_per_child=1) as pool:
-        futures = {pool.submit(execute_run_wrapper, run): run for run in runs}
+        futures = {
+            pool.submit(run_wrapper, run, args.skip_complete): run for run in runs
+        }
 
         for future in as_completed(futures):
             run = futures[future]

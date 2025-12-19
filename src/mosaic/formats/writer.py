@@ -22,12 +22,14 @@ class OrientationsWriter:
         entities : np.ndarray
             Array of entity labels for each point.
         """
-        from scipy.spatial.transform import Rotation
+        from ..utils import quat_to_euler
 
         self.entities = entities
         self.points = points
-        rotations = Rotation.from_quat(quaternions, scalar_first=True).inv()
-        self.rotations = rotations.as_euler(seq="ZYZ", degrees=True)
+
+        # Until we find a better solution for the pipeline module, avoid
+        # scipy.spatial.transform.Rotation due to threading complications
+        self.rotations = quat_to_euler(quaternions, degrees=True, inv_quat=True)
 
     def to_file(self, file_path, file_format: str = None, **kwargs):
         """

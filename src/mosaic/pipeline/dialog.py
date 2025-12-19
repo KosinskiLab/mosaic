@@ -138,9 +138,12 @@ class PipelineBuilderDialog(QDialog):
         presets_group.setLayout(presets_container)
 
         workers_group = QGroupBox("Settings")
-        workers_layout = QVBoxLayout()
+        workers_layout = QHBoxLayout()
         workers_layout.setSpacing(8)
 
+        # Workers section
+        workers_vbox = QVBoxLayout()
+        workers_vbox.setSpacing(4)
         workers_label = QLabel("Parallel Workers:")
         workers_label.setToolTip(
             format_tooltip(
@@ -151,8 +154,6 @@ class PipelineBuilderDialog(QDialog):
             )
         )
         workers_label.setStyleSheet("font-size: 11px; color: #6b7280;")
-        workers_layout.addWidget(workers_label)
-
         self.workers_spin = QSpinBox()
         self.workers_spin.setMinimum(1)
         self.workers_spin.setMaximum(Settings.rendering.pipeline_worker)
@@ -161,12 +162,29 @@ class PipelineBuilderDialog(QDialog):
         )
         self.workers_spin.setFixedWidth(80)
         self.workers_spin.setFixedHeight(32)
+        workers_vbox.addWidget(workers_label)
+        workers_vbox.addWidget(self.workers_spin)
 
-        workers_layout.addWidget(self.workers_spin)
+        skip_vbox = QVBoxLayout()
+        skip_vbox.setSpacing(4)
+        skip_complete_label = QLabel("Skip Complete:")
+        skip_complete_label.setToolTip(
+            format_tooltip(
+                label="Skip Complete",
+                description="Skip runs where output files already exist.",
+            )
+        )
+        skip_complete_label.setStyleSheet("font-size: 11px; color: #6b7280;")
+        self.skip_complete = QCheckBox()
+        self.skip_complete.setFixedHeight(32)
+        skip_vbox.addWidget(skip_complete_label)
+        skip_vbox.addWidget(self.skip_complete)
+
+        workers_layout.addLayout(workers_vbox)
+        workers_layout.addLayout(skip_vbox)
         workers_layout.addStretch()
 
         workers_group.setLayout(workers_layout)
-        workers_group.setFixedWidth(160)
 
         settings_row.addWidget(presets_group, 1)
         settings_row.addWidget(workers_group)
@@ -375,9 +393,15 @@ class PipelineBuilderDialog(QDialog):
         if "workers" in config:
             self.workers_spin.setValue(config["workers"])
 
-        QMessageBox.information(
-            self, "Import Success", f"Imported {valid_ops} of {total_ops} operations."
-        )
+        if "skip_complete" in config:
+            self.skip_complete.setChecked(bool(config["skip_complete"]))
+
+        if total_ops != valid_ops:
+            QMessageBox.information(
+                self,
+                "Import Failed",
+                f"Imported {valid_ops} of {total_ops} operations.",
+            )
 
     def _export_config(self):
         """Export current pipeline configuration to file (graph format)."""
@@ -424,6 +448,7 @@ class PipelineBuilderDialog(QDialog):
         return {
             "runs": getattr(self, "pipeline_runs", []),
             "workers": self.workers_spin.value(),
+            "skip_complete": self.skip_complete.isChecked(),
         }
 
     def accept(self):
@@ -446,6 +471,7 @@ class PipelineBuilderDialog(QDialog):
             "format": "directed_graph",
             "nodes": self.pipeline_tree.get_pipeline_config(),
             "workers": self.workers_spin.value(),
+            "skip_complete": self.skip_complete.isChecked(),
             "metadata": {
                 "description": "Mosaic batch pipeline configuration",
                 "created_with": "Mosaic Pipeline Builder",
@@ -490,13 +516,12 @@ class BatchNavigatorDialog(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
 
         count = len(self.session_files)
-        sessions_group = QGroupBox(f"{count} Session{'s' if count != 1 else ''}")
-        sessions_layout = QVBoxLayout(sessions_group)
+        self.sessions_group = QGroupBox(f"{count} Session{'s' if count != 1 else ''}")
+        sessions_layout = QVBoxLayout(self.sessions_group)
         sessions_layout.setSpacing(8)
 
         self.search_widget = SearchWidget(placeholder="Search sessions...")
         self.search_widget.searchTextChanged.connect(self._filter_sessions)
-        sessions_layout.addWidget(self.search_widget)
 
         self.session_list = ContainerListWidget(border=False)
         self.session_list.tree_widget.setSelectionMode(
@@ -505,17 +530,17 @@ class BatchNavigatorDialog(QWidget):
         self.session_list.tree_widget.itemClicked.connect(self._on_item_clicked)
 
         self._populate_session_list()
-        sessions_layout.addWidget(self.session_list, 1)
 
-        # Auto-save checkbox
         self.auto_save_checkbox = QCheckBox("Auto-save when switching")
         self.auto_save_checkbox.setChecked(True)
         self.auto_save_checkbox.setToolTip(
             "Automatically save the current session when switching to another"
         )
-        sessions_layout.addWidget(self.auto_save_checkbox)
 
-        layout.addWidget(sessions_group, 1)
+        sessions_layout.addWidget(self.search_widget)
+        sessions_layout.addWidget(self.session_list, 1)
+        sessions_layout.addWidget(self.auto_save_checkbox)
+        layout.addWidget(self.sessions_group, 1)
 
         button_layout = QHBoxLayout()
         button_layout.setSpacing(8)
@@ -546,6 +571,14 @@ class BatchNavigatorDialog(QWidget):
             )
             self.session_list.tree_widget.addTopLevelItem(item)
 
+        count = len(self.session_files)
+        self.sessions_group.setTitle(f"{count} Session{'s' if count != 1 else ''}")
+
+    def _reset_selection(self):
+        self.current_index = -1
+        self.session_list.tree_widget.clearSelection()
+        self._update_session_list()
+
     def _update_session_list(self):
         """Update visibility state of items in the list."""
         for i in range(self.session_list.tree_widget.topLevelItemCount()):
@@ -560,12 +593,11 @@ class BatchNavigatorDialog(QWidget):
             item = self.session_list.tree_widget.topLevelItem(i)
             filename = strip_filepath(item.metadata.get("filepath", "")).lower()
 
-            # Show item if search text is in filename or if search is empty
             matches = search_text in filename if search_text else True
             item.setHidden(not matches)
 
     def _on_item_clicked(self, item):
-        """Handle single click on session item - load immediately."""
+        """Handle single click on session item"""
         index = item.metadata.get("index", -1)
         if index >= 0 and index != self.current_index:
             self._switch_to_session(index)

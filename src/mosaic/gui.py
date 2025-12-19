@@ -969,12 +969,13 @@ class App(QMainWindow):
 
         tasks = []
         for run in settings["runs"]:
+            skip_complete = settings.get("skip_complete", False)
             tasks.append(
                 {
                     "name": f"pipeline_{run['run_id']}",
                     "func": execute_run,
                     "callback": None,
-                    "kwargs": {"run_config": run},
+                    "kwargs": {"run_config": run, "skip_complete": skip_complete},
                     "reuse_worker": False,
                 }
             )
@@ -1088,11 +1089,24 @@ class App(QMainWindow):
 
     def _load_session(self, file_path: str):
         self.close_session(show_warning=False, render=False)
+
         try:
             self.cdata.load_session(file_path)
         except ValueError as e:
             print(f"Error opening file: {e}")
             return -1
+
+        batch_navigator = getattr(self, "batch_navigator", None)
+        if batch_navigator is not None:
+            batch_navigator = batch_navigator.widget()
+            if file_path in batch_navigator.session_files:
+                batch_navigator.current_index = batch_navigator.session_files.index(
+                    file_path
+                )
+            else:
+                batch_navigator.session_files.append(file_path)
+                batch_navigator.current_index = len(batch_navigator.session_files) - 1
+            batch_navigator._populate_session_list()
 
         self._add_file_to_recent(file_path)
 
@@ -1132,6 +1146,10 @@ class App(QMainWindow):
         if show_warning:
             if not _show_close_session_warning():
                 return None
+
+        batch_navigator = getattr(self, "batch_navigator", None)
+        if batch_navigator is not None:
+            batch_navigator.widget()._reset_selection()
 
         self.renderer.RemoveAllViewProps()
         self.volume_viewer.close()

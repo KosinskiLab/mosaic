@@ -36,6 +36,7 @@ __all__ = [
     "get_cmap",
     "normals_to_rot",
     "apply_quat",
+    "quat_to_euler_zyz",
     "NORMAL_REFERENCE",
     "skeletonize",
 ]
@@ -519,45 +520,217 @@ def cmap_to_vtkctf(cmap, max_value, min_value, gamma: float = 1.0):
     return color_transfer_function, (min_value, max_value)
 
 
-@lru_cache(maxsize=128)
-def _align_vectors(target, base) -> Rotation:
-    try:
-        return Rotation.align_vectors(target, base)[0]
-    except ValueError:
-        return Rotation.from_quat((1, 0, 0, 0), scalar_first=True)
+def normals_to_rot(
+    normals: np.ndarray,
+    target: np.ndarray = NORMAL_REFERENCE,
+    mode: str = "quat",
+    degrees: bool = True,
+    **kwargs,
+) -> np.ndarray:
+    """
+    Finds the shortest rotation that aligns each normal vector to its
+    corresponding target vector.
 
+    Parameters
+    ----------
+    normals : np.ndarray
+        Input normal vectors, shape (N, 3) or (3,).
+    target : np.ndarray
+        Target direction(s), shape (N, 3) or (3,). If single target provided,
+        it will be broadcast to all normals.
+    mode : str, optional
+        Output format: "quat", "matrix", or "euler". Default is "quat".
+    degrees : bool, optional
+        If True and mode="euler", return angles in degrees. Default is True.
 
-def normals_to_rot(normals, target=NORMAL_REFERENCE, mode: str = "quat", **kwargs):
+    Returns
+    -------
+    np.ndarray
+        Rotations in requested format:
+        - "quat": shape (N, 4), scalar-first [w, x, y, z]
+        - "matrix": shape (N, 3, 3)
+        - "euler": shape (N, 3), ZYZ Euler angles
+    """
+    if mode not in ("quat", "matrix", "euler"):
+        raise ValueError(f"Unknown mode '{mode}'. Use 'quat', 'matrix', or 'euler'.")
+
     normals = np.atleast_2d(normals)
     targets = np.atleast_2d(target)
 
-    if targets.shape[0] != normals.shape[0]:
-        targets = np.repeat(targets, normals.shape[0] // targets.shape[0], axis=0)
-
-    if targets.shape != normals.shape:
+    # Broadcast target if single value provided
+    if targets.shape[0] == 1 and normals.shape[0] > 1:
+        targets = np.repeat(targets, normals.shape[0], axis=0)
+    elif targets.shape[0] != normals.shape[0]:
         raise ValueError(
-            "Incorrect input. Either specifiy a single target or one per normal."
+            f"Incompatible shapes: normals {normals.shape}, target {targets.shape}. "
+            "Provide either a single target or one per normal."
         )
 
-    # I am not sure why, but having a large number of Rotation objects in scope
-    # while within a concurrent.futures worker seems to lock itself, hence we
-    # use the intermediate quaternion representation
-    rotations = [
-        _align_vectors(tuple(b), tuple(t)).as_quat(scalar_first=True)
-        for b, t in zip(normals, targets)
-    ]
-    rotations = Rotation.from_quat(rotations, scalar_first=True)
+    normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
+    targets = targets / np.linalg.norm(targets, axis=1, keepdims=True)
 
-    func = rotations.as_matrix
-    if mode == "quat":
-        func = rotations.as_quat
+    ret = _align_vectors_to_quat(normals, targets)
+    if mode == "matrix":
+        ret = _quat_to_matrix(ret)
     elif mode == "euler":
-        func = rotations.as_euler
-    return func(**kwargs)
+        ret = _quat_to_euler(ret, degrees=degrees)
+    return ret
+
+
+def _align_vectors_to_quat(vec1: np.ndarray, vec2: np.ndarray) -> np.ndarray:
+    """
+    Compute quaternions for shortest rotation aligning vec1 to vec2.
+
+    Parameters
+    ----------
+    vec1, vec2 : np.ndarray
+        Normalized vectors, shape (N, 3).
+
+    Returns
+    -------
+    np.ndarray
+        Quaternions [w, x, y, z], shape (N, 4).
+    """
+    axis = np.cross(vec1, vec2)
+    cos_angle = np.sum(vec1 * vec2, axis=1)
+
+    aligned = cos_angle > (1 - 1e-8)
+    opposite = cos_angle < (-1 + 1e-8)
+    normal = ~(aligned | opposite)
+
+    quaternions = np.empty((vec1.shape[0], 4))
+    quaternions[aligned] = [1, 0, 0, 0]
+
+    # Half angle
+    if np.any(normal):
+        w = np.sqrt((1 + cos_angle[normal]) / 2)
+        xyz = axis[normal] / (2 * w[:, np.newaxis])
+        quaternions[normal, 0] = w
+        quaternions[normal, 1:] = xyz
+
+    # Opposite
+    if np.any(opposite):
+        for i in np.where(opposite)[0]:
+            v = vec1[i]
+            perp = np.cross(v, [1, 0, 0]) if abs(v[0]) < 0.9 else np.cross(v, [0, 1, 0])
+            perp = perp / np.linalg.norm(perp)
+            quaternions[i] = [0, perp[0], perp[1], perp[2]]
+
+    return quaternions
+
+
+def _quat_to_matrix(q: np.ndarray) -> np.ndarray:
+    """
+    Convert quaternions to rotation matrices.
+
+    Parameters
+    ----------
+    q : np.ndarray
+        Quaternions [w, x, y, z], shape (N, 4).
+
+    Returns
+    -------
+    np.ndarray
+        Rotation matrices, shape (N, 3, 3).
+    """
+    w, x, y, z = q[:, 0], q[:, 1], q[:, 2], q[:, 3]
+
+    matrices = np.empty((q.shape[0], 3, 3))
+
+    matrices[:, 0, 0] = 1 - 2 * (y**2 + z**2)
+    matrices[:, 0, 1] = 2 * (x * y - w * z)
+    matrices[:, 0, 2] = 2 * (x * z + w * y)
+
+    matrices[:, 1, 0] = 2 * (x * y + w * z)
+    matrices[:, 1, 1] = 1 - 2 * (x**2 + z**2)
+    matrices[:, 1, 2] = 2 * (y * z - w * x)
+
+    matrices[:, 2, 0] = 2 * (x * z - w * y)
+    matrices[:, 2, 1] = 2 * (y * z + w * x)
+    matrices[:, 2, 2] = 1 - 2 * (x**2 + y**2)
+
+    return matrices
+
+
+def _quat_to_euler(q: np.ndarray, degrees: bool = True) -> np.ndarray:
+    """
+    Convert quaternions to ZYZ Euler angles.
+
+    Parameters
+    ----------
+    q : np.ndarray
+        Quaternions [w, x, y, z], shape (N, 4).
+    degrees : bool
+        Return in degrees if True, radians if False.
+
+    Returns
+    -------
+    np.ndarray
+        ZYZ Euler angles [alpha, beta, gamma], shape (N, 3).
+    """
+    R = _quat_to_matrix(q)
+
+    r13 = R[:, 0, 2]
+    r23 = R[:, 1, 2]
+    r31 = R[:, 2, 0]
+    r32 = R[:, 2, 1]
+    r33 = R[:, 2, 2]
+
+    beta = np.arccos(np.clip(r33, -1, 1))
+    alpha = np.arctan2(r23, r13)
+    gamma = np.arctan2(r32, -r31)
+
+    gimbal_lock = np.abs(r33) > (1 - 1e-6)
+
+    # When r33 ≈ 1 (beta ≈ 0)
+    gimbal_pos = gimbal_lock & (r33 > 0)
+    alpha = np.where(gimbal_pos, np.arctan2(-R[:, 0, 1], R[:, 1, 1]), alpha)
+    beta = np.where(gimbal_pos, 0, beta)
+    gamma = np.where(gimbal_pos, 0, gamma)
+
+    # When r33 ≈ -1 (beta ≈ π)
+    gimbal_neg = gimbal_lock & (r33 <= 0)
+    alpha = np.where(gimbal_neg, np.arctan2(R[:, 0, 1], R[:, 1, 1]), alpha)
+    beta = np.where(gimbal_neg, np.pi, beta)
+    gamma = np.where(gimbal_neg, 0, gamma)
+
+    euler = np.column_stack([alpha, beta, gamma])
+    return np.degrees(euler) if degrees else euler
+
+
+def quat_to_euler(
+    q: np.ndarray, degrees: bool = True, inv_quat: bool = False
+) -> np.ndarray:
+    """
+    Convert quaternions to ZYZ Euler angles.
+
+    Equivalent to scipy's
+        Rotation.from_quat(q, scalar_first=True).inv().as_euler("ZYZ")
+    when inv_quat=True.
+
+    Parameters
+    ----------
+    q : np.ndarray
+        Quaternions [w, x, y, z], shape (N, 4).
+    degrees : bool
+        Return in degrees if True, radians if False. Default is True.
+    inv_quat : bool
+        Invert quaternions before conversion. Default is False.
+
+    Returns
+    -------
+    np.ndarray
+        ZYZ Euler angles [alpha, beta, gamma], shape (N, 3).
+    """
+    if inv_quat:
+        q = q.copy()
+        q[:, 1:] = -q[:, 1:]
+
+    return _quat_to_euler(q, degrees=degrees)
 
 
 def apply_quat(quaternions, target=NORMAL_REFERENCE):
-    return Rotation.from_quat(quaternions, scalar_first=True).apply(target)
+    return _quat_to_matrix(quaternions) @ target
 
 
 def skeletonize(

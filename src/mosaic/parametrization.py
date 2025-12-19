@@ -745,7 +745,7 @@ class TriangularMesh(Parametrization):
             state["vertex_colors"] = np.asarray(self.mesh.vertex_colors)
         if self.mesh.has_triangle_normals():
             state["triangle_normals"] = np.asarray(self.mesh.triangle_normals)
-        return state
+        return {k: v.copy() for k, v in state.items()}
 
     def __setstate__(self, state):
         mesh = meshing.to_open3d(state["vertices"], state["triangles"])
