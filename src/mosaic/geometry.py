@@ -135,7 +135,7 @@ class Geometry:
     def sampling_rate(self, sampling_rate):
         if sampling_rate is None:
             sampling_rate = np.ones(3, dtype=np.float32)
-        sampling_rate = np.asarray(sampling_rate, dtype=np.float32)
+        sampling_rate = np.asarray(sampling_rate, dtype=np.float32).copy()
         sampling_rate = np.repeat(sampling_rate, 3 // sampling_rate.size)
         self._sampling_rate = sampling_rate
 
@@ -195,8 +195,7 @@ class Geometry:
             self.change_representation(state.get("representation"))
         self.set_appearance(**appearance)
 
-    def __getitem__(self, idx):
-        """Array-like indexing using int/bool numpy arrays, slices or ellipsis."""
+    def subset(self, idx, copy: bool = False):
         full_copy = ... is idx
 
         n_points = self.get_number_of_points()
@@ -211,7 +210,7 @@ class Geometry:
         idx = idx[idx < n_points]
 
         state = self.__getstate__()
-        if "meta" in state:
+        if "meta" in state and copy:
             state["meta"] = state["meta"].copy()
 
         # Check if we are subsetting a valid mesh representation
@@ -253,12 +252,23 @@ class Geometry:
 
         for key in data_array:
             if (value := state.get(key)) is not None:
-                state[key] = np.asarray(value)[idx].copy()
+                state[key] = np.asarray(value)[idx]
+                if copy:
+                    state[key] = state[key].copy()
 
-        _ = state.pop("uuid", None)
-        ret = self.__class__.__new__(self.__class__)
+        ret = self
+        if copy:
+            _ = state.pop("uuid", None)
+            ret = self.__class__.__new__(self.__class__)
+        else:
+            state["vtk_actor"] = self.actor
+            _ = state.pop("appearance", None)
         ret.__setstate__(state)
         return ret
+
+    def __getitem__(self, idx):
+        """Array-like indexing using int/bool numpy arrays, slices or ellipsis."""
+        return self.subset(idx, copy=True)
 
     @classmethod
     def merge(cls, geometries):
@@ -298,7 +308,9 @@ class Geometry:
             _points, _normals, _quaternions = geometry.get_point_data()
 
             data["points"].append(_points)
-            data["normals"].append(_normals)
+            if _normals is not None:
+                data["normals"].append(_normals)
+
             if _quaternions is not None:
                 data["quaternions"].append(_quaternions)
 
@@ -781,6 +793,7 @@ class Geometry:
         quaternions=None,
         model=None,
         meta: Dict = None,
+        **kwargs,
     ):
         """
         Replace geometry data with new point cloud or mesh data.

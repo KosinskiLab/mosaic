@@ -10,6 +10,8 @@ from typing import List, Optional
 from functools import wraps
 
 import numpy as np
+
+from . import meshing
 from .utils import (
     statistical_outlier_removal,
     eigenvalue_outlier_removal,
@@ -108,6 +110,7 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
     from .utils import skeletonize as _skeletonize
     from .utils import points_to_volume, volume_to_points
 
+    method = method.lower()
     methods = ("core", "outer", "boundary", "outer_hull")
     if method not in methods:
         supported = ",".join([f"'{x}'" for x in methods])
@@ -169,6 +172,7 @@ def downsample(geometry, method: str = "radius", **kwargs):
     """
     from .geometry import Geometry
 
+    method = method.lower()
     points, normals = geometry.points, geometry.normals
     if method.lower() == "radius":
         import open3d as o3d
@@ -230,7 +234,12 @@ def crop(geometry, distance: float, query: np.ndarray, keep_smaller: bool = True
 
 @use_point_data
 def sample(
-    geometry, sampling: float, method: str, normal_offset: float = 0.0, **kwargs
+    geometry,
+    sampling: float,
+    method: str,
+    normal_offset: float = 0.0,
+    bidirectional: bool = False,
+    **kwargs,
 ):
     """
     Generates new points by sampling from a fitted parametric model.
@@ -246,6 +255,9 @@ def sample(
         as a rate and converted to number of points.
     normal_offset : float, optional
         Point offset along normal vector, defaults to 0.0.
+    bidirectional : bool, optional
+        Draw inward and outward facing points at the same time. This doubles the
+        total number of points. Default is False.
 
     Returns
     -------
@@ -262,8 +274,9 @@ def sample(
     if (fit := geometry.model) is None:
         return None
 
+    method = method.lower()
     n_samples, extra_kwargs = sampling, {}
-    if method != "Points":
+    if method != "points":
         n_samples = fit.points_per_sampling(sampling, normal_offset)
         extra_kwargs["mesh_init_factor"] = 5
 
@@ -272,7 +285,13 @@ def sample(
     points = fit.sample(int(n_samples), **extra_kwargs, **kwargs)
     normals = fit.compute_normal(points)
 
-    return Geometry(points, normals=normals, sampling_rate=geometry._sampling_rate)
+    if bidirectional:
+        extra_kwargs["normal_offset"] = -normal_offset
+        new_points = fit.sample(int(n_samples), **extra_kwargs, **kwargs)
+        new_normals = -1 * fit.compute_normal(points)
+        points = np.concatenate([points, new_points])
+        normals = np.concatenate([normals, new_normals])
+    return Geometry(points, normals=normals, sampling_rate=geometry.sampling_rate)
 
 
 @use_point_data
@@ -335,8 +354,6 @@ def cluster(
             f"Method must be one of {list(_mapping.keys())}, got '{method}'."
         )
 
-    points = geometry.points.copy()
-
     distance = geometry.sampling_rate
     if method in ("Connected Components", "Envelope", "Leiden"):
         distance = kwargs.pop("distance", -1)
@@ -344,7 +361,7 @@ def cluster(
             distance = geometry.sampling_rate
         kwargs["distance"] = distance
 
-    points = np.divide(points, distance)
+    points = np.divide(geometry.points, distance)
 
     # Prepare feature data for clustering
     data = points
@@ -471,6 +488,138 @@ def visibility(geometry, visible: bool = True, **kwargs):
     geometry.set_visibility(visible)
 
 
+def remesh(geometry, method, **kwargs):
+    from .geometry import Geometry
+    from .parametrization import TriangularMesh
+
+    if not isinstance(geometry.model, TriangularMesh):
+        return None
+
+    method = method.lower()
+    mesh = geometry.model.mesh
+    if method == "edge length":
+        mesh = meshing.remesh(mesh=mesh, **kwargs)
+    elif method == "vertex clustering":
+        mesh = mesh.simplify_vertex_clustering(**kwargs)
+    elif method == "subdivide":
+        func = mesh.subdivide_midpoint
+        if kwargs.get("smooth"):
+            func = mesh.subdivide_loop
+        kwargs = {k: v for k, v in kwargs.items() if k != "smooth"}
+        mesh = func(**kwargs)
+    elif method == "decimation":
+        method = kwargs.get("decimation_method", "Triangle Count").lower()
+        sampling = kwargs.get("sampling")
+        if method == "reduction factor":
+            sampling = np.asarray(mesh.triangles).shape[0] // sampling
+
+        if kwargs.get("smooth", False):
+            mesh = mesh.simplify_quadric_decimation(int(sampling))
+        else:
+            import pyfqmr
+
+            simplifier = pyfqmr.Simplify()
+            simplifier.setMesh(np.asarray(mesh.vertices), np.asarray(mesh.triangles))
+            simplifier.simplify_mesh(
+                target_count=int(sampling),
+                aggressiveness=5.5,
+                preserve_border=True,
+                verbose=False,
+            )
+
+            vertices, faces, normals = simplifier.getMesh()
+            mesh = meshing.to_open3d(vertices, faces)
+    else:
+        raise ValueError(f"Unsupported remeshing method: {method}")
+
+    model = TriangularMesh(mesh)
+    return Geometry(
+        points=model.vertices,
+        normals=model.compute_vertex_normals(),
+        sampling_rate=geometry.sampling_rate,
+        model=model,
+    )
+
+
+def smooth(geometry, method, **kwargs):
+    from .geometry import Geometry
+    from .parametrization import TriangularMesh
+
+    if not isinstance(geometry.model, TriangularMesh):
+        return None
+
+    method = method.lower()
+    mesh = geometry.model.mesh
+    n_iterations = int(kwargs.get("n_iterations", 10))
+    if method == "taubin":
+        mesh = mesh.filter_smooth_taubin(n_iterations)
+    elif method == "laplacian":
+        mesh = mesh.filter_smooth_laplacian(n_iterations)
+    elif method == "average":
+        mesh = mesh.filter_smooth_simple(n_iterations)
+    else:
+        raise ValueError(f"Unsupported smoothing method: {method}")
+
+    model = TriangularMesh(mesh)
+    return Geometry(
+        points=model.vertices,
+        normals=model.compute_vertex_normals(),
+        sampling_rate=geometry.sampling_rate,
+        model=model,
+    )
+
+
+def fit(geometry, method, **kwargs):
+    from .geometry import Geometry
+    from .parametrization import PARAMETRIZATION_TYPE
+
+    _mapping = {
+        "Alpha Shape": "convexhull",
+        "Ball Pivoting": "mesh",
+        "Poisson": "poissonmesh",
+        "Cluster Ball Pivoting": "clusterballpivoting",
+        "Flying Edges": "flyingedges",
+        "Marching Cubes": "marchingcubes",
+    }
+    method = _mapping.get(method, method)
+
+    if method == "mesh":
+        radii = kwargs.get("radii", None)
+        try:
+            kwargs["radii"] = [float(x) for x in radii.split(",")]
+        except Exception as e:
+            raise ValueError(f"Incorrect radius specification {radii}.") from e
+
+    kwargs["voxel_size"] = np.max(geometry.sampling_rate)
+    if method == "flyingedges" and kwargs.get("distance", -1) != -1:
+        kwargs["voxel_size"] = kwargs.get("distance")
+
+    fit_object = PARAMETRIZATION_TYPE.get(method)
+    if fit_object is None:
+        raise ValueError(f"{method} is not supported ({PARAMETRIZATION_TYPE.keys()}).")
+
+    points, *_ = geometry.get_point_data()
+
+    n = points.shape[0]
+    if n < 50 and method not in ["convexhull", "spline"]:
+        raise ValueError(f"Insufficient points for fit ({n}<50).")
+
+    fit = fit_object.fit(points, **kwargs)
+    if hasattr(fit, "mesh"):
+        new_points = fit.vertices
+        normals = fit.compute_vertex_normals()
+    else:
+        new_points = fit.sample(n_samples=1000)
+        normals = fit.compute_normal(new_points)
+
+    return Geometry(
+        points=new_points,
+        normals=normals,
+        sampling_rate=geometry.sampling_rate,
+        model=fit,
+    )
+
+
 class GeometryOperations:
     """Registry for geometry operation functions."""
 
@@ -492,5 +641,8 @@ for operation_name, operation_func in [
     ("compute_normals", compute_normals),
     ("duplicate", duplicate),
     ("visibility", visibility),
+    ("remesh", remesh),
+    ("smooth", smooth),
+    ("fit", fit),
 ]:
     GeometryOperations.register(operation_name, operation_func)

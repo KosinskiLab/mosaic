@@ -1,5 +1,5 @@
 from uuid import uuid4
-from typing import Dict, List
+from typing import Dict, List, Union
 from dataclasses import dataclass, field
 
 from qtpy.QtGui import QColor, QIcon, QPixmap, QPainter
@@ -20,7 +20,7 @@ import qtawesome as qta
 
 @dataclass()
 class TreeState:
-    """Minimal tree structure tracking."""
+    """Legacy tree structure (deprecated - kept for backward compatibility)."""
 
     #: {'Group 1': ['uuid1', 'uuid2'], ...}
     groups: Dict[str, List[str]] = field(default_factory=dict)
@@ -35,6 +35,49 @@ class TreeState:
         for group_uuids in self.groups.values():
             uuids.update(group_uuids)
         return uuids
+
+    def to_tree_state_data(self) -> "TreeStateData":
+        """Convert legacy TreeState to new TreeStateData format."""
+        state = TreeStateData()
+
+        state.root_items = [None] * len(self.root_order)
+        for uuid, (index, group_name) in self.root_order.items():
+            state.root_items[index] = uuid
+
+            if group_name is not None:
+                state.group_names[uuid] = group_name
+                state.groups[uuid] = self.groups[group_name]
+        return state
+
+
+@dataclass()
+class TreeStateData:
+    """Minimal tree structure tracking."""
+
+    #: Maps group UUIDs to list of geometry UUIDs
+    groups: Dict[str, List[str]] = field(default_factory=dict)
+    #: Maps group UUIDs to display names
+    group_names: Dict[str, str] = field(default_factory=dict)
+    #: Top-level items in display order (mix of group UUIDs and geometry UUIDs)
+    root_items: List[str] = field(default_factory=list)
+
+    def get_all_uuids(self):
+        """Get all UUIDs currently in the tree."""
+        uuids = set()
+        for item in self.root_items:
+            uuids.update(self.groups.get(item, [item]))
+        return uuids
+
+    def remove_uuid(self, uuid: str):
+        """Remove a UUID from the tree. Can be either group or item"""
+        self.root_items = [x for x in self.root_items if x != uuid]
+
+        if uuid in self.group_names:
+            self.group_names.pop(uuid)
+            self.groups.pop(uuid, None)
+
+        for k in self.groups.keys():
+            self.groups[k] = [x for x in self.groups[k] if x != uuid]
 
 
 class ContainerTreeWidget(QFrame):
@@ -130,13 +173,11 @@ class ContainerTreeWidget(QFrame):
         """
         )
 
-    def to_state(self) -> TreeState:
-        """Extract current tree structure as TreeState object."""
-        state = TreeState()
+    def to_state(self) -> TreeStateData:
+        """Extract current tree structure as TreeStateData object."""
+        state = TreeStateData()
 
         for item, parent, _ in self.traverse(reverse=False):
-
-            # GroupTreeWidgetItem structure is evident from parent
             if not isinstance(item, StyledTreeWidgetItem):
                 continue
 
@@ -144,41 +185,42 @@ class ContainerTreeWidget(QFrame):
                 continue
 
             group_name = getattr(parent, "group_name", None)
-
             if parent is None:
                 state.root_items.append(uuid)
             elif isinstance(parent, GroupTreeWidgetItem):
-                if group_name not in state.groups:
-                    state.groups[group_name] = []
-                state.groups[group_name].append(uuid)
-                uuid = parent.metadata.get("uuid")
+                if (group_uuid := parent.metadata.get("uuid")) is None:
+                    continue
 
-            if uuid not in state.root_order:
-                state.root_order[uuid] = (len(state.root_order), group_name)
-
+                if group_uuid not in state.groups:
+                    state.groups[group_uuid] = []
+                    state.root_items.append(group_uuid)
+                    state.group_names[group_uuid] = group_name
+                state.groups[group_uuid].append(uuid)
         return state
 
-    def apply_state(self, state: TreeState, uuid_to_items: Dict):
+    def apply_state(self, state: Union[TreeStateData, TreeState], uuid_to_items: Dict):
         """Apply tree structure to existing items.
 
         Parameters
         ----------
-        state : :py:class:`TreeState`
+        state : :py:class:`TreeStateData` or py:class:`TreeState`
             Desired tree structure
         uuid_to_items : dict
             Map of UUID to QTreeWidgetItem
         """
         self.tree_widget.clear()
 
-        order = dict(sorted(state.root_order.items(), key=lambda x: x[1][0]))
+        # Convert legacy format
+        if isinstance(state, TreeState):
+            state = state.to_tree_state_data()
 
-        for uuid, (_, group_name) in order.items():
-            if group_name is None:
+        for uuid in state.root_items:
+            if (group_name := state.group_names.get(uuid)) is None:
                 self.tree_widget.addTopLevelItem(uuid_to_items[uuid])
                 continue
 
             group_item = self.create_group(group_name)
-            uuids = [x for x in state.groups.get(group_name, []) if x in uuid_to_items]
+            uuids = [x for x in state.groups.get(uuid, []) if x in uuid_to_items]
             for uuid in uuids:
                 group_item.addChild(uuid_to_items[uuid])
 

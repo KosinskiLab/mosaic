@@ -337,7 +337,7 @@ class IntelligenceTab(QWidget):
     def add_cloud(self, *args):
         num_points = 1000
         points = np.random.rand(num_points, 3) * 100
-        self.cdata.data.add(points=points, sampling_rate=1)
+        self.cdata.data.add(points=points, sampling_rate=2)
 
         self.cdata.data.render()
         # self.cdata.models.render()

@@ -44,7 +44,13 @@ NORMAL_REFERENCE = (0, 0, 1)
 
 
 def points_to_volume(
-    points, sampling_rate=1, shape=None, weight=1, out=None, use_offset: bool = False
+    points,
+    sampling_rate=1,
+    shape=None,
+    weight=1,
+    out=None,
+    use_offset: bool = False,
+    out_dtype=None,
 ):
     """
     Convert point cloud to a volumetric representation.
@@ -63,6 +69,8 @@ def points_to_volume(
         Array to place result into.
     use_offset: bool
         Move points to origin and return the corresponding offset.
+    out_dtype: type
+        Dtype of the output array if out is not explicitly passed.
 
     Returns
     -------
@@ -71,7 +79,6 @@ def points_to_volume(
     ndarray
         Array of offsets if use_offset is True.
     """
-    # positions = np.divide(points, sampling_rate).astype(int)
     positions = np.rint(np.divide(points, sampling_rate)).astype(int)
     if use_offset:
         offset = positions.min(axis=0)
@@ -84,7 +91,8 @@ def points_to_volume(
     positions = positions[valid_mask]
 
     if out is None:
-        out = np.zeros(tuple(int(x) for x in shape), dtype=np.float32)
+        out_dtype = np.float32 if out_dtype is None else out_dtype
+        out = np.zeros(tuple(int(x) for x in shape), dtype=out_dtype)
 
     out[tuple(positions.T)] = weight
     if use_offset:
@@ -531,9 +539,15 @@ def normals_to_rot(normals, target=NORMAL_REFERENCE, mode: str = "quat", **kwarg
             "Incorrect input. Either specifiy a single target or one per normal."
         )
 
-    rotations = Rotation.concatenate(
-        [_align_vectors(tuple(t), tuple(b)) for b, t in zip(normals, targets)]
-    ).inv()
+    # I am not sure why, but having a large number of Rotation objects in scope
+    # while within a concurrent.futures worker seems to lock itself, hence we
+    # use the intermediate quaternion representation
+    rotations = [
+        _align_vectors(tuple(b), tuple(t)).as_quat(scalar_first=True)
+        for b, t in zip(normals, targets)
+    ]
+    rotations = Rotation.from_quat(rotations, scalar_first=True)
+
     func = rotations.as_matrix
     if mode == "quat":
         func = rotations.as_quat

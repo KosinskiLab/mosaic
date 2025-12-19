@@ -1,8 +1,7 @@
 from typing import Dict
+from os.path import splitext
 
 import numpy as np
-from tme import Orientations, Density
-from scipy.spatial.transform import Rotation
 
 from ._utils import get_extension
 
@@ -23,6 +22,8 @@ class OrientationsWriter:
         entities : np.ndarray
             Array of entity labels for each point.
         """
+        from scipy.spatial.transform import Rotation
+
         self.entities = entities
         self.points = points
         rotations = Rotation.from_quat(quaternions, scalar_first=True).inv()
@@ -67,6 +68,8 @@ class OrientationsWriter:
         **kwargs
             Additional keyword arguments passed to orientations writer.
         """
+        from tme import Orientations
+
         orientations = Orientations(
             translations=self.points,
             rotations=self.rotations,
@@ -93,6 +96,8 @@ def write_density(
     origin : float, optional
         Origin offset for the density data in Angstrom, by default 0.
     """
+    from tme import Density
+
     return Density(data, sampling_rate=sampling_rate, origin=origin).to_file(filename)
 
 
@@ -159,3 +164,112 @@ def write_topology_file(file_path: str, data: Dict, tsi_format: bool = False) ->
         ofile.write(vertex_string)
         ofile.write(face_string)
         ofile.write(inclusion_string)
+
+
+def write_geometries(geometries, file_path: str, export_parameters: dict) -> None:
+    from ..utils import points_to_volume, normals_to_rot, NORMAL_REFERENCE
+
+    if not len(geometries):
+        return None
+
+    mesh_formats = ("obj", "stl", "ply")
+    volume_formats = ("mrc", "em", "h5")
+    point_formats = ("tsv", "star", "xyz")
+
+    file_format = export_parameters.get("format")
+    file_path, _ = splitext(file_path)
+
+    try:
+        shape = tuple(export_parameters[x] for x in ("shape_x", "shape_y", "shape_z"))
+    except Exception:
+        shape = np.max(
+            [np.divide(x.points.max(axis=0), x.sampling_rate) for x in geometries],
+            axis=0,
+        )
+        shape = tuple(int(x + 1) for x in shape.astype(int))
+
+    center, orientation_kwargs = 0, {}
+    data = {"points": [], "quaternions": []}
+    for index, geometry in enumerate(geometries):
+        if file_format in mesh_formats:
+            fit = geometry.model
+            if not hasattr(fit, "mesh"):
+                raise ValueError(f"Selected geometry {index} is not a mesh.")
+            fit.to_file(f"{file_path}_{index}.{file_format}")
+            continue
+
+        points, normals, quaternions = geometry.get_point_data()
+        if file_format in point_formats and quaternions is None:
+            # At this point make up the normals
+            if normals is None:
+                normals = np.full_like(points, fill_value=NORMAL_REFERENCE)
+            quaternions = normals_to_rot(normals, scalar_first=True)
+
+        sampling = export_parameters.get("sampling", geometry.sampling_rate)
+        if export_parameters.get("relion_5_format", False):
+            center = np.divide(shape, 2).astype(int) if shape is not None else 0
+            center = np.multiply(center, sampling)
+            orientation_kwargs["version"] = "# version 50001"
+            sampling = 1
+
+        points = np.subtract(np.divide(points, sampling), center)
+        data["points"].append(points)
+        data["quaternions"].append(quaternions)
+
+    if file_format in mesh_formats:
+        return None
+
+    if file_format in volume_formats:
+        # Try saving some memory on write. uint8 would be padded to 16 hence int8
+        dtype = np.float32
+        max_index = len(data["points"]) + 1
+        if max_index < np.iinfo(np.int8).max:
+            dtype = np.int8
+        elif max_index < np.iinfo(np.uint16).max:
+            dtype = np.uint16
+
+        volume = None
+        for index, points in enumerate(data["points"]):
+            volume = points_to_volume(
+                points,
+                sampling_rate=1,
+                shape=shape,
+                weight=index + 1,
+                out=volume,
+                out_dtype=dtype,
+            )
+
+        return write_density(
+            volume,
+            filename=f"{file_path}.{file_format}",
+            sampling_rate=sampling,
+        )
+
+    if file_format not in point_formats:
+        return None
+
+    data["entities"] = [
+        np.full(x.shape[0], fill_value=i) for i, x in enumerate(data["points"])
+    ]
+    if single_file := export_parameters.get("single_file", True):
+        data = {k: [np.concatenate(v)] for k, v in data.items()}
+
+    if file_format == "xyz":
+        for index, points in enumerate(data["points"]):
+            fname = f"{file_path}_{index}.{file_format}"
+            if single_file:
+                fname = f"{file_path}.{file_format}"
+
+            header = ""
+            if export_parameters.get("header", True):
+                header = ",".join(["x", "y", "z"])
+
+            np.savetxt(fname, points, delimiter=",", header=header, comments="")
+        return 1
+
+    for index in range(len(data["points"])):
+        orientations = OrientationsWriter(**{k: v[index] for k, v in data.items()})
+        fname = f"{file_path}_{index}.{file_format}"
+        if single_file:
+            fname = f"{file_path}.{file_format}"
+        orientations.to_file(fname, file_format=file_format, **orientation_kwargs)

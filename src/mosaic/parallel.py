@@ -11,9 +11,9 @@ import warnings
 import concurrent
 from typing import Callable, Any, Dict
 
-from qtpy.QtWidgets import QMessageBox
-from qtpy.QtCore import QObject, Signal, QTimer
 from .settings import Settings
+from qtpy.QtWidgets import QMessageBox
+from qtpy.QtCore import QObject, Signal, QTimer, QThread
 
 
 def _default_messagebox(task_name: str, msg: str, is_warning: bool = False):
@@ -34,64 +34,61 @@ def _default_messagebox(task_name: str, msg: str, is_warning: bool = False):
 
 
 def _wrap_warnings(func, *args, **kwargs):
-    """Wrapper function that captures warnings and returns them with the result"""
-    with warnings.catch_warnings(record=True) as warning_list:
-        warnings.simplefilter("always")
+    """Wrapper function that captures warnings, stdout, and stderr."""
+    import io
+    import sys
 
-        try:
-            result = func(*args, **kwargs)
+    stdout_capture = io.StringIO()
+    stderr_capture = io.StringIO()
 
-            warning_msg = ""
-            for warning_item in warning_list:
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
 
-                # TODO: Manage citation warnings more rigorously
-                if "citation" in str(warning_item.message).lower():
-                    continue
+    sys.stdout = stdout_capture
+    sys.stderr = stderr_capture
 
-                if warning_item.category is DeprecationWarning:
-                    continue
+    try:
+        with warnings.catch_warnings(record=True) as warning_list:
+            warnings.simplefilter("always")
 
-                warning_msg += (
-                    f"{warning_item.category.__name__}: {warning_item.message}\n"
-                )
+            try:
+                result = func(*args, **kwargs)
 
-            return {
-                "result": result,
-                "warnings": warning_msg.rstrip() if warning_msg else None,
-            }
+                warning_msg = ""
+                for warning_item in warning_list:
 
-        except Exception as e:
-            # Re-raise the exception so it's handled by the executor
-            raise e
+                    if "citation" in str(warning_item.message).lower():
+                        continue
+
+                    if warning_item.category is DeprecationWarning:
+                        continue
+
+                    warning_msg += (
+                        f"{warning_item.category.__name__}: {warning_item.message}\n"
+                    )
+
+                return {
+                    "result": result,
+                    "warnings": warning_msg.rstrip() if warning_msg else None,
+                    "stdout": stdout_capture.getvalue(),
+                    "stderr": stderr_capture.getvalue(),
+                }
+
+            except Exception as e:
+                raise e
+    finally:
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
 
 
-class BatchContext:
-    def __init__(self, render_callback, delay: 500):
-        self.manager = BackgroundTaskManager.instance()
-        self.render_callback = render_callback
-        self.task_ids = []
+def _default_error_handler(task_id, task_name, error):
+    """Default handler for task errors."""
+    return _default_messagebox(task_name, error, is_warning=False)
 
-        self._delay = 500
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        QTimer.singleShot(self._delay, self._check_completion)
-
-    def _check_completion(self):
-        # Check if all tasks done
-        all_done = all(task_id not in self.manager.futures for task_id in self.task_ids)
-
-        if all_done:
-            self.render_callback()
-        else:
-            QTimer.singleShot(self._delay, self._check_completion)
-
-    def submit_task(self, name, func, callback, *args, **kwargs):
-        task_id = self.manager.submit_task(name, func, callback, *args, **kwargs)
-        self.task_ids.append(task_id)
-        return task_id
+def _default_warning_handler(task_id, task_name, warning):
+    """Default handler for task errors."""
+    return _default_messagebox(task_name, warning, is_warning=True)
 
 
 class BackgroundTaskManager(QObject):
@@ -99,7 +96,6 @@ class BackgroundTaskManager(QObject):
     task_completed = Signal(str, str, object)  # task_id, task_name, result
     task_failed = Signal(str, str, str)  # task_id, task_name, error
     task_warning = Signal(str, str, str)  # task_id, task_name, warning
-
     running_tasks = Signal(int)  # running tasks
 
     _instance = None
@@ -113,17 +109,23 @@ class BackgroundTaskManager(QObject):
     def __init__(self):
         super().__init__()
 
+        # Task tracking
+        self.task_queue: list = []
         self.task_info: Dict[str, Dict[str, Any]] = {}
         self.futures: Dict[str, concurrent.futures.Future] = {}
+
+        # Batch limits
+        self.batch_limits: Dict[str, int] = {}  # batch_id -> max_concurrent
+        self.batch_running: Dict[str, set] = {}  # batch_id -> set of running task_ids
 
         self._initialize()
 
         self.timer = QTimer()
-        self.timer.timeout.connect(self._check_completed_tasks)
-        self.timer.start(300)
+        self.timer.timeout.connect(self._process_tasks)
+        self.timer.start(500)
 
-        self.task_failed.connect(self._default_error_handler)
-        self.task_warning.connect(self._default_warning_handler)
+        self.task_failed.connect(_default_error_handler)
+        self.task_warning.connect(_default_warning_handler)
 
     def _initialize(self):
         """Initialize or reinitialize executors"""
@@ -143,50 +145,173 @@ class BackgroundTaskManager(QObject):
 
         self._shutdown()
         self.executor = concurrent.futures.ProcessPoolExecutor(
-            max_workers=Settings.rendering.parallel_worker
+            max_workers=int(Settings.rendering.parallel_worker)
+        )
+        self.executor_pipeline = concurrent.futures.ProcessPoolExecutor(
+            max_workers=int(Settings.rendering.pipeline_worker), max_tasks_per_child=1
         )
 
-        # Avoid collision with operations managing their own threads
-        self.sequential_executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
-        self.running_tasks.emit(0)
+        self.running_tasks.emit(len(self.futures))
 
     def _shutdown(self):
         self.futures.clear()
         self.task_info.clear()
+        self.task_queue.clear()
+        self.batch_limits.clear()
+        self.batch_running.clear()
 
         try:
             self.executor.shutdown(wait=False, cancel_futures=True)
+            self.executor_pipeline.shutdown(wait=False, cancel_futures=True)
         except Exception:
             pass
-
-        try:
-            self.sequential_executor.shutdown(wait=False, cancel_futures=True)
-        except Exception:
-            pass
-
-    def _default_error_handler(self, task_id, task_name, error):
-        """Default handler for task errors."""
-        return _default_messagebox(task_name, error, is_warning=False)
-
-    def _default_warning_handler(self, task_id, task_name, warning):
-        """Default handler for task errors."""
-        return _default_messagebox(task_name, warning, is_warning=True)
 
     def submit_task(
-        self, name: str, func: Callable, callback: Callable = None, *args, **kwargs
+        self,
+        name: str,
+        func: Callable,
+        callback: Callable = None,
+        batch_id: str = None,
+        args: tuple = (),
+        kwargs: dict = None,
+        reuse_worker: bool = True,
     ) -> str:
-        """Submit a task to the executor"""
+        """Submit a single task to the queue"""
         task_id = str(uuid.uuid4())
 
-        sequential = kwargs.get("sequential", False)
-        self.task_info[task_id] = {"name": name, "callback": callback}
+        self.task_queue.append(
+            {
+                "task_id": task_id,
+                "batch_id": batch_id,
+                "name": name,
+                "func": func,
+                "args": args,
+                "kwargs": kwargs or {},
+                "callback": callback,
+                "reuse_worker": reuse_worker,
+            }
+        )
 
-        executor = self.executor if not sequential else self.sequential_executor
-        self.futures[task_id] = executor.submit(_wrap_warnings, func, *args, **kwargs)
+        self.task_info[task_id] = {
+            "name": name,
+            "batch_id": batch_id,
+            "status": "queued",
+        }
 
-        self.task_started.emit(task_id, name)
-        self.running_tasks.emit(len(self.futures))
+        if len(self.task_info) > 1000:
+            self.task_info.pop(0)
+
         return task_id
+
+    def submit_task_batch(
+        self,
+        tasks: list,
+        max_concurrent: int = None,
+        batch_id: str = None,
+        reuse_worker: bool = True,
+    ) -> str:
+        """
+        Submit batch of tasks with optional concurrency limit.
+
+        Parameters
+        ----------
+        tasks : list of dict
+            Each dict: {"name": str, "func": callable, "args": tuple,
+                       "kwargs": dict, "callback": callable}
+        max_concurrent : int, optional
+            Max tasks from this batch running simultaneously.
+            If None, no limit (uses global worker limit).
+        batch_id : str, optional
+            Existing batch ID to add tasks to. If None, creates new batch.
+        reuse_worker: bool, optional
+            Reuse worker this operation was executed on.
+
+        Returns
+        -------
+        str
+            Batch ID for tracking
+        """
+        if batch_id is None:
+            batch_id = str(uuid.uuid4())
+
+        # Always set batch tracking, store max_concurrent (can be None)
+        if batch_id not in self.batch_limits:
+            self.batch_limits[batch_id] = max_concurrent
+            self.batch_running[batch_id] = set()
+
+        for task in tasks:
+            self.submit_task(
+                name=task.get("name", "Unnamed Task"),
+                func=task["func"],
+                callback=task.get("callback"),
+                batch_id=batch_id,
+                args=task.get("args", ()),
+                kwargs=task.get("kwargs", {}),
+                reuse_worker=reuse_worker,
+            )
+
+        return batch_id
+
+    def _process_tasks(self):
+        """Timer callback: check completed tasks and submit queued tasks."""
+        self._check_completed_tasks()
+        self._submit_queued_tasks()
+        self.running_tasks.emit(len(self.futures))
+
+    def _submit_queued_tasks(self):
+        """Submit queued tasks that respect batch limits."""
+        if not self.task_queue:
+            return None
+
+        batch_running = {k: len(v) for k, v in self.batch_running.items()}
+        tasks_to_submit, remaining_queue = [], []
+        for queued_task in self.task_queue:
+
+            can_run = True
+            batch_id = queued_task["batch_id"]
+            if batch_id is not None and batch_id in self.batch_limits:
+                max_concurrent = self.batch_limits[batch_id]
+
+                if max_concurrent is not None:
+                    can_run = batch_running[batch_id] < max_concurrent
+
+                batch_running[batch_id] += int(can_run)
+
+            if can_run:
+                tasks_to_submit.append(queued_task)
+            else:
+                remaining_queue.append(queued_task)
+
+        # Avoid the potential race condition by pre-counting batch running
+        self.task_queue = remaining_queue
+        for task in tasks_to_submit:
+            self._submit_from_queue(task)
+
+    def _submit_from_queue(self, task):
+        """Submit a queued task to the executor."""
+        task_id = task["task_id"]
+        batch_id = task["batch_id"]
+
+        # Track batch membership
+        if batch_id is not None and batch_id in self.batch_running:
+            self.batch_running[batch_id].add(task_id)
+
+        self.task_info[task_id] = {
+            "name": task["name"],
+            "callback": task["callback"],
+            "batch_id": batch_id,
+            "status": "running",
+        }
+
+        executor = self.executor_pipeline
+        if task.get("reuse_worker", True):
+            executor = self.executor
+
+        future = executor.submit(
+            _wrap_warnings, task["func"], *task["args"], **task["kwargs"]
+        )
+        self.futures[task_id] = future
+        self.task_started.emit(task_id, task["name"])
 
     def _check_completed_tasks(self):
         """Check for completed futures and handle results"""
@@ -195,14 +320,24 @@ class BackgroundTaskManager(QObject):
 
         for task_id, future in self.futures.items():
             if future.done():
-                task_info = self.task_info[task_id]
+                task_info = self.task_info.get(task_id)
+                if not task_info:
+                    completed_tasks.append(task_id)
+                    continue
+
                 task_name = task_info["name"]
+                task_info["status"] = "failed"
+                batch_id = task_info.get("batch_id")
 
                 try:
                     ret = future.result()
 
                     result = ret["result"]
                     warnings_msg = ret["warnings"]
+
+                    task_info["status"] = "completed"
+                    task_info["stdout"] = ret.get("stdout")
+                    task_info["stderr"] = ret.get("stderr")
 
                     self.task_completed.emit(task_id, task_name, result)
 
@@ -213,7 +348,6 @@ class BackgroundTaskManager(QObject):
                         self.task_warning.emit(task_id, task_name, warnings_msg)
 
                 except concurrent.futures.process.BrokenProcessPool as e:
-                    # Worker died from segfault or similar fatal error
                     error_msg = f"Worker process died unexpectedly: {str(e)}"
                     self.task_failed.emit(task_id, task_name, error_msg)
                     executor_broken = True
@@ -221,18 +355,35 @@ class BackgroundTaskManager(QObject):
                 except Exception as e:
                     error_msg = str(e)
                     self.task_failed.emit(task_id, task_name, error_msg)
+
+                # Update batch tracking
+                if batch_id is not None and batch_id in self.batch_running:
+                    self.batch_running[batch_id].discard(task_id)
+
                 completed_tasks.append(task_id)
 
         for task_id in completed_tasks:
-            _ = self.futures.pop(task_id)
-            _ = self.task_info.pop(task_id)
-            self.running_tasks.emit(len(self.futures))
+            _ = self.futures.pop(task_id, None)
+
+            # We want to access this information from the control center
+            if task_id in self.task_info:
+                task_info = self.task_info.pop(task_id)
+
+                # Lets not keep the callbacks
+                _keys = ("stdout", "stderr", "status", "name")
+                self.task_info[task_id] = {k: task_info.get(k) for k in _keys}
 
         if executor_broken:
             self._initialize()
 
 
-def submit_task(name, func, callback, *args, **kwargs):
+def submit_task(name, func, callback=None, *args, **kwargs):
     return BackgroundTaskManager.instance().submit_task(
-        name, func, callback, *args, **kwargs
+        name, func, callback, args=args, kwargs=kwargs
+    )
+
+
+def submit_task_batch(tasks, max_concurrent=None, batch_id=None, reuse_worker=True):
+    return BackgroundTaskManager.instance().submit_task_batch(
+        tasks, max_concurrent, batch_id, reuse_worker
     )

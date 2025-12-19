@@ -1,10 +1,8 @@
-import sys
 from dataclasses import dataclass
 from typing import Dict, List, Any
 
 from qtpy.QtCore import Qt, QTimer
 from qtpy.QtWidgets import (
-    QApplication,
     QDialog,
     QWidget,
     QVBoxLayout,
@@ -286,24 +284,3 @@ class AnimationComposerDialog(QDialog):
         """Export the animation with current settings"""
         print("Exporting animation...")
         pass
-
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    app.setStyleSheet(
-        QMessageBox_style
-        + QLineEdit_style
-        + QSpinBox_style
-        + QDoubleSpinBox_style
-        + QComboBox_style
-        + QCheckBox_style
-        + QSlider_style
-        + QGroupBox_style
-        + QListWidget_style
-        + QPushButton_style
-        + QScrollArea_style
-    )
-    dialog = AnimationComposerDialog()
-    dialog.show()
-    sys.exit(app.exec())

@@ -1,89 +1,11 @@
 from functools import partial
 
 import numpy as np
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog
+from qtpy.QtWidgets import QWidget, QVBoxLayout
 
 from .. import meshing
-from ..parallel import submit_task
 from ..widgets.ribbon import create_button
-
-
-def on_fit_complete(self, *args, **kwargs):
-    self.cdata.data.render()
-    self.cdata.models.render()
-
-
-def _fit(method, geometry, **kwargs):
-    from ..parametrization import PARAMETRIZATION_TYPE
-
-    fit_object = PARAMETRIZATION_TYPE.get(method)
-    if fit_object is None:
-        raise ValueError(f"{method} is not supported ({PARAMETRIZATION_TYPE.keys()}).")
-
-    points, *_ = geometry.get_point_data()
-
-    n = points.shape[0]
-    if n < 50 and method not in ["convexhull", "spline"]:
-        raise ValueError(f"Insufficient points for fit ({n}<50).")
-    return fit_object.fit(points, **kwargs)
-
-
-def _remesh(method, geometry, **kwargs):
-    import pyfqmr
-    from ..meshing.utils import to_open3d
-    from ..parametrization import TriangularMesh
-
-    mesh = geometry.model
-    mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
-    if method == "edge length":
-        mesh = meshing.remesh(mesh=mesh, **kwargs)
-    elif method == "vertex clustering":
-        mesh = mesh.simplify_vertex_clustering(**kwargs)
-    elif method == "subdivide":
-        func = mesh.subdivide_midpoint
-        if kwargs.get("smooth"):
-            func = mesh.subdivide_loop
-        kwargs = {k: v for k, v in kwargs.items() if k != "smooth"}
-        mesh = func(**kwargs)
-    else:
-        method = kwargs.get("decimation_method", "Triangle Count").lower()
-        sampling = kwargs.get("sampling")
-        if method == "reduction factor":
-            sampling = np.asarray(mesh.triangles).shape[0] // sampling
-
-        if kwargs.get("smooth", False):
-            mesh = mesh.simplify_quadric_decimation(int(sampling))
-        else:
-            simplifier = pyfqmr.Simplify()
-            simplifier.setMesh(np.asarray(mesh.vertices), np.asarray(mesh.triangles))
-            simplifier.simplify_mesh(
-                target_count=int(sampling),
-                aggressiveness=5.5,
-                preserve_border=True,
-                verbose=False,
-            )
-
-            vertices, faces, normals = simplifier.getMesh()
-            mesh = to_open3d(vertices, faces)
-    return TriangularMesh(mesh)
-
-
-def _smooth(method, geometry, **kwargs):
-    from ..parametrization import TriangularMesh
-
-    mesh = geometry.model
-    mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
-
-    n_iterations = int(kwargs.get("n_iterations", 10))
-    if method == "taubin":
-        mesh = mesh.filter_smooth_taubin(n_iterations)
-    elif method == "laplacian":
-        mesh = mesh.filter_smooth_laplacian(n_iterations)
-    elif method == "average":
-        mesh = mesh.filter_smooth_simple(n_iterations)
-    else:
-        raise ValueError(f"Unsupported smoothing method: {method}")
-    return TriangularMesh(mesh)
+from ..parallel import submit_task, submit_task_batch
 
 
 def _project(
@@ -179,7 +101,6 @@ class ModelTab(QWidget):
                 "Sample from Fit",
                 SAMPLE_SETTINGS,
             ),
-            create_button("To Cluster", "mdi.plus", self, self._to_cluster),
         ]
         self.ribbon.add_section("Sampling", mesh_actions)
 
@@ -216,28 +137,12 @@ class ModelTab(QWidget):
                 "Project on Mesh",
                 PROJECTION_SETTINGS,
             ),
-            # create_button("Skeleton", "mdi.vector-line", self, self._sceleton),
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
 
-    def _to_cluster(self, *args, **kwargs):
-        for geometry in self.cdata.models.get_selected_geometries():
-            fit = geometry.model
-            normals, sampling = None, geometry._sampling_rate
-            if hasattr(fit, "mesh"):
-                points = fit.vertices
-                normals = fit.compute_vertex_normals()
-            else:
-                points = geometry.points
-                if fit is not None:
-                    normals = fit.compute_normal(points)
-
-            normals = fit.compute_normal(points)
-
-            self.cdata.data.add(points, normals=normals, sampling_rate=sampling)
-        self.cdata.data.data_changed.emit()
-        self.cdata.data.render()
-        return None
+    def _default_callback(self, fit):
+        self.cdata._add_fit(fit)
+        self.cdata.models.render()
 
     def _get_selected_meshes(self):
         from ..parametrization import TriangularMesh
@@ -263,9 +168,6 @@ class ModelTab(QWidget):
 
         for geometry in self._get_selected_meshes():
             fit = geometry.model
-            if not hasattr(fit, "vertices"):
-                continue
-
             fit.mesh.remove_non_manifold_edges()
             fit.mesh.remove_degenerate_triangles()
             fit.mesh.remove_duplicated_triangles()
@@ -280,93 +182,44 @@ class ModelTab(QWidget):
                 hole_len_thr=max_hole_size,
                 n_ring=boundary_ring,
             )
-            self.cdata._add_fit(
-                fit=TriangularMesh(meshing.to_open3d(vs, fs)),
-                sampling_rate=geometry.sampling_rate,
-            )
-
+            geom = geometry[...]
+            geom._model = TriangularMesh(meshing.to_open3d(vs, fs))
+            self.cdata._add_fit(geom)
         return self.cdata.models.render()
 
-    def _sceleton(self):
-        selected_meshes = self._get_selected_meshes()
-
-        if len(selected_meshes) == 0:
-            return None
-
-        for geometry in selected_meshes:
-            import trimesh
-            import skeletor as sk
-            from ..utils import com_cluster_points
-
-            mesh = geometry.model
-            mesh = trimesh.Trimesh(mesh.vertices, mesh.triangles)
-            mesh = sk.pre.fix_mesh(mesh)
-            skel = sk.skeletonize.by_wavefront(mesh, waves=5, step_size=1)
-
-            vertices = com_cluster_points(skel.vertices, 100)
-            vertices = skel.vertices
-            self.cdata._data.add(vertices)
-
-        self.cdata.data.data_changed.emit()
-        return self.cdata.data.render()
-
     def _fit_parallel(self, method: str, *args, **kwargs):
-        _conversion = {
-            "Alpha Shape": "convexhull",
-            "Ball Pivoting": "mesh",
-            "Poisson": "poissonmesh",
-            "Cluster Ball Pivoting": "clusterballpivoting",
-            "Flying Edges": "flyingedges",
-            "Marching Cubes": "marchingcubes",
-        }
-        method = _conversion.get(method, method)
+        from ..operations import GeometryOperations
 
-        if method == "mesh":
-            radii = kwargs.get("radii", None)
-            try:
-                kwargs["radii"] = [float(x) for x in radii.split(",")]
-            except Exception as e:
-                raise ValueError(f"Incorrect radius specification {radii}.") from e
+        # These methods are parallelize and would mess with the worker pool
+        tasks, max_concurrent = [], None
+        if method in ("Poisson", "Marching Cubes"):
+            max_concurrent = 1
 
         for geometry in self.cdata.data.get_selected_geometries():
-            kwargs["voxel_size"] = np.max(geometry.sampling_rate)
+            tasks.append(
+                {
+                    "name": "Parametrization",
+                    "func": GeometryOperations.fit,
+                    "callback": self._default_callback,
+                    "kwargs": {"geometry": geometry, "method": method} | kwargs,
+                }
+            )
+        submit_task_batch(tasks, max_concurrent=max_concurrent)
 
-            if method == "flyingedges" and kwargs.get("distance", -1) != -1:
-                kwargs["voxel_size"] = kwargs.get("distance")
+    def _smooth_parallel(self, method, **kwargs):
+        from ..operations import GeometryOperations
 
-            def _callback(fit):
-                self.cdata._add_fit(fit, sampling_rate=kwargs["voxel_size"])
-                self.cdata.models.render()
-
+        for geometry in self._get_selected_meshes():
             submit_task(
-                "Parametrization",
-                _fit,
-                _callback,
-                method.lower(),
+                "Smooth",
+                GeometryOperations.smooth,
+                self._default_callback,
                 geometry,
-                sequential=method in ("poissonmesh", "marchingcubes"),
+                method,
                 **kwargs,
             )
 
-    def _smooth_parallel(self, method, **kwargs):
-        selected_meshes = self._get_selected_meshes()
-        if len(selected_meshes) == 0:
-            return None
-
-        method = method.lower()
-        supported = ("taubin", "laplacian", "average")
-        if method not in supported:
-            raise ValueError(f"{method} is not supported, chose one of {supported}.")
-
-        for geometry in selected_meshes:
-
-            def _callback(fit):
-                self.cdata._add_fit(fit, sampling_rate=geometry.sampling_rate)
-                self.cdata.models.render()
-
-            submit_task("Smooth", _smooth, _callback, method, geometry, **kwargs)
-
-    def _sample_parallel(self, sampling, sampling_method, normal_offset=0.0, **kwargs):
+    def _sample_parallel(self, sampling, method, normal_offset=0.0, **kwargs):
         from ..operations import GeometryOperations
 
         def _callback(*args, **kwargs):
@@ -379,34 +232,24 @@ class ModelTab(QWidget):
                 GeometryOperations.sample,
                 _callback,
                 geometry,
-                sampling,
-                sampling_method,
-                normal_offset,
+                method=method,
+                sampling=sampling,
+                normal_offset=normal_offset,
                 **kwargs,
             )
 
     def _remesh_parallel(self, method, **kwargs):
-        selected_meshes = self._get_selected_meshes()
-        if len(selected_meshes) == 0:
-            return None
+        from ..operations import GeometryOperations
 
-        method = method.lower()
-        supported = (
-            "edge length",
-            "vertex clustering",
-            "decimation",
-            "subdivide",
-        )
-        if method not in (supported):
-            raise ValueError(f"{method} is not supported, chose one of {supported}.")
-
-        for geometry in selected_meshes:
-
-            def _callback(fit):
-                self.cdata._add_fit(fit, sampling_rate=geometry.sampling_rate)
-                self.cdata.models.render()
-
-            submit_task("Remesh", _remesh, _callback, method, geometry, **kwargs)
+        for geometry in self._get_selected_meshes():
+            submit_task(
+                "Remesh",
+                GeometryOperations.remesh,
+                self._default_callback,
+                geometry,
+                method,
+                **kwargs,
+            )
 
     def _project_on_mesh(
         self,
@@ -444,37 +287,16 @@ class ModelTab(QWidget):
             update_normals,
         )
 
-    def _mesh_volume(self, **kwargs):
-        filename, _ = QFileDialog.getOpenFileName(self, "Select Meshes")
-        if not filename:
-            return -1
-
-        def _callback(ret):
-            meshes, sampling = ret
-            for mesh in meshes:
-                self.cdata._add_fit(
-                    fit=mesh,
-                    sampling_rate=sampling,
-                )
-            self.cdata.models.render()
-
-        submit_task(
-            "Mesh Volume",
-            _run_marching_cubes,
-            _callback,
-            filename,
-        )
-
 
 SAMPLE_SETTINGS = {
     "title": "Sample Fit",
     "settings": [
         {
             "label": "Sampling Method",
-            "parameter": "sampling_method",
+            "parameter": "method",
             "type": "select",
             "options": ["Points", "Distance"],
-            "default": "Points",
+            "default": "Distance",
             "notes": "Number of points or average distance between points.",
         },
         {
@@ -482,7 +304,7 @@ SAMPLE_SETTINGS = {
             "parameter": "sampling",
             "type": "float",
             "min": 1,
-            "default": 1000,
+            "default": 40,
             "notes": "Numerical value for sampling method.",
         },
         {
@@ -492,6 +314,15 @@ SAMPLE_SETTINGS = {
             "default": 0,
             "min": -1e32,
             "notes": "Points are shifted by n times normal vector for particle picking.",
+        },
+        {
+            "label": "Bidirectional",
+            "parameter": "bidirectional",
+            "type": "boolean",
+            "default": False,
+            "notes": "Draw inward and outward facing points at the same time. This "
+            "doubles the total number of points compared to running sample without "
+            "this option set.",
         },
     ],
 }
@@ -564,9 +395,9 @@ REPAIR_SETTINGS = {
             "label": "Flexibility",
             "parameter": "anchoring",
             "type": "float_list",
-            "default": "1,0",
-            "min": "0,0",
-            "max": "1,0",
+            "default": "1",
+            "min": "0",
+            "max": "1",
             "description": "Flexibility of inferred vertices. 1 is maximum. Can be "
             "specified for all axes, e.g., 1, or per-axis, e.g., 1;1;0.5.",
         },

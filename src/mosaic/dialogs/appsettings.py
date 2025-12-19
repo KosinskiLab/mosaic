@@ -125,9 +125,8 @@ class AppSettingsDialog(QDialog):
                 "default": rendering.target_fps,
             }
         )
-        perf_layout.addRow("Target Frame Rate", self.target_fps_spin)
 
-        self.n_workers_spin = create_setting_widget(
+        self.parallel_worker_spin = create_setting_widget(
             {
                 "type": "number",
                 "min": 1,
@@ -136,7 +135,19 @@ class AppSettingsDialog(QDialog):
                 "default": rendering.parallel_worker,
             }
         )
-        perf_layout.addRow("Parallel Workers", self.n_workers_spin)
+
+        self.pipeline_worker_spin = create_setting_widget(
+            {
+                "type": "number",
+                "min": 1,
+                "max": QThread.idealThreadCount(),
+                "step": 1,
+                "default": rendering.pipeline_worker,
+            }
+        )
+        perf_layout.addRow("Target Frame Rate", self.target_fps_spin)
+        perf_layout.addRow("Parallel Worker", self.parallel_worker_spin)
+        perf_layout.addRow("Pipeline Worker", self.pipeline_worker_spin)
 
         perf_group.setLayout(perf_layout)
         layout.addWidget(perf_group)
@@ -297,7 +308,8 @@ class AppSettingsDialog(QDialog):
         self.widget_settings_map = {
             # vtk rendering settings
             self.target_fps_spin: (Settings.rendering, "target_fps", float),
-            self.n_workers_spin: (Settings.rendering, "parallel_worker", int),
+            self.parallel_worker_spin: (Settings.rendering, "parallel_worker", int),
+            self.pipeline_worker_spin: (Settings.rendering, "pipeline_worker", int),
             self.fxaa_check: (Settings.rendering, "enable_fxaa", bool),
             self.multisamples_spin: (Settings.rendering, "multisamples", int),
             self.point_smooth_check: (Settings.rendering, "point_smoothing", bool),

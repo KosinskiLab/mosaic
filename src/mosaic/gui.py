@@ -28,6 +28,7 @@ from qtpy.QtWidgets import (
     QShortcut,
     QMessageBox,
     QCheckBox,
+    QDialog,
 )
 from qtpy.QtGui import (
     QAction,
@@ -52,8 +53,6 @@ from .dialogs import (
     ImportDataDialog,
     ProgressDialog,
     AppSettingsDialog,
-    BatchImportDialog,
-    BatchNavigatorDialog,
 )
 from .widgets import (
     MultiVolumeViewer,
@@ -464,10 +463,6 @@ class App(QMainWindow):
         self._camera_direction = aligned_direction
         self.vtk_widget.GetRenderWindow().Render()
 
-    def reset_camera_view(self):
-        self._camera_view = None
-        self.set_camera_view("z")
-
     def swap_camera_view_direction(self, view_key):
         view = getattr(self, "_camera_view", None)
         if view is None:
@@ -539,6 +534,9 @@ class App(QMainWindow):
         )
         task_manager.task_started.connect(
             lambda _, name: self.status_indicator.update_status(busy=True, task=name)
+        )
+        task_manager.running_tasks.connect(
+            lambda n: self.status_indicator.task_monitor._sync_with_task_manager()
         )
 
         self._setup_volume_viewer()
@@ -763,11 +761,11 @@ class App(QMainWindow):
         file_menu.addAction(close_file_action)
 
         file_menu.addSeparator()
-        batch_import_action = QAction("Batch Import", self)
-        batch_import_action.triggered.connect(lambda: BatchImportDialog(self).exec())
+        batch_process_action = QAction("Batch Processing", self)
+        batch_process_action.triggered.connect(self.open_batch_pipeline)
         batch_navigator_action = QAction("Batch Navigator", self)
         batch_navigator_action.triggered.connect(self.open_batch_navigator)
-        file_menu.addAction(batch_import_action)
+        file_menu.addAction(batch_process_action)
         file_menu.addAction(batch_navigator_action)
 
         file_menu.addSeparator()
@@ -957,9 +955,36 @@ class App(QMainWindow):
         interact_menu.addAction(mesh_add_action)
         interact_menu.addAction(mesh_delete_action)
 
+    def open_batch_pipeline(self):
+        """Open the PipelineBuilderDialog dialog."""
+        from .parallel import submit_task_batch
+        from .pipeline.executor import execute_run
+        from .pipeline.dialog import PipelineBuilderDialog
+
+        dialog = PipelineBuilderDialog(self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return None
+
+        settings = dialog.get_settings()
+
+        tasks = []
+        for run in settings["runs"]:
+            tasks.append(
+                {
+                    "name": f"pipeline_{run['run_id']}",
+                    "func": execute_run,
+                    "callback": None,
+                    "kwargs": {"run_config": run},
+                    "reuse_worker": False,
+                }
+            )
+
+        submit_task_batch(tasks, max_concurrent=int(settings.get("workers", 4)))
+
     def open_batch_navigator(self):
         """Open the batch navigator dialog."""
         from .widgets.dock import create_or_toggle_dock
+        from .pipeline.dialog import BatchNavigatorDialog
 
         files, _ = QFileDialog.getOpenFileNames(
             self, "Select Session Files", "", "Pickle Files (*.pickle)"
@@ -1062,8 +1087,7 @@ class App(QMainWindow):
             return self.apply_render_settings()
 
     def _load_session(self, file_path: str):
-        self.close_session(show_warning=False)
-
+        self.close_session(show_warning=False, render=False)
         try:
             self.cdata.load_session(file_path)
         except ValueError as e:
@@ -1072,9 +1096,10 @@ class App(QMainWindow):
 
         self._add_file_to_recent(file_path)
 
-        self.cdata.data.render()
-        self.cdata.models.render()
-        return self.reset_camera_view()
+        self.cdata.data.render(defer_render=True)
+        self.cdata.models.render(defer_render=True)
+        self._camera_view = None
+        self.set_camera_view("z")
 
     def load_session(self):
         file_dialog = QFileDialog()
@@ -1083,7 +1108,7 @@ class App(QMainWindow):
             return -1
         return self._load_session(file_path)
 
-    def close_session(self, show_warning: bool = True):
+    def close_session(self, show_warning: bool = True, render: bool = True):
 
         def _show_close_session_warning() -> bool:
             msg_box = QMessageBox()
@@ -1121,10 +1146,10 @@ class App(QMainWindow):
             self.status_indicator.show()
 
         self.cdata.reset()
-        self.cdata.data.render()
-        self.cdata.models.render()
-
-        self.set_camera_view("z")
+        self.cdata.data.render(defer_render=True)
+        self.cdata.models.render(defer_render=True)
+        if render:
+            self.set_camera_view("z")
 
     def _open_file(self, filename, parameters):
         from .formats import open_file

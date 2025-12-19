@@ -1202,7 +1202,7 @@ class PoissonMesh(TriangularMesh):
     def fit(
         cls,
         positions: np.ndarray,
-        voxel_size: float = None,
+        voxel_size: float = 1,
         depth: int = 9,
         k_neighbors=50,
         smooth_iter=1,
@@ -1212,7 +1212,6 @@ class PoissonMesh(TriangularMesh):
         samplespernode=5.0,
         **kwargs,
     ):
-        voxel_size = 1 if voxel_size is None else voxel_size
 
         positions = np.asarray(positions, dtype=np.float64)
         positions = np.divide(positions, voxel_size)
@@ -1236,7 +1235,7 @@ class ClusteredBallPivotingMesh(TriangularMesh):
     def fit(
         cls,
         positions: np.ndarray,
-        voxel_size: float = None,
+        voxel_size: float = 1,
         radius: int = 0,
         k_neighbors=50,
         smooth_iter=1,
@@ -1246,7 +1245,6 @@ class ClusteredBallPivotingMesh(TriangularMesh):
     ):
         from pymeshlab import MeshSet, Mesh, PercentageValue
 
-        voxel_size = 1 if voxel_size is None else voxel_size
         positions = np.divide(np.asarray(positions, dtype=np.float64), voxel_size)
 
         ms = MeshSet()
@@ -1290,7 +1288,7 @@ class ConvexHull(TriangularMesh):
     def fit(
         cls,
         positions: np.ndarray,
-        voxel_size: float = None,
+        voxel_size: float = 1,
         alpha: float = 1,
         elastic_weight: float = 0,
         curvature_weight: float = 0,
@@ -1301,9 +1299,7 @@ class ConvexHull(TriangularMesh):
         distance_cutoff: float = 2.0,
         **kwargs,
     ):
-        voxel_size = 1 if voxel_size is None else voxel_size
         voxel_size = np.max(voxel_size)
-
         positions = np.asarray(positions, dtype=np.float64)
 
         scale = positions.max(axis=0)
@@ -1381,7 +1377,7 @@ class MarchingCubes(TriangularMesh):
     def fit(
         cls,
         positions: np.ndarray,
-        voxel_size: float = 10,
+        voxel_size: float = 1,
         simplification_factor=100,
         closed_dataset_edges=True,
         num_workers: int = 8,
@@ -1433,7 +1429,7 @@ class FlyingEdges(TriangularMesh):
     def fit(
         cls,
         positions: np.ndarray,
-        voxel_size: float = 10,
+        voxel_size: float = 1,
         **kwargs,
     ):
         import vtk
@@ -1441,7 +1437,9 @@ class FlyingEdges(TriangularMesh):
 
         voxel_size = tuple(voxel_size for _ in range(positions.shape[1]))
 
-        _volume, offset = points_to_volume(positions, voxel_size, use_offset=True)
+        _volume, offset = points_to_volume(
+            positions, voxel_size, use_offset=True, out_dtype=np.uint8
+        )
 
         # Pad volume to ensure closed edges
         pad_width = 2
@@ -1451,10 +1449,8 @@ class FlyingEdges(TriangularMesh):
         volume = vtk.vtkImageData()
         volume.SetSpacing(voxel_size)
         volume.SetDimensions(_volume.shape)
-        volume.AllocateScalars(vtk.VTK_FLOAT, 1)
-        _volume = numpy_support.numpy_to_vtk(
-            _volume.ravel(order="F"), deep=False, array_type=vtk.VTK_FLOAT
-        )
+        volume.AllocateScalars(vtk.VTK_UNSIGNED_CHAR, 1)
+        _volume = numpy_support.numpy_to_vtk(_volume.ravel(order="F"), deep=False)
         volume.GetPointData().SetScalars(_volume)
 
         flying_edges = vtk.vtkFlyingEdges3D()

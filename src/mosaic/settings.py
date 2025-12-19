@@ -92,7 +92,8 @@ class RenderingSettings:
     background_color_alt: Tuple[float, float, float] = (1.0, 1.0, 1.0)
     use_gradient_background: bool = False
     target_fps: float = 30.0
-    parallel_worker: int = max(2, QThread.idealThreadCount() - 1)
+    parallel_worker: int = min(8, QThread.idealThreadCount() - 1)
+    pipeline_worker: int = min(4, max(1, QThread.idealThreadCount() // 4))
     enable_fxaa: bool = True
     use_depth_peeling: bool = True
     max_depth_peels: int = 4

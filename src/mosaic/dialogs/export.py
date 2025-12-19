@@ -1,4 +1,4 @@
-from typing import Tuple, Dict
+from typing import Dict
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
     QDialog,

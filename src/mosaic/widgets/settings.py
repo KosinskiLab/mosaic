@@ -71,7 +71,10 @@ def create_setting_widget(setting: Dict):
     elif setting["type"] == "PathSelector":
         from . import PathSelector
 
-        widget = PathSelector()
+        widget = PathSelector(
+            placeholder=setting.get("placeholder", None),
+            file_mode=setting.get("file_mode", True),
+        )
         if "default" in setting:
             set_widget_value(widget, setting["default"])
         widget.setMinimumWidth(200)
@@ -137,6 +140,9 @@ def set_widget_value(widget, value):
     elif isinstance(widget, QCheckBox):
         widget.setChecked(bool(value))
     elif isinstance(widget, QLineEdit):
+        if widget.property("setting_type") == "float_list":
+            if isinstance(value, (list, tuple)):
+                value = ",".join([str(x) for x in value])
         widget.setText(str(value))
     elif isinstance(widget, PathSelector):
         widget.set_path(value)

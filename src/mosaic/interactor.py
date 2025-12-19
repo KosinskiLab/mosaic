@@ -10,7 +10,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import numpy as np
 from typing import Dict
-from os.path import splitext
 
 
 import vtk
@@ -30,6 +29,7 @@ from qtpy.QtCore import (
 )
 from .parallel import submit_task
 
+from .formats.writer import write_geometries
 from .widgets.container_list import StyledTreeWidgetItem
 
 __all__ = ["DataContainerInteractor"]
@@ -210,10 +210,11 @@ class DataContainerInteractor(QObject):
             if not geometry.visible or n_points == 0 or point_ids.size == 0:
                 continue
 
+            inverse = np.ones(n_points, dtype=bool)
+            inverse[point_ids] = False
             new_cluster.append(geometry[point_ids])
-            inverse = np.setdiff1d(np.arange(n_points), point_ids, assume_unique=True)
-            if inverse.size != 0:
-                self.container.update(uuid, geometry[inverse])
+            if inverse.sum() != 0:
+                self.container.update(uuid, geometry.subset(inverse))
             else:
                 # All points were selected, mark for removal
                 remove_cluster.append(geometry)
@@ -504,12 +505,19 @@ class DataContainerInteractor(QObject):
         if not file_path:
             return -1
 
+        if (shape := self.container.metadata.get("shape")) is not None:
+            sampling = self.container.metadata.get("sampling_rate", 1)
+            shape = np.rint(np.divide(shape, sampling)).astype(int)
+
+            for key, val in zip(("shape_x", "shape_y", "shape_z"), shape):
+                if key not in export_data:
+                    export_data[key] = val
+
         try:
-            _export_data(
+            write_geometries(
                 geometries=self.get_selected_geometries(),
-                metadata=self.container.metadata,
                 file_path=file_path,
-                export_data=export_data,
+                export_parameters=export_data,
             )
         except Exception as e:
             QMessageBox.warning(None, "Error", str(e))
@@ -575,7 +583,7 @@ class DataContainerInteractor(QObject):
             uuid_to_items[geometry.uuid] = item
         return uuid_to_items
 
-    def render(self):
+    def render(self, defer_render: bool = False):
         """Synchronize vtk actors and tree data structure with subsequent render."""
         renderer = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
@@ -592,6 +600,9 @@ class DataContainerInteractor(QObject):
 
         uuid_to_items = self._uuid_to_items()
         self.data_list.update(uuid_to_items)
+
+        if defer_render:
+            return None
 
         self.render_vtk()
         self.render_update.emit()
@@ -699,7 +710,6 @@ class DataContainerInteractor(QObject):
 
     def remove(self):
         self._backup()
-
         added_cluster = self.add_selection(self.point_selection)
         self.point_selection.clear()
 
@@ -825,114 +835,6 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
         method_name,
         create_method(op_name, remove_orig, render, background, batch),
     )
-
-
-def _export_data(geometries, metadata, file_path: str, export_data: Dict):
-    from .utils import points_to_volume, normals_to_rot
-    from .formats import OrientationsWriter, write_density
-
-    mesh_formats = ("obj", "stl", "ply")
-    volume_formats = ("mrc", "em", "h5")
-    point_formats = ("tsv", "star", "xyz")
-
-    file_format = export_data.get("format")
-    if not len(geometries):
-        raise ValueError("Select at least one object.")
-
-    file_path, _ = splitext(file_path)
-
-    shape = metadata.get("shape", None)
-    if shape is not None:
-        _sampling = metadata.get("sampling_rate", 1)
-        shape = np.rint(np.divide(shape, _sampling)).astype(int)
-
-    center = 0
-    if {"shape_x", "shape_y", "shape_z"}.issubset(export_data):
-        shape = tuple(export_data[x] for x in ["shape_x", "shape_y", "shape_z"])
-
-    orientation_kwargs = {}
-    data = {"points": [], "quaternions": []}
-    for index, geometry in enumerate(geometries):
-        if file_format in mesh_formats:
-            fit = geometry.model
-            if not hasattr(fit, "mesh"):
-                raise ValueError(f"Selected geometry {index} is not a mesh.")
-            fit.to_file(f"{file_path}_{index}.{file_format}")
-            continue
-
-        points, normals, quaternions = geometry.get_point_data()
-        if file_format in point_formats and quaternions is None:
-            quaternions = normals_to_rot(normals, scalar_first=True)
-
-        sampling = export_data.get("sampling", geometry.sampling_rate)
-        if export_data.get("relion_5_format", False):
-            center = np.divide(shape, 2).astype(int) if shape is not None else 0
-            center = np.multiply(center, sampling)
-            orientation_kwargs["version"] = "# version 50001"
-            sampling = 1
-
-        points = np.subtract(np.divide(points, sampling), center)
-        data["points"].append(points)
-        data["quaternions"].append(quaternions)
-
-    if file_format in mesh_formats:
-        return None
-
-    if len(data["points"]) == 0:
-        raise ValueError("No elements suitable for export")
-
-    if file_format in volume_formats:
-        if shape is None:
-            shape = np.rint(np.concatenate(data["points"]))
-            shape = shape.astype(int).max(axis=0) + 1
-
-        volume = None
-        for index, points in enumerate(data["points"]):
-            volume = points_to_volume(
-                points, sampling_rate=1, shape=shape, weight=index + 1, out=volume
-            )
-
-        # Try saving some memory on write. uint8 would be padded to 16 hence int8
-        dtype = np.float32
-        if index < np.iinfo(np.int8).max:
-            dtype = np.int8
-        elif index < np.iinfo(np.uint16).max:
-            dtype = np.uint16
-
-        return write_density(
-            volume.astype(dtype),
-            filename=f"{file_path}.{file_format}",
-            sampling_rate=sampling,
-        )
-
-    if file_format not in point_formats:
-        return None
-
-    data["entities"] = [
-        np.full(x.shape[0], fill_value=i) for i, x in enumerate(data["points"])
-    ]
-    if single_file := export_data.get("single_file", True):
-        data = {k: [np.concatenate(v)] for k, v in data.items()}
-
-    if file_format == "xyz":
-        for index, points in enumerate(data["points"]):
-            fname = f"{file_path}_{index}.{file_format}"
-            if single_file:
-                fname = f"{file_path}.{file_format}"
-
-            header = ""
-            if export_data.get("header", True):
-                header = ",".join(["x", "y", "z"])
-
-            np.savetxt(fname, points, delimiter=",", header=header, comments="")
-        return 1
-
-    for index in range(len(data["points"])):
-        orientations = OrientationsWriter(**{k: v[index] for k, v in data.items()})
-        fname = f"{file_path}_{index}.{file_format}"
-        if single_file:
-            fname = f"{file_path}.{file_format}"
-        orientations.to_file(fname, file_format=file_format, **orientation_kwargs)
 
 
 def _compute_frustum_bound(plane_normals, plane_origins, tol=1e-6):

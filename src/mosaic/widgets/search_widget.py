@@ -21,19 +21,15 @@ class SearchWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Search input
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText(placeholder)
         self.search_input.setClearButtonEnabled(True)
         self.search_input.textChanged.connect(self.searchTextChanged.emit)
 
-        # Add search icon as left action
         search_icon = qta.icon("mdi.magnify", color="#6b7280")
         self.search_input.addAction(
             search_icon, QLineEdit.ActionPosition.LeadingPosition
         )
-
-        # Styling
         self.search_input.setStyleSheet(
             """
             QLineEdit {
