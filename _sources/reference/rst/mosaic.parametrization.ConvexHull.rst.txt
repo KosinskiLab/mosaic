@@ -1,0 +1,41 @@
+﻿mosaic.parametrization.ConvexHull
+=================================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: ConvexHull
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ConvexHull.__init__
+      ~ConvexHull.add_projections
+      ~ConvexHull.compute_curvature
+      ~ConvexHull.compute_distance
+      ~ConvexHull.compute_normal
+      ~ConvexHull.compute_vertex_normals
+      ~ConvexHull.fit
+      ~ConvexHull.from_file
+      ~ConvexHull.geodesic_distance
+      ~ConvexHull.points_per_sampling
+      ~ConvexHull.sample
+      ~ConvexHull.subset
+      ~ConvexHull.to_file
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ConvexHull.triangles
+      ~ConvexHull.vertices
+   
+   
