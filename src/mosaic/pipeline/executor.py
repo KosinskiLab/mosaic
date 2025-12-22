@@ -14,10 +14,13 @@ from os.path import join, exists
 
 import numpy as np
 
-from ._utils import strip_filepath
 from ..container import DataContainer
 from ..formats.writer import write_geometries
+from ._utils import strip_filepath, topological_sort, flatten
 from ..widgets.container_list import TreeStateData, TreeState
+
+
+__all__ = ["generate_runs", "execute_run"]
 
 
 def generate_runs(pipeline_config):
@@ -72,7 +75,7 @@ def generate_runs(pipeline_config):
         raise ValueError("No input files specified in Import operation")
 
     runs = []
-    operation_sequence = _topological_sort(nodes, node_map, import_node["id"])
+    operation_sequence = topological_sort(nodes, node_map, import_node["id"])
     for file_idx, input_file in enumerate(input_files):
         run_id = strip_filepath(input_file)
 
@@ -115,82 +118,14 @@ def generate_runs(pipeline_config):
     return runs
 
 
-def _topological_sort(nodes, node_map, start_node_id):
-    """
-    Perform topological sort starting from a given node.
+def _get_op_spec(operation_id):
+    from .operation import OPERATION_CATEGORIES
 
-    Parameters
-    ----------
-    nodes : list
-        List of all nodes in the graph
-    node_map : dict
-        Mapping from node_id to node
-    start_node_id : str
-        ID of the starting node (import node)
-
-    Returns
-    -------
-    list
-        Ordered list of node IDs in topological order
-
-    Raises
-    ------
-    ValueError
-        If graph contains cycles
-    """
-    children, in_degree = {}, {}
-    for node in nodes:
-        node_id = node["id"]
-        children[node_id] = []
-        in_degree[node_id] = len(node.get("inputs", []))
-
-    for node in nodes:
-        node_id = node["id"]
-        for parent_id in node.get("inputs", []):
-            if parent_id not in node_map:
-                raise ValueError(f"Node {node_id} references unknown input {parent_id}")
-            children[parent_id].append(node_id)
-
-    # Kahns algorithm for topological sort
-    result, visited, queue = [], set(), [start_node_id]
-    while queue:
-        current = queue.pop(0)
-
-        if current in visited:
-            continue
-
-        visited.add(current)
-        result.append(current)
-
-        for child_id in children.get(current, []):
-            in_degree[child_id] -= 1
-            if in_degree[child_id] == 0:
-                queue.append(child_id)
-
-    if len(result) != len(nodes):
-        raise ValueError("Pipeline contains cycles or disconnected nodes")
-    return result
-
-
-def flatten(nested_list):
-    """
-    Flatten a nested list of arbitrary depth.
-
-    Parameters
-    -----------
-    nested_list: list
-        A list that may contain nested lists at any level
-
-    Returns:
-        A flat list containing all non-list elements
-    """
-    result = []
-    for item in nested_list:
-        if isinstance(item, list):
-            result.extend(flatten(item))
-        else:
-            result.append(item)
-    return result
+    for category_data in OPERATION_CATEGORIES.values():
+        for op_data in category_data["operations"].values():
+            if op_data["id"] == operation_id:
+                return op_data.get("input_type"), op_data.get("output_type")
+    return None, None
 
 
 def _load_session(filepath: str):
@@ -216,15 +151,27 @@ def _create_session(filepath: str, parameters: dict):
     sampling = parameters.get("sampling_rate", 1)
 
     shape = None
+
+    model_container = DataContainer()
     cluster_container = DataContainer()
     for data in open_file(filepath):
         scale_new = np.divide(scale, data.sampling)
 
         data.vertices = np.subtract(data.vertices, offset, out=data.vertices)
         data.vertices = np.multiply(data.vertices, scale_new, out=data.vertices)
-        cluster_container.add(
-            points=data.vertices, normals=data.normals, sampling_rate=sampling
-        )
+        if data.faces is None:
+            cluster_container.add(
+                points=data.vertices, normals=data.normals, sampling_rate=sampling
+            )
+        else:
+            from ..meshing import to_open3d
+            from ..parametrization import TriangularMesh
+
+            model_container.add(
+                model=TriangularMesh(to_open3d(data.vertices, data.faces)),
+                sampling_rate=sampling,
+            )
+
         data_shape = np.divide(data.shape, data.sampling)
 
         if shape is None:
@@ -237,12 +184,15 @@ def _create_session(filepath: str, parameters: dict):
     data_tree = TreeStateData()
     data_tree.root_items = [x.uuid for x in cluster_container.data]
 
+    model_tree = TreeStateData()
+    model_tree.root_items = [x.uuid for x in model_container.data]
+
     return {
         "shape": shape,
         "_data": cluster_container,
-        "_models": DataContainer(),
+        "_models": model_container,
         "_data_tree": data_tree,
-        "_models_tree": TreeStateData(),
+        "_models_tree": model_tree,
     }
 
 
@@ -265,27 +215,7 @@ def execute_run(run_config: dict, skip_complete: bool = False) -> None:
     """
     from ..operations import GeometryOperations
 
-    # Handwavy way to determine which data is the starting point
     current_data = ()
-    model_ops = ["remesh", "smooth"]
-    cluster_output = (
-        "cluster",
-        "downsample",
-        "skeletonize",
-        "cluster_select",
-        "sample",
-    )
-
-    geom_ops = (
-        "cluster",
-        "downsample",
-        "skeletonize",
-        "fit",
-        "remesh",
-        "smooth",
-        "sample",
-    )
-    print(skip_complete)
     if skip_complete:
         all_exist, found_export = True, False
         for op in run_config["operations"]:
@@ -310,8 +240,8 @@ def execute_run(run_config: dict, skip_complete: bool = False) -> None:
             print(
                 f"Skipping run {run_config['run_id']}: all output files already exist"
             )
-            return
-    return None
+            return None
+
     for op in run_config["operations"]:
         op_id = op["operation_id"]
         settings = op["settings"]
@@ -327,8 +257,12 @@ def execute_run(run_config: dict, skip_complete: bool = False) -> None:
 
             relevant_data = "_data"
             try:
-                if run_config["operations"][1]["operation_id"] in model_ops:
-                    relevant_data = "_models"
+                input_type, _ = _get_op_spec(
+                    run_config["operations"][1]["operation_id"]
+                )
+
+                if input_type == "model":
+                    relevant_data = "_model"
             except Exception:
                 pass
 
@@ -356,9 +290,7 @@ def execute_run(run_config: dict, skip_complete: bool = False) -> None:
         if len(current_data) == 0:
             break
 
-        if op_id in geom_ops:
-            func = getattr(GeometryOperations, op_id)
-
+        if (func := getattr(GeometryOperations, op_id)) is not None:
             # Save some memory over the speedup from the list comprehension
             for i in range(len(current_data)):
                 current_data[i] = func(current_data[i], **settings)
@@ -428,21 +360,22 @@ def execute_run(run_config: dict, skip_complete: bool = False) -> None:
         # Some methods return lists of geometry objects
         current_data = flatten(current_data)
 
+        if not op.get("save_output", True):
+            continue
+
         # Keep session data in sync
+        input_type, output_type = _get_op_spec(op_id)
         container, tree = session["_data"], session["_data_tree"]
-        if op_id not in cluster_output:
+        if output_type == "model":
             container, tree = session["_models"], session["_models_tree"]
+            _ = [x.change_representation("surface") for x in current_data]
 
-        if op.get("save_output", True):
-            if op_id in model_ops + ["fit"]:
-                _ = [x.change_representation("surface") for x in current_data]
+        if not op.get("visible_output", True):
+            _ = [x.set_visibility(False) for x in current_data]
 
-            if not op.get("visible_output", True):
-                _ = [x.set_visibility(False) for x in current_data]
+        _ = [container.add(x) for x in current_data]
 
-            _ = [container.add(x) for x in current_data]
-
-            group_id = str(uuid4())
-            tree.root_items.append(group_id)
-            tree.group_names[group_id] = group_name
-            tree.groups[group_id] = [x.uuid for x in current_data]
+        group_id = str(uuid4())
+        tree.root_items.append(group_id)
+        tree.group_names[group_id] = group_name
+        tree.groups[group_id] = [x.uuid for x in current_data]

@@ -171,17 +171,6 @@ class MosaicData(QObject):
         obj = self._get_active_container()
         return obj.activate_picking_mode()
 
-    def _add_fit(self, geometry, **kwargs):
-        if geometry.model is None:
-            return None
-
-        if hasattr(geometry.model, "mesh"):
-            geometry.change_representation("surface")
-
-        index = self.models.add(geometry)
-        self.models.data_changed.emit()
-        return index
-
     def format_datalist(
         self, type="data", mesh_only: bool = False, selected: bool = False
     ):

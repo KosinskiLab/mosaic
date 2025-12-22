@@ -6,9 +6,11 @@ Copyright (c) 2025 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import sys
 import uuid
 import warnings
 import concurrent
+from io import StringIO
 from typing import Callable, Any, Dict
 
 from .settings import Settings
@@ -34,23 +36,22 @@ def _default_messagebox(task_name: str, msg: str, is_warning: bool = False):
 
 
 def _wrap_warnings(func, *args, **kwargs):
-    """Wrapper function that captures warnings, stdout, and stderr."""
+
+    old_stdout, old_stderr = sys.stdout, sys.stderr
+    stdout_capture, stderr_capture = StringIO(), StringIO()
+    sys.stdout, sys.stderr = stdout_capture, stderr_capture
 
     with warnings.catch_warnings(record=True) as warning_list:
         warnings.simplefilter("always")
 
         try:
             result = func(*args, **kwargs)
-
             warning_msg = ""
             for warning_item in warning_list:
-
                 if "citation" in str(warning_item.message).lower():
                     continue
-
                 if warning_item.category is DeprecationWarning:
                     continue
-
                 warning_msg += (
                     f"{warning_item.category.__name__}: {warning_item.message}\n"
                 )
@@ -58,12 +59,13 @@ def _wrap_warnings(func, *args, **kwargs):
             return {
                 "result": result,
                 "warnings": warning_msg.rstrip() if warning_msg else None,
-                "stdout": "",
-                "stderr": "",
+                "stdout": stdout_capture.getvalue(),
+                "stderr": stderr_capture.getvalue(),
             }
-
         except Exception as e:
             raise e
+        finally:
+            sys.stdout, sys.stderr = old_stdout, old_stderr
 
 
 def _default_error_handler(task_id, task_name, error):

@@ -51,6 +51,7 @@ def _project(
     projections = np.concatenate(projections)
     triangles = np.concatenate(triangles)
     new_mesh = mesh.add_projections(projections, triangles, return_indices=False)
+    new_mesh = Geometry(model=new_mesh, sampling_rate=mesh_geometry.sampling_rate)
 
     return new_mesh, new_geometries
 
@@ -140,8 +141,12 @@ class ModelTab(QWidget):
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
 
-    def _default_callback(self, fit):
-        self.cdata._add_fit(fit)
+    def _default_callback(self, geom):
+        from ..parametrization import TriangularMesh
+
+        if isinstance(geom.model, TriangularMesh):
+            geom.change_representation("surface")
+        self.cdata.models.add(geom)
         self.cdata.models.render()
 
     def _get_selected_meshes(self):
@@ -184,7 +189,8 @@ class ModelTab(QWidget):
             )
             geom = geometry[...]
             geom._model = TriangularMesh(meshing.to_open3d(vs, fs))
-            self.cdata._add_fit(geom)
+            geom.change_representation("surface")
+            self.cdata.models.add(geom)
         return self.cdata.models.render()
 
     def _fit_parallel(self, method: str, *args, **kwargs):
@@ -272,7 +278,8 @@ class ModelTab(QWidget):
             for new_geometry in new_geometries:
                 self.cdata.data.add(new_geometry)
 
-            self.cdata._add_fit(new_mesh, sampling_rate=mesh.sampling_rate)
+            new_mesh.change_representation("surface")
+            self.cdata.models.add(new_mesh)
             self.cdata.data.render()
             self.cdata.models.render()
 

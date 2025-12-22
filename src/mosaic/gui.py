@@ -1211,37 +1211,33 @@ class App(QMainWindow):
                     continue
 
             data_shape = np.divide(data.shape, data.sampling)
-            name = base if not use_index else f"{index}_{base}"
-            if data.faces is None:
-                index = self.cdata.data.add(
-                    points=data.vertices,
-                    normals=data.normals,
-                    sampling_rate=sampling,
-                    quaternions=data.quaternions,
-                    vertex_properties=data.vertex_properties,
-                )
-                mosaic_container = self.cdata._data
 
-            else:
+            container, interactor = self.cdata._data, self.cdata.data
+            geom_data = {
+                "points": data.vertices,
+                "normals": data.normals,
+                "sampling_rate": sampling,
+                "quaternions": data.quaternions,
+                "vertex_properties": data.vertex_properties,
+                "meta": {"name": base if not use_index else f"{index}_{base}"},
+            }
+            if data.faces is not None:
                 from .meshing import to_open3d
                 from .parametrization import TriangularMesh
 
-                index = self.cdata._add_fit(
-                    fit=TriangularMesh(to_open3d(data.vertices, data.faces)),
-                    sampling_rate=sampling,
-                    vertex_properties=data.vertex_properties,
+                container, interactor = self.cdata._models, self.cdata.models
+                geom_data["model"] = TriangularMesh(
+                    to_open3d(data.vertices, data.faces)
                 )
-                mosaic_container = self.cdata._models
 
-            geometry = mosaic_container.get(index)
-            geometry._meta["name"] = name
-            if parameters.get("render_as_surface", False):
+            geometry = container.get(interactor.add(**geom_data))
+            if parameters.get("render_as_surface", False) or data.faces is not None:
                 geometry.change_representation("surface")
 
-            if mosaic_container.metadata.get("shape") is None:
-                mosaic_container.metadata["shape"] = data_shape
-            mosaic_container.metadata["shape"] = np.maximum(
-                mosaic_container.metadata["shape"], data_shape
+            if container.metadata.get("shape") is None:
+                container.metadata["shape"] = data_shape
+            container.metadata["shape"] = np.maximum(
+                container.metadata["shape"], data_shape
             )
 
     def _open_files(self, filenames: List[str]):

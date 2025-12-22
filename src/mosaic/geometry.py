@@ -849,7 +849,9 @@ class Geometry:
                 self._vertex_properties = meta["vertex_properties"]
 
         self.set_color()
-        return self.change_representation(self._representation)
+        appearance = self._appearance.copy()
+        self.change_representation(self._representation)
+        self.set_appearance(**appearance)
 
     def change_representation(self, representation: str = "pointcloud") -> int:
         """
@@ -938,7 +940,9 @@ class Geometry:
             self._data.SetPoints(self._points)
             self._data.SetVerts(self._cells)
 
-            self.points, self.normals, quaternions = self.get_point_data()
+            self.points, normals, quaternions = self.get_point_data()
+            if normals is not None:
+                self.normals = normals
             if quaternions is not None:
                 self.quaternions = quaternions
 
@@ -1024,13 +1028,8 @@ class Geometry:
             self._actor.SetMapper(mapper)
 
         elif to_mesh:
-            # Avoid computing quaternions
-            quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
-            if quaternions is not None:
-                quaternions = self.quaternions
-
             # No backup if we are dealing with a fitted mesh
-            if not np.array_equal(mesh.vertices, self.points):
+            if self.model is None:
                 self._cache["point_data"] = self.get_point_data()
 
             self._cells.Reset()

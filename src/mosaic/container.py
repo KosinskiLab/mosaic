@@ -46,7 +46,7 @@ class DataContainer:
         """
         return [x.actor for x in self.data]
 
-    def add(self, points, color=None, **kwargs):
+    def add(self, points=None, color=None, **kwargs):
         """Add a new geometry object to the container.
 
         Parameters

@@ -88,28 +88,18 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         finally:
             return index
 
-    def _get_data_from_actor(self, actor):
+    def _get_geometry_from_actor(self, actor):
         if (index := self._get_actor_index(actor, "model")) is not None:
-            return self.cdata._models.get(index), index
+            return self.cdata._models.get(index)
         if (index := self._get_actor_index(actor, "cluster")) is not None:
-            return self.cdata._data.get(index), index
+            return self.cdata._data.get(index)
         return None, None
-
-    def _selection_to_geometry(self):
-        unique_geometries = {}
-        for geometry, point_id in self.selected_points:
-            _, index = self._get_data_from_actor(geometry._actor)
-            if index not in unique_geometries:
-                unique_geometries[index] = [geometry, []]
-            unique_geometries[index][1].append(point_id)
-        return unique_geometries
 
     def _highlight_selected_points(self):
         if len(self.selected_points) == 0:
             return None
 
-        unique_geometries = self._selection_to_geometry()
-        for geometry, point_ids in unique_geometries.values():
+        for geometry, point_ids in self.selected_points:
             geometry.color_points(
                 point_ids, geometry._appearance.get("highlight_color", (0.7, 0.7, 0.7))
             )
@@ -124,8 +114,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             return None
 
         picked_actor = self.point_picker.GetActor()
-        geometry, _ = self._get_data_from_actor(picked_actor)
-        if geometry is None:
+        if (geometry := self._get_geometry_from_actor(picked_actor)) is None:
             return None
 
         if point_id > geometry.points.shape[0]:
@@ -148,9 +137,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             return None
 
         picked_actor = self.cell_picker.GetActor()
-        geometry, _ = self._get_data_from_actor(picked_actor)
-
-        if geometry is None:
+        if (geometry := self._get_geometry_from_actor(picked_actor)) is None:
             return None
 
         selection = {"geometry": geometry, "cell_id": cell_id}
@@ -163,25 +150,21 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.highlight_selected_faces()
 
     def create_new_face(self):
+        from .geometry import Geometry
         from .parametrization import TriangularMesh
         from .meshing import to_open3d, merge_meshes
 
-        unique_geometries = self._selection_to_geometry()
-
         sampling, appearance, points, geoms = 1, {}, [], []
-        for index, (geometry, point_ids) in unique_geometries.items():
+        for geometry, point_ids in self.selected_points:
             geometry.color_points(
                 point_ids, geometry._appearance.get("base_color", (0.7, 0.7, 0.7))
             )
             points.append(geometry.points[point_ids].copy())
 
+            sampling = np.maximum(sampling, geometry.sampling_rate)
             if isinstance((fit := geometry.model), TriangularMesh):
                 geoms.append(geometry)
-                sampling = np.maximum(sampling, geometry.sampling_rate)
-                appearance.update(geometry._appearance)
-
-        if len(geoms) == 0:
-            return None
+                appearance.update(geometry._appearance.copy())
 
         vertices = np.concatenate(points).reshape(-1, 3)
         faces = np.arange(vertices.size // 3).reshape(-1, 3)
@@ -192,14 +175,12 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             faces=[np.asarray(x.triangles) for x in meshes],
         )
 
+        self.cdata._models.remove(geoms)
         fit = TriangularMesh(to_open3d(vertices, faces))
-        index = self.cdata._add_fit(fit=fit, points=vertices, sampling_rate=sampling)
+        index = self.cdata.models.add(Geometry(model=fit, sampling_rate=sampling))
         if (geometry := self.cdata._models.get(index)) is not None:
             geometry.change_representation("mesh")
             geometry.set_appearance(**appearance)
-
-        self.cdata._models.remove(geoms)
-        self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
 
     def highlight_selected_faces(self):

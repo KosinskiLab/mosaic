@@ -195,15 +195,12 @@ class TaskCard(QFrame):
             self._update_output()
 
     def _update_output(self):
-        manager = BackgroundTaskManager.instance()
-        task_info = manager.task_info.get(self.task_id, {})
-
         output = ""
-        stdout = task_info.get("stdout")
+        stdout = self.task_data.get("stdout")
         if stdout is not None and len(stdout) != 0:
             output += f"--- STDOUT --- \n\n{stdout}\n"
 
-        stderr = task_info.get("stderr")
+        stderr = self.task_data.get("stderr")
         if stderr is not None and len(stderr) != 0:
             output += f"--- STDERR --- \n\n {stderr}"
 

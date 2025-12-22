@@ -29,6 +29,8 @@ OPERATION_CATEGORIES = {
                 "description": "Import multiple files for processing",
                 "icon": "mdi6.file-import",
                 "has_output": True,
+                "input_type": None,
+                "output_type": "any",
             },
         },
     },
@@ -42,6 +44,8 @@ OPERATION_CATEGORIES = {
                 "icon": "mdi.sitemap",
                 "has_output": True,
                 "settings": CLUSTER_SETTINGS,
+                "input_type": "point",
+                "output_type": "point",
             },
             "Downsampling": {
                 "id": "downsample",
@@ -49,6 +53,8 @@ OPERATION_CATEGORIES = {
                 "icon": "mdi.focus-field-horizontal",
                 "has_output": True,
                 "settings": DOWNSAMPLE_SETTINGS,
+                "input_type": "point",
+                "output_type": "point",
             },
             "Skeletonization": {
                 "id": "skeletonize",
@@ -56,12 +62,16 @@ OPERATION_CATEGORIES = {
                 "icon": "mdi.dots-horizontal",
                 "has_output": True,
                 "settings": SKELETONIZE_SETTINGS,
+                "input_type": "point",
+                "output_type": "point",
             },
             "Cluster Selection": {
                 "id": "cluster_select",
                 "description": "Filter by cluster size",
                 "icon": "mdi.chart-histogram",
                 "has_output": False,
+                "input_type": "point",
+                "output_type": "point",
                 "settings": {
                     "title": "Cluster Selection",
                     "settings": [
@@ -94,6 +104,8 @@ OPERATION_CATEGORIES = {
                 "icon": "mdi.triangle-outline",
                 "has_output": True,
                 "settings": MESH_SETTINGS,
+                "input_type": "point",
+                "output_type": "model",
             },
             "Remesh": {
                 "id": "remesh",
@@ -101,6 +113,8 @@ OPERATION_CATEGORIES = {
                 "icon": "mdi.repeat",
                 "has_output": True,
                 "settings": REMESH_SETTINGS,
+                "input_type": "model",
+                "output_type": "model",
             },
             "Smoothing": {
                 "id": "smooth",
@@ -108,6 +122,8 @@ OPERATION_CATEGORIES = {
                 "icon": "mdi.blur",
                 "has_output": True,
                 "settings": SMOOTH_SETTINGS,
+                "input_type": "model",
+                "output_type": "model",
             },
             "Sample": {
                 "id": "sample",
@@ -115,6 +131,8 @@ OPERATION_CATEGORIES = {
                 "icon": "mdi.chart-scatter-plot",
                 "has_output": True,
                 "settings": SAMPLE_SETTINGS,
+                "input_type": "model",
+                "output_type": "point",
             },
         },
     },
@@ -127,6 +145,8 @@ OPERATION_CATEGORIES = {
                 "description": "Save data from previous step",
                 "icon": "mdi6.folder-download",
                 "has_output": False,
+                "input_type": "any",
+                "output_type": None,
                 "settings": {
                     "title": "Export Data",
                     "settings": [
@@ -187,6 +207,8 @@ OPERATION_CATEGORIES = {
                 "description": "Save entire session",
                 "icon": "mdi6.content-save",
                 "has_output": False,
+                "input_type": None,
+                "output_type": None,
                 "settings": {
                     "title": "Save Session",
                     "settings": [
@@ -203,7 +225,6 @@ OPERATION_CATEGORIES = {
         },
     },
 }
-
 
 PIPELINE_PRESETS = {
     "Import": [
