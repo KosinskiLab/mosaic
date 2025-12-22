@@ -56,6 +56,9 @@ class PipelineBuilderDialog(QDialog):
         import qtawesome as qta
         from ..icons import dialog_accept_icon, dialog_reject_icon, icon_color
 
+        self.pipeline_tree = PipelineTreeWidget()
+        self.pipeline_tree.pipeline_changed.connect(self._update_library_state)
+
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(12)
         main_layout.setContentsMargins(12, 12, 12, 12)
@@ -92,7 +95,6 @@ class PipelineBuilderDialog(QDialog):
         info_label.setWordWrap(True)
         workflow_layout.addWidget(info_label)
 
-        self.pipeline_tree = PipelineTreeWidget()
         workflow_layout.addWidget(self.pipeline_tree, 1)
 
         workflow_group.setLayout(workflow_layout)
@@ -141,7 +143,6 @@ class PipelineBuilderDialog(QDialog):
         workers_layout = QHBoxLayout()
         workers_layout.setSpacing(8)
 
-        # Workers section
         workers_vbox = QVBoxLayout()
         workers_vbox.setSpacing(4)
         workers_label = QLabel("Parallel Workers:")
@@ -190,7 +191,6 @@ class PipelineBuilderDialog(QDialog):
         settings_row.addWidget(workers_group)
         main_layout.addLayout(settings_row)
 
-        # Footer
         footer_layout = QHBoxLayout()
         footer_layout.setSpacing(6)
 
@@ -237,6 +237,7 @@ class PipelineBuilderDialog(QDialog):
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
 
+        self._library_buttons = {}
         for category_id, category in OPERATION_CATEGORIES.items():
             cat_header = QLabel(category["title"])
             cat_header_font = QFont()
@@ -257,8 +258,10 @@ class PipelineBuilderDialog(QDialog):
                     ]: self._add_card(n, i, c)
                 )
                 layout.addWidget(op_btn)
+                self._library_buttons[(category_id, op_name)] = op_btn
 
         layout.addStretch()
+        self._update_library_state()
         return widget
 
     def _create_library_button(self, name, info, color):
@@ -268,8 +271,8 @@ class PipelineBuilderDialog(QDialog):
         btn = QPushButton()
         btn.setFixedHeight(50)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn.setStyleSheet(
-            f"""
+
+        base_style = f"""
             QPushButton {{
                 border: 1px solid #e5e7eb;
                 border-left: 3px solid {color};
@@ -283,7 +286,8 @@ class PipelineBuilderDialog(QDialog):
                 border-left-width: 4px;
             }}
         """
-        )
+        btn.setStyleSheet(base_style)
+        btn.setProperty("base_style", base_style)
 
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(6)
@@ -314,6 +318,68 @@ class PipelineBuilderDialog(QDialog):
         btn.setLayout(btn_layout)
         return btn
 
+    def _get_current_output_type(self):
+        """Get the output type of the last operation in the pipeline."""
+        if self.pipeline_tree.topLevelItemCount() == 0:
+            return None
+
+        # Find the last operation card that has an output type
+        for i in range(self.pipeline_tree.topLevelItemCount() - 1, -1, -1):
+            widget = self.pipeline_tree.itemWidget(
+                self.pipeline_tree.topLevelItem(i), 0
+            )
+            if isinstance(widget, OperationCardWidget):
+                output_type = widget.operation_info.get("output_type")
+                if output_type is not None:
+                    return output_type
+        return None
+
+    def _is_operation_valid(self, operation_info):
+        """Check if an operation can be added to the current pipeline."""
+        current_output = self._get_current_output_type()
+        operation_input = operation_info.get("input_type")
+
+        # If pipeline is empty, only allow operations with no input requirement
+        if current_output is None:
+            return operation_input is None
+
+        # If operation accepts any input
+        if operation_input == "any":
+            return True
+
+        # If operation has no input requirement (like some export operations)
+        if operation_input is None:
+            return True
+
+        # If current output is 'any', it should be compatible with 'point' operations
+        # since Import Files outputs 'any' and we expect to process point clouds next
+        if current_output == "any":
+            return True
+        return operation_input == current_output
+
+    def _update_library_state(self):
+        """Update library buttons to show which operations are valid."""
+
+        if not hasattr(self, "_library_buttons"):
+            return None
+
+        for (category_id, op_name), btn in self._library_buttons.items():
+            op_info = OPERATION_CATEGORIES[category_id]["operations"][op_name]
+            is_valid = self._is_operation_valid(op_info)
+
+            btn.setEnabled(is_valid)
+
+            if not is_valid:
+                btn.setStyleSheet(
+                    btn.property("base_style")
+                    + """
+                    QPushButton:disabled {
+                        opacity: 0.4;
+                        background: #f3f4f6;
+                    }
+                """
+                )
+
     def _add_card(self, name, info, color, node_id=None, settings=None):
         settings = settings if isinstance(settings, dict) else {}
 
@@ -333,6 +399,7 @@ class PipelineBuilderDialog(QDialog):
         """Load a predefined preset pipeline."""
         self.pipeline_tree.clear()
 
+        self._update_library_state()
         if preset_name not in PIPELINE_PRESETS:
             return None
 
@@ -368,6 +435,7 @@ class PipelineBuilderDialog(QDialog):
         self.pipeline_tree.clear()
         self._previous_node = None
 
+        self._update_library_state()
         total_ops, valid_ops = len(nodes), 0
         for node in nodes:
             category = node.get("category")
