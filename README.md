@@ -8,7 +8,7 @@
 
 ## Why Mosaic?
 
-Biological membranes define cellular compartments and orchestrate signaling cascades, all while undergoing constant remodeling. We can resolve their structure and dynamics from imaging data, but the analysis path is fragmented. One tool for segmentation, another for meshing, something else for protein localization, yet another for setting up physical simulations. Export, convert, hope nothing breaks.
+Biological membranes define cellular compartments and orchestrate signaling cascades, all while undergoing constant remodeling. We can resolve their structure from imaging data, but the analysis path is fragmented. One tool for segmentation, another for meshing, something else for protein localization, yet another for setting up physical simulations. Export, convert, hope nothing breaks.
 
 Mosaic fixes that. One graphical interface for the entire workflow.
 
