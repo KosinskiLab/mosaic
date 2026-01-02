@@ -31,8 +31,11 @@ Import tomograms, segment membranes, build surface meshes, localize proteins, me
 
 Need to prep for MD? Export Martini-compatible coarse-grained systems with positioned proteins. Run HMFF to refine membrane shapes using both your experimental density and physics. Send the result straight to GROMACS.
 
+<p align="center">
+  <img src="docs/_static/tutorial/mosaic_overview.png" alt="Mosaic GUI Interface" width="700">
+</p>
+<p align="center"><em>Mosaic interface</em></p>
 
-<!-- TODO: Add screenshot of the Mosaic GUI showing the main interface -->
 
 Once your workflow is dialed in, use the pipeline builder to scale it:
 

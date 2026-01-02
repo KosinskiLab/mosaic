@@ -169,23 +169,27 @@ class IntelligenceTab(QWidget):
         if not directory:
             return None
 
-        ret = []
-        files = [join(directory, x) for x in listdir(directory)]
         files = [
-            x
-            for x in files
+            join(directory, x)
+            for x in listdir(directory)
             if x.endswith(".tsi") or x.endswith(".vtu") and x != "conf-1.vtu"
         ]
         files = sorted(files, key=lambda x: int(re.findall(r"\d+", basename(x))[0]))
+        if len(files) == 0:
+            QMessageBox.warning(self, "Error", f"No meshes found at: {directory}.")
+            return None
 
         if isinstance(offset, str):
             try:
                 offset = np.array([float(x) for x in offset.split(",")])
-            except Exception as e:
-                raise ValueError(
-                    "Offset should be a single or three comma-separated floats."
-                ) from e
+            except Exception:
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    "Offset should be a single or three comma-separated floats.",
+                )
 
+        ret = []
         with ProgressDialog(files, title="Importing Trajectory", parent=None) as pbar:
             for index, filename in enumerate(pbar):
                 container = open_file(filename)[0]
@@ -217,9 +221,6 @@ class IntelligenceTab(QWidget):
                         "vertex_properties": container.vertex_properties,
                     }
                 )
-
-        if len(ret) == 0:
-            raise ValueError(f"No meshes found at: {directory}.")
 
         base = ret[0]["fit"]
         trajectory = GeometryTrajectory(

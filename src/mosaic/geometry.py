@@ -1098,15 +1098,26 @@ class VolumeGeometry(Geometry):
         3D volume data array.
     volume_sampling_rate : np.ndarray, optional
         Sampling rates for volume data, by default ones(3).
+    target_resolution : float, optional
+        Target physical resolution for lowpass filtering. Set to 0
+        to disable filtering. By default 10.0 (Angstroms).
     **kwargs
         Additional keyword arguments passed to parent Geometry class.
     """
 
     def __init__(
-        self, volume: np.ndarray = None, volume_sampling_rate=np.ones(3), **kwargs
+        self,
+        volume: np.ndarray = None,
+        volume_sampling_rate=np.ones(3),
+        target_resolution: float = 10.0,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self._volume = None
+        self._target_resolution = target_resolution
+        self._lower_quantile = 0.0
+        self._upper_quantile = 0.995
+
         if volume is None:
             return None
 
@@ -1133,18 +1144,43 @@ class VolumeGeometry(Geometry):
 
         self._volume_sampling_rate = volume_sampling_rate
 
-        # Render volume isosurface as vtk glpyh object
-        transformFilter = vtk.vtkTransformFilter()
-        transformFilter.SetInputData(self._volume)
+        # Gaussian smoothing to normalize volume to target physical resolution
+        # sigma_voxels = target_resolution / (2 * sampling_rate)
+        pipeline_input = None
+        self._smoother = vtk.vtkImageGaussianSmooth()
+        self._smoother.SetInputData(self._volume)
+        max_sampling_rate = np.max(volume_sampling_rate)
+        self._applies_smoothing = (
+            target_resolution > 0 and target_resolution > max_sampling_rate
+        )
+        if self._applies_smoothing:
+            sigma = target_resolution / (2.0 * max_sampling_rate)
+            self._smoother.SetStandardDeviation(sigma)
+            self._smoother.SetRadiusFactor(2.0)
+            self._smoother.Update()
+            pipeline_input = self._smoother.GetOutputPort()
+
+            smoothed_data = self._smoother.GetOutput()
+            scalars = smoothed_data.GetPointData().GetScalars()
+            volume = numpy_support.vtk_to_numpy(scalars)
+
+        isovalue = np.quantile(volume, self._upper_quantile)
+        self._surface = vtk.vtkFlyingEdges3D()
+        if pipeline_input is not None:
+            self._surface.SetInputConnection(pipeline_input)
+        else:
+            self._surface.SetInputData(self._volume)
+        self._surface.SetValue(0, isovalue)
+        self._surface.ComputeNormalsOn()
+
+        # Center the isosurface mesh (transform works on polydata output)
+        transformFilter = vtk.vtkTransformPolyDataFilter()
+        transformFilter.SetInputConnection(self._surface.GetOutputPort())
         transformFilter.SetTransform(transform)
-        transformFilter.Update()
-        self._surface = vtk.vtkContourFilter()
-        self._surface.SetInputConnection(transformFilter.GetOutputPort())
-        self._surface.GenerateValues(1, volume.min(), volume.max())
 
         mapper = vtk.vtkGlyph3DMapper()
         mapper.SetInputData(self._data)
-        mapper.SetSourceConnection(self._surface.GetOutputPort())
+        mapper.SetSourceConnection(transformFilter.GetOutputPort())
         mapper.SetOrientationModeToQuaternion()
         mapper.SetScaleModeToNoDataScaling()
         mapper.SetOrientationArray("OrientationQuaternion")
@@ -1168,6 +1204,7 @@ class VolumeGeometry(Geometry):
                     "volume_sampling_rate": self._volume_sampling_rate,
                     "lower_quantile": self._lower_quantile,
                     "upper_quantile": self._upper_quantile,
+                    "target_resolution": self._target_resolution,
                 }
             )
         return state
@@ -1221,6 +1258,25 @@ class VolumeGeometry(Geometry):
             self.update_isovalue_quantile(upper_quantile=isovalue_percentile / 100)
         super().set_appearance(**kwargs)
 
+    def update_target_resolution(self, resolution: float):
+        """
+        Update the target physical resolution for lowpass filtering.
+
+        Parameters
+        ----------
+        resolution : float
+            Target resolution in physical units (e.g., Angstroms).
+            Set to 0 to disable filtering.
+        """
+        self._target_resolution = max(0.0, resolution)
+        max_sampling_rate = np.max(self._volume_sampling_rate)
+        if resolution > 0 and resolution > max_sampling_rate:
+            sigma = resolution / (2.0 * max_sampling_rate)
+            self._smoother.SetStandardDeviation(sigma)
+        else:
+            self._smoother.SetStandardDeviation(0.0)
+        self._smoother.Modified()
+
 
 class GeometryTrajectory(Geometry):
     """
@@ -1272,8 +1328,6 @@ class GeometryTrajectory(Geometry):
         if frame_idx < 0 or frame_idx > self.frames:
             return False
 
-        appearance = self._appearance.copy()
-
         meta = self._trajectory[frame_idx]
         model = meta.get("fit")
         if not hasattr(model, "mesh"):
@@ -1287,5 +1341,4 @@ class GeometryTrajectory(Geometry):
             meta=meta,
             model=model,
         )
-        self.set_appearance(**appearance)
         return True

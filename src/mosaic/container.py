@@ -70,10 +70,10 @@ class DataContainer:
             new_geometry = points
         else:
             new_geometry = Geometry(points, color=color, **kwargs)
+            new_geometry.set_appearance(
+                base_color=color, highlight_color=self.highlight_color
+            )
 
-        new_geometry.set_appearance(
-            base_color=color, highlight_color=self.highlight_color
-        )
         self.data.append(new_geometry)
         return len(self.data) - 1
 

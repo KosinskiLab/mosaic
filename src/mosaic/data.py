@@ -108,7 +108,7 @@ class MosaicData(QObject):
 
         self.shape = None
         self.data.update(DataContainer())
-        self.models.update(DataContainer())
+        self.models.update(DataContainer(highlight_color=(0.2, 0.4, 0.8)))
 
     def refresh_actors(self):
         """
