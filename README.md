@@ -53,7 +53,7 @@ The graphical interface launches immediately. For advanced installation options 
 
 ## Citation
 
-If Mosaic contributes to your research, please cite:
+If Mosaic contributes to your research, please [cite](https://www.biorxiv.org/content/10.1101/2025.05.24.655915v1):
 
 ```bibtex
 @article{Maurer2025,
