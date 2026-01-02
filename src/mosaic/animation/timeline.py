@@ -157,20 +157,29 @@ class TimelineContent(QWidget):
                 track_y += self.track_height
                 continue
 
-            color = QColor(track.color)
+            track_color = QColor(track.color)
+            track_rect = QRect(int(x), track_y, int(width), self.track_height - 10)
+            radius = 4
+
             if not track.animation.enabled:
-                color.setAlpha(128)
-            painter.fillRect(int(x), track_y, int(width), self.track_height - 10, color)
+                track_color.setAlpha(128)
 
-            painter.setPen(QPen(Qt.GlobalColor.black, 1))
             if track.id == self.selected_track:
-                painter.setPen(QPen(Qt.GlobalColor.blue, 2))
+                painter.setPen(QPen(track_color, 2))
+            else:
+                painter.setPen(QPen(track_color, 1))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRoundedRect(track_rect, radius, radius)
 
-            painter.drawRect(int(x), track_y, int(width), self.track_height - 10)
+            # Draw left accent border
+            accent_rect = QRect(int(x), track_y, 3, self.track_height - 10)
+            painter.fillRect(accent_rect, track_color)
+
+            # Draw track name with track color
             if width > 40:
-                painter.setPen(Qt.GlobalColor.white)
+                painter.setPen(track_color)
                 text_rect = QRect(
-                    int(x + 5), track_y + 5, int(width - 10), self.track_height - 20
+                    int(x + 8), track_y + 5, int(width - 16), self.track_height - 20
                 )
                 painter.drawText(
                     text_rect,
@@ -178,16 +187,16 @@ class TimelineContent(QWidget):
                     track.animation.name,
                 )
 
-            # Only draw if visible
+            # Draw remove button if visible
             remove_x = int(end_x - self.remove_button_size - 5)
             remove_y = track_y + (self.track_height - 10 - self.remove_button_size) // 2
             if start_x < remove_x < self.width():
                 icon_color = (
-                    QColor(255, 255, 255)
+                    track_color
                     if self.hovered_remove_button == track.id
-                    else QColor(128, 128, 128)
+                    else QColor("#9ca3af")
                 )
-                icon = qta.icon("fa5s.trash", color=icon_color)
+                icon = qta.icon("ph.trash", color=icon_color)
                 pixmap = icon.pixmap(self.remove_button_size, self.remove_button_size)
                 painter.drawPixmap(remove_x, remove_y, pixmap)
 
@@ -203,11 +212,23 @@ class TimelineContent(QWidget):
             return super().mousePressEvent(event)
 
         track_y = self.ruler_height + 10
+        min_click_width = 30  # Minimum clickable width for narrow tracks
+
         for track in self.tracks:
             start_x = self.frame_to_x(track.animation.global_start_frame)
             end_x = self.frame_to_x(
                 track.animation.global_start_frame + track.animation.duration
             )
+
+            # Expand clickable area for narrow tracks
+            track_width = end_x - start_x
+            if track_width < min_click_width:
+                padding = (min_click_width - track_width) / 2
+                click_start_x = start_x - padding
+                click_end_x = end_x + padding
+            else:
+                click_start_x = start_x
+                click_end_x = end_x
 
             # Check if click is on remove button
             remove_x = int(end_x - self.remove_button_size - 5)
@@ -220,8 +241,9 @@ class TimelineContent(QWidget):
             ):
                 self.trackRemoved.emit(track.id)
 
+            # Use expanded click area for track selection
             if (
-                start_x <= event.x() <= end_x
+                click_start_x <= event.x() <= click_end_x
                 and track_y <= event.y() <= track_y + self.track_height - 10
             ):
                 self.selected_track = track.id

@@ -28,14 +28,24 @@ Selection Management
 .. autosummary::
    :toctree: ../rst/
 
-   DataContainerInteractor.set_selection
+   DataContainerInteractor.set_selection_by_uuid
    DataContainerInteractor.deselect
    DataContainerInteractor.deselect_points
    DataContainerInteractor.highlight_selected_points
    DataContainerInteractor.highlight_clusters_from_selected_points
 
-Point Cloud Operations
-~~~~~~~~~~~~~~~~~~~~~~
+Data Management
+~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: ../rst/
+
+   DataContainerInteractor.add
+   DataContainerInteractor.merge
+   DataContainerInteractor.remove
+
+
+Geometry Operations
+~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: ../rst/
 
@@ -45,15 +55,8 @@ Point Cloud Operations
    DataContainerInteractor.downsample
    DataContainerInteractor.crop_cluster
    DataContainerInteractor.trim
-
-Cluster Management
-~~~~~~~~~~~~~~~~~~
-.. autosummary::
-   :toctree: ../rst/
-
-   DataContainerInteractor.merge_cluster
    DataContainerInteractor.duplicate
-   DataContainerInteractor.remove_cluster
+
 
 Visualization Control
 ~~~~~~~~~~~~~~~~~~~~~
@@ -65,12 +68,3 @@ Visualization Control
    DataContainerInteractor.change_representation
    DataContainerInteractor.render
    DataContainerInteractor.render_vtk
-
-Data Import/Export
-~~~~~~~~~~~~~~~~~~
-.. autosummary::
-   :toctree: ../rst/
-
-   DataContainerInteractor.add
-   DataContainerInteractor.cluster_points
-   DataContainerInteractor.remove_points

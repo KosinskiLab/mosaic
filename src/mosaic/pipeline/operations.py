@@ -6,6 +6,7 @@ Copyright (c) 2025 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from mosaic.stylesheets import Colors
 from mosaic.tabs.segmentation import (
     CLUSTER_SETTINGS,
     DOWNSAMPLE_SETTINGS,
@@ -22,12 +23,12 @@ from mosaic.tabs.model import (
 OPERATION_CATEGORIES = {
     "input": {
         "title": "Input",
-        "color": "#7c3aed",
+        "color": Colors.CATEGORY["input"],
         "operations": {
             "Import Files": {
                 "id": "import_batch",
                 "description": "Import multiple files for processing",
-                "icon": "mdi6.file-import",
+                "icon": "ph.file-arrow-down",
                 "has_output": True,
                 "input_type": None,
                 "output_type": "any",
@@ -36,12 +37,12 @@ OPERATION_CATEGORIES = {
     },
     "preprocessing": {
         "title": "Preprocessing",
-        "color": "#2563eb",
+        "color": Colors.CATEGORY["preprocessing"],
         "operations": {
             "Clustering": {
                 "id": "cluster",
                 "description": "Group points by spatial proximity",
-                "icon": "mdi.sitemap",
+                "icon": "ph.arrows-out-line-horizontal",
                 "has_output": True,
                 "settings": CLUSTER_SETTINGS,
                 "input_type": "point",
@@ -50,7 +51,7 @@ OPERATION_CATEGORIES = {
             "Downsampling": {
                 "id": "downsample",
                 "description": "Reduce point density uniformly",
-                "icon": "mdi.focus-field-horizontal",
+                "icon": "ph.arrows-in",
                 "has_output": True,
                 "settings": DOWNSAMPLE_SETTINGS,
                 "input_type": "point",
@@ -59,7 +60,7 @@ OPERATION_CATEGORIES = {
             "Skeletonization": {
                 "id": "skeletonize",
                 "description": "Extract medial axis structure",
-                "icon": "mdi.dots-horizontal",
+                "icon": "ph.line-segments",
                 "has_output": True,
                 "settings": SKELETONIZE_SETTINGS,
                 "input_type": "point",
@@ -68,7 +69,7 @@ OPERATION_CATEGORIES = {
             "Cluster Selection": {
                 "id": "cluster_select",
                 "description": "Filter by cluster size",
-                "icon": "mdi.chart-histogram",
+                "icon": "ph.chart-bar",
                 "has_output": False,
                 "input_type": "point",
                 "output_type": "point",
@@ -96,12 +97,12 @@ OPERATION_CATEGORIES = {
     },
     "parametrization": {
         "title": "Parametrization",
-        "color": "#059669",
+        "color": Colors.CATEGORY["parametrization"],
         "operations": {
             "Mesh": {
                 "id": "fit",
                 "description": "Create surface mesh",
-                "icon": "mdi.triangle-outline",
+                "icon": "ph.triangle",
                 "has_output": True,
                 "settings": MESH_SETTINGS,
                 "input_type": "point",
@@ -110,7 +111,7 @@ OPERATION_CATEGORIES = {
             "Remesh": {
                 "id": "remesh",
                 "description": "Optimize mesh connectivity",
-                "icon": "mdi.repeat",
+                "icon": "ph.arrows-clockwise",
                 "has_output": True,
                 "settings": REMESH_SETTINGS,
                 "input_type": "model",
@@ -119,7 +120,7 @@ OPERATION_CATEGORIES = {
             "Smoothing": {
                 "id": "smooth",
                 "description": "Smooth mesh surface",
-                "icon": "mdi.blur",
+                "icon": "ph.drop",
                 "has_output": True,
                 "settings": SMOOTH_SETTINGS,
                 "input_type": "model",
@@ -128,7 +129,7 @@ OPERATION_CATEGORIES = {
             "Sample": {
                 "id": "sample",
                 "description": "Sample from parametrization",
-                "icon": "mdi.chart-scatter-plot",
+                "icon": "ph.broadcast",
                 "has_output": True,
                 "settings": SAMPLE_SETTINGS,
                 "input_type": "model",
@@ -138,12 +139,12 @@ OPERATION_CATEGORIES = {
     },
     "export": {
         "title": "Export",
-        "color": "#ea580c",
+        "color": Colors.CATEGORY["export"],
         "operations": {
             "Export Data": {
                 "id": "export_data",
                 "description": "Save data from previous step",
-                "icon": "mdi6.folder-download",
+                "icon": "ph.download",
                 "has_output": False,
                 "input_type": "any",
                 "output_type": None,
@@ -159,6 +160,7 @@ OPERATION_CATEGORIES = {
                         {
                             "label": "Output Directory",
                             "parameter": "output_dir",
+                            "default": "mosaic_export",
                             "type": "PathSelector",
                             "file_mode": False,
                             "placeholder": "Select output directory",
@@ -205,7 +207,7 @@ OPERATION_CATEGORIES = {
             "Save Session": {
                 "id": "save_session",
                 "description": "Save entire session",
-                "icon": "mdi6.content-save",
+                "icon": "ph.floppy-disk",
                 "has_output": False,
                 "input_type": None,
                 "output_type": None,
@@ -215,6 +217,7 @@ OPERATION_CATEGORIES = {
                         {
                             "label": "Output Directory",
                             "parameter": "output_dir",
+                            "default": "mosaic_session",
                             "type": "PathSelector",
                             "file_mode": False,
                             "placeholder": "Select output directory",

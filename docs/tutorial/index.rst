@@ -28,6 +28,7 @@ User Guide
 
    workflows/giardia
    workflows/iav
+   workflows/pipeline
 
 .. toctree::
    :caption: Reference

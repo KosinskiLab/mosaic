@@ -16,7 +16,7 @@ MODEL_PATHS = {
 }
 
 MEMBRAIN_SETTINGS = {
-    "title": "Membrain Settings",
+    "title": "Settings",
     "settings": [
         {
             "type": "PathSelector",

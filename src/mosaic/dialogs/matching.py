@@ -23,11 +23,7 @@ from qtpy.QtWidgets import (
 import qtawesome as qta
 
 from ..widgets import PathSelector, DialogFooter
-from ..stylesheets import (
-    QPushButton_style,
-    QScrollArea_style,
-    QTabBar_style,
-)
+from ..stylesheets import QPushButton_style, QScrollArea_style, QTabBar_style, Colors
 
 
 class InputDataTab(QWidget):
@@ -495,19 +491,25 @@ class TemplateMatchingDialog(QDialog):
         self.compute_tab = ComputeTab()
 
         self.tabs.addTab(
-            self.input_tab, qta.icon("fa5s.file-import", color="#4f46e5"), "Data"
+            self.input_tab, qta.icon("ph.file-arrow-down", color=Colors.PRIMARY), "Data"
         )
         self.tabs.addTab(
-            self.preprocess_tab, qta.icon("fa5s.wrench", color="#4f46e5"), "Preprocess"
+            self.preprocess_tab,
+            qta.icon("ph.wrench", color=Colors.PRIMARY),
+            "Preprocess",
         )
         self.tabs.addTab(
-            self.matching_tab, qta.icon("fa5s.sliders-h", color="#4f46e5"), "Matching"
+            self.matching_tab, qta.icon("ph.sliders", color=Colors.PRIMARY), "Matching"
         )
         self.tabs.addTab(
-            self.peak_tab, qta.icon("fa5s.search", color="#4f46e5"), "Peak Calling"
+            self.peak_tab,
+            qta.icon("ph.magnifying-glass", color=Colors.PRIMARY),
+            "Peak Calling",
         )
         self.tabs.addTab(
-            self.compute_tab, qta.icon("fa5s.server", color="#4f46e5"), "Compute"
+            self.compute_tab,
+            qta.icon("ph.hard-drives", color=Colors.PRIMARY),
+            "Compute",
         )
 
         self.layout.addWidget(self.tabs)

@@ -1,4 +1,3 @@
-#!python3
 """
 Mosaic GUI implementation
 
@@ -6,13 +5,23 @@ Copyright (c) 2024 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
+
 import os
 from typing import List
 from os.path import extsep, basename
 
 import vtk
 import numpy as np
-from qtpy.QtCore import Qt, QEvent, QSize, QTimer, QThread
+from qtpy.QtCore import (
+    Qt,
+    QEvent,
+    QSize,
+    QTimer,
+    QThread,
+    QPropertyAnimation,
+    QEasingCurve,
+    QRect,
+)
 from qtpy.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -44,15 +53,16 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from .data import MosaicData
 from .settings import Settings
-from .animate import ExportManager
+from .stylesheets import Colors
+from .animation._utils import ScreenshotManager
 from .parallel import BackgroundTaskManager
-from .tabs import SegmentationTab, ModelTab, IntelligenceTab
+from .tabs import SegmentationTab, ModelTab, IntelligenceTab, DevelopmentTab
 from .dialogs import (
     TiltControlDialog,
-    KeybindsDialog,
     ImportDataDialog,
     ProgressDialog,
     AppSettingsDialog,
+    getOpenFileNames,
 )
 from .widgets import (
     MultiVolumeViewer,
@@ -107,17 +117,10 @@ class App(QMainWindow):
         self.interactor.SetDesiredUpdateRate(Settings.rendering.target_fps)
 
         self.tab_bar = QWidget()
-        self.tab_bar.setFixedHeight(40)
-        self.tab_bar.setStyleSheet(
-            """
-            QWidget {
-                border-bottom: 1px solid #6b7280;
-            }
-        """
-        )
+        self.tab_bar.setFixedHeight(32)
         tab_layout = QHBoxLayout(self.tab_bar)
-        tab_layout.setContentsMargins(16, 0, 16, 0)
-        tab_layout.setSpacing(4)
+        tab_layout.setContentsMargins(0, 0, 0, 0)
+        tab_layout.setSpacing(2)
 
         self.tab_button_group = QButtonGroup(self)
         self.tab_button_group.setExclusive(True)
@@ -131,8 +134,9 @@ class App(QMainWindow):
             (SegmentationTab(**data), "Segmentation"),
             (ModelTab(**data), "Parametrization"),
             (IntelligenceTab(**data), "Intelligence"),
-            # (DevelopmentTab(**data), "Development"),
         ]
+        if os.environ.get("MOSAIC_DEV"):
+            self.tabs.append((DevelopmentTab(**data), "Development"))
 
         for index, (tab, name) in enumerate(self.tabs):
             btn = QPushButton(name)
@@ -142,46 +146,59 @@ class App(QMainWindow):
             self.tab_button_group.addButton(btn, index)
 
             btn.setStyleSheet(
-                """
-                QPushButton {
+                f"""
+                QPushButton {{
                     border: none;
-                    padding: 11px 24px;
-                    font-size: 13px;
-                    border-bottom: 2px solid transparent;
-                    min-width: 100px;
-                }
-                QPushButton:hover:!checked {
+                    padding: 6px 8px;
+                    font-size: 12px;
+                    background: transparent;
+                    min-width: 90px;
+                }}
+                QPushButton:checked {{
                     font-weight: 500;
-                }
-                QPushButton:checked {
-                    font-weight: 500;
-                    color: rgba(99, 102, 241, 1.0);
-                    border-bottom: 2px solid rgba(99, 102, 241, 1.0);
-                }
-                QPushButton:focus {
+                    color: {Colors.PRIMARY};
+                }}
+                QPushButton:focus {{
                     outline: none;
-                }
+                }}
             """
             )
             tab_layout.addWidget(btn)
             self.tab_buttons[index] = btn
 
-        self.tab_button_group.idClicked.connect(
-            lambda tab_id: self.tabs[tab_id][0].show_ribbon()
-        )
+        # Animated tab indicator
+        self.tab_indicator = QWidget(self.tab_bar)
+        self.tab_indicator.setFixedHeight(2)
+        self.tab_indicator.setStyleSheet(f"background-color: {Colors.PRIMARY};")
+
+        self.tab_indicator_anim = QPropertyAnimation(self.tab_indicator, b"geometry")
+        self.tab_indicator_anim.setDuration(150)
+        self.tab_indicator_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+        def update_indicator(tab_id):
+            self.tabs[tab_id][0].show_ribbon()
+            btn = self.tab_buttons[tab_id]
+            QTimer.singleShot(0, lambda: self._animate_tab_indicator(btn))
+
+        self.tab_button_group.idClicked.connect(update_indicator)
 
         tab_layout.addStretch()
         self.tab_buttons[0].setChecked(True)
         self.tabs[0][0].show_ribbon()
 
+        # Position indicator on first tab after layout is ready
+        QTimer.singleShot(0, lambda: self._animate_tab_indicator(self.tab_buttons[0]))
+
         layout.addWidget(self.tab_bar)
         layout.addWidget(self.tab_ribbon)
 
+        # Create sidebar with Object Browser
         list_wrapper = ObjectBrowserSidebar()
         list_wrapper.set_title("Object Browser")
-        list_wrapper.add_widget("cluster", "Cluster", self.cdata.data.data_list)
-        list_wrapper.add_widget("model", "Model", self.cdata.models.data_list)
+        list_wrapper.add_widget("cluster", "Clusters", self.cdata.data.data_list)
+        list_wrapper.add_widget("model", "Models", self.cdata.models.data_list)
 
+        # Create splitter with sidebar on left, viewport on right
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(list_wrapper)
         splitter.addWidget(self.vtk_widget)
@@ -320,6 +337,28 @@ class App(QMainWindow):
             self.cdata.refresh_actors()
 
         BackgroundTaskManager.instance()._initialize()
+
+    def _animate_tab_indicator(self, btn):
+        """Animate the tab indicator to the given button."""
+        from qtpy.QtGui import QFontMetrics
+
+        # Calculate text width
+        fm = QFontMetrics(btn.font())
+        text_width = fm.horizontalAdvance(btn.text())
+
+        # Center the indicator under the text
+        btn_center = btn.x() + btn.width() // 2
+        x = btn_center - text_width // 2
+        y = self.tab_bar.height() - 2
+
+        target_rect = QRect(x, y, text_width, 2)
+
+        if self.tab_indicator_anim.state() == QPropertyAnimation.State.Running:
+            self.tab_indicator_anim.stop()
+
+        self.tab_indicator_anim.setStartValue(self.tab_indicator.geometry())
+        self.tab_indicator_anim.setEndValue(target_rect)
+        self.tab_indicator_anim.start()
 
     def handle_escape_key(self, *args, **kwargs):
         """Handle escape key press - switch to viewing mode if not already in it."""
@@ -473,28 +512,28 @@ class App(QMainWindow):
 
     def _update_style(self):
         self.setStyleSheet(
-            """
-            QMenuBar {
-                border-bottom: 1px solid #6b7280;
-            }
-            QMenuBar::item {
+            f"""
+            QMenuBar {{
+                border-bottom: 1px solid {Colors.TEXT_MUTED};
+            }}
+            QMenuBar::item {{
                 padding: 4px 8px;
-            }
-            QMenuBar::item:selected {
-                background-color: #1a000000;
+            }}
+            QMenuBar::item:selected {{
+                background-color: {Colors.BG_HOVER};
                 border-radius: 4px;
-            }
-            QMenu {
+            }}
+            QMenu {{
                 border-radius: 4px;
                 padding: 4px;
-            }
-            QMenu::item {
+            }}
+            QMenu::item {{
                 padding: 4px 24px 4px 8px;
                 border-radius: 4px;
-            }
-            QMenu::item:selected {
-                background-color: #1a000000;
-            }
+            }}
+            QMenu::item:selected {{
+                background-color: {Colors.BG_HOVER};
+            }}
         """
         )
 
@@ -519,9 +558,7 @@ class App(QMainWindow):
         self.axes_widget = AxesWidget(self.renderer, self.interactor)
         self.trajectory_player = TrajectoryPlayer(self.cdata)
         self.scale_bar = ScaleBarWidget(self.renderer, self.interactor)
-        self.export_manager = ExportManager(
-            self.vtk_widget, self.volume_viewer, self.cdata
-        )
+        self.screenshot_manager = ScreenshotManager(self.vtk_widget)
         self.status_indicator = StatusIndicator(self)
 
         self.bbox_manager = BoundingBoxManager(
@@ -590,27 +627,22 @@ class App(QMainWindow):
         quit_action.triggered.connect(self.close)
 
         screenshot_action = QAction("Save Viewer Screenshot", self)
-        screenshot_action.triggered.connect(
-            lambda x: self.export_manager.save_screenshot()
-        )
+        screenshot_action.triggered.connect(lambda x: self.screenshot_manager.save())
         screenshot_action.setShortcut("Ctrl+P")
 
         animation_action = QAction("Export Animation", self)
-        animation_action.triggered.connect(
-            lambda x: self.export_manager.export_animation()
-            # lambda x: self._animate()
-        )
+        animation_action.triggered.connect(lambda x: self._animate())
         animation_action.setShortcut("Ctrl+E")
 
         clipboard_action = QAction("Viewer Screenshot to Clipboard", self)
         clipboard_action.triggered.connect(
-            lambda x: self.export_manager.copy_screenshot_to_clipboard()
+            lambda x: self.screenshot_manager.copy_to_clipboard()
         )
         clipboard_action.setShortcut("Ctrl+Shift+C")
 
         clipboard_window_action = QAction("Window Screenshot to Clipboard", self)
         clipboard_window_action.triggered.connect(
-            lambda x: self.export_manager.copy_screenshot_to_clipboard(window=True)
+            lambda x: self.screenshot_manager.copy_to_clipboard(window=True)
         )
         clipboard_window_action.setShortcut("Ctrl+Shift+W")
 
@@ -661,7 +693,7 @@ class App(QMainWindow):
         tilt_menu = QMenu("Camera", self)
         self.tilt_dialog = TiltControlDialog(self)
         show_tilt_control = QAction(
-            qta.icon("fa5s.sliders-h", opacity=0.7, color="gray"),
+            qta.icon("ph.sliders", color=Colors.ICON),
             "Tilt Controls...",
             self,
         )
@@ -684,7 +716,9 @@ class App(QMainWindow):
 
         tilt_menu.addSeparator()
         reset_action = QAction(
-            qta.icon("fa5s.undo", opacity=0.7, color="gray"), "Reset Tilt", self
+            qta.icon("ph.arrow-counter-clockwise", color=Colors.ICON),
+            "Reset Tilt",
+            self,
         )
         reset_action.setShortcut("Ctrl+T")
         reset_action.triggered.connect(self.tilt_dialog.reset_tilt)
@@ -745,12 +779,6 @@ class App(QMainWindow):
             lambda checked: self.trajectory_dock.setVisible(checked)
         )
 
-        # Help menu
-        show_keybinds_action = QAction("Keybinds", self)
-        self.keybinds_dialog = KeybindsDialog(self)
-        show_keybinds_action.triggered.connect(self.keybinds_dialog.show)
-        show_keybinds_action.setShortcut("Ctrl+H")
-
         # Add actions to menus
         file_menu.addAction(add_file_action)
         file_menu.addMenu(self.recent_menu)
@@ -763,8 +791,11 @@ class App(QMainWindow):
         file_menu.addSeparator()
         batch_process_action = QAction("Batch Processing", self)
         batch_process_action.triggered.connect(self.open_batch_pipeline)
+        batch_process_action.setShortcut("Ctrl+Shift+P")
+
         batch_navigator_action = QAction("Batch Navigator", self)
         batch_navigator_action.triggered.connect(self.open_batch_navigator)
+        batch_navigator_action.setShortcut("Ctrl+Shift+N")
         file_menu.addAction(batch_process_action)
         file_menu.addAction(batch_navigator_action)
 
@@ -872,10 +903,12 @@ class App(QMainWindow):
         show_settings = QAction("Appearance", self)
         show_settings.triggered.connect(self.show_app_settings)
         preference_menu.addAction(show_settings)
-        preference_menu.addAction(show_keybinds_action)
 
         viewing_action = QAction("Viewing Mode\tEsc", self)
         viewing_action.triggered.connect(lambda: self.handle_escape_key())
+
+        background_action = QAction("Toggle Background\td", self)
+        background_action.triggered.connect(lambda: self.simulate_key_press("d"))
 
         selection_action = QAction("Point Selection\tr", self)
         selection_action.triggered.connect(lambda: self.simulate_key_press("r"))
@@ -932,6 +965,7 @@ class App(QMainWindow):
 
         interact_menu.addAction(undo_action)
         interact_menu.addAction(viewing_action)
+        interact_menu.addAction(background_action)
         interact_menu.addSeparator()
 
         interact_menu.addAction(selection_action)
@@ -987,8 +1021,11 @@ class App(QMainWindow):
         from .widgets.dock import create_or_toggle_dock
         from .pipeline.dialog import BatchNavigatorDialog
 
-        files, _ = QFileDialog.getOpenFileNames(
-            self, "Select Session Files", "", "Pickle Files (*.pickle)"
+        files, _ = getOpenFileNames(
+            self,
+            caption="Select Session Files",
+            filter="Pickle Files (*.pickle)",
+            use_native=True,
         )
         if not files:
             return
@@ -1027,30 +1064,13 @@ class App(QMainWindow):
         QApplication.processEvents()
 
     def _animate(self):
+        from .widgets.dock import create_or_toggle_dock
         from mosaic.animation.compose import AnimationComposerDialog
 
         dialog = AnimationComposerDialog(
             self.vtk_widget, self.volume_viewer, self.cdata
         )
-        dock = QDockWidget("Animation Composer", self)
-        dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
-        dock.setWidget(dialog)
-
-        dock.setFeatures(
-            QDockWidget.DockWidgetClosable
-            | QDockWidget.DockWidgetFloatable
-            | QDockWidget.DockWidgetMovable
-        )
-
-        dialog.accepted.connect(dock.close)
-        dialog.rejected.connect(dock.close)
-
-        self.volume_viewer.setMaximumHeight(100)
-        self.volume_viewer.setMinimumHeight(50)
-        self.addDockWidget(Qt.RightDockWidgetArea, dock)
-
-        dock.raise_()
-        dock.show()
+        create_or_toggle_dock(self, "animation_composer", dialog)
 
     def _setup_volume_viewer(self):
         self.volume_dock = QDockWidget(parent=self)

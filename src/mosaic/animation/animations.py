@@ -3,6 +3,9 @@ from enum import Enum
 from typing import List, Dict, Any
 
 from vtk import vtkTransform
+from qtpy.QtWidgets import QDialog
+
+from ..stylesheets import Colors, QPushButton_style
 
 
 class BaseAnimation(ABC):
@@ -28,7 +31,6 @@ class BaseAnimation(ABC):
         self.start_frame = 0
         self.stop_frame = 100
         self.stride = 1
-        self.frames = 100
 
         self.parameters = {}
         self._init_parameters()
@@ -77,6 +79,22 @@ class BaseAnimation(ABC):
             return camera, renderer
         return camera
 
+    def _ease(self, t: float) -> float:
+        """Apply easing function to progress value t in [0, 1]."""
+        easing = self.parameters.get("easing", "linear")
+
+        if easing == "ease-in":
+            return t * t
+        elif easing == "ease-out":
+            return 1.0 - (1.0 - t) * (1.0 - t)
+        elif easing == "ease-in-out":
+            if t < 0.5:
+                return 2.0 * t * t
+            return 1.0 - (-2.0 * t + 2.0) ** 2 / 2.0
+        elif easing == "instant":
+            return 1.0 if t > 0 else 0.0
+        return t  # linear
+
 
 class TrajectoryAnimation(BaseAnimation):
     """Animation for molecular trajectories"""
@@ -96,7 +114,7 @@ class TrajectoryAnimation(BaseAnimation):
         models = self.cdata.format_datalist("models")
         return next((x for t, x in models if t == name), None)
 
-    def _init_parameters(self) -> Dict[str, Any]:
+    def _init_parameters(self) -> None:
         trajectories = self._available_trajectories()
         if (default := self.parameters.get("trajectory")) is None:
             try:
@@ -109,8 +127,8 @@ class TrajectoryAnimation(BaseAnimation):
         new_trajectory = kwargs.get("trajectory")
         if new_trajectory and new_trajectory != self.parameters.get("trajectory"):
             self._trajectory = self._get_trajectory(new_trajectory)
-            self.frames = self._trajectory.frames
-            self.start_frame, self.stop_frame = 0, self.frames
+            self.start_frame = 0
+            self.stop_frame = self._trajectory.frames
 
         return super().update_parameters(**kwargs)
 
@@ -139,21 +157,24 @@ class TrajectoryAnimation(BaseAnimation):
 class VolumeAnimation(BaseAnimation):
     """Volume slicing animation"""
 
-    def _init_parameters(self) -> Dict[str, Any]:
+    def _init_parameters(self) -> None:
         self.parameters.clear()
         self.parameters["direction"] = "forward"
         self.parameters["projection"] = "Off"
-        self.update_parameters(
-            axis=self.volume_viewer.primary.orientation_selector.currentText().lower()
-        )
+        try:
+            self.update_parameters(
+                axis=self.volume_viewer.primary.orientation_selector.currentText().lower()
+            )
+        except Exception:
+            pass
 
     def update_parameters(self, **kwargs):
         new_axis = kwargs.get("axis")
         if new_axis and new_axis != self.parameters.get("axis"):
             _mapping = {"x": 0, "y": 1, "z": 2}
             shape = self.volume_viewer.primary.get_dimensions()
-            self.frames = shape[_mapping.get(new_axis, 0)]
-            self.start_frame, self.stop_frame = 0, self.frames
+            self.start_frame = 0
+            self.stop_frame = shape[_mapping.get(new_axis, 0)]
             kwargs["axis"] = new_axis.upper()
 
         return super().update_parameters(**kwargs)
@@ -202,11 +223,11 @@ class VolumeAnimation(BaseAnimation):
         if current_state != self.parameters["projection"]:
             viewer.project_selector.setCurrentText(self.parameters["projection"])
 
-        viewer.slice_slider.setValue(frame)
+        viewer.slice_row.setValue(frame)
 
 
 class CameraAnimation(BaseAnimation):
-    """Camera orbit animation"""
+    """Camera orbit animation with absolute positioning for proper scrubbing."""
 
     def _init_parameters(self) -> None:
         self.parameters.clear()
@@ -214,10 +235,13 @@ class CameraAnimation(BaseAnimation):
             {
                 "axis": "y",
                 "degrees": 180,
+                "direction": "forward",
             }
         )
         self._initial_position = None
-        self.frames = 2 << 29
+        self._initial_focal = None
+        self._initial_view_up = None
+        self.stop_frame = 180
 
     def get_settings(self) -> List[Dict[str, Any]]:
         return [
@@ -240,49 +264,179 @@ class CameraAnimation(BaseAnimation):
                 "label": "direction",
                 "type": "select",
                 "options": ["forward", "reverse"],
-                "default": "forward",
+                "default": self.parameters.get("direction", "forward"),
                 "description": "Direction to rotate in.",
             },
         ]
 
     def _update(self, frame: int) -> None:
         camera, renderer = self._get_rendering_context(return_renderer=True)
-        delta_angle = 0.5 * self.parameters["degrees"] / self.stop_frame
 
-        if frame == self.start_frame:
-            delta_angle *= frame
+        # Capture initial state on first frame
+        if self._initial_position is None or frame == self.start_frame:
+            self._initial_position = camera.GetPosition()
+            self._initial_focal = camera.GetFocalPoint()
+            self._initial_view_up = camera.GetViewUp()
 
-        current_pos = camera.GetPosition()
-        current_focal = camera.GetFocalPoint()
-        current_view_up = camera.GetViewUp()
+        # Calculate progress through the animation
+        duration = self.stop_frame - self.start_frame
+        if duration <= 0:
+            return
 
+        progress = (frame - self.start_frame) / duration
+        progress = max(0.0, min(1.0, progress))
+
+        # Calculate total rotation angle at this point
+        total_degrees = self.parameters["degrees"]
+        if self.parameters.get("direction") == "reverse":
+            total_degrees = -total_degrees
+
+        angle = total_degrees * progress
+
+        # Apply rotation from initial position
         transform = vtkTransform()
         transform.Identity()
-        transform.Translate(*current_focal)
+        transform.Translate(*self._initial_focal)
 
-        if self.parameters["axis"] == "x":
-            transform.RotateWXYZ(delta_angle, 1, 0, 0)
-        elif self.parameters["axis"] == "y":
-            transform.RotateWXYZ(delta_angle, 0, 1, 0)
-        elif self.parameters["axis"] == "z":
-            transform.RotateWXYZ(delta_angle, 0, 0, 1)
+        axis = self.parameters["axis"]
+        if axis == "x":
+            transform.RotateWXYZ(angle, 1, 0, 0)
+        elif axis == "y":
+            transform.RotateWXYZ(angle, 0, 1, 0)
+        elif axis == "z":
+            transform.RotateWXYZ(angle, 0, 0, 1)
 
-        transform.Translate(-current_focal[0], -current_focal[1], -current_focal[2])
+        transform.Translate(
+            -self._initial_focal[0],
+            -self._initial_focal[1],
+            -self._initial_focal[2],
+        )
 
-        new_pos = transform.TransformPoint(current_pos)
-        new_view_up = transform.TransformVector(current_view_up)
+        new_pos = transform.TransformPoint(self._initial_position)
+        new_view_up = transform.TransformVector(self._initial_view_up)
 
         camera.SetPosition(*new_pos)
         camera.SetViewUp(*new_view_up)
         renderer.ResetCameraClippingRange()
 
 
+class ActorSelectionDialog(QDialog):
+    """Dialog for selecting actors using ContainerTreeWidget."""
+
+    def __init__(self, cdata, current_selection=None, parent=None):
+        from qtpy.QtWidgets import (
+            QVBoxLayout,
+            QHBoxLayout,
+            QTreeWidget,
+            QLabel,
+            QFrame,
+            QPushButton,
+            QGroupBox,
+        )
+
+        from mosaic.widgets import DialogFooter
+        from mosaic.widgets.container_list import (
+            ContainerTreeWidget,
+            StyledTreeWidgetItem,
+        )
+
+        super().__init__(parent)
+        self.setWindowTitle("Select Objects")
+        self.resize(400, 500)
+        self.setModal(True)
+        self.setStyleSheet(QPushButton_style)
+
+        self._cdata = cdata
+        self._trees = []
+        self._tree_labels = []
+
+        layout = QVBoxLayout(self)
+        current_selection = set(current_selection or [])
+
+        # Quick select buttons
+        quick_group = QGroupBox("Quick Select")
+        quick_layout = QHBoxLayout(quick_group)
+        quick_layout.setContentsMargins(8, 8, 8, 8)
+        quick_layout.setSpacing(6)
+
+        for label, callback in [
+            ("All", self._select_all),
+            ("Clusters", lambda: self._select_by_type("data")),
+            ("Models", lambda: self._select_by_type("models")),
+        ]:
+            btn = QPushButton(label)
+            btn.clicked.connect(callback)
+            quick_layout.addWidget(btn)
+
+        layout.addWidget(quick_group)
+
+        for label, data_type, interactor in [
+            ("Clusters", "data", cdata.data),
+            ("Models", "models", cdata.models),
+        ]:
+            objects = {obj.uuid: obj for _, obj in cdata.format_datalist(data_type)}
+            if not objects:
+                continue
+
+            header = QLabel(label)
+            header.setStyleSheet("font-weight: 500; font-size: 12px;")
+            layout.addWidget(header)
+
+            tree = ContainerTreeWidget(border=False)
+            tree.tree_widget.setSelectionMode(
+                QTreeWidget.SelectionMode.ExtendedSelection
+            )
+            self._trees.append(tree)
+            self._tree_labels.append(data_type)
+
+            state = interactor.data_list.to_state()
+            uuid_to_item = {}
+            for uuid, obj in objects.items():
+                item = StyledTreeWidgetItem(
+                    obj._meta.get("name"),
+                    obj.visible,
+                    {"object_id": id(obj), "data_type": data_type, **obj._meta},
+                )
+                item.setSelected(id(obj) in current_selection)
+                uuid_to_item[uuid] = item
+
+            tree.apply_state(state, uuid_to_item)
+            layout.addWidget(tree)
+
+            separator = QFrame()
+            separator.setFrameShape(QFrame.Shape.HLine)
+            separator.setStyleSheet("color: #6b7280;")
+            layout.addWidget(separator)
+
+        layout.addWidget(DialogFooter(dialog=self, margin=(0, 10, 0, 0)))
+
+    def _select_all(self):
+        """Select all items in all trees."""
+        for tree in self._trees:
+            tree.tree_widget.selectAll()
+
+    def _select_by_type(self, data_type: str):
+        """Select only items of a specific type (data or models)."""
+        for tree, label in zip(self._trees, self._tree_labels):
+            if label == data_type:
+                tree.tree_widget.selectAll()
+            else:
+                tree.tree_widget.clearSelection()
+
+    def get_selected_objects(self):
+        selected = []
+        for tree in self._trees:
+            selected.extend(
+                item.metadata["object_id"] for item in tree.selected_items()
+            )
+        return selected
+
+
 class VisibilityAnimation(BaseAnimation):
     """Visibility fade animation"""
 
-    def _init_parameters(self) -> Dict[str, Any]:
+    def _init_parameters(self) -> None:
         self.parameters.clear()
-
         self.parameters.update(
             {"start_opacity": 1.0, "target_opacity": 0.0, "easing": "instant"}
         )
@@ -321,16 +475,13 @@ class VisibilityAnimation(BaseAnimation):
             },
         ]
 
-    def _open_object_selection_dialog(self, parent=None):
+    def _open_object_selection_dialog(self, _checked=None):
         """Open dialog to select which objects should be affected"""
-        from mosaic.dialogs.selection import ActorSelectionDialog
-
         try:
             current_selection = self.parameters.get("selected_objects", [])
             dialog = ActorSelectionDialog(
-                cdata=self.cdata, current_selection=current_selection, parent=parent
+                cdata=self.cdata, current_selection=current_selection
             )
-
             if dialog.exec():
                 selected_objects = dialog.get_selected_objects()
                 self.update_parameters(selected_objects=selected_objects)
@@ -358,45 +509,36 @@ class VisibilityAnimation(BaseAnimation):
         return actors
 
     def _update(self, frame: int) -> None:
-        _, renderer = self._get_rendering_context(return_renderer=True)
+        # Calculate progress through the animation
+        duration = self.stop_frame - self.start_frame
+        if duration <= 0:
+            return
 
-        diff = self.parameters["start_opacity"] - self.parameters["target_opacity"]
-        progress = frame * diff / self.stop_frame
+        progress = (frame - self.start_frame) / duration
+        progress = max(0.0, min(1.0, progress))
 
-        if self.parameters["easing"] == "ease-in":
-            progress_adj = progress * progress
-        elif self.parameters["easing"] == "ease-out":
-            progress_adj = 1.0 - (1.0 - progress) * (1.0 - progress)
-        elif self.parameters["easing"] == "ease-in-out":
-            if progress < 0.5:
-                progress_adj = 0.5 * (
-                    1.0 - (1.0 - 2.0 * progress) * (1.0 - 2.0 * progress)
-                )
-            else:
-                progress_adj = 0.5 + 0.5 * (
-                    (2.0 * progress - 1.0) * (2.0 * progress - 1.0)
-                )
-        else:
-            progress_adj = progress
+        # Apply easing
+        eased_progress = self._ease(progress)
 
-        progress_adj = self.parameters["start_opacity"] - progress
-        if self.parameters["easing"] == "instant":
-            progress_adj = self.parameters["target_opacity"]
+        # Interpolate opacity
+        start_opacity = self.parameters["start_opacity"]
+        target_opacity = self.parameters["target_opacity"]
+        current_opacity = (
+            start_opacity + (target_opacity - start_opacity) * eased_progress
+        )
 
         for actor in self._get_actors():
-            actor.GetProperty().SetOpacity(progress_adj)
+            actor.GetProperty().SetOpacity(current_opacity)
 
 
 class WaypointAnimation(BaseAnimation):
     """Animation that smoothly moves between defined waypoints"""
 
-    def _init_parameters(self) -> Dict[str, Any]:
+    def _init_parameters(self) -> None:
         self.parameters.clear()
         self.parameters.update(
             {"waypoints": [], "spline_order": 3, "target_position": [0.0, 0.0, 0.0]}
         )
-        self.frames = 100
-
         camera = self._get_rendering_context()
         self.parameters["waypoints"].append(camera.GetPosition())
 
@@ -460,44 +602,129 @@ class WaypointAnimation(BaseAnimation):
     def _update(self, frame: int) -> None:
         if not hasattr(self, "_curve"):
             self._init_spline()
-            # Spline creation failed for some reason
             if not hasattr(self, "_curve"):
                 return None
 
-        if len(self._positions) != self.duration:
-            self._positions = self._curve.sample(self.duration)
+        duration = self.stop_frame - self.start_frame
+        if duration <= 0:
+            return
+
+        # Resample if duration changed
+        if len(self._positions) != duration + 1:
+            self._positions = self._curve.sample(duration + 1)
+
+        # Calculate local frame index
+        local_frame = frame - self.start_frame
+        local_frame = max(0, min(len(self._positions) - 1, local_frame))
 
         camera, renderer = self._get_rendering_context(return_renderer=True)
 
-        new_pos = self._positions[frame]
-        displacement = [
-            new_pos[0] - self._initial_position[0],
-            new_pos[1] - self._initial_position[1],
-            new_pos[2] - self._initial_position[2],
-        ]
+        new_pos = self._positions[local_frame]
+        displacement = [new_pos[i] - self._initial_position[i] for i in range(3)]
 
-        new_focal = [
-            self._initial_focal[0] + displacement[0],
-            self._initial_focal[1] + displacement[1],
-            self._initial_focal[2] + displacement[2],
-        ]
+        new_focal = [self._initial_focal[i] + displacement[i] for i in range(3)]
         camera.SetPosition(*new_pos)
         camera.SetFocalPoint(*new_focal)
 
         renderer.ResetCameraClippingRange()
 
 
+class ZoomAnimation(BaseAnimation):
+    """Camera zoom animation"""
+
+    def _init_parameters(self) -> None:
+        self.parameters.clear()
+        self.parameters.update(
+            {
+                "zoom_factor": 2.0,
+                "easing": "ease-in-out",
+            }
+        )
+        self._initial_distance = None
+
+    def get_settings(self) -> List[Dict[str, Any]]:
+        return [
+            {
+                "label": "zoom_factor",
+                "type": "float",
+                "min": 0.1,
+                "max": 10.0,
+                "default": self.parameters.get("zoom_factor", 2.0),
+                "description": "Target zoom factor (>1 zooms in, <1 zooms out)",
+            },
+            {
+                "label": "easing",
+                "type": "select",
+                "options": ["linear", "ease-in", "ease-out", "ease-in-out"],
+                "default": self.parameters.get("easing", "ease-in-out"),
+                "description": "Easing function for smooth zoom",
+            },
+        ]
+
+    def _update(self, frame: int) -> None:
+        camera, renderer = self._get_rendering_context(return_renderer=True)
+
+        if frame == self.start_frame or self._initial_distance is None:
+            self._initial_distance = camera.GetDistance()
+            self._initial_position = camera.GetPosition()
+            self._initial_focal = camera.GetFocalPoint()
+
+        duration = self.stop_frame - self.start_frame
+        if duration <= 0:
+            return
+
+        progress = (frame - self.start_frame) / duration
+        progress = max(0.0, min(1.0, progress))
+        eased_progress = self._ease(progress)
+
+        zoom_factor = self.parameters["zoom_factor"]
+        target_distance = self._initial_distance / zoom_factor
+
+        current_distance = (
+            self._initial_distance
+            + (target_distance - self._initial_distance) * eased_progress
+        )
+
+        # Move camera along the view direction
+        direction = [
+            self._initial_position[i] - self._initial_focal[i] for i in range(3)
+        ]
+        length = sum(d * d for d in direction) ** 0.5
+        if length > 0:
+            direction = [d / length for d in direction]
+
+        new_position = [
+            self._initial_focal[i] + direction[i] * current_distance for i in range(3)
+        ]
+
+        camera.SetPosition(*new_position)
+        renderer.ResetCameraClippingRange()
+
+
 class AnimationType(Enum):
     TRAJECTORY = {
         "name": "Trajectory",
-        "color": "#3b82f6",
+        "color": Colors.CATEGORY["trajectory"],
         "class": TrajectoryAnimation,
     }
-    CAMERA = {"name": "Camera Orbit", "color": "#10b981", "class": CameraAnimation}
-    SLICE = {"name": "Volume", "color": "#f59e0b", "class": VolumeAnimation}
+    CAMERA = {
+        "name": "Orbit",
+        "color": Colors.CATEGORY["camera"],
+        "class": CameraAnimation,
+    }
+    ZOOM = {"name": "Zoom", "color": Colors.CATEGORY["zoom"], "class": ZoomAnimation}
+    SLICE = {
+        "name": "Volume",
+        "color": Colors.CATEGORY["volume"],
+        "class": VolumeAnimation,
+    }
     VISIBILITY = {
-        "name": "Visibility Fade",
-        "color": "#8b5cf6",
+        "name": "Visibility",
+        "color": Colors.CATEGORY["visibility"],
         "class": VisibilityAnimation,
     }
-    WAYPOINT = {"name": "Waypoint Path", "color": "#ec4899", "class": WaypointAnimation}
+    WAYPOINT = {
+        "name": "Waypoint",
+        "color": Colors.CATEGORY["waypoint"],
+        "class": WaypointAnimation,
+    }

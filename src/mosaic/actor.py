@@ -109,21 +109,5 @@ QUALITY_PRESETS = {
 }
 
 
-def set_quality_preset(preset_name: str):
-    """Set quality using a predefined preset.
-
-    Args:
-        preset_name: One of "ultra", "high", "medium", "low", "adaptive"
-    """
-    if preset_name not in QUALITY_PRESETS:
-        raise ValueError(
-            f"Unknown preset: {preset_name}. Available: {list(QUALITY_PRESETS.keys())}"
-        )
-
-    preset = QUALITY_PRESETS[preset_name]
-    quality = preset.pop("quality")
-    ActorFactory().set_quality(quality, **preset)
-
-
 def create_actor():
     return ActorFactory().create_actor()

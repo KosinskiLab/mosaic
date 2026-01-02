@@ -1,54 +1,18 @@
 from typing import Optional
 
-from qtpy.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
+from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QToolButton,
     QLabel,
     QFrame,
     QSizePolicy,
     QScrollArea,
-    QSplitter,
 )
-import qtawesome as qta
 
-
-class ChevronButton(QToolButton):
-    def __init__(self, direction="right", parent=None):
-        """Initialize a chevron button with specified direction."""
-        super().__init__(parent)
-        self.direction = direction
-        self.setFixedSize(24, 24)
-        self.setStyleSheet(
-            """
-            QToolButton {
-                border: none;
-                background-color: transparent;
-            }
-            QToolButton:hover {
-                background-color: rgba(0, 0, 0, 0.05);
-                border-radius: 12px;
-            }
-        """
-        )
-        self._update_icon()
-
-    def set_direction(self, direction):
-        """Change the direction of the chevron."""
-        self.direction = direction
-        self._update_icon()
-
-    def _update_icon(self):
-        self.setIcon(qta.icon("fa5s.chevron-right", color="#696c6f"))
-        if self.direction == "left":
-            self.setIcon(qta.icon("fa5s.chevron-left", color="#696c6f"))
-        elif self.direction == "up":
-            self.setIcon(qta.icon("fa5s.chevron-up", color="#696c6f"))
-        elif self.direction == "down":
-            self.setIcon(qta.icon("fa5s.chevron-down", color="#696c6f"))
-        return None
+from .search_widget import SearchWidget
+from ..stylesheets import Colors
 
 
 class ObjectBrowserSidebarSection(QWidget):
@@ -101,33 +65,10 @@ class ObjectBrowserSidebar(QWidget):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
 
-        self.visible = True
-        self.collapsed = False
         self.sections = {}
 
         self._setup_ui()
         self._setup_styling()
-
-        self.animation = QPropertyAnimation(self, b"maximumWidth")
-        self.animation.setDuration(200)
-        self.animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
-        self.animation.valueChanged.connect(self._update_width)
-        self.animation.finished.connect(self._animation_finished)
-
-    def _update_width(self, width):
-        """Update the sidebar width during animation."""
-        show_content = width > 50
-        if hasattr(self, "title_label"):
-            self.title_label.setVisible(show_content)
-
-        if hasattr(self, "scroll_area"):
-            self.scroll_area.setVisible(show_content)
-
-    def _animation_finished(self):
-        """Handle animation completion."""
-        if not self.collapsed:
-            # Avoid unwanted splitter interactions
-            self.setMaximumWidth(16777215)
 
     def _setup_ui(self):
         """Initialize the UI components."""
@@ -135,21 +76,22 @@ class ObjectBrowserSidebar(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Header section
+        # Header section with title and search
         self.header = QWidget()
         self.header.setObjectName("sidebarHeader")
-        self.header.setFixedHeight(40)
-        header_layout = QHBoxLayout(self.header)
-        header_layout.setContentsMargins(10, 8, 10, 8)
+        header_layout = QVBoxLayout(self.header)
+        header_layout.setContentsMargins(10, 10, 10, 10)
+        header_layout.setSpacing(8)
 
         self.title_label = QLabel()
         self.title_label.setObjectName("panelTitle")
-        self.collapse_btn = ChevronButton("left")
-        self.collapse_btn.clicked.connect(self.toggle_collapse)
+
+        self.search_widget = SearchWidget(placeholder="Search objects...")
+        self.search_widget.searchTextChanged.connect(self._filter_objects)
 
         header_layout.addWidget(self.title_label)
+        header_layout.addWidget(self.search_widget)
         header_layout.addStretch()
-        header_layout.addWidget(self.collapse_btn)
         main_layout.addWidget(self.header)
 
         # Content scroll area
@@ -178,109 +120,130 @@ class ObjectBrowserSidebar(QWidget):
     def _setup_styling(self):
         """Set up the widget styling."""
         self.setStyleSheet(
-            """
-            QLabel {
+            f"""
+            QLabel {{
                 background-color: transparent;
-            }
+            }}
 
             /* Header styling with border-bottom */
-            #sidebarHeader {
+            #sidebarHeader {{
                 background-color: transparent;
-                border-bottom: 1px solid #6b7280;
-            }
+                border-bottom: 1px solid {Colors.BORDER_DARK};
+            }}
 
-            #panelTitle {
-                font-weight: 600;
-                font-size: 13px;
-            }
-
-            /* Section styling */
-            #sectionHeader {
-                background-color: #1a000000;
-                border-radius: 4px;
-            }
-
-            #sectionContent {
-                background-color: transparent;
-            }
-
-            #sectionTitle {
+            #panelTitle {{
                 font-weight: 500;
                 font-size: 13px;
-            }
+            }}
+
+            /* Section styling - minimal */
+            #sectionHeader {{
+                background-color: transparent;
+            }}
+
+            #sectionContent {{
+                background-color: transparent;
+            }}
+
+            #sectionTitle {{
+                font-weight: 500;
+                font-size: 12px;
+            }}
 
             /* Item styling */
-            #selectedItem {
-                background-color: #eef2ff;
+            #selectedItem {{
+                background-color: rgba(79, 70, 229, 0.08);
                 border-radius: 4px;
-            }
+            }}
 
-            #normalItem {
+            #normalItem {{
                 background-color: transparent;
                 border-radius: 4px;
-            }
+            }}
 
-            #normalItem:hover {
-                background-color: #f5f5f5;
-            }
+            #normalItem:hover {{
+                background-color: {Colors.BG_HOVER};
+            }}
 
-            #visibilityDot[status="visible"] {
-                background-color: #34d399;
+            #visibilityDot[status="visible"] {{
+                background-color: {Colors.SUCCESS};
                 border-radius: 5px;
-            }
+            }}
 
-            #visibilityDot[status="hidden"] {
-                background-color: #9ca3af;
+            #visibilityDot[status="hidden"] {{
+                background-color: {Colors.ICON_MUTED};
                 border-radius: 5px;
-            }
+            }}
 
-            #metadataLabel {
-                color: #6b7280;
+            #metadataLabel {{
+                color: {Colors.TEXT_MUTED};
                 font-size: 10px;
-            }
+            }}
 
             /* Content area */
-            #scrollArea {
+            #scrollArea {{
                 background-color: transparent;
                 border: none;
-            }
+            }}
 
-            #contentWidget {
+            #contentWidget {{
                 background-color: transparent;
-            }
+            }}
 
-            QScrollArea {
+            QScrollArea {{
                 border: none;
-            }
+            }}
 
-            QScrollBar:vertical {
+            QScrollBar:vertical {{
                 border: none;
-                background: #f1f1f1;
+                background: {Colors.BG_TERTIARY};
                 width: 6px;
                 margin: 0px;
-            }
+            }}
 
-            QScrollBar::handle:vertical {
-                background: #c1c1c1;
+            QScrollBar::handle:vertical {{
+                background: {Colors.ICON_MUTED};
                 min-height: 20px;
                 border-radius: 3px;
-            }
+            }}
 
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 height: 0px;
-            }
+            }}
 
-            QScrollBar:horizontal {
+            QScrollBar:horizontal {{
                 height: 0px;
                 background: transparent;
-            }
+            }}
         """
         )
 
     def add_widget(self, section_id: str, title: str, widget: QWidget) -> QWidget:
         """Add a widget wrapped in a section with header to the sidebar."""
+        # Add separator line if this is not the first section
+        if len(self.sections) > 0:
+            separator = QFrame()
+            separator.setFrameShape(QFrame.Shape.HLine)
+            separator.setFixedHeight(2)
+            separator.setStyleSheet(
+                """
+                QFrame {
+                    background: rgba(0, 0, 0, 0.10);
+                    border: none;
+                    border-radius: 1px;
+                    margin-left: 4px;
+                    margin-right: 4px;
+                }
+            """
+            )
+            self.content_layout.addWidget(separator)
+
         section = ObjectBrowserSidebarSection(title)
         widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        # Remove any border styling from the container widget
+        widget.setStyleSheet("QFrame { border: none; border-bottom: none; }")
+
         section.addWidget(widget)
 
         for i in range(self.content_layout.count()):
@@ -299,56 +262,59 @@ class ObjectBrowserSidebar(QWidget):
         for section_id in list(self.sections.keys()):
             self.remove_section(section_id)
 
-    def toggle_collapse(self):
-        """Toggle between collapsed and expanded states with animation."""
-        splitter = self.parent()
+    def _filter_objects(self, search_text: str):
+        """Filter both cluster and model lists by name."""
+        search_lower = search_text.lower()
 
-        while splitter and not isinstance(splitter, QSplitter):
-            splitter = splitter.parent()
+        for section_id, section in self.sections.items():
+            content = section.content_widget
+            if not content or not content.layout():
+                continue
 
-        if not splitter:
-            return None
+            # Find the ContainerListWidget inside the content
+            for i in range(content.layout().count()):
+                item = content.layout().itemAt(i)
+                if item is None:
+                    continue
+                widget = item.widget()
+                if widget is not None and hasattr(widget, "tree_widget"):
+                    tree = widget.tree_widget
+                    self._filter_tree(tree, search_lower)
 
-        current_sizes = splitter.sizes()
-        if not self.collapsed:
-            # Store current width before collapsing
-            self.previous_width = current_sizes[0]
-            target_sizes = [60, current_sizes[1] + current_sizes[0] - 60]
-            direction = "right"
-        else:
-            # Restore previous width
-            target_width = getattr(self, "previous_width", 200)
-            target_sizes = [
-                target_width,
-                current_sizes[1] - target_width + current_sizes[0],
-            ]
-            direction = "left"
+    def _filter_tree(self, tree, search_text: str):
+        """Filter all items in a tree widget."""
+        for i in range(tree.topLevelItemCount()):
+            item = tree.topLevelItem(i)
+            self._filter_item(item, search_text)
 
-        # Animate splitter sizes instead of widget width
-        self.animation.setStartValue(current_sizes[0])
-        self.animation.setEndValue(target_sizes[0])
-        self.animation.valueChanged.connect(
-            lambda width: self._animate_splitter_size(width, splitter)
-        )
+    def _filter_item(self, item, search_text: str):
+        """Recursively filter tree items."""
+        # If search is empty, show all
+        if not search_text:
+            item.setHidden(False)
+            for i in range(item.childCount()):
+                self._filter_item(item.child(i), search_text)
+            return
 
-        self.collapsed = not self.collapsed
-        self.animation.start()
-        self.collapse_btn.set_direction(direction)
-        self.visibility_changed.emit(self.collapsed)
+        # Get item name - handle both StyledTreeWidgetItem and GroupTreeWidgetItem
+        # StyledTreeWidgetItem.text() takes no args, GroupTreeWidgetItem uses text(0)
+        try:
+            name = item.text().lower()
+        except TypeError:
+            name = item.text(0).lower()
 
-    def _animate_splitter_size(self, width, splitter):
-        """Update splitter size during animation."""
-        current_sizes = splitter.sizes()
-        total_width = sum(current_sizes)
-        new_sizes = [int(width), total_width - int(width)]
-        splitter.setSizes(new_sizes)
+        matches = search_text in name
 
-        # Show/hide content based on width
-        show_content = width > 60
-        if hasattr(self, "title_label"):
-            self.title_label.setVisible(show_content)
-        if hasattr(self, "scroll_area"):
-            self.scroll_area.setVisible(show_content)
+        # For groups, also check children
+        child_matches = False
+        for i in range(item.childCount()):
+            child = item.child(i)
+            self._filter_item(child, search_text)
+            if not child.isHidden():
+                child_matches = True
+
+        # Show if this matches or any child matches
+        item.setHidden(not (matches or child_matches))
 
     def set_title(self, title: str):
         """Set the sidebar title."""

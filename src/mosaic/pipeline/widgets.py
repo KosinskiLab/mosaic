@@ -36,6 +36,7 @@ from ..widgets.container_list import ContainerListWidget, StyledTreeWidgetItem
 
 
 from ._utils import strip_filepath, natural_sort_key
+from ..stylesheets import Colors
 
 
 class OperationCardWidget(QFrame):
@@ -65,9 +66,14 @@ class OperationCardWidget(QFrame):
         self.group_name = operation_name
         self.remove_previous_output = False
 
-        self.setMinimumHeight(120)
+        self.setMinimumHeight(130)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.setup_ui()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.toggle_settings()
+        super().mousePressEvent(event)
 
     def setup_ui(self):
         import qtawesome as qta
@@ -75,6 +81,7 @@ class OperationCardWidget(QFrame):
         self.setStyleSheet(
             f"""
             OperationCardWidget {{
+                border: 1px solid {Colors.NEUTRAL_BG};
                 border-left: 4px solid {self.category_color};
                 border-radius: 6px;
                 background-color: transparent;
@@ -107,19 +114,19 @@ class OperationCardWidget(QFrame):
         header_layout.addStretch()
 
         self.expand_btn = QPushButton()
-        self.expand_btn.setIcon(qta.icon("mdi6.chevron-down", color="#6b7280"))
+        self.expand_btn.setIcon(qta.icon("ph.caret-down", color=Colors.TEXT_MUTED))
         self.expand_btn.setFixedSize(28, 28)
         self.expand_btn.setStyleSheet(
-            "QPushButton { border: none} QPushButton:hover { background: #f3f4f6; border-radius: 12px; }"
+            f"QPushButton {{ border: none}} QPushButton:hover {{ background: {Colors.BG_TERTIARY}; border-radius: 12px; }}"
         )
         self.expand_btn.clicked.connect(self.toggle_settings)
         header_layout.addWidget(self.expand_btn)
 
         close_btn = QPushButton()
-        close_btn.setIcon(qta.icon("mdi6.close", color="#6b7280"))
+        close_btn.setIcon(qta.icon("ph.x", color=Colors.TEXT_MUTED))
         close_btn.setFixedSize(28, 28)
         close_btn.setStyleSheet(
-            "QPushButton { border: none} QPushButton:hover { background: #f3f4f6; border-radius: 12px; }"
+            f"QPushButton {{ border: none}} QPushButton:hover {{ background: {Colors.BG_TERTIARY}; border-radius: 12px; }}"
         )
         close_btn.clicked.connect(lambda: self.removed.emit(self))
         header_layout.addWidget(close_btn)
@@ -127,13 +134,13 @@ class OperationCardWidget(QFrame):
         layout.addLayout(header_layout)
 
         desc = QLabel(self.operation_info["description"])
-        desc.setStyleSheet("color: #6b7280; font-size: 11px;")
+        desc.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
         desc.setWordWrap(True)
         layout.addWidget(desc)
 
         self.params_summary = QLabel("No parameters set")
         self.params_summary.setStyleSheet(
-            "color: #9ca3af; font-size: 11px; font-style: italic;"
+            f"color: {Colors.ICON_MUTED}; font-size: 11px; font-style: italic;"
         )
         self.params_summary.setWordWrap(True)
         layout.addWidget(self.params_summary)
@@ -213,7 +220,9 @@ class OperationCardWidget(QFrame):
             count_layout = QHBoxLayout()
             count_layout.addWidget(QLabel("Selected:"))
             self.file_count_label = QLabel("0 files")
-            self.file_count_label.setStyleSheet("color: #6b7280; font-weight: 500;")
+            self.file_count_label.setStyleSheet(
+                f"color: {Colors.TEXT_MUTED}; font-weight: 500;"
+            )
             count_layout.addWidget(self.file_count_label)
             count_layout.addStretch()
             file_layout.addLayout(count_layout)
@@ -277,7 +286,7 @@ class OperationCardWidget(QFrame):
         separator.setFixedHeight(2)
         separator.setFrameShape(QFrame.Shape.HLine)
         separator.setFrameShadow(QFrame.Shadow.Sunken)
-        separator.setStyleSheet("background-color: #e5e7eb;")
+        separator.setStyleSheet(f"background-color: {Colors.NEUTRAL_BG};")
         form_layout.addRow(separator)
 
         if self.method_combo:
@@ -375,8 +384,8 @@ class OperationCardWidget(QFrame):
         self.expanded = not self.expanded
         self.settings_container.setVisible(self.expanded)
 
-        icon = "mdi6.chevron-up" if self.expanded else "mdi6.chevron-down"
-        self.expand_btn.setIcon(qta.icon(icon, color="#6b7280"))
+        icon = "ph.caret-up" if self.expanded else "ph.caret-down"
+        self.expand_btn.setIcon(qta.icon(icon, color=Colors.TEXT_MUTED))
 
         self.update_summary()
         self.params_summary.setVisible(not self.expanded)
@@ -486,7 +495,7 @@ class PipelineTreeWidget(QTreeWidget):
 
             icon_label = QLabel()
             icon_label.setPixmap(
-                qta.icon("mdi6.chevron-down", color="#9ca3af").pixmap(20, 20)
+                qta.icon("ph.caret-down", color=Colors.ICON_MUTED).pixmap(20, 20)
             )
             icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             layout.addWidget(icon_label)

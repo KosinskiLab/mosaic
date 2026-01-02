@@ -12,7 +12,6 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QWidget,
-    QSlider,
     QComboBox,
     QPushButton,
     QFileDialog,
@@ -21,10 +20,11 @@ from qtpy.QtWidgets import (
 )
 import qtawesome as qta
 
-from qtpy.QtCore import Qt, Signal
+from qtpy.QtCore import Signal
 from vtkmodules.util import numpy_support
 
-from ..stylesheets import QPushButton_style
+from .sliders import SliderRow, DualHandleSlider
+from ..stylesheets import QPushButton_style, Colors
 
 _colormaps = [
     "gray",
@@ -52,7 +52,6 @@ class VolumeViewer(QWidget):
         self.slice = vtk.vtkImageSlice()
         self.volume = None
 
-        # self.label = QLabel("Volume Viewer")
         self.open_button = QPushButton("Load")
         self.open_button.clicked.connect(self.open_volume)
         self.close_button = QPushButton("Close")
@@ -60,15 +59,22 @@ class VolumeViewer(QWidget):
 
         self.is_visible = True
         self.visibility_button = QPushButton()
-        self.visibility_button.setIcon(qta.icon("fa5s.eye", color="#696c6f"))
+        self.visibility_button.setIcon(qta.icon("ph.eye", color=Colors.ICON))
         self.visibility_button.setFixedWidth(30)
         self.visibility_button.setToolTip("Toggle volume visibility")
         self.visibility_button.clicked.connect(self.toggle_visibility)
         self.visibility_button.setEnabled(False)
 
-        self.slice_slider = QSlider(Qt.Orientation.Horizontal)
-        self.slice_slider.setEnabled(False)
-        self.slice_slider.valueChanged.connect(self.update_slice)
+        self.slice_row = SliderRow(
+            label="Slice",
+            min_val=0,
+            max_val=100,
+            default=0,
+            decimals=0,
+            label_position="right",
+        )
+        self.slice_row.setEnabled(False)
+        self.slice_row.valueChanged.connect(self._on_slice_changed)
 
         self.orientation_selector = QComboBox()
         self.orientation_selector.addItems(["X", "Y", "Z"])
@@ -82,33 +88,30 @@ class VolumeViewer(QWidget):
         self.color_selector.setEnabled(False)
 
         self.contrast_label = QLabel("Contrast:")
-        self.min_contrast_slider = QSlider(Qt.Orientation.Horizontal)
-        self.min_contrast_slider.setRange(0, 100)
-        self.min_contrast_slider.setValue(0)
-        self.min_contrast_slider.valueChanged.connect(self.update_contrast_and_gamma)
-        self.min_contrast_slider.setEnabled(False)
-        self.max_contrast_slider = QSlider(Qt.Orientation.Horizontal)
-        self.max_contrast_slider.setRange(0, 100)
-        self.max_contrast_slider.setValue(100)
-        self.max_contrast_slider.valueChanged.connect(self.update_contrast_and_gamma)
-        self.max_contrast_slider.setEnabled(False)
+        self.contrast_label.setStyleSheet(
+            f"font-size: 13px; color: {Colors.TEXT_PRIMARY};"
+        )
+        self.contrast_slider = DualHandleSlider()
+        self.contrast_slider.setRange(0, 100)
+        self.contrast_slider.setValues(0, 100)
+        self.contrast_slider.rangeChanged.connect(self.update_contrast_and_gamma)
+        self.contrast_slider.setEnabled(False)
+        self.contrast_value_label = QLabel("0.00 - 1.00")
+        self.contrast_value_label.setStyleSheet(
+            f"font-size: 13px; font-weight: 500; color: {Colors.TEXT_PRIMARY}; min-width: 80px;"
+        )
+        self.contrast_value_label.setEnabled(False)
 
-        self.gamma_label = QLabel("Gamma:")
-        self.gamma_slider = QSlider(Qt.Orientation.Horizontal)
-        self.gamma_slider.setRange(1, 300)
-        self.gamma_slider.setValue(100)
-        self.gamma_slider.valueChanged.connect(self.update_contrast_and_gamma)
-        self.gamma_slider.setEnabled(False)
-
-        # Create labels for current values
-        self.slice_label = QLabel("Slice:")
-        self.slice_value_label = QLabel("0")
-        self.contrast_value_label = QLabel("0 - 100")
-        self.gamma_value_label = QLabel("1.00")
-
-        self.slice_value_label.setFixedWidth(30)
-        self.contrast_value_label.setFixedWidth(80)
-        self.gamma_value_label.setFixedWidth(40)
+        self.gamma_row = SliderRow(
+            label="Gamma",
+            min_val=0.01,
+            max_val=3.0,
+            default=1.0,
+            decimals=2,
+            label_position="right",
+        )
+        self.gamma_row.setEnabled(False)
+        self.gamma_row.valueChanged.connect(self.update_contrast_and_gamma)
 
         # Project 3D geometries on 2D slice
         self.project_selector = QComboBox()
@@ -120,54 +123,36 @@ class VolumeViewer(QWidget):
 
         # Create layout
         self.controls_layout = QHBoxLayout()
-        # self.controls_layout.addWidget(self.label)
         self.controls_layout.addWidget(self.open_button)
         self.controls_layout.addWidget(self.close_button)
         self.controls_layout.addWidget(self.orientation_selector)
         self.controls_layout.addWidget(self.color_selector)
         self.controls_layout.addWidget(self.visibility_button)
-        self.controls_layout.addWidget(self.slice_label)
-        self.controls_layout.addWidget(self.slice_slider)
-        self.controls_layout.addWidget(self.slice_value_label)
+        self.controls_layout.addWidget(self.slice_row, 1)
+        self.controls_layout.addWidget(self.contrast_slider, 1)
         self.controls_layout.addWidget(self.contrast_label)
-        self.controls_layout.addWidget(self.min_contrast_slider)
-        self.controls_layout.addWidget(self.max_contrast_slider)
         self.controls_layout.addWidget(self.contrast_value_label)
-        self.controls_layout.addWidget(self.gamma_label)
-        self.controls_layout.addWidget(self.gamma_slider)
-        self.controls_layout.addWidget(self.gamma_value_label)
+        self.controls_layout.addWidget(self.gamma_row, 1)
         self.controls_layout.addWidget(self.project_selector)
 
         self.editable_widgets = [
-            self.slice_slider,
+            self.slice_row,
             self.orientation_selector,
             self.color_selector,
-            self.min_contrast_slider,
-            self.max_contrast_slider,
-            self.gamma_slider,
+            self.contrast_label,
+            self.contrast_slider,
+            self.contrast_value_label,
+            self.gamma_row,
             self.close_button,
             self.visibility_button,
             self.project_selector,
-            self.contrast_value_label,
-            self.slice_value_label,
-            self.gamma_value_label,
-            self.slice_label,
-            self.contrast_label,
-            self.gamma_label,
         ]
         self.change_widget_state(False)
 
         layout = QVBoxLayout(self)
         layout.addLayout(self.controls_layout)
         self.setLayout(layout)
-        self.setStyleSheet(
-            """
-            QLabel:disabled {
-                opacity: 0.1;
-            }
-        """
-            + QPushButton_style
-        )
+        self.setStyleSheet(QPushButton_style)
 
     def toggle_visibility(self):
         """Toggle the visibility of the volume slice"""
@@ -177,10 +162,10 @@ class VolumeViewer(QWidget):
         self.is_visible = not self.is_visible
         self.slice.SetVisibility(self.is_visible)
 
-        self.visibility_button.setIcon(qta.icon("fa5s.eye-slash", color="#696c6f"))
+        self.visibility_button.setIcon(qta.icon("ph.eye-slash", color=Colors.ICON))
         self.visibility_button.setToolTip("Show volume")
         if self.is_visible:
-            self.visibility_button.setIcon(qta.icon("fa5s.eye", color="#696c6f"))
+            self.visibility_button.setIcon(qta.icon("ph.eye", color=Colors.ICON))
             self.visibility_button.setToolTip("Hide volume")
 
         self.vtk_widget.GetRenderWindow().Render()
@@ -212,9 +197,9 @@ class VolumeViewer(QWidget):
         if self.volume is None:
             return -1
 
-        self.min_contrast_slider.setValue(0)
-        self.max_contrast_slider.setValue(100)
-        self.gamma_slider.setValue(100)
+        self.contrast_slider.setValues(0, 100)
+        self.contrast_value_label.setText("0.00 - 1.00")
+        self.gamma_row.setValue(1.0)
         self.orientation_selector.setCurrentIndex(0)
         self.color_selector.setCurrentText("gray")
 
@@ -261,17 +246,20 @@ class VolumeViewer(QWidget):
         self.update_contrast_and_gamma()
 
         dimensions = self.get_dimensions()
-        self.slice_slider.setRange(0, dimensions[0] - 1)
-        self.slice_slider.setValue(0)
+        self.slice_row.setRange(0, dimensions[0] - 1)
+        self.slice_row.setValue(0)
 
         self.change_widget_state(is_enabled=True)
 
         self.renderer.ResetCamera()
         self.vtk_widget.GetRenderWindow().Render()
 
+    def _on_slice_changed(self, value: float):
+        """Handle slice row value change (converts float to int)."""
+        self.update_slice(int(value))
+
     def update_slice(self, slice_number):
         self.slice_mapper.SetSliceNumber(slice_number)
-        self.slice_value_label.setText(str(slice_number))
         self.update_clipping_plane()
         self.vtk_widget.GetRenderWindow().Render()
 
@@ -287,9 +275,9 @@ class VolumeViewer(QWidget):
 
         self._orientation = orientation
         dim = self._orientation_mapping.get(orientation, 0)
-        self.slice_slider.setRange(*(0, dimensions[dim] - 1))
+        self.slice_row.setRange(0, dimensions[dim] - 1)
 
-        self.slice_slider.setValue(0)
+        self.slice_row.setValue(0)
         self.slice_mapper.SetSliceNumber(0)
         self.update_clipping_plane()
 
@@ -297,10 +285,7 @@ class VolumeViewer(QWidget):
         self.vtk_widget.GetRenderWindow().Render()
 
     def get_slice(self):
-        try:
-            return int(self.slice_value_label.text())
-        except Exception:
-            return 0
+        return int(self.slice_row.value())
 
     def get_orientation(self):
         return getattr(self, "_orientation", None)
@@ -316,21 +301,20 @@ class VolumeViewer(QWidget):
         self.update_contrast_and_gamma()
         self.vtk_widget.GetRenderWindow().Render()
 
-    def update_contrast_and_gamma(self):
+    def update_contrast_and_gamma(self, *args):
         from ..utils import cmap_to_vtkctf
 
         scalar_range = self.volume.GetScalarRange()
         min_value, max_value = scalar_range
         value_range = max_value - min_value
 
-        min_contrast = self.min_contrast_slider.value() / 100.0
-        max_contrast = self.max_contrast_slider.value() / 100.0
-        gamma = self.gamma_slider.value() / 100.0
+        min_contrast = self.contrast_slider.lower_pos / 100.0
+        max_contrast = self.contrast_slider.upper_pos / 100.0
+        gamma = self.gamma_row.value()
 
         if min_contrast >= max_contrast:
             min_contrast = max_contrast - 0.01
 
-        self.gamma_value_label.setText(f"{gamma:.2f}")
         self.contrast_value_label.setText(f"{min_contrast:.2f} - {max_contrast:.2f}")
         adjusted_min = min_value + min_contrast * value_range
         adjusted_max = min_value + max_contrast * value_range
@@ -355,7 +339,7 @@ class VolumeViewer(QWidget):
 
         dim = self._orientation_mapping.get(self.orientation_selector.currentText(), 0)
 
-        pos = self.slice_slider.value()
+        pos = int(self.slice_row.value())
         origin, spacing = self.volume.GetOrigin()[dim], self.volume.GetSpacing()[dim]
         normal = [0 if i != dim else self.clipping_direction for i in range(3)]
         self.clipping_plane.SetNormal(*normal)
@@ -436,7 +420,7 @@ class MultiVolumeViewer(QWidget):
         # self.layout.addWidget(self.primary)
 
         add_button = QPushButton()
-        add_button.setIcon(qta.icon("fa5s.plus", color="#696c6f"))
+        add_button.setIcon(qta.icon("ph.plus", color=Colors.ICON))
         add_button.setFixedWidth(30)
         add_button.clicked.connect(self.add_viewer)
         self.primary.controls_layout.addWidget(add_button)
@@ -450,7 +434,7 @@ class MultiVolumeViewer(QWidget):
         new_viewer.layout().setContentsMargins(self.primary_margins)
 
         remove_button = QPushButton()
-        remove_button.setIcon(qta.icon("fa5s.trash", color="#696c6f"))
+        remove_button.setIcon(qta.icon("ph.trash", color=Colors.ICON))
         remove_button.setFixedWidth(30)
         remove_button.clicked.connect(lambda: self.remove_viewer(new_viewer))
         new_viewer.controls_layout.addWidget(remove_button)
@@ -509,13 +493,14 @@ class MultiVolumeViewer(QWidget):
         self.primary.color_selector.setCurrentText(
             new_primary.color_selector.currentText()
         )
-        self.primary.min_contrast_slider.setValue(
-            new_primary.min_contrast_slider.value()
+        self.primary.contrast_slider.setValues(
+            new_primary.contrast_slider.lower_pos,
+            new_primary.contrast_slider.upper_pos,
         )
-        self.primary.max_contrast_slider.setValue(
-            new_primary.max_contrast_slider.value()
+        self.primary.contrast_value_label.setText(
+            new_primary.contrast_value_label.text()
         )
-        self.primary.gamma_slider.setValue(new_primary.gamma_slider.value())
+        self.primary.gamma_row.setValue(new_primary.gamma_row.value())
 
         if new_primary.is_visible != self.primary.is_visible:
             self.primary.toggle_visibility()

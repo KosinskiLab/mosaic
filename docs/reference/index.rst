@@ -5,22 +5,17 @@ API
 .. toctree::
    :caption: Data Structures
 
-   data_structures/data
-   data_structures/container
-   data_structures/interactor
    data_structures/geometry
+   data_structures/container
+   data_structures/data
+   data_structures/interactor
 
 .. toctree::
-   :caption: GUI
+   :caption: Processing
 
-   gui/widgets
-   gui/dialogs
-   gui/tabs
-
-.. toctree::
-   :caption: Parametrization
-
+   operations
    parametrization
+   parallel
 
 .. toctree::
    :caption: File I/O
@@ -28,6 +23,8 @@ API
    formats
 
 .. toctree::
-   :caption: Parallel Processing
+   :caption: GUI
 
-   parallel
+   gui/widgets
+   gui/dialogs
+   gui/tabs

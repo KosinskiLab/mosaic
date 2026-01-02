@@ -160,15 +160,14 @@ class DataContainerInteractor(QObject):
         return color
 
     def set_coloring_mode(self, mode: str):
-        from .utils import get_cmap
+        from .stylesheets import Colors
 
         if mode not in ("default", "entity"):
             raise ValueError("Only mode 'default' and 'entity' are supported.")
 
         self.colors = [self.container.base_color]
         if mode == "entity":
-            cmap = get_cmap("Set2")
-            self.colors = [cmap(i)[:3] for i in range(cmap.N)]
+            self.colors = list(Colors.ENTITY)
 
         for i in range(len(self.container)):
             if (geometry := self.container.get(i)) is None:

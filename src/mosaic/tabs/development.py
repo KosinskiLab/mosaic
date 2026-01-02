@@ -6,10 +6,6 @@ from qtpy.QtWidgets import QWidget, QVBoxLayout
 from ..widgets.ribbon import create_button
 
 
-def noop(*args, **kwargs):
-    return None
-
-
 class PerformanceMonitor:
     """Monitor VTK rendering performance"""
 
@@ -73,23 +69,22 @@ class DevelopmentTab(QWidget):
         self.ribbon.clear()
         cluster_actions = [
             create_button(
-                "Add", "mdi.plus", self, self.add_cloud, "Merge selected clusters"
+                "Add", "mdi.plus", self, self.add_cloud, "Add test point cloud"
             ),
             create_button(
                 "Test Render",
                 "mdi.test-tube",
                 self,
                 self.test_point_rendering_performance,
-                "Merge selected clusters",
+                "Benchmark rendering",
             ),
         ]
         self.ribbon.add_section("Base Operations", cluster_actions)
 
     def add_cloud(self, *args):
-        num_points = 50000
+        num_points = 1000
         points = np.random.rand(num_points, 3) * 100
-        self.cdata._data.add(points=points, sampling_rate=1)
-        self.cdata.data.data_changed.emit()
+        self.cdata.data.add(points=points, sampling_rate=2)
         self.cdata.data.render()
 
     def test_point_rendering_performance(self, *args, **kwargs):
@@ -118,4 +113,5 @@ class DevelopmentTab(QWidget):
 
             vtk_widget.GetRenderWindow().GetInteractor().ProcessEvents()
 
+        monitor.print_stats()
         return monitor

@@ -181,7 +181,7 @@ class ImportDataDialog(QDialog):
         self.prev_button = QPushButton("Previous")
         self.next_button = QPushButton("Next")
         self.apply_all_button = QPushButton("Apply to All")
-        self.accept_button = QPushButton("Accept")
+        self.accept_button = QPushButton("Done")
         self.accept_button.setDefault(True)
 
         self.prev_button.clicked.connect(self.previous_file)

@@ -99,7 +99,14 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         if len(self.selected_points) == 0:
             return None
 
-        for geometry, point_ids in self.selected_points:
+        # Collect all point IDs per geometry to call color_points once per geometry
+        geometry_points = {}
+        for geometry, point_id in self.selected_points:
+            if geometry not in geometry_points:
+                geometry_points[geometry] = []
+            geometry_points[geometry].append(point_id)
+
+        for geometry, point_ids in geometry_points.items():
             geometry.color_points(
                 point_ids, geometry._appearance.get("highlight_color", (0.7, 0.7, 0.7))
             )
@@ -155,15 +162,13 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         from .meshing import to_open3d, merge_meshes
 
         sampling, appearance, points, geoms = 1, {}, [], []
-        for geometry, point_ids in self.selected_points:
-            geometry.color_points(
-                point_ids, geometry._appearance.get("base_color", (0.7, 0.7, 0.7))
-            )
-            points.append(geometry.points[point_ids].copy())
+        for geometry, point_id in self.selected_points:
+            points.append(geometry.points[point_id].copy())
 
             sampling = np.maximum(sampling, geometry.sampling_rate)
             if isinstance((fit := geometry.model), TriangularMesh):
-                geoms.append(geometry)
+                if geometry not in geoms:
+                    geoms.append(geometry)
                 appearance.update(geometry._appearance.copy())
 
         vertices = np.concatenate(points).reshape(-1, 3)
@@ -176,7 +181,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         )
 
         self.cdata._models.remove(geoms)
-        fit = TriangularMesh(to_open3d(vertices, faces))
+        fit = TriangularMesh(to_open3d(vertices, faces), repair=False)
         index = self.cdata.models.add(Geometry(model=fit, sampling_rate=sampling))
         if (geometry := self.cdata._models.get(index)) is not None:
             geometry.change_representation("mesh")

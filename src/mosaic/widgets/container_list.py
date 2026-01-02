@@ -17,6 +17,8 @@ from qtpy.QtWidgets import (
 from qtpy.QtSvg import QSvgRenderer
 import qtawesome as qta
 
+from ..stylesheets import Colors
+
 
 @dataclass()
 class TreeState:
@@ -564,11 +566,11 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
         elif item_type == "parametric":
             icon_name = "mdi.function"
         elif item_type == "mesh":
-            icon_name = "mdi.triangle-outline"
+            icon_name = "ph.triangle"
         elif item_type == "trajectory":
-            icon_name = "mdi.chart-line-variant"
+            icon_name = "ph.path"
         else:
-            icon_name = "mdi.shape-outline"
+            icon_name = "mdi.scatter-plot"
 
         color = self.visible_color if visible else self.invisible_color
         icon = qta.icon(icon_name, color=color, scale_factor=0.85)
@@ -624,11 +626,11 @@ class MetadataItemDelegate(QStyledItemDelegate):
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         if option.state & QStyle.StateFlag.State_Selected:
-            painter.setBrush(QColor(99, 102, 241, int(0.3 * 255)))
+            painter.setBrush(QColor(f"#33{Colors.PRIMARY.replace('#', '')}"))
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(content_rect, 6, 6)
         elif option.state & QStyle.StateFlag.State_MouseOver:
-            painter.setBrush(QColor(0, 0, 0, int(0.1 * 255)))
+            painter.setBrush(QColor(0, 0, 0, int(0.06 * 255)))
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(content_rect, 6, 6)
         painter.restore()

@@ -16,7 +16,7 @@ from qtpy.QtWidgets import (
     QGroupBox,
 )
 import qtawesome as qta
-from ..stylesheets import QPushButton_style, QGroupBox_style, QSlider_style
+from ..stylesheets import QPushButton_style, QGroupBox_style, QSlider_style, Colors
 
 
 class TiltControlDialog(QDialog):
@@ -86,7 +86,7 @@ class TiltControlDialog(QDialog):
         )
 
         reset_button = QPushButton(
-            qta.icon("fa5s.undo", opacity=0.7, color="gray"), "Reset"
+            qta.icon("ph.arrow-counter-clockwise", color=Colors.ICON), "Reset"
         )
         reset_button.clicked.connect(self.reset_tilt)
 

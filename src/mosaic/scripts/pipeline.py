@@ -1,10 +1,19 @@
+#!python3
+"""
+Pipeline entrypoint.
+
+Copyright (c) 2025 European Molecular Biology Laboratory
+
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
+
 import sys
 import json
 import argparse
-
 from pathlib import Path
-from mosaic.pipeline.executor import generate_runs, execute_run
 from concurrent.futures import ProcessPoolExecutor, as_completed
+
+from mosaic.pipeline.executor import generate_runs, execute_run
 
 
 def run_wrapper(run_config, skip_complete: bool = False):
@@ -23,10 +32,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  mosaic_pipeline config.json
-  mosaic_pipeline config.json --workers 8
-  mosaic_pipeline config.json --index 0
-  mosaic_pipeline config.json --index $SLURM_ARRAY_TASK_ID
+  mosaic-pipeline config.json
+  mosaic-pipeline config.json --workers 8
+  mosaic-pipeline config.json --index 0
+  mosaic-pipeline config.json --index $SLURM_ARRAY_TASK_ID
         """,
     )
     parser.add_argument("config", type=Path, help="Pipeline configuration JSON file")
@@ -57,8 +66,12 @@ Examples:
         print(f"Error: {args.config} not found", file=sys.stderr)
         return 1
 
-    with open(args.config, mode="r") as ifile:
-        pipeline_config = json.load(ifile)
+    try:
+        with open(args.config, mode="r") as ifile:
+            pipeline_config = json.load(ifile)
+    except json.JSONDecodeError:
+        print("Invalid json file.", file=sys.stderr)
+        return 1
 
     try:
         runs = generate_runs(pipeline_config)

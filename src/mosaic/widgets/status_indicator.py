@@ -25,7 +25,7 @@ from qtpy.QtWidgets import (
 from qtpy.QtGui import QFont
 import qtawesome as qta
 
-from ..stylesheets import QPushButton_style, QScrollArea_style
+from ..stylesheets import Colors, QPushButton_style, QScrollArea_style
 from ..parallel import BackgroundTaskManager
 
 
@@ -46,7 +46,9 @@ class TextSpinnerLabel(QLabel):
         self.current_frame = 0
         self.timer = QTimer()
         self.timer.timeout.connect(self.next_frame)
-        self.setStyleSheet("QLabel { color: #d97706; font-weight: bold; }")
+        self.setStyleSheet(
+            f"QLabel {{ color: {Colors.WARNING_DARK}; font-weight: bold; }}"
+        )
 
     def start(self):
         self.timer.start(60)
@@ -81,10 +83,10 @@ class TaskCard(QFrame):
         header_layout.setSpacing(10)
 
         self.status_colors = {
-            "running": "#f59e0b",
-            "queued": "#6b7280",
-            "completed": "#10b981",
-            "failed": "#ef4444",
+            "running": Colors.WARNING,
+            "queued": Colors.NEUTRAL,
+            "completed": Colors.SUCCESS,
+            "failed": Colors.ERROR,
         }
 
         self.status_dot = QLabel("●")
@@ -107,7 +109,7 @@ class TaskCard(QFrame):
 
         self.chevron = QLabel()
         self.chevron.setPixmap(
-            qta.icon("mdi.chevron-right", color="#9ca3af").pixmap(12, 12)
+            qta.icon("ph.caret-right", color=Colors.ICON_MUTED).pixmap(12, 12)
         )
         header_layout.addWidget(self.chevron)
 
@@ -118,15 +120,14 @@ class TaskCard(QFrame):
         self.output_view.setMinimumHeight(250)
         self.output_view.setVisible(False)
         self.output_view.setStyleSheet(
-            """
-            QTextEdit {
-                font-family: 'Courier New', monospace;
+            f"""
+            QTextEdit {{
                 background: transparent;
-                font-size: 8pt;
-                border: 1px solid #d1d5db;
+                font-size: 9pt;
+                border: 1px solid {Colors.BORDER_DARK};
                 border-radius: 3px;
                 padding: 4px;
-            }
+            }}
         """
         )
         self.main_layout.addWidget(self.output_view)
@@ -135,30 +136,30 @@ class TaskCard(QFrame):
 
     def _update_styling(self):
         self.status_dot.setStyleSheet(
-            f"color: {self.status_colors.get(self.status, '#6b7280')}; font-size: 12px;"
+            f"color: {self.status_colors.get(self.status, Colors.NEUTRAL)}; font-size: 12px;"
         )
 
         badge_styles = {
-            "running": "background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 3px;",
-            "queued": "background: #e5e7eb; color: #374151; padding: 2px 6px; border-radius: 3px;",
-            "completed": "background: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 3px;",
-            "failed": "background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 3px;",
+            "running": f"background: {Colors.WARNING_BG}; color: {Colors.WARNING_TEXT}; padding: 2px 6px; border-radius: 3px;",
+            "queued": f"background: {Colors.NEUTRAL_BG}; color: {Colors.NEUTRAL_TEXT}; padding: 2px 6px; border-radius: 3px;",
+            "completed": f"background: {Colors.SUCCESS_BG}; color: {Colors.SUCCESS_TEXT}; padding: 2px 6px; border-radius: 3px;",
+            "failed": f"background: {Colors.ERROR_BG}; color: {Colors.ERROR_TEXT}; padding: 2px 6px; border-radius: 3px;",
         }
         self.status_badge.setStyleSheet(
             badge_styles.get(self.status, badge_styles["queued"])
         )
 
         card_styles = {
-            "running": "border-left: 2px solid #f59e0b;",
-            "queued": "border-left: 2px solid #9ca3af;",
-            "completed": "border-left: 2px solid #10b981;",
-            "failed": "border-left: 2px solid #ef4444;",
+            "running": f"border-left: 2px solid {Colors.WARNING};",
+            "queued": f"border-left: 2px solid {Colors.ICON_MUTED};",
+            "completed": f"border-left: 2px solid {Colors.SUCCESS};",
+            "failed": f"border-left: 2px solid {Colors.ERROR};",
         }
 
         self.setStyleSheet(
             f"""
             TaskCard {{
-                border: 1px solid #e5e7eb;
+                border: 1px solid {Colors.NEUTRAL_BG};
                 {card_styles.get(self.status, card_styles["queued"])}
                 border-radius: 4px;
                 padding: 2px;
@@ -188,8 +189,10 @@ class TaskCard(QFrame):
         self.expanded = not self.expanded
         self.output_view.setVisible(self.expanded)
 
-        chevron_icon = "mdi.chevron-down" if self.expanded else "mdi.chevron-right"
-        self.chevron.setPixmap(qta.icon(chevron_icon, color="#9ca3af").pixmap(12, 12))
+        chevron_icon = "ph.caret-down" if self.expanded else "ph.caret-right"
+        self.chevron.setPixmap(
+            qta.icon(chevron_icon, color=Colors.ICON_MUTED).pixmap(12, 12)
+        )
 
         if self.expanded:
             self._update_output()
@@ -245,19 +248,23 @@ class TaskMonitorDialog(QDialog):
         content_layout.setSpacing(12)
 
         self.running_section = self._create_section(
-            "Running", "#f59e0b", "running_tasks"
+            "Running", Colors.WARNING, "running_tasks"
         )
         content_layout.addWidget(self.running_section)
 
-        self.queued_section = self._create_section("Queued", "#6b7280", "queued_tasks")
+        self.queued_section = self._create_section(
+            "Queued", Colors.NEUTRAL, "queued_tasks"
+        )
         content_layout.addWidget(self.queued_section)
 
         self.completed_section = self._create_section(
-            "Completed", "#10b981", "completed_tasks"
+            "Completed", Colors.SUCCESS, "completed_tasks"
         )
         content_layout.addWidget(self.completed_section)
 
-        self.failed_section = self._create_section("Failed", "#ef4444", "failed_tasks")
+        self.failed_section = self._create_section(
+            "Failed", Colors.ERROR, "failed_tasks"
+        )
         content_layout.addWidget(self.failed_section)
 
         content_layout.addStretch()
@@ -268,7 +275,7 @@ class TaskMonitorDialog(QDialog):
         footer_layout.setSpacing(8)
 
         clear_btn = QPushButton("Clear Finished")
-        clear_btn.setIcon(qta.icon("mdi.broom", color="#6b7280"))
+        clear_btn.setIcon(qta.icon("ph.trash", color=Colors.TEXT_MUTED))
         clear_btn.clicked.connect(self._clear_finished_tasks)
         footer_layout.addWidget(clear_btn)
 
@@ -383,11 +390,16 @@ class TaskMonitorDialog(QDialog):
         )
 
     def _clear_finished_tasks(self):
+        # TODO: Modifying the dict is a bit sketchy but we do not use those
+        # finished talks otherwise in the manager
+        manager = BackgroundTaskManager.instance()
+
         drop = set()
         for task_id, card in self.task_cards.items():
             if card.task_data.get("status") in ("completed", "failed"):
                 card.deleteLater()
                 drop.add(task_id)
+                manager.task_info.pop(task_id, None)
         self.task_cards = {k: v for k, v in self.task_cards.items() if k not in drop}
 
         self._update_counts()
@@ -409,7 +421,7 @@ class ClickableTaskWidget(QWidget):
 
         chevron_label = QLabel()
         chevron_label.setPixmap(
-            qta.icon("mdi.chevron-up", color="#9ca3af").pixmap(16, 16)
+            qta.icon("ph.caret-up", color=Colors.ICON_MUTED).pixmap(16, 16)
         )
         layout.addWidget(chevron_label)
 
@@ -440,18 +452,17 @@ class StatusIndicator:
     def _setup_status_bar(self):
         status_bar = self.main_window.statusBar()
         status_bar.setStyleSheet(
-            """
-            QStatusBar {
-                border-top: 1px solid #6b7280;
-                color: #374151;
-            }
-            QStatusBar::item {
+            f"""
+            QStatusBar {{
+                border-top: 1px solid {Colors.BORDER_DARK};
+            }}
+            QStatusBar::item {{
                 border: none;
-            }
+            }}
         """
         )
 
-        self.mode_label = QLabel("Viewing")
+        self.mode_label = QLabel("Mode: Viewing")
         self.mode_label.setMinimumWidth(50)
 
         self.target_label = QLabel("Clusters")
@@ -463,9 +474,13 @@ class StatusIndicator:
         self.task_widget = ClickableTaskWidget(self)
 
         separator1 = QLabel("•")
-        separator1.setStyleSheet("QLabel { color: #9ca3af; padding: 0 10px; }")
+        separator1.setStyleSheet(
+            f"QLabel {{ color: {Colors.ICON_MUTED}; padding: 0 10px; }}"
+        )
         separator2 = QLabel("•")
-        separator2.setStyleSheet("QLabel { color: #9ca3af; padding: 0 10px; }")
+        separator2.setStyleSheet(
+            f"QLabel {{ color: {Colors.ICON_MUTED}; padding: 0 10px; }}"
+        )
 
         status_bar.addPermanentWidget(self.mode_label)
         status_bar.addPermanentWidget(separator1)
@@ -478,7 +493,7 @@ class StatusIndicator:
 
     def update_status(
         self,
-        interaction="Viewing",
+        interaction=None,
         target=None,
         busy: bool = None,
         task: str = None,
@@ -487,7 +502,9 @@ class StatusIndicator:
         if not self.visible:
             return
 
-        self.mode_label.setText(f"Mode: {interaction}")
+        if interaction is not None:
+            self.mode_label.setText(f"Mode: {interaction}")
+
         if target is not None:
             self.current_target = target
             self.target_label.setText(target)

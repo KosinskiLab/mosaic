@@ -13,7 +13,7 @@ The *Parametrization* tab provides tools for fitting and working with models.
 
         .. raw:: html
 
-            <i class="mdi mdi-circle" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-circle" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Ellipse
         :text-align: center
@@ -21,7 +21,7 @@ The *Parametrization* tab provides tools for fitting and working with models.
 
         .. raw:: html
 
-            <i class="mdi mdi-ellipse" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-link-simple-horizontal-break" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Cylinder
         :text-align: center
@@ -29,7 +29,7 @@ The *Parametrization* tab provides tools for fitting and working with models.
 
         .. raw:: html
 
-            <i class="mdi mdi-hexagon" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-hexagon" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: RBF
         :text-align: center
@@ -37,7 +37,7 @@ The *Parametrization* tab provides tools for fitting and working with models.
 
         .. raw:: html
 
-            <i class="mdi mdi-grid" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-dots-nine" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Mesh
         :text-align: center
@@ -45,7 +45,7 @@ The *Parametrization* tab provides tools for fitting and working with models.
 
         .. raw:: html
 
-            <i class="mdi mdi-triangle-outline" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-triangle" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Curve
         :text-align: center
@@ -53,7 +53,7 @@ The *Parametrization* tab provides tools for fitting and working with models.
 
         .. raw:: html
 
-            <i class="mdi mdi-chart-bell-curve" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-line-segments" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Sample
         :text-align: center
@@ -61,39 +61,7 @@ The *Parametrization* tab provides tools for fitting and working with models.
 
         .. raw:: html
 
-            <i class="mdi mdi-chart-scatter-plot" style="font-size: 1.5rem;"></i>
-
-    .. grid-item-card:: To Cluster
-        :text-align: center
-        :link: #to-cluster
-
-        .. raw:: html
-
-            <i class="mdi mdi-plus" style="font-size: 1.5rem;"></i>
-
-    .. grid-item-card:: Remove
-        :text-align: center
-        :link: #remove
-
-        .. raw:: html
-
-            <i class="mdi mdi-delete" style="font-size: 1.5rem;"></i>
-
-    .. grid-item-card:: Merge
-        :text-align: center
-        :link: #merge-meshes
-
-        .. raw:: html
-
-            <i class="mdi mdi-merge" style="font-size: 1.5rem;"></i>
-
-    .. grid-item-card:: Volume
-        :text-align: center
-        :link: #volume
-
-        .. raw:: html
-
-            <i class="mdi mdi-cube-outline" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-broadcast" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Repair
         :text-align: center
@@ -101,7 +69,7 @@ The *Parametrization* tab provides tools for fitting and working with models.
 
         .. raw:: html
 
-            <i class="mdi mdi-auto-fix" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-wrench" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Remesh
         :text-align: center
@@ -109,7 +77,15 @@ The *Parametrization* tab provides tools for fitting and working with models.
 
         .. raw:: html
 
-            <i class="mdi mdi-repeat" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-arrows-clockwise" style="font-size: 1.5rem;"></i>
+
+    .. grid-item-card:: Smooth
+        :text-align: center
+        :link: #smooth
+
+        .. raw:: html
+
+            <i class="ph ph-drop" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Project
         :text-align: center
@@ -117,7 +93,7 @@ The *Parametrization* tab provides tools for fitting and working with models.
 
         .. raw:: html
 
-            <i class="mdi mdi-vector-curve" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-arrow-line-down" style="font-size: 1.5rem;"></i>
 
 
 Parametric Fitting
@@ -186,6 +162,8 @@ Mesh
    - **Ball Pivoting**: Robust surface reconstruction for structured data
    - **Cluster Ball Pivoting**: Ball pivoting with automatic parameter determination
    - **Poisson**: Watertight surface reconstruction
+   - **Marching Cubes**: Meshing of dense segmentations
+   - **Flying Edges**: Like marching cubes but faster
 
 4. Configure method-specific parameters:
 
@@ -251,65 +229,14 @@ Creates point clouds from fitted models:
       - **Points**: Generate specified number of points
       - **Distance**: Generate points with specified average spacing
 
-   :Parameters:**
+   :Parameters:
       - **Sampling**: Number of points or point spacing value
       - **Offset**: Normal-direction offset from surface (useful for particle picking)
 
 4. Click **OK** to generate sample points
 
-.. _to-cluster:
-
-To Cluster
-----------
-
-Converts model vertices to point cloud format:
-
-1. Select one or more models in the Object Browser
-2. Click **To Cluster**
-3. Model vertices are automatically added as new clusters
-
-.. note::
-    For most models, both vertices and computed normals are preserved in the conversion.
-
-.. _remove:
-
-Remove
-------
-Deletes selected models:
-
-1. Select one or more models in the Object Browser
-2. Click **Remove** or press ``Delete``
-3. Selected models are permanently removed
-
-
 Mesh Operations
 ===============
-
-.. _volume:
-
-Volume
-------
-Creates meshes from volumetric data using marching cubes:
-
-1. Click **Volume**
-2. Select a volume file (MRC, MAP, EM, HDF5)
-3. Configure meshing parameters:
-
-   :Algorithm Settings:
-      - **Simplification Factor**: Reduce triangle count by this factor
-      - **Workers**: Number of parallel processing threads
-      - **Close Dataset Edges**: Create closed meshes at volume boundaries
-
-   :Processing Method:
-      - Uses sharded marching cubes algorithm for large volumes
-      - Splits volume into manageable chunks for parallel processing
-      - Merges submeshes and applies quadratic edge collapse simplification
-
-4. Click **OK** to generate meshes
-
-.. note::
-
-    Optimized for large datasets with automatic memory management and parallel processing.
 
 .. _repair:
 
@@ -370,6 +297,32 @@ Improves mesh quality and adjusts triangle density:
 
 .. _project:
 
+Smooth
+------
+
+Improves mesh quality by smoothing surface.
+
+1. Select mesh models to smooth
+2. Click **Smooth**
+3. Choose remeshing method:
+
+   :Taubin:
+      - Solid smoothing without net shrinkage
+
+   :Laplacian:
+      - Very smooth mesh but net shrinkage
+
+   :Average:
+      - Mesh denoising but net shrinkage
+
+   :Parameters:
+      - **Iterations**: Number of smoothing iterations (higher is smoother)
+
+4. Click **OK** to remesh
+
+.. _smooth:
+
+
 Project
 -------
 Projects point clouds onto mesh surfaces using ray casting:
@@ -390,17 +343,6 @@ Projects point clouds onto mesh surfaces using ray casting:
 - Creates new point clouds with projected coordinates
 - Generates updated mesh with projection points integrated
 - Preserves original data while adding projected versions
-
-.. _merge-meshes:
-
-Merge
------
-Combines multiple meshes into a single object:
-
-1. Select two or more mesh models in the Object Browser
-2. Click **Merge**
-3. Meshes are automatically combined into a single mesh
-4. Original meshes are removed, replaced by the merged result
 
 
 Next Steps

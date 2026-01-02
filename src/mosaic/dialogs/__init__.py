@@ -1,6 +1,5 @@
 from .hmff import HMFFDialog
 from .export import ExportDialog
-from .keybinds import KeybindsDialog
 from .progress import ProgressDialog
 from .histogram import HistogramDialog
 from .cropping import DistanceCropDialog
@@ -13,4 +12,9 @@ from .update import UpdateChecker, UpdateDialog
 from .properties import GeometryPropertiesDialog
 from .equilibration import MeshEquilibrationDialog
 from .property_analysis import PropertyAnalysisDialog
-from .operation import *
+from .file_dialog import (
+    getExistingDirectory,
+    getOpenFileName,
+    getOpenFileNames,
+    getSaveFileName,
+)

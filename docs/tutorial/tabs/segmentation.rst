@@ -13,7 +13,7 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
         .. raw:: html
 
-            <i class="mdi mdi-merge" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-git-merge" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Remove
         :text-align: center
@@ -21,7 +21,7 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
         .. raw:: html
 
-            <i class="mdi mdi-delete" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-trash" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Select
         :text-align: center
@@ -29,7 +29,7 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
         .. raw:: html
 
-            <i class="mdi mdi-chart-histogram" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-chart-bar" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Transform
         :text-align: center
@@ -37,7 +37,7 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
         .. raw:: html
 
-            <i class="mdi mdi-rotate-right" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-arrows-out-cardinal" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Crop
         :text-align: center
@@ -45,7 +45,7 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
         .. raw:: html
 
-            <i class="mdi mdi-map-marker-distance" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-crop" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Cluster
         :text-align: center
@@ -53,7 +53,7 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
         .. raw:: html
 
-            <i class="mdi mdi-sitemap" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-arrows-out-line-horizontal" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Outlier
         :text-align: center
@@ -61,7 +61,7 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
         .. raw:: html
 
-            <i class="mdi mdi-filter" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-funnel" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Normals
         :text-align: center
@@ -69,7 +69,7 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
         .. raw:: html
 
-            <i class="mdi mdi-arrow-expand-up" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-arrows-out" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Trim
         :text-align: center
@@ -77,7 +77,7 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
         .. raw:: html
 
-            <i class="mdi mdi-scissors-cutting" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-scissors" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Skeletonize
         :text-align: center
@@ -85,7 +85,7 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
         .. raw:: html
 
-            <i class="mdi mdi-dots-horizontal" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-line-segments" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Downsample
         :text-align: center
@@ -93,7 +93,7 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
         .. raw:: html
 
-            <i class="mdi mdi-focus-field-horizontal" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-arrows-in" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Properties
         :text-align: center
@@ -101,7 +101,7 @@ The *Segmentation* tab provides tools for refinement, clustering and analysis.
 
         .. raw:: html
 
-            <i class="mdi mdi-poll" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-chart-bar-horizontal" style="font-size: 1.5rem;"></i>
 
 .. _merge:
 

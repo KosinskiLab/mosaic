@@ -17,7 +17,7 @@ from qtpy.QtWidgets import (
 import qtawesome as qta
 
 from ..widgets import DialogFooter
-from ..stylesheets import QPushButton_style
+from ..stylesheets import QPushButton_style, Colors
 
 
 class MeshMappingRow(QWidget):
@@ -53,11 +53,11 @@ class MeshMappingRow(QWidget):
 
     def update_button_state(self, state):
         if state:
-            self.toggle_btn.setIcon(qta.icon("fa5s.plus", color="#696c6f"))
+            self.toggle_btn.setIcon(qta.icon("ph.plus", color=Colors.ICON))
             self.toggle_btn.clicked.connect(self.add_requested)
             return None
 
-        self.toggle_btn.setIcon(qta.icon("fa5s.trash", color="#696c6f"))
+        self.toggle_btn.setIcon(qta.icon("ph.trash", color=Colors.ICON))
         self.toggle_btn.clicked.connect(self.deleteLater)
 
     def add_requested(self):

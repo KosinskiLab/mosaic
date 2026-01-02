@@ -33,9 +33,8 @@ import pyqtgraph as pg
 import qtawesome as qta
 
 from ..widgets.settings import get_widget_value, set_widget_value
-from ..stylesheets import QPushButton_style, QScrollArea_style
-from ..widgets import ContainerListWidget, StyledListWidgetItem, ColorPreviewWidget
-from ..widgets.color_preview import ColorPreview
+from ..stylesheets import QPushButton_style, QScrollArea_style, Colors
+from ..widgets import ContainerListWidget, StyledListWidgetItem, ColorMapSelector
 
 
 def _populate_list(geometries):
@@ -182,7 +181,6 @@ class PropertyAnalysisDialog(QDialog):
         self.setWindowTitle("Property Analysis")
 
         self.legend = legend
-        self.color_preview = ColorPreviewWidget()
         self.setWindowFlags(Qt.WindowType.Window)
 
         self._setup_ui()
@@ -203,7 +201,7 @@ class PropertyAnalysisDialog(QDialog):
 
             # Provoke cache miss for tracking inclusions on trajectories
             self.property_parameters.clear()
-            self._preview(render=False, suppress_warning=True)
+            self._preview(render=False)
             self._update_plot()
             self._update_statistics()
         except Exception:
@@ -240,16 +238,18 @@ class PropertyAnalysisDialog(QDialog):
 
         # Add tabs with icons
         self.tabs_widget.addTab(
-            self.visualization_tab, qta.icon("mdi.brush", color="#4f46e5"), "Visualize"
+            self.visualization_tab,
+            qta.icon("ph.paint-brush", color=Colors.ICON),
+            "Visualize",
         )
         self.tabs_widget.addTab(
             self.analysis_tab,
-            qta.icon("mdi.chart-bell-curve", color="#4f46e5"),
+            qta.icon("ph.chart-line", color=Colors.ICON),
             "Distribution",
         )
         self.tabs_widget.addTab(
             self.statistics_tab,
-            qta.icon("mdi.chart-bar", color="#4f46e5"),
+            qta.icon("ph.chart-bar", color=Colors.ICON),
             "Statistics",
         )
         self.tabs_widget.currentChanged.connect(self._update_tab)
@@ -257,20 +257,7 @@ class PropertyAnalysisDialog(QDialog):
 
     def _create_colormap_combo(self, with_settings_button=False):
         """Create a colormap combo widget with optional settings button"""
-        colormap = ColorPreview(
-            colormaps=(
-                "viridis",
-                "plasma",
-                "magma",
-                "inferno",
-                "cividis",
-                "turbo",
-                "jet",
-                "coolwarm",
-                "RdBu",
-                "RdYlBu",
-            )
-        )
+        colormap = ColorMapSelector()
 
         def _open_colormap_settings():
             """Open dialog to configure color scale thresholds"""
@@ -285,7 +272,7 @@ class PropertyAnalysisDialog(QDialog):
 
         if with_settings_button:
             settings_btn = QPushButton()
-            settings_btn.setIcon(qta.icon("mdi.cog", color="#4f46e5"))
+            settings_btn.setIcon(qta.icon("ph.gear", color=Colors.ICON))
             settings_btn.setToolTip("Color Scale Settings")
             settings_btn.setFixedSize(28, 28)
             settings_btn.clicked.connect(_open_colormap_settings)
@@ -336,7 +323,7 @@ class PropertyAnalysisDialog(QDialog):
         self.colormap_combo, self.colormap_settings_btn = self._create_colormap_combo(
             with_settings_button=True
         )
-        self.colormap_combo.currentTextChanged.connect(self._preview)
+        self.colormap_combo.colormapChanged.connect(self._preview)
         colormap_layout.addWidget(self.colormap_combo, 1)
         colormap_layout.addWidget(self.colormap_settings_btn)
 
@@ -382,13 +369,13 @@ class PropertyAnalysisDialog(QDialog):
         # Dialog Control Buttons
         button_layout = QHBoxLayout()
         refresh_btn = QPushButton("Refresh")
-        refresh_btn.setIcon(qta.icon("mdi.refresh", color="#4f46e5"))
+        refresh_btn.setIcon(qta.icon("ph.arrow-clockwise", color=Colors.PRIMARY))
         refresh_btn.clicked.connect(self._preview)
         button_layout.addWidget(refresh_btn)
         button_layout.addStretch()
 
         self.visualize_export_btn = QPushButton("Export Data")
-        self.visualize_export_btn.setIcon(qta.icon("mdi.download", color="#4f46e5"))
+        self.visualize_export_btn.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
         self.visualize_export_btn.clicked.connect(self._export_data)
         button_layout.addWidget(self.visualize_export_btn)
 
@@ -405,40 +392,47 @@ class PropertyAnalysisDialog(QDialog):
 
         layout = QVBoxLayout(self.analysis_tab)
 
-        plot_group = QGroupBox("Distribution")
-        plot_layout = QVBoxLayout(plot_group)
-
+        # Plot type buttons
         header_layout = QHBoxLayout()
         header_layout.addStretch()
 
         plot_type_layout = QHBoxLayout()
+        plot_type_layout.setSpacing(4)
         self.plot_types = ["Histogram", "Density", "Line"]
         self.current_plot_type = "Density"
+
+        self.plot_type_buttons = {}
+
         self.bar_btn = QPushButton()
-        self.bar_btn.setIcon(qta.icon("mdi.chart-histogram", color="#4f46e5"))
         self.bar_btn.setToolTip("Histogram")
         self.bar_btn.setFixedSize(28, 28)
         self.bar_btn.clicked.connect(lambda: self._set_plot_type("Histogram"))
+        self.plot_type_buttons["Histogram"] = (self.bar_btn, "ph.chart-bar")
 
         self.density_btn = QPushButton()
-        self.density_btn.setIcon(qta.icon("mdi.chart-bell-curve", color="#4f46e5"))
+        self.density_btn.setToolTip("Density")
         self.density_btn.setFixedSize(28, 28)
         self.density_btn.clicked.connect(lambda: self._set_plot_type("Density"))
+        self.plot_type_buttons["Density"] = (self.density_btn, "ph.cell-signal-full")
 
         self.line_btn = QPushButton()
-        self.line_btn.setIcon(qta.icon("mdi.chart-line", color="#4f46e5"))
         self.line_btn.setToolTip("Line Chart")
         self.line_btn.setFixedSize(28, 28)
         self.line_btn.clicked.connect(lambda: self._set_plot_type("Line"))
+        self.plot_type_buttons["Line"] = (self.line_btn, "ph.chart-line")
+
         plot_type_layout.addWidget(self.bar_btn)
         plot_type_layout.addWidget(self.density_btn)
         plot_type_layout.addWidget(self.line_btn)
-        header_layout.addLayout(plot_type_layout)
-        plot_layout.addLayout(header_layout)
 
+        self._update_plot_type_buttons()
+        header_layout.addLayout(plot_type_layout)
+        layout.addLayout(header_layout)
+
+        # Plot widget
         self.plot_widget = pg.GraphicsLayoutWidget(self)
         self.plot_widget.setBackground(None)
-        plot_layout.addWidget(self.plot_widget)
+        self.plot_widget.ci.setContentsMargins(0, 0, 0, 0)
 
         options_group = QGroupBox("Visualization Options")
         options_group.setFixedHeight(150)
@@ -468,23 +462,19 @@ class PropertyAnalysisDialog(QDialog):
         self.vis_colormap_combo = self._create_colormap_combo(
             with_settings_button=False
         )
-        self.vis_colormap_combo.currentTextChanged.connect(self._update_plot)
+        self.vis_colormap_combo.colormapChanged.connect(self._update_plot)
         colormap_layout.addWidget(self.vis_colormap_combo)
         options_layout.addLayout(colormap_layout)
 
-        layout.addWidget(plot_group)
+        layout.addWidget(self.plot_widget)
         layout.addWidget(options_group)
 
         # Dialog Control Buttons
         button_layout = QHBoxLayout()
-        refresh_btn = QPushButton("Refresh")
-        refresh_btn.setIcon(qta.icon("mdi.refresh", color="#4f46e5"))
-        refresh_btn.clicked.connect(self._update_plot)
-        button_layout.addWidget(refresh_btn)
         button_layout.addStretch()
 
         self.analysis_export_btn = QPushButton("Export Plot")
-        self.analysis_export_btn.setIcon(qta.icon("mdi.download", color="#4f46e5"))
+        self.analysis_export_btn.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
         self.analysis_export_btn.clicked.connect(self._export_plot)
         button_layout.addWidget(self.analysis_export_btn)
 
@@ -499,8 +489,6 @@ class PropertyAnalysisDialog(QDialog):
 
         layout = QVBoxLayout(self.statistics_tab)
 
-        stats_group = QGroupBox("Statistics")
-        stats_layout = QVBoxLayout(stats_group)
         self.stats_table = QTableWidget()
         self.stats_table.setColumnCount(5)
         self.stats_table.setHorizontalHeaderLabels(
@@ -509,19 +497,16 @@ class PropertyAnalysisDialog(QDialog):
         self.stats_table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
-        stats_layout.addWidget(self.stats_table)
 
-        layout.addWidget(stats_group)
+        layout.addWidget(self.stats_table)
 
         button_layout = QHBoxLayout()
-        refresh_btn = QPushButton("Refresh")
-        refresh_btn.setIcon(qta.icon("mdi.refresh", color="#4f46e5"))
-        refresh_btn.clicked.connect(self._update_statistics)
-        button_layout.addWidget(refresh_btn)
         button_layout.addStretch()
 
         self.statistics_export_btn = QPushButton("Export Statistics")
-        self.statistics_export_btn.setIcon(qta.icon("mdi.download", color="#4f46e5"))
+        self.statistics_export_btn.setIcon(
+            qta.icon("ph.download", color=Colors.PRIMARY)
+        )
         self.statistics_export_btn.clicked.connect(self._export_statistics)
         button_layout.addWidget(self.statistics_export_btn)
 
@@ -943,15 +928,11 @@ class PropertyAnalysisDialog(QDialog):
 
         return clipped_properties
 
-    def _preview(self, render: bool = True, suppress_warning: bool = False):
+    def _preview(self, render: bool = True):
         from ..utils import cmap_to_vtkctf
 
         geometries = self._get_selected_geometries()
         if not geometries:
-            if not suppress_warning:
-                QMessageBox.warning(
-                    self, "No Selection", "Please select at least one object."
-                )
             return None
 
         self._compute_properties()
@@ -1047,7 +1028,40 @@ class PropertyAnalysisDialog(QDialog):
 
     def _set_plot_type(self, plot_type):
         self.current_plot_type = plot_type
+        self._update_plot_type_buttons()
         self._update_plot()
+
+    def _update_plot_type_buttons(self):
+        """Update plot type button icons and styling based on selection state."""
+        for plot_type, (btn, icon_name) in self.plot_type_buttons.items():
+            is_selected = plot_type == self.current_plot_type
+            icon_color = Colors.PRIMARY if is_selected else Colors.ICON
+            btn.setIcon(qta.icon(icon_name, color=icon_color))
+
+            if is_selected:
+                btn.setStyleSheet(
+                    f"""
+                    QPushButton {{
+                        border: 1px solid {Colors.PRIMARY};
+                        border-radius: 4px;
+                        background: transparent;
+                    }}
+                """
+                )
+            else:
+                btn.setStyleSheet(
+                    f"""
+                    QPushButton {{
+                        border: 1px solid {Colors.BORDER_DARK};
+                        border-radius: 4px;
+                        background: transparent;
+                    }}
+                    QPushButton:hover {{
+                        background: {Colors.BG_HOVER};
+                        border: 1px solid {Colors.BORDER_HOVER};
+                    }}
+                """
+                )
 
     def _update_plot(self):
         """Update the plot based on the current property and selected objects"""

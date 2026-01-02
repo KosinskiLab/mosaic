@@ -1,17 +1,23 @@
-from .legend import LegendWidget
-from .scale import ScaleBarWidget
 from .path_selector import PathSelector
 from .dialog_footer import DialogFooter
 from .search_widget import SearchWidget
 from .sidebar import ObjectBrowserSidebar
-from .mapped_combobox import MappedComboBox
-from .histogram_widget import HistogramWidget
-from .parameter_widget import ParameterWidget
+from .sliders import DualHandleSlider, SliderRow
 from .trajectory_player import TrajectoryPlayer
 from .ribbon import RibbonToolBar, create_button
-from .color_preview import ColorPreviewWidget, ColorButton
+from .colors import (
+    ColorSwatch,
+    ColorPickerRow,
+    ColorMapSelector,
+    ColorMapSelector,
+)
 from .volume_viewer import MultiVolumeViewer, VolumeViewer
-from .coordinate_system import AxesWidget, BoundingBoxManager
+from .vtk_widgets import (
+    AxesWidget,
+    BoundingBoxManager,
+    LegendWidget,
+    ScaleBarWidget,
+)
 from .container_list import (
     ContainerListWidget,
     StyledListWidgetItem,

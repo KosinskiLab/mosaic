@@ -13,15 +13,15 @@ The *Intelligence* tab provides advanced features for specialized tasks.
 
         .. raw:: html
 
-            <i class="mdi mdi-molecule" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-faders" style="font-size: 1.5rem;"></i>
 
-    .. grid-item-card:: Setup
+    .. grid-item-card:: HMFF
         :text-align: center
-        :link: #setup
+        :link: #hmff
 
         .. raw:: html
 
-            <i class="mdi mdi-export" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-gear" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Trajectory
         :text-align: center
@@ -29,7 +29,7 @@ The *Intelligence* tab provides advanced features for specialized tasks.
 
         .. raw:: html
 
-            <i class="mdi mdi-chart-line-variant" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-path" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Backmapping
         :text-align: center
@@ -37,23 +37,15 @@ The *Intelligence* tab provides advanced features for specialized tasks.
 
         .. raw:: html
 
-            <i class="mdi mdi-set-merge" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-atom" style="font-size: 1.5rem;"></i>
 
-    .. grid-item-card:: Setup
+    .. grid-item-card:: Template Match
         :text-align: center
         :link: #template-matching
 
         .. raw:: html
 
-            <i class="mdi mdi-magnify" style="font-size: 1.5rem;"></i>
-
-    .. grid-item-card:: Add
-        :text-align: center
-        :link: #add
-
-        .. raw:: html
-
-            <i class="mdi mdi-plus" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-magnifying-glass" style="font-size: 1.5rem;"></i>
 
     .. grid-item-card:: Membrane
         :text-align: center
@@ -61,7 +53,7 @@ The *Intelligence* tab provides advanced features for specialized tasks.
 
         .. raw:: html
 
-            <i class="mdi mdi-border-all-variant" style="font-size: 1.5rem;"></i>
+            <i class="ph ph-stack" style="font-size: 1.5rem;"></i>
 
 Equilibrate
 -----------
@@ -88,12 +80,14 @@ Prepares meshes for simulation:
 
     Requires Trimem for mesh equilibration (see :ref:`installation instructions <installation-dts>`).
 
-Setup
------
+.. _hmff:
+
+HMFF
+----
 
 Configures Helfrich Monte Carlo Flexible Fitting (HMFF) simulation:
 
-1. Click **Setup** and choose a directory containing equilibrated meshes.
+1. Click **HMFF** and choose a directory containing equilibrated meshes.
 2. Select from available equilibrated mesh files
 3. Configure parameters:
 
@@ -173,15 +167,17 @@ Creates coarse-grained molecular models of membrane surfaces, optionally includi
 
     Requires TS2CG for backmapping (see :ref:`installation instructions <installation-backmapping>`).
 
-Template Matching
------------------
+Detection
+---------
 
-Setup
-^^^^^
+.. _template-matching:
+
+Template Match
+^^^^^^^^^^^^^^
 
 Configures template matching for protein identification:
 
-1. Click **Setup** in the Template Matching section
+1. Click **Template Match** in the Detection section
 2. Configure data paths:
 
    - Input tomogram
@@ -195,24 +191,10 @@ Configures template matching for protein identification:
 4. Configure computational resources
 5. Run template matching to identify protein positions
 
-Segmentation Operations
------------------------
+.. _membrane:
 
-Add
----
-Creates new empty clusters for manual point addition:
-
-1. Click **Add** in the Segmentation section
-2. A new empty cluster appears in the Object Browser
-3. Use drawing mode (``A`` key) to manually add points
-4. Or use for testing with random point generation
-
-.. note::
-
-    This function is included for testing and might be removed in a future release.
-
-Membrane Segmentation
----------------------
+Membrane
+^^^^^^^^
 
 Automatically segments cellular membranes in tomograms using MemBrain-seg:
 

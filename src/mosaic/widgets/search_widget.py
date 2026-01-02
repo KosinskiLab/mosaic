@@ -1,13 +1,14 @@
 from qtpy.QtCore import Signal
-from qtpy.QtWidgets import QWidget, QHBoxLayout, QLineEdit
+from qtpy.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QLabel, QFrame
 import qtawesome as qta
+
+from ..stylesheets import Colors
 
 
 class SearchWidget(QWidget):
     """
-    Reusable search widget with icon and clear button.
-
-    Emits searchTextChanged signal when text changes.
+    Search widget with icon and clear button. Emits
+    searchTextChanged signal when text changes.
     """
 
     searchTextChanged = Signal(str)
@@ -21,31 +22,47 @@ class SearchWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText(placeholder)
-        self.search_input.setClearButtonEnabled(True)
-        self.search_input.textChanged.connect(self.searchTextChanged.emit)
-
-        search_icon = qta.icon("mdi.magnify", color="#6b7280")
-        self.search_input.addAction(
-            search_icon, QLineEdit.ActionPosition.LeadingPosition
-        )
-        self.search_input.setStyleSheet(
+        container = QFrame()
+        container.setStyleSheet(
             """
-            QLineEdit {
+            QFrame {
                 border: 1px solid #d1d5db;
                 border-radius: 4px;
-                padding: 6px 8px 6px 32px;
                 background-color: transparent;
             }
-            QLineEdit:focus {
-                outline: none;
+            QFrame:focus-within {
                 border: 1px solid #4f46e5;
             }
         """
         )
+        container_layout = QHBoxLayout(container)
+        container_layout.setContentsMargins(6, 0, 0, 0)
+        container_layout.setSpacing(4)
 
-        layout.addWidget(self.search_input)
+        icon_label = QLabel()
+        icon_label.setPixmap(
+            qta.icon("ph.magnifying-glass", color=Colors.ICON).pixmap(16, 16)
+        )
+        icon_label.setFixedSize(16, 16)
+        icon_label.setStyleSheet("border: none;")
+
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText(placeholder)
+        self.search_input.setClearButtonEnabled(True)
+        self.search_input.textChanged.connect(self.searchTextChanged.emit)
+        self.search_input.setStyleSheet(
+            """
+            QLineEdit {
+                border: none;
+                padding: 6px 4px;
+                background-color: transparent;
+            }
+        """
+        )
+
+        container_layout.addWidget(icon_label)
+        container_layout.addWidget(self.search_input)
+        layout.addWidget(container)
 
     def text(self):
         """Get current search text."""

@@ -1,38 +1,14 @@
 import re
 from os import listdir
 from typing import Union
-from platform import system
 from os.path import join, exists, basename
 
 import numpy as np
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QMessageBox, QApplication
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QMessageBox, QApplication, QFileDialog
 
 from ..parallel import submit_task
 from ..widgets.ribbon import create_button
-from ..stylesheets import QPushButton_style
-
-
-def on_run_complete(self, *args, **kwargs):
-    self.cdata.data.render()
-    self.cdata.models.render()
-
-
-def _getExistingDirectory(parent, text):
-    dialog = QFileDialog(parent)
-    dialog.setWindowTitle(text)
-
-    dialog.setFileMode(QFileDialog.Directory)
-
-    # The native dialog on macOS omits the dialog text which can be confusing
-    if system() == "Darwin":
-        dialog.setOptions(
-            QFileDialog.DontUseCustomDirectoryIcons | QFileDialog.DontUseNativeDialog
-        )
-    else:
-        dialog.setOptions(QFileDialog.DontUseCustomDirectoryIcons)
-
-    dialog.setStyleSheet(QPushButton_style)
-    return dialog
+from ..dialogs import getExistingDirectory
 
 
 class IntelligenceTab(QWidget):
@@ -53,43 +29,52 @@ class IntelligenceTab(QWidget):
         self.ribbon.clear()
 
         hmff_actions = [
-            create_button("Equilibrate", "mdi.molecule", self, self._equilibrate_fit),
-            create_button("Setup", "mdi.export", self, self._setup_hmff),
+            create_button(
+                "Equilibrate",
+                "ph.faders",
+                self,
+                self._equilibrate_fit,
+                "Prepare mesh for DTS simulation",
+            ),
+            create_button(
+                "HMFF", "ph.gear", self, self._setup_hmff, "Configure HMFF simulation"
+            ),
             create_button(
                 "Trajectory",
-                "mdi.chart-line-variant",
+                "ph.path",
                 self,
                 self._import_trajectory,
-                "Import Trajectory",
+                "Load simulation trajectory",
                 IMPORT_SETTINGS,
             ),
-            create_button("Backmapping", "mdi.set-merge", self, self._map_fit),
+            create_button(
+                "Backmapping",
+                "ph.atom",
+                self,
+                self._map_fit,
+                "Backmap DTS to Martini representation",
+            ),
         ]
         self.ribbon.add_section("DTS Simulation", hmff_actions)
 
-        matching_actions = [
+        detection_actions = [
             create_button(
-                "Setup",
-                "mdi.magnify",
+                "Template Match",
+                "ph.magnifying-glass",
                 self,
                 lambda: TemplateMatchingDialog().exec_(),
-                "Identify proteins using template matching",
+                "Identify proteins by template matching",
             ),
-        ]
-        self.ribbon.add_section("Template Matching", matching_actions)
-
-        segmentation_actions = [
-            create_button("Add", "mdi.plus", self, self.add_cloud, "Add test data"),
             create_button(
                 "Membrane",
-                "mdi.border-all-variant",
+                "ph.stack",
                 self,
                 self._run_membrane_segmentation,
-                "Segment membranes using Membrain-seg",
+                "Segment membranes using MemBrain",
                 MEMBRAIN_SETTINGS,
             ),
         ]
-        self.ribbon.add_section("Segmentation", segmentation_actions)
+        self.ribbon.add_section("Detection", detection_actions)
 
     def _equilibrate_fit(self):
         from ..dialogs import MeshEquilibrationDialog
@@ -105,13 +90,9 @@ class IntelligenceTab(QWidget):
             msg = f"{geometry} is not a triangular mesh."
             return QMessageBox.warning(self, "Error", msg)
 
-        dialog = _getExistingDirectory(self, "Select or create directory")
-        if dialog.exec_() != QFileDialog.Accepted:
-            return None
-
-        directory = dialog.selectedFiles()[0]
+        directory = getExistingDirectory(self, caption="Select or create directory")
         if not directory:
-            return -1
+            return None
 
         dialog = MeshEquilibrationDialog(None)
         if not dialog.exec():
@@ -130,15 +111,11 @@ class IntelligenceTab(QWidget):
         from ..meshing import setup_hmff
         from ..dialogs import HMFFDialog
 
-        dialog = _getExistingDirectory(
-            self, "Select directory with equilibrated meshes."
+        directory = getExistingDirectory(
+            self, caption="Select directory with equilibrated meshes."
         )
-        if dialog.exec_() != QFileDialog.Accepted:
-            return None
-
-        directory = dialog.selectedFiles()[0]
         if not directory:
-            return -1
+            return None
 
         mesh_config = join(directory, "mesh.txt")
         if not exists(mesh_config):
@@ -186,13 +163,11 @@ class IntelligenceTab(QWidget):
         from ..geometry import GeometryTrajectory
         from ..parametrization import TriangularMesh
 
-        dialog = _getExistingDirectory(self, "Select directory with DTS trajectory")
-        if dialog.exec_() != QFileDialog.Accepted:
-            return None
-
-        directory = dialog.selectedFiles()[0]
+        directory = getExistingDirectory(
+            self, caption="Select directory with DTS trajectory"
+        )
         if not directory:
-            return -1
+            return None
 
         ret = []
         files = [join(directory, x) for x in listdir(directory)]
@@ -265,13 +240,9 @@ class IntelligenceTab(QWidget):
         from ..meshing import mesh_to_cg
         from ..dialogs import MeshMappingDialog
 
-        dialog = _getExistingDirectory(self, "Select output directory")
-        if dialog.exec_() != QFileDialog.Accepted:
-            return None
-
-        directory = dialog.selectedFiles()[0]
+        directory = getExistingDirectory(self, caption="Select output directory")
         if not directory:
-            return -1
+            return None
 
         fits = self.cdata.format_datalist("models", mesh_only=True)
         clusters = self.cdata.format_datalist("data")
@@ -334,17 +305,9 @@ class IntelligenceTab(QWidget):
 
         return self._run_membrain(tomogram_path=file_name, **kwargs)
 
-    def add_cloud(self, *args):
-        num_points = 1000
-        points = np.random.rand(num_points, 3) * 100
-        self.cdata.data.add(points=points, sampling_rate=2)
-
-        self.cdata.data.render()
-        # self.cdata.models.render()
-
 
 IMPORT_SETTINGS = {
-    "title": "Trajectory Import",
+    "title": "Settings",
     "settings": [
         {
             "label": "Scale",

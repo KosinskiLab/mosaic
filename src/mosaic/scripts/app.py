@@ -27,6 +27,7 @@ from mosaic.stylesheets import (
     QListWidget_style,
     QToolButton_style,
     QMenu_style,
+    QDockWidget_style,
 )
 
 
@@ -56,6 +57,7 @@ def main():
         + QListWidget_style
         + QToolButton_style
         + QMenu_style
+        + QDockWidget_style
     )
 
     signal.signal(signal.SIGINT, lambda *args: app.quit())

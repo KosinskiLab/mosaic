@@ -1,12 +1,20 @@
 """
-Variety of widgets used throughout the GUI.
+VTK-based widgets for 3D visualization.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2025 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtWidgets import QMessageBox
+__all__ = [
+    "LegendWidget",
+    "ScaleBarWidget",
+    "AxesWidget",
+    "BoundingBoxManager",
+    "create_bounding_box_actor",
+]
+
+import vtk
 from vtk import (
     vtkCubeSource,
     vtkPolyDataMapper,
@@ -14,6 +22,149 @@ from vtk import (
     vtkAxesActor,
     vtkOrientationMarkerWidget,
 )
+from qtpy.QtWidgets import QMessageBox
+
+
+class LegendWidget:
+    """Widget for visualization of scalar mappings."""
+
+    def __init__(self, renderer, interactor):
+        self.renderer = renderer
+        self.interactor = interactor
+
+        self.scalar_bar = vtk.vtkScalarBarActor()
+        self.scalar_bar.SetBarRatio(0.07)
+
+        self.scalar_bar.SetDrawFrame(False)
+        self.scalar_bar.SetLabelFormat("%.3g")
+        self.scalar_bar.SetDrawBackground(False)
+        self.scalar_bar.UnconstrainedFontSizeOn()
+        self.scalar_bar.SetMaximumNumberOfColors(256)
+
+        color = (0.41, 0.42, 0.435)
+        label_property = self.scalar_bar.GetLabelTextProperty()
+        label_property.SetColor(*color)
+        label_property.SetShadow(0)
+
+        title_property = self.scalar_bar.GetTitleTextProperty()
+        title_property.SetColor(*color)
+        title_property.SetShadow(0)
+
+        self.widget = vtk.vtkScalarBarWidget()
+        self.widget.SetInteractor(self.interactor)
+        self.widget.SetScalarBarActor(self.scalar_bar)
+
+        self.widget.GetScalarBarRepresentation().SetShowBorder(False)
+        self.widget.ProcessEventsOff()
+
+        self.title = None
+        self.visible = False
+        self.orientation = "vertical"
+        self.set_orientation(self.orientation)
+
+        default_lut = vtk.vtkLookupTable()
+        default_lut.SetHueRange(0.667, 0.0)
+        default_lut.SetSaturationRange(1.0, 1.0)
+        default_lut.SetValueRange(1.0, 1.0)
+        default_lut.SetNumberOfColors(256)
+        default_lut.Build()
+        self.set_lookup_table(default_lut)
+
+    def set_lookup_table(self, lut, title=""):
+        self.title = title
+        self.scalar_bar.SetLookupTable(lut)
+        self.scalar_bar.SetTitle(title)
+
+        return self.interactor.Render()
+
+    def set_orientation(self, orientation):
+        is_vertical = orientation.lower() == "vertical"
+
+        self.orientation = "vertical"
+        if is_vertical:
+            self.scalar_bar.SetOrientationToVertical()
+            self.scalar_bar.SetTextPositionToPrecedeScalarBar()
+            self.scalar_bar.SetTextPad(-4)
+        else:
+            self.orientation = "horizontal"
+            self.scalar_bar.SetOrientationToHorizontal()
+            self.scalar_bar.SetTextPositionToSucceedScalarBar()
+            self.scalar_bar.SetTextPad(0)
+
+        self.interactor.Render()
+
+    def show(self):
+        if self.visible:
+            return None
+
+        self.widget.On()
+        self.visible = True
+        return self.interactor.Render()
+
+    def hide(self):
+        if not self.visible:
+            return None
+
+        self.widget.Off()
+        self.visible = False
+        return self.interactor.Render()
+
+
+class ScaleBarWidget:
+    """VTK Scale Bar widget for adding distance indicators to the vtk viewer."""
+
+    def __init__(
+        self, renderer: vtk.vtkRenderer, interactor: vtk.vtkRenderWindowInteractor
+    ):
+        self.renderer = renderer
+        self.interactor = interactor
+
+        self.scale_actor = vtk.vtkLegendScaleActor()
+        self.scale_actor.AllAxesOff()
+
+        self.scale_actor.LegendVisibilityOn()
+
+        color = (0.41, 0.42, 0.435)
+        self.scale_actor.GetLegendLabelProperty().SetColor(*color)
+        self.scale_actor.GetLegendLabelProperty().SetFontSize(0)
+        self.scale_actor.GetLegendLabelProperty().SetShadow(0)
+
+        self.scale_actor.GetLegendTitleProperty().SetColor(*color)
+        self.scale_actor.GetLegendTitleProperty().SetFontSize(14)
+        self.scale_actor.GetLegendTitleProperty().SetShadow(0)
+
+        self.hide()
+
+    def show(self):
+        self.visible = True
+        self.renderer.AddActor(self.scale_actor)
+        return self.interactor.GetRenderWindow().Render()
+
+    def hide(self):
+        self.visible = False
+        try:
+            self.renderer.RemoveActor(self.scale_actor)
+        except Exception:
+            pass
+        return self.interactor.GetRenderWindow().Render()
+
+    def set_label_format(self, format_string: str):
+        """Set the format string for the scale labels.
+
+        Args:
+            format_string: Format string (e.g., "%.1f mm" or "%.2f µm")
+        """
+        self.scale_actor.SetLabelFormat(format_string)
+        self.interactor.GetRenderWindow().Render()
+
+    def set_units(self, units: str):
+        """Set the units for the scale bar.
+
+        Args:
+            units: Unit string (e.g., "mm", "µm", "nm")
+        """
+        format_string = f"%.1f {units}"
+        self.set_label_format(format_string)
 
 
 def create_bounding_box_actor(
@@ -33,8 +184,6 @@ def create_bounding_box_actor(
         RGB color tuple with values between 0 and 1, by default (0.5, 0.5, 0.5).
     opacity : float, optional
         Opacity value between 0 and 1, by default 0.6.
-    line_width : int, optional
-        Line width for wireframe representation, by default 1.
 
     Returns
     -------
@@ -196,12 +345,15 @@ class BoundingBoxManager:
 
 
 class AxesWidget:
+    """Widget for displaying coordinate axes in the viewport."""
+
     def __init__(self, renderer, interactor):
         self.axes_actor = vtkAxesActor()
         self.axes_actor.SetTotalLength(20, 20, 20)
-        self.axes_actor.SetShaftType(0)
+        self.axes_actor.SetShaftType(1)
         self.axes_actor.SetAxisLabels(1)
-        self.axes_actor.SetCylinderRadius(0.02)
+        self.axes_actor.SetConeRadius(0.25)
+        self.axes_actor.SetNormalizedShaftLength(0.85, 0.85, 0.85)
         self.axes_actor.SetPosition(0, 0, 0)
 
         for axis in ["X", "Y", "Z"]:
@@ -209,8 +361,6 @@ class AxesWidget:
             text_actor = caption_actor.GetTextActor()
             text_actor.SetTextScaleModeToNone()
             text_actor.GetTextProperty().SetFontSize(12)
-            actor = getattr(self.axes_actor, f"Get{axis}AxisShaftProperty")()
-            actor.SetColor(0.5, 0.5, 0.5)
 
         # Create orientation marker widget
         self.orientation_marker = vtkOrientationMarkerWidget()
@@ -238,12 +388,15 @@ class AxesWidget:
             colors = [(0.8, 0.2, 0.2), (0.26, 0.65, 0.44), (0.2, 0.4, 0.8)]
 
         for index, axis in enumerate(["X", "Y", "Z"]):
-            actor = getattr(self.axes_actor, f"Get{axis}AxisTipProperty")()
-            actor.SetColor(*colors[index])
+            # Color both shaft and tip for a cohesive modern look
+            tip_prop = getattr(self.axes_actor, f"Get{axis}AxisTipProperty")()
+            tip_prop.SetColor(*colors[index])
+            shaft_prop = getattr(self.axes_actor, f"Get{axis}AxisShaftProperty")()
+            shaft_prop.SetColor(*colors[index])
 
     def set_arrow_heads_visible(self, visible: bool):
         self.arrow_heads_visible = visible
-        self.axes_actor.SetConeRadius(0.4 if visible else 0.0)
+        self.axes_actor.SetConeRadius(0.25 if visible else 0.0)
         self.set_colored(self.colored)
 
     def set_labels_visible(self, visible: bool):

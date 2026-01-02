@@ -1,7 +1,6 @@
 import importlib
 
 _module_map = {
-    ".animate": ["ExportManager"],
     ".interactor": ["DataContainerInteractor"],
     ".data": ["MosaicData"],
     ".container": ["DataContainer"],

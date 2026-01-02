@@ -47,38 +47,39 @@ class SegmentationTab(QWidget):
 
     def show_ribbon(self):
         self.ribbon.clear()
+
         cluster_actions = [
             create_button(
                 "Merge",
-                "mdi.merge",
+                "ph.git-merge",
                 self,
                 lambda: (self.cdata.data.merge(), self.cdata.models.merge()),
                 "Merge selected objects",
             ),
             create_button(
                 "Remove",
-                "fa5s.trash",
+                "ph.trash",
                 self,
                 lambda: (self.cdata.data.remove(), self.cdata.models.remove()),
                 "Remove selected objects",
             ),
             create_button(
                 "Select",
-                "mdi.chart-histogram",
+                "ph.chart-bar",
                 self,
                 self._show_histogram,
-                "Select objects by number of points",
+                "Filter objects by size",
             ),
             create_button(
                 "Transform",
-                "mdi.rotate-right",
+                "ph.arrows-out-cardinal",
                 self,
                 self._toggle_transform,
                 "Transform selected cluster",
             ),
             create_button(
                 "Crop",
-                "mdi.map-marker-distance",
+                "ph.crop",
                 self,
                 self._distance_crop,
                 "Crop by distance",
@@ -89,23 +90,23 @@ class SegmentationTab(QWidget):
         point_actions = [
             create_button(
                 "Cluster",
-                "mdi.sitemap",
+                "ph.arrows-out-line-horizontal",
                 self,
                 self.cdata.data.cluster,
-                "Cluster points",
+                "Extract distinct components",
                 CLUSTER_SETTINGS,
             ),
             create_button(
                 "Outlier",
-                "mdi.filter",
+                "ph.funnel",
                 self,
                 self.cdata.data.remove_outliers,
-                "Remove outliers",
+                "Remove isolated points",
                 OUTLIER_SETTINGS,
             ),
             create_button(
                 "Normals",
-                "mdi.arrow-expand-up",
+                "ph.arrows-out",
                 self,
                 self.cdata.data.compute_normals,
                 "Assign normals",
@@ -113,25 +114,25 @@ class SegmentationTab(QWidget):
             ),
             create_button(
                 "Trim",
-                "mdi.scissors-cutting",
+                "ph.scissors",
                 self,
                 self._toggle_trimmer,
                 "Trim points using planes",
             ),
             create_button(
                 "Skeletonize",
-                "mdi.dots-horizontal",
+                "ph.line-segments",
                 self,
                 self.cdata.data.skeletonize,
-                "Reduce cluster to outer, core or inner points.",
+                "Extract boundary or core points",
                 SKELETONIZE_SETTINGS,
             ),
             create_button(
                 "Downsample",
-                "mdi.focus-field-horizontal",
+                "ph.arrows-in",
                 self,
                 self.cdata.data.downsample,
-                "Downsample cluster",
+                "Reduce point density",
                 DOWNSAMPLE_SETTINGS,
             ),
         ]
@@ -140,10 +141,10 @@ class SegmentationTab(QWidget):
         analysis_actions = [
             create_button(
                 "Properties",
-                "mdi.poll",
+                "ph.chart-bar-horizontal",
                 self,
                 self._show_property_dialog,
-                "Analyse object properties",
+                "Analyze cluster properties",
             ),
         ]
         self.ribbon.add_section("Analysis", analysis_actions)
@@ -176,18 +177,31 @@ class SegmentationTab(QWidget):
 
     def _distance_crop(self):
         from ..dialogs import DistanceCropDialog
+        from ..widgets.dock import create_or_toggle_dock
+
+        dialog = None
+        if getattr(self, "distance_crop_dock", None) is None:
+            dialog = DistanceCropDialog(cdata=self.cdata, parent=self)
+            self.cdata.data.render_update.connect(dialog.populate_lists)
+            self.cdata.models.render_update.connect(dialog.populate_lists)
+            dialog.cropApplied.connect(self._apply_distance_crop)
+
+        create_or_toggle_dock(self, "distance_crop_dock", dialog)
+
+    def _apply_distance_crop(self, crop_data):
+        """Apply the distance crop operation.
+
+        Parameters
+        ----------
+        crop_data : dict
+            Dictionary with sources, targets, distance, keep_smaller keys.
+        """
         from ..properties import GeometryProperties
 
-        fits = self.cdata.format_datalist("models")
-        clusters = self.cdata.format_datalist("data")
-
-        dialog = DistanceCropDialog(clusters=clusters, fits=fits, parent=self)
-        self.cdata.data.render_update.connect(dialog.populate_lists)
-        self.cdata.models.render_update.connect(dialog.populate_lists)
-
-        sources, targets, distance, keep_smaller = dialog.get_results()
-        if sources is None:
-            return -1
+        sources = crop_data["sources"]
+        targets = crop_data["targets"]
+        distance = crop_data["distance"]
+        keep_smaller = crop_data["keep_smaller"]
 
         for source in sources:
             dist = GeometryProperties.compute(
@@ -202,8 +216,8 @@ class SegmentationTab(QWidget):
 
             if mask.sum() == 0:
                 QMessageBox.warning(self, "Warning", "No points satisfy cutoff.")
-
                 continue
+
             self.cdata.data.add(source[mask])
 
         self.cdata.data.render()
@@ -475,7 +489,7 @@ class PlaneTrimmer:
 
 
 SKELETONIZE_SETTINGS = {
-    "title": "Skeletonize Settings",
+    "title": "Settings",
     "settings": [
         {
             "label": "Method",
@@ -544,7 +558,7 @@ SKELETONIZE_SETTINGS = {
 }
 
 NORMAL_SETTINGS = {
-    "title": "Normal Settings",
+    "title": "Settings",
     "settings": [
         {
             "label": "Method",
@@ -571,7 +585,7 @@ NORMAL_SETTINGS = {
 }
 
 DOWNSAMPLE_SETTINGS = {
-    "title": "Downsample Settings",
+    "title": "Settings",
     "settings": [
         {
             "label": "Method",
@@ -620,7 +634,7 @@ DOWNSAMPLE_SETTINGS = {
 }
 
 CLUSTER_SETTINGS = {
-    "title": "Cluster Settings",
+    "title": "Settings",
     "settings": [
         {
             "label": "Method",
@@ -760,7 +774,7 @@ CLUSTER_SETTINGS = {
 }
 
 OUTLIER_SETTINGS = {
-    "title": "Remove Outlier",
+    "title": "Settings",
     "settings": [
         {
             "label": "Method",

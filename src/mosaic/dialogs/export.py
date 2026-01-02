@@ -15,7 +15,7 @@ from qtpy.QtWidgets import (
 import qtawesome as qta
 
 from ..widgets import DialogFooter
-from ..stylesheets import QGroupBox_style, QPushButton_style, QScrollArea_style
+from ..stylesheets import QGroupBox_style, QPushButton_style, QScrollArea_style, Colors
 from ..widgets import create_setting_widget, get_widget_value
 
 
@@ -39,7 +39,7 @@ class StyleableButton(QPushButton):
         layout.setSpacing(4)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        icon = qta.icon(icon_name, color="#696c6f")
+        icon = qta.icon(icon_name, color=Colors.ICON)
         icon_label = QLabel()
         icon_label.setPixmap(icon.pixmap(icon_size, icon_size))
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -52,25 +52,26 @@ class StyleableButton(QPushButton):
         if description and not is_compact:
             desc_label = QLabel(description)
             desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            desc_label.setStyleSheet("color: #696c6f; font-size: 11px;")
+            desc_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
             desc_label.setWordWrap(True)
             layout.addWidget(desc_label)
 
         self.setMinimumSize(*size)
         self.setCheckable(True)
         self.setStyleSheet(
-            """
-            QPushButton {
-                border: 1px solid #d1d5db;
+            f"""
+            QPushButton {{
+                border: 1px solid {Colors.BORDER_DARK};
                 border-radius: 6px;
                 text-align: center;
-            }
-            QPushButton:checked {
+            }}
+            QPushButton:checked {{
                 border: 1px solid #4f46e5;
-            }
-            QPushButton:hover:!checked {
-                background-color: #1a000000;
-            }
+            }}
+            QPushButton:hover:!checked {{
+                background: rgba(0, 0, 0, 0.06);
+                border: 1px solid rgba(0, 0, 0, 0.08);
+            }}
         """
         )
 
@@ -89,19 +90,19 @@ class ExportDialog(QDialog):
         self.enabled_categories = set(enabled_categories)
         self.format_categories = {
             "pointcloud": {
-                "icon": "mdi.dots-grid",
+                "icon": "ph.dots-nine",
                 "label": "Point Cloud",
                 "description": "Export coordinates and orientations.",
                 "formats": ["star", "tsv", "xyz"],
             },
             "mesh": {
-                "icon": "mdi.grid",
+                "icon": "ph.triangle",
                 "label": "Mesh",
                 "description": "Export as a surface mesh.",
                 "formats": ["obj", "stl", "ply"],
             },
             "volume": {
-                "icon": "mdi.cube-outline",
+                "icon": "ph.cube",
                 "label": "Volume",
                 "description": "Export as a density map.",
                 "formats": ["mrc", "em", "h5"],
@@ -212,8 +213,6 @@ class ExportDialog(QDialog):
                     settings_dict[key]["default"] = values[index]
 
     def setup_ui(self):
-        from ..icons import icon_color
-
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -249,7 +248,7 @@ class ExportDialog(QDialog):
 
         footer = DialogFooter(dialog=self, margin=(20, 10, 20, 10))
         footer.accept_button.setText("Export")
-        footer.accept_button.setIcon(qta.icon("fa5s.download", color=icon_color))
+        footer.accept_button.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
         main_layout.addWidget(footer)
 
     def _clear_layout(self, layout):
@@ -288,7 +287,7 @@ class ExportDialog(QDialog):
         formats = self.format_categories[self.selected_category]["formats"]
 
         for i, fmt in enumerate(formats):
-            btn = StyleableButton("fa5s.file", f".{fmt}", is_compact=True)
+            btn = StyleableButton("ph.file", f".{fmt}", is_compact=True)
             btn.setChecked(fmt == self.selected_format)
             btn.clicked.connect(lambda checked, f=fmt: self.on_format_selected(f))
             self.format_layout.addWidget(btn)

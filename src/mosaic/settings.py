@@ -88,8 +88,8 @@ class SettingsCategory:
 class RenderingSettings:
     """VTK rendering configuration."""
 
-    background_color: Tuple[float, float, float] = (0.1, 0.1, 0.1)
-    background_color_alt: Tuple[float, float, float] = (1.0, 1.0, 1.0)
+    background_color: Tuple[float, float, float] = (0.09, 0.10, 0.12)
+    background_color_alt: Tuple[float, float, float] = (0.97, 0.97, 0.96)
     use_gradient_background: bool = False
     target_fps: float = 30.0
     parallel_worker: int = min(8, QThread.idealThreadCount() - 1)

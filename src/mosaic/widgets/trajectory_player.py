@@ -13,7 +13,7 @@ from qtpy.QtWidgets import (
 )
 import qtawesome as qta
 
-from ..stylesheets import QSlider_style
+from ..stylesheets import QSlider_style, Colors
 
 
 class TimelineBar(QWidget):
@@ -153,16 +153,14 @@ class TrajectoryPlayer(QWidget):
 
     @playing.setter
     def playing(self, playing: bool):
-        from ..icons import icon_color
-
         self._playing = playing
         if not hasattr(self, "play_button"):
             return None
 
         if not playing:
-            self.play_button.setIcon(qta.icon("fa5s.play", color=icon_color))
+            self.play_button.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
         else:
-            self.play_button.setIcon(qta.icon("fa5s.pause", color=icon_color))
+            self.play_button.setIcon(qta.icon("ph.pause", color=Colors.ICON))
 
     @property
     def trajectories(self):
@@ -197,27 +195,27 @@ class TrajectoryPlayer(QWidget):
 
         button_size = 32
         self.first_button = QPushButton()
-        self.first_button.setIcon(qta.icon("fa5s.step-backward", color="#475569"))
+        self.first_button.setIcon(qta.icon("ph.skip-back", color=Colors.ICON))
         self.first_button.setFixedSize(button_size, button_size)
         self.first_button.clicked.connect(lambda: self.sync_frame(0))
 
         self.prev_button = QPushButton(autoRepeat=True)
-        self.prev_button.setIcon(qta.icon("fa5s.backward", color="#475569"))
+        self.prev_button.setIcon(qta.icon("ph.rewind", color=Colors.ICON))
         self.prev_button.setFixedSize(button_size, button_size)
         self.prev_button.clicked.connect(self.prev_frame)
 
         self.play_button = QPushButton()
-        self.play_button.setIcon(qta.icon("fa5s.play"))
+        self.play_button.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
         self.play_button.setFixedSize(button_size, button_size)
         self.play_button.clicked.connect(self.toggle_play)
 
         self.next_button = QPushButton(autoRepeat=True)
-        self.next_button.setIcon(qta.icon("fa5s.forward", color="#475569"))
+        self.next_button.setIcon(qta.icon("ph.fast-forward", color=Colors.ICON))
         self.next_button.setFixedSize(button_size, button_size)
         self.next_button.clicked.connect(self.next_frame)
 
         self.last_button = QPushButton()
-        self.last_button.setIcon(qta.icon("fa5s.step-forward", color="#475569"))
+        self.last_button.setIcon(qta.icon("ph.skip-forward", color=Colors.ICON))
         self.last_button.setFixedSize(button_size, button_size)
         self.last_button.clicked.connect(lambda: self.sync_frame(self.max_frame()))
 

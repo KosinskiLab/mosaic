@@ -20,9 +20,10 @@ from mosaic.stylesheets import (
     QPushButton_style,
     QScrollArea_style,
     QTabBar_style,
+    Colors,
 )
 
-from mosaic.widgets import create_setting_widget, ColorButton
+from mosaic.widgets import create_setting_widget, ColorPickerRow
 
 
 class AppSettingsDialog(QDialog):
@@ -37,20 +38,20 @@ class AppSettingsDialog(QDialog):
         self.setWindowTitle("Settings")
 
         self.layout = QVBoxLayout(self)
-        self.resize(400, 550)
+        self.resize(400, 580)
 
         self.tabs = QTabWidget()
         self.build_tabs()
 
         self.layout.addWidget(self.tabs)
 
-        from ..icons import dialog_accept_icon, dialog_reject_icon, icon_color
+        from ..icons import dialog_accept_icon, dialog_reject_icon
 
         button_frame = QFrame()
         button_layout = QHBoxLayout(button_frame)
         button_layout.setContentsMargins(0, 10, 0, 0)
         reset_btn = QPushButton("Reset")
-        reset_btn.setIcon(qta.icon("mdi6.undo-variant", color=icon_color))
+        reset_btn.setIcon(qta.icon("ph.arrow-counter-clockwise", color=Colors.ICON))
         reset_btn.clicked.connect(self.reset_settings)
         button_layout.addWidget(reset_btn)
         button_layout.addStretch()
@@ -73,12 +74,12 @@ class AppSettingsDialog(QDialog):
 
         self.tabs.addTab(
             self.setup_general_page(),
-            qta.icon("fa5s.cog", color="#4f46e5"),
+            qta.icon("ph.gear", color=Colors.PRIMARY),
             "General",
         )
         self.tabs.addTab(
             self.setup_rendering_page(),
-            qta.icon("fa5s.paint-brush", color="#4f46e5"),
+            qta.icon("ph.paint-brush", color=Colors.PRIMARY),
             "Data",
         )
         self.connect_signals()
@@ -101,15 +102,42 @@ class AppSettingsDialog(QDialog):
         scroll_widget = QWidget()
         layout = QVBoxLayout(scroll_widget)
 
-        colors_group = QGroupBox("Background Colors")
-        colors_layout = QFormLayout()
-        self.bg_color_button = ColorButton()
-        self.bg_color_button.update_color(rendering.background_color)
-        colors_layout.addRow("Background Color", self.bg_color_button)
+        # Background color presets - dark and light theme options
+        dark_presets = [
+            (0.09, 0.10, 0.12),  # Cool slate (default)
+            (0.00, 0.00, 0.00),  # Pure black
+            (0.08, 0.12, 0.16),  # Deep ocean blue
+            (0.12, 0.08, 0.14),  # Dark purple
+            (0.06, 0.12, 0.10),  # Forest night
+            (0.14, 0.10, 0.08),  # Dark bronze
+        ]
+        light_presets = [
+            (0.97, 0.97, 0.96),  # Warm off-white (default)
+            (1.00, 1.00, 1.00),  # Pure white
+            (0.92, 0.95, 0.98),  # Ice blue
+            (0.96, 0.94, 0.98),  # Lavender mist
+            (0.94, 0.97, 0.94),  # Mint cream
+            (0.98, 0.96, 0.92),  # Warm sand
+        ]
 
-        self.bg_color_alt_button = ColorButton()
-        self.bg_color_alt_button.update_color(rendering.background_color_alt)
-        colors_layout.addRow("Alt Background Color", self.bg_color_alt_button)
+        colors_group = QGroupBox("Background Colors")
+        colors_layout = QVBoxLayout()
+        colors_layout.setSpacing(16)
+
+        self.bg_color_picker = ColorPickerRow(
+            "Dark Background",
+            default_color=rendering.background_color,
+            preset_colors=dark_presets,
+        )
+        colors_layout.addWidget(self.bg_color_picker)
+
+        self.bg_color_alt_picker = ColorPickerRow(
+            "Light Background",
+            default_color=rendering.background_color_alt,
+            preset_colors=light_presets,
+        )
+        colors_layout.addWidget(self.bg_color_alt_picker)
+
         colors_group.setLayout(colors_layout)
         layout.addWidget(colors_group)
 
@@ -340,18 +368,18 @@ class AppSettingsDialog(QDialog):
                 )
 
         self.preset_combo.currentTextChanged.connect(self.on_preset_changed)
-        self.bg_color_button.colorChanged.connect(
-            lambda: _update_setting(
+        self.bg_color_picker.colorChanged.connect(
+            lambda color: _update_setting(
                 Settings.rendering,
                 "background_color",
-                self.bg_color_button.get_color(uint8=False),
+                color,
             )
         )
-        self.bg_color_alt_button.colorChanged.connect(
-            lambda: _update_setting(
+        self.bg_color_alt_picker.colorChanged.connect(
+            lambda color: _update_setting(
                 Settings.rendering,
                 "background_color_alt",
-                self.bg_color_alt_button.get_color(uint8=False),
+                color,
             )
         )
 

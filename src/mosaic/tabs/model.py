@@ -73,21 +73,49 @@ class ModelTab(QWidget):
 
         func = self._fit_parallel
         fitting_actions = [
-            create_button("Sphere", "mdi.circle", self, partial(func, "sphere")),
-            create_button("Ellipse", "mdi.ellipse", self, partial(func, "ellipsoid")),
-            create_button("Cylinder", "mdi.hexagon", self, partial(func, "cylinder")),
             create_button(
-                "RBF", "mdi.grid", self, partial(func, "rbf"), "Fit RBF", RBF_SETTINGS
+                "Sphere",
+                "ph.circle",
+                self,
+                partial(func, "sphere"),
+                "Fit to selected clusters",
             ),
             create_button(
-                "Mesh", "mdi.triangle-outline", self, func, "Fit Mesh", MESH_SETTINGS
+                "Ellipse",
+                "ph.link-simple-horizontal-break",
+                self,
+                partial(func, "ellipsoid"),
+                "Fit to selected clusters",
+            ),
+            create_button(
+                "Cylinder",
+                "ph.hexagon",
+                self,
+                partial(func, "cylinder"),
+                "Fit to selected clusters",
+            ),
+            create_button(
+                "RBF",
+                "ph.dots-nine",
+                self,
+                partial(func, "rbf"),
+                "Fit to selected clusters",
+                RBF_SETTINGS,
+            ),
+            create_button(
+                "Mesh",
+                "ph.triangle",
+                self,
+                func,
+                "Fit to selected clusters",
+                MESH_SETTINGS,
             ),
             create_button(
                 "Curve",
-                "mdi.chart-bell-curve",
+                "ph.line-segments",
                 self,
                 partial(func, "spline"),
-                "Fit Spline",
+                "Fit to selected clusters",
                 SPLINE_SETTINGS,
             ),
         ]
@@ -96,10 +124,10 @@ class ModelTab(QWidget):
         mesh_actions = [
             create_button(
                 "Sample",
-                "mdi.chart-scatter-plot",
+                "ph.broadcast",
                 self,
                 self._sample_parallel,
-                "Sample from Fit",
+                "Generate points from fitted model",
                 SAMPLE_SETTINGS,
             ),
         ]
@@ -108,34 +136,34 @@ class ModelTab(QWidget):
         mesh_actions = [
             create_button(
                 "Repair",
-                "mdi.auto-fix",
+                "ph.wrench",
                 self,
                 self._repair_mesh,
-                "Repair Mesh",
+                "Fix holes and topology issues",
                 REPAIR_SETTINGS,
             ),
             create_button(
                 "Remesh",
-                "mdi.repeat",
+                "ph.arrows-clockwise",
                 self,
                 self._remesh_parallel,
-                "Remesh Mesh",
+                "Adjust resolution and quality",
                 REMESH_SETTINGS,
             ),
             create_button(
                 "Smooth",
-                "mdi.blur",
+                "ph.drop",
                 self,
                 self._smooth_parallel,
-                "Smooth Mesh",
+                "Reduce surface noise",
                 SMOOTH_SETTINGS,
             ),
             create_button(
                 "Project",
-                "mdi.vector-curve",
+                "ph.arrow-line-down",
                 self,
                 self._project_on_mesh,
-                "Project on Mesh",
+                "Project points onto mesh",
                 PROJECTION_SETTINGS,
             ),
         ]
@@ -296,7 +324,7 @@ class ModelTab(QWidget):
 
 
 SAMPLE_SETTINGS = {
-    "title": "Sample Fit",
+    "title": "Settings",
     "settings": [
         {
             "label": "Sampling Method",
@@ -335,7 +363,7 @@ SAMPLE_SETTINGS = {
 }
 
 RBF_SETTINGS = {
-    "title": "RBF Settings",
+    "title": "Settings",
     "settings": [
         {
             "label": "Direction",
@@ -349,7 +377,7 @@ RBF_SETTINGS = {
 }
 
 SPLINE_SETTINGS = {
-    "title": "Curve Settings",
+    "title": "Settings",
     "settings": [
         {
             "label": "Order",
@@ -364,7 +392,7 @@ SPLINE_SETTINGS = {
 }
 
 REPAIR_SETTINGS = {
-    "title": "Repair Settings",
+    "title": "Settings",
     "settings": [
         {
             "label": "Elastic Weight",
@@ -421,7 +449,7 @@ REPAIR_SETTINGS = {
 
 
 REMESH_SETTINGS = {
-    "title": "Remesh Settings",
+    "title": "Settings",
     "settings": [
         {
             "label": "Method",
@@ -521,7 +549,7 @@ REMESH_SETTINGS = {
 
 
 SMOOTH_SETTINGS = {
-    "title": "Smooth Settings",
+    "title": "Settings",
     "settings": [
         {
             "label": "Method",
@@ -573,7 +601,7 @@ SMOOTH_SETTINGS = {
 }
 
 MESH_SETTINGS = {
-    "title": "Mesh Settings",
+    "title": "Settings",
     "settings": [
         {
             "label": "Method",
@@ -800,7 +828,7 @@ MESH_SETTINGS = {
 
 
 PROJECTION_SETTINGS = {
-    "title": "Projection Settings",
+    "title": "Settings",
     "settings": [
         {
             "label": "Cast Normals",

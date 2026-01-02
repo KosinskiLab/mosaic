@@ -26,7 +26,7 @@ The Mosaic interface consists of several key components:
    - Navigation controls
    - Orientation indicators
    - Optional coordinate axes
-6. **Status Bar**: Shows current interaction mode and application status
+6. **Status Bar**: Shows interaction mode, target, and processing status (see below)
 
 Additional dock widgets such as the *Volume Viewer* will be displayed at the bottom of the window.
 
@@ -40,7 +40,7 @@ Object Browser
 --------------
 
 .. figure:: ../../_static/tutorial/mosaic_object_browser.png
-   :width: 100%
+   :width: 40%
    :align: right
 
    Object Browser
@@ -66,6 +66,7 @@ The symbol next to each object indicates the data type. The color of the symbol 
 - ``Ctrl+A``: Select all objects
 - ``Shift+click``: Select range
 
+The search field at the top can be used to filter objects in both categories simultaneously.
 
 Context Menu
 ------------
@@ -80,19 +81,24 @@ Right-click any object in the *Object Browser* to access:
 
 - **Show/Hide**: Toggle visibility
 - **Duplicate/Remove**: Copy or delete objects
+- **Group/Ungroup**: Group collections of objects
 - **Representation**: Modify how objects appear
 - **Export**: Save to various formats
 - **Properties**: Set rendering properties.
 
 
-Interaction Modes
------------------
+Status Bar
+----------
 
-Mosaic provides multiple interaction modes for selecting and modifying different types of data. The current mode is always displayed in the status bar at the bottom of the window and indicated by the cursor shape.
+The status bar at the bottom of the window displays three key pieces of information:
+
+Interaction Mode
+^^^^^^^^^^^^^^^^
+
+Shows the current interaction mode (e.g., Viewing, Selection, Drawing). The cursor shape also reflects the active mode.
 
 .. tip::
-   Every mode can be exited by pressing the key used to enter it or via ``Esc``. Modes can also be activated via the **Actions** category in the menu bar.
-
+   Exit any mode by pressing its activation key again or ``Esc``. Modes can also be activated via **Actions** in the menu bar.
 
 **Viewing Mode (Default)**
 
@@ -100,58 +106,34 @@ Mosaic provides multiple interaction modes for selecting and modifying different
 - Use mouse to rotate, pan, and zoom the 3D viewport
 - Press ``Esc`` to return to viewing mode from any other mode
 
-Point Interaction
-^^^^^^^^^^^^^^^^^
+**Area Selection** — Press ``r`` to activate rectangular selection mode. Click and drag to select points within a rectangular area. Press ``e`` to expand selection to entire connected clusters.
 
-**Area Selection (Rubber Band)**
+**Point Drawing** — Press ``a`` to activate drawing mode. Click anywhere in the 3D viewport to add new points. If no cluster is selected, a new one is created automatically.
 
-- Press ``r`` to activate rectangular selection mode
-- Click and drag in the 3D viewport to select points within a rectangular area
-- Press ``e`` to expand selection to entire connected clusters
-- Press ``r`` again or ``Esc`` to exit selection mode
+**Curve Drawing** — Press ``Shift+A`` to activate curve drawing mode. Click to place points along a curve path. Press ``Enter`` to save the curve as a new cluster.
 
-**Point Drawing**
+**Object Picking** — Press ``E`` to activate object picking mode. Click directly on objects to select them. Selected objects are highlighted in the Object Browser.
 
-- Press ``a`` to activate drawing mode
-- Click anywhere in the 3D viewport to add new points to the selected cluster
-- If no cluster is selected, a new cluster will be created automatically
-- Press ``a`` again or ``Esc`` to exit drawing mode
+**Mesh Delete** — Press ``q`` to activate mesh face selection mode. Click on triangular faces to select them, then press ``Delete`` to remove.
 
-**Curve Drawing**
+**Mesh Add** — Press ``Q`` to activate mesh addition mode. Click on three points to create a new triangular face.
 
-- Press ``Shift+A`` to activate curve drawing mode
-- Click to place points along a curve path
-- Press ``Enter`` to save the curve as a new cluster of points
-- Press ``Shift+A`` or ``Esc`` to cancel curve drawing
-- Optional: Fit a curve model to the created cluster to parametrize it.
+Interaction Target
+^^^^^^^^^^^^^^^^^^
 
+Indicates whether picking operations apply to **Clusters** or **Models**. Press ``s`` during object picking to switch targets.
 
-Object Selection
-^^^^^^^^^^^^^^^^
+Processing Indicator
+^^^^^^^^^^^^^^^^^^^^
 
-**Object Picking**
+Shows **Idle** when no tasks are running or **Busy** with an animated spinner during background operations. Click the indicator to open the *Task Monitor*, which displays:
 
-- Press ``E`` to activate object picking mode
-- Click directly on objects (clusters or models) to select them
-- Press ``s`` to switch between cluster and model selection targets
-- Selected objects are highlighted and selected in the Object Browser
+- **Running**: Currently executing tasks
+- **Queued**: Tasks waiting to start
+- **Completed**: Successfully finished tasks
+- **Failed**: Tasks that encountered errors
 
-Mesh Editing
-^^^^^^^^^^^^
-
-**Mesh Delete**
-
-- Press ``q`` to activate mesh face selection mode
-- Click on triangular faces to select them
-- Press ``Delete`` to remove selected faces
-- Press ``q`` or ``Esc`` to exit
-
-**Mesh Add**
-
-- Press ``Q`` to activate mesh addition mode
-- Click on three points to create a new triangular face
-- If any point is a vertex in an existing mesh, the face will be added to it
-- Press ``Q`` or ``Esc`` to exit
+Expand any task to view its output. Use *Clear Finished* to remove completed and failed tasks from the list.
 
 
 Coordinate System

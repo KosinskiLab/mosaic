@@ -48,9 +48,10 @@ Visual Properties
 
 You can modify the visual properties of items in the **Object Browser**. To do so, right-click on one (or multiple) elements and click the **Properties** button to bring up the dialog window displayed below.
 
-The properties tab is structured into three parts:
+The properties tab is structured based on:
 
 - **Appearance**: Set color and rendering options of objects.
+- **Lighting**: Change the lighting of the scene.
 - **Model**: Replace points with volumetric models in corresponding orientation.
 - **Sampling**: Modify the sampling rate of the underlying objects.
 

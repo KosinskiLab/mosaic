@@ -119,7 +119,7 @@ def generate_runs(pipeline_config):
 
 
 def _get_op_spec(operation_id):
-    from .operation import OPERATION_CATEGORIES
+    from .operations import OPERATION_CATEGORIES
 
     for category_data in OPERATION_CATEGORIES.values():
         for op_data in category_data["operations"].values():
@@ -290,7 +290,7 @@ def execute_run(run_config: dict, skip_complete: bool = False) -> None:
         if len(current_data) == 0:
             break
 
-        if (func := getattr(GeometryOperations, op_id)) is not None:
+        if (func := getattr(GeometryOperations, op_id, None)) is not None:
             # Save some memory over the speedup from the list comprehension
             for i in range(len(current_data)):
                 current_data[i] = func(current_data[i], **settings)

@@ -31,11 +31,12 @@ from ._utils import natural_sort_key, strip_filepath
 from .operations import OPERATION_CATEGORIES, PIPELINE_PRESETS
 from .widgets import OperationCardWidget, PipelineTreeWidget
 
+from ..__version__ import __version__
 from ..settings import Settings
 from ..widgets.settings import format_tooltip
 from ..widgets import SearchWidget, ContainerListWidget
 from ..widgets.container_list import StyledTreeWidgetItem
-from ..stylesheets import QPushButton_style, QScrollArea_style
+from ..stylesheets import Colors, QPushButton_style, QScrollArea_style
 
 
 __all__ = ["BatchNavigatorDialog", "PipelineBuilderDialog"]
@@ -54,7 +55,7 @@ class PipelineBuilderDialog(QDialog):
 
     def setup_ui(self):
         import qtawesome as qta
-        from ..icons import dialog_accept_icon, dialog_reject_icon, icon_color
+        from ..icons import dialog_accept_icon, dialog_reject_icon
 
         self.pipeline_tree = PipelineTreeWidget()
         self.pipeline_tree.pipeline_changed.connect(self._update_library_state)
@@ -91,7 +92,7 @@ class PipelineBuilderDialog(QDialog):
         workflow_layout.setSpacing(8)
 
         info_label = QLabel("Operations to execute in sequence")
-        info_label.setStyleSheet("color: #6b7280; font-size: 11px;")
+        info_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
         info_label.setWordWrap(True)
         workflow_layout.addWidget(info_label)
 
@@ -110,17 +111,17 @@ class PipelineBuilderDialog(QDialog):
         presets_container.setSpacing(8)
 
         presets_label = QLabel("Common Workflow Configurations:")
-        presets_label.setStyleSheet("font-size: 11px; color: #6b7280;")
+        presets_label.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_MUTED};")
         presets_container.addWidget(presets_label)
 
         presets_layout = QHBoxLayout()
 
         preset_buttons = [
-            ("Clear", "mdi6.close-circle-outline", "#ef4444"),
-            ("Import", "mdi6.file-import", "#3b82f6"),
-            ("Cleanup", "mdi.auto-fix", "#8b5cf6"),
-            ("Meshing", "mdi.triangle-outline", "#10b981"),
-            ("Particle Picking", "mdi6.target", "#f59e0b"),
+            ("Clear", "ph.x-circle", Colors.CATEGORY["clear"]),
+            ("Import", "ph.file-arrow-up", Colors.CATEGORY["import"]),
+            ("Cleanup", "ph.wrench", Colors.CATEGORY["cleanup"]),
+            ("Meshing", "ph.triangle", Colors.CATEGORY["meshing"]),
+            ("Particle Picking", "ph.crosshair", Colors.CATEGORY["particle_picking"]),
         ]
 
         self.preset_buttons = {}
@@ -154,7 +155,7 @@ class PipelineBuilderDialog(QDialog):
                 "outputs are saved, calculate approximately 8GB of RAM per worker.",
             )
         )
-        workers_label.setStyleSheet("font-size: 11px; color: #6b7280;")
+        workers_label.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_MUTED};")
         self.workers_spin = QSpinBox()
         self.workers_spin.setMinimum(1)
         self.workers_spin.setMaximum(Settings.rendering.pipeline_worker)
@@ -175,7 +176,9 @@ class PipelineBuilderDialog(QDialog):
                 description="Skip runs where output files already exist.",
             )
         )
-        skip_complete_label.setStyleSheet("font-size: 11px; color: #6b7280;")
+        skip_complete_label.setStyleSheet(
+            f"font-size: 11px; color: {Colors.TEXT_MUTED};"
+        )
         self.skip_complete = QCheckBox()
         self.skip_complete.setFixedHeight(32)
         skip_vbox.addWidget(skip_complete_label)
@@ -196,17 +199,17 @@ class PipelineBuilderDialog(QDialog):
 
         load_btn = QPushButton("Load Pipeline")
         load_btn.clicked.connect(self._load_config)
-        load_btn.setIcon(qta.icon("mdi.upload", color=icon_color))
+        load_btn.setIcon(qta.icon("ph.upload", color=Colors.PRIMARY))
         footer_layout.addWidget(load_btn)
 
         export_btn = QPushButton("Export Pipeline")
         export_btn.clicked.connect(self._export_config)
-        export_btn.setIcon(qta.icon("mdi.download", color=icon_color))
+        export_btn.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
         footer_layout.addWidget(export_btn)
 
         validate_btn = QPushButton("Validate Pipeline")
         validate_btn.clicked.connect(self._validate_pipeline)
-        validate_btn.setIcon(qta.icon("mdi.check", color=icon_color))
+        validate_btn.setIcon(qta.icon("ph.check", color=Colors.PRIMARY))
         footer_layout.addWidget(validate_btn)
 
         footer_layout.addStretch()
@@ -233,7 +236,7 @@ class PipelineBuilderDialog(QDialog):
         layout.setSpacing(8)
 
         info_label = QLabel("Select operations to add to your pipeline")
-        info_label.setStyleSheet("color: #6b7280; font-size: 11px;")
+        info_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
 
@@ -274,16 +277,15 @@ class PipelineBuilderDialog(QDialog):
 
         base_style = f"""
             QPushButton {{
-                border: 1px solid #e5e7eb;
+                border: 1px solid {Colors.BORDER_DARK};
                 border-left: 3px solid {color};
                 border-radius: 4px;
                 text-align: left;
                 padding: 6px;
             }}
             QPushButton:hover {{
-                background: #f9fafb;
+                background: {Colors.BG_SECONDARY};
                 border-left-color: {color};
-                border-left-width: 4px;
             }}
         """
         btn.setStyleSheet(base_style)
@@ -305,14 +307,16 @@ class PipelineBuilderDialog(QDialog):
         text_layout.addWidget(name_label)
 
         desc_label = QLabel(info["description"])
-        desc_label.setStyleSheet("color: #6b7280; font-size: 11px;")
+        desc_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
         desc_label.setWordWrap(True)
 
         text_layout.addWidget(desc_label)
         btn_layout.addLayout(text_layout, 1)
 
         add_icon_label = QLabel()
-        add_icon_label.setPixmap(qta.icon("mdi6.plus", color="#9ca3af").pixmap(14, 14))
+        add_icon_label.setPixmap(
+            qta.icon("ph.plus", color=Colors.ICON_MUTED).pixmap(14, 14)
+        )
         btn_layout.addWidget(add_icon_label)
 
         btn.setLayout(btn_layout)
@@ -372,11 +376,10 @@ class PipelineBuilderDialog(QDialog):
             if not is_valid:
                 btn.setStyleSheet(
                     btn.property("base_style")
-                    + """
-                    QPushButton:disabled {
-                        opacity: 0.4;
-                        background: #f3f4f6;
-                    }
+                    + f"""
+                    QPushButton:disabled {{
+                        background: {Colors.BG_TERTIARY};
+                    }}
                 """
                 )
 
@@ -404,6 +407,7 @@ class PipelineBuilderDialog(QDialog):
             return None
 
         for op in PIPELINE_PRESETS[preset_name]:
+            op = op.copy()
             op_name, op_category = op["name"], op["category"]
             op_info = OPERATION_CATEGORIES[op_category]["operations"][op_name]
             self._add_card(
@@ -535,7 +539,7 @@ class PipelineBuilderDialog(QDialog):
     def get_pipeline_config(self):
         """Get complete pipeline configuration in graph format."""
         return {
-            "version": "2.0",
+            "version": __version__,
             "format": "directed_graph",
             "nodes": self.pipeline_tree.get_pipeline_config(),
             "workers": self.workers_spin.value(),
@@ -574,7 +578,6 @@ class BatchNavigatorDialog(QWidget):
         self._session_modified = True
 
     def setup_ui(self):
-        from ..icons import dialog_accept_icon
         import qtawesome as qta
 
         self.setMinimumWidth(280)
@@ -613,14 +616,16 @@ class BatchNavigatorDialog(QWidget):
         button_layout = QHBoxLayout()
         button_layout.setSpacing(8)
         self.discard_btn = QPushButton("Discard Changes")
-        self.discard_btn.setIcon(qta.icon("mdi.undo-variant", color="#4f46e5"))
+        self.discard_btn.setIcon(
+            qta.icon("ph.arrow-counter-clockwise", color=Colors.PRIMARY)
+        )
         self.discard_btn.clicked.connect(self._discard_changes)
         self.discard_btn.setToolTip(
             "Reload current session, discarding unsaved changes"
         )
 
         self.save_btn = QPushButton("Save Current")
-        self.save_btn.setIcon(dialog_accept_icon)
+        self.save_btn.setIcon(qta.icon("ph.floppy-disk", color=Colors.PRIMARY))
         self.save_btn.clicked.connect(self._save_current)
 
         button_layout.addWidget(self.discard_btn)
