@@ -21,7 +21,7 @@ Import tomograms, segment membranes, build surface meshes, localize proteins, me
 
 <p align="center">
   <a href="https://kosinskilab.github.io/mosaic/tutorial/workflows/iav.html">
-    <img src="docs/_static/tutorial/iav_workflow/mosaic_workflow.png" alt="Mosaic Workflow" width="600">
+    <img src="docs/_static/tutorial/iav_workflow/mosaic_workflow.png" alt="Mosaic Workflow">
   </a>
 </p>
 
@@ -32,7 +32,7 @@ Import tomograms, segment membranes, build surface meshes, localize proteins, me
 Need to prep for MD? Export Martini-compatible coarse-grained systems with positioned proteins. Run HMFF to refine membrane shapes using both your experimental density and physics. Send the result straight to GROMACS.
 
 <p align="center">
-  <img src="docs/_static/tutorial/mosaic_overview.png" alt="Mosaic GUI Interface" width="700">
+  <img src="docs/_static/tutorial/mosaic_overview.png" alt="Mosaic GUI Interface">
 </p>
 <p align="center"><em>Mosaic interface</em></p>
 
