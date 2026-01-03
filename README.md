@@ -37,7 +37,7 @@ Need to prep for MD? Export Martini-compatible coarse-grained systems with posit
 <p align="center"><em>Mosaic interface</em></p>
 
 
-Once your workflow is dialed in, use the pipeline builder to scale it:
+Once your workflow is dialed in, use the [pipeline builder](https://kosinskilab.github.io/mosaic/tutorial/workflows/pipeline.html) to scale it to large datasets:
 
 ```bash
 mosaic-pipeline config.json

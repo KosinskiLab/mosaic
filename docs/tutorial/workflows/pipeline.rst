@@ -26,7 +26,7 @@ This tutorial assumes voxel-level membrane segmentations are available, with one
 Creating a Processing Pipeline
 ------------------------------
 
-Open the Pipeline Builder via **File > Pipeline Builder** (or **Ctrl+Shift+P**).
+Open the Pipeline Builder via **File > Batch Processing** (or **Ctrl+Shift+P**).
 
 .. figure:: ../../_static/tutorial/pipeline/builder_overview.png
    :width: 100 %
@@ -181,7 +181,7 @@ The script automatically determines the number of input files and submits itself
 Reviewing Results
 -----------------
 
-The Batch Navigator allows efficient inspection of processed sessions.
+The Batch Navigator allows efficient inspection of processed sessions. You can open it via **File > Batch Navigator** (or **Ctrl+Shift+N**)
 
 .. figure:: ../../_static/tutorial/pipeline/batch_navigator.png
    :width: 100 %
