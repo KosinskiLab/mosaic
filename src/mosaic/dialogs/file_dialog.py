@@ -8,6 +8,7 @@ Copyright (c) 2025 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
+
 from sys import platform
 from qtpy.QtWidgets import QFileDialog
 
