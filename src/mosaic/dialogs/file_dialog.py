@@ -8,7 +8,7 @@ Copyright (c) 2025 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
-
+from sys import platform
 from qtpy.QtWidgets import QFileDialog
 
 from ..stylesheets import QPushButton_style
@@ -24,7 +24,7 @@ __all__ = [
 
 def _configure_dialog(dialog, use_native: bool = False):
     """Apply platform-specific configuration to file dialog."""
-    if not use_native:
+    if platform.lower() == "darwin" and use_native:
         dialog.setOptions(
             QFileDialog.DontUseCustomDirectoryIcons | QFileDialog.DontUseNativeDialog
         )

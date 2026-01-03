@@ -293,6 +293,3 @@ Troubleshooting
 
 **Memory errors during parallel execution**
    Reduce worker count. Each worker requires approximately 8GB RAM depending on segmentation size and number of intermediate outputs stored.
-
-**Pipeline fails on specific files**
-   Click the status indicator in the bottom-right corner to view error details. Use ``--dry-run`` to identify file indices, then ``--index`` to isolate and debug individual runs.
