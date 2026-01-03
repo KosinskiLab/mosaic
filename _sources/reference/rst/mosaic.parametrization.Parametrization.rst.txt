@@ -1,0 +1,27 @@
+﻿mosaic.parametrization.Parametrization
+======================================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: Parametrization
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Parametrization.__init__
+      ~Parametrization.compute_distance
+      ~Parametrization.compute_normal
+      ~Parametrization.fit
+      ~Parametrization.points_per_sampling
+      ~Parametrization.sample
+   
+   
+
+   
+   
+   

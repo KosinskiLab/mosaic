@@ -1,0 +1,27 @@
+﻿mosaic.parametrization.Cylinder
+===============================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: Cylinder
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Cylinder.__init__
+      ~Cylinder.compute_distance
+      ~Cylinder.compute_normal
+      ~Cylinder.fit
+      ~Cylinder.points_per_sampling
+      ~Cylinder.sample
+   
+   
+
+   
+   
+   
