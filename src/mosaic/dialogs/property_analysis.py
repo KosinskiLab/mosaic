@@ -34,7 +34,12 @@ import qtawesome as qta
 
 from ..widgets.settings import get_widget_value, set_widget_value
 from ..stylesheets import QPushButton_style, QScrollArea_style, Colors
-from ..widgets import ContainerListWidget, StyledListWidgetItem, ColorMapSelector
+from ..widgets import (
+    ContainerListWidget,
+    StyledListWidgetItem,
+    ColorMapSelector,
+    generate_gradient_colors,
+)
 
 
 def _populate_list(geometries):
@@ -462,6 +467,7 @@ class PropertyAnalysisDialog(QDialog):
         self.vis_colormap_combo = self._create_colormap_combo(
             with_settings_button=False
         )
+        self.vis_colormap_combo.setCurrentText("Dark2")
         self.vis_colormap_combo.colormapChanged.connect(self._update_plot)
         colormap_layout.addWidget(self.vis_colormap_combo)
         options_layout.addLayout(colormap_layout)
@@ -1076,9 +1082,7 @@ class PropertyAnalysisDialog(QDialog):
         plot_mode = getattr(self, "plot_mode_combo", lambda: "Combined").currentText()
         alpha = getattr(self, "alpha_slider", lambda: 150).value()
         colormap = getattr(self, "vis_colormap_combo", lambda: "viridis").currentText()
-        colors = self.vis_colormap_combo.generate_gradient(
-            colormap, len(selected_items)
-        )
+        colors = generate_gradient_colors(colormap, len(selected_items))
         colors = [pg.mkColor(c.red(), c.green(), c.blue(), alpha) for c in colors]
 
         data_series = []

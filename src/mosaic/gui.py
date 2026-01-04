@@ -545,8 +545,7 @@ class App(QMainWindow):
     def setup_widgets(self):
         self.legend = LegendWidget(self.renderer, self.interactor)
 
-        self.volume_dock = None
-        self.volume_viewer = MultiVolumeViewer(self.vtk_widget, legend=self.legend)
+        self._setup_volume_viewer()
         self.cdata.data.render_update.connect(
             self.volume_viewer.primary.handle_projection_change
         )
@@ -565,18 +564,8 @@ class App(QMainWindow):
             self.renderer, self.interactor, self.cdata
         )
 
-        task_manager = BackgroundTaskManager.instance()
-        task_manager.running_tasks.connect(
-            lambda n: self.status_indicator.update_status(busy=n >= 1)
-        )
-        task_manager.task_started.connect(
-            lambda _, name: self.status_indicator.update_status(busy=True, task=name)
-        )
-        task_manager.running_tasks.connect(
-            lambda n: self.status_indicator.task_monitor._sync_with_task_manager()
-        )
+        self.status_indicator.connect_signals()
 
-        self._setup_volume_viewer()
         self._setup_trajectory_player()
 
     def setup_menu(self):
@@ -1072,6 +1061,8 @@ class App(QMainWindow):
         create_or_toggle_dock(self, "animation_composer", dialog)
 
     def _setup_volume_viewer(self):
+        self.volume_viewer = MultiVolumeViewer(self.vtk_widget, legend=self.legend)
+
         self.volume_dock = QDockWidget(parent=self)
         self.volume_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
         self.volume_dock.setTitleBarWidget(QWidget())

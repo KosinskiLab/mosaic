@@ -14,6 +14,7 @@ from os.path import join, exists
 
 import numpy as np
 
+from ..parallel import report_progress
 from ..container import DataContainer
 from ..formats.writer import write_geometries
 from ._utils import strip_filepath, topological_sort, flatten
@@ -242,10 +243,12 @@ def execute_run(run_config: dict, skip_complete: bool = False) -> None:
             )
             return None
 
-    for op in run_config["operations"]:
+    for idx, op in enumerate(run_config["operations"]):
         op_id = op["operation_id"]
         settings = op["settings"]
         group_name = op["group_name"]
+
+        report_progress(message=op_id, current=idx, total=len(run_config["operations"]))
 
         # This function gets too much special treatmet
         if op_id == "import_batch":

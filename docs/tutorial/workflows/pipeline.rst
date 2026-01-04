@@ -22,6 +22,9 @@ This tutorial assumes voxel-level membrane segmentations are available, with one
    ├── ...
    └── tomo_100_seg.mrc
 
+.. note::
+
+   The batch processing functionality is available with version 1.1.0 of Mosaic.
 
 Creating a Processing Pipeline
 ------------------------------
@@ -285,7 +288,7 @@ Export
    - Volumes: MRC, EM, H5
 
 **Save Session**
-   Serializes the complete Mosaic session state including all objects, tree structure, and metadata.
+   Serializes the complete Mosaic session state.
 
 
 Troubleshooting

@@ -74,6 +74,12 @@ class DataContainer:
                 base_color=color, highlight_color=self.highlight_color
             )
 
+        appearance = new_geometry._appearance
+        if "base_color" not in appearance:
+            appearance["base_color"] = color
+        if "highlight_color" not in appearance:
+            appearance["highlight_color"] = self.highlight_color
+
         self.data.append(new_geometry)
         return len(self.data) - 1
 

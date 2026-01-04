@@ -24,7 +24,12 @@ import qtawesome as qta
 
 from ..stylesheets import Colors, QPushButton_style
 
-__all__ = ["ColorMapSelector", "ColorSwatch", "ColorPickerRow"]
+__all__ = [
+    "ColorMapSelector",
+    "ColorSwatch",
+    "ColorPickerRow",
+    "generate_gradient_colors",
+]
 
 # Default colormap categories
 DEFAULT_COLORMAP_CATEGORIES: Dict[str, List[str]] = {
@@ -47,6 +52,15 @@ DEFAULT_COLORMAP_CATEGORIES: Dict[str, List[str]] = {
     "Cyclic": [
         "twilight",
         "hsv",
+    ],
+    "Categorical": [
+        "Dark2",
+        "Set1",
+        "Set2",
+        "Set3",
+        "tab10",
+        "Paired",
+        "Accent",
     ],
 }
 
@@ -76,17 +90,8 @@ class ColormapMenuItem(QWidget):
         self.setFixedHeight(26)
         self.setMinimumWidth(180)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._hovered = False
-
-    def enterEvent(self, event):
-        self._hovered = True
-        self.update()
-        super().enterEvent(event)
-
-    def leaveEvent(self, event):
-        self._hovered = False
-        self.update()
-        super().leaveEvent(event)
+        self.setMouseTracking(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
 
     def mousePressEvent(self, event):
         self.clicked.emit(self.cmap_name)
@@ -101,7 +106,8 @@ class ColormapMenuItem(QWidget):
         rect = self.rect()
 
         # Draw hover background matching QMenu::item:selected
-        if self._hovered:
+        # Use underMouse() for reliable hover detection with QWidgetAction
+        if self.underMouse():
             path = QPainterPath()
             path.addRoundedRect(rect.x(), rect.y(), rect.width(), rect.height(), 4, 4)
 
@@ -165,9 +171,6 @@ class ColorMapSelector(QPushButton):
         self._build_menu()
 
     def _setup_ui(self):
-        self.setFixedHeight(28)
-        self.setFixedWidth(180)
-
         self.setStyleSheet(
             QPushButton_style
             + """
@@ -228,9 +231,16 @@ class ColorMapSelector(QPushButton):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         rect = self.rect()
+        padding = 8
+        spacing = 12
+
+        # Measure text width to allocate appropriate space
+        font_metrics = painter.fontMetrics()
+        text_width = font_metrics.horizontalAdvance(self._current_cmap)
+        text_area_width = text_width + padding
 
         # Draw colormap name with proper left padding
-        text_rect = QRect(14, 0, rect.width() - 110, rect.height())
+        text_rect = QRect(padding, 0, text_area_width, rect.height())
         painter.setPen(self.palette().text().color())
         painter.drawText(
             text_rect,
@@ -238,8 +248,12 @@ class ColorMapSelector(QPushButton):
             self._current_cmap,
         )
 
-        # Draw gradient preview on the right side
-        gradient_rect = QRect(rect.width() - 92, 5, 84, rect.height() - 10)
+        # Draw gradient preview filling the remaining space
+        gradient_left = text_area_width + spacing
+        gradient_width = rect.width() - gradient_left - padding
+        gradient_rect = QRect(
+            gradient_left, 5, max(gradient_width, 40), rect.height() - 10
+        )
         colors = generate_gradient_colors(self._current_cmap, 10)
 
         gradient = QLinearGradient(

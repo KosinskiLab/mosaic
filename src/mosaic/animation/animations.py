@@ -189,7 +189,7 @@ class VolumeAnimation(BaseAnimation):
                 "label": "axis",
                 "type": "select",
                 "options": ["x", "y", "z"],
-                "default": self.parameters.get("axis", "x"),
+                "default": "z",
                 "description": "Axis to slice over.",
             },
             {

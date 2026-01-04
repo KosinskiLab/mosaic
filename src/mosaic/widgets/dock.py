@@ -42,16 +42,18 @@ def create_or_toggle_dock(
     if dialog_widget is None:
         return None
 
-    dock = QDockWidget()
+    class ClosableDockWidget(QDockWidget):
+        def closeEvent(self, event):
+            _exit()
+            super().closeEvent(event)
+
+    dock = ClosableDockWidget()
     dock.setFeatures(
         QDockWidget.DockWidgetClosable
         | QDockWidget.DockWidgetFloatable
         | QDockWidget.DockWidgetMovable
     )
     dock.setWidget(dialog_widget)
-
-    # Handle cleanup when dock is closed via X button
-    dock.visibilityChanged.connect(lambda visible: _exit() if not visible else None)
 
     if hasattr(dialog_widget, "accepted"):
         dialog_widget.accepted.connect(_exit)
