@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-def _configure_dialog(dialog, use_native: bool = False):
+def _configure_dialog(dialog, use_native: bool = True):
     """Apply platform-specific configuration to file dialog."""
     if platform.lower() == "darwin" and use_native:
         dialog.setOptions(
@@ -33,7 +33,7 @@ def _configure_dialog(dialog, use_native: bool = False):
 
 
 def getExistingDirectory(
-    parent=None, caption="", directory="", use_native: bool = False
+    parent=None, caption="", directory="", use_native: bool = True
 ):
     """
     Open a dialog to select an existing directory.
@@ -47,7 +47,7 @@ def getExistingDirectory(
     directory : str, optional
         Starting directory.
     use_native : bool, optional
-        Whether to use the native dialog. Default is False.
+        Whether to use the native dialog on macOS. Default is True.
 
     Returns
     -------
@@ -71,7 +71,7 @@ def getOpenFileName(
     caption="",
     directory="",
     filter="All Files (*)",
-    use_native: bool = False,
+    use_native: bool = True,
 ):
     """
     Open a dialog to select an existing file.
@@ -86,6 +86,8 @@ def getOpenFileName(
         Starting directory.
     filter : str, optional
         File type filter (e.g., "Images (*.png *.jpg);;All Files (*)").
+    use_native : bool, optional
+        Whether to use the native dialog on macOS. Default is True.
 
     Returns
     -------
@@ -110,7 +112,7 @@ def getOpenFileNames(
     caption="",
     directory="",
     filter="All Files (*)",
-    use_native: bool = False,
+    use_native: bool = True,
 ):
     """
     Open a dialog to select multiple existing files.
@@ -125,6 +127,8 @@ def getOpenFileNames(
         Starting directory.
     filter : str, optional
         File type filter (e.g., "Images (*.png *.jpg);;All Files (*)").
+    use_native : bool, optional
+        Whether to use the native dialog on macOS. Default is True.
 
     Returns
     -------
@@ -163,6 +167,8 @@ def getSaveFileName(
         Starting directory or default filename.
     filter : str, optional
         File type filter (e.g., "Images (*.png *.jpg);;All Files (*)").
+    use_native : bool, optional
+        Whether to use the native dialog on macOS. Default is True.
 
     Returns
     -------

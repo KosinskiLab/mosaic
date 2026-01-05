@@ -6,6 +6,7 @@ Copyright (c) 2024 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import sys
 import h5py
 import warnings
 import textwrap
@@ -249,12 +250,9 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
             with h5py.File(output_file, mode="r") as infile:
                 faces = infile["cells"][()]
                 vertices = infile["points"][()]
-        except Exception:
-            warnings.warn(
-                f"{str(ret.stderr).strip()}\n\n"
-                f"Skipping calibration - Check Trimem installation."
-            )
-            return mesh
+        except Exception as e:
+            print(f"{str(ret.stderr).strip()}\n\n", file=sys.stderr)
+            raise ValueError("Calibration Failed - Check Trimem installation.") from e
 
     ret = to_open3d(vertices, faces)
     edge_lengths = compute_edge_lengths(ret)

@@ -1014,6 +1014,7 @@ class App(QMainWindow):
             self,
             caption="Select Session Files",
             filter="Pickle Files (*.pickle)",
+            use_native=False,
         )
         if not files:
             return
