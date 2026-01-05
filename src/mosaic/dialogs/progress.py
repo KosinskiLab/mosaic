@@ -36,6 +36,7 @@ class ProgressDialog:
     def _show_dialog(self):
         if not self.dialog.isVisible():
             self.dialog.show()
+            self.dialog.repaint()
             QApplication.processEvents()
 
     def setup_ui(self):

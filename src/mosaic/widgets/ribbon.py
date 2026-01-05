@@ -72,12 +72,11 @@ class SettingsPanel(QFrame):
             )
             content_layout.addWidget(title)
 
-        # General settings form
-        self.general_form = QFormLayout()
-        self.general_form.setSpacing(8)
-        self.general_form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.general_form.setFormAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.general_form.setContentsMargins(0, 0, 0, 0)
+        # Single form layout for all settings (ensures column alignment)
+        self.settings_form = QFormLayout()
+        self.settings_form.setSpacing(12)
+        self.settings_form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.settings_form.setContentsMargins(0, 0, 0, 0)
 
         # Check for method selector
         offset, self.method_combo = 0, None
@@ -92,36 +91,27 @@ class SettingsPanel(QFrame):
                 self.method_combo.setProperty(
                     "parameter", base_settings.get("parameter", "method")
                 )
-                self.general_form.addRow(
-                    self._create_label("Method"), self.method_combo
-                )
+                self.settings_form.addRow("Method:", self.method_combo)
 
             for setting in self.config["settings"][offset:]:
                 widget = create_setting_widget(setting)
-                self.general_form.addRow(self._create_label(setting["label"]), widget)
+                self.settings_form.addRow(f"{setting['label']}:", widget)
 
-        general_container = QWidget()
-        general_container.setLayout(self.general_form)
-        content_layout.addWidget(general_container)
-
-        # Method-specific settings
-        self.method_layout = None
+        # Track where method-specific rows start
+        self.method_row_start = None
         if self.config.get("method_settings"):
             separator = QFrame()
-            separator.setFrameShape(QFrame.Shape.HLine)
             separator.setFixedHeight(1)
+            separator.setFrameShape(QFrame.Shape.HLine)
             separator.setStyleSheet(
-                "background-color: rgba(0, 0, 0, 0.12); margin: 4px 0px;"
+                f"background-color: {Colors.BG_PRESSED}; border: none"
             )
-            content_layout.addWidget(separator)
+            self.settings_form.addRow(separator)
+            self.method_row_start = self.settings_form.rowCount()
 
-            self.method_container = QWidget()
-            self.method_layout = QFormLayout(self.method_container)
-            self.method_layout.setSpacing(8)
-            self.method_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
-            self.method_layout.setFormAlignment(Qt.AlignmentFlag.AlignLeft)
-            self.method_layout.setContentsMargins(0, 0, 0, 0)
-            content_layout.addWidget(self.method_container)
+        settings_container = QWidget()
+        settings_container.setLayout(self.settings_form)
+        content_layout.addWidget(settings_container)
 
         content_layout.addStretch()
 
@@ -140,34 +130,28 @@ class SettingsPanel(QFrame):
 
         self.setFocusProxy(apply_btn)
 
-    def _create_label(self, text):
-        label = QLabel(text)
-        label.setStyleSheet("min-width: 70px;")
-        return label
-
     def get_current_settings(self):
         ret = {}
         if self.method_combo is not None:
             name = self.method_combo.property("parameter")
             ret[name] = self.method_combo.currentText()
 
-        ret.update(get_layout_widget_value(self.general_form))
-        if self.method_layout is not None:
-            ret.update(get_layout_widget_value(self.method_layout))
+        ret.update(get_layout_widget_value(self.settings_form))
         return ret
 
     def update_method_settings(self, method):
-        if self.method_layout is None:
+        if self.method_row_start is None:
             return
 
-        while self.method_layout.rowCount() > 0:
-            self.method_layout.removeRow(0)
+        # Remove existing method-specific rows
+        while self.settings_form.rowCount() > self.method_row_start:
+            self.settings_form.removeRow(self.method_row_start)
 
         self.current_method_widgets.clear()
         settings = self.config.get("method_settings", {}).get(method, [])
         for setting in settings:
             widget = create_setting_widget(setting)
-            self.method_layout.addRow(self._create_label(setting["label"]), widget)
+            self.settings_form.addRow(f"{setting['label']}:", widget)
             self.current_method_widgets.append(widget)
 
         QTimer.singleShot(0, self.adjustSize)
@@ -383,28 +367,28 @@ class RibbonToolBar(QToolBar):
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setStyleSheet(
-            """
-            QToolBar {
+            f"""
+            QToolBar {{
                 spacing: 16px;
                 padding: 12px 12px 12px 12px;
-                border-bottom: 1px solid rgba(0, 0, 0, 0.10);
-            }
-            QToolButton {
+                border-bottom: 1px solid {Colors.BG_PRESSED};
+            }}
+            QToolButton {{
                 min-width: 52px;
                 padding: 4px 6px;
                 border-radius: 6px;
                 font-size: 11px;
                 background: transparent;
                 border: 1px solid transparent;
-            }
-            QToolButton:hover {
-                background: rgba(0, 0, 0, 0.06);
-                border: 1px solid rgba(0, 0, 0, 0.08);
-            }
-            QToolButton:pressed {
-                background: rgba(0, 0, 0, 0.10);
+            }}
+            QToolButton:hover {{
+                background: {Colors.BG_HOVER}
+                border: 1px solid {Colors.BG_PRESSED};
+            }}
+            QToolButton:pressed {{
+                background: {Colors.BG_PRESSED};
                 border: 1px solid rgba(0, 0, 0, 0.12);
-            }
+            }}
         """
         )
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -415,14 +399,14 @@ class RibbonToolBar(QToolBar):
             separator.setFrameShape(QFrame.Shape.VLine)
             separator.setFixedWidth(2)
             separator.setStyleSheet(
-                """
-                QFrame {
-                    background: rgba(0, 0, 0, 0.10);
+                f"""
+                QFrame {{
+                    background: {Colors.BG_PRESSED};
                     border: none;
                     border-radius: 1px;
                     margin-top: 4px;
                     margin-bottom: 4px;
-                }
+                }}
             """
             )
             self.addWidget(separator)

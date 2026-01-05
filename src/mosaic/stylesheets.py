@@ -328,6 +328,12 @@ QCheckBox_style = f"""
         height: 18px;
         border: 1px solid {Colors.BORDER_DARK};
     }}
+    QCheckBox::indicator:hover {{
+        border: 1px solid {Colors.BORDER_DARK};;
+    }}
+    QCheckBox::indicator:focus {{
+        border: 1px solid {Colors.BORDER_DARK};
+    }}
     QCheckBox::indicator:checked {{
         image: url('{_get_resource_path("checkbox-checkmark.svg")}')
     }}
