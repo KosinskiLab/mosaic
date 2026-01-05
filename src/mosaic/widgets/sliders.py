@@ -48,16 +48,7 @@ class SliderRow(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
 
-        # Label
         self.label_widget = QLabel(f"{label}:")
-        self.label_widget.setStyleSheet(
-            f"""
-            QLabel {{
-                font-size: 13px;
-                color: {Colors.TEXT_PRIMARY};
-            }}
-        """
-        )
 
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setMinimum(0)
@@ -66,17 +57,8 @@ class SliderRow(QWidget):
         self.slider.valueChanged.connect(self._on_slider_changed)
 
         self.value_label = QLabel()
-        self.value_label.setStyleSheet(
-            f"""
-            QLabel {{
-                font-size: 13px;
-                font-weight: 500;
-                color: {Colors.TEXT_PRIMARY};
-                min-width: 45px;
-                text-align: right;
-            }}
-        """
-        )
+        self.value_label.setStyleSheet("QLabel { min-width: 45px; text-align: right;}")
+
         self.value_label.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )

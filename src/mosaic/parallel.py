@@ -655,17 +655,6 @@ class BackgroundTaskManager(QObject):
                 removed.append(task_id)
         return removed
 
-    def get_task_info_snapshot(self) -> Dict[str, Dict[str, Any]]:
-        """
-        Get a snapshot of current task info.
-
-        Returns
-        -------
-        Dict[str, Dict[str, Any]]
-            Copy of task_info dictionary.
-        """
-        return {k: v.copy() for k, v in self.task_info.items()}
-
 
 def submit_task(name, func, callback=None, *args, **kwargs):
     return BackgroundTaskManager.instance().submit_task(

@@ -14,6 +14,7 @@ try:
 except ImportError:
     from tme.filters import BandPassReconstructed as BandPassFilter
 
+from ..parallel import report_progress
 from ..formats.writer import write_topology_file
 from ..meshing.utils import (
     equilibrate_edges,
@@ -79,6 +80,8 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
     upper_bound = float(parameters.pop("upper_bound", (1 + 0.25) * edge_length))
     etarget = float(parameters.get("scaling_lower", 1.0))
 
+    report_progress(message="Cleanup", current=1, total=4)
+
     filename = f"{directory}/mesh"
     with open(f"{filename}.txt", mode="w", encoding="utf-8") as ofile:
         ofile.write("file\tscale_factor\toffset\n")
@@ -101,6 +104,8 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
         mesh_data, offset = center_mesh(mesh_scale)
         offset = ",".join([str(-float(x)) for x in offset])
 
+        report_progress(message="Remesh", current=2, total=4)
+
         fname = f"{filename}_remeshed.q"
         write_topology_file(file_path=fname, data=mesh_data)
         ofile.write(f"{fname}\t{scale_factor}\t{offset}\n")
@@ -110,6 +115,8 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
         ret = equilibrate_edges(
             mesh, lower_bound=lower_bound, upper_bound=upper_bound, **parameters
         )
+        report_progress(message="Trimem", current=3, total=4)
+
         scale_factor = compute_scale_factor_lower(ret, lower_bound=etarget)
         mesh_scale = scale(ret, scale_factor)
         mesh_data, offset = center_mesh(mesh_scale)
@@ -119,6 +126,7 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
         write_topology_file(file_path=fname, data=mesh_data)
         ofile.write(f"{fname}\t{scale_factor}\t{offset}\n")
         dist_equil = compute_edge_lengths(mesh_scale)
+        report_progress(message="Validate", current=4, total=4)
 
     return dist_base, dist_remesh, dist_equil, filename
 

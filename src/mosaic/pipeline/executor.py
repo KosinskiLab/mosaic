@@ -153,7 +153,7 @@ def _create_session(filepath: str, parameters: dict):
 
     shape = None
 
-    model_container = DataContainer()
+    model_container = DataContainer(highlight_color=(0.2, 0.4, 0.8))
     cluster_container = DataContainer()
     for data in open_file(filepath):
         scale_new = np.divide(scale, data.sampling)

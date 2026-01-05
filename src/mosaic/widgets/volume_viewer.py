@@ -88,18 +88,12 @@ class VolumeViewer(QWidget):
         self.color_selector.setEnabled(False)
 
         self.contrast_label = QLabel("Contrast:")
-        self.contrast_label.setStyleSheet(
-            f"font-size: 13px; color: {Colors.TEXT_PRIMARY};"
-        )
         self.contrast_slider = DualHandleSlider()
         self.contrast_slider.setRange(0, 100)
         self.contrast_slider.setValues(0, 100)
         self.contrast_slider.rangeChanged.connect(self.update_contrast_and_gamma)
         self.contrast_slider.setEnabled(False)
         self.contrast_value_label = QLabel("0.00 - 1.00")
-        self.contrast_value_label.setStyleSheet(
-            f"font-size: 13px; font-weight: 500; color: {Colors.TEXT_PRIMARY}; min-width: 80px;"
-        )
         self.contrast_value_label.setEnabled(False)
 
         self.gamma_row = SliderRow(

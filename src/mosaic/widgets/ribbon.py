@@ -142,7 +142,7 @@ class SettingsPanel(QFrame):
 
     def _create_label(self, text):
         label = QLabel(text)
-        label.setStyleSheet("font-size: 12px; min-width: 70px;")
+        label.setStyleSheet("min-width: 70px;")
         return label
 
     def get_current_settings(self):

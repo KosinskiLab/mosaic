@@ -462,22 +462,6 @@ class TaskMonitorDialog(QDialog):
 
         return section, task_layout
 
-    def sync_tasks(self, task_info: dict):
-        """Sync task cards with provided task info snapshot."""
-        for task_id, task_data in task_info.items():
-            self._update_task_card(task_id, task_data)
-
-        # Mark tasks that disappeared (crashed) as failed
-        for task_id in list(self.task_cards.keys()):
-            if task_id in task_info:
-                continue
-
-            task_data = self.task_cards[task_id].task_data
-            if task_data["status"] in ("running", "queued"):
-                self._update_task_card(task_id, task_data | {"status": "failed"})
-
-        self._update_counts()
-
     def _update_task_card(self, task_id, task_data):
         status = task_data["status"]
         card = self.task_cards.get(task_id)
@@ -694,8 +678,6 @@ class StatusIndicator:
         return self.spinner.start()
 
     def _show_task_monitor(self):
-        manager = BackgroundTaskManager.instance()
-        self.task_monitor.sync_tasks(manager.get_task_info_snapshot())
         self.task_monitor.show()
         self.task_monitor.raise_()
         self.task_monitor.activateWindow()

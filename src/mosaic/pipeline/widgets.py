@@ -333,6 +333,12 @@ class OperationCardWidget(QFrame):
 
         self.input_files = sorted(files, key=natural_sort_key)
         self._update_file_list()
+
+        # Auto populate parameters from file headers
+        dialog = ImportDataDialog(self)
+        dialog.set_files(self.input_files)
+        self.file_parameters = dialog.get_all_parameters()
+
         self.update_summary()
 
     def _update_file_list(self):
