@@ -56,10 +56,11 @@ The properties tab is structured based on:
 - **Sampling**: Modify the sampling rate of the underlying objects.
 
 .. figure:: ../../_static/tutorial/properties_dialog.png
-   :width: 60%
-   :align: center
+   :width: 40%
+   :align: right
 
-   Properties dialog with distinct tabs.
+   Properties dialog.
+
 
 .. tip::
    When selecting multiple objects the same settings will be applied to all of them.
@@ -125,7 +126,7 @@ Mosaic distinguishes between three principle export types:
 
    Data export dialog
 
-The volume category combines objects, others create separate files. Volume and point cloud categories will scale the objects they operate on based on the associated sampling rate. In case multiple files are selected, they will be named as ``basename_index.extension``.
+The volume category combines objects, others can create separate files. Volume and point cloud categories will scale the objects they operate on based on the associated sampling rate. In case multiple files are selected, they will be named as ``basename_index.extension``.
 
 
 

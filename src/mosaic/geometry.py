@@ -669,6 +669,10 @@ class Geometry:
             Min and max scalar range for color mapping.
         use_point : bool, optional
             Whether to use point data for scalar mode, by default False.
+
+        Notes
+        -----
+        Data in scalars can be invalidated during this operation.
         """
         scalars = np.asarray(scalars).ravel()
         if scalars.size == 1:

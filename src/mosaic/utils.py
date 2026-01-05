@@ -6,16 +6,12 @@ Copyright (c) 2023-2025 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from functools import lru_cache
 from typing import List, Optional
 
-
 import numpy as np
-
 from scipy import ndimage
 from scipy.spatial import KDTree
 from scipy.sparse import coo_matrix
-from scipy.spatial.transform import Rotation
 from scipy.sparse.csgraph import connected_components as sparse_connected_components
 
 __all__ = [
@@ -36,7 +32,6 @@ __all__ = [
     "get_cmap",
     "normals_to_rot",
     "apply_quat",
-    "quat_to_euler_zyz",
     "NORMAL_REFERENCE",
     "skeletonize",
 ]

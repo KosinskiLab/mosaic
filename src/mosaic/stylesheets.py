@@ -19,6 +19,7 @@ __all__ = [
     "QToolButton_style",
     "QMenu_style",
     "QDockWidget_style",
+    "QTable_style",
 ]
 
 
@@ -393,6 +394,42 @@ QTabBar_style = f"""
         border: none;
     }}
 
+"""
+
+
+QTable_style = f"""
+    QTableWidget {{
+        border: 1px solid {Colors.BORDER_DARK};
+        border-radius: 4px;
+        background-color: transparent;
+        outline: none;
+        gridline-color: {Colors.BORDER_DARK};
+    }}
+    QTableWidget::item {{
+        border: none;
+    }}
+    QTableWidget::item:hover {{
+        background-color: {Colors.BG_HOVER};
+    }}
+    QTableWidget::item:selected {{
+        background-color: rgba(99, 102, 241, 0.3);
+    }}
+    QTableWidget QHeaderView::section {{
+        background-color: {Colors.BG_SECONDARY};
+        border: none;
+        border-right: 1px solid {Colors.BORDER_DARK};
+        border-bottom: 1px solid {Colors.BORDER_DARK};
+        padding: 2px 4px;
+    }}
+    QTableWidget QHeaderView::section:hover {{
+        background-color: {Colors.BG_TERTIARY};
+    }}
+    QTableWidget QTableCornerButton::section {{
+        background-color: {Colors.BG_SECONDARY};
+        border: none;
+        border-right: 1px solid {Colors.BORDER_DARK};
+        border-bottom: 1px solid {Colors.BORDER_DARK};
+    }}
 """
 
 QListWidget_style = f"""

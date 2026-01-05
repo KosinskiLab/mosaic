@@ -32,18 +32,118 @@ from qtpy.QtWidgets import (
 import pyqtgraph as pg
 import qtawesome as qta
 
-from ..widgets.settings import get_widget_value, set_widget_value
-from ..stylesheets import QPushButton_style, QScrollArea_style, Colors
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
+
 from ..widgets import (
-    ContainerListWidget,
+    ContainerTreeWidget,
     StyledListWidgetItem,
     ColorMapSelector,
     generate_gradient_colors,
 )
+from ..widgets.settings import get_widget_value, set_widget_value
+from ..stylesheets import (
+    QPushButton_style,
+    QScrollArea_style,
+    QTabBar_style,
+    QTable_style,
+    Colors,
+)
+
+
+@dataclass
+class CacheEntry:
+    """Single cache entry storing a computed value with its context."""
+
+    value: Any
+    parameters: Dict[str, Any]
+    geometry_uuid: str
+    model_id: Optional[int]
+    point_count: int
+
+
+class PropertyCache:
+    """Cache for computed geometry properties."""
+
+    def __init__(self):
+        self._entries: Dict[str, CacheEntry] = {}
+
+    def get(self, geometry, parameters: Dict[str, Any]) -> Optional[Any]:
+        """Get cached value if still valid, None otherwise."""
+        entry = self._entries.get(geometry.uuid)
+        if entry is None:
+            return None
+
+        model_id = id(geometry.model) if geometry.model is not None else None
+        if entry.model_id != model_id:
+            return None
+
+        if entry.point_count != geometry.points.shape[0]:
+            return None
+
+        if not self._parameters_equal(entry.parameters, parameters):
+            return None
+
+        return entry.value
+
+    def set(self, geometry, parameters: Dict[str, Any], value: Any):
+        """Store a computed value with its computation context."""
+        model_id = id(geometry.model) if geometry.model is not None else None
+        self._entries[geometry.uuid] = CacheEntry(
+            value=value,
+            parameters=parameters.copy(),
+            geometry_uuid=geometry.uuid,
+            model_id=model_id,
+            point_count=geometry.points.shape[0],
+        )
+
+    def get_value(self, geometry_uuid: str) -> Optional[Any]:
+        """Get cached value by UUID without validation (for display)."""
+        entry = self._entries.get(geometry_uuid)
+        if entry is None:
+            return None
+        if hasattr(entry.value, "copy"):
+            return entry.value.copy()
+        return entry.value
+
+    def clear(self):
+        """Clear all cached entries."""
+        self._entries.clear()
+
+    def _parameters_equal(self, cached: Dict, current: Dict) -> bool:
+        """Check if two parameter dicts are equivalent."""
+        if set(cached.keys()) != set(current.keys()):
+            return False
+
+        for key in cached:
+            if not self._values_equal(cached[key], current[key]):
+                return False
+        return True
+
+    def _values_equal(self, a: Any, b: Any) -> bool:
+        """Compare two values for equality, handling numpy arrays and lists."""
+        if isinstance(a, np.ndarray) or isinstance(b, np.ndarray):
+            try:
+                return np.allclose(a, b)
+            except (TypeError, ValueError):
+                return False
+
+        if isinstance(a, list) and isinstance(b, list):
+            if len(a) != len(b):
+                return False
+            return all(self._values_equal(x, y) for x, y in zip(a, b))
+
+        try:
+            result = a == b
+            if hasattr(result, "__iter__") and not isinstance(result, str):
+                return all(result)
+            return bool(result)
+        except Exception:
+            return False
 
 
 def _populate_list(geometries):
-    target_list = ContainerListWidget(border=False)
+    target_list = ContainerTreeWidget(border=False)
     target_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
 
     for name, obj in geometries:
@@ -57,12 +157,6 @@ class ColorScaleSettingsDialog(QDialog):
     """Dialog for configuring color scale thresholds"""
 
     def __init__(self, parent=None):
-        from ..stylesheets import (
-            QGroupBox_style,
-            QPushButton_style,
-            QDoubleSpinBox_style,
-            QCheckBox_style,
-        )
         from ..icons import (
             dialog_accept_icon,
             dialog_reject_icon,
@@ -86,9 +180,7 @@ class ColorScaleSettingsDialog(QDialog):
         self.upper_value = 1.0
 
         self._setup_ui()
-        self.setStyleSheet(
-            QGroupBox_style + QPushButton_style + QDoubleSpinBox_style + QCheckBox_style
-        )
+        self.setStyleSheet(QPushButton_style)
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
@@ -169,11 +261,58 @@ class ColorScaleSettingsDialog(QDialog):
 
 
 class PropertyAnalysisDialog(QDialog):
+    """Dialog for analyzing and visualizing geometry properties."""
+
+    PROPERTY_CATEGORIES = {
+        "Distance": ["To Camera", "To Cluster", "To Model", "To Self"],
+        "Surface": [
+            "Curvature",
+            "Edge Length",
+            "Surface Area",
+            "Triangle Area",
+            "Volume",
+            "Triangle Volume",
+            "Number of Vertices",
+            "Number of Triangles",
+        ],
+        "Projection": ["Projected Curvature", "Geodesic Distance"],
+        "Geometric": [
+            "Identity",
+            "Width (X-axis)",
+            "Depth (Y-axis)",
+            "Height (Z-axis)",
+            "Number of Points",
+        ],
+        "Custom": ["Vertex Properties"],
+    }
+
+    PROPERTY_MAP = {
+        "To Camera": "distance",
+        "To Cluster": "distance",
+        "To Model": "distance",
+        "To Self": "distance",
+        "Curvature": "mesh_curvature",
+        "Edge Length": "mesh_edge_length",
+        "Surface Area": "mesh_surface_area",
+        "Triangle Area": "mesh_triangle_area",
+        "Volume": "mesh_volume",
+        "Triangle Volume": "mesh_triangle_volume",
+        "Number of Vertices": "mesh_vertices",
+        "Number of Triangles": "mesh_triangles",
+        "Identity": "identity",
+        "Width (X-axis)": "width",
+        "Depth (Y-axis)": "depth",
+        "Height (Z-axis)": "height",
+        "Number of Points": "n_points",
+        "Projected Curvature": "projected_curvature",
+        "Geodesic Distance": "geodesic_distance",
+        "Vertex Properties": "vertex_property",
+    }
+
     def __init__(self, cdata, legend=None, parent=None):
         super().__init__(parent)
         self.cdata = cdata
-        self.properties = {}
-        self.property_parameters = {}
+        self._cache = PropertyCache()
 
         # Threshold settings
         self.threshold_settings = {
@@ -189,7 +328,9 @@ class PropertyAnalysisDialog(QDialog):
         self.setWindowFlags(Qt.WindowType.Window)
 
         self._setup_ui()
-        self._setup_styling()
+        self.setStyleSheet(
+            QTabBar_style + QTable_style + QPushButton_style + QScrollArea_style
+        )
 
         self.cdata.data.vtk_pre_render.connect(self._on_render_update)
         self.cdata.models.vtk_pre_render.connect(self._on_render_update)
@@ -198,19 +339,15 @@ class PropertyAnalysisDialog(QDialog):
         return QSize(400, 350)
 
     def _on_render_update(self):
-        """Re-apply properties when models are re-rendered"""
+        """Re-apply properties when models are re-rendered."""
         self.cdata.data.blockSignals(True)
         self.cdata.models.blockSignals(True)
         try:
             self._update_property_list()
-
-            # Provoke cache miss for tracking inclusions on trajectories
-            self.property_parameters.clear()
             self._preview(render=False)
             self._update_plot()
             self._update_statistics()
         except Exception:
-            # Things like select at least one object
             pass
         finally:
             self.cdata.data.blockSignals(False)
@@ -224,6 +361,83 @@ class PropertyAnalysisDialog(QDialog):
         except Exception:
             pass
         super().closeEvent(event)
+
+    def _create_knn_range_widget(self, layout: QVBoxLayout) -> tuple:
+        """Create k-nearest neighbor range spinboxes.
+
+        Returns
+        -------
+        tuple
+            (k_start_spinbox, k_end_spinbox)
+        """
+        neighbor_layout = QHBoxLayout()
+        neighbor_layout.addWidget(QLabel("k-Nearest Neighbors:"))
+
+        knn_layout = QHBoxLayout()
+        k_start = QSpinBox()
+        k_start.setRange(1, 255)
+        k_start.setValue(1)
+
+        k_end = QSpinBox()
+        k_end.setRange(1, 255)
+        k_end.setValue(1)
+
+        k_start.valueChanged.connect(lambda x: k_end.setRange(x, 255))
+
+        knn_layout.addWidget(k_start)
+        knn_layout.addWidget(QLabel("to"))
+        knn_layout.addWidget(k_end)
+        neighbor_layout.addLayout(knn_layout)
+        layout.addLayout(neighbor_layout)
+
+        return k_start, k_end
+
+    def _create_curvature_options(self, layout: QFormLayout) -> tuple:
+        """Create curvature method and radius options.
+
+        Returns
+        -------
+        tuple
+            (curvature_combobox, radius_spinbox)
+        """
+        curvature_combo = QComboBox()
+        curvature_combo.addItems(["Gaussian", "Mean"])
+        layout.addRow("Method:", curvature_combo)
+
+        radius_spin = QSpinBox()
+        radius_spin.setRange(1, 20)
+        radius_spin.setValue(5)
+        layout.addRow("Radius:", radius_spin)
+
+        return curvature_combo, radius_spin
+
+    def _create_target_list_group(
+        self, title: str, data_source: str, with_compare_all: bool = False, **kwargs
+    ) -> tuple:
+        """Create a target selection group with optional 'Compare to All' checkbox.
+
+        Returns
+        -------
+        tuple
+            (group_box, target_list, compare_all_checkbox or None)
+        """
+        group = QGroupBox(title)
+        layout = QVBoxLayout(group)
+
+        target_list = _populate_list(self.cdata.format_datalist(data_source, **kwargs))
+        layout.addWidget(target_list)
+
+        compare_all = None
+        if with_compare_all:
+            compare_all = QCheckBox("Compare to All")
+            compare_all.stateChanged.connect(
+                lambda state: self.toggle_all_targets(state, target_list)
+            )
+            checkbox_layout = QHBoxLayout()
+            checkbox_layout.addWidget(compare_all)
+            layout.addLayout(checkbox_layout)
+
+        return group, layout, target_list, compare_all
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -241,7 +455,6 @@ class PropertyAnalysisDialog(QDialog):
         self._setup_analysis_tab()
         self._setup_statistics_tab()
 
-        # Add tabs with icons
         self.tabs_widget.addTab(
             self.visualization_tab,
             qta.icon("ph.paint-brush", color=Colors.ICON),
@@ -271,9 +484,7 @@ class PropertyAnalysisDialog(QDialog):
 
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 self.threshold_settings = dialog.get_settings()
-                # Reapply visualization with new thresholds
-                if self.properties:
-                    self._preview()
+                self._preview()
 
         if with_settings_button:
             settings_btn = QPushButton()
@@ -526,68 +737,11 @@ class PropertyAnalysisDialog(QDialog):
         if category is None:
             category = self.category_combo.currentText()
 
-        properties = {
-            "Distance": [
-                "To Camera",
-                "To Cluster",
-                "To Model",
-                "To Self",
-            ],
-            "Surface": [
-                "Curvature",
-                "Edge Length",
-                "Surface Area",
-                "Triangle Area",
-                "Volume",
-                "Triangle Volume",
-                "Number of Vertices",
-                "Number of Triangles",
-            ],
-            "Projection": [
-                "Projected Curvature",
-                "Geodesic Distance",
-            ],
-            "Geometric": [
-                "Identity",
-                "Width (X-axis)",
-                "Depth (Y-axis)",
-                "Height (Z-axis)",
-                "Number of Points",
-            ],
-            "Custom": ["Vertex Properties"],
-        }
-        self.property_map = {
-            # Distance
-            "To Camera": "distance",
-            "To Cluster": "distance",
-            "To Model": "distance",
-            "To Self": "distance",
-            # Surface
-            "Curvature": "mesh_curvature",
-            "Edge Length": "mesh_edge_length",
-            "Surface Area": "mesh_surface_area",
-            "Triangle Area": "mesh_triangle_area",
-            "Volume": "mesh_volume",
-            "Triangle Volume": "mesh_triangle_volume",
-            "Number of Vertices": "mesh_vertices",
-            "Number of Triangles": "mesh_triangles",
-            # Geometric
-            "Identity": "identity",
-            "Width (X-axis)": "width",
-            "Depth (Y-axis)": "depth",
-            "Height (Z-axis)": "height",
-            "Number of Points": "n_points",
-            # Projection
-            "Projected Curvature": "projected_curvature",
-            "Geodesic Distance": "geodesic_distance",
-            # Custom
-            "Vertex Properties": "vertex_property",
-        }
         previous_text = self.property_combo.currentText()
 
         self.property_combo.blockSignals(True)
         self.property_combo.clear()
-        self.property_combo.addItems(properties.get(category, []))
+        self.property_combo.addItems(self.PROPERTY_CATEGORIES.get(category, []))
         if previous_text is not None:
             index = self.property_combo.findText(previous_text)
             if index >= 0:
@@ -606,18 +760,16 @@ class PropertyAnalysisDialog(QDialog):
             previous_parameters = {
                 k: get_widget_value(w)
                 for k, w in self.option_widgets.items()
-                if not isinstance(w, (QListWidget, ContainerListWidget))
+                if not isinstance(w, (QListWidget, ContainerTreeWidget))
             }
 
         while self.property_options_layout.rowCount() > 0:
             self.property_options_layout.removeRow(0)
 
         self.option_widgets = {}
+
         if property_name == "Vertex Properties":
-
             geometries = self._get_all_geometries()
-
-            # For now use all instead of shared vertex properties
             properties = set()
             for geometry in geometries:
                 if geometry.vertex_properties is None:
@@ -629,173 +781,83 @@ class PropertyAnalysisDialog(QDialog):
 
             options = QComboBox()
             options.addItems(sorted(list(properties)))
-
             self.property_options_layout.addRow("Type:", options)
             self.option_widgets["name"] = options
 
         elif property_name == "Curvature":
-            curvature_combobox = QComboBox()
-            curvature_combobox.addItems(["Gaussian", "Mean"])
-
-            radius_spinbox = QSpinBox()
-            radius_spinbox.setRange(1, 20)
-            radius_spinbox.setValue(5)
-            self.property_options_layout.addRow("Method:", curvature_combobox)
-            self.property_options_layout.addRow("Radius:", radius_spinbox)
-
-            self.option_widgets["curvature"] = curvature_combobox
-            self.option_widgets["radius"] = radius_spinbox
+            curvature, radius = self._create_curvature_options(
+                self.property_options_layout
+            )
+            self.option_widgets["curvature"] = curvature
+            self.option_widgets["radius"] = radius
 
         elif property_name == "Projected Curvature":
-            # Target mesh selection
-            target_group = QGroupBox("Target Mesh")
-            target_layout = QVBoxLayout(target_group)
-
-            target_list = _populate_list(
-                self.cdata.format_datalist("models", mesh_only=True)
+            group, layout, target_list, _ = self._create_target_list_group(
+                "Target Mesh", "models", mesh_only=True
             )
-            target_layout.addWidget(target_list)
-
             options_layout = QFormLayout()
+            curvature, radius = self._create_curvature_options(options_layout)
+            layout.addLayout(options_layout)
 
-            curvature_combobox = QComboBox()
-            curvature_combobox.addItems(["Gaussian", "Mean"])
-            options_layout.addRow("Method:", curvature_combobox)
-
-            radius_spinbox = QSpinBox()
-            radius_spinbox.setRange(1, 20)
-            radius_spinbox.setValue(5)
-            options_layout.addRow("Radius:", radius_spinbox)
-
-            target_layout.addLayout(options_layout)
-
-            self.property_options_layout.addRow(target_group)
+            self.property_options_layout.addRow(group)
             self.option_widgets["queries"] = target_list
-            self.option_widgets["curvature"] = curvature_combobox
-            self.option_widgets["radius"] = radius_spinbox
+            self.option_widgets["curvature"] = curvature
+            self.option_widgets["radius"] = radius
 
         elif property_name == "Geodesic Distance":
-            target_group = QGroupBox("Target Mesh")
-            target_layout = QVBoxLayout(target_group)
-
-            target_list = _populate_list(
-                self.cdata.format_datalist("models", mesh_only=True)
+            group, layout, target_list, _ = self._create_target_list_group(
+                "Target Mesh", "models", mesh_only=True
             )
-            target_layout.addWidget(target_list)
+            k_start, k_end = self._create_knn_range_widget(layout)
 
-            neighbor_layout = QHBoxLayout()
-            neighbor_label = QLabel("k-Nearest Neighbors:")
-            knn_layout = QHBoxLayout()
-
-            neighbor_start = QSpinBox()
-            neighbor_start.setRange(1, 255)
-            neighbor_start.setValue(1)
-
-            neighbor_to_label = QLabel("to")
-            neighbor_to_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            neighbor_end = QSpinBox()
-            neighbor_end.setRange(1, 255)
-            neighbor_end.setValue(1)
-
-            knn_layout.addWidget(neighbor_start)
-            knn_layout.addWidget(neighbor_to_label)
-            knn_layout.addWidget(neighbor_end)
-            neighbor_layout.addWidget(neighbor_label)
-            neighbor_layout.addLayout(knn_layout)
-            target_layout.addLayout(neighbor_layout)
-
-            self.property_options_layout.addRow(target_group)
+            self.property_options_layout.addRow(group)
             self.option_widgets["queries"] = target_list
-            self.option_widgets["k_start"] = neighbor_start
-            self.option_widgets["k"] = neighbor_end
+            self.option_widgets["k_start"] = k_start
+            self.option_widgets["k"] = k_end
 
-        elif property_name in ("To Cluster", "To Self"):
+        elif property_name == "To Cluster":
+            group, layout, target_list, compare_all = self._create_target_list_group(
+                "Options", "data", with_compare_all=True
+            )
+            include_self = QCheckBox("Within-Cluster Distance")
+            # Insert checkbox next to Compare to All
+            checkbox_layout = layout.itemAt(1).layout()
+            checkbox_layout.addWidget(include_self)
 
-            target_group = QGroupBox("Options")
-            target_layout = QVBoxLayout(target_group)
+            k_start, k_end = self._create_knn_range_widget(layout)
 
-            if property_name == "To Cluster":
+            self.property_options_layout.addRow(group)
+            self.option_widgets["queries"] = target_list
+            self.option_widgets["include_self"] = include_self
+            self.option_widgets["compare_to_all"] = compare_all
+            self.option_widgets["k_start"] = k_start
+            self.option_widgets["k"] = k_end
 
-                target_list = _populate_list(self.cdata.format_datalist("data"))
-                target_layout.addWidget(target_list)
+        elif property_name == "To Self":
+            group = QGroupBox("Options")
+            layout = QVBoxLayout(group)
 
-                # Checkboxes
-                all_targets_checkbox = QCheckBox("Compare to All")
-                include_self_checkbox = QCheckBox("Within-Cluster Distance")
-                all_targets_checkbox.stateChanged.connect(
-                    lambda state: self.toggle_all_targets(state, target_list)
-                )
+            self_checkbox = QCheckBox()
+            self_checkbox.setChecked(True)
+            k_start, k_end = self._create_knn_range_widget(layout)
 
-                checkbox_layout = QHBoxLayout()
-                checkbox_layout.addWidget(all_targets_checkbox)
-                checkbox_layout.addWidget(include_self_checkbox)
-                target_layout.addLayout(checkbox_layout)
-
-                self.option_widgets["queries"] = target_list
-                self.option_widgets["include_self"] = include_self_checkbox
-                self.option_widgets["compare_to_all"] = all_targets_checkbox
-
-            if property_name == "To Self":
-                self_checkbox = QCheckBox()
-                self_checkbox.setChecked(True)
-                self.option_widgets["only_self"] = self_checkbox
-
-            # KNN range
-            neighbor_layout = QHBoxLayout()
-            neighbor_label = QLabel("k-Nearest Neighbors:")
-            knn_layout = QHBoxLayout()
-
-            neighbor_start = QSpinBox()
-            neighbor_start.setRange(1, 255)
-            neighbor_start.setValue(1)
-
-            neighbor_to_label = QLabel("to")
-            neighbor_to_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            neighbor_end = QSpinBox()
-            neighbor_end.setRange(1, 255)
-            neighbor_end.setValue(1)
-
-            neighbor_start.valueChanged.connect(lambda x: neighbor_end.setRange(x, 255))
-
-            knn_layout.addWidget(neighbor_start)
-            knn_layout.addWidget(neighbor_to_label)
-            knn_layout.addWidget(neighbor_end)
-            neighbor_layout.addWidget(neighbor_label)
-            neighbor_layout.addLayout(knn_layout)
-            target_layout.addLayout(neighbor_layout)
-
-            self.property_options_layout.addRow(target_group)
-
-            self.option_widgets["k_start"] = neighbor_start
-            self.option_widgets["k"] = neighbor_end
+            self.property_options_layout.addRow(group)
+            self.option_widgets["only_self"] = self_checkbox
+            self.option_widgets["k_start"] = k_start
+            self.option_widgets["k"] = k_end
 
         elif property_name == "To Model":
-            target_group = QGroupBox("Target Models")
-            target_layout = QVBoxLayout(target_group)
-
-            target_list = _populate_list(self.cdata.format_datalist("models"))
-            target_layout.addWidget(target_list)
-
-            all_targets_checkbox = QCheckBox("Compare to All")
-            checkbox_layout = QHBoxLayout()
-            checkbox_layout.addWidget(all_targets_checkbox)
-            target_layout.addLayout(checkbox_layout)
-
-            all_targets_checkbox.stateChanged.connect(
-                lambda state: self.toggle_all_targets(state, target_list)
+            group, layout, target_list, compare_all = self._create_target_list_group(
+                "Target Models", "models", with_compare_all=True
             )
-
-            self.property_options_layout.addRow(target_group)
+            self.property_options_layout.addRow(group)
             self.option_widgets["queries"] = target_list
-            self.option_widgets["compare_to_all"] = all_targets_checkbox
+            self.option_widgets["compare_to_all"] = compare_all
 
-        # Avoid re-entering parameters over and over
-        for k in self.option_widgets.keys():
-            if k not in previous_parameters:
-                continue
-            set_widget_value(self.option_widgets[k], previous_parameters[k])
+        # Restore previous parameter values
+        for k, widget in self.option_widgets.items():
+            if k in previous_parameters:
+                set_widget_value(widget, previous_parameters[k])
 
     def toggle_all_targets(self, state, target_list):
         target_list.setEnabled(not bool(state))
@@ -823,86 +885,47 @@ class PropertyAnalysisDialog(QDialog):
     def _compute_properties(self):
         from ..properties import GeometryProperties
 
-        options = {}
+        property_name = self.PROPERTY_MAP.get(self.property_combo.currentText())
+        if property_name is None:
+            return None
+
+        # Build parameters from current widget values
+        parameters = {"property_name": property_name}
         for k, widget in self.option_widgets.items():
-            if isinstance(widget, (QListWidget, ContainerListWidget)):
-                value = [
+            if isinstance(widget, (QListWidget, ContainerTreeWidget)):
+                parameters[k] = [
                     item.data(Qt.ItemDataRole.UserRole)
                     for item in widget.selectedItems()
                 ]
             else:
-                value = get_widget_value(widget)
-            options[k] = value
+                parameters[k] = get_widget_value(widget)
 
-        # Assuming identical parameters, which geometric properties need computation
-        missing_geometries = []
-        geometries = self._get_selected_geometries()
-        for geometry in geometries:
-            geometry_id = id(geometry)
-
-            # Newly selected object
-            value = self.properties.get(geometry_id)
-            if value is None:
-                missing_geometries.append(geometry)
-                continue
-
-            # In case the object was modified during the dialog lifetime
-            # TODO: Add listener to data_changed to track changes in aggregated metrics
-            if hasattr(value, "size"):
-                if value.size != geometry.points.shape[0]:
-                    missing_geometries.append(geometry)
-
-        # This could be explicity by making the compute / refresh buttons not
-        # clickable if the properties are invalid
-        property_name = self.property_map.get(self.property_combo.currentText())
-        if property_name is None:
-            return None
-
-        options["property_name"] = property_name
         if self.property_combo.currentText() == "To Camera":
             vtk_widget = self.cdata.data.vtk_widget
             renderer = vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
-            options["queries"] = np.array(
+            parameters["queries"] = np.array(
                 renderer.GetActiveCamera().GetPosition()
             ).reshape(1, -1)
 
-        # Recompute all properties if parameters changed
-        cache_miss = len(options) != len(self.property_parameters)
-        for key, value in options.items():
-            if key not in self.property_parameters:
-                cache_miss = True
-            other_value = self.property_parameters.get(key)
+        geometries = self._get_selected_geometries()
 
-            try:
-                if isinstance(value, np.ndarray) or isinstance(other_value, np.ndarray):
-                    cache_miss = not np.allclose(value, other_value)
-
-                cache_miss = value != other_value
-                if not isinstance(cache_miss, bool):
-                    cache_miss = all(cache_miss)
-            except Exception:
-                cache_miss = True
-
-            if cache_miss:
-                missing_geometries = geometries
-                self.properties.clear()
-                break
-
-        self.property_parameters = options
-        if options["property_name"] == "identity":
-            self.properties = {id(x): i for i, x in enumerate(geometries)}
+        # Handle identity property specially (no computation needed)
+        if property_name == "identity":
+            for i, geometry in enumerate(geometries):
+                self._cache.set(geometry, parameters, i)
             return None
 
-        try:
-            self.properties.update(
-                {
-                    id(x): GeometryProperties.compute(geometry=x, **options)
-                    for i, x in enumerate(missing_geometries)
-                }
-            )
-        except Exception as e:
-            QMessageBox.warning(self, "Error", str(e))
-            self.properties.clear()
+        # Compute properties for geometries not in cache or with changed parameters
+        for geometry in geometries:
+            if self._cache.get(geometry, parameters) is not None:
+                continue
+
+            try:
+                value = GeometryProperties.compute(geometry=geometry, **parameters)
+                self._cache.set(geometry, parameters, value)
+            except Exception as e:
+                QMessageBox.warning(self, "Error", str(e))
+                return None
 
     def _apply_threshold_clipping(self, properties):
         """Apply threshold clipping to property values"""
@@ -946,7 +969,12 @@ class PropertyAnalysisDialog(QDialog):
         if self.invert_checkbox.isChecked():
             colormap += "_r"
 
-        properties = self.properties
+        # Build properties dict from cache for selected geometries
+        properties = {
+            g.uuid: self._cache.get_value(g.uuid)
+            for g in geometries
+            if self._cache.get_value(g.uuid) is not None
+        }
         if self.normalize_checkbox.isChecked():
             properties = {
                 k: (
@@ -975,7 +1003,7 @@ class PropertyAnalysisDialog(QDialog):
         min_value = np.min([np.min(x) for x in values])
         lut, lut_range = cmap_to_vtkctf(colormap, max_value, min_value=min_value)
         for geometry in geometries:
-            metric = properties.get(id(geometry))
+            metric = properties.get(geometry.uuid)
             if metric is None:
                 continue
             geometry.set_scalars(metric, lut, lut_range)
@@ -1005,8 +1033,7 @@ class PropertyAnalysisDialog(QDialog):
 
         row_count, n_decimals = 0, 6
         for index, (item_text, obj) in enumerate(selected_items):
-
-            value = self.properties.get(id(obj))
+            value = self._cache.get_value(obj.uuid)
             if value is None:
                 continue
 
@@ -1075,7 +1102,7 @@ class PropertyAnalysisDialog(QDialog):
             return None
 
         selected_items = self._get_selection()
-        if not selected_items or not hasattr(self, "properties"):
+        if not selected_items:
             return None
 
         plot_type = getattr(self, "current_plot_type", "Density")
@@ -1088,9 +1115,7 @@ class PropertyAnalysisDialog(QDialog):
         data_series = []
         all_values = []
         for i, (item_text, obj) in enumerate(selected_items):
-            obj_id = id(obj)
-            values = self.properties.get(obj_id)
-            if values is not None:
+            if (values := self._cache.get_value(obj.uuid)) is not None:
                 all_values.append(values)
                 data_series.append((item_text, obj, values, colors[i % len(colors)]))
 
@@ -1283,9 +1308,20 @@ class PropertyAnalysisDialog(QDialog):
 
             plot.addItem(item)
 
+    def _run_export(self, title: str, file_filter: str, export_func) -> None:
+        """Run an export operation with file dialog and error handling."""
+        file_path, _ = QFileDialog.getSaveFileName(self, title, "", file_filter)
+        if not file_path:
+            return
+
+        try:
+            export_func(file_path)
+            QMessageBox.information(self, "Success", f"{title} completed successfully")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to export: {str(e)}")
+
     def _export_data(self):
-        """Export analysis data to a CSV file"""
-        property_name = self.property_combo.currentText()
+        """Export analysis data to a CSV file."""
         selected_items = self._get_selection()
         if not selected_items:
             QMessageBox.warning(
@@ -1293,19 +1329,13 @@ class PropertyAnalysisDialog(QDialog):
             )
             return
 
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "Export Data", "", "CSV Files (*.csv);;All Files (*.*)"
-        )
-
-        if not file_path:
-            return
-
-        try:
+        def write_data(file_path):
+            property_name = self.property_combo.currentText()
             with open(file_path, mode="w", encoding="utf-8") as ofile:
                 per_point = all(
-                    self.properties.get(id(geom)).size == geom.get_number_of_points()
+                    self._cache.get_value(geom.uuid).size == geom.get_number_of_points()
                     for name, geom in selected_items
-                    if self.properties.get(id(geom)) is not None
+                    if self._cache.get_value(geom.uuid) is not None
                 )
 
                 header = f"source,{property_name}\n"
@@ -1314,120 +1344,62 @@ class PropertyAnalysisDialog(QDialog):
                 ofile.write(header)
 
                 for name, geom in selected_items:
-                    values = self.properties.get(id(geom))
-                    if values is None:
+                    if (values := self._cache.get_value(geom.uuid)) is None:
                         continue
 
                     values = np.asarray(values).reshape(-1)
                     if per_point:
                         lines = "\n".join(
-                            [
-                                f"{name},{pid},{p[0]},{p[1]},{p[2]},{v}"
-                                for pid, (p, v) in enumerate(zip(geom.points, values))
-                            ]
+                            f"{name},{pid},{p[0]},{p[1]},{p[2]},{v}"
+                            for pid, (p, v) in enumerate(zip(geom.points, values))
                         )
                     else:
-                        lines = "\n".join([f"{name},{v}" for v in values])
+                        lines = "\n".join(f"{name},{v}" for v in values)
                     ofile.write(lines + "\n")
 
-            QMessageBox.information(self, "Success", "Data exported successfully")
-
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to export data: {str(e)}")
-
-    def _export_plot(self):
-        """Save the current plot as an image"""
-        from pyqtgraph.exporters import ImageExporter
-
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "Save Plot", "", "PNG Files (*.png);;All Files (*.*)"
+        self._run_export(
+            "Export Data", "CSV Files (*.csv);;All Files (*.*)", write_data
         )
 
-        if not file_path:
-            return None
+    def _export_plot(self):
+        """Save the current plot as an image."""
+        from pyqtgraph.exporters import ImageExporter
 
-        try:
+        def write_plot(file_path):
             exporter = ImageExporter(self.plot_widget.scene())
             exporter.parameters()["width"] = 1920
             exporter.parameters()["height"] = 1080
             exporter.parameters()["antialias"] = True
             exporter.export(file_path)
-            QMessageBox.information(self, "Success", "Plot saved successfully")
 
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save plot: {str(e)}")
+        self._run_export("Save Plot", "PNG Files (*.png);;All Files (*.*)", write_plot)
 
     def _export_statistics(self):
-        """Export statistics table to a CSV file"""
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "Export Statistics", "", "CSV Files (*.csv);;All Files (*.*)"
-        )
+        """Export statistics table to a CSV file."""
 
-        if not file_path:
-            return
-
-        try:
+        def write_stats(file_path):
             with open(file_path, mode="w", encoding="utf-8") as ofile:
-                headers = []
-                for col in range(self.stats_table.columnCount()):
-                    header_item = self.stats_table.horizontalHeaderItem(col)
-                    value = f"Column{col}"
-                    if header_item is not None:
-                        value = header_item.text()
-                    headers.append(value)
+                headers = [
+                    (
+                        self.stats_table.horizontalHeaderItem(col).text()
+                        if self.stats_table.horizontalHeaderItem(col)
+                        else f"Column{col}"
+                    )
+                    for col in range(self.stats_table.columnCount())
+                ]
                 ofile.write(",".join(headers) + "\n")
 
                 for row in range(self.stats_table.rowCount()):
-                    row_data = []
-                    for col in range(self.stats_table.columnCount()):
-                        item = self.stats_table.item(row, col)
-                        value = ""
-                        if item is not None:
-                            value = item.text()
-                        row_data.append(value)
-
+                    row_data = [
+                        (
+                            self.stats_table.item(row, col).text()
+                            if self.stats_table.item(row, col)
+                            else ""
+                        )
+                        for col in range(self.stats_table.columnCount())
+                    ]
                     ofile.write(",".join(row_data) + "\n")
-            QMessageBox.information(self, "Success", "Statistics exported successfully")
 
-        except Exception as e:
-            QMessageBox.critical(
-                self, "Error", f"Failed to export statistics: {str(e)}"
-            )
-
-    def _setup_styling(self):
-        base_style = """
-            QTabWidget::pane {
-                border: 1px solid #cbd5e1;
-                border-radius: 6px;
-                top: -1px;
-            }
-            QTabBar::tab {
-                background: transparent;
-                border: 1px solid #cbd5e1;
-                border-bottom: none;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
-                padding: 6px 12px;
-                margin-right: 2px;
-            }
-            QTabBar::tab:selected {
-                color: rgba(99, 102, 241, 1.0);
-                border-color: rgba(99, 102, 241, 1.0);
-
-            }
-            QTabBar::tab:hover:!selected {
-                color: #696c6f;
-            }
-            QTableWidget {
-                border: 1px solid #cbd5e1;
-                background-color: transparent;
-                border-radius: 4px;
-                outline: none;
-            }
-            QTableWidget QHeaderView::section {
-                background-color: transparent;
-                border: 1px solid #cbd5e1;
-                padding: 4px;
-            }
-        """
-        return self.setStyleSheet(base_style + QPushButton_style + QScrollArea_style)
+        self._run_export(
+            "Export Statistics", "CSV Files (*.csv);;All Files (*.*)", write_stats
+        )

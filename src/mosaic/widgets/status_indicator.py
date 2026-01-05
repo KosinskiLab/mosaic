@@ -597,7 +597,7 @@ class StatusIndicator:
             QMessageBox.warning(
                 self.task_monitor,
                 "Cannot Cancel",
-                f"Task '{task_name}' is already running and cannot be cancelled.",
+                f"Task '{task_name}' cannot be cancelled.",
             )
 
     def _on_clear_finished_requested(self):

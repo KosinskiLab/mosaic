@@ -491,24 +491,24 @@ class TemplateMatchingDialog(QDialog):
         self.compute_tab = ComputeTab()
 
         self.tabs.addTab(
-            self.input_tab, qta.icon("ph.file-arrow-down", color=Colors.PRIMARY), "Data"
+            self.input_tab, qta.icon("ph.file-arrow-down", color=Colors.ICON), "Data"
         )
         self.tabs.addTab(
             self.preprocess_tab,
-            qta.icon("ph.wrench", color=Colors.PRIMARY),
+            qta.icon("ph.wrench", color=Colors.ICON),
             "Preprocess",
         )
         self.tabs.addTab(
-            self.matching_tab, qta.icon("ph.sliders", color=Colors.PRIMARY), "Matching"
+            self.matching_tab, qta.icon("ph.sliders", color=Colors.ICON), "Matching"
         )
         self.tabs.addTab(
             self.peak_tab,
-            qta.icon("ph.magnifying-glass", color=Colors.PRIMARY),
+            qta.icon("ph.magnifying-glass", color=Colors.ICON),
             "Peak Calling",
         )
         self.tabs.addTab(
             self.compute_tab,
-            qta.icon("ph.hard-drives", color=Colors.PRIMARY),
+            qta.icon("ph.hard-drives", color=Colors.ICON),
             "Compute",
         )
 

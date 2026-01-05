@@ -21,6 +21,7 @@ from .vtk_widgets import (
 )
 from .container_list import (
     ContainerListWidget,
+    ContainerTreeWidget,
     StyledListWidgetItem,
     StyledTreeWidgetItem,
 )

@@ -70,11 +70,11 @@ def generate_gradient_colors(cmap_name: str, n_colors: int = 10) -> List[QColor]
     from ..utils import get_cmap
 
     cmap = get_cmap(cmap_name)
-    count = min(n_colors + 1, cmap.N)
+    count = min(n_colors, cmap.N)
 
     colors = []
     for i in range(count):
-        pos = int(cmap.N * i / (count - 1))
+        pos = min(int(cmap.N * i / max(count - 1, 1)), cmap.N - 1)
         colors.append(QColor(*(int(x * 255) for x in cmap(pos))))
     return colors
 
