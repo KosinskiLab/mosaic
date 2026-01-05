@@ -85,9 +85,9 @@ Meshing converts the point cloud into a triangular surface, enabling computation
 
 - Method: *Flying Edges* is fast and works well for initial mesh generation on dense volumes.
 
-Meshes created with Flying Edges (and Marching Cubes) extract the contour of the segmentation, producing a closed surface that encloses the segmented region. This means seed points will be generated on both the upper and lower surfaces of a membrane, with normals pointing away from the enclosed volume on each side.
+Meshes created with Flying Edges (and Marching Cubes) extract the contour of the segmentation, producing a closed surface that encloses the segmented region. This means seed points will be generated on both sides of the membrane, with normals pointing away from the enclosed volume on each side.
 
-Alternative meshing methods (demonstrated in the Meshing pipeline preset) can fit a surface through the center of the segmentation rather than along its contour. These methods produce normals that all point in the same direction, which can be advantageous for template matching as it provides more precise spatial constraints—you search only on the biologically relevant side of the membrane rather than both sides.
+Alternative meshing methods (demonstrated in the Meshing pipeline preset) can fit a surface through the center of the segmentation rather than along its contour. These methods produce normals that all point in the same direction, which can be advantageous for template matching as it provides more precise spatial constraints, i.e., you search only on the biologically relevant side of the membrane rather than both sides.
 
 
 **Remesh and Smoothing**
@@ -155,7 +155,7 @@ The ``mosaic-pipeline`` command executes pipelines from the command line:
    # Preview runs without executing
    mosaic-pipeline pipeline.json --dry-run
 
-For job array submission on SLURM, save this script and run ``sbatch run_pipeline.sh``:
+For job array submission on SLURM, save this script and run it as ``sbatch run_pipeline.sh``:
 
 .. code-block:: bash
 
@@ -184,7 +184,7 @@ The script automatically determines the number of input files and submits itself
 Reviewing Results
 -----------------
 
-The Batch Navigator allows efficient inspection of processed sessions. You can open it via **File > Batch Navigator** (or **Ctrl+Shift+N**)
+The Batch Navigator enables efficient inspection of processed sessions. You can open it via **File > Batch Navigator** (or **Ctrl+Shift+N**)
 
 .. figure:: ../../_static/tutorial/pipeline/batch_navigator.png
    :width: 100 %
