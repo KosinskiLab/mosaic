@@ -73,7 +73,6 @@ Utility Functions
    :toctree: ../rst/
 
    Geometry.get_number_of_points
-   Geometry.compute_distance
 
 
 Serialization

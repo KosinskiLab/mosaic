@@ -223,7 +223,9 @@ def crop(geometry, distance: float, query: np.ndarray, keep_smaller: bool = True
     :py:class:`mosaic.geometry.Geometry`
         Cropped geometry.
     """
-    dist = geometry.compute_distance(query_points=query, cutoff=distance)
+    from mosaic.utils import find_closest_points
+
+    dist, _ = find_closest_points(query, geometry.points, k=1)
     if keep_smaller:
         mask = dist < distance
     else:

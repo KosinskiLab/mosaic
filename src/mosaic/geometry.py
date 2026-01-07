@@ -1062,12 +1062,6 @@ class Geometry:
         self._representation = representation
         return self.set_appearance()
 
-    def compute_distance(self, query_points: np.ndarray, k: int = 1, **kwargs):
-        if hasattr(self.model, "compute_distance"):
-            return self.model.compute_distance(query_points)
-
-        return find_closest_points(self.points, query_points, k=k)[0]
-
     def is_mesh_representation(self, representation: str = None) -> bool:
         if representation is None:
             representation = self._representation

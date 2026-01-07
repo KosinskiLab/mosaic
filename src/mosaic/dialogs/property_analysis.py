@@ -363,15 +363,15 @@ class PropertyAnalysisDialog(QDialog):
         super().closeEvent(event)
 
     def _create_knn_range_widget(self, layout: QVBoxLayout) -> tuple:
-        """Create k-nearest neighbor range spinboxes.
+        """Create k-nearest neighbor range spinboxes and aggregation combo.
 
         Returns
         -------
         tuple
-            (k_start_spinbox, k_end_spinbox)
+            (k_start_spinbox, k_end_spinbox, aggregation_combobox)
         """
         neighbor_layout = QHBoxLayout()
-        neighbor_layout.addWidget(QLabel("k-Nearest Neighbors:"))
+        neighbor_layout.addWidget(QLabel("Neighbors:"))
 
         knn_layout = QHBoxLayout()
         k_start = QSpinBox()
@@ -390,7 +390,14 @@ class PropertyAnalysisDialog(QDialog):
         neighbor_layout.addLayout(knn_layout)
         layout.addLayout(neighbor_layout)
 
-        return k_start, k_end
+        aggregation_layout = QHBoxLayout()
+        aggregation_layout.addWidget(QLabel("Aggregation:"))
+        aggregation_combo = QComboBox()
+        aggregation_combo.addItems(["Mean", "Min", "Max", "Median"])
+        aggregation_layout.addWidget(aggregation_combo)
+        layout.addLayout(aggregation_layout)
+
+        return k_start, k_end, aggregation_combo
 
     def _create_curvature_options(self, layout: QFormLayout) -> tuple:
         """Create curvature method and radius options.
@@ -808,12 +815,13 @@ class PropertyAnalysisDialog(QDialog):
             group, layout, target_list, _ = self._create_target_list_group(
                 "Target Mesh", "models", mesh_only=True
             )
-            k_start, k_end = self._create_knn_range_widget(layout)
+            k_start, k_end, aggregation = self._create_knn_range_widget(layout)
 
             self.property_options_layout.addRow(group)
             self.option_widgets["queries"] = target_list
             self.option_widgets["k_start"] = k_start
             self.option_widgets["k"] = k_end
+            self.option_widgets["aggregation"] = aggregation
 
         elif property_name == "To Cluster":
             group, layout, target_list, compare_all = self._create_target_list_group(
@@ -824,7 +832,7 @@ class PropertyAnalysisDialog(QDialog):
             checkbox_layout = layout.itemAt(1).layout()
             checkbox_layout.addWidget(include_self)
 
-            k_start, k_end = self._create_knn_range_widget(layout)
+            k_start, k_end, aggregation = self._create_knn_range_widget(layout)
 
             self.property_options_layout.addRow(group)
             self.option_widgets["queries"] = target_list
@@ -832,6 +840,7 @@ class PropertyAnalysisDialog(QDialog):
             self.option_widgets["compare_to_all"] = compare_all
             self.option_widgets["k_start"] = k_start
             self.option_widgets["k"] = k_end
+            self.option_widgets["aggregation"] = aggregation
 
         elif property_name == "To Self":
             group = QGroupBox("Options")
@@ -839,12 +848,13 @@ class PropertyAnalysisDialog(QDialog):
 
             self_checkbox = QCheckBox()
             self_checkbox.setChecked(True)
-            k_start, k_end = self._create_knn_range_widget(layout)
+            k_start, k_end, aggregation = self._create_knn_range_widget(layout)
 
             self.property_options_layout.addRow(group)
             self.option_widgets["only_self"] = self_checkbox
             self.option_widgets["k_start"] = k_start
             self.option_widgets["k"] = k_end
+            self.option_widgets["aggregation"] = aggregation
 
         elif property_name == "To Model":
             group, layout, target_list, compare_all = self._create_target_list_group(

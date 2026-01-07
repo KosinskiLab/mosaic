@@ -75,12 +75,16 @@ def distance(
     queries: List[Union[np.ndarray, Geometry]] = [],
     k: int = 1,
     k_start: int = 1,
+    aggregation: str = "mean",
     include_self: bool = False,
     only_self: bool = False,
     *args,
     **kwargs,
 ):
     from mosaic.utils import find_closest_points
+
+    if k_start > k:
+        raise ValueError("k_start must be <= k")
 
     if not isinstance(queries, (list, tuple)):
         queries = [queries]
@@ -93,10 +97,19 @@ def distance(
         if not include_self and id(query) == id(geometry):
             continue
 
-        if isinstance(query, Geometry):
-            dist = query.compute_distance(geometry.points, k=k)
+        if isinstance(query, Geometry) and hasattr(query.model, "compute_distance"):
+            dist = query.model.compute_distance(geometry.points)
         else:
-            dist, _ = find_closest_points(query, geometry.points, k=k)
+            # Fetch k+1 for self-queries to skip self-match
+            is_self_query = False
+            if isinstance(query, Geometry):
+                is_self_query = query.uuid == geometry.uuid
+                query = query.points
+
+            fetch_k = k + 1 if is_self_query else k
+            dist, _ = find_closest_points(query, geometry.points, k=fetch_k)
+            if is_self_query:
+                dist = dist[:, 1:] if dist.ndim == 2 else dist
 
         if distance is None:
             distance = dist
@@ -105,12 +118,19 @@ def distance(
     if distance is None:
         return None
 
-    k_start = max(k_start - 1, 0)
-    if k_start == k:
-        raise ValueError("k_start needs to be smaller than k")
+    if distance.ndim == 2:
+        distance = distance[:, k_start - 1 : k]
 
     if distance.ndim == 2:
-        distance = distance[(slice(None), slice(k_start, k))].mean(axis=1)
+        aggregation = aggregation.lower()
+        if aggregation == "mean":
+            distance = distance.mean(axis=1)
+        elif aggregation == "min":
+            distance = distance.min(axis=1)
+        elif aggregation == "max":
+            distance = distance.max(axis=1)
+        elif aggregation == "median":
+            distance = np.median(distance, axis=1)
 
     return distance
 
