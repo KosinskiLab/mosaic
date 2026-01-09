@@ -1,0 +1,49 @@
+﻿mosaic.geometry.GeometryTrajectory
+==================================
+
+.. currentmodule:: mosaic.geometry
+
+.. autoclass:: GeometryTrajectory
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GeometryTrajectory.__init__
+      ~GeometryTrajectory.change_representation
+      ~GeometryTrajectory.color_points
+      ~GeometryTrajectory.display_frame
+      ~GeometryTrajectory.get_number_of_points
+      ~GeometryTrajectory.get_point_data
+      ~GeometryTrajectory.is_mesh_representation
+      ~GeometryTrajectory.merge
+      ~GeometryTrajectory.set_appearance
+      ~GeometryTrajectory.set_color
+      ~GeometryTrajectory.set_scalars
+      ~GeometryTrajectory.set_visibility
+      ~GeometryTrajectory.subset
+      ~GeometryTrajectory.swap_data
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GeometryTrajectory.actor
+      ~GeometryTrajectory.frames
+      ~GeometryTrajectory.model
+      ~GeometryTrajectory.normals
+      ~GeometryTrajectory.points
+      ~GeometryTrajectory.quaternions
+      ~GeometryTrajectory.sampling_rate
+      ~GeometryTrajectory.vertex_properties
+      ~GeometryTrajectory.visible
+   
+   

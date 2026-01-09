@@ -1,0 +1,6 @@
+﻿mosaic.geometry.Geometry.get\_point\_data
+=========================================
+
+.. currentmodule:: mosaic.geometry
+
+.. automethod:: Geometry.get_point_data
