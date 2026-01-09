@@ -71,7 +71,7 @@ class ProgressDialog:
         """
         )
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setText(f"Processing 0/{self.total}")  # Initialize text
+        self.status_label.setText(f"Processing 0/{self.total}")
 
         container_layout.addWidget(self.status_label)
         container_layout.addWidget(self.progress_bar)
@@ -99,7 +99,7 @@ class ProgressDialog:
         try:
             item = next(self.iterator)
             self.current += 1
-            self.update_progress()  # Update after increment
+            self.update_progress()
             return item
         except StopIteration:
             self.update_progress()

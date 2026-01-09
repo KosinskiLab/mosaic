@@ -564,7 +564,7 @@ def normals_to_rot(
     normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
     targets = targets / np.linalg.norm(targets, axis=1, keepdims=True)
 
-    ret = _align_vectors_to_quat(normals, targets)
+    ret = _align_vectors_to_quat(targets, normals)
     if mode == "matrix":
         ret = _quat_to_matrix(ret)
     elif mode == "euler":

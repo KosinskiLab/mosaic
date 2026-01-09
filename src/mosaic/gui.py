@@ -8,7 +8,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import os
 from typing import List
-from os.path import extsep, basename
+from os.path import extsep, basename, exists
 
 import vtk
 import numpy as np
@@ -1296,8 +1296,9 @@ class App(QMainWindow):
         self.cdata.to_file(file_path)
 
     def update_recent_files_menu(self):
-        files_to_show = list(dict.fromkeys(Settings.ui.recent_files))
+        Settings.ui.recent_files = [x for x in Settings.ui.recent_files if exists(x)]
 
+        files_to_show = list(dict.fromkeys(Settings.ui.recent_files))
         for i, file_path in enumerate(files_to_show):
             text = f"&{i + 1} {os.path.basename(file_path)}"
             self.recent_file_actions[i].setText(text)

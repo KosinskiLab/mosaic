@@ -262,7 +262,6 @@ class Geometry:
             ret = self.__class__.__new__(self.__class__)
         else:
             state["vtk_actor"] = self.actor
-            _ = state.pop("appearance", None)
         ret.__setstate__(state)
         return ret
 
