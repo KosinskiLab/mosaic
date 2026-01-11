@@ -9,6 +9,7 @@ from qtpy.QtWidgets import (
     QMessageBox,
 )
 
+from ..utils import Throttle
 from ..widgets.ribbon import create_button
 
 
@@ -321,6 +322,7 @@ class PlaneTrimmer:
     def __init__(self, data):
         self.data = data
         self.plane1, self.plane2 = None, None
+        self._update_throttle = Throttle(self._update_selection, interval_ms=100)
 
     @property
     def active(self):
@@ -429,7 +431,7 @@ class PlaneTrimmer:
 
             plane.SetNormal(normal)
             plane.SetOrigin(origin)
-            self._update_selection()
+            self._update_throttle()
 
         widget.AddObserver("InteractionEvent", callback)
         return widget

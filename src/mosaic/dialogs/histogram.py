@@ -10,6 +10,9 @@ import numpy as np
 import pyqtgraph as pg
 from qtpy.QtGui import QColor, QDoubleValidator
 from qtpy.QtCore import Qt, Signal, QLocale, QSize
+
+from ..utils import Throttle
+
 from qtpy.QtWidgets import (
     QWidget,
     QDialog,
@@ -67,7 +70,9 @@ class HistogramWidget(QWidget):
         controls_layout = self._create_controls()
 
         self.range_slider = DualHandleSlider()
-        self.range_slider.rangeChanged.connect(self._update_cutoff_values)
+        self._cutoff_throttle = Throttle(self._update_cutoff_values, interval_ms=100)
+        self.range_slider.rangeChanged.connect(self._cutoff_throttle)
+        self.range_slider.rangeReleased.connect(self._update_cutoff_values)
         self.range_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         main_layout.addWidget(self.histogram_plot)

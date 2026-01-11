@@ -935,6 +935,7 @@ class TriangularMesh(Parametrization):
         self,
         points: np.ndarray,
         normals: np.ndarray = None,
+        signed: bool = False,
         return_projection: bool = False,
         return_indices: bool = False,
         return_triangles: bool = False,
@@ -949,6 +950,8 @@ class TriangularMesh(Parametrization):
             Points to compute distance from or project onto mesh
         normals : np.ndarray, optional
             Normal vectors for projection direction. If None, computes shortest distance.
+        signed : bool, optional
+            Return signed distances (positive outside, negative inside). Defaults to False.
         return_projection : bool, optional
             Return points projected onto mesh, defaults to False.
         return_indices : bool, optional
@@ -972,20 +975,25 @@ class TriangularMesh(Parametrization):
 
         scene, _ = self._setup_rayscene()
 
+        points_tensor = o3d.core.Tensor(points, dtype=o3d.core.Dtype.Float32)
+
+        if signed:
+            dist = scene.compute_signed_distance(points_tensor).numpy()
+
         if normals is None:
-            ret = scene.compute_closest_points(
-                o3d.core.Tensor(points, dtype=o3d.core.Dtype.Float32)
-            )
+            ret = scene.compute_closest_points(points_tensor)
             projected_points = ret["points"].numpy()
             triangle_indices = ret["primitive_ids"].numpy()
+            if not signed:
+                dist = np.linalg.norm(points - projected_points, axis=1)
         else:
             rays = o3d.core.Tensor(
                 np.hstack([points, normals]), dtype=o3d.core.Dtype.Float32
             )
             hits = scene.cast_rays(rays)
 
-            hit_distances = hits["t_hit"].numpy()
-            valid_hits = np.logical_and(hit_distances > 0, np.isfinite(hit_distances))
+            hit_distance = hits["t_hit"].numpy()
+            valid_hits = np.logical_and(hit_distance > 0, np.isfinite(hit_distance))
 
             n_invalid = valid_hits.size - np.sum(valid_hits)
             if n_invalid > 0:
@@ -997,15 +1005,14 @@ class TriangularMesh(Parametrization):
 
             projected_points = np.copy(points)
             projected_points[valid_hits] += (
-                normals[valid_hits] * hit_distances[valid_hits, np.newaxis]
+                normals[valid_hits] * hit_distance[valid_hits, np.newaxis]
             )
             triangle_indices = hits["primitive_ids"].numpy()
+            dist = hit_distance * np.sign(dist) if signed else hit_distance
 
-        dist = np.linalg.norm(points - projected_points, axis=1)
         _, vertex_indices = find_closest_points(self.vertices, projected_points, k=1)
 
         ret = [dist]
-
         if return_projection:
             ret.append(projected_points)
         if return_indices:
@@ -1129,9 +1136,11 @@ class TriangularMesh(Parametrization):
             if i not in processed_triangles:
                 new_triangles.append(triangles[i].tolist())
 
-        new_mesh = TriangularMesh(meshing.to_open3d(vertices, np.array(new_triangles)))
+        new_mesh = TriangularMesh(
+            meshing.to_open3d(vertices.copy(), np.array(new_triangles).copy())
+        )
         if return_indices:
-            return new_mesh, new_indices
+            return new_mesh, new_indices.copy()
         return new_mesh
 
     def geodesic_distance(

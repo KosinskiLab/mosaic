@@ -39,8 +39,10 @@ from ..widgets import (
     ContainerTreeWidget,
     StyledListWidgetItem,
     ColorMapSelector,
+    HistogramRangeSlider,
     generate_gradient_colors,
 )
+from ..utils import Throttle
 from ..widgets.settings import get_widget_value, set_widget_value
 from ..stylesheets import (
     QPushButton_style,
@@ -265,15 +267,12 @@ class PropertyAnalysisDialog(QDialog):
 
     PROPERTY_CATEGORIES = {
         "Distance": ["To Camera", "To Cluster", "To Model", "To Self"],
-        "Surface": [
+        "Mesh": [
             "Curvature",
-            "Edge Length",
-            "Surface Area",
-            "Triangle Area",
+            "Area",
             "Volume",
-            "Triangle Volume",
-            "Number of Vertices",
-            "Number of Triangles",
+            "Mesh Statistics",
+            "Thickness",
         ],
         "Projection": ["Projected Curvature", "Geodesic Distance"],
         "Geometric": [
@@ -292,13 +291,9 @@ class PropertyAnalysisDialog(QDialog):
         "To Model": "distance",
         "To Self": "distance",
         "Curvature": "mesh_curvature",
-        "Edge Length": "mesh_edge_length",
-        "Surface Area": "mesh_surface_area",
-        "Triangle Area": "mesh_triangle_area",
+        "Area": "mesh_area",
         "Volume": "mesh_volume",
-        "Triangle Volume": "mesh_triangle_volume",
-        "Number of Vertices": "mesh_vertices",
-        "Number of Triangles": "mesh_triangles",
+        "Mesh Statistics": "mesh_statistics",
         "Identity": "identity",
         "Width (X-axis)": "width",
         "Depth (Y-axis)": "depth",
@@ -306,6 +301,7 @@ class PropertyAnalysisDialog(QDialog):
         "Number of Points": "n_points",
         "Projected Curvature": "projected_curvature",
         "Geodesic Distance": "geodesic_distance",
+        "Thickness": "thickness",
         "Vertex Properties": "vertex_property",
     }
 
@@ -340,6 +336,9 @@ class PropertyAnalysisDialog(QDialog):
 
     def _on_render_update(self):
         """Re-apply properties when models are re-rendered."""
+        if not self.live_update_checkbox.isChecked():
+            return
+
         self.cdata.data.blockSignals(True)
         self.cdata.models.blockSignals(True)
         try:
@@ -408,7 +407,7 @@ class PropertyAnalysisDialog(QDialog):
             (curvature_combobox, radius_spinbox)
         """
         curvature_combo = QComboBox()
-        curvature_combo.addItems(["Gaussian", "Mean"])
+        curvature_combo.addItems(["Mean", "Gaussian"])
         layout.addRow("Method:", curvature_combo)
 
         radius_spin = QSpinBox()
@@ -507,15 +506,18 @@ class PropertyAnalysisDialog(QDialog):
         from ..widgets.settings import format_tooltip
 
         layout = QVBoxLayout(self.visualization_tab)
+        layout.setSpacing(6)
 
+        # Property group
         property_group = QGroupBox("Property")
         property_layout = QVBoxLayout()
+        property_layout.setSpacing(4)
 
         category_layout = QHBoxLayout()
         category_layout.addWidget(QLabel("Category:"))
         self.category_combo = QComboBox()
         self.category_combo.addItems(
-            ["Distance", "Surface", "Geometric", "Projection", "Custom"]
+            ["Distance", "Mesh", "Geometric", "Projection", "Custom"]
         )
         self.category_combo.currentTextChanged.connect(self._update_property_list)
         category_layout.addWidget(self.category_combo)
@@ -527,18 +529,60 @@ class PropertyAnalysisDialog(QDialog):
         category_layout.addWidget(self.property_combo, 1)
         property_layout.addLayout(category_layout)
 
-        # Property-specific options container
         self.property_options_container = QWidget()
         self.property_options_layout = QFormLayout(self.property_options_container)
-        self.property_options_layout.setContentsMargins(0, 10, 0, 0)
+        self.property_options_layout.setContentsMargins(0, 6, 0, 0)
         property_layout.addWidget(self.property_options_container)
 
         property_group.setLayout(property_layout)
         layout.addWidget(property_group)
 
-        options_group = QGroupBox("Visualization Options")
-        options_group.setFixedHeight(150)
+        # Filter group - two column layout
+        filter_group = QGroupBox("Filter")
+        filter_main_layout = QHBoxLayout(filter_group)
+        filter_main_layout.setContentsMargins(8, 4, 8, 4)
+        filter_main_layout.setSpacing(8)
+
+        # Left column: histogram and slider
+        self.filter_slider = HistogramRangeSlider()
+        self.filter_slider.rangeReleased.connect(self._on_filter_changed)
+        self._filter_throttle = Throttle(self._on_filter_changed, interval_ms=100)
+        self.filter_slider.rangeChanged.connect(self._on_filter_dragging)
+        filter_main_layout.addWidget(self.filter_slider, 1)
+
+        # Right column: buttons at bottom
+        filter_btn_layout = QVBoxLayout()
+        filter_btn_layout.setContentsMargins(0, 0, 0, 0)
+        filter_btn_layout.setSpacing(4)
+        filter_btn_layout.addStretch()
+
+        self.filter_live_checkbox = QCheckBox("Live")
+        self.filter_live_checkbox.setToolTip("Update preview while dragging slider")
+        filter_btn_layout.addWidget(self.filter_live_checkbox)
+
+        self.reset_filter_btn = QPushButton("Reset")
+        self.reset_filter_btn.setIcon(
+            qta.icon("ph.arrow-counter-clockwise", color=Colors.PRIMARY)
+        )
+        self.reset_filter_btn.setToolTip("Reset filter to show all points")
+        self.reset_filter_btn.clicked.connect(self._reset_filter)
+        filter_btn_layout.addWidget(self.reset_filter_btn)
+
+        self.extract_btn = QPushButton("Extract")
+        self.extract_btn.setIcon(qta.icon("ph.selection", color=Colors.PRIMARY))
+        self.extract_btn.setToolTip("Create new object from points within filter range")
+        self.extract_btn.clicked.connect(self._extract_filtered)
+        filter_btn_layout.addWidget(self.extract_btn)
+
+        filter_main_layout.addLayout(filter_btn_layout)
+
+        filter_group.setFixedHeight(150)
+        layout.addWidget(filter_group)
+
+        # Options group
+        options_group = QGroupBox("Visualization")
         options_layout = QVBoxLayout(options_group)
+        options_layout.setSpacing(4)
 
         colormap_layout = QHBoxLayout()
         colormap_layout.addWidget(QLabel("Color Map:"))
@@ -559,9 +603,7 @@ class PropertyAnalysisDialog(QDialog):
             )
         )
         self.normalize_checkbox.checkStateChanged.connect(self._preview)
-
         checkbox_layout.addWidget(self.normalize_checkbox)
-        checkbox_layout.addStretch()
 
         self.quantile_checkbox = QCheckBox("Use Quantiles")
         self.quantile_checkbox.setToolTip(
@@ -571,9 +613,7 @@ class PropertyAnalysisDialog(QDialog):
             )
         )
         self.quantile_checkbox.checkStateChanged.connect(self._preview)
-
         checkbox_layout.addWidget(self.quantile_checkbox)
-        checkbox_layout.addStretch()
 
         self.invert_checkbox = QCheckBox("Invert Colors")
         self.invert_checkbox.setToolTip(
@@ -587,6 +627,8 @@ class PropertyAnalysisDialog(QDialog):
 
         options_layout.addLayout(colormap_layout)
         options_layout.addLayout(checkbox_layout)
+        options_group.setFixedHeight(150)
+
         layout.addWidget(options_group)
 
         # Dialog Control Buttons
@@ -595,6 +637,15 @@ class PropertyAnalysisDialog(QDialog):
         refresh_btn.setIcon(qta.icon("ph.arrow-clockwise", color=Colors.PRIMARY))
         refresh_btn.clicked.connect(self._preview)
         button_layout.addWidget(refresh_btn)
+
+        self.live_update_checkbox = QCheckBox("Live Update")
+        self.live_update_checkbox.setToolTip(
+            format_tooltip(
+                label="Live Update",
+                description="Automatically update visualization on render events.",
+            )
+        )
+        button_layout.addWidget(self.live_update_checkbox)
         button_layout.addStretch()
 
         self.visualize_export_btn = QPushButton("Export Data")
@@ -657,7 +708,7 @@ class PropertyAnalysisDialog(QDialog):
         self.plot_widget.setBackground(None)
         self.plot_widget.ci.setContentsMargins(0, 0, 0, 0)
 
-        options_group = QGroupBox("Visualization Options")
+        options_group = QGroupBox("Visualization")
         options_group.setFixedHeight(150)
         options_layout = QVBoxLayout(options_group)
 
@@ -765,16 +816,18 @@ class PropertyAnalysisDialog(QDialog):
         previous_parameters = {}
         if hasattr(self, "option_widgets"):
             previous_parameters = {
-                k: get_widget_value(w)
+                k: (
+                    get_widget_value(w)
+                    if not isinstance(w, (QListWidget, ContainerTreeWidget))
+                    else [x.metadata.get("uuid") for x in w.selected_items()]
+                )
                 for k, w in self.option_widgets.items()
-                if not isinstance(w, (QListWidget, ContainerTreeWidget))
             }
 
         while self.property_options_layout.rowCount() > 0:
             self.property_options_layout.removeRow(0)
 
         self.option_widgets = {}
-
         if property_name == "Vertex Properties":
             geometries = self._get_all_geometries()
             properties = set()
@@ -797,6 +850,24 @@ class PropertyAnalysisDialog(QDialog):
             )
             self.option_widgets["curvature"] = curvature
             self.option_widgets["radius"] = radius
+
+        elif property_name == "Area":
+            area_type = QComboBox()
+            area_type.addItems(["Total", "Per-Triangle"])
+            self.property_options_layout.addRow("Type:", area_type)
+            self.option_widgets["area_type"] = area_type
+
+        elif property_name == "Volume":
+            volume_type = QComboBox()
+            volume_type.addItems(["Total", "Per-Triangle"])
+            self.property_options_layout.addRow("Type:", volume_type)
+            self.option_widgets["volume_type"] = volume_type
+
+        elif property_name == "Mesh Statistics":
+            stat_type = QComboBox()
+            stat_type.addItems(["Vertex Count", "Triangle Count", "Edge Length"])
+            self.property_options_layout.addRow("Type:", stat_type)
+            self.option_widgets["stat_type"] = stat_type
 
         elif property_name == "Projected Curvature":
             group, layout, target_list, _ = self._create_target_list_group(
@@ -822,6 +893,27 @@ class PropertyAnalysisDialog(QDialog):
             self.option_widgets["k_start"] = k_start
             self.option_widgets["k"] = k_end
             self.option_widgets["aggregation"] = aggregation
+
+        elif property_name == "Thickness":
+            group, layout, target_list, _ = self._create_target_list_group(
+                "Target Cluster", "data", with_compare_all=False
+            )
+            smoothing_layout = QHBoxLayout()
+            smoothing_layout.addWidget(QLabel("Smoothing Radius:"))
+            smoothing_spin = QDoubleSpinBox()
+            smoothing_spin.setRange(0.0, 1000.0)
+            smoothing_spin.setValue(0.0)
+            smoothing_spin.setDecimals(1)
+            smoothing_spin.setSingleStep(1.0)
+            smoothing_spin.setToolTip(
+                "Radius for Gaussian-weighted spatial smoothing (0 = no smoothing)"
+            )
+            smoothing_layout.addWidget(smoothing_spin)
+            layout.addLayout(smoothing_layout)
+
+            self.property_options_layout.addRow(group)
+            self.option_widgets["queries"] = target_list
+            self.option_widgets["smoothing_radius"] = smoothing_spin
 
         elif property_name == "To Cluster":
             group, layout, target_list, compare_all = self._create_target_list_group(
@@ -867,7 +959,11 @@ class PropertyAnalysisDialog(QDialog):
         # Restore previous parameter values
         for k, widget in self.option_widgets.items():
             if k in previous_parameters:
-                set_widget_value(widget, previous_parameters[k])
+                value = previous_parameters[k]
+                if isinstance(widget, (QListWidget, ContainerTreeWidget)):
+                    widget.set_selection(value)
+                    continue
+                set_widget_value(widget, value)
 
     def toggle_all_targets(self, state, target_list):
         target_list.setEnabled(not bool(state))
@@ -932,7 +1028,15 @@ class PropertyAnalysisDialog(QDialog):
 
             try:
                 value = GeometryProperties.compute(geometry=geometry, **parameters)
-                self._cache.set(geometry, parameters, value)
+
+                # Some properties will return None for an empty query. This by itself is
+                # fine, but will be automatically triggered when deselecting and
+                # reselecting an object due to the dialog being connected to the
+                # vtk_pre_render signal emitted by DataContainerInteractor. That will
+                # cause a redraw of list widgets for query selection and trigger a
+                # computation with empty query yielding None which we do not store.
+                if value is not None:
+                    self._cache.set(geometry, parameters, value)
             except Exception as e:
                 QMessageBox.warning(self, "Error", str(e))
                 return None
@@ -1020,9 +1124,92 @@ class PropertyAnalysisDialog(QDialog):
 
         self.legend.set_lookup_table(lut, self.property_combo.currentText())
 
+        # Update filter slider with all property values
+        all_values = np.concatenate([np.asarray(v).flatten() for v in values])
+        self.filter_slider.setData(all_values)
+
         if render:
             self.cdata.data.render_vtk()
             self.cdata.models.render_vtk()
+
+    def _on_filter_changed(self, lower, upper):
+        """Hide points outside the filter range using transparent LUT colors."""
+        from ..utils import cmap_to_vtkctf
+
+        geometries = self._get_selected_geometries()
+        if not geometries:
+            return
+
+        colormap = self.colormap_combo.currentText()
+        if self.invert_checkbox.isChecked():
+            colormap += "_r"
+
+        lut, lut_range = cmap_to_vtkctf(
+            colormap, upper, min_value=lower, transparent_range=True
+        )
+
+        for geometry in geometries:
+            values = self._cache.get_value(geometry.uuid)
+            if values is None:
+                continue
+
+            values = np.asarray(values).flatten()
+            geometry.set_scalars(values, lut, lut_range)
+
+        self.cdata.data.render_vtk()
+        self.cdata.models.render_vtk()
+
+    def _on_filter_dragging(self, lower, upper):
+        """Handle slider drag events with throttling for live preview."""
+        if not self.filter_live_checkbox.isChecked():
+            return
+        self._filter_throttle(lower, upper)
+
+    def _reset_filter(self):
+        """Reset filter to show all points."""
+        self.filter_slider._slider.setValues(
+            self.filter_slider._slider.min_val,
+            self.filter_slider._slider.max_val,
+        )
+        self.filter_slider._histogram.setSelection(
+            self.filter_slider._slider.min_val,
+            self.filter_slider._slider.max_val,
+        )
+        self._preview()
+
+    def _extract_filtered(self):
+        """Create new geometry from points within filter range."""
+        lower, upper = self.filter_slider.getRange()
+        geometries = self._get_selected_geometries()
+
+        if not geometries:
+            QMessageBox.warning(self, "No Selection", "Please select geometry first.")
+            return
+
+        extracted_any = False
+        for geometry in geometries:
+            values = self._cache.get_value(geometry.uuid)
+            if values is None:
+                continue
+
+            values = np.asarray(values).flatten()
+            mask = (values >= lower) & (values <= upper)
+
+            if not mask.any():
+                continue
+
+            # Create subset geometry
+            subset = geometry[mask]
+            if subset.get_number_of_points() > 0:
+                self.cdata.data.add(subset)
+                extracted_any = True
+
+        if extracted_any:
+            self.cdata.data.render()
+        else:
+            QMessageBox.information(
+                self, "No Points", "No points fall within the selected range."
+            )
 
     def _update_tab(self):
         current_tab_index = self.tabs_widget.currentIndex()

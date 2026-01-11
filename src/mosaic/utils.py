@@ -6,9 +6,10 @@ Copyright (c) 2023-2025 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 import numpy as np
+from qtpy.QtCore import QTimer
 from scipy import ndimage
 from scipy.spatial import KDTree
 from scipy.sparse import coo_matrix
@@ -34,9 +35,53 @@ __all__ = [
     "apply_quat",
     "NORMAL_REFERENCE",
     "skeletonize",
+    "Throttle",
 ]
 
 NORMAL_REFERENCE = (0, 0, 1)
+
+
+class Throttle:
+    """Throttle wrapper for limiting function call frequency.
+
+    Wraps a callable to ensure it executes at most once per interval.
+    The first call executes immediately; subsequent calls within the
+    interval are ignored. After the interval, the next call executes.
+
+    Parameters
+    ----------
+    func : Callable
+        The function to throttle.
+    interval_ms : int, optional
+        Minimum interval between calls in milliseconds, by default 100.
+
+    Examples
+    --------
+    >>> def on_slider_change(value):
+    ...     print(f"Value: {value}")
+    >>> throttled = Throttle(on_slider_change, interval_ms=100)
+    >>> slider.valueChanged.connect(throttled)
+    """
+
+    def __init__(self, func: Callable, interval_ms: int = 100):
+        self._func = func
+        self._timer = QTimer()
+        self._timer.setSingleShot(True)
+        self._timer.setInterval(interval_ms)
+        self._timer.timeout.connect(self._reset)
+        self._can_call = True
+
+    def __call__(self, *args, **kwargs):
+        """Execute the function if throttle allows."""
+        if self._can_call:
+            self._can_call = False
+            self._timer.start()
+            return self._func(*args, **kwargs)
+        return None
+
+    def _reset(self):
+        """Reset throttle to allow the next call."""
+        self._can_call = True
 
 
 def points_to_volume(
@@ -488,7 +533,31 @@ def get_cmap(*args, **kwargs):
     return get_cmap(*args, **kwargs)
 
 
-def cmap_to_vtkctf(cmap, max_value, min_value, gamma: float = 1.0):
+def cmap_to_vtkctf(
+    cmap, max_value, min_value, gamma: float = 1.0, transparent_range: bool = False
+):
+    """Convert a colormap to a VTK color transfer function or lookup table.
+
+    Parameters
+    ----------
+    cmap : str
+        Name of the colormap.
+    max_value : float
+        Maximum value for the color range.
+    min_value : float
+        Minimum value for the color range.
+    gamma : float, optional
+        Gamma correction factor, by default 1.0.
+    transparent_range : bool, optional
+        If True, returns a vtkLookupTable with transparent colors for values
+        outside the specified range. By default False.
+
+    Returns
+    -------
+    tuple
+        (color_function, (min_value, max_value)) where color_function is either
+        a vtkColorTransferFunction or vtkLookupTable depending on transparent_range.
+    """
     import vtk
 
     if np.allclose(min_value, max_value):
@@ -497,6 +566,26 @@ def cmap_to_vtkctf(cmap, max_value, min_value, gamma: float = 1.0):
         min_value -= offset
 
     colormap = get_cmap(cmap)
+
+    if transparent_range:
+        lut = vtk.vtkLookupTable()
+        lut.SetNumberOfTableValues(256)
+        lut.SetRange(min_value, max_value)
+
+        for i in range(256):
+            t = i / 255.0
+            t = t ** (1 / gamma)
+            r, g, b, _ = colormap(t)
+            lut.SetTableValue(i, r, g, b, 1.0)
+
+        lut.SetUseBelowRangeColor(True)
+        lut.SetBelowRangeColor(0, 0, 0, 0)
+        lut.SetUseAboveRangeColor(True)
+        lut.SetAboveRangeColor(0, 0, 0, 0)
+        lut.Build()
+
+        return lut, (min_value, max_value)
+
     value_range = max_value - min_value
 
     # Extend color map beyond data range to avoid wrapping

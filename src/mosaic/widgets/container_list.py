@@ -435,7 +435,8 @@ class ContainerTreeWidget(QFrame):
     def _set_selection(
         self, items, selection_flag=QItemSelectionModel.SelectionFlag.ClearAndSelect
     ):
-        """Set selection to specific items.
+        """
+        Set selection to specific items.
 
         Parameters
         ----------
@@ -455,6 +456,31 @@ class ContainerTreeWidget(QFrame):
             selection.select(index, index)
 
         self.tree_widget.selectionModel().select(selection, selection_flag)
+
+    def set_selection(
+        self,
+        uuids: List[str],
+        selection_flag=QItemSelectionModel.SelectionFlag.ClearAndSelect,
+    ):
+        """
+        Set selection to specific items.
+
+        Parameters
+        ----------
+        uuids : list of str
+            List of UUIDs that correspond to Geometry objects in tree.
+        selection_flag : QItemSelectionModel.SelectionFlag
+            Selection behavior (ClearAndSelect, Select, Toggle, etc.)
+        """
+        if not isinstance(uuids, (list, tuple)):
+            uuids = [uuids]
+
+        items = []
+        for item, parent, _ in self.traverse(reverse=False):
+            if item.metadata.get("uuid") in uuids:
+                items.append(item)
+
+        self._set_selection(items)
 
 
 class GroupTreeWidgetItem(QTreeWidgetItem):

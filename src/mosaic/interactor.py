@@ -255,12 +255,7 @@ class DataContainerInteractor(QObject):
         uuids : list of str
             UUIDs to select
         """
-        items = []
-        for item, parent, _ in self.data_list.traverse(reverse=False):
-            if item.metadata.get("uuid") in uuids:
-                items.append(item)
-
-        self.data_list._set_selection(items)
+        self.data_list.set_selection(uuids)
         self._highlight_selection()
 
     def _on_cluster_selection_changed(self):

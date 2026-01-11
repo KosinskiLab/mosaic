@@ -2,7 +2,7 @@ from .path_selector import PathSelector
 from .dialog_footer import DialogFooter
 from .search_widget import SearchWidget
 from .sidebar import ObjectBrowserSidebar
-from .sliders import DualHandleSlider, SliderRow
+from .sliders import DualHandleSlider, SliderRow, HistogramRangeSlider
 from .trajectory_player import TrajectoryPlayer
 from .ribbon import RibbonToolBar, create_button
 from .colors import (

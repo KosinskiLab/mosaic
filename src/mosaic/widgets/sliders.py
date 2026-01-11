@@ -6,12 +6,19 @@ Copyright (c) 2024 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-__all__ = ["DualHandleSlider", "SliderRow"]
+__all__ = ["DualHandleSlider", "SliderRow", "HistogramRangeSlider"]
 
 import numpy as np
 from qtpy.QtGui import QColor
 from qtpy.QtCore import Qt, Signal
-from qtpy.QtWidgets import QWidget, QSlider, QSizePolicy, QHBoxLayout, QLabel
+from qtpy.QtWidgets import (
+    QWidget,
+    QSlider,
+    QSizePolicy,
+    QHBoxLayout,
+    QVBoxLayout,
+    QLabel,
+)
 
 from ..stylesheets import Colors
 
@@ -280,5 +287,141 @@ class DualHandleSlider(QWidget):
 
     def mouseReleaseEvent(self, event):
         """Stop dragging."""
+        was_dragging = self.dragging_handle is not None
         if event.button() == Qt.LeftButton:
             self.dragging_handle = None
+            if was_dragging:
+                self.rangeReleased.emit(self.lower_pos, self.upper_pos)
+
+    rangeReleased = Signal(float, float)
+
+
+class MiniHistogram(QWidget):
+    """A compact histogram display widget."""
+
+    def __init__(self, parent=None, n_bins: int = 50, margin: int = 16):
+        super().__init__(parent)
+        self.n_bins = n_bins
+        self.margin = margin  # Match DualHandleSlider handle_size for alignment
+        self._hist = None
+        self._bin_edges = None
+        self._lower = 0.0
+        self._upper = 1.0
+        self._min_val = 0.0
+        self._max_val = 1.0
+
+        self.hist_color = QColor(Colors.BORDER_HOVER)
+        self.hist_color.setAlpha(100)
+        self.selected_color = QColor(Colors.PRIMARY)
+        self.selected_color.setAlpha(160)
+        self.placeholder_color = QColor(Colors.BORDER_DARK)
+        self.placeholder_color.setAlpha(30)
+
+    def setData(self, values):
+        """Compute histogram from values."""
+        if values is None or len(values) == 0:
+            self._hist = None
+            self.update()
+            return
+
+        values = np.asarray(values).flatten()
+        values = values[np.isfinite(values)]
+        if len(values) == 0:
+            self._hist = None
+            return
+
+        self._min_val = float(np.min(values))
+        self._max_val = float(np.max(values))
+        if self._min_val == self._max_val:
+            self._max_val = self._min_val + 1.0
+
+        self._hist, self._bin_edges = np.histogram(values, bins=self.n_bins)
+        self._lower = self._min_val
+        self._upper = self._max_val
+        self.update()
+
+    def setSelection(self, lower, upper):
+        """Update the highlighted range."""
+        self._lower = lower
+        self._upper = upper
+        self.update()
+
+    def paintEvent(self, event):
+        """Draw the histogram bars or placeholder."""
+        from qtpy.QtGui import QPainter, QBrush, QPen
+
+        painter = QPainter(self)
+        width = self.width()
+        height = self.height()
+        draw_width = width - 2 * self.margin
+
+        if self._hist is None or len(self._hist) == 0:
+            # Draw placeholder
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(self.placeholder_color))
+            painter.drawRect(self.margin, 0, draw_width, height)
+
+            painter.setPen(QPen(QColor(Colors.TEXT_SECONDARY)))
+            painter.drawText(
+                self.margin, 0, draw_width, height, Qt.AlignCenter, "No data"
+            )
+            return
+
+        max_count = np.max(self._hist)
+        if max_count == 0:
+            return
+
+        bar_width = draw_width / len(self._hist)
+        for i, count in enumerate(self._hist):
+            bar_height = int((count / max_count) * (height - 2))
+            x = self.margin + i * bar_width
+            y = height - bar_height
+
+            bin_center = (self._bin_edges[i] + self._bin_edges[i + 1]) / 2
+            if self._lower <= bin_center <= self._upper:
+                painter.setBrush(QBrush(self.selected_color))
+            else:
+                painter.setBrush(QBrush(self.hist_color))
+
+            painter.setPen(Qt.NoPen)
+            painter.drawRect(int(x), int(y), int(bar_width - 1), bar_height)
+
+
+class HistogramRangeSlider(QWidget):
+    """A histogram with an integrated range slider for filtering."""
+
+    rangeChanged = Signal(float, float)
+    rangeReleased = Signal(float, float)
+
+    def __init__(self, parent=None, n_bins: int = 50):
+        super().__init__(parent)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+
+        self._histogram = MiniHistogram(n_bins=n_bins)
+        self._slider = DualHandleSlider()
+
+        layout.addWidget(self._histogram)
+        layout.addWidget(self._slider)
+
+        self._slider.rangeChanged.connect(self._on_range_changed)
+        self._slider.rangeReleased.connect(self.rangeReleased)
+
+    def _on_range_changed(self, lower, upper):
+        self._histogram.setSelection(lower, upper)
+        self.rangeChanged.emit(lower, upper)
+
+    def setData(self, values):
+        """Set data and update histogram and slider range."""
+        self._histogram.setData(values)
+        if values is not None and len(values) > 0:
+            min_val = self._histogram._min_val
+            max_val = self._histogram._max_val
+            self._slider.setRange(min_val, max_val)
+            self._slider.setValues(min_val, max_val)
+
+    def getRange(self):
+        """Get the current selected range."""
+        return self._slider.lower_pos, self._slider.upper_pos

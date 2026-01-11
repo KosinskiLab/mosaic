@@ -1,4 +1,3 @@
-from os.path import basename
 from qtpy.QtCore import Qt, QTimer, Signal
 from qtpy.QtWidgets import (
     QWidget,
