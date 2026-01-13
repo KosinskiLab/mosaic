@@ -214,6 +214,7 @@ def _default_handler(task_id, task_name, msg, is_warning=False):
 
 
 class BackgroundTaskManager(QObject):
+    task_queued = Signal(str, str)  # task_id, task_name
     task_started = Signal(str, str)  # task_id, task_name
     task_completed = Signal(str, str, object)  # task_id, task_name, result
     task_failed = Signal(str, str, str)  # task_id, task_name, error
@@ -422,6 +423,7 @@ class BackgroundTaskManager(QObject):
             oldest = next(iter(self.task_info))
             self.task_info.pop(oldest, None)
 
+        self.task_queued.emit(task_id, name)
         return task_id
 
     def submit_task_batch(

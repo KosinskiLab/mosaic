@@ -153,6 +153,7 @@ OPERATION_CATEGORIES = {
                     "settings": [
                         {
                             "label": "Method",
+                            "parameter": "method",
                             "type": "select",
                             "options": ["Point Cloud", "Mesh", "Volume"],
                             "default": "Point Cloud",

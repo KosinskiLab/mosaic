@@ -108,7 +108,7 @@ class TaskCard(QFrame):
         if self.compact:
             header_layout.addStretch()
         else:
-            self.name_label.setFixedWidth(200)
+            self.name_label.setFixedWidth(225)
             self.progress_bar = QProgressBar()
             self.progress_bar.setMaximumHeight(4)
             self.progress_bar.setTextVisible(False)
@@ -123,7 +123,7 @@ class TaskCard(QFrame):
             self.message_label = QLabel()
             self.message_label.setFont(self._font(8, italic=True))
             self.message_label.setStyleSheet(f"color: {Colors.TEXT_MUTED};")
-            self.message_label.setFixedWidth(70)
+            self.message_label.setFixedWidth(90)
             header_layout.addWidget(self.message_label)
 
         self.status_badge = QLabel(self.status.upper())
@@ -341,10 +341,27 @@ class TaskMonitorDialog(QDialog):
         if card is not None:
             card.append_output(stream_type, text)
 
-    def on_task_started(self, task_id: str, task_name: str):
+    def on_task_queued(self, task_id: str, task_name: str):
         """Handle task started - create a new card."""
         if task_id in self.task_cards:
             return
+
+        task_data = {"id": task_id, "name": task_name, "status": "queued"}
+        card = TaskCard(task_data, compact=False)
+        card.cancel_requested.connect(self.cancel_task_requested)
+        self.task_cards[task_id] = card
+        self.active_tasks_layout.insertWidget(0, card)
+        self._update_counts()
+
+    def on_task_started(self, task_id: str, task_name: str):
+        """Handle task started - create a new card."""
+        card = self.task_cards.get(task_id)
+        if card:
+            if card.status == "running":
+                return None
+
+            self.task_cards.pop(task_id)
+            card.deleteLater()
 
         task_data = {"id": task_id, "name": task_name, "status": "running"}
         card = TaskCard(task_data, compact=False)
@@ -543,6 +560,8 @@ class StatusIndicator:
 
         # Task lifecycle signals - forwarded to dialog for card management
         manager.task_started.connect(self._on_task_started)
+
+        manager.task_queued.connect(self.task_monitor.on_task_queued)
         manager.task_completed.connect(self.task_monitor.on_task_completed)
         manager.task_failed.connect(self.task_monitor.on_task_failed)
 

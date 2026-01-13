@@ -260,12 +260,17 @@ def execute_run(run_config: dict, skip_complete: bool = False) -> None:
 
             relevant_data = "_data"
             try:
-                input_type, _ = _get_op_spec(
-                    run_config["operations"][1]["operation_id"]
-                )
+                next_op = run_config["operations"][1]
+                input_type, _ = _get_op_spec(next_op["operation_id"])
 
                 if input_type == "model":
-                    relevant_data = "_model"
+                    relevant_data = "_models"
+
+                is_export = next_op["operation_id"] == "export_data"
+                if input_type == "any" and is_export:
+                    if next_op["settings"]["method"] == "Mesh":
+                        relevant_data = "_models"
+
             except Exception:
                 pass
 

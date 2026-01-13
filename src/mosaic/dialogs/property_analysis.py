@@ -1147,7 +1147,7 @@ class PropertyAnalysisDialog(QDialog):
         lut, lut_range = cmap_to_vtkctf(
             colormap, upper, min_value=lower, transparent_range=True
         )
-
+        self.legend.set_lookup_table(lut, self.property_combo.currentText())
         for geometry in geometries:
             values = self._cache.get_value(geometry.uuid)
             if values is None:

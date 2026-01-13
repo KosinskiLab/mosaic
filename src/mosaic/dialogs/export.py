@@ -178,9 +178,33 @@ class ExportDialog(QDialog):
                     "parameter": "single_file",
                 }
             },
-            "obj": {},
-            "stl": {},
-            "ply": {},
+            "obj": {
+                "single_file": {
+                    "type": "boolean",
+                    "label": "Single File",
+                    "description": "Export all data to a single file",
+                    "default": False,
+                    "parameter": "single_file",
+                }
+            },
+            "stl": {
+                "single_file": {
+                    "type": "boolean",
+                    "label": "Single File",
+                    "description": "Export all data to a single file",
+                    "default": False,
+                    "parameter": "single_file",
+                }
+            },
+            "ply": {
+                "single_file": {
+                    "type": "boolean",
+                    "label": "Single File",
+                    "description": "Export all data to a single file",
+                    "default": False,
+                    "parameter": "single_file",
+                }
+            },
         }
 
         self.selected_category = next(

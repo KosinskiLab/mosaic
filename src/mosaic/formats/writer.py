@@ -190,14 +190,14 @@ def write_geometries(geometries, file_path: str, export_parameters: dict) -> Non
         )
         shape = tuple(int(x + 1) for x in shape.astype(int))
 
+    meshes = []
     center, orientation_kwargs = 0, {}
     data = {"points": [], "quaternions": []}
     for index, geometry in enumerate(geometries):
         if file_format in mesh_formats:
-            fit = geometry.model
-            if not hasattr(fit, "mesh"):
-                raise ValueError(f"Selected geometry {index} is not a mesh.")
-            fit.to_file(f"{file_path}_{index}.{file_format}")
+            if not hasattr(geometry.model, "mesh"):
+                continue
+            meshes.append(geometry.model)
             continue
 
         points, normals, quaternions = geometry.get_point_data()
@@ -219,6 +219,16 @@ def write_geometries(geometries, file_path: str, export_parameters: dict) -> Non
         data["quaternions"].append(quaternions)
 
     if file_format in mesh_formats:
+        if single_file := export_parameters.get("single_file", False):
+            from ..parametrization import merge
+
+            mesh = merge(meshes)
+            mesh.to_file(f"{file_path}.{file_format}")
+            meshes.clear()
+
+        for index, mesh in enumerate(meshes):
+            mesh.to_file(f"{file_path}_{index}.{file_format}")
+
         return None
 
     if file_format in volume_formats:
