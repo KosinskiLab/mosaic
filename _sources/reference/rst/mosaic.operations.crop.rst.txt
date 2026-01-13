@@ -1,0 +1,6 @@
+﻿mosaic.operations.crop
+======================
+
+.. currentmodule:: mosaic.operations
+
+.. autofunction:: crop

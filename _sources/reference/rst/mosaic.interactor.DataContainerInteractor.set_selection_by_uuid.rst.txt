@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.set\_selection\_by\_uuid
+==================================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.set_selection_by_uuid

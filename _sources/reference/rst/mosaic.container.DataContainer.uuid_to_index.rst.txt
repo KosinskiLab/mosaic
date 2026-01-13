@@ -1,0 +1,6 @@
+﻿mosaic.container.DataContainer.uuid\_to\_index
+==============================================
+
+.. currentmodule:: mosaic.container
+
+.. automethod:: DataContainer.uuid_to_index

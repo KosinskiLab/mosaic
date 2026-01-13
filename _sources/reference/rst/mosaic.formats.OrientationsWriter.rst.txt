@@ -1,0 +1,23 @@
+﻿mosaic.formats.OrientationsWriter
+=================================
+
+.. currentmodule:: mosaic.formats
+
+.. autoclass:: OrientationsWriter
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~OrientationsWriter.__init__
+      ~OrientationsWriter.to_file
+   
+   
+
+   
+   
+   

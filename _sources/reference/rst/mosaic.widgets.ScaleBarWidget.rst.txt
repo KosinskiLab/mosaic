@@ -1,0 +1,26 @@
+﻿mosaic.widgets.ScaleBarWidget
+=============================
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: ScaleBarWidget
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ScaleBarWidget.__init__
+      ~ScaleBarWidget.hide
+      ~ScaleBarWidget.set_label_format
+      ~ScaleBarWidget.set_units
+      ~ScaleBarWidget.show
+   
+   
+
+   
+   
+   

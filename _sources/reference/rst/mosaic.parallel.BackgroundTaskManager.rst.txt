@@ -1,0 +1,85 @@
+﻿mosaic.parallel.BackgroundTaskManager
+=====================================
+
+.. currentmodule:: mosaic.parallel
+
+.. autoclass:: BackgroundTaskManager
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BackgroundTaskManager.__init__
+      ~BackgroundTaskManager.blockSignals
+      ~BackgroundTaskManager.cancel_task
+      ~BackgroundTaskManager.childEvent
+      ~BackgroundTaskManager.children
+      ~BackgroundTaskManager.clear_finished_tasks
+      ~BackgroundTaskManager.connectNotify
+      ~BackgroundTaskManager.customEvent
+      ~BackgroundTaskManager.deleteLater
+      ~BackgroundTaskManager.disconnect
+      ~BackgroundTaskManager.disconnectNotify
+      ~BackgroundTaskManager.dumpObjectInfo
+      ~BackgroundTaskManager.dumpObjectTree
+      ~BackgroundTaskManager.dynamicPropertyNames
+      ~BackgroundTaskManager.event
+      ~BackgroundTaskManager.eventFilter
+      ~BackgroundTaskManager.findChild
+      ~BackgroundTaskManager.findChildren
+      ~BackgroundTaskManager.get_task_output
+      ~BackgroundTaskManager.inherits
+      ~BackgroundTaskManager.installEventFilter
+      ~BackgroundTaskManager.instance
+      ~BackgroundTaskManager.isQuickItemType
+      ~BackgroundTaskManager.isSignalConnected
+      ~BackgroundTaskManager.isWidgetType
+      ~BackgroundTaskManager.isWindowType
+      ~BackgroundTaskManager.killTimer
+      ~BackgroundTaskManager.metaObject
+      ~BackgroundTaskManager.moveToThread
+      ~BackgroundTaskManager.objectName
+      ~BackgroundTaskManager.parent
+      ~BackgroundTaskManager.property
+      ~BackgroundTaskManager.pyqtConfigure
+      ~BackgroundTaskManager.receivers
+      ~BackgroundTaskManager.removeEventFilter
+      ~BackgroundTaskManager.sender
+      ~BackgroundTaskManager.senderSignalIndex
+      ~BackgroundTaskManager.setObjectName
+      ~BackgroundTaskManager.setParent
+      ~BackgroundTaskManager.setProperty
+      ~BackgroundTaskManager.signalsBlocked
+      ~BackgroundTaskManager.startTimer
+      ~BackgroundTaskManager.submit_task
+      ~BackgroundTaskManager.submit_task_batch
+      ~BackgroundTaskManager.thread
+      ~BackgroundTaskManager.timerEvent
+      ~BackgroundTaskManager.tr
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BackgroundTaskManager.destroyed
+      ~BackgroundTaskManager.objectNameChanged
+      ~BackgroundTaskManager.running_tasks
+      ~BackgroundTaskManager.staticMetaObject
+      ~BackgroundTaskManager.task_completed
+      ~BackgroundTaskManager.task_failed
+      ~BackgroundTaskManager.task_message
+      ~BackgroundTaskManager.task_output
+      ~BackgroundTaskManager.task_progress
+      ~BackgroundTaskManager.task_queued
+      ~BackgroundTaskManager.task_started
+      ~BackgroundTaskManager.task_warning
+   
+   
