@@ -977,10 +977,24 @@ class Geometry:
             mapper = vtk.vtkGlyph3DMapper()
             mapper.SetInputData(self._data)
             mapper.SetSourceConnection(arrow.GetOutputPort())
+
+            # Geometries without normals are treated as having a normal (0,0,1)
+            # We dont want to save this uninformative normal, because this can
+            # get fairly expensive for large point clouds. Hence we just make the
+            # arrow point in this default direction instead
+            if self._data.GetPointData().GetNormals() is None:
+                transform = vtk.vtkTransform()
+                transform.RotateY(-90)
+                transformFilter = vtk.vtkTransformPolyDataFilter()
+                transformFilter.SetInputConnection(arrow.GetOutputPort())
+                transformFilter.SetTransform(transform)
+                transformFilter.Update()
+                mapper.SetSourceConnection(transformFilter.GetOutputPort())
+
+            mapper.SetScaleFactor(scale)
             mapper.SetOrientationArray("Normals")
             mapper.SetOrientationModeToDirection()
             mapper.SetScaleModeToNoDataScaling()
-            mapper.SetScaleFactor(scale)
             mapper.OrientOn()
 
             self._actor.SetMapper(mapper)

@@ -274,7 +274,7 @@ class PropertyAnalysisDialog(QDialog):
             "Mesh Statistics",
             "Thickness",
         ],
-        "Projection": ["Projected Curvature", "Geodesic Distance"],
+        "Projection": ["Projected Curvature", "Geodesic Distance", "Angle"],
         "Geometric": [
             "Identity",
             "Width (X-axis)",
@@ -301,6 +301,7 @@ class PropertyAnalysisDialog(QDialog):
         "Number of Points": "n_points",
         "Projected Curvature": "projected_curvature",
         "Geodesic Distance": "geodesic_distance",
+        "Angle": "projected_angle",
         "Thickness": "thickness",
         "Vertex Properties": "vertex_property",
     }
@@ -336,16 +337,14 @@ class PropertyAnalysisDialog(QDialog):
 
     def _on_render_update(self):
         """Re-apply properties when models are re-rendered."""
-        if not self.live_update_checkbox.isChecked():
-            return
-
         self.cdata.data.blockSignals(True)
         self.cdata.models.blockSignals(True)
         try:
             self._update_property_list()
-            self._preview(render=False)
-            self._update_plot()
-            self._update_statistics()
+            if self.live_update_checkbox.isChecked():
+                self._preview(render=False)
+                self._update_plot()
+                self._update_statistics()
         except Exception:
             pass
         finally:
@@ -881,6 +880,13 @@ class PropertyAnalysisDialog(QDialog):
             self.option_widgets["queries"] = target_list
             self.option_widgets["curvature"] = curvature
             self.option_widgets["radius"] = radius
+
+        elif property_name == "Angle":
+            group, layout, target_list, _ = self._create_target_list_group(
+                "Target Mesh", "models", mesh_only=True
+            )
+            self.property_options_layout.addRow(group)
+            self.option_widgets["queries"] = target_list
 
         elif property_name == "Geodesic Distance":
             group, layout, target_list, _ = self._create_target_list_group(

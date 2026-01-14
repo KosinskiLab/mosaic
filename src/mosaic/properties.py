@@ -206,6 +206,26 @@ def n_points(geometry, *args, **kwargs):
     return geometry.points.shape[0]
 
 
+def projected_angle(geometry: Geometry, queries: List[Geometry], **kwargs):
+    from .parametrization import TriangularMesh
+
+    queries = [x for x in queries if isinstance(x.model, TriangularMesh)]
+
+    if len(queries) == 0:
+        return None
+    elif len(queries) > 1:
+        warnings.warn("Using the first query instance.")
+
+    if (fit := queries[0].model) is None:
+        return None
+
+    _, indices = fit.compute_distance(points=geometry.points, return_indices=True)
+    normals = fit.compute_vertex_normals()[indices]
+
+    dot = np.sum(np.multiply(normals, geometry.normals), axis=-1)
+    return np.degrees(np.arccos(dot))
+
+
 def projected_curvature(
     geometry: Geometry, queries: List[Geometry], curvature: str, radius: int, **kwargs
 ):
@@ -372,6 +392,7 @@ class GeometryProperties:
         "projected_curvature": projected_curvature,
         "geodesic_distance": geodesic_distance,
         "vertex_property": vertex_property,
+        "projected_angle": projected_angle,
         "thickness": thickness,
     }
 
@@ -385,7 +406,6 @@ class GeometryProperties:
         """Compute a property for a geometry object."""
         func = cls._calculators.get(property_name, None)
         if func is None:
-            print(f"Unknown property: {property_name}")
-            return None
+            raise ValueError(f"Unknown property: {property_name}")
 
         return func(*args, **kwargs)
