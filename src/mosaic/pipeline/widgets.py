@@ -66,7 +66,8 @@ class OperationCardWidget(QFrame):
         self.group_name = operation_name
         self.remove_previous_output = False
 
-        self.setMinimumHeight(130)
+        # Avoid cutting of widgets after expansion
+        self.setMinimumHeight(135)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.setup_ui()
 
@@ -557,6 +558,13 @@ class PipelineTreeWidget(QTreeWidget):
             prev_widget = self.itemWidget(self.topLevelItem(prev_index), 0)
             if prev_widget and not isinstance(prev_widget, OperationCardWidget):
                 self.takeTopLevelItem(prev_index)
+
+        # If this was the first card, also remove the separator connecting to the next
+        if card_index == 0:
+            next_widget = self.itemWidget(self.topLevelItem(card_index), 0)
+            if next_widget and not isinstance(next_widget, OperationCardWidget):
+                self.takeTopLevelItem(card_index)
+
         self.pipeline_changed.emit()
 
     def get_pipeline_config(self):
