@@ -1,0 +1,103 @@
+﻿mosaic.interactor.DataContainerInteractor
+=========================================
+
+.. currentmodule:: mosaic.interactor
+
+.. autoclass:: DataContainerInteractor
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DataContainerInteractor.__init__
+      ~DataContainerInteractor.activate_drawing_mode
+      ~DataContainerInteractor.activate_picking_mode
+      ~DataContainerInteractor.activate_viewing_mode
+      ~DataContainerInteractor.add
+      ~DataContainerInteractor.add_selection
+      ~DataContainerInteractor.attach_area_picker
+      ~DataContainerInteractor.blockSignals
+      ~DataContainerInteractor.change_representation
+      ~DataContainerInteractor.childEvent
+      ~DataContainerInteractor.children
+      ~DataContainerInteractor.cluster
+      ~DataContainerInteractor.compute_normals
+      ~DataContainerInteractor.connectNotify
+      ~DataContainerInteractor.customEvent
+      ~DataContainerInteractor.deleteLater
+      ~DataContainerInteractor.deselect
+      ~DataContainerInteractor.deselect_points
+      ~DataContainerInteractor.disconnect
+      ~DataContainerInteractor.disconnectNotify
+      ~DataContainerInteractor.downsample
+      ~DataContainerInteractor.dumpObjectInfo
+      ~DataContainerInteractor.dumpObjectTree
+      ~DataContainerInteractor.duplicate
+      ~DataContainerInteractor.dynamicPropertyNames
+      ~DataContainerInteractor.event
+      ~DataContainerInteractor.eventFilter
+      ~DataContainerInteractor.findChild
+      ~DataContainerInteractor.findChildren
+      ~DataContainerInteractor.get_event_position
+      ~DataContainerInteractor.get_selected_geometries
+      ~DataContainerInteractor.highlight_clusters_from_selected_points
+      ~DataContainerInteractor.highlight_selected_points
+      ~DataContainerInteractor.inherits
+      ~DataContainerInteractor.installEventFilter
+      ~DataContainerInteractor.isQuickItemType
+      ~DataContainerInteractor.isSignalConnected
+      ~DataContainerInteractor.isWidgetType
+      ~DataContainerInteractor.isWindowType
+      ~DataContainerInteractor.killTimer
+      ~DataContainerInteractor.merge
+      ~DataContainerInteractor.metaObject
+      ~DataContainerInteractor.moveToThread
+      ~DataContainerInteractor.next_color
+      ~DataContainerInteractor.objectName
+      ~DataContainerInteractor.parent
+      ~DataContainerInteractor.property
+      ~DataContainerInteractor.pyqtConfigure
+      ~DataContainerInteractor.receivers
+      ~DataContainerInteractor.refresh_actors
+      ~DataContainerInteractor.remove
+      ~DataContainerInteractor.removeEventFilter
+      ~DataContainerInteractor.remove_outliers
+      ~DataContainerInteractor.render
+      ~DataContainerInteractor.render_vtk
+      ~DataContainerInteractor.sender
+      ~DataContainerInteractor.senderSignalIndex
+      ~DataContainerInteractor.setObjectName
+      ~DataContainerInteractor.setParent
+      ~DataContainerInteractor.setProperty
+      ~DataContainerInteractor.set_coloring_mode
+      ~DataContainerInteractor.set_selection_by_uuid
+      ~DataContainerInteractor.signalsBlocked
+      ~DataContainerInteractor.skeletonize
+      ~DataContainerInteractor.startTimer
+      ~DataContainerInteractor.thread
+      ~DataContainerInteractor.timerEvent
+      ~DataContainerInteractor.tr
+      ~DataContainerInteractor.undo
+      ~DataContainerInteractor.update
+      ~DataContainerInteractor.visibility
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DataContainerInteractor.data_changed
+      ~DataContainerInteractor.destroyed
+      ~DataContainerInteractor.objectNameChanged
+      ~DataContainerInteractor.render_update
+      ~DataContainerInteractor.staticMetaObject
+      ~DataContainerInteractor.vtk_pre_render
+   
+   

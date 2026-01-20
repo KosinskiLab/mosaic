@@ -1,0 +1,847 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Mycoplasma Pneumoniae &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial/workflows/mycoplasma';</script>
+    <link rel="icon" href="../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Mycoplasma Pneumoniae</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="mycoplasma-pneumoniae">
+<h1>Mycoplasma Pneumoniae<a class="headerlink" href="#mycoplasma-pneumoniae" title="Link to this heading">#</a></h1>
+<section id="mycoplasma-pneumoniae-workflow">
+<h2>Mycoplasma pneumoniae Workflow<a class="headerlink" href="#mycoplasma-pneumoniae-workflow" title="Link to this heading">#</a></h2>
+<p>This tutorial guides you through analyzing <em>Mycoplasma pneumoniae</em> using Mosaic, from initial segmentation to creating coarse-grained molecular models with ribosome localization.</p>
+<section id="overview">
+<h3>Overview<a class="headerlink" href="#overview" title="Link to this heading">#</a></h3>
+<p>The workflow consists of these major steps:</p>
+<ol class="arabic simple">
+<li><p>Data acquisition</p></li>
+<li><p>Initial segmentation with MemBrain-seg</p></li>
+<li><p>Mesh generation and refinement</p></li>
+<li><p>HMFF simulation</p></li>
+<li><p>Constrained template matching of Nap proteins</p></li>
+<li><p>Ribosome localization</p></li>
+<li><p>Backmapping to coarse-grained models</p></li>
+</ol>
+</section>
+<section id="data-acquisition">
+<h3>1. Data Acquisition<a class="headerlink" href="#data-acquisition" title="Link to this heading">#</a></h3>
+<p>First, download the <em>M. pneumoniae</em> tomogram:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download example M. pneumoniae tomogram</span>
+wget<span class="w"> </span>https://example.org/mycoplasma_pneumoniae_tomogram.mrc
+</pre></div>
+</div>
+</section>
+<section id="initial-segmentation">
+<h3>2. Initial Segmentation<a class="headerlink" href="#initial-segmentation" title="Link to this heading">#</a></h3>
+<p>Segment the bacterial membrane using MemBrain-seg:</p>
+<ol class="arabic simple">
+<li><p>Launch Mosaic and navigate to the <strong>Intelligence</strong> tab.</p></li>
+<li><p>Click on the <strong>Membrane</strong> button in the <strong>Segmentation Operations</strong> section.</p></li>
+<li><p>Select the <em>M. pneumoniae</em> tomogram file.</p></li>
+<li><p>Configure the MemBrain-seg parameters:</p>
+<ul class="simple">
+<li><p>Model: Select appropriate model</p></li>
+<li><p>Window Size: 160</p></li>
+<li><p>Test-Time Augmentation: Enabled</p></li>
+</ul>
+</li>
+</ol>
+<p>The segmentation will be loaded into Mosaic automatically when complete.</p>
+</section>
+<section id="mesh-generation-and-refinement">
+<h3>3. Mesh Generation and Refinement<a class="headerlink" href="#mesh-generation-and-refinement" title="Link to this heading">#</a></h3>
+<section id="clean-the-segmentation">
+<h4>3.1. Clean the Segmentation<a class="headerlink" href="#clean-the-segmentation" title="Link to this heading">#</a></h4>
+<ol class="arabic simple">
+<li><p>In the <strong>Segmentation</strong> tab, select the segmented cluster.</p></li>
+<li><p>Click on <strong>Thin</strong> and choose “outer” to extract the outer cloud.</p></li>
+<li><p>Remove any erroneous segments using the <strong>Remove</strong> function.</p></li>
+</ol>
+</section>
+<section id="generate-initial-mesh">
+<h4>3.2. Generate Initial Mesh<a class="headerlink" href="#generate-initial-mesh" title="Link to this heading">#</a></h4>
+<ol class="arabic simple">
+<li><p>Switch to the <strong>Parametrization</strong> tab.</p></li>
+<li><p>Select the cleaned point cloud.</p></li>
+<li><p>Click on <strong>Mesh</strong> and choose “Alpha Shape” with the following parameters:</p>
+<ul class="simple">
+<li><p>Alpha: 1.0</p></li>
+<li><p>Elastic Weight: 1.0</p></li>
+<li><p>Curvature Weight: 10.0</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="refine-the-mesh">
+<h4>3.3. Refine the Mesh<a class="headerlink" href="#refine-the-mesh" title="Link to this heading">#</a></h4>
+<ol class="arabic simple">
+<li><p>Sample from the mesh for a volumetric estimate:</p>
+<ul class="simple">
+<li><p>Select the mesh.</p></li>
+<li><p>Click on <strong>Sample</strong> and set:</p>
+<ul>
+<li><p>Sampling Method: Distance</p></li>
+<li><p>Sampling: 100</p></li>
+</ul>
+</li>
+<li><p>Click “Apply”.</p></li>
+</ul>
+</li>
+<li><p>Manually examine and remove any undesirable samples.</p></li>
+<li><p>Create a new mesh from the cleaned samples:</p>
+<ul class="simple">
+<li><p>Select the cleaned samples.</p></li>
+<li><p>Click on <strong>Mesh</strong> again, using Alpha Shape with:</p>
+<ul>
+<li><p>Alpha: 1.0</p></li>
+<li><p>Elastic Weight: 0.1</p></li>
+<li><p>Pressure Weight: 0.1</p></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Remesh to target edge length:</p>
+<ul class="simple">
+<li><p>Select the new mesh.</p></li>
+<li><p>Click on <strong>Remesh</strong>.</p></li>
+<li><p>Set the target edge length to 170Å.</p></li>
+</ul>
+</li>
+<li><p>Equilibrate the mesh:</p>
+<ul class="simple">
+<li><p>Select the remeshed model.</p></li>
+<li><p>Click on <strong>Equilibrate</strong> in the <strong>HMFF Operations</strong> section.</p></li>
+<li><p>Use default parameters:</p>
+<ul>
+<li><p>Average Edge Length: 170</p></li>
+<li><p>Steps: 5000</p></li>
+<li><p>Kappa_b: 300</p></li>
+<li><p>Other parameters at default values</p></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<section id="hmff-simulation">
+<h3>4. HMFF Simulation<a class="headerlink" href="#hmff-simulation" title="Link to this heading">#</a></h3>
+<ol class="arabic">
+<li><p>Prepare the tomogram:</p>
+<ul class="simple">
+<li><p>From the <strong>View</strong> menu, open <strong>Volume Viewer</strong>.</p></li>
+<li><p>Load the <em>M. pneumoniae</em> tomogram.</p></li>
+<li><p>Apply bandpass filtering:</p>
+<ul>
+<li><p>Low cutoff: 140Å</p></li>
+<li><p>High cutoff: 900Å</p></li>
+</ul>
+</li>
+<li><p>Normalize each z-slice by dividing by its maximum density value:
+- In the Volume Settings, select “Normalize axis” and choose “z”</p></li>
+</ul>
+</li>
+<li><p>Configure HMFF:</p>
+<ul class="simple">
+<li><p>Select the equilibrated mesh.</p></li>
+<li><p>Click on <strong>Setup</strong> in the <strong>HMFF Operations</strong> section.</p></li>
+<li><p>Configure parameters:</p>
+<ul>
+<li><p>Mesh: Select your equilibrated mesh</p></li>
+<li><p>Volume: Select your filtered tomogram</p></li>
+<li><p>Invert Contrast: Enabled</p></li>
+<li><p>HMFF weight (ξ): 5.0</p></li>
+<li><p>Rigidity (κ): 30.0</p></li>
+<li><p>Steps: 50000</p></li>
+<li><p>Threads: Set based on your system</p></li>
+<li><p>Temperature (T): 1.5</p></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Run the HMFF simulation:</p>
+<ul class="simple">
+<li><p>A simulation folder will be created.</p></li>
+<li><p>Run the simulation using:</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>/path/to/hmff_simulation_folder
+FreeDTS
+</pre></div>
+</div>
+</li>
+<li><p>Import the refined mesh:</p>
+<ul class="simple">
+<li><p>After simulation completion, import the final .tsi or .vtu file.</p></li>
+<li><p>In Mosaic, choose <strong>Open</strong> and select the final configuration.</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="constrained-template-matching-of-nap-proteins">
+<h3>5. Constrained Template Matching of Nap Proteins<a class="headerlink" href="#constrained-template-matching-of-nap-proteins" title="Link to this heading">#</a></h3>
+<section id="generate-seed-points">
+<h4>5.1. Generate Seed Points<a class="headerlink" href="#generate-seed-points" title="Link to this heading">#</a></h4>
+<ol class="arabic simple">
+<li><p>Create seed points from the HMFF-refined mesh:</p>
+<ul class="simple">
+<li><p>Select the refined mesh.</p></li>
+<li><p>Switch to the <strong>Parametrization</strong> tab.</p></li>
+<li><p>Click on <strong>Sample</strong> with:</p>
+<ul>
+<li><p>Sampling Method: Distance</p></li>
+<li><p>Sampling: 80</p></li>
+<li><p>Offset: 80</p></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="prepare-template">
+<h4>5.2. Prepare Template<a class="headerlink" href="#prepare-template" title="Link to this heading">#</a></h4>
+<p>Prepare the Nap protein template:</p>
+<ol class="arabic">
+<li><p>Download the Nap protein structure:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download PDB:8pbz for Nap particle template</span>
+wget<span class="w"> </span>https://files.rcsb.org/download/8pbz.pdb
+</pre></div>
+</div>
+</li>
+<li><p>Convert structure to template map with PyTME:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Python code using PyTME</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytme</span>
+
+<span class="c1"># For Nap template</span>
+<span class="n">nap_template</span> <span class="o">=</span> <span class="n">pytme</span><span class="o">.</span><span class="n">Template</span><span class="o">.</span><span class="n">from_pdb</span><span class="p">(</span><span class="s2">&quot;8pbz.pdb&quot;</span><span class="p">)</span>
+<span class="n">nap_template</span><span class="o">.</span><span class="n">align_to_z_axis</span><span class="p">()</span>
+<span class="n">nap_template</span><span class="o">.</span><span class="n">to_density</span><span class="p">(</span><span class="n">voxel_size</span><span class="o">=</span><span class="mf">13.604</span><span class="p">)</span>
+<span class="n">nap_template</span><span class="o">.</span><span class="n">apply_lowpass_filter</span><span class="p">(</span><span class="n">resolution</span><span class="o">=</span><span class="mf">13.604</span><span class="p">)</span>
+
+<span class="c1"># Create a spherical mask centered on extracellular head group</span>
+<span class="n">nap_template</span><span class="o">.</span><span class="n">create_mask</span><span class="p">(</span>
+    <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;sphere&quot;</span><span class="p">,</span>
+    <span class="n">radius</span><span class="o">=</span><span class="mf">81.6</span><span class="p">,</span>
+    <span class="n">center</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>  <span class="c1"># Adjust center to match extracellular head group</span>
+    <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span>
+<span class="p">)</span>
+
+<span class="n">nap_template</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;nap_template.mrc&quot;</span><span class="p">)</span>
+<span class="n">nap_template</span><span class="o">.</span><span class="n">mask</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;nap_mask.mrc&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="run-template-matching">
+<h4>5.3. Run Template Matching<a class="headerlink" href="#run-template-matching" title="Link to this heading">#</a></h4>
+<p>Using PyTME for constrained template matching:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pytme</span>
+
+<span class="c1"># Initialize template matcher</span>
+<span class="n">matcher</span> <span class="o">=</span> <span class="n">pytme</span><span class="o">.</span><span class="n">TemplateMatcher</span><span class="p">(</span>
+    <span class="s2">&quot;nap_template.mrc&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;mycoplasma_tomogram.mrc&quot;</span><span class="p">,</span>  <span class="c1"># Use tomogram with voxel size 6.80Å</span>
+    <span class="n">mask</span><span class="o">=</span><span class="s2">&quot;nap_mask.mrc&quot;</span><span class="p">,</span>
+    <span class="n">score</span><span class="o">=</span><span class="s2">&quot;flc&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Configure constraints</span>
+<span class="n">matcher</span><span class="o">.</span><span class="n">set_seed_points</span><span class="p">(</span>
+    <span class="s2">&quot;seed_points.tsv&quot;</span><span class="p">,</span>  <span class="c1"># Points exported from Mosaic</span>
+    <span class="n">max_angle</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+    <span class="n">max_distance</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>  <span class="c1"># Ellipse with radii (10,10,20) voxels</span>
+<span class="p">)</span>
+
+<span class="c1"># Run matching</span>
+<span class="n">peaks_nap</span> <span class="o">=</span> <span class="n">matcher</span><span class="o">.</span><span class="n">match</span><span class="p">(</span>
+    <span class="n">angular_sampling</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+    <span class="n">min_peak_distance</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+    <span class="n">score_threshold</span><span class="o">=</span><span class="mf">0.09</span><span class="p">,</span>
+    <span class="n">min_distance_to_mesh</span><span class="o">=</span><span class="mf">70.0</span><span class="p">,</span>
+    <span class="n">max_distance_to_mesh</span><span class="o">=</span><span class="mf">120.0</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="filter-and-verify-results">
+<h4>5.4. Filter and Verify Results<a class="headerlink" href="#filter-and-verify-results" title="Link to this heading">#</a></h4>
+<ol class="arabic simple">
+<li><p>Visualize the template matching results in Mosaic by importing the peaks file.</p></li>
+<li><p>Verify the distribution of Nap proteins on the cell surface.</p></li>
+</ol>
+</section>
+</section>
+<section id="ribosome-localization">
+<h3>6. Ribosome Localization<a class="headerlink" href="#ribosome-localization" title="Link to this heading">#</a></h3>
+<section id="prepare-ribosome-template">
+<h4>6.1. Prepare Ribosome Template<a class="headerlink" href="#prepare-ribosome-template" title="Link to this heading">#</a></h4>
+<ol class="arabic">
+<li><p>Download ribosome template:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download EMD:17132 for ribosome template</span>
+wget<span class="w"> </span>https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-17132/map/emd_17132.map.gz
+gunzip<span class="w"> </span>emd_17132.map.gz
+</pre></div>
+</div>
+</li>
+<li><p>Prepare the template:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pytme</span>
+
+<span class="c1"># Load and prepare ribosome template</span>
+<span class="n">ribosome_template</span> <span class="o">=</span> <span class="n">pytme</span><span class="o">.</span><span class="n">Template</span><span class="o">.</span><span class="n">from_map</span><span class="p">(</span><span class="s2">&quot;emd_17132.map&quot;</span><span class="p">)</span>
+<span class="n">ribosome_template</span><span class="o">.</span><span class="n">apply_lowpass_filter</span><span class="p">(</span><span class="n">resolution</span><span class="o">=</span><span class="mf">27.2</span><span class="p">)</span>
+<span class="n">ribosome_template</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="n">voxel_size</span><span class="o">=</span><span class="mf">13.60</span><span class="p">)</span>
+
+<span class="c1"># Create a spherical mask</span>
+<span class="n">ribosome_template</span><span class="o">.</span><span class="n">create_mask</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="s2">&quot;sphere&quot;</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mf">142.8</span><span class="p">)</span>
+
+<span class="n">ribosome_template</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;ribosome_template.mrc&quot;</span><span class="p">)</span>
+<span class="n">ribosome_template</span><span class="o">.</span><span class="n">mask</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;ribosome_mask.mrc&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="id1">
+<h4>6.2. Run Template Matching<a class="headerlink" href="#id1" title="Link to this heading">#</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pytme</span>
+
+<span class="c1"># Initialize template matcher</span>
+<span class="n">matcher</span> <span class="o">=</span> <span class="n">pytme</span><span class="o">.</span><span class="n">TemplateMatcher</span><span class="p">(</span>
+    <span class="s2">&quot;ribosome_template.mrc&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;mycoplasma_tomogram.mrc&quot;</span><span class="p">,</span>  <span class="c1"># Tomogram with voxel size 13.60Å</span>
+    <span class="n">mask</span><span class="o">=</span><span class="s2">&quot;ribosome_mask.mrc&quot;</span><span class="p">,</span>
+    <span class="n">score</span><span class="o">=</span><span class="s2">&quot;flc&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Run matching</span>
+<span class="n">peaks_ribosome</span> <span class="o">=</span> <span class="n">matcher</span><span class="o">.</span><span class="n">find_peaks</span><span class="p">(</span>
+    <span class="n">peak_finder</span><span class="o">=</span><span class="s2">&quot;scipy&quot;</span><span class="p">,</span>
+    <span class="n">min_peak_distance</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+    <span class="n">score_threshold</span><span class="o">=</span><span class="mf">0.21</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="manual-refinement">
+<h4>6.3. Manual Refinement<a class="headerlink" href="#manual-refinement" title="Link to this heading">#</a></h4>
+<ol class="arabic simple">
+<li><p>Import the ribosome picks into Mosaic.</p></li>
+<li><p>Manually refine the picks to remove false positives and adjust positions.</p></li>
+</ol>
+</section>
+</section>
+<section id="backmapping-to-coarse-grained-models">
+<h3>7. Backmapping to Coarse-Grained Models<a class="headerlink" href="#backmapping-to-coarse-grained-models" title="Link to this heading">#</a></h3>
+<ol class="arabic">
+<li><p>Remesh the HMFF-refined structure:</p>
+<ul class="simple">
+<li><p>Select the mesh.</p></li>
+<li><p>Click on <strong>Remesh</strong> and set the target edge length to 120Å.</p></li>
+</ul>
+</li>
+<li><p>Map proteins to vertices:</p>
+<ul class="simple">
+<li><p>In Mosaic, use the <strong>Backmapping</strong> tool from the <strong>HMFF Operations</strong> section.</p></li>
+<li><p>Map the Nap proteins to the nearest vertices.</p></li>
+</ul>
+</li>
+<li><p>Run TS2CG to generate a coarse-grained model:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use PLM utility to create a bilayer</span>
+ts2cg.py<span class="w"> </span>PLM<span class="w"> </span>-f<span class="w"> </span>mesh.obj<span class="w"> </span>-o<span class="w"> </span>bilayer_mesh.obj<span class="w"> </span>-w<span class="w"> </span><span class="m">3</span>.8
+
+<span class="c1"># Use PCG utility to populate with lipids</span>
+ts2cg.py<span class="w"> </span>PCG<span class="w"> </span>-f<span class="w"> </span>bilayer_mesh.obj<span class="w"> </span>-o<span class="w"> </span>cg_system.gro<span class="w"> </span>-a<span class="w"> </span><span class="m">0</span>.64<span class="w"> </span>-l<span class="w"> </span>POPC
+
+<span class="c1"># Insert Nap proteins with appropriate offsets</span>
+ts2cg.py<span class="w"> </span>PAI<span class="w"> </span>-f<span class="w"> </span>cg_system.gro<span class="w"> </span>-p<span class="w"> </span>nap.pdb<span class="w"> </span>-o<span class="w"> </span>final_system.gro<span class="w"> </span>-z<span class="w"> </span><span class="m">6</span>.5
+</pre></div>
+</div>
+</li>
+<li><p>The final model can be used for molecular dynamics simulations with GROMACS or visualization with VMD/ChimeraX.</p></li>
+</ol>
+</section>
+<section id="conclusion">
+<h3>Conclusion<a class="headerlink" href="#conclusion" title="Link to this heading">#</a></h3>
+<p>You have now completed the entire workflow for analyzing <em>Mycoplasma pneumoniae</em>, from tomogram segmentation to creating a detailed molecular model with localized Nap proteins and ribosomes. This model can be used for further structural analysis or as starting configurations for molecular simulations.</p>
+</section>
+<section id="references">
+<h3>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>MemBrain-seg: Lamm et al. (2024). bioRxiv, doi.org/10.1101/2024.01.05.574336</p></li>
+<li><p>Nap protein structure: Sprankel et al. (2023). [Reference details]</p></li>
+<li><p>Ribosome template: Xue et al. (2025). [Reference details]</p></li>
+<li><p>FreeDTS: [Citation for FreeDTS]</p></li>
+<li><p>PyTME: [Citation for PyTME]</p></li>
+<li><p>TS2CG: [Citation for TS2CG]</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mycoplasma-pneumoniae-workflow">Mycoplasma pneumoniae Workflow</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#data-acquisition">1. Data Acquisition</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#initial-segmentation">2. Initial Segmentation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mesh-generation-and-refinement">3. Mesh Generation and Refinement</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#clean-the-segmentation">3.1. Clean the Segmentation</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#generate-initial-mesh">3.2. Generate Initial Mesh</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#refine-the-mesh">3.3. Refine the Mesh</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hmff-simulation">4. HMFF Simulation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#constrained-template-matching-of-nap-proteins">5. Constrained Template Matching of Nap Proteins</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#generate-seed-points">5.1. Generate Seed Points</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#prepare-template">5.2. Prepare Template</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#run-template-matching">5.3. Run Template Matching</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-and-verify-results">5.4. Filter and Verify Results</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ribosome-localization">6. Ribosome Localization</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#prepare-ribosome-template">6.1. Prepare Ribosome Template</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">6.2. Run Template Matching</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#manual-refinement">6.3. Manual Refinement</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#backmapping-to-coarse-grained-models">7. Backmapping to Coarse-Grained Models</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#conclusion">Conclusion</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

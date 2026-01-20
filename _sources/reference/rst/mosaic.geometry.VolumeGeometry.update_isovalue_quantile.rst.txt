@@ -1,0 +1,6 @@
+﻿mosaic.geometry.VolumeGeometry.update\_isovalue\_quantile
+=========================================================
+
+.. currentmodule:: mosaic.geometry
+
+.. automethod:: VolumeGeometry.update_isovalue_quantile

@@ -1,0 +1,41 @@
+﻿mosaic.parametrization.ClusteredBallPivotingMesh
+================================================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: ClusteredBallPivotingMesh
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ClusteredBallPivotingMesh.__init__
+      ~ClusteredBallPivotingMesh.add_projections
+      ~ClusteredBallPivotingMesh.compute_curvature
+      ~ClusteredBallPivotingMesh.compute_distance
+      ~ClusteredBallPivotingMesh.compute_normal
+      ~ClusteredBallPivotingMesh.compute_vertex_normals
+      ~ClusteredBallPivotingMesh.fit
+      ~ClusteredBallPivotingMesh.from_file
+      ~ClusteredBallPivotingMesh.geodesic_distance
+      ~ClusteredBallPivotingMesh.points_per_sampling
+      ~ClusteredBallPivotingMesh.sample
+      ~ClusteredBallPivotingMesh.subset
+      ~ClusteredBallPivotingMesh.to_file
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ClusteredBallPivotingMesh.triangles
+      ~ClusteredBallPivotingMesh.vertices
+   
+   

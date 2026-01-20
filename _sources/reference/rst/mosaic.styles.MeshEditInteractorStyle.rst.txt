@@ -1,0 +1,254 @@
+﻿mosaic.styles.MeshEditInteractorStyle
+=====================================
+
+.. currentmodule:: mosaic.styles
+
+.. autoclass:: MeshEditInteractorStyle
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MeshEditInteractorStyle.__init__
+      ~MeshEditInteractorStyle.cleanup
+      ~MeshEditInteractorStyle.clear_face_selection
+      ~MeshEditInteractorStyle.clear_point_selection
+      ~MeshEditInteractorStyle.create_new_face
+      ~MeshEditInteractorStyle.delete_selected_faces
+      ~MeshEditInteractorStyle.handle_face_selection
+      ~MeshEditInteractorStyle.handle_point_selection
+      ~MeshEditInteractorStyle.highlight_selected_faces
+      ~MeshEditInteractorStyle.on_key_press
+      ~MeshEditInteractorStyle.on_left_button_down
+      ~MeshEditInteractorStyle.on_left_button_up
+      ~MeshEditInteractorStyle.on_mouse_move
+      ~MeshEditInteractorStyle.override
+      ~MeshEditInteractorStyle.toggle_add_face_mode
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeshEditInteractorStyle.AddObserver
+      ~MeshEditInteractorStyle.AutoAdjustCameraClippingRangeOff
+      ~MeshEditInteractorStyle.AutoAdjustCameraClippingRangeOn
+      ~MeshEditInteractorStyle.BreakOnError
+      ~MeshEditInteractorStyle.ComputeDisplayToWorld
+      ~MeshEditInteractorStyle.ComputeWorldToDisplay
+      ~MeshEditInteractorStyle.DebugOff
+      ~MeshEditInteractorStyle.DebugOn
+      ~MeshEditInteractorStyle.DelegateTDxEvent
+      ~MeshEditInteractorStyle.Dolly
+      ~MeshEditInteractorStyle.EnabledOff
+      ~MeshEditInteractorStyle.EnabledOn
+      ~MeshEditInteractorStyle.EndDolly
+      ~MeshEditInteractorStyle.EndEnvRotate
+      ~MeshEditInteractorStyle.EndGesture
+      ~MeshEditInteractorStyle.EndPan
+      ~MeshEditInteractorStyle.EndRotate
+      ~MeshEditInteractorStyle.EndSpin
+      ~MeshEditInteractorStyle.EndTimer
+      ~MeshEditInteractorStyle.EndTwoPointer
+      ~MeshEditInteractorStyle.EndUniformScale
+      ~MeshEditInteractorStyle.EndZoom
+      ~MeshEditInteractorStyle.EnvironmentRotate
+      ~MeshEditInteractorStyle.FastDelete
+      ~MeshEditInteractorStyle.FindPokedRenderer
+      ~MeshEditInteractorStyle.GetAddressAsString
+      ~MeshEditInteractorStyle.GetAutoAdjustCameraClippingRange
+      ~MeshEditInteractorStyle.GetAutoAdjustCameraClippingRangeMaxValue
+      ~MeshEditInteractorStyle.GetAutoAdjustCameraClippingRangeMinValue
+      ~MeshEditInteractorStyle.GetClassName
+      ~MeshEditInteractorStyle.GetCommand
+      ~MeshEditInteractorStyle.GetCurrentRenderer
+      ~MeshEditInteractorStyle.GetDebug
+      ~MeshEditInteractorStyle.GetDefaultRenderer
+      ~MeshEditInteractorStyle.GetEnabled
+      ~MeshEditInteractorStyle.GetGlobalWarningDisplay
+      ~MeshEditInteractorStyle.GetHandleObservers
+      ~MeshEditInteractorStyle.GetInteractor
+      ~MeshEditInteractorStyle.GetIsInMemkind
+      ~MeshEditInteractorStyle.GetKeyPressActivation
+      ~MeshEditInteractorStyle.GetKeyPressActivationValue
+      ~MeshEditInteractorStyle.GetMTime
+      ~MeshEditInteractorStyle.GetMotionFactor
+      ~MeshEditInteractorStyle.GetMouseWheelMotionFactor
+      ~MeshEditInteractorStyle.GetNumberOfGenerationsFromBase
+      ~MeshEditInteractorStyle.GetNumberOfGenerationsFromBaseType
+      ~MeshEditInteractorStyle.GetObjectDescription
+      ~MeshEditInteractorStyle.GetObjectName
+      ~MeshEditInteractorStyle.GetPickColor
+      ~MeshEditInteractorStyle.GetPickingManaged
+      ~MeshEditInteractorStyle.GetPriority
+      ~MeshEditInteractorStyle.GetPriorityMaxValue
+      ~MeshEditInteractorStyle.GetPriorityMinValue
+      ~MeshEditInteractorStyle.GetReferenceCount
+      ~MeshEditInteractorStyle.GetState
+      ~MeshEditInteractorStyle.GetTDxStyle
+      ~MeshEditInteractorStyle.GetTimerDuration
+      ~MeshEditInteractorStyle.GetTimerDurationMaxValue
+      ~MeshEditInteractorStyle.GetTimerDurationMinValue
+      ~MeshEditInteractorStyle.GetUseTimers
+      ~MeshEditInteractorStyle.GetUsingMemkind
+      ~MeshEditInteractorStyle.GlobalWarningDisplayOff
+      ~MeshEditInteractorStyle.GlobalWarningDisplayOn
+      ~MeshEditInteractorStyle.GrabFocus
+      ~MeshEditInteractorStyle.HandleObserversOff
+      ~MeshEditInteractorStyle.HandleObserversOn
+      ~MeshEditInteractorStyle.HasObserver
+      ~MeshEditInteractorStyle.HighlightActor2D
+      ~MeshEditInteractorStyle.HighlightProp
+      ~MeshEditInteractorStyle.HighlightProp3D
+      ~MeshEditInteractorStyle.InitializeObjectBase
+      ~MeshEditInteractorStyle.InvokeEvent
+      ~MeshEditInteractorStyle.IsA
+      ~MeshEditInteractorStyle.IsTypeOf
+      ~MeshEditInteractorStyle.KeyPressActivationOff
+      ~MeshEditInteractorStyle.KeyPressActivationOn
+      ~MeshEditInteractorStyle.Modified
+      ~MeshEditInteractorStyle.NewInstance
+      ~MeshEditInteractorStyle.Off
+      ~MeshEditInteractorStyle.On
+      ~MeshEditInteractorStyle.OnButton3D
+      ~MeshEditInteractorStyle.OnChar
+      ~MeshEditInteractorStyle.OnClip3D
+      ~MeshEditInteractorStyle.OnConfigure
+      ~MeshEditInteractorStyle.OnDropFiles
+      ~MeshEditInteractorStyle.OnDropLocation
+      ~MeshEditInteractorStyle.OnElevation3D
+      ~MeshEditInteractorStyle.OnEndPan
+      ~MeshEditInteractorStyle.OnEndPinch
+      ~MeshEditInteractorStyle.OnEndRotate
+      ~MeshEditInteractorStyle.OnEndSwipe
+      ~MeshEditInteractorStyle.OnEnter
+      ~MeshEditInteractorStyle.OnExpose
+      ~MeshEditInteractorStyle.OnFifthButtonDown
+      ~MeshEditInteractorStyle.OnFifthButtonUp
+      ~MeshEditInteractorStyle.OnFourthButtonDown
+      ~MeshEditInteractorStyle.OnFourthButtonUp
+      ~MeshEditInteractorStyle.OnKeyDown
+      ~MeshEditInteractorStyle.OnKeyPress
+      ~MeshEditInteractorStyle.OnKeyRelease
+      ~MeshEditInteractorStyle.OnKeyUp
+      ~MeshEditInteractorStyle.OnLeave
+      ~MeshEditInteractorStyle.OnLeftButtonDoubleClick
+      ~MeshEditInteractorStyle.OnLeftButtonDown
+      ~MeshEditInteractorStyle.OnLeftButtonUp
+      ~MeshEditInteractorStyle.OnLongTap
+      ~MeshEditInteractorStyle.OnMenu3D
+      ~MeshEditInteractorStyle.OnMiddleButtonDoubleClick
+      ~MeshEditInteractorStyle.OnMiddleButtonDown
+      ~MeshEditInteractorStyle.OnMiddleButtonUp
+      ~MeshEditInteractorStyle.OnMouseMove
+      ~MeshEditInteractorStyle.OnMouseWheelBackward
+      ~MeshEditInteractorStyle.OnMouseWheelForward
+      ~MeshEditInteractorStyle.OnMouseWheelLeft
+      ~MeshEditInteractorStyle.OnMouseWheelRight
+      ~MeshEditInteractorStyle.OnMove3D
+      ~MeshEditInteractorStyle.OnNextPose3D
+      ~MeshEditInteractorStyle.OnPan
+      ~MeshEditInteractorStyle.OnPick3D
+      ~MeshEditInteractorStyle.OnPinch
+      ~MeshEditInteractorStyle.OnPositionProp3D
+      ~MeshEditInteractorStyle.OnRightButtonDoubleClick
+      ~MeshEditInteractorStyle.OnRightButtonDown
+      ~MeshEditInteractorStyle.OnRightButtonUp
+      ~MeshEditInteractorStyle.OnRotate
+      ~MeshEditInteractorStyle.OnSelect3D
+      ~MeshEditInteractorStyle.OnStartPan
+      ~MeshEditInteractorStyle.OnStartPinch
+      ~MeshEditInteractorStyle.OnStartRotate
+      ~MeshEditInteractorStyle.OnStartSwipe
+      ~MeshEditInteractorStyle.OnSwipe
+      ~MeshEditInteractorStyle.OnTap
+      ~MeshEditInteractorStyle.OnTimer
+      ~MeshEditInteractorStyle.OnViewerMovement3D
+      ~MeshEditInteractorStyle.Pan
+      ~MeshEditInteractorStyle.PickingManagedOff
+      ~MeshEditInteractorStyle.PickingManagedOn
+      ~MeshEditInteractorStyle.Register
+      ~MeshEditInteractorStyle.ReleaseFocus
+      ~MeshEditInteractorStyle.RemoveAllObservers
+      ~MeshEditInteractorStyle.RemoveObserver
+      ~MeshEditInteractorStyle.RemoveObservers
+      ~MeshEditInteractorStyle.Rotate
+      ~MeshEditInteractorStyle.SafeDownCast
+      ~MeshEditInteractorStyle.SetAutoAdjustCameraClippingRange
+      ~MeshEditInteractorStyle.SetCurrentRenderer
+      ~MeshEditInteractorStyle.SetDebug
+      ~MeshEditInteractorStyle.SetDefaultRenderer
+      ~MeshEditInteractorStyle.SetEnabled
+      ~MeshEditInteractorStyle.SetGlobalWarningDisplay
+      ~MeshEditInteractorStyle.SetHandleObservers
+      ~MeshEditInteractorStyle.SetInteractor
+      ~MeshEditInteractorStyle.SetKeyPressActivation
+      ~MeshEditInteractorStyle.SetKeyPressActivationValue
+      ~MeshEditInteractorStyle.SetMemkindDirectory
+      ~MeshEditInteractorStyle.SetMotionFactor
+      ~MeshEditInteractorStyle.SetMouseWheelMotionFactor
+      ~MeshEditInteractorStyle.SetObjectName
+      ~MeshEditInteractorStyle.SetPickColor
+      ~MeshEditInteractorStyle.SetPickingManaged
+      ~MeshEditInteractorStyle.SetPriority
+      ~MeshEditInteractorStyle.SetReferenceCount
+      ~MeshEditInteractorStyle.SetTDxStyle
+      ~MeshEditInteractorStyle.SetTimerDuration
+      ~MeshEditInteractorStyle.SetUseTimers
+      ~MeshEditInteractorStyle.Spin
+      ~MeshEditInteractorStyle.StartAnimate
+      ~MeshEditInteractorStyle.StartDolly
+      ~MeshEditInteractorStyle.StartEnvRotate
+      ~MeshEditInteractorStyle.StartGesture
+      ~MeshEditInteractorStyle.StartPan
+      ~MeshEditInteractorStyle.StartRotate
+      ~MeshEditInteractorStyle.StartSpin
+      ~MeshEditInteractorStyle.StartState
+      ~MeshEditInteractorStyle.StartTimer
+      ~MeshEditInteractorStyle.StartTwoPointer
+      ~MeshEditInteractorStyle.StartUniformScale
+      ~MeshEditInteractorStyle.StartZoom
+      ~MeshEditInteractorStyle.StopAnimate
+      ~MeshEditInteractorStyle.StopState
+      ~MeshEditInteractorStyle.UnRegister
+      ~MeshEditInteractorStyle.UniformScale
+      ~MeshEditInteractorStyle.UseTimersOff
+      ~MeshEditInteractorStyle.UseTimersOn
+      ~MeshEditInteractorStyle.UsesGarbageCollector
+      ~MeshEditInteractorStyle.Zoom
+      ~MeshEditInteractorStyle.auto_adjust_camera_clipping_range
+      ~MeshEditInteractorStyle.class_name
+      ~MeshEditInteractorStyle.current_renderer
+      ~MeshEditInteractorStyle.debug
+      ~MeshEditInteractorStyle.default_renderer
+      ~MeshEditInteractorStyle.enabled
+      ~MeshEditInteractorStyle.global_warning_display
+      ~MeshEditInteractorStyle.handle_observers
+      ~MeshEditInteractorStyle.interactor
+      ~MeshEditInteractorStyle.is_in_memkind
+      ~MeshEditInteractorStyle.key_press_activation
+      ~MeshEditInteractorStyle.key_press_activation_value
+      ~MeshEditInteractorStyle.m_time
+      ~MeshEditInteractorStyle.memkind_directory
+      ~MeshEditInteractorStyle.motion_factor
+      ~MeshEditInteractorStyle.mouse_wheel_motion_factor
+      ~MeshEditInteractorStyle.object_description
+      ~MeshEditInteractorStyle.object_name
+      ~MeshEditInteractorStyle.pick_color
+      ~MeshEditInteractorStyle.picking_managed
+      ~MeshEditInteractorStyle.priority
+      ~MeshEditInteractorStyle.reference_count
+      ~MeshEditInteractorStyle.state
+      ~MeshEditInteractorStyle.t_dx_style
+      ~MeshEditInteractorStyle.timer_duration
+      ~MeshEditInteractorStyle.use_timers
+      ~MeshEditInteractorStyle.using_memkind
+   
+   

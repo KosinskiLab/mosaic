@@ -1,0 +1,81 @@
+﻿mosaic.data.MosaicData
+======================
+
+.. currentmodule:: mosaic.data
+
+.. autoclass:: MosaicData
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MosaicData.__init__
+      ~MosaicData.activate_picking_mode
+      ~MosaicData.activate_viewing_mode
+      ~MosaicData.blockSignals
+      ~MosaicData.childEvent
+      ~MosaicData.children
+      ~MosaicData.connectNotify
+      ~MosaicData.customEvent
+      ~MosaicData.deleteLater
+      ~MosaicData.disconnect
+      ~MosaicData.disconnectNotify
+      ~MosaicData.dumpObjectInfo
+      ~MosaicData.dumpObjectTree
+      ~MosaicData.dynamicPropertyNames
+      ~MosaicData.event
+      ~MosaicData.eventFilter
+      ~MosaicData.findChild
+      ~MosaicData.findChildren
+      ~MosaicData.format_datalist
+      ~MosaicData.highlight_clusters_from_selected_points
+      ~MosaicData.inherits
+      ~MosaicData.installEventFilter
+      ~MosaicData.isQuickItemType
+      ~MosaicData.isSignalConnected
+      ~MosaicData.isWidgetType
+      ~MosaicData.isWindowType
+      ~MosaicData.killTimer
+      ~MosaicData.load_session
+      ~MosaicData.metaObject
+      ~MosaicData.moveToThread
+      ~MosaicData.objectName
+      ~MosaicData.parent
+      ~MosaicData.property
+      ~MosaicData.pyqtConfigure
+      ~MosaicData.receivers
+      ~MosaicData.refresh_actors
+      ~MosaicData.removeEventFilter
+      ~MosaicData.reset
+      ~MosaicData.sender
+      ~MosaicData.senderSignalIndex
+      ~MosaicData.setObjectName
+      ~MosaicData.setParent
+      ~MosaicData.setProperty
+      ~MosaicData.set_coloring_mode
+      ~MosaicData.signalsBlocked
+      ~MosaicData.startTimer
+      ~MosaicData.swap_area_picker
+      ~MosaicData.thread
+      ~MosaicData.timerEvent
+      ~MosaicData.to_file
+      ~MosaicData.tr
+      ~MosaicData.visibility_unselected
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MosaicData.destroyed
+      ~MosaicData.objectNameChanged
+      ~MosaicData.staticMetaObject
+   
+   

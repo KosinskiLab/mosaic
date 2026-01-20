@@ -1,0 +1,1357 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mosaic.interactor &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/mosaic/interactor';</script>
+    <link rel="icon" href="../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">mosaic.interactor</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for mosaic.interactor</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Implemenents DataContainerInteractor and LinkedDataContainerInteractor,</span>
+<span class="sd">which mediate interaction between the GUI and underlying DataContainers.</span>
+<span class="sd">This includes selection, editing and rendering.</span>
+
+<span class="sd">Copyright (c) 2024 European Molecular Biology Laboratory</span>
+
+<span class="sd">Author: Valentin Maurer &lt;valentin.maurer@embl-hamburg.de&gt;</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span>
+
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">vtk</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qtpy.QtGui</span><span class="w"> </span><span class="kn">import</span> <span class="n">QAction</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qtpy.QtWidgets</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">QListWidget</span><span class="p">,</span>
+    <span class="n">QMenu</span><span class="p">,</span>
+    <span class="n">QFileDialog</span><span class="p">,</span>
+    <span class="n">QMessageBox</span><span class="p">,</span>
+    <span class="n">QDialog</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qtpy.QtCore</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Qt</span><span class="p">,</span>
+    <span class="n">QObject</span><span class="p">,</span>
+    <span class="n">Signal</span><span class="p">,</span>
+    <span class="n">QEvent</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.parallel</span><span class="w"> </span><span class="kn">import</span> <span class="n">submit_task</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.formats.writer</span><span class="w"> </span><span class="kn">import</span> <span class="n">write_geometries</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.widgets.container_list</span><span class="w"> </span><span class="kn">import</span> <span class="n">StyledTreeWidgetItem</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;DataContainerInteractor&quot;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="DataContainerInteractor">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DataContainerInteractor</span><span class="p">(</span><span class="n">QObject</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Handle interaction between GUI and DataContainer&quot;&quot;&quot;</span>
+
+    <span class="n">data_changed</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">()</span>
+    <span class="n">render_update</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">()</span>
+    <span class="n">vtk_pre_render</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">()</span>
+
+<div class="viewcode-block" id="DataContainerInteractor.__init__">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">container</span><span class="p">,</span> <span class="n">vtk_widget</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;Cluster&quot;</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.widgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContainerListWidget</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rendered_actors</span> <span class="o">=</span> <span class="p">{},</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vtk_widget</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span> <span class="o">=</span> <span class="n">vtk_widget</span><span class="p">,</span> <span class="n">container</span>
+
+        <span class="c1"># Interaction element for the GUI</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span> <span class="o">=</span> <span class="n">ContainerListWidget</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">setSelectionMode</span><span class="p">(</span><span class="n">QListWidget</span><span class="o">.</span><span class="n">SelectionMode</span><span class="o">.</span><span class="n">ExtendedSelection</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">itemChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_item_renamed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">itemSelectionChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_cluster_selection_changed</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">tree_widget</span><span class="o">.</span><span class="n">setContextMenuPolicy</span><span class="p">(</span>
+            <span class="n">Qt</span><span class="o">.</span><span class="n">ContextMenuPolicy</span><span class="o">.</span><span class="n">CustomContextMenu</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">tree_widget</span><span class="o">.</span><span class="n">customContextMenuRequested</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_show_context_menu</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Functionality to add points</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interaction_mode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_cluster</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">point_picker</span> <span class="o">=</span> <span class="n">vtk</span><span class="o">.</span><span class="n">vtkWorldPointPicker</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vtk_widget</span><span class="o">.</span><span class="n">installEventFilter</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_coloring_mode</span><span class="p">(</span><span class="s2">&quot;default&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_selected_uuids</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get UUIDs of selected items.&quot;&quot;&quot;</span>
+        <span class="n">uuids</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">selected_items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">uuid</span> <span class="o">:=</span> <span class="n">item</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uuid&quot;</span><span class="p">):</span>
+                <span class="n">uuids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">uuid</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">uuids</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_selected_geometries</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">uuid</span><span class="p">)</span> <span class="k">for</span> <span class="n">uuid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_selected_uuids</span><span class="p">()]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">ret</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+
+<div class="viewcode-block" id="DataContainerInteractor.attach_area_picker">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.attach_area_picker.html#mosaic.interactor.DataContainerInteractor.attach_area_picker">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">attach_area_picker</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interactor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vtk_widget</span><span class="o">.</span><span class="n">GetRenderWindow</span><span class="p">()</span><span class="o">.</span><span class="n">GetInteractor</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">interactor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Initialize an Interactor first.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">area_picker</span> <span class="o">=</span> <span class="n">vtk</span><span class="o">.</span><span class="n">vtkAreaPicker</span><span class="p">()</span>
+        <span class="n">style</span> <span class="o">=</span> <span class="n">vtk</span><span class="o">.</span><span class="n">vtkInteractorStyleRubberBandPick</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">interactor</span><span class="o">.</span><span class="n">SetPicker</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">area_picker</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interactor</span><span class="o">.</span><span class="n">SetInteractorStyle</span><span class="p">(</span><span class="n">style</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">area_picker</span><span class="o">.</span><span class="n">AddObserver</span><span class="p">(</span><span class="s2">&quot;EndPickEvent&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_area_pick</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_event_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">return_event_position</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_position</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">pos</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">pos</span><span class="o">.</span><span class="n">y</span><span class="p">(),</span> <span class="mi">0</span><span class="p">),</span> <span class="n">return_event_position</span><span class="o">=</span><span class="n">return_event_position</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_event_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">return_event_position</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="c1"># Avoid DPI/scaling issue on MacOS Retina displays</span>
+        <span class="n">dpr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vtk_widget</span><span class="o">.</span><span class="n">devicePixelRatio</span><span class="p">()</span>
+
+        <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vtk_widget</span><span class="o">.</span><span class="n">height</span><span class="p">()</span> <span class="o">-</span> <span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="n">dpr</span>
+        <span class="n">event_position</span> <span class="o">=</span> <span class="p">(</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">dpr</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vtk_widget</span><span class="o">.</span><span class="n">GetRenderWindow</span><span class="p">()</span><span class="o">.</span><span class="n">GetRenderers</span><span class="p">()</span><span class="o">.</span><span class="n">GetFirstRenderer</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">point_picker</span><span class="o">.</span><span class="n">Pick</span><span class="p">(</span><span class="o">*</span><span class="n">event_position</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+        <span class="n">world_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">point_picker</span><span class="o">.</span><span class="n">GetPickPosition</span><span class="p">()</span>
+
+        <span class="c1"># Projection onto current camera plane</span>
+        <span class="n">camera</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">GetActiveCamera</span><span class="p">()</span>
+        <span class="n">camera_plane</span> <span class="o">=</span> <span class="n">vtk</span><span class="o">.</span><span class="n">vtkPlane</span><span class="p">()</span>
+        <span class="n">camera_plane</span><span class="o">.</span><span class="n">SetNormal</span><span class="p">(</span><span class="n">camera</span><span class="o">.</span><span class="n">GetDirectionOfProjection</span><span class="p">())</span>
+        <span class="n">camera_plane</span><span class="o">.</span><span class="n">SetOrigin</span><span class="p">(</span><span class="n">world_position</span><span class="p">)</span>
+
+        <span class="n">t</span> <span class="o">=</span> <span class="n">vtk</span><span class="o">.</span><span class="n">mutable</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">camera_plane</span><span class="o">.</span><span class="n">IntersectWithLine</span><span class="p">(</span><span class="n">camera</span><span class="o">.</span><span class="n">GetPosition</span><span class="p">(),</span> <span class="n">world_position</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">return_event_position</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">event_position</span>
+        <span class="k">return</span> <span class="n">x</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">eventFilter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">watched_obj</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="c1"># VTK camera also observes left-click, so duplicate calls need to be handled</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interaction_mode</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;draw&quot;</span><span class="p">,</span> <span class="s2">&quot;pick&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">event</span><span class="o">.</span><span class="n">type</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="n">QEvent</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">MouseButtonPress</span><span class="p">,</span>
+            <span class="n">QEvent</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">MouseMove</span><span class="p">,</span>
+        <span class="p">]:</span>
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">buttons</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">Qt</span><span class="o">.</span><span class="n">MouseButton</span><span class="o">.</span><span class="n">LeftButton</span><span class="p">:</span>
+                <span class="n">world_position</span><span class="p">,</span> <span class="n">event_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_event_position</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interaction_mode</span> <span class="o">==</span> <span class="s2">&quot;draw&quot;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_add_point</span><span class="p">(</span><span class="n">world_position</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interaction_mode</span> <span class="o">==</span> <span class="s2">&quot;pick&quot;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_pick_prop</span><span class="p">(</span><span class="n">event_position</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="c1"># Let vtk events pass through</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">eventFilter</span><span class="p">(</span><span class="n">watched_obj</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_item_renamed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">uuid</span> <span class="o">:=</span> <span class="n">item</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uuid&quot;</span><span class="p">))</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">geometry</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">uuid</span><span class="p">))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Consider adding bidrecitional uuid lookup to render instead</span>
+            <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">text</span><span class="p">()</span> <span class="o">!=</span> <span class="n">geometry</span><span class="o">.</span><span class="n">_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">):</span>
+                <span class="n">geometry</span><span class="o">.</span><span class="n">_meta</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">text</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data_changed</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">next_color</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;colors&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">base_color</span>
+
+        <span class="n">color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">color</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">color</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_coloring_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.stylesheets</span><span class="w"> </span><span class="kn">import</span> <span class="n">Colors</span>
+
+        <span class="k">if</span> <span class="n">mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;default&quot;</span><span class="p">,</span> <span class="s2">&quot;entity&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Only mode &#39;default&#39; and &#39;entity&#39; are supported.&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">base_color</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;entity&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">colors</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">Colors</span><span class="o">.</span><span class="n">ENTITY</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">geometry</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">i</span><span class="p">))</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">update_appearance</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">geometry</span><span class="o">.</span><span class="n">_appearance</span> <span class="o">|</span> <span class="p">{</span><span class="s2">&quot;base_color&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">next_color</span><span class="p">()}</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">highlight</span><span class="p">([])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_vtk</span><span class="p">()</span>
+
+<div class="viewcode-block" id="DataContainerInteractor.add">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.add.html#mosaic.interactor.DataContainerInteractor.add">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;color&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;color&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">next_color</span><span class="p">()</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_changed</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">ret</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_selection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">selected_point_ids</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">vtk</span><span class="o">.</span><span class="n">vtkActor</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add new cloud from selected points.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        selected_point_ids : dict</span>
+<span class="sd">            Mapping of vtkActor to selected point IDs.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        int</span>
+<span class="sd">            Index of new cloud, -1 if creation failed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Geometry</span>
+
+        <span class="n">new_cluster</span><span class="p">,</span> <span class="n">remove_cluster</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">point_ids</span> <span class="ow">in</span> <span class="n">selected_point_ids</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">geometry</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">uuid</span><span class="p">))</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">n_points</span> <span class="o">=</span> <span class="n">geometry</span><span class="o">.</span><span class="n">get_number_of_points</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">geometry</span><span class="o">.</span><span class="n">visible</span> <span class="ow">or</span> <span class="n">n_points</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">point_ids</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">inverse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="n">inverse</span><span class="p">[</span><span class="n">point_ids</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">new_cluster</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">geometry</span><span class="p">[</span><span class="n">point_ids</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">inverse</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="n">geometry</span><span class="o">.</span><span class="n">subset</span><span class="p">(</span><span class="n">inverse</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># All points were selected, mark for removal</span>
+                <span class="n">remove_cluster</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">geometry</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">remove_cluster</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_cluster</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Geometry</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">new_cluster</span><span class="p">))</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">geometry</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_active_cluster</span><span class="p">))</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="c1"># We call swap data to automatically handle other Geometry attributes</span>
+        <span class="n">geometry</span><span class="o">.</span><span class="n">swap_data</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">geometry</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">point</span><span class="p">)[</span><span class="kc">None</span><span class="p">])))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_changed</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>
+
+<div class="viewcode-block" id="DataContainerInteractor.activate_viewing_mode">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.activate_viewing_mode.html#mosaic.interactor.DataContainerInteractor.activate_viewing_mode">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">activate_viewing_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interaction_mode</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_active_cluster</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">activate_drawing_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_active_cluster</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interaction_mode</span> <span class="o">=</span> <span class="s2">&quot;draw&quot;</span>
+
+        <span class="n">new_cluster_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_active_cluster</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">new_cluster_index</span><span class="p">)</span><span class="o">.</span><span class="n">uuid</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">activate_picking_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interaction_mode</span> <span class="o">=</span> <span class="s2">&quot;pick&quot;</span>
+
+<div class="viewcode-block" id="DataContainerInteractor.set_selection_by_uuid">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.set_selection_by_uuid.html#mosaic.interactor.DataContainerInteractor.set_selection_by_uuid">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_selection_by_uuid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uuids</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set selection by UUIDs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        uuids : list of str</span>
+<span class="sd">            UUIDs to select</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">set_selection</span><span class="p">(</span><span class="n">uuids</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_highlight_selection</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_cluster_selection_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># This is of course not ideal but prevents unhighlight/highlight</span>
+        <span class="c1"># when clicking on groups due to itemClicked behaviour. So we</span>
+        <span class="c1"># handle actual deselect all using _highlight_selection</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_selected_uuids</span><span class="p">()):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_highlight_selection</span><span class="p">()</span>
+
+<div class="viewcode-block" id="DataContainerInteractor.deselect">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.deselect.html#mosaic.interactor.DataContainerInteractor.deselect">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">deselect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Deselect on right-click&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">clearSelection</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_highlight_selection</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deselect_points</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_highlight_selection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_selected_uuids</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_vtk</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_area_pick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="n">frustum</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">GetFrustum</span><span class="p">()</span>
+        <span class="n">interactor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vtk_widget</span><span class="o">.</span><span class="n">GetRenderWindow</span><span class="p">()</span><span class="o">.</span><span class="n">GetInteractor</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">interactor</span><span class="o">.</span><span class="n">GetShiftKey</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">deselect_points</span><span class="p">()</span>
+
+        <span class="n">num_planes</span> <span class="o">=</span> <span class="n">frustum</span><span class="o">.</span><span class="n">GetNumberOfPlanes</span><span class="p">()</span>
+        <span class="n">plane_norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">num_planes</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">plane_orig</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">num_planes</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_planes</span><span class="p">):</span>
+            <span class="n">plane</span> <span class="o">=</span> <span class="n">frustum</span><span class="o">.</span><span class="n">GetPlane</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="n">plane_norm</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">plane</span><span class="o">.</span><span class="n">GetNormal</span><span class="p">()</span>
+            <span class="n">plane_orig</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">plane</span><span class="o">.</span><span class="n">GetOrigin</span><span class="p">()</span>
+
+        <span class="n">frustum_min</span><span class="p">,</span> <span class="n">frustum_max</span> <span class="o">=</span> <span class="n">_compute_frustum_bound</span><span class="p">(</span><span class="n">plane_norm</span><span class="p">,</span> <span class="n">plane_orig</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">geometry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">geometry</span><span class="o">.</span><span class="n">visible</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">bounds</span> <span class="o">=</span> <span class="n">geometry</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">GetBounds</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">_bounds_in_frustum</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="n">plane_norm</span><span class="p">,</span> <span class="n">plane_orig</span><span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="n">points</span> <span class="o">=</span> <span class="n">geometry</span><span class="o">.</span><span class="n">points</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">points</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">frustum_min</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">points</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">frustum_max</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">points</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">frustum_min</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">points</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">frustum_max</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">points</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">frustum_min</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">points</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">frustum_max</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="k">continue</span>
+
+            <span class="n">ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">ids</span> <span class="o">=</span> <span class="n">ids</span><span class="p">[</span><span class="n">_points_in_frustum</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="n">ids</span><span class="p">],</span> <span class="n">plane_norm</span><span class="p">,</span> <span class="n">plane_orig</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">uuid</span> <span class="o">=</span> <span class="n">geometry</span><span class="o">.</span><span class="n">uuid</span>
+            <span class="k">if</span> <span class="n">uuid</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="p">[</span><span class="n">uuid</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+
+            <span class="n">union</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">union1d</span><span class="p">(</span><span class="n">ids</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="p">[</span><span class="n">uuid</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="p">[</span><span class="n">uuid</span><span class="p">]</span> <span class="o">=</span> <span class="n">union</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">highlight_selected_points</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_pick_prop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_pos</span><span class="p">):</span>
+        <span class="n">picker</span> <span class="o">=</span> <span class="n">vtk</span><span class="o">.</span><span class="n">vtkPropPicker</span><span class="p">()</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vtk_widget</span><span class="o">.</span><span class="n">GetRenderWindow</span><span class="p">()</span><span class="o">.</span><span class="n">GetRenderers</span><span class="p">()</span><span class="o">.</span><span class="n">GetFirstRenderer</span><span class="p">()</span>
+        <span class="n">picker</span><span class="o">.</span><span class="n">Pick</span><span class="p">(</span><span class="o">*</span><span class="n">event_pos</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+
+        <span class="n">picked_actor</span> <span class="o">=</span> <span class="n">picker</span><span class="o">.</span><span class="n">GetActor</span><span class="p">()</span>
+        <span class="n">actors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get_actors</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">picked_actor</span> <span class="ow">in</span> <span class="n">actors</span><span class="p">:</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">actors</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">picked_actor</span><span class="p">)</span>
+            <span class="n">uuid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">uuid</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_selection_by_uuid</span><span class="p">([</span><span class="n">uuid</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_selected_uuids</span><span class="p">()])</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_show_context_menu</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">itemAt</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">item</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="c1"># Make sure right click also selects group members</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">_select_group_children</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="n">context_menu</span> <span class="o">=</span> <span class="n">QMenu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="p">)</span>
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">setWindowFlags</span><span class="p">(</span>
+            <span class="n">context_menu</span><span class="o">.</span><span class="n">windowFlags</span><span class="p">()</span>
+            <span class="o">|</span> <span class="n">Qt</span><span class="o">.</span><span class="n">FramelessWindowHint</span>
+            <span class="o">|</span> <span class="n">Qt</span><span class="o">.</span><span class="n">NoDropShadowWindowHint</span>
+        <span class="p">)</span>
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">setAttribute</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">WA_TranslucentBackground</span><span class="p">)</span>
+
+        <span class="n">show_action</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Show&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="p">)</span>
+        <span class="n">show_action</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">visibility</span><span class="p">(</span><span class="n">visible</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">show_action</span><span class="p">)</span>
+        <span class="n">hide_action</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Hide&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="p">)</span>
+        <span class="n">hide_action</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">visibility</span><span class="p">(</span><span class="n">visible</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">hide_action</span><span class="p">)</span>
+
+        <span class="n">duplicate_action</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Duplicate&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="p">)</span>
+        <span class="n">duplicate_action</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">duplicate</span><span class="p">)</span>
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">duplicate_action</span><span class="p">)</span>
+        <span class="n">remove_action</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Remove&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="p">)</span>
+        <span class="n">remove_action</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">remove</span><span class="p">)</span>
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">remove_action</span><span class="p">)</span>
+
+        <span class="n">formats</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;Points&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Gaussian Density&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Normals&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Basis&quot;</span><span class="p">,</span>
+            <span class="kc">None</span><span class="p">,</span>
+            <span class="s2">&quot;Surface&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="n">extended_formats</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;Mesh&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Wireframe&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="n">selected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_selected_geometries</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;mesh&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">selected</span><span class="p">):</span>
+            <span class="n">formats</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">extended_formats</span><span class="p">)</span>
+
+        <span class="n">_formap_map</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">k</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">formats</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">}</span>
+        <span class="n">_formap_map</span><span class="p">[</span><span class="s2">&quot;Points&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pointcloud&quot;</span>
+
+        <span class="c1"># Only show checkbox if there is a majority representation</span>
+        <span class="n">_representation</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="o">.</span><span class="n">_representation</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">selected</span><span class="p">}</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_representation</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">_inverse_map</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">_formap_map</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+            <span class="n">_representation</span> <span class="o">=</span> <span class="n">_inverse_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_representation</span><span class="o">.</span><span class="n">pop</span><span class="p">())</span>
+            <span class="k">if</span> <span class="n">_representation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">_representation</span> <span class="o">=</span> <span class="n">_representation</span><span class="o">.</span><span class="n">title</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_representation</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">representation_menu</span> <span class="o">=</span> <span class="n">QMenu</span><span class="p">(</span><span class="s2">&quot;Representation&quot;</span><span class="p">,</span> <span class="n">context_menu</span><span class="p">)</span>
+        <span class="n">representation_menu</span><span class="o">.</span><span class="n">setWindowFlags</span><span class="p">(</span>
+            <span class="n">representation_menu</span><span class="o">.</span><span class="n">windowFlags</span><span class="p">()</span>
+            <span class="o">|</span> <span class="n">Qt</span><span class="o">.</span><span class="n">FramelessWindowHint</span>
+            <span class="o">|</span> <span class="n">Qt</span><span class="o">.</span><span class="n">NoDropShadowWindowHint</span>
+        <span class="p">)</span>
+        <span class="n">representation_menu</span><span class="o">.</span><span class="n">setAttribute</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">WA_TranslucentBackground</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">format_name</span> <span class="ow">in</span> <span class="n">formats</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">format_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">representation_menu</span><span class="o">.</span><span class="n">addSeparator</span><span class="p">()</span>
+                <span class="k">continue</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="n">format_name</span><span class="p">,</span> <span class="n">representation_menu</span><span class="p">)</span>
+            <span class="n">action</span><span class="o">.</span><span class="n">setCheckable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">format_name</span> <span class="o">==</span> <span class="n">_representation</span><span class="p">:</span>
+                <span class="n">action</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="n">action</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+                <span class="k">lambda</span> <span class="n">checked</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="n">format_name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">change_representation</span><span class="p">(</span>
+                    <span class="n">_formap_map</span><span class="p">[</span><span class="n">f</span><span class="p">]</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">representation_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">addSeparator</span><span class="p">()</span>
+
+        <span class="n">group_action</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Group&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="p">)</span>
+        <span class="n">group_action</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+            <span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">group_selected</span><span class="p">(</span><span class="s2">&quot;New Group&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">group_action</span><span class="p">)</span>
+
+        <span class="n">ungroup_action</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Ungroup&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="p">)</span>
+        <span class="n">ungroup_action</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+            <span class="k">lambda</span><span class="p">:</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">ungroup_selected</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">())</span>
+        <span class="p">)</span>
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ungroup_action</span><span class="p">)</span>
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">addMenu</span><span class="p">(</span><span class="n">representation_menu</span><span class="p">)</span>
+
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">addSeparator</span><span class="p">()</span>
+        <span class="n">export_menu</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Export As&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="p">)</span>
+        <span class="n">export_menu</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_export</span><span class="p">())</span>
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">export_menu</span><span class="p">)</span>
+
+        <span class="n">properties_action</span> <span class="o">=</span> <span class="n">QAction</span><span class="p">(</span><span class="s2">&quot;Properties&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="p">)</span>
+        <span class="n">properties_action</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_show_properties_dialog</span><span class="p">)</span>
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">properties_action</span><span class="p">)</span>
+
+        <span class="n">context_menu</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">mapToGlobal</span><span class="p">(</span><span class="n">position</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_handle_export</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.dialogs</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExportDialog</span>
+
+        <span class="n">enabled_categories</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;pointcloud&quot;</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">geometry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_selected_geometries</span><span class="p">():</span>
+            <span class="n">fit</span> <span class="o">=</span> <span class="n">geometry</span><span class="o">.</span><span class="n">model</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">fit</span><span class="p">,</span> <span class="s2">&quot;mesh&quot;</span><span class="p">):</span>
+                <span class="n">enabled_categories</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;mesh&quot;</span><span class="p">)</span>
+
+        <span class="n">sampling</span><span class="p">,</span> <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">geometry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_selected_geometries</span><span class="p">():</span>
+            <span class="n">sampling</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">sampling</span><span class="p">,</span> <span class="n">geometry</span><span class="o">.</span><span class="n">sampling_rate</span><span class="p">)</span>
+            <span class="n">bounds</span> <span class="o">=</span> <span class="n">geometry</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">GetBounds</span><span class="p">()</span>
+            <span class="n">geom_shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span>
+            <span class="n">geom_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">geom_shape</span><span class="p">,</span> <span class="n">geometry</span><span class="o">.</span><span class="n">sampling_rate</span><span class="p">)</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">geom_shape</span><span class="p">)</span>
+
+        <span class="n">sampling</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">sampling</span><span class="p">)</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="c1"># Shape is stored when opening files through the GUI</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">container_shape</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;shape&quot;</span><span class="p">))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Cleaned segmentations will be smaller. However, it makes sense to store</span>
+            <span class="c1"># them w.r.t to the intial volume. If they are larger it means the user</span>
+            <span class="c1"># added points which should be reflected in the default value</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">container_shape</span><span class="p">)</span>
+
+        <span class="n">shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">)</span>
+        <span class="n">dialog</span> <span class="o">=</span> <span class="n">ExportDialog</span><span class="p">(</span>
+            <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">enabled_categories</span><span class="o">=</span><span class="n">enabled_categories</span><span class="p">,</span>
+            <span class="n">parameters</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;shape_x&quot;</span><span class="p">:</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="s2">&quot;shape_y&quot;</span><span class="p">:</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="s2">&quot;shape_z&quot;</span><span class="p">:</span> <span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                <span class="s2">&quot;sampling&quot;</span><span class="p">:</span> <span class="n">sampling</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+
+        <span class="n">dialog</span><span class="o">.</span><span class="n">export_requested</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_wrap_export</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dialog</span><span class="o">.</span><span class="n">exec</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_wrap_export</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">export_data</span><span class="p">):</span>
+        <span class="n">file_format</span> <span class="o">=</span> <span class="n">export_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;format&quot;</span><span class="p">)</span>
+
+        <span class="n">file_dialog</span> <span class="o">=</span> <span class="n">QFileDialog</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+        <span class="n">file_path</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">file_dialog</span><span class="o">.</span><span class="n">getSaveFileName</span><span class="p">(</span>
+            <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Save File&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">file_format</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2"> Files (*.</span><span class="si">{</span><span class="n">file_format</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file_path</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">shape</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;shape&quot;</span><span class="p">))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sampling</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sampling_rate&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">sampling</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">((</span><span class="s2">&quot;shape_x&quot;</span><span class="p">,</span> <span class="s2">&quot;shape_y&quot;</span><span class="p">,</span> <span class="s2">&quot;shape_z&quot;</span><span class="p">),</span> <span class="n">shape</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">export_data</span><span class="p">:</span>
+                    <span class="n">export_data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">write_geometries</span><span class="p">(</span>
+                <span class="n">geometries</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_selected_geometries</span><span class="p">(),</span>
+                <span class="n">file_path</span><span class="o">=</span><span class="n">file_path</span><span class="p">,</span>
+                <span class="n">export_parameters</span><span class="o">=</span><span class="n">export_data</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_show_properties_dialog</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.dialogs</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeometryPropertiesDialog</span>
+
+        <span class="n">uuids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_selected_uuids</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">uuids</span><span class="p">):</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="n">base_container</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">uuids</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">base_parameters</span> <span class="o">=</span> <span class="n">base_container</span><span class="o">.</span><span class="n">_appearance</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">base_parameters</span><span class="p">[</span><span class="s2">&quot;sampling_rate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">base_container</span><span class="o">.</span><span class="n">sampling_rate</span>
+
+        <span class="n">dialog</span> <span class="o">=</span> <span class="n">GeometryPropertiesDialog</span><span class="p">(</span><span class="n">initial_properties</span><span class="o">=</span><span class="n">base_parameters</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">on_parameters_changed</span><span class="p">(</span><span class="n">parameters</span><span class="p">):</span>
+            <span class="n">sampling_rate</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;sampling_rate&quot;</span><span class="p">)</span>
+            <span class="n">full_render</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">update_appearance</span><span class="p">(</span><span class="n">uuids</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">uuid</span> <span class="ow">in</span> <span class="n">uuids</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">geometry</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">uuid</span><span class="p">))</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">geometry</span><span class="o">.</span><span class="n">sampling_rate</span> <span class="o">=</span> <span class="n">sampling_rate</span>
+
+            <span class="k">if</span> <span class="n">full_render</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>
+
+            <span class="c1"># Make sure selection is maintained and invoke render_vtk afterwards</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_selection_by_uuid</span><span class="p">(</span><span class="n">uuids</span><span class="p">)</span>
+
+        <span class="n">dialog</span><span class="o">.</span><span class="n">parametersChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">on_parameters_changed</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dialog</span><span class="o">.</span><span class="n">exec</span><span class="p">()</span> <span class="o">==</span> <span class="n">QDialog</span><span class="o">.</span><span class="n">DialogCode</span><span class="o">.</span><span class="n">Rejected</span><span class="p">:</span>
+            <span class="n">on_parameters_changed</span><span class="p">(</span><span class="n">base_parameters</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">1</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_uuid_to_items</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">uuid_to_items</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">geometry</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">i</span><span class="p">))</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">name</span> <span class="o">=</span> <span class="n">geometry</span><span class="o">.</span><span class="n">_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span>
+
+            <span class="n">item_type</span> <span class="o">=</span> <span class="s2">&quot;cluster&quot;</span>
+            <span class="k">if</span> <span class="n">geometry</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">item_type</span> <span class="o">=</span> <span class="s2">&quot;mesh&quot;</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">geometry</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;mesh&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;parametric&quot;</span>
+                <span class="k">if</span> <span class="n">item_type</span> <span class="o">==</span> <span class="s2">&quot;mesh&quot;</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">geometry</span><span class="p">,</span> <span class="s2">&quot;_trajectory&quot;</span><span class="p">):</span>
+                    <span class="n">item_type</span> <span class="o">=</span> <span class="s2">&quot;trajectory&quot;</span>
+
+            <span class="n">info</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;item_type&quot;</span><span class="p">:</span> <span class="n">item_type</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="s2">&quot;uuid&quot;</span><span class="p">:</span> <span class="n">geometry</span><span class="o">.</span><span class="n">uuid</span><span class="p">}</span>
+
+            <span class="n">geometry</span><span class="o">.</span><span class="n">_meta</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+            <span class="n">geometry</span><span class="o">.</span><span class="n">_meta</span><span class="p">[</span><span class="s2">&quot;info&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">info</span>
+
+            <span class="n">item</span> <span class="o">=</span> <span class="n">StyledTreeWidgetItem</span><span class="p">(</span>
+                <span class="n">name</span><span class="p">,</span> <span class="n">geometry</span><span class="o">.</span><span class="n">visible</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">editable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span>
+            <span class="p">)</span>
+            <span class="n">uuid_to_items</span><span class="p">[</span><span class="n">geometry</span><span class="o">.</span><span class="n">uuid</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span>
+        <span class="k">return</span> <span class="n">uuid_to_items</span>
+
+<div class="viewcode-block" id="DataContainerInteractor.render">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.render.html#mosaic.interactor.DataContainerInteractor.render">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">defer_render</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Synchronize vtk actors and tree data structure with subsequent render.&quot;&quot;&quot;</span>
+        <span class="n">renderer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vtk_widget</span><span class="o">.</span><span class="n">GetRenderWindow</span><span class="p">()</span><span class="o">.</span><span class="n">GetRenderers</span><span class="p">()</span><span class="o">.</span><span class="n">GetFirstRenderer</span><span class="p">()</span>
+
+        <span class="n">current_actors</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get_actors</span><span class="p">())</span>
+        <span class="n">actors_to_remove</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rendered_actors</span> <span class="o">-</span> <span class="n">current_actors</span>
+        <span class="k">for</span> <span class="n">actor</span> <span class="ow">in</span> <span class="n">actors_to_remove</span><span class="p">:</span>
+            <span class="n">renderer</span><span class="o">.</span><span class="n">RemoveActor</span><span class="p">(</span><span class="n">actor</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rendered_actors</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">actor</span><span class="p">)</span>
+
+        <span class="n">actors_to_add</span> <span class="o">=</span> <span class="n">current_actors</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">rendered_actors</span>
+        <span class="k">for</span> <span class="n">actor</span> <span class="ow">in</span> <span class="n">actors_to_add</span><span class="p">:</span>
+            <span class="n">renderer</span><span class="o">.</span><span class="n">AddActor</span><span class="p">(</span><span class="n">actor</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rendered_actors</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">actor</span><span class="p">)</span>
+
+        <span class="n">uuid_to_items</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uuid_to_items</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">uuid_to_items</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">defer_render</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_vtk</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render_update</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DataContainerInteractor.render_vtk">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.render_vtk.html#mosaic.interactor.DataContainerInteractor.render_vtk">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">render_vtk</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the vtk scene.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vtk_pre_render</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">vtk_widget</span><span class="o">.</span><span class="n">GetRenderWindow</span><span class="p">()</span><span class="o">.</span><span class="n">Render</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DataContainerInteractor.deselect_points">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.deselect_points.html#mosaic.interactor.DataContainerInteractor.deselect_points">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">deselect_points</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">point_ids</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">geometry</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">uuid</span><span class="p">))</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">color</span> <span class="o">=</span> <span class="n">geometry</span><span class="o">.</span><span class="n">_appearance</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;base_color&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">highlight_points</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="n">point_ids</span><span class="p">,</span> <span class="n">color</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DataContainerInteractor.highlight_selected_points">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.highlight_selected_points.html#mosaic.interactor.DataContainerInteractor.highlight_selected_points">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">highlight_selected_points</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">color</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">point_ids</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">highlight_points</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="n">point_ids</span><span class="p">,</span> <span class="n">color</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_vtk</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DataContainerInteractor.highlight_clusters_from_selected_points">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.highlight_clusters_from_selected_points.html#mosaic.interactor.DataContainerInteractor.highlight_clusters_from_selected_points">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">highlight_clusters_from_selected_points</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_selection_by_uuid</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span></div>
+
+
+<div class="viewcode-block" id="DataContainerInteractor.change_representation">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.change_representation.html#mosaic.interactor.DataContainerInteractor.change_representation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">change_representation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">representation</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">geometries</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_selected_geometries</span><span class="p">()):</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="k">for</span> <span class="n">geometry</span> <span class="ow">in</span> <span class="n">geometries</span><span class="p">:</span>
+            <span class="c1"># BUG: Moving from pointcloud_normals to a different representation and</span>
+            <span class="c1"># back breaks glyph rendering. This could be due to incorrect cleanup in</span>
+            <span class="c1"># Geometry.change_representation or an issue of vtk 9.3.1. Creating a copy</span>
+            <span class="c1"># of the Geometry instance circumvents the issue.</span>
+            <span class="k">if</span> <span class="n">representation</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;normals&quot;</span><span class="p">,</span> <span class="s2">&quot;basis&quot;</span><span class="p">,</span> <span class="s2">&quot;gaussian_density&quot;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">geometry</span><span class="o">.</span><span class="n">uuid</span><span class="p">,</span> <span class="n">geometry</span><span class="p">[</span><span class="o">...</span><span class="p">])</span>
+                <span class="n">geometry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">geometry</span><span class="o">.</span><span class="n">uuid</span><span class="p">)</span>
+
+            <span class="n">geometry</span><span class="o">.</span><span class="n">change_representation</span><span class="p">(</span><span class="n">representation</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_highlight_selection</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_backup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Save clusters and points that are modified by the operation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_merge_uuid</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_geometry_backup</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">x</span><span class="o">.</span><span class="n">uuid</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_selected_geometries</span><span class="p">()</span>
+            <span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_point_backup</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">i</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">i</span><span class="p">)[</span><span class="n">ix</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">ix</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">}</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_geometry_backup</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_point_backup</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">undo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_geometry_backup&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_merge_uuid&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_merge_uuid</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">geometry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_geometry_backup</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">geometry</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">geometry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_point_backup</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">prev_geometry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">uuid</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">prev_geometry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">geometry</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="n">geometry</span><span class="o">.</span><span class="n">merge</span><span class="p">((</span><span class="n">prev_geometry</span><span class="p">,</span> <span class="n">geometry</span><span class="p">)))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_geometry_backup</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_point_backup</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_merge_uuid</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_changed</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>
+
+<div class="viewcode-block" id="DataContainerInteractor.merge">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.merge.html#mosaic.interactor.DataContainerInteractor.merge">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">merge</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Geometry</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_backup</span><span class="p">()</span>
+        <span class="n">point_cluster</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_selection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deselect_points</span><span class="p">()</span>
+
+        <span class="n">merge</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">get_selected_geometries</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">point_cluster</span><span class="p">)]</span>
+        <span class="n">merge</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">merge</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Geometry</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">merge</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">merged_geometry</span> <span class="o">=</span> <span class="n">Geometry</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">merge</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">merge</span><span class="p">)</span>
+        <span class="n">new_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">merged_geometry</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_merge_uuid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">new_index</span><span class="p">)</span><span class="o">.</span><span class="n">uuid</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DataContainerInteractor.remove">
+<a class="viewcode-back" href="../../reference/rst/mosaic.interactor.DataContainerInteractor.remove.html#mosaic.interactor.DataContainerInteractor.remove">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_backup</span><span class="p">()</span>
+        <span class="n">added_cluster</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_selection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">point_selection</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span>
+            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">added_cluster</span><span class="p">),</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">get_selected_geometries</span><span class="p">()]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_changed</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">refresh_actors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="p">)):</span>
+            <span class="n">geometry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">geometry</span><span class="p">,</span> <span class="n">geometry</span><span class="p">[</span><span class="o">...</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">container</span><span class="p">,</span> <span class="n">tree_state</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update container with new data and optionally restore tree structure.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        container : :py:class:`mosaic.container.DataContainer`</span>
+<span class="sd">            Container with new data</span>
+<span class="sd">        tree_state : TreeState, optional</span>
+<span class="sd">            Tree structure to restore. If None, items added to root.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">container</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Can not update </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="p">)</span><span class="si">}</span><span class="s2"> using </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">container</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">container</span><span class="o">.</span><span class="n">metadata</span><span class="p">)</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">container</span><span class="o">.</span><span class="n">data</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">tree_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_list</span><span class="o">.</span><span class="n">apply_state</span><span class="p">(</span><span class="n">tree_state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uuid_to_items</span><span class="p">())</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_changed</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span></div>
+
+
+
+<span class="n">_GEOMETRY_OPERATIONS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;skeletonize&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;remove_original&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;background&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+    <span class="s2">&quot;downsample&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;remove_original&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;background&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+    <span class="s2">&quot;remove_outliers&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;remove_original&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;background&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+    <span class="s2">&quot;compute_normals&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;remove_original&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;background&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+    <span class="s2">&quot;cluster&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;remove_original&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;background&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+    <span class="s2">&quot;duplicate&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;remove_original&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span>
+    <span class="s2">&quot;visibility&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;remove_original&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;render&quot;</span><span class="p">:</span> <span class="s2">&quot;full&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;background&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;batch&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+
+<span class="k">for</span> <span class="n">op_name</span><span class="p">,</span> <span class="n">config</span> <span class="ow">in</span> <span class="n">_GEOMETRY_OPERATIONS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="n">method_name</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;method_name&quot;</span><span class="p">,</span> <span class="n">op_name</span><span class="p">)</span>
+    <span class="n">remove_orig</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;remove_original&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="n">render</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;render&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">)</span>
+    <span class="n">background</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;background&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="n">batch</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;batch&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_method</span><span class="p">(</span><span class="n">op_name</span><span class="p">,</span> <span class="n">remove_orig</span><span class="p">,</span> <span class="n">render_flag</span><span class="p">,</span> <span class="n">bg_task</span><span class="p">,</span> <span class="n">batch_flag</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;Apply </span><span class="si">{</span><span class="n">op_name</span><span class="si">}</span><span class="s2"> operation to selected geometries.&quot;&quot;&quot;</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Geometry</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">.operations</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeometryOperations</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">_render_callback</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">render_flag</span> <span class="o">==</span> <span class="s2">&quot;full&quot;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>
+                <span class="k">elif</span> <span class="n">render_flag</span> <span class="o">==</span> <span class="s2">&quot;vtk&quot;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">render_vtk</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="n">geometries</span> <span class="o">:=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;geometries&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">geometries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_selected_geometries</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">geometry</span> <span class="ow">in</span> <span class="n">geometries</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">geometry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">is_mesh</span> <span class="o">=</span> <span class="n">geometry</span><span class="o">.</span><span class="n">is_mesh_representation</span><span class="p">()</span>
+
+                <span class="k">def</span><span class="w"> </span><span class="nf">_callback</span><span class="p">(</span><span class="n">ret</span><span class="p">,</span> <span class="n">geom</span><span class="o">=</span><span class="n">geometry</span><span class="p">,</span> <span class="n">mesh</span><span class="o">=</span><span class="n">is_mesh</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">ret</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="kc">None</span>
+
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ret</span><span class="p">,</span> <span class="n">Geometry</span><span class="p">):</span>
+                        <span class="n">ret</span> <span class="o">=</span> <span class="p">(</span><span class="n">ret</span><span class="p">,)</span>
+
+                    <span class="k">for</span> <span class="n">new_geom</span> <span class="ow">in</span> <span class="n">ret</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">mesh</span><span class="p">:</span>
+                            <span class="n">new_geom</span><span class="o">.</span><span class="n">change_representation</span><span class="p">(</span><span class="s2">&quot;surface&quot;</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">new_geom</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">remove_orig</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">batch_flag</span><span class="p">:</span>
+                        <span class="n">_render_callback</span><span class="p">()</span>
+
+                <span class="c1"># Save some time on pickling</span>
+                <span class="k">if</span> <span class="n">remove_orig</span> <span class="ow">and</span> <span class="n">geometry</span><span class="o">.</span><span class="n">is_mesh_representation</span><span class="p">():</span>
+                    <span class="n">geometry</span><span class="o">.</span><span class="n">change_representation</span><span class="p">(</span><span class="s2">&quot;pointcloud&quot;</span><span class="p">)</span>
+                    <span class="n">geometry</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+                <span class="n">func</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">GeometryOperations</span><span class="p">,</span> <span class="n">op_name</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">bg_task</span><span class="p">:</span>
+                    <span class="n">submit_task</span><span class="p">(</span><span class="n">op_name</span><span class="o">.</span><span class="n">title</span><span class="p">(),</span> <span class="n">func</span><span class="p">,</span> <span class="n">_callback</span><span class="p">,</span> <span class="n">geometry</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="n">_callback</span><span class="p">(</span><span class="n">func</span><span class="p">(</span><span class="n">geometry</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">batch_flag</span><span class="p">:</span>
+                <span class="n">_render_callback</span><span class="p">()</span>
+
+        <span class="n">method</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">=</span> <span class="n">method_name</span>
+        <span class="n">method</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Apply </span><span class="si">{</span><span class="n">op_name</span><span class="si">}</span><span class="s2"> operation using GeometryOperations.&quot;</span>
+        <span class="k">return</span> <span class="n">method</span>
+
+    <span class="nb">setattr</span><span class="p">(</span>
+        <span class="n">DataContainerInteractor</span><span class="p">,</span>
+        <span class="n">method_name</span><span class="p">,</span>
+        <span class="n">create_method</span><span class="p">(</span><span class="n">op_name</span><span class="p">,</span> <span class="n">remove_orig</span><span class="p">,</span> <span class="n">render</span><span class="p">,</span> <span class="n">background</span><span class="p">,</span> <span class="n">batch</span><span class="p">),</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_compute_frustum_bound</span><span class="p">(</span><span class="n">plane_normals</span><span class="p">,</span> <span class="n">plane_origins</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">):</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">itertools</span><span class="w"> </span><span class="kn">import</span> <span class="n">combinations</span>
+
+    <span class="n">vertices</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">plane_normals</span><span class="p">)),</span> <span class="mi">3</span><span class="p">):</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">plane_normals</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">plane_normals</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">plane_normals</span><span class="p">[</span><span class="n">k</span><span class="p">]])</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">plane_normals</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">plane_origins</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">plane_normals</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">plane_origins</span><span class="p">[</span><span class="n">j</span><span class="p">]),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">plane_normals</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">plane_origins</span><span class="p">[</span><span class="n">k</span><span class="p">]),</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">A</span><span class="p">))</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">resolution</span><span class="p">:</span>
+            <span class="n">vertex</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+            <span class="n">vertices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vertex</span><span class="p">)</span>
+
+    <span class="n">vertices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">vertices</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">vertices</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">vertices</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_points_in_frustum</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">plane_normals</span><span class="p">,</span> <span class="n">plane_origins</span><span class="p">):</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">normal</span><span class="p">,</span> <span class="n">origin</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">plane_normals</span><span class="p">,</span> <span class="n">plane_origins</span><span class="p">):</span>
+        <span class="n">distances</span> <span class="o">=</span> <span class="p">(</span><span class="n">points</span> <span class="o">-</span> <span class="n">origin</span><span class="p">)</span> <span class="o">@</span> <span class="n">normal</span>
+        <span class="n">mask</span> <span class="o">&amp;=</span> <span class="n">distances</span> <span class="o">&lt;=</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">mask</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_bounds_in_frustum</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="n">plane_normals</span><span class="p">,</span> <span class="n">plane_origins</span><span class="p">):</span>
+    <span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">,</span> <span class="n">zmin</span><span class="p">,</span> <span class="n">zmax</span> <span class="o">=</span> <span class="n">bounds</span>
+    <span class="n">corners</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="p">[</span><span class="n">xmin</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">zmin</span><span class="p">],</span>
+            <span class="p">[</span><span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">zmin</span><span class="p">],</span>
+            <span class="p">[</span><span class="n">xmin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">,</span> <span class="n">zmin</span><span class="p">],</span>
+            <span class="p">[</span><span class="n">xmax</span><span class="p">,</span> <span class="n">ymax</span><span class="p">,</span> <span class="n">zmin</span><span class="p">],</span>
+            <span class="p">[</span><span class="n">xmin</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">zmax</span><span class="p">],</span>
+            <span class="p">[</span><span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">zmax</span><span class="p">],</span>
+            <span class="p">[</span><span class="n">xmin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">,</span> <span class="n">zmax</span><span class="p">],</span>
+            <span class="p">[</span><span class="n">xmax</span><span class="p">,</span> <span class="n">ymax</span><span class="p">,</span> <span class="n">zmax</span><span class="p">],</span>
+        <span class="p">],</span>
+        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">normal</span><span class="p">,</span> <span class="n">origin</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">plane_normals</span><span class="p">,</span> <span class="n">plane_origins</span><span class="p">):</span>
+        <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">corners</span> <span class="o">-</span> <span class="n">origin</span><span class="p">,</span> <span class="n">normal</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">distances</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

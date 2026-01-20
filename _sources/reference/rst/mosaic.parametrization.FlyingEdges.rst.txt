@@ -1,0 +1,41 @@
+﻿mosaic.parametrization.FlyingEdges
+==================================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: FlyingEdges
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~FlyingEdges.__init__
+      ~FlyingEdges.add_projections
+      ~FlyingEdges.compute_curvature
+      ~FlyingEdges.compute_distance
+      ~FlyingEdges.compute_normal
+      ~FlyingEdges.compute_vertex_normals
+      ~FlyingEdges.fit
+      ~FlyingEdges.from_file
+      ~FlyingEdges.geodesic_distance
+      ~FlyingEdges.points_per_sampling
+      ~FlyingEdges.sample
+      ~FlyingEdges.subset
+      ~FlyingEdges.to_file
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FlyingEdges.triangles
+      ~FlyingEdges.vertices
+   
+   

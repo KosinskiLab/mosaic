@@ -1,0 +1,6 @@
+﻿mosaic.parametrization.merge
+============================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autofunction:: merge

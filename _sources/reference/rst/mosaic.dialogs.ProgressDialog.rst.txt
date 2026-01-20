@@ -1,0 +1,25 @@
+﻿mosaic.dialogs.ProgressDialog
+=============================
+
+.. currentmodule:: mosaic.dialogs
+
+.. autoclass:: ProgressDialog
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ProgressDialog.__init__
+      ~ProgressDialog.close
+      ~ProgressDialog.setup_ui
+      ~ProgressDialog.update_progress
+   
+   
+
+   
+   
+   

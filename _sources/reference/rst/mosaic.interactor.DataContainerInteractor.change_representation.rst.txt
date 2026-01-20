@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.change\_representation
+================================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.change_representation

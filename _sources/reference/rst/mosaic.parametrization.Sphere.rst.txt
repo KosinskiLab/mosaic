@@ -1,0 +1,27 @@
+﻿mosaic.parametrization.Sphere
+=============================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: Sphere
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Sphere.__init__
+      ~Sphere.compute_distance
+      ~Sphere.compute_normal
+      ~Sphere.fit
+      ~Sphere.points_per_sampling
+      ~Sphere.sample
+   
+   
+
+   
+   
+   

@@ -1,0 +1,916 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Parametrization &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial/tabs/parametrization';</script>
+    <link rel="icon" href="../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Intelligence" href="intelligence.html" />
+    <link rel="prev" title="Segmentation" href="segmentation.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts.html">Concepts</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Working with Data</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../data/import_export.html">Import and Export</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data/sessions.html">Session Management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data/special.html">Specialized Views</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Feature Tabs</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="segmentation.html">Segmentation</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Parametrization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intelligence.html">Intelligence</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Practical Workflows</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../workflows/giardia.html">Working with <em>in situ</em> data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/iav.html">Influenza A Virus</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/pipeline.html">Batch Processing</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../reference/formats.html">File Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/issues.html">Issues</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Further Information</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../misc/license.html">License</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">User Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Parametrization</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="parametrization">
+<h1>Parametrization<a class="headerlink" href="#parametrization" title="Link to this heading">#</a></h1>
+<p>The <em>Parametrization</em> tab provides tools for fitting and working with models.</p>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-2 sd-row-cols-xs-2 sd-row-cols-sm-3 sd-row-cols-md-3 sd-row-cols-lg-4 sd-g-1 sd-g-xs-1 sd-g-sm-1 sd-g-md-1 sd-g-lg-1 docutils">
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Sphere</div>
+<i class="ph ph-circle" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#sphere"><span>#sphere</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Ellipse</div>
+<i class="ph ph-link-simple-horizontal-break" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#ellipsoid"><span>#ellipsoid</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Cylinder</div>
+<i class="ph ph-hexagon" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#cylinder"><span>#cylinder</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+RBF</div>
+<i class="ph ph-dots-nine" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#rbf"><span>#rbf</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Mesh</div>
+<i class="ph ph-triangle" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#mesh"><span>#mesh</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Curve</div>
+<i class="ph ph-line-segments" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#curve"><span>#curve</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Sample</div>
+<i class="ph ph-broadcast" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#sample"><span>#sample</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Repair</div>
+<i class="ph ph-wrench" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#repair"><span>#repair</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Remesh</div>
+<i class="ph ph-arrows-clockwise" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#remesh"><span>#remesh</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Smooth</div>
+<i class="ph ph-drop" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#smooth"><span>#smooth</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Project</div>
+<i class="ph ph-arrow-line-down" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#project"><span>#project</span></a></div>
+</div>
+</div>
+</div>
+<section id="parametric-fitting">
+<h2>Parametric Fitting<a class="headerlink" href="#parametric-fitting" title="Link to this heading">#</a></h2>
+<p>Fit basic geometric shapes to point clouds:</p>
+<section id="sphere">
+<span id="id1"></span><h3>Sphere<a class="headerlink" href="#sphere" title="Link to this heading">#</a></h3>
+<p>Fits a sphere using least squares optimization:</p>
+<ol class="arabic simple">
+<li><p>Select a cluster with spherical shape</p></li>
+<li><p>Click <strong>Sphere</strong> to fit the model</p></li>
+<li><p>The fitted sphere appears in the Models section</p></li>
+</ol>
+</section>
+<section id="ellipsoid">
+<span id="id2"></span><h3>Ellipsoid<a class="headerlink" href="#ellipsoid" title="Link to this heading">#</a></h3>
+<p>Fits an ellipsoid using eigenvalue decomposition and least squares optimization:</p>
+<ol class="arabic simple">
+<li><p>Select a cluster with ellipsoidal shape</p></li>
+<li><p>Click <strong>Ellipsoid</strong> to fit the model</p></li>
+<li><p>The fitted ellipsoid appears in the Models section</p></li>
+</ol>
+</section>
+<section id="cylinder">
+<span id="id3"></span><h3>Cylinder<a class="headerlink" href="#cylinder" title="Link to this heading">#</a></h3>
+<p>Fits a cylinder using PCA and iterative refinement:</p>
+<ol class="arabic simple">
+<li><p>Select a cluster with cylindrical or tubular shape</p></li>
+<li><p>Click <strong>Cylinder</strong> to fit the model</p></li>
+<li><p>The fitted cylinder appears in the Models section</p></li>
+</ol>
+</section>
+</section>
+<section id="non-parametric-fitting">
+<span id="rbf"></span><h2>Non-Parametric Fitting<a class="headerlink" href="#non-parametric-fitting" title="Link to this heading">#</a></h2>
+<section id="rbf-radial-basis-function">
+<span id="id4"></span><h3>RBF (Radial Basis Function)<a class="headerlink" href="#rbf-radial-basis-function" title="Link to this heading">#</a></h3>
+<p>Creates smooth, non-parametric surface models through radial basis function interpolation. Ideal for complex, non-parametric shapes that can be represented as height fields, i.e. an open membrane section.</p>
+<ol class="arabic simple">
+<li><p>Select a cluster with surface-like structure</p></li>
+<li><p>Click <strong>RBF</strong></p></li>
+<li><p>Configure interpolation direction:</p>
+<ul class="simple">
+<li><p><strong>xy</strong>: Surface as function of x,y coordinates</p></li>
+<li><p><strong>xz</strong>: Surface as function of x,z coordinates</p></li>
+<li><p><strong>yz</strong>: Surface as function of y,z coordinates</p></li>
+</ul>
+</li>
+<li><p>Click <strong>OK</strong> to create the interpolated surface</p></li>
+</ol>
+</section>
+<section id="mesh">
+<span id="id5"></span><h3>Mesh<a class="headerlink" href="#mesh" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Select a cluster with sufficient point density</p></li>
+<li><p>Click <strong>Mesh</strong></p></li>
+<li><p>Choose reconstruction method:</p>
+<ul class="simple">
+<li><p><strong>Alpha Shape</strong>: Convex hull with alpha parameter control</p></li>
+<li><p><strong>Ball Pivoting</strong>: Robust surface reconstruction for structured data</p></li>
+<li><p><strong>Cluster Ball Pivoting</strong>: Ball pivoting with automatic parameter determination</p></li>
+<li><p><strong>Poisson</strong>: Watertight surface reconstruction</p></li>
+<li><p><strong>Marching Cubes</strong>: Meshing of dense segmentations</p></li>
+<li><p><strong>Flying Edges</strong>: Like marching cubes but faster</p></li>
+</ul>
+</li>
+<li><p>Configure method-specific parameters:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Alpha Shape Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Alpha</strong>: Controls shape complexity (higher = coarser features)</p></li>
+<li><p><strong>Scaling Factor</strong>: Mesh resampling resolution</p></li>
+<li><p><strong>Distance</strong>: Threshold for inferred vs. measured vertices</p></li>
+</ul>
+</dd>
+<dt class="field-even">Ball Pivoting Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>Radii</strong>: Ball radii for reconstruction (comma-separated, e.g., “5,3.5,1.0”)</p></li>
+<li><p><strong>Downsample</strong>: Thin input point cloud to core points</p></li>
+<li><p><strong>Smoothing Steps</strong>: Pre-smoothing iterations</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Poisson Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Depth</strong>: Octree depth (higher = more detail)</p></li>
+<li><p><strong>Samples</strong>: Minimum points per octree node</p></li>
+<li><p><strong>Pointweight</strong>: Interpolation weight of input points</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Set repair parameters:</p>
+<ul class="simple">
+<li><p><strong>Elastic Weight</strong>: Controls mesh elasticity (0 = strong anchoring)</p></li>
+<li><p><strong>Curvature Weight</strong>: Controls curvature propagation</p></li>
+<li><p><strong>Volume Weight</strong>: Controls internal mesh pressure</p></li>
+<li><p><strong>Hole Size</strong>: Maximum hole area for automatic filling</p></li>
+</ul>
+</li>
+<li><p>Click <strong>OK</strong> to generate the mesh</p></li>
+</ol>
+<p><strong>Note</strong>: Mesh quality depends on point cloud density and noise levels. For noisy data, increase smoothing steps. For sparse data, reduce the number of neighbors.</p>
+</section>
+<section id="curve">
+<span id="id6"></span><h3>Curve<a class="headerlink" href="#curve" title="Link to this heading">#</a></h3>
+<p>Fits spline curves of requested order to sequential control point data. Good for creating smooth curves from hand-drawn paths:</p>
+<ol class="arabic simple">
+<li><p><strong>Create control points</strong> using drawing mode:</p>
+<ul class="simple">
+<li><p>Press <code class="docutils literal notranslate"><span class="pre">Shift+A</span></code> to enter curve drawing mode</p></li>
+<li><p>Click to place control points in sequence</p></li>
+<li><p>Press <code class="docutils literal notranslate"><span class="pre">Enter</span></code> to complete the curve</p></li>
+<li><p><em>OR</em> select an existing cluster with linear structure</p></li>
+</ul>
+</li>
+<li><p>Click <strong>Curve</strong></p></li>
+<li><p>Configure spline parameters:
+- <strong>Order</strong>: Spline degree (1=linear, 3=cubic, 5=quintic)</p></li>
+<li><p>Click <strong>OK</strong> to fit the curve</p></li>
+</ol>
+</section>
+</section>
+<section id="sampling-operations">
+<h2>Sampling Operations<a class="headerlink" href="#sampling-operations" title="Link to this heading">#</a></h2>
+<section id="sample">
+<span id="id7"></span><h3>Sample<a class="headerlink" href="#sample" title="Link to this heading">#</a></h3>
+<p>Creates point clouds from fitted models:</p>
+<ol class="arabic simple">
+<li><p>Select one or more models in the Object Browser</p></li>
+<li><p>Click <strong>Sample</strong></p></li>
+<li><p>Configure sampling parameters:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Sampling Method<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Points</strong>: Generate specified number of points</p></li>
+<li><p><strong>Distance</strong>: Generate points with specified average spacing</p></li>
+</ul>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>Sampling</strong>: Number of points or point spacing value</p></li>
+<li><p><strong>Offset</strong>: Normal-direction offset from surface (useful for particle picking)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Click <strong>OK</strong> to generate sample points</p></li>
+</ol>
+</section>
+</section>
+<section id="mesh-operations">
+<h2>Mesh Operations<a class="headerlink" href="#mesh-operations" title="Link to this heading">#</a></h2>
+<section id="repair">
+<span id="id8"></span><h3>Repair<a class="headerlink" href="#repair" title="Link to this heading">#</a></h3>
+<p>Fixes mesh topology issues and fills holes using Leipa triangulation and fairing:</p>
+<ol class="arabic simple">
+<li><p>Select mesh models to repair</p></li>
+<li><p>Click <strong>Repair</strong></p></li>
+<li><p>Configure repair parameters:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Optimization Weights<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Elastic Weight</strong>: Mesh smoothness (0=anchor to original, 1=free movement)</p></li>
+<li><p><strong>Curvature Weight</strong>: Preserve or modify curvature</p></li>
+<li><p><strong>Volume Weight</strong>: Internal pressure (positive=inflation, negative=shrinkage)</p></li>
+<li><p><strong>Boundary Ring</strong>: Optimize n-ring vertices around boundaries</p></li>
+</ul>
+</dd>
+<dt class="field-even">Hole Filling<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>Hole Size</strong>: Maximum hole area to fill (-1=fill all holes)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Click <strong>OK</strong> to repair meshes</p></li>
+</ol>
+<section id="remesh">
+<span id="id9"></span><h4>Remesh<a class="headerlink" href="#remesh" title="Link to this heading">#</a></h4>
+<p>Improves mesh quality and adjusts triangle density:</p>
+<ol class="arabic simple">
+<li><p>Select mesh models to remesh</p></li>
+<li><p>Click <strong>Remesh</strong></p></li>
+<li><p>Choose remeshing method:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Edge Length<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Edge Length</strong>: Target average edge length</p></li>
+<li><p><strong>Iterations</strong>: Number of optimization passes</p></li>
+<li><p><strong>Mesh Angle</strong>: Preserve edges above this angle threshold</p></li>
+</ul>
+</dd>
+<dt class="field-even">Vertex Clustering<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>Radius</strong>: Clustering radius for vertex merging</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Quadratic Decimation<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Triangles</strong>: Target triangle count</p></li>
+</ul>
+</dd>
+<dt class="field-even">Subdivide<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>Iterations</strong>: Number of subdivision passes</p></li>
+<li><p><strong>Smooth</strong>: Use smooth Loop subdivision vs. simple midpoint</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Configure method-specific parameters</p></li>
+<li><p>Click <strong>OK</strong> to remesh</p></li>
+</ol>
+<p><strong>Use Cases:</strong></p>
+<ul class="simple">
+<li><p><strong>Edge Length</strong>: Create uniform triangle sizes for simulation</p></li>
+<li><p><strong>Vertex Clustering</strong>: Quick mesh simplification</p></li>
+<li><p><strong>Quadratic Decimation</strong>: High-quality mesh reduction</p></li>
+<li><p><strong>Subdivide</strong>: Increase resolution for detailed modeling</p></li>
+</ul>
+</section>
+</section>
+<section id="smooth">
+<span id="project"></span><h3>Smooth<a class="headerlink" href="#smooth" title="Link to this heading">#</a></h3>
+<p>Improves mesh quality by smoothing surface.</p>
+<ol class="arabic simple">
+<li><p>Select mesh models to smooth</p></li>
+<li><p>Click <strong>Smooth</strong></p></li>
+<li><p>Choose remeshing method:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Taubin<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p>Solid smoothing without net shrinkage</p></li>
+</ul>
+</dd>
+<dt class="field-even">Laplacian<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p>Very smooth mesh but net shrinkage</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Average<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p>Mesh denoising but net shrinkage</p></li>
+</ul>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>Iterations</strong>: Number of smoothing iterations (higher is smoother)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Click <strong>OK</strong> to remesh</p></li>
+</ol>
+</section>
+<section id="id10">
+<span id="id11"></span><h3>Project<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
+<p>Projects point clouds onto mesh surfaces using ray casting:</p>
+<ol class="arabic simple">
+<li><p>Select exactly one mesh model (target surface)</p></li>
+<li><p>Select one or more point cloud clusters (sources to project)</p></li>
+<li><p>Click <strong>Project</strong></p></li>
+<li><p>Configure projection settings:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Projection Method<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Cast Normals</strong>: Use point normal vectors for ray casting</p></li>
+<li><p><strong>Invert Normals</strong>: Reverse normal direction</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Click <strong>OK</strong> to perform projection</p></li>
+</ol>
+<p><strong>Results:</strong></p>
+<ul class="simple">
+<li><p>Creates new point clouds with projected coordinates</p></li>
+<li><p>Generates updated mesh with projection points integrated</p></li>
+<li><p>Preserves original data while adding projected versions</p></li>
+</ul>
+</section>
+<section id="next-steps">
+<h3>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h3>
+<p>Continue to the <a class="reference internal" href="intelligence.html"><span class="doc">Intelligence</span></a> tab to learn about advanced features like HMFF and membrane segmentation.</p>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="segmentation.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Segmentation</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="intelligence.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Intelligence</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#parametric-fitting">Parametric Fitting</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sphere">Sphere</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ellipsoid">Ellipsoid</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cylinder">Cylinder</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#non-parametric-fitting">Non-Parametric Fitting</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rbf-radial-basis-function">RBF (Radial Basis Function)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mesh">Mesh</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#curve">Curve</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sampling-operations">Sampling Operations</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sample">Sample</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mesh-operations">Mesh Operations</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#repair">Repair</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#remesh">Remesh</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#smooth">Smooth</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">Project</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next Steps</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

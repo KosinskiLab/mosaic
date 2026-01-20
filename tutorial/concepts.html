@@ -1,0 +1,678 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Concepts &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial/concepts';</script>
+    <link rel="icon" href="../_static/logo.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Import and Export" href="data/import_export.html" />
+    <link rel="prev" title="Quickstart" href="quickstart.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Concepts</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Working with Data</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="data/import_export.html">Import and Export</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data/sessions.html">Session Management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data/special.html">Specialized Views</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Feature Tabs</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="tabs/segmentation.html">Segmentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tabs/parametrization.html">Parametrization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tabs/intelligence.html">Intelligence</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Practical Workflows</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="workflows/giardia.html">Working with <em>in situ</em> data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="workflows/iav.html">Influenza A Virus</a></li>
+<li class="toctree-l1"><a class="reference internal" href="workflows/pipeline.html">Batch Processing</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="reference/formats.html">File Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/issues.html">Issues</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Further Information</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="misc/license.html">License</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">User Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Concepts</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="concepts">
+<h1>Concepts<a class="headerlink" href="#concepts" title="Link to this heading">#</a></h1>
+<p>This section introduces the fundamental concepts behind Mosaic and explains the main components of the user interface.</p>
+<section id="ui-layout">
+<h2>UI Layout<a class="headerlink" href="#ui-layout" title="Link to this heading">#</a></h2>
+<p>The Mosaic interface consists of several key components:</p>
+<ol class="arabic simple">
+<li><p><strong>Menu Bar</strong>: Access to file operations, view settings and help (on macOS its in the top menu)</p></li>
+<li><p><strong>Tab Bar</strong>: Switches between major functional areas</p>
+<ul class="simple">
+<li><p><strong>Segmentation</strong>: Work with point cloud data and analyze object properties</p></li>
+<li><p><strong>Parametrization</strong>: Create and operate on mathematical models</p></li>
+<li><p><strong>Intelligence</strong>: Advanced features (Dynamically Triangulated Surface simulations, constrained template matching, membrane segmentations)</p></li>
+</ul>
+</li>
+<li><p><strong>Ribbon Toolbar</strong>: Context-specific tools for the active tab</p></li>
+<li><p><strong>Object Browser</strong>: Lists and manages loaded data with:</p>
+<ul class="simple">
+<li><p>Visibility indicators with data types</p></li>
+<li><p>Context menus for operations</p></li>
+<li><p>Editable names</p></li>
+</ul>
+</li>
+<li><p><strong>3D Viewport</strong>: Main visualization area with:</p>
+<ul class="simple">
+<li><p>Navigation controls</p></li>
+<li><p>Orientation indicators</p></li>
+<li><p>Optional coordinate axes</p></li>
+</ul>
+</li>
+<li><p><strong>Status Bar</strong>: Shows interaction mode, target, and processing status (see below)</p></li>
+</ol>
+<p>Additional dock widgets such as the <em>Volume Viewer</em> will be displayed at the bottom of the window.</p>
+<figure class="align-center" id="id1">
+<a class="reference internal image-reference" href="../_static/tutorial/mosaic_layout.png"><img alt="../_static/tutorial/mosaic_layout.png" src="../_static/tutorial/mosaic_layout.png" style="width: 100%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">Mosaic interface layout.</span><a class="headerlink" href="#id1" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="object-browser">
+<h2>Object Browser<a class="headerlink" href="#object-browser" title="Link to this heading">#</a></h2>
+<figure class="align-right" id="id2">
+<a class="reference internal image-reference" href="../_static/tutorial/mosaic_object_browser.png"><img alt="../_static/tutorial/mosaic_object_browser.png" src="../_static/tutorial/mosaic_object_browser.png" style="width: 40%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">Object Browser</span><a class="headerlink" href="#id2" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>The <em>Object Browser</em> is your central hub for managing all data in Mosaic. It displays all loaded objects in two main categories:</p>
+<ul class="simple">
+<li><p><strong>Clusters</strong>: Point cloud objects, e.g. a segmentation, where each point is defined by:</p>
+<ul>
+<li><p>Position vector (X, Y, Z coordinates)</p></li>
+<li><p>Unit quaternion to describe orientation (scalar-first w, x, y, z)</p></li>
+</ul>
+</li>
+<li><p><strong>Models</strong>: Geometric shapes and surfaces including:</p>
+<ul>
+<li><p>Fitted primitives (spheres, ellipsoids, cylinders)</p></li>
+<li><p>Triangulated meshes</p></li>
+<li><p>DTS simulation trajectories.</p></li>
+</ul>
+</li>
+</ul>
+<p>The symbol next to each object indicates the data type. The color of the symbol indicates if the object is shown or hidden.</p>
+<ul class="simple">
+<li><p>Single click: Select one object</p></li>
+<li><p>Double click: Edit object name</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Ctrl+click</span></code>: Add to selection</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Ctrl+A</span></code>: Select all objects</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Shift+click</span></code>: Select range</p></li>
+</ul>
+<p>The search field at the top can be used to filter objects in both categories simultaneously.</p>
+</section>
+<section id="context-menu">
+<h2>Context Menu<a class="headerlink" href="#context-menu" title="Link to this heading">#</a></h2>
+<figure class="align-right" id="id3">
+<a class="reference internal image-reference" href="../_static/tutorial/mosaic_context.png"><img alt="../_static/tutorial/mosaic_context.png" src="../_static/tutorial/mosaic_context.png" style="width: 50%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">Context menu with options</span><a class="headerlink" href="#id3" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>Right-click any object in the <em>Object Browser</em> to access:</p>
+<ul class="simple">
+<li><p><strong>Show/Hide</strong>: Toggle visibility</p></li>
+<li><p><strong>Duplicate/Remove</strong>: Copy or delete objects</p></li>
+<li><p><strong>Group/Ungroup</strong>: Group collections of objects</p></li>
+<li><p><strong>Representation</strong>: Modify how objects appear</p></li>
+<li><p><strong>Export</strong>: Save to various formats</p></li>
+<li><p><strong>Properties</strong>: Set rendering properties.</p></li>
+</ul>
+</section>
+<section id="status-bar">
+<h2>Status Bar<a class="headerlink" href="#status-bar" title="Link to this heading">#</a></h2>
+<p>The status bar at the bottom of the window displays three key pieces of information:</p>
+<section id="interaction-mode">
+<h3>Interaction Mode<a class="headerlink" href="#interaction-mode" title="Link to this heading">#</a></h3>
+<p>Shows the current interaction mode (e.g., Viewing, Selection, Drawing). The cursor shape also reflects the active mode.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Exit any mode by pressing its activation key again or <code class="docutils literal notranslate"><span class="pre">Esc</span></code>. Modes can also be activated via <strong>Actions</strong> in the menu bar.</p>
+</div>
+<p><strong>Viewing Mode (Default)</strong></p>
+<ul class="simple">
+<li><p>Default camera navigation mode</p></li>
+<li><p>Use mouse to rotate, pan, and zoom the 3D viewport</p></li>
+<li><p>Press <code class="docutils literal notranslate"><span class="pre">Esc</span></code> to return to viewing mode from any other mode</p></li>
+</ul>
+<p><strong>Area Selection</strong> — Press <code class="docutils literal notranslate"><span class="pre">r</span></code> to activate rectangular selection mode. Click and drag to select points within a rectangular area. Press <code class="docutils literal notranslate"><span class="pre">e</span></code> to expand selection to entire connected clusters.</p>
+<p><strong>Point Drawing</strong> — Press <code class="docutils literal notranslate"><span class="pre">a</span></code> to activate drawing mode. Click anywhere in the 3D viewport to add new points. If no cluster is selected, a new one is created automatically.</p>
+<p><strong>Curve Drawing</strong> — Press <code class="docutils literal notranslate"><span class="pre">Shift+A</span></code> to activate curve drawing mode. Click to place points along a curve path. Press <code class="docutils literal notranslate"><span class="pre">Enter</span></code> to save the curve as a new cluster.</p>
+<p><strong>Object Picking</strong> — Press <code class="docutils literal notranslate"><span class="pre">E</span></code> to activate object picking mode. Click directly on objects to select them. Selected objects are highlighted in the Object Browser.</p>
+<p><strong>Mesh Delete</strong> — Press <code class="docutils literal notranslate"><span class="pre">q</span></code> to activate mesh face selection mode. Click on triangular faces to select them, then press <code class="docutils literal notranslate"><span class="pre">Delete</span></code> to remove.</p>
+<p><strong>Mesh Add</strong> — Press <code class="docutils literal notranslate"><span class="pre">Q</span></code> to activate mesh addition mode. Click on three points to create a new triangular face.</p>
+</section>
+<section id="interaction-target">
+<h3>Interaction Target<a class="headerlink" href="#interaction-target" title="Link to this heading">#</a></h3>
+<p>Indicates whether picking operations apply to <strong>Clusters</strong> or <strong>Models</strong>. Press <code class="docutils literal notranslate"><span class="pre">s</span></code> during object picking to switch targets.</p>
+</section>
+<section id="processing-indicator">
+<h3>Processing Indicator<a class="headerlink" href="#processing-indicator" title="Link to this heading">#</a></h3>
+<p>Shows <strong>Idle</strong> when no tasks are running or <strong>Busy</strong> with an animated spinner during background operations. Click the indicator to open the <em>Task Monitor</em>, which displays:</p>
+<ul class="simple">
+<li><p><strong>Running</strong>: Currently executing tasks</p></li>
+<li><p><strong>Queued</strong>: Tasks waiting to start</p></li>
+<li><p><strong>Completed</strong>: Successfully finished tasks</p></li>
+<li><p><strong>Failed</strong>: Tasks that encountered errors</p></li>
+</ul>
+<p>Expand any task to view its output. Use <em>Clear Finished</em> to remove completed and failed tasks from the list.</p>
+</section>
+</section>
+<section id="coordinate-system">
+<h2>Coordinate System<a class="headerlink" href="#coordinate-system" title="Link to this heading">#</a></h2>
+<p>Mosaic does not handle spatial units internally. Instead, imported data is immediately transformed into a consistent reference frame based on the sampling rate (typically Ångstroms for molecular data). This sampling rate is provided by the user or can be extracted from the header of particular file formats, e.g., mrc files.</p>
+<p>Assuming a segmentation is loaded from an mrc file with a sampling rate of 6.80 Ångstroms per voxel, Mosaic will multiply the voxel coordinates with the sampling rate. Therefore, the internal scale would be in Ångstroms. The sampling rate also affects:</p>
+<ul class="simple">
+<li><p>Display size</p></li>
+<li><p>Filtering operations</p></li>
+<li><p>Distance measurements</p></li>
+<li><p>Export operations</p></li>
+</ul>
+<p>Mosaic uses a right-handed coordinate system:</p>
+<ul class="simple">
+<li><p>X-axis: Horizontal (left to right)</p></li>
+<li><p>Y-axis: Vertical (bottom to top)</p></li>
+<li><p>Z-axis: Depth (back to front)</p></li>
+</ul>
+<p>The standard orientation is (0, 0, 1).</p>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
+<p>Now that you understand the basic concepts and layout of Mosaic, proceed to the <a class="reference internal" href="data/import_export.html"><span class="doc">Working with Data</span></a> section to learn how to handle different data types.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="quickstart.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Quickstart</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="data/import_export.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Import and Export</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ui-layout">UI Layout</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#object-browser">Object Browser</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#context-menu">Context Menu</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#status-bar">Status Bar</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#interaction-mode">Interaction Mode</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#interaction-target">Interaction Target</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#processing-indicator">Processing Indicator</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#coordinate-system">Coordinate System</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next Steps</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

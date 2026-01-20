@@ -1,0 +1,792 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Batch Processing &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial/workflows/pipeline';</script>
+    <link rel="icon" href="../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="File Formats" href="../reference/formats.html" />
+    <link rel="prev" title="Influenza A Virus" href="iav.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts.html">Concepts</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Working with Data</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../data/import_export.html">Import and Export</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data/sessions.html">Session Management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data/special.html">Specialized Views</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Feature Tabs</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../tabs/segmentation.html">Segmentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tabs/parametrization.html">Parametrization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tabs/intelligence.html">Intelligence</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Practical Workflows</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="giardia.html">Working with <em>in situ</em> data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="iav.html">Influenza A Virus</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Batch Processing</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../reference/formats.html">File Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/issues.html">Issues</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Further Information</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../misc/license.html">License</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">User Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Batch Processing</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="batch-processing">
+<h1>Batch Processing<a class="headerlink" href="#batch-processing" title="Link to this heading">#</a></h1>
+<p>Cryo-electron tomography datasets frequently comprise tens to hundreds of tomograms, each requiring consistent processing. Manually applying the same operations to each tomogram is tedious and error-prone. This tutorial demonstrates how to construct reproducible workflows that process entire datasets automatically. Pipelines are useful for datasets of 10 or more tomograms, though the reproducibility benefits apply to smaller datasets as well. For individual samples, the GUI provides the same (or more) functionality with immediate visual feedback.</p>
+<p>We use a <em>Chlamydomonas reinhardtii</em> dataset as our working example. Starting from membrane segmentations, we will generate seed points for constrained template matching of membrane-associated proteins.</p>
+<section id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">#</a></h2>
+<p>Install Mosaic according to the <a class="reference internal" href="../installation.html"><span class="doc">installation instructions</span></a>.</p>
+<p>This tutorial assumes voxel-level membrane segmentations are available, with one file per tomogram:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>segmentations/
+├── tomo_001_seg.mrc
+├── tomo_002_seg.mrc
+├── ...
+└── tomo_100_seg.mrc
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The batch processing functionality is available with version 1.1.0 of Mosaic.</p>
+</div>
+</section>
+<section id="creating-a-processing-pipeline">
+<h2>Creating a Processing Pipeline<a class="headerlink" href="#creating-a-processing-pipeline" title="Link to this heading">#</a></h2>
+<p>Open the Pipeline Builder via <strong>File &gt; Batch Processing</strong> (or <strong>Ctrl+Shift+P</strong>).</p>
+<figure class="align-center" id="id1">
+<a class="reference internal image-reference" href="../../_images/builder_overview.png"><img alt="../../_images/builder_overview.png" src="../../_images/builder_overview.png" style="width: 100%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">Pipeline Builder interface showing the operation library (left) and workflow panel (right).</span><a class="headerlink" href="#id1" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>For seed point generation, click the <strong>Particle Picking</strong> preset in the bottom panel. This loads a standard workflow that we will customize for our data.</p>
+<section id="configuring-input-files">
+<h3>Configuring Input Files<a class="headerlink" href="#configuring-input-files" title="Link to this heading">#</a></h3>
+<p>Expand the <strong>Import Files</strong> card by clicking on it, then click <strong>Select Files</strong> to choose your segmentation files. If your segmentations have incorrect file header information, click <strong>Configure Import Parameters</strong> to adapt them.</p>
+<figure class="align-right" id="id2">
+<a class="reference internal image-reference" href="../../_images/batch_import.png"><img alt="../../_images/batch_import.png" src="../../_images/batch_import.png" style="width: 60%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">Import Files configuration.</span><a class="headerlink" href="#id2" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="understanding-the-processing-steps">
+<h3>Understanding the Processing Steps<a class="headerlink" href="#understanding-the-processing-steps" title="Link to this heading">#</a></h3>
+<p>Each operation card can be expanded to configure its parameters. The preset workflow performs the following transformations:</p>
+<ol class="arabic simple">
+<li><p><strong>Clustering</strong>: Separates the segmentation into distinct membrane compartments</p></li>
+<li><p><strong>Filtering</strong>: Removes small fragments that are likely segmentation artifacts</p></li>
+<li><p><strong>Meshing + Smoothing</strong>: Creates a smooth triangular surface representation</p></li>
+<li><p><strong>Sampling</strong>: Places evenly-spaced points with surface normals along the membrane</p></li>
+</ol>
+<p>Here we explain how to choose appropriate parameter values.</p>
+<p><strong>Clustering</strong></p>
+<p>Clustering separates your segmentation into distinct membrane compartments. A single segmentation file often contains multiple membranes (plasma membrane, ER, mitochondria, etc.) that should be processed independently.</p>
+<ul class="simple">
+<li><p>Method: <em>Connected Components</em> identifies spatially separated regions</p></li>
+<li><p>Distance: <em>-1.0</em> uses single-voxel connectivity</p></li>
+</ul>
+<p><strong>Cluster Selection</strong></p>
+<p>Small clusters are typically segmentation artifacts rather than real membranes. This step removes them based on point count.</p>
+<ul class="simple">
+<li><p>Lower Threshold: Minimum number of points to keep a cluster</p></li>
+</ul>
+<p>The appropriate threshold depends on your tomogram’s pixel size and specimen. At 7Å/pixel, a threshold of 2000-8000 points is reasonable. At 14Å/pixel, the same physical membrane contains fewer voxels, so use a lower threshold (500-1000). Examine a few segmentations manually to determine what size range corresponds to real membranes versus noise.</p>
+<p><strong>Mesh</strong></p>
+<p>Meshing converts the point cloud into a triangular surface, enabling computation of surface normals.</p>
+<ul class="simple">
+<li><p>Method: <em>Flying Edges</em> is fast and works well for initial mesh generation on dense volumes.</p></li>
+</ul>
+<p>Meshes created with Flying Edges (and Marching Cubes) extract the contour of the segmentation, producing a closed surface that encloses the segmented region. This means seed points will be generated on both sides of the membrane, with normals pointing away from the enclosed volume on each side.</p>
+<p>Alternative meshing methods (demonstrated in the Meshing pipeline preset) can fit a surface through the center of the segmentation rather than along its contour. These methods produce normals that all point in the same direction, which can be advantageous for template matching as it provides more precise spatial constraints, i.e., you search only on the biologically relevant side of the membrane rather than both sides.</p>
+<p><strong>Remesh and Smoothing</strong></p>
+<p>These steps create a cleaner surface representation. The original segmentation contains voxel-level noise that would result in inaccurate surface normals. Smoothing produces normals that better represent the true membrane orientation.</p>
+<ul class="simple">
+<li><p>Smoothing Method: <em>Taubin</em> preserves surface shape while reducing noise</p></li>
+<li><p>Iterations: <em>10</em> is typically sufficient</p></li>
+</ul>
+<p><strong>Sample</strong></p>
+<p>Sampling places seed points along the smoothed surface at regular intervals. These points, along with their surface normals, constrain downstream template matching to search only near the membrane surface.</p>
+<ul class="simple">
+<li><p>Method: <em>Distance</em> ensures uniform spacing between points</p></li>
+<li><p>Sampling: Distance between seed points in Angstroms. Choose a value smaller than the expected protein spacing, typically one-half to one-third the inter-protein distance. 30Å works well for most applications.</p></li>
+<li><p>Offset: Distance from the surface toward the protein center. Set this to approximately half the height of your target protein.</p></li>
+</ul>
+<p><strong>Export Data</strong></p>
+<ul class="simple">
+<li><p>Format: <em>STAR</em> for compatibility with PyTME</p></li>
+<li><p>Output Directory: Where to save the seed point files</p></li>
+</ul>
+<p><strong>Save Session</strong></p>
+<p>Saving sessions allows you to review results in Mosaic and make manual corrections if needed.</p>
+<ul class="simple">
+<li><p>Output Directory: Where to save Mosaic session files</p></li>
+</ul>
+</section>
+<section id="execution-settings">
+<h3>Execution Settings<a class="headerlink" href="#execution-settings" title="Link to this heading">#</a></h3>
+<p>At the bottom of the Pipeline Builder:</p>
+<ul class="simple">
+<li><p><strong>Parallel Workers</strong>: Number of files to process simultaneously. Each worker requires approximately 8GB of memory.</p></li>
+<li><p><strong>Skip Complete</strong>: Skip files that already have output. Enable this to resume interrupted processing or re-run after adjusting parameters.</p></li>
+</ul>
+</section>
+</section>
+<section id="running-the-pipeline">
+<h2>Running the Pipeline<a class="headerlink" href="#running-the-pipeline" title="Link to this heading">#</a></h2>
+<p>Click <strong>Run Pipeline</strong> to start processing. The status indicator in the bottom-right corner shows progress. For a typical workflow, expect 2-4 minutes per tomogram, scaling linearly with file count.</p>
+<p>Upon completion, the Batch Navigator opens automatically.</p>
+<section id="cluster-execution">
+<h3>Cluster Execution<a class="headerlink" href="#cluster-execution" title="Link to this heading">#</a></h3>
+<p>For large datasets or limited local resources, run pipelines on an HPC cluster:</p>
+<ol class="arabic simple">
+<li><p>Click <strong>Export Pipeline</strong> and save as <code class="docutils literal notranslate"><span class="pre">pipeline.json</span></code></p></li>
+<li><p>Transfer the configuration and data to your cluster</p></li>
+</ol>
+<p>The <code class="docutils literal notranslate"><span class="pre">mosaic-pipeline</span></code> command executes pipelines from the command line:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Process all files with 8 parallel workers</span>
+mosaic-pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--workers<span class="w"> </span><span class="m">8</span>
+
+<span class="c1"># Resume processing, skipping completed files</span>
+mosaic-pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--workers<span class="w"> </span><span class="m">8</span><span class="w"> </span>--skip-complete
+
+<span class="c1"># Preview runs without executing</span>
+mosaic-pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--dry-run
+</pre></div>
+</div>
+<p>For job array submission on SLURM, save this script and run it as <code class="docutils literal notranslate"><span class="pre">sbatch</span> <span class="pre">run_pipeline.sh</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/bash</span>
+<span class="c1">#SBATCH --job-name=mosaic_batch</span>
+<span class="c1">#SBATCH --cpus-per-task=2</span>
+<span class="c1">#SBATCH --mem=12G</span>
+<span class="c1">#SBATCH --time=01:00:00</span>
+<span class="c1">#SBATCH --output=logs/mosaic_%A_%a.out</span>
+
+<span class="nv">CONFIG</span><span class="o">=</span><span class="s2">&quot;/path/to/pipeline.json&quot;</span>
+
+<span class="c1"># Self-submitting: first run determines array size</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SLURM_ARRAY_TASK_ID</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span>logs
+<span class="w">    </span><span class="nv">N_RUNS</span><span class="o">=</span><span class="k">$(</span>mosaic-pipeline<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span><span class="w"> </span>--dry-run<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-oP<span class="w"> </span><span class="s1">&#39;\d+&#39;</span><span class="k">)</span>
+<span class="w">    </span>sbatch<span class="w"> </span>--array<span class="o">=</span><span class="m">0</span>-<span class="k">$((</span><span class="nv">N_RUNS</span><span class="o">-</span><span class="m">1</span><span class="k">))</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$0</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">fi</span>
+
+mosaic-pipeline<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span><span class="w"> </span>--index<span class="w"> </span><span class="nv">$SLURM_ARRAY_TASK_ID</span>
+</pre></div>
+</div>
+<p>The script automatically determines the number of input files and submits itself as a job array.</p>
+</section>
+</section>
+<section id="reviewing-results">
+<h2>Reviewing Results<a class="headerlink" href="#reviewing-results" title="Link to this heading">#</a></h2>
+<p>The Batch Navigator enables efficient inspection of processed sessions. You can open it via <strong>File &gt; Batch Navigator</strong> (or <strong>Ctrl+Shift+N</strong>)</p>
+<figure class="align-center" id="id3">
+<a class="reference internal image-reference" href="../../_images/batch_navigator.png"><img alt="../../_images/batch_navigator.png" src="../../_images/batch_navigator.png" style="width: 100%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">Mosaic interface with batch Navigator on the right showing the session list.</span><a class="headerlink" href="#id3" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>Click any session to load it. The navigator auto-saves modifications when switching sessions.</p>
+<p>For quality control, verify:</p>
+<ul class="simple">
+<li><p>Distinct membranes are properly separated</p></li>
+<li><p>Small artifacts were filtered out</p></li>
+<li><p>The mesh surface follows the membrane smoothly</p></li>
+<li><p>Seed points are evenly distributed with consistent orientations</p></li>
+</ul>
+<p>If a session needs correction, use Mosaic’s selection and editing tools to adjust. Changes are saved automatically when you switch to another session. The remaining buttons can be used to discard changes to the current session or to directly save it to disk.</p>
+</section>
+<section id="using-seed-points-for-template-matching">
+<h2>Using Seed Points for Template Matching<a class="headerlink" href="#using-seed-points-for-template-matching" title="Link to this heading">#</a></h2>
+<p>The exported STAR files contain seed point coordinates and surface normals for constrained template matching. In PyTME, configure via <strong>Intelligence &gt; Template Matching &gt; Setup</strong>, specifying your seed points file and search constraints (rotational uncertainty typically 15-20 degrees, translational uncertainty 5-10Å).</p>
+<p>This provides an example configuration on how to setup constrained template matching. Have a look at the <a class="reference external" href="https://kosinskilab.github.io/pyTME/quickstart/matching/cluster.html">PyTME documentation</a> on how to scale to the entire dataset.</p>
+</section>
+<section id="pipeline-operations-reference">
+<h2>Pipeline Operations Reference<a class="headerlink" href="#pipeline-operations-reference" title="Link to this heading">#</a></h2>
+<p>This section details all available operations for constructing custom pipelines.</p>
+<section id="input">
+<h3>Input<a class="headerlink" href="#input" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt><strong>Import Files</strong></dt><dd><p>Loads files for batch processing. Supported formats: Mosaic sessions (.pickle), point clouds (STAR, XYZ, TSV), meshes (OBJ, STL, PLY), and volumes (MRC, EM).</p>
+</dd>
+</dl>
+</section>
+<section id="preprocessing">
+<h3>Preprocessing<a class="headerlink" href="#preprocessing" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt><strong>Clustering</strong></dt><dd><p>Partitions point clouds into spatially coherent groups.</p>
+<ul class="simple">
+<li><p><em>Connected Components</em>: Labels disjoint regions based on spatial connectivity. Distance parameter controls the connectivity threshold.</p></li>
+<li><p><em>Leiden</em>: Graph-based community detection using modularity optimization. Resolution parameter controls cluster granularity.</p></li>
+<li><p><em>K-Means</em>: Partitions into k clusters by minimizing within-cluster variance.</p></li>
+<li><p><em>DBSCAN</em>: Density-based clustering that identifies regions of high point density separated by low-density regions.</p></li>
+</ul>
+</dd>
+<dt><strong>Downsampling</strong></dt><dd><p>Reduces point cloud density.</p>
+<ul class="simple">
+<li><p><em>Radius</em>: Removes points within a specified radius of each other while preserving original point positions.</p></li>
+</ul>
+</dd>
+<dt><strong>Skeletonization</strong></dt><dd><p>Extracts the medial axis of tubular structures.</p>
+</dd>
+<dt><strong>Cluster Selection</strong></dt><dd><p>Filters clusters by point count. Lower threshold removes clusters with fewer points; upper threshold removes clusters exceeding the specified count.</p>
+</dd>
+</dl>
+</section>
+<section id="parametrization">
+<h3>Parametrization<a class="headerlink" href="#parametrization" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt><strong>Mesh</strong></dt><dd><p>Generates triangular surface meshes from point clouds.</p>
+<ul class="simple">
+<li><p><em>Flying Edges</em>: Fast marching cubes variant for isosurface extraction.</p></li>
+<li><p><em>Poisson</em>: Solves a Poisson equation to produce smooth, watertight surfaces. Requires consistent normal orientation.</p></li>
+<li><p><em>Ball Pivoting</em>: Reconstructs surfaces by rolling a ball of specified radius over the point cloud. Suitable for partial surfaces.</p></li>
+<li><p><em>Alpha Shape</em>: Computes the alpha complex, a generalization of the convex hull. Alpha parameter controls surface detail.</p></li>
+</ul>
+</dd>
+<dt><strong>Remesh</strong></dt><dd><p>Modifies mesh topology.</p>
+<ul class="simple">
+<li><p><em>Decimation</em>: Reduces triangle count while preserving surface geometry. Reduction factor specifies the target reduction ratio.</p></li>
+<li><p><em>Subdivision</em>: Increases mesh resolution by subdividing triangles.</p></li>
+</ul>
+</dd>
+<dt><strong>Smoothing</strong></dt><dd><p>Applies surface smoothing filters.</p>
+<ul class="simple">
+<li><p><em>Taubin</em>: Two-step filter that smooths iteratively without net shrinkage.</p></li>
+<li><p><em>Laplacian</em>: Iteratively moves vertices toward neighbor centroids. May cause mesh shrinkage.</p></li>
+</ul>
+</dd>
+<dt><strong>Sample</strong></dt><dd><p>Generates point samples from mesh surfaces.</p>
+<ul class="simple">
+<li><p><em>Distance</em>: Places points at uniform spacing along the surface. Returns points with associated surface normals.</p></li>
+<li><p><em>Points</em>: Generates a specified number of uniformly distributed random samples.</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="export">
+<h3>Export<a class="headerlink" href="#export" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt><strong>Export Data</strong></dt><dd><p>Writes data to specified format.</p>
+<ul class="simple">
+<li><p>Point clouds: STAR, XYZ, TSV</p></li>
+<li><p>Meshes: OBJ, STL, PLY</p></li>
+<li><p>Volumes: MRC, EM, H5</p></li>
+</ul>
+</dd>
+<dt><strong>Save Session</strong></dt><dd><p>Serializes the complete Mosaic session state.</p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">#</a></h2>
+<dl class="simple">
+<dt><strong>Memory errors during parallel execution</strong></dt><dd><p>Reduce worker count. Each worker requires approximately 8GB RAM depending on segmentation size and number of intermediate outputs stored.</p>
+</dd>
+</dl>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="iav.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Influenza A Virus</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../reference/formats.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">File Formats</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#requirements">Requirements</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#creating-a-processing-pipeline">Creating a Processing Pipeline</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#configuring-input-files">Configuring Input Files</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#understanding-the-processing-steps">Understanding the Processing Steps</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#execution-settings">Execution Settings</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#running-the-pipeline">Running the Pipeline</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cluster-execution">Cluster Execution</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reviewing-results">Reviewing Results</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-seed-points-for-template-matching">Using Seed Points for Template Matching</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pipeline-operations-reference">Pipeline Operations Reference</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#input">Input</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#preprocessing">Preprocessing</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#parametrization">Parametrization</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#export">Export</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+﻿mosaic.operations.GeometryOperations
+====================================
+
+.. currentmodule:: mosaic.operations
+
+.. autoclass:: GeometryOperations
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GeometryOperations.__init__
+      ~GeometryOperations.cluster
+      ~GeometryOperations.compute_normals
+      ~GeometryOperations.crop
+      ~GeometryOperations.downsample
+      ~GeometryOperations.duplicate
+      ~GeometryOperations.fit
+      ~GeometryOperations.register
+      ~GeometryOperations.remesh
+      ~GeometryOperations.remove_outliers
+      ~GeometryOperations.sample
+      ~GeometryOperations.skeletonize
+      ~GeometryOperations.smooth
+      ~GeometryOperations.visibility
+   
+   
+
+   
+   
+   

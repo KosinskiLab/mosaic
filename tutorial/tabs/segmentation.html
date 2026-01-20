@@ -1,0 +1,867 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Segmentation &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial/tabs/segmentation';</script>
+    <link rel="icon" href="../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Parametrization" href="parametrization.html" />
+    <link rel="prev" title="Specialized Views" href="../data/special.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts.html">Concepts</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Working with Data</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../data/import_export.html">Import and Export</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data/sessions.html">Session Management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data/special.html">Specialized Views</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Feature Tabs</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Segmentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="parametrization.html">Parametrization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="intelligence.html">Intelligence</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Practical Workflows</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../workflows/giardia.html">Working with <em>in situ</em> data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/iav.html">Influenza A Virus</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/pipeline.html">Batch Processing</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../reference/formats.html">File Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/issues.html">Issues</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Further Information</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../misc/license.html">License</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">User Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Segmentation</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="segmentation">
+<h1>Segmentation<a class="headerlink" href="#segmentation" title="Link to this heading">#</a></h1>
+<p>The <em>Segmentation</em> tab provides tools for refinement, clustering and analysis.</p>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-2 sd-row-cols-xs-2 sd-row-cols-sm-3 sd-row-cols-md-3 sd-row-cols-lg-4 sd-g-1 sd-g-xs-1 sd-g-sm-1 sd-g-md-1 sd-g-lg-1 docutils">
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Merge</div>
+<i class="ph ph-git-merge" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#merge"><span>#merge</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Remove</div>
+<i class="ph ph-trash" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#remove"><span>#remove</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Select</div>
+<i class="ph ph-chart-bar" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#select-by-size"><span>#select-by-size</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Transform</div>
+<i class="ph ph-arrows-out-cardinal" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#transform"><span>#transform</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Crop</div>
+<i class="ph ph-crop" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#crop"><span>#crop</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Cluster</div>
+<i class="ph ph-arrows-out-line-horizontal" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#cluster"><span>#cluster</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Outlier</div>
+<i class="ph ph-funnel" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#outlier_removal"><span>#outlier_removal</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Normals</div>
+<i class="ph ph-arrows-out" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#normals"><span>#normals</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Trim</div>
+<i class="ph ph-scissors" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#trim"><span>#trim</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Skeletonize</div>
+<i class="ph ph-line-segments" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#skeletonize"><span>#skeletonize</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Downsample</div>
+<i class="ph ph-arrows-in" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#downsample"><span>#downsample</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover sd-text-center docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Properties</div>
+<i class="ph ph-chart-bar-horizontal" style="font-size: 1.5rem;"></i></div>
+<a class="sd-stretched-link sd-hide-link-text reference external" href="#properties"><span>#properties</span></a></div>
+</div>
+</div>
+</div>
+<section id="merge">
+<span id="id1"></span><h2>Merge<a class="headerlink" href="#merge" title="Link to this heading">#</a></h2>
+<p>Combines multiple clusters or creates new clusters from point selections:</p>
+<p><strong>For complete clusters:</strong></p>
+<ol class="arabic simple">
+<li><p>Select multiple clusters in the Object Browser</p></li>
+<li><p>Click <strong>Merge</strong> in the ribbon or press <code class="docutils literal notranslate"><span class="pre">m</span></code> after clicking the viewport.</p></li>
+<li><p>Selected clusters are combined into a single new cluster</p></li>
+</ol>
+<p><strong>For point selections:</strong></p>
+<ol class="arabic simple">
+<li><p>Use area selection (<code class="docutils literal notranslate"><span class="pre">R</span></code> key) to select points from one or more clusters</p></li>
+<li><p>Click <strong>Merge</strong> or press <code class="docutils literal notranslate"><span class="pre">m</span></code> after clicking the viewport.</p></li>
+<li><p>A new cluster is created containing only the selected points</p></li>
+<li><p>Original clusters remain but without the selected points</p></li>
+</ol>
+</section>
+<section id="remove">
+<span id="id2"></span><h2>Remove<a class="headerlink" href="#remove" title="Link to this heading">#</a></h2>
+<p>Deletes selected clusters or removes points from clusters:</p>
+<p><strong>For complete clusters:</strong></p>
+<ol class="arabic simple">
+<li><p>Select one or more clusters in the Object Browser</p></li>
+<li><p>Click <strong>Remove</strong> or press <code class="docutils literal notranslate"><span class="pre">Delete</span></code> after clicking the viewport.</p></li>
+<li><p>Selected clusters are completely deleted</p></li>
+</ol>
+<p><strong>For point selections:</strong></p>
+<ol class="arabic simple">
+<li><p>Use area selection (<code class="docutils literal notranslate"><span class="pre">R</span></code> key) to select points within clusters</p></li>
+<li><p>Click <strong>Remove</strong> or press <code class="docutils literal notranslate"><span class="pre">Delete</span></code> after clicking the viewport.</p></li>
+<li><p>Only the selected points are removed from their parent clusters</p></li>
+<li><p>Empty clusters are automatically deleted</p></li>
+</ol>
+</section>
+<section id="select-by-size">
+<span id="id3"></span><h2>Select by Size<a class="headerlink" href="#select-by-size" title="Link to this heading">#</a></h2>
+<p>Filters clusters by point count:</p>
+<ol class="arabic simple">
+<li><p>Click <strong>Select</strong> in the ribbon</p></li>
+<li><p>Adjust the slider to set a minimum size threshold</p></li>
+<li><p>Clusters below the threshold are automatically selected</p></li>
+<li><p>Use in combination with <strong>Remove</strong> to clean up small clusters</p></li>
+</ol>
+</section>
+<section id="transform">
+<span id="id4"></span><h2>Transform<a class="headerlink" href="#transform" title="Link to this heading">#</a></h2>
+<p>Applies rotation and translation to clusters:</p>
+<ol class="arabic simple">
+<li><p>Select a cluster in the Object Browser</p></li>
+<li><p>Click <strong>Transform</strong></p></li>
+<li><p>A 3D transformation widget appears around the cluster</p></li>
+<li><p>Use the transformation widget to move or rotate the cluster</p></li>
+<li><p>Press <strong>Transform</strong> again to exit transformation mode</p></li>
+</ol>
+</section>
+<section id="crop">
+<span id="id5"></span><h2>Crop<a class="headerlink" href="#crop" title="Link to this heading">#</a></h2>
+<p>Trims points based on distance to other structures:</p>
+<ol class="arabic simple">
+<li><p>Click <strong>Crop</strong></p></li>
+<li><p>Select source structures to crop</p></li>
+<li><p>Select target structures to measure distance from</p></li>
+<li><p>Set the distance threshold</p></li>
+<li><p>Choose to keep points within or beyond the threshold</p></li>
+</ol>
+</section>
+<section id="cluster">
+<span id="id6"></span><h2>Cluster<a class="headerlink" href="#cluster" title="Link to this heading">#</a></h2>
+<p>Groups points into separate clusters:</p>
+<ol class="arabic simple">
+<li><p>Select a cluster with multiple distinct structures</p></li>
+<li><p>Click <strong>Cluster</strong></p></li>
+<li><p>Choose clustering method:</p>
+<ul class="simple">
+<li><p><strong>Connected Components</strong>: Groups connected components (default). Particularly useful for postprocessing volume segmentations</p></li>
+<li><p><strong>Envelope</strong>: Retrieve boundaries of dense membrane segmentation</p></li>
+<li><p><strong>Leiden</strong>: Partition connected segmentations into distinct objects</p></li>
+<li><p><strong>DBSCAN</strong>: Density-based clustering with distance and minimum points parameters</p></li>
+<li><p><strong>K-Means</strong>: Divides into a specified number of clusters</p></li>
+<li><p><strong>Birch</strong>: Hierarchical clustering</p></li>
+</ul>
+</li>
+<li><p>Configure method-specific parameters:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Leiden<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Resolution</strong>: Clustering resolution. Lower values yield larger cluster.</p></li>
+</ul>
+</dd>
+<dt class="field-even">DBSCAN<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>Distance</strong>: Maximum distance between points in the same cluster</p></li>
+<li><p><strong>Min Points</strong>: Minimum points required to form a cluster</p></li>
+</ul>
+</dd>
+<dt class="field-odd">K-Means<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>K</strong>: Number of target clusters</p></li>
+</ul>
+</dd>
+<dt class="field-even">Birch<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>Clusters</strong>: Number of target clusters</p></li>
+<li><p><strong>Threshold</strong>: Radius threshold for merging subclusters (lower values create more clusters)</p></li>
+<li><p><strong>Branching Factor</strong>: Maximum subclusters per node (affects memory usage and clustering speed)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Click <strong>OK</strong> to apply clustering</p></li>
+</ol>
+</section>
+<section id="outlier-removal">
+<span id="id7"></span><h2>Outlier Removal<a class="headerlink" href="#outlier-removal" title="Link to this heading">#</a></h2>
+<p>Removes noise points using statistical methods:</p>
+<ol class="arabic simple">
+<li><p>Select a cluster to clean</p></li>
+<li><p>Click <strong>Outlier</strong></p></li>
+<li><p>Choose removal method:</p>
+<ul class="simple">
+<li><p><strong>Statistical</strong>: Removes points based on distance to neighbors</p></li>
+<li><p><strong>Eigenvalue</strong>: Removes edge points using covariance analysis</p></li>
+</ul>
+</li>
+<li><p>Configure method-specific parameters:</p>
+<ul class="simple">
+<li><p><strong>Neighbors</strong>: Number of neighbors to consider for statistics</p></li>
+<li><p><strong>Threshold</strong>: Sensitivity of outlier detection (lower = more aggressive)</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="normals">
+<span id="id8"></span><h2>Normals<a class="headerlink" href="#normals" title="Link to this heading">#</a></h2>
+<p>Modulate normals of a point cloud object</p>
+<ol class="arabic simple">
+<li><p>Select a cluster</p></li>
+<li><p>Click <strong>Normals</strong></p></li>
+<li><p>Choose method:</p>
+<ul class="simple">
+<li><p><strong>Compute</strong>: Recompute normals by orienting point cloud normal vector field.</p></li>
+<li><p><strong>Flip</strong>: Flip normals</p></li>
+</ul>
+</li>
+<li><p>Configure method-specific parameters:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Compute<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Neighbors</strong>: Number of neighboring points to consider</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ol>
+</section>
+<section id="trim">
+<span id="id9"></span><h2>Trim<a class="headerlink" href="#trim" title="Link to this heading">#</a></h2>
+<p>Select points outside specified axis-aligned boundaries:</p>
+<ol class="arabic simple">
+<li><p>Select a cluster</p></li>
+<li><p>Click <strong>Trim</strong></p></li>
+<li><p>Two cutting planes appear in the 3D viewer</p></li>
+<li><p>Position the planes by dragging or use keyboard shortcuts:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">X</span></code>: Align planes to X-axis</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">C</span></code>: Align planes to Y-axis</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Z</span></code>: Align planes to Z-axis</p></li>
+</ul>
+</li>
+<li><p>Points between the planes are preserved</p></li>
+<li><p>Press <strong>Trim</strong> again to exit trim mode</p></li>
+</ol>
+</section>
+<section id="skeletonize">
+<span id="thin"></span><h2>Skeletonize<a class="headerlink" href="#skeletonize" title="Link to this heading">#</a></h2>
+<p>Skeletonize point cloud:</p>
+<ol class="arabic simple">
+<li><p>Select a cluster</p></li>
+<li><p>Click <strong>Skeletonize</strong></p></li>
+<li><p>Choose method:</p>
+<ul class="simple">
+<li><p><strong>Core</strong>: Classical internal skeleton.</p></li>
+<li><p><strong>Boundary</strong>: Exo-like skeleton of boundaries.</p></li>
+<li><p><strong>Outer</strong>: Outer exo-like skeleton.</p></li>
+<li><p><strong>Outer_Hull</strong>: Legacy method to compute the outer hull of a point cloud. Used to be listed under <strong>Thin</strong> pre v1.0.16.</p></li>
+</ul>
+</li>
+<li><p>Click <strong>OK</strong> to apply thinning</p></li>
+</ol>
+</section>
+<section id="downsample">
+<span id="id10"></span><h2>Downsample<a class="headerlink" href="#downsample" title="Link to this heading">#</a></h2>
+<p>Reduces the number of points while maintaining overall structure:</p>
+<ol class="arabic simple">
+<li><p>Select a cluster</p></li>
+<li><p>Click <strong>Downsample</strong></p></li>
+<li><p>Choose downsampling method:</p>
+<ul class="simple">
+<li><p><strong>Radius</strong>: Remove points within a specified distance of each other</p></li>
+<li><p><strong>Number</strong>: Randomly subsample to a target number of points</p></li>
+</ul>
+</li>
+<li><p>Configure parameters:</p>
+<ul class="simple">
+<li><p><strong>Radius</strong>: Minimum distance between retained points</p></li>
+<li><p><strong>Size</strong>: Target number of points for random subsampling</p></li>
+</ul>
+</li>
+<li><p>Click <strong>OK</strong> to apply downsampling</p></li>
+</ol>
+</section>
+<section id="properties">
+<span id="distances"></span><h2>Properties<a class="headerlink" href="#properties" title="Link to this heading">#</a></h2>
+<p>Advanced analysis and visualization dialog with three modes: <strong>Visualize</strong>, <strong>Distribution</strong>, and <strong>Statistics</strong>.</p>
+<ol class="arabic simple">
+<li><p>Select objects in the Object Browser</p></li>
+<li><p>Click <strong>Properties</strong> in the ribbon</p></li>
+<li><p>Use <strong>Compute</strong> to calculate properties, then switch between tabs</p></li>
+</ol>
+<p><strong>Property Categories:</strong></p>
+<ul class="simple">
+<li><p><strong>Distance</strong>: To camera, clusters, or models</p></li>
+<li><p><strong>Surface</strong>: Curvature, edge length, surface area, volume</p></li>
+<li><p><strong>Geometric</strong>: Dimensions, point counts, identity</p></li>
+<li><p><strong>Projection</strong>: Projected curvature, geodesic distance</p></li>
+</ul>
+<p><strong>Visualization Options:</strong></p>
+<ul class="simple">
+<li><p><strong>Color Maps</strong>: Common colormaps (viridis, plasma, etc.)</p></li>
+<li><p><strong>Normalization</strong>: Per-object or global scaling</p></li>
+<li><p><strong>Quantiles</strong>: Statistical binning for outlier handling</p></li>
+<li><p><strong>Interactive</strong>: Real-time color mapping in 3D viewport</p></li>
+</ul>
+<p><strong>Visualize Tab:</strong> Compute geometric properties and display as interactive color maps in the 3D viewport.</p>
+<p><strong>Distribution Tab:</strong> Generate interactive export-ready histograms, density plots, and line charts with customizable styling.</p>
+<p><strong>Statistics Tab:</strong> View numerical summaries (min, max, mean, std dev) and export data as CSV/TSV files.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>All data can be exported using the <strong>Export Data</strong> button.</p>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../data/special.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Specialized Views</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="parametrization.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Parametrization</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#merge">Merge</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#remove">Remove</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#select-by-size">Select by Size</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#transform">Transform</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#crop">Crop</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cluster">Cluster</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#outlier-removal">Outlier Removal</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#normals">Normals</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#trim">Trim</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#skeletonize">Skeletonize</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#downsample">Downsample</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#properties">Properties</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

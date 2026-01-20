@@ -1,0 +1,6 @@
+﻿mosaic.geometry.GeometryTrajectory.display\_frame
+=================================================
+
+.. currentmodule:: mosaic.geometry
+
+.. automethod:: GeometryTrajectory.display_frame

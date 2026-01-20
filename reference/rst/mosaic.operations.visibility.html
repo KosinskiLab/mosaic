@@ -1,0 +1,671 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>mosaic.operations.visibility &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/rst/mosaic.operations.visibility';</script>
+    <link rel="icon" href="../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="mosaic.operations.GeometryOperations" href="mosaic.operations.GeometryOperations.html" />
+    <link rel="prev" title="mosaic.operations.duplicate" href="mosaic.operations.duplicate.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Data Structures</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../data_structures/geometry.html">Geometry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.html">mosaic.geometry.Geometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.points.html">mosaic.geometry.Geometry.points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.normals.html">mosaic.geometry.Geometry.normals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.quaternions.html">mosaic.geometry.Geometry.quaternions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.sampling_rate.html">mosaic.geometry.Geometry.sampling_rate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.model.html">mosaic.geometry.Geometry.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.actor.html">mosaic.geometry.Geometry.actor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.visible.html">mosaic.geometry.Geometry.visible</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.set_color.html">mosaic.geometry.Geometry.set_color</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.set_visibility.html">mosaic.geometry.Geometry.set_visibility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.set_appearance.html">mosaic.geometry.Geometry.set_appearance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.change_representation.html">mosaic.geometry.Geometry.change_representation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.is_mesh_representation.html">mosaic.geometry.Geometry.is_mesh_representation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.color_points.html">mosaic.geometry.Geometry.color_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.set_scalars.html">mosaic.geometry.Geometry.set_scalars</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.swap_data.html">mosaic.geometry.Geometry.swap_data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.merge.html">mosaic.geometry.Geometry.merge</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.subset.html">mosaic.geometry.Geometry.subset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.get_point_data.html">mosaic.geometry.Geometry.get_point_data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.get_number_of_points.html">mosaic.geometry.Geometry.get_number_of_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.__getstate__.html">mosaic.geometry.Geometry.__getstate__</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.__setstate__.html">mosaic.geometry.Geometry.__setstate__</a></li>
+</ul>
+</details></li>
+
+
+<li class="toctree-l1 has-children"><a class="reference internal" href="../data_structures/container.html">DataContainer</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.html">mosaic.container.DataContainer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.add.html">mosaic.container.DataContainer.add</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.remove.html">mosaic.container.DataContainer.remove</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.get.html">mosaic.container.DataContainer.get</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.update.html">mosaic.container.DataContainer.update</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.clear.html">mosaic.container.DataContainer.clear</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.get_actors.html">mosaic.container.DataContainer.get_actors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.uuid_to_index.html">mosaic.container.DataContainer.uuid_to_index</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.highlight.html">mosaic.container.DataContainer.highlight</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.highlight_points.html">mosaic.container.DataContainer.highlight_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.update_appearance.html">mosaic.container.DataContainer.update_appearance</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../data_structures/data.html">MosaicData</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.html">mosaic.data.MosaicData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.swap_area_picker.html">mosaic.data.MosaicData.swap_area_picker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.activate_viewing_mode.html">mosaic.data.MosaicData.activate_viewing_mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.highlight_clusters_from_selected_points.html">mosaic.data.MosaicData.highlight_clusters_from_selected_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.to_file.html">mosaic.data.MosaicData.to_file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.load_session.html">mosaic.data.MosaicData.load_session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.format_datalist.html">mosaic.data.MosaicData.format_datalist</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../data_structures/interactor.html">DataContainerInteractor</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.html">mosaic.interactor.DataContainerInteractor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.attach_area_picker.html">mosaic.interactor.DataContainerInteractor.attach_area_picker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.activate_viewing_mode.html">mosaic.interactor.DataContainerInteractor.activate_viewing_mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.set_selection_by_uuid.html">mosaic.interactor.DataContainerInteractor.set_selection_by_uuid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.deselect.html">mosaic.interactor.DataContainerInteractor.deselect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.deselect_points.html">mosaic.interactor.DataContainerInteractor.deselect_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.highlight_selected_points.html">mosaic.interactor.DataContainerInteractor.highlight_selected_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.highlight_clusters_from_selected_points.html">mosaic.interactor.DataContainerInteractor.highlight_clusters_from_selected_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.add.html">mosaic.interactor.DataContainerInteractor.add</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.merge.html">mosaic.interactor.DataContainerInteractor.merge</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.remove.html">mosaic.interactor.DataContainerInteractor.remove</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.cluster.html">mosaic.interactor.DataContainerInteractor.cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.remove_outliers.html">mosaic.interactor.DataContainerInteractor.remove_outliers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.downsample.html">mosaic.interactor.DataContainerInteractor.downsample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.duplicate.html">mosaic.interactor.DataContainerInteractor.duplicate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.change_representation.html">mosaic.interactor.DataContainerInteractor.change_representation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.render.html">mosaic.interactor.DataContainerInteractor.render</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.render_vtk.html">mosaic.interactor.DataContainerInteractor.render_vtk</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Processing</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../operations.html">Operations</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.use_point_data.html">mosaic.operations.use_point_data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.downsample.html">mosaic.operations.downsample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.remove_outliers.html">mosaic.operations.remove_outliers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.skeletonize.html">mosaic.operations.skeletonize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.crop.html">mosaic.operations.crop</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.cluster.html">mosaic.operations.cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.compute_normals.html">mosaic.operations.compute_normals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.fit.html">mosaic.operations.fit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.sample.html">mosaic.operations.sample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.remesh.html">mosaic.operations.remesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.smooth.html">mosaic.operations.smooth</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.duplicate.html">mosaic.operations.duplicate</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">mosaic.operations.visibility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.GeometryOperations.html">mosaic.operations.GeometryOperations</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../parametrization.html">Parametrization</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.Parametrization.html">mosaic.parametrization.Parametrization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.Sphere.html">mosaic.parametrization.Sphere</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.Ellipsoid.html">mosaic.parametrization.Ellipsoid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.Cylinder.html">mosaic.parametrization.Cylinder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.RBF.html">mosaic.parametrization.RBF</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.SplineCurve.html">mosaic.parametrization.SplineCurve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.TriangularMesh.html">mosaic.parametrization.TriangularMesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.PoissonMesh.html">mosaic.parametrization.PoissonMesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.ClusteredBallPivotingMesh.html">mosaic.parametrization.ClusteredBallPivotingMesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.ConvexHull.html">mosaic.parametrization.ConvexHull</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.FlyingEdges.html">mosaic.parametrization.FlyingEdges</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.MarchingCubes.html">mosaic.parametrization.MarchingCubes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.merge.html">mosaic.parametrization.merge</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../parallel.html">Parallel</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parallel.BackgroundTaskManager.html">mosaic.parallel.BackgroundTaskManager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parallel.submit_task.html">mosaic.parallel.submit_task</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parallel.submit_task_batch.html">mosaic.parallel.submit_task_batch</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">File I/O</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../formats.html">Formats</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.formats.open_file.html">mosaic.formats.open_file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.formats.open_session.html">mosaic.formats.open_session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.formats.OrientationsWriter.html">mosaic.formats.OrientationsWriter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.formats.write_density.html">mosaic.formats.write_density</a></li>
+</ul>
+</details></li>
+
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">GUI</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../gui/widgets.html">Widgets</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.ObjectBrowserSidebar.html">mosaic.widgets.ObjectBrowserSidebar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.RibbonToolBar.html">mosaic.widgets.RibbonToolBar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.ContainerListWidget.html">mosaic.widgets.ContainerListWidget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.StyledListWidgetItem.html">mosaic.widgets.StyledListWidgetItem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.AxesWidget.html">mosaic.widgets.AxesWidget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.ScaleBarWidget.html">mosaic.widgets.ScaleBarWidget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.LegendWidget.html">mosaic.widgets.LegendWidget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.MultiVolumeViewer.html">mosaic.widgets.MultiVolumeViewer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.TrajectoryPlayer.html">mosaic.widgets.TrajectoryPlayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.ViewerModes.html">mosaic.widgets.ViewerModes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.CursorModeHandler.html">mosaic.widgets.CursorModeHandler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.StatusIndicator.html">mosaic.widgets.StatusIndicator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.create_button.html">mosaic.widgets.create_button</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../gui/dialogs.html">Dialogs</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.ImportDataDialog.html">mosaic.dialogs.ImportDataDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.ExportDialog.html">mosaic.dialogs.ExportDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.PropertyAnalysisDialog.html">mosaic.dialogs.PropertyAnalysisDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.HistogramDialog.html">mosaic.dialogs.HistogramDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.GeometryPropertiesDialog.html">mosaic.dialogs.GeometryPropertiesDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.MeshEquilibrationDialog.html">mosaic.dialogs.MeshEquilibrationDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.HMFFDialog.html">mosaic.dialogs.HMFFDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.TemplateMatchingDialog.html">mosaic.dialogs.TemplateMatchingDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.MeshMappingDialog.html">mosaic.dialogs.MeshMappingDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.ProgressDialog.html">mosaic.dialogs.ProgressDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.TiltControlDialog.html">mosaic.dialogs.TiltControlDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.DistanceCropDialog.html">mosaic.dialogs.DistanceCropDialog</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../gui/tabs.html">Tabs</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.tabs.SegmentationTab.html">mosaic.tabs.SegmentationTab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.tabs.ModelTab.html">mosaic.tabs.ModelTab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.tabs.IntelligenceTab.html">mosaic.tabs.IntelligenceTab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.tabs.SegmentationTab.show_ribbon.html">mosaic.tabs.SegmentationTab.show_ribbon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.tabs.ModelTab.show_ribbon.html">mosaic.tabs.ModelTab.show_ribbon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.tabs.IntelligenceTab.show_ribbon.html">mosaic.tabs.IntelligenceTab.show_ribbon</a></li>
+</ul>
+</details></li>
+
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">API</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../operations.html" class="nav-link">Operations</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">mosaic.operations.visibility</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="mosaic-operations-visibility">
+<h1>mosaic.operations.visibility<a class="headerlink" href="#mosaic-operations-visibility" title="Link to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="mosaic.operations.visibility">
+<span class="sig-name descname"><span class="pre">visibility</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/mosaic/operations.html#visibility"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mosaic.operations.visibility" title="Link to this definition">#</a></dt>
+<dd><p>Change the visibility of a geometry object</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>geometry</strong><span class="classifier"><a class="reference internal" href="mosaic.geometry.Geometry.html#mosaic.geometry.Geometry" title="mosaic.geometry.Geometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">mosaic.geometry.Geometry</span></code></a></span></dt><dd><p>Geometry to duplicate.</p>
+</dd>
+<dt><strong>visible: bool, optional</strong></dt><dd><p>Whether the Geometry instance should be visible or not.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="mosaic.operations.duplicate.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">mosaic.operations.duplicate</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="mosaic.operations.GeometryOperations.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">mosaic.operations.GeometryOperations</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mosaic.operations.visibility"><code class="docutils literal notranslate"><span class="pre">visibility()</span></code></a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

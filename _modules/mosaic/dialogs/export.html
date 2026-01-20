@@ -1,0 +1,885 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mosaic.dialogs.export &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/mosaic/dialogs/export';</script>
+    <link rel="icon" href="../../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">mosaic.dialogs.export</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for mosaic.dialogs.export</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qtpy.QtCore</span><span class="w"> </span><span class="kn">import</span> <span class="n">Qt</span><span class="p">,</span> <span class="n">Signal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qtpy.QtWidgets</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">QDialog</span><span class="p">,</span>
+    <span class="n">QVBoxLayout</span><span class="p">,</span>
+    <span class="n">QHBoxLayout</span><span class="p">,</span>
+    <span class="n">QLabel</span><span class="p">,</span>
+    <span class="n">QPushButton</span><span class="p">,</span>
+    <span class="n">QFrame</span><span class="p">,</span>
+    <span class="n">QScrollArea</span><span class="p">,</span>
+    <span class="n">QWidget</span><span class="p">,</span>
+    <span class="n">QGroupBox</span><span class="p">,</span>
+    <span class="n">QGridLayout</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">qtawesome</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">qta</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..widgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">DialogFooter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..stylesheets</span><span class="w"> </span><span class="kn">import</span> <span class="n">QGroupBox_style</span><span class="p">,</span> <span class="n">QPushButton_style</span><span class="p">,</span> <span class="n">QScrollArea_style</span><span class="p">,</span> <span class="n">Colors</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..widgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_setting_widget</span><span class="p">,</span> <span class="n">get_widget_value</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">StyleableButton</span><span class="p">(</span><span class="n">QPushButton</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">icon_name</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">is_compact</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+
+        <span class="n">layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="n">icon_size</span> <span class="o">=</span> <span class="mi">32</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">150</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="n">margin</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">12</span>
+        <span class="k">if</span> <span class="n">is_compact</span><span class="p">:</span>
+            <span class="n">icon_size</span> <span class="o">=</span> <span class="mi">24</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">70</span><span class="p">,</span> <span class="mi">70</span><span class="p">)</span>
+            <span class="n">margin</span> <span class="o">=</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+
+        <span class="n">layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="o">*</span><span class="n">margin</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">setAlignment</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">AlignmentFlag</span><span class="o">.</span><span class="n">AlignCenter</span><span class="p">)</span>
+
+        <span class="n">icon</span> <span class="o">=</span> <span class="n">qta</span><span class="o">.</span><span class="n">icon</span><span class="p">(</span><span class="n">icon_name</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">ICON</span><span class="p">)</span>
+        <span class="n">icon_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">()</span>
+        <span class="n">icon_label</span><span class="o">.</span><span class="n">setPixmap</span><span class="p">(</span><span class="n">icon</span><span class="o">.</span><span class="n">pixmap</span><span class="p">(</span><span class="n">icon_size</span><span class="p">,</span> <span class="n">icon_size</span><span class="p">))</span>
+        <span class="n">icon_label</span><span class="o">.</span><span class="n">setAlignment</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">AlignmentFlag</span><span class="o">.</span><span class="n">AlignCenter</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">icon_label</span><span class="p">)</span>
+
+        <span class="n">title_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+        <span class="n">title_label</span><span class="o">.</span><span class="n">setAlignment</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">AlignmentFlag</span><span class="o">.</span><span class="n">AlignCenter</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">title_label</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">description</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_compact</span><span class="p">:</span>
+            <span class="n">desc_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="n">description</span><span class="p">)</span>
+            <span class="n">desc_label</span><span class="o">.</span><span class="n">setAlignment</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">AlignmentFlag</span><span class="o">.</span><span class="n">AlignCenter</span><span class="p">)</span>
+            <span class="n">desc_label</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;color: </span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">TEXT_MUTED</span><span class="si">}</span><span class="s2">; font-size: 11px;&quot;</span><span class="p">)</span>
+            <span class="n">desc_label</span><span class="o">.</span><span class="n">setWordWrap</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">desc_label</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setMinimumSize</span><span class="p">(</span><span class="o">*</span><span class="n">size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setCheckable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QPushButton </span><span class="se">{{</span>
+<span class="s2">                border: 1px solid </span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">BORDER_DARK</span><span class="si">}</span><span class="s2">;</span>
+<span class="s2">                border-radius: 6px;</span>
+<span class="s2">                text-align: center;</span>
+<span class="s2">            </span><span class="se">}}</span>
+<span class="s2">            QPushButton:checked </span><span class="se">{{</span>
+<span class="s2">                border: 1px solid #4f46e5;</span>
+<span class="s2">            </span><span class="se">}}</span>
+<span class="s2">            QPushButton:hover:!checked </span><span class="se">{{</span>
+<span class="s2">                background: rgba(0, 0, 0, 0.06);</span>
+<span class="s2">                border: 1px solid rgba(0, 0, 0, 0.08);</span>
+<span class="s2">            </span><span class="se">}}</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+
+<div class="viewcode-block" id="ExportDialog">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.dialogs.ExportDialog.html#mosaic.dialogs.ExportDialog">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExportDialog</span><span class="p">(</span><span class="n">QDialog</span><span class="p">):</span>
+    <span class="n">export_requested</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ExportDialog.__init__">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.dialogs.ExportDialog.html#mosaic.dialogs.ExportDialog.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">{},</span> <span class="n">enabled_categories</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="s2">&quot;Export Data&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">700</span><span class="p">,</span> <span class="mi">600</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">enabled_categories</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">enabled_categories</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;pointcloud&quot;</span><span class="p">,</span> <span class="s2">&quot;mesh&quot;</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enabled_categories</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">enabled_categories</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format_categories</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;pointcloud&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;icon&quot;</span><span class="p">:</span> <span class="s2">&quot;ph.dots-nine&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Point Cloud&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Export coordinates and orientations.&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;formats&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;star&quot;</span><span class="p">,</span> <span class="s2">&quot;tsv&quot;</span><span class="p">,</span> <span class="s2">&quot;xyz&quot;</span><span class="p">],</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;mesh&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;icon&quot;</span><span class="p">:</span> <span class="s2">&quot;ph.triangle&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Mesh&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Export as a surface mesh.&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;formats&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;obj&quot;</span><span class="p">,</span> <span class="s2">&quot;stl&quot;</span><span class="p">,</span> <span class="s2">&quot;ply&quot;</span><span class="p">],</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;icon&quot;</span><span class="p">:</span> <span class="s2">&quot;ph.cube&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Volume&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Export as a density map.&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;formats&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;mrc&quot;</span><span class="p">,</span> <span class="s2">&quot;em&quot;</span><span class="p">,</span> <span class="s2">&quot;h5&quot;</span><span class="p">],</span>
+            <span class="p">},</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">format_settings_definitions</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;mrc&quot;</span><span class="p">:</span> <span class="n">volume_settings</span><span class="p">,</span>
+            <span class="s2">&quot;em&quot;</span><span class="p">:</span> <span class="n">volume_settings</span><span class="p">,</span>
+            <span class="s2">&quot;h5&quot;</span><span class="p">:</span> <span class="n">volume_settings</span><span class="p">,</span>
+            <span class="s2">&quot;xyz&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;single_file&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Single File&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Export all data to a single file&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;single_file&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;header&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Include Header&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Include column headers in the exported file&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                    <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;header&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;star&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;single_file&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Single File&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Export all data to a single file&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;single_file&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;relion_5_format&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;RELION 5&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Export in RELION 5 format with coordinate transformation&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;relion_5_format&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;shape_x&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Shape X&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;X voxel for coordinate transformation (RELION 5)&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+                    <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                    <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;shape_x&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;shape_y&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Shape Y&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Y voxel for coordinate transformation (RELION 5)&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+                    <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                    <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;shape_y&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;shape_z&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Shape Z&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Z voxel for coordinate transformation (RELION 5)&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+                    <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                    <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;shape_z&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;tsv&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;single_file&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Single File&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Export all data to a single file&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;single_file&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;obj&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;single_file&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Single File&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Export all data to a single file&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;single_file&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;stl&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;single_file&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Single File&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Export all data to a single file&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;single_file&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;ply&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;single_file&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Single File&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Export all data to a single file&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;single_file&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">},</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">selected_category</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">cat</span>
+                <span class="k">for</span> <span class="n">cat</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;pointcloud&quot;</span><span class="p">,</span> <span class="s2">&quot;mesh&quot;</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">cat</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">enabled_categories</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;pointcloud&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selected_format</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_categories</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">selected_category</span><span class="p">][</span>
+            <span class="s2">&quot;formats&quot;</span>
+        <span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">selected_format</span> <span class="o">=</span> <span class="s2">&quot;star&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_settings</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">show_advanced</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Set parameters before drawing dialog</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_defaults</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">parameters</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="nb">list</span><span class="p">(</span><span class="n">parameters</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_ui</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="n">QGroupBox_style</span> <span class="o">+</span> <span class="n">QPushButton_style</span> <span class="o">+</span> <span class="n">QScrollArea_style</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update default values for format settings&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">format_name</span><span class="p">,</span> <span class="n">settings_dict</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_settings_definitions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">keys</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">settings_dict</span><span class="p">:</span>
+                    <span class="n">settings_dict</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s2">&quot;default&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_ui</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">main_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Scroll area for content</span>
+        <span class="n">scroll_area</span> <span class="o">=</span> <span class="n">QScrollArea</span><span class="p">()</span>
+        <span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidgetResizable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">scroll_area</span><span class="o">.</span><span class="n">setFrameShape</span><span class="p">(</span><span class="n">QFrame</span><span class="o">.</span><span class="n">Shape</span><span class="o">.</span><span class="n">NoFrame</span><span class="p">)</span>
+
+        <span class="n">content_widget</span> <span class="o">=</span> <span class="n">QWidget</span><span class="p">()</span>
+        <span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidget</span><span class="p">(</span><span class="n">content_widget</span><span class="p">)</span>
+        <span class="n">content_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="n">content_widget</span><span class="p">)</span>
+        <span class="n">content_layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+        <span class="n">content_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+
+        <span class="n">export_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;Export Type&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">export_layout</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">(</span><span class="n">export_group</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_group_buttons</span><span class="p">()</span>
+        <span class="n">content_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">export_group</span><span class="p">)</span>
+
+        <span class="n">format_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;File Format&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format_layout</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">(</span><span class="n">format_group</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_format_buttons</span><span class="p">()</span>
+        <span class="n">content_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">format_group</span><span class="p">)</span>
+
+        <span class="n">settings_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;Settings&quot;</span><span class="p">)</span>
+        <span class="n">settings_group</span><span class="o">.</span><span class="n">setMinimumHeight</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="n">settings_group</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_advanced_settings</span><span class="p">()</span>
+        <span class="n">content_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">settings_group</span><span class="p">)</span>
+
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">scroll_area</span><span class="p">)</span>
+
+        <span class="n">footer</span> <span class="o">=</span> <span class="n">DialogFooter</span><span class="p">(</span><span class="n">dialog</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">margin</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+        <span class="n">footer</span><span class="o">.</span><span class="n">accept_button</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;Export&quot;</span><span class="p">)</span>
+        <span class="n">footer</span><span class="o">.</span><span class="n">accept_button</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">qta</span><span class="o">.</span><span class="n">icon</span><span class="p">(</span><span class="s2">&quot;ph.download&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">PRIMARY</span><span class="p">))</span>
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">footer</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_clear_layout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layout</span><span class="p">):</span>
+        <span class="k">while</span> <span class="n">layout</span><span class="o">.</span><span class="n">count</span><span class="p">():</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="n">layout</span><span class="o">.</span><span class="n">takeAt</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">widget</span><span class="p">():</span>
+                <span class="n">item</span><span class="o">.</span><span class="n">widget</span><span class="p">()</span><span class="o">.</span><span class="n">deleteLater</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">layout</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_group_buttons</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear_layout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">export_layout</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">category_buttons</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">cat_id</span><span class="p">,</span> <span class="n">category</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">format_categories</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="n">btn</span> <span class="o">=</span> <span class="n">StyleableButton</span><span class="p">(</span>
+                <span class="n">category</span><span class="p">[</span><span class="s2">&quot;icon&quot;</span><span class="p">],</span>
+                <span class="n">category</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">],</span>
+                <span class="n">category</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">],</span>
+                <span class="n">is_compact</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">is_enabled</span> <span class="o">=</span> <span class="n">cat_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">enabled_categories</span>
+            <span class="n">btn</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="n">is_enabled</span><span class="p">)</span>
+            <span class="n">btn</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="n">cat_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_category</span> <span class="ow">and</span> <span class="n">is_enabled</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">is_enabled</span><span class="p">:</span>
+                <span class="n">btn</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+                    <span class="k">lambda</span> <span class="n">checked</span><span class="p">,</span> <span class="n">cat</span><span class="o">=</span><span class="n">cat_id</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_category_selected</span><span class="p">(</span><span class="n">cat</span><span class="p">)</span>
+                <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">export_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">btn</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">category_buttons</span><span class="p">[</span><span class="n">cat_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">btn</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_format_buttons</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear_layout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">format_layout</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format_buttons</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">formats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_categories</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">selected_category</span><span class="p">][</span><span class="s2">&quot;formats&quot;</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">fmt</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">formats</span><span class="p">):</span>
+            <span class="n">btn</span> <span class="o">=</span> <span class="n">StyleableButton</span><span class="p">(</span><span class="s2">&quot;ph.file&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;.</span><span class="si">{</span><span class="n">fmt</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">is_compact</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">btn</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="n">fmt</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_format</span><span class="p">)</span>
+            <span class="n">btn</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">checked</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="n">fmt</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_format_selected</span><span class="p">(</span><span class="n">f</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">btn</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format_buttons</span><span class="p">[</span><span class="n">fmt</span><span class="p">]</span> <span class="o">=</span> <span class="n">btn</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_advanced_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear_layout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">settings_layout</span><span class="p">)</span>
+
+        <span class="n">settings_definitions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_settings_definitions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">selected_format</span><span class="p">,</span> <span class="p">{}</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">settings_definitions</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">settings_grid_layout</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">no_settings_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span>
+                <span class="s2">&quot;No additional settings available for this format.&quot;</span>
+            <span class="p">)</span>
+            <span class="n">no_settings_label</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;color: #6b7280; font-style: italic;&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">settings_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">no_settings_label</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">settings_widget</span> <span class="o">=</span> <span class="n">QWidget</span><span class="p">()</span>
+        <span class="n">grid_layout</span> <span class="o">=</span> <span class="n">QGridLayout</span><span class="p">(</span><span class="n">settings_widget</span><span class="p">)</span>
+        <span class="n">grid_layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="n">grid_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+
+        <span class="n">row</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">col</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">setting_key</span><span class="p">,</span> <span class="n">setting_def</span> <span class="ow">in</span> <span class="n">settings_definitions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">widget</span> <span class="o">=</span> <span class="n">create_setting_widget</span><span class="p">(</span><span class="n">setting_def</span><span class="p">)</span>
+
+            <span class="n">label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="n">setting_def</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">])</span>
+            <span class="n">grid_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">grid_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">widget</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+            <span class="n">col</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">col</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">row</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">settings_widget</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings_grid_layout</span> <span class="o">=</span> <span class="n">grid_layout</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_current_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract current settings from the grid widgets&quot;&quot;&quot;</span>
+        <span class="n">settings</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;settings_grid_layout&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">settings</span>
+
+        <span class="c1"># Collect values from all widgets in the grid</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">settings_grid_layout</span><span class="o">.</span><span class="n">count</span><span class="p">()):</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings_grid_layout</span><span class="o">.</span><span class="n">itemAt</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">item</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">widget</span><span class="p">():</span>
+                <span class="n">widget</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">widget</span><span class="p">()</span>
+                <span class="n">parameter</span> <span class="o">=</span> <span class="n">widget</span><span class="o">.</span><span class="n">property</span><span class="p">(</span><span class="s2">&quot;parameter&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">parameter</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">settings</span><span class="p">[</span><span class="n">parameter</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_widget_value</span><span class="p">(</span><span class="n">widget</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">settings</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_category_selected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">category_id</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">category_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_category</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">category_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">enabled_categories</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">cat_id</span><span class="p">,</span> <span class="n">btn</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">category_buttons</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">btn</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="n">cat_id</span> <span class="o">==</span> <span class="n">category_id</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">selected_category</span> <span class="o">=</span> <span class="n">category_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selected_format</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_categories</span><span class="p">[</span><span class="n">category_id</span><span class="p">][</span><span class="s2">&quot;formats&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_settings</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_format_buttons</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_advanced_settings</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_format_selected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">format_id</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">format_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_format</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">fmt</span><span class="p">,</span> <span class="n">btn</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_buttons</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">btn</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="n">fmt</span> <span class="o">==</span> <span class="n">format_id</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">selected_format</span> <span class="o">=</span> <span class="n">format_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_settings</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_advanced_settings</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">export_data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_category</span><span class="p">,</span>
+            <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_format</span><span class="p">,</span>
+            <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">get_current_settings</span><span class="p">(),</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">export_requested</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">export_data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span></div>
+
+
+
+<span class="n">volume_settings</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;shape_x&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Shape X&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;X dimension of the volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+        <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;shape_x&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;shape_y&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Shape Y&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Y dimension of the volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+        <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;shape_y&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;shape_z&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Shape Z&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Z dimension of the volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+        <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;shape_z&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;sampling&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;float&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Sampling Rate&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Sampling rate in Ångströms&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;notes&quot;</span><span class="p">:</span> <span class="s2">&quot;Defaults to sampling rate of Geometry object&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+        <span class="s2">&quot;decimals&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+        <span class="s2">&quot;parameter&quot;</span><span class="p">:</span> <span class="s2">&quot;sampling&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

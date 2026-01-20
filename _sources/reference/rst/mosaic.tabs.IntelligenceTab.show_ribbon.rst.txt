@@ -1,0 +1,6 @@
+﻿mosaic.tabs.IntelligenceTab.show\_ribbon
+========================================
+
+.. currentmodule:: mosaic.tabs
+
+.. automethod:: IntelligenceTab.show_ribbon

@@ -1,0 +1,743 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>User Guide &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial/index';</script>
+    <link rel="icon" href="../_static/logo.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Installation" href="installation.html" />
+    <link rel="prev" title="mosaic documentation" href="../index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="concepts.html">Concepts</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Working with Data</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="data/import_export.html">Import and Export</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data/sessions.html">Session Management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data/special.html">Specialized Views</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Feature Tabs</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="tabs/segmentation.html">Segmentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tabs/parametrization.html">Parametrization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tabs/intelligence.html">Intelligence</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Practical Workflows</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="workflows/giardia.html">Working with <em>in situ</em> data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="workflows/iav.html">Influenza A Virus</a></li>
+<li class="toctree-l1"><a class="reference internal" href="workflows/pipeline.html">Batch Processing</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="reference/formats.html">File Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/issues.html">Issues</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Further Information</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="misc/license.html">License</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">User Guide</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="user-guide">
+<h1>User Guide<a class="headerlink" href="#user-guide" title="Link to this heading">#</a></h1>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#id1">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#optional-dependencies">Optional Dependencies</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="installation.html#dts-simulations">DTS Simulations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installation.html#dts-backmapping">DTS Backmapping</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#instructions-for-developers">Instructions for Developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#getting-help">Getting Help</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#launch-mosaic">Launch Mosaic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#loading-data">Loading Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#basic-navigation">Basic Navigation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#save-a-screenshot">Save a Screenshot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#save-a-session">Save a Session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="concepts.html">Concepts</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="concepts.html#ui-layout">UI Layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts.html#object-browser">Object Browser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts.html#context-menu">Context Menu</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts.html#status-bar">Status Bar</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="concepts.html#interaction-mode">Interaction Mode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="concepts.html#interaction-target">Interaction Target</a></li>
+<li class="toctree-l3"><a class="reference internal" href="concepts.html#processing-indicator">Processing Indicator</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="concepts.html#coordinate-system">Coordinate System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Working with Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="data/import_export.html">Import and Export</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data/import_export.html#import">Import</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data/import_export.html#visual-properties">Visual Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data/import_export.html#screenshots">Screenshots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data/import_export.html#animations">Animations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data/import_export.html#export">Export</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data/import_export.html#programmatic-access-for-developers">Programmatic Access for Developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data/import_export.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data/sessions.html">Session Management</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data/sessions.html#saving-sessions">Saving Sessions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data/sessions.html#loading-sessions">Loading Sessions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data/sessions.html#programmatic-access-for-developers">Programmatic Access for Developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data/sessions.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data/special.html">Specialized Views</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data/special.html#volumes">Volumes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data/special.html#trajectories">Trajectories</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Feature Tabs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tabs/segmentation.html">Segmentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tabs/segmentation.html#merge">Merge</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/segmentation.html#remove">Remove</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/segmentation.html#select-by-size">Select by Size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/segmentation.html#transform">Transform</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/segmentation.html#crop">Crop</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/segmentation.html#cluster">Cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/segmentation.html#outlier-removal">Outlier Removal</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/segmentation.html#normals">Normals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/segmentation.html#trim">Trim</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/segmentation.html#skeletonize">Skeletonize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/segmentation.html#downsample">Downsample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/segmentation.html#properties">Properties</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tabs/parametrization.html">Parametrization</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tabs/parametrization.html#parametric-fitting">Parametric Fitting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tabs/parametrization.html#sphere">Sphere</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tabs/parametrization.html#ellipsoid">Ellipsoid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tabs/parametrization.html#cylinder">Cylinder</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/parametrization.html#non-parametric-fitting">Non-Parametric Fitting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tabs/parametrization.html#rbf-radial-basis-function">RBF (Radial Basis Function)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tabs/parametrization.html#mesh">Mesh</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tabs/parametrization.html#curve">Curve</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/parametrization.html#sampling-operations">Sampling Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tabs/parametrization.html#sample">Sample</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/parametrization.html#mesh-operations">Mesh Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tabs/parametrization.html#repair">Repair</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="tabs/parametrization.html#remesh">Remesh</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="tabs/parametrization.html#smooth">Smooth</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tabs/parametrization.html#id10">Project</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tabs/parametrization.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tabs/intelligence.html">Intelligence</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tabs/intelligence.html#equilibrate">Equilibrate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/intelligence.html#hmff">HMFF</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/intelligence.html#trajectory">Trajectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/intelligence.html#backmapping">Backmapping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tabs/intelligence.html#detection">Detection</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tabs/intelligence.html#template-match">Template Match</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tabs/intelligence.html#membrane">Membrane</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Practical Workflows</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="workflows/giardia.html">Working with <em>in situ</em> data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="workflows/giardia.html#segmentation">Segmentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/giardia.html#connected-components">Connected Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/giardia.html#refinement">Refinement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/giardia.html#clustering">Clustering</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/giardia.html#envelope-extraction">Envelope Extraction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/giardia.html#leiden-clustering">Leiden Clustering</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/giardia.html#meshing">Meshing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="workflows/iav.html">Influenza A Virus</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="workflows/iav.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/iav.html#visual-demonstration">Visual Demonstration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/iav.html#membrane-segmentation">Membrane Segmentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/iav.html#mesh-creation">Mesh Creation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/iav.html#clean-the-segmentation">Clean the Segmentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/iav.html#generate-initial-mesh">Generate Initial Mesh</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/iav.html#refine-the-mesh">Refine the Mesh</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/iav.html#equilibrate-the-mesh">Equilibrate the Mesh</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/iav.html#hmff-simulation">HMFF Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/iav.html#constrained-template-matching">Constrained Template Matching</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/iav.html#generate-seed-points">Generate Seed Points</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/iav.html#template-matching">Template Matching</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/iav.html#refine-protein-picks">Refine Protein Picks</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/iav.html#coarse-grained-martini-models">Coarse-Grained Martini Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/iav.html#backmapping">Backmapping</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/iav.html#coarse-graining">Coarse Graining</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/iav.html#equilibration">Equilibration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/iav.html#conclusion">Conclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/iav.html#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="workflows/pipeline.html">Batch Processing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="workflows/pipeline.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/pipeline.html#creating-a-processing-pipeline">Creating a Processing Pipeline</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/pipeline.html#configuring-input-files">Configuring Input Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/pipeline.html#understanding-the-processing-steps">Understanding the Processing Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/pipeline.html#execution-settings">Execution Settings</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/pipeline.html#running-the-pipeline">Running the Pipeline</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/pipeline.html#cluster-execution">Cluster Execution</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/pipeline.html#reviewing-results">Reviewing Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/pipeline.html#using-seed-points-for-template-matching">Using Seed Points for Template Matching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/pipeline.html#pipeline-operations-reference">Pipeline Operations Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/pipeline.html#input">Input</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/pipeline.html#preprocessing">Preprocessing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/pipeline.html#parametrization">Parametrization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/pipeline.html#export">Export</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/pipeline.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="reference/formats.html">File Formats</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference/formats.html#volume-formats">Volume Formats</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#mrc-mrc-map">MRC (.mrc, .map)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#em-em">EM (.em)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#hdf5-h5">HDF5 (.h5)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference/formats.html#point-cloud-formats">Point Cloud Formats</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#csv-csv-xyz">CSV (.csv, .xyz)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#tsv-tsv">TSV (.tsv)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#pdb-pdb">PDB (.pdb)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#gro-gro">GRO (.gro)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#star-star">STAR (.star)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#cif-cif">CIF (.cif)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference/formats.html#mesh-formats">Mesh Formats</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#obj-obj">OBJ (.obj)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#ply-ply">PLY (.ply)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#stl-stl">STL (.stl)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference/formats.html#trajectory-formats">Trajectory Formats</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#tsi-tsi-q">TSI (.tsi, .q)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#vtu-vtu">VTU (.vtu)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference/formats.html#session-format">Session Format</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference/formats.html#pickle-pickle">Pickle (.pickle)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference/formats.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference/troubleshooting.html">Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#file-import-errors">File Import Errors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#performance-issues">Performance Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#selection-problems">Selection Problems</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#crashes-during-operations">Crashes During Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#export-failures">Export Failures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#missing-features-in-exported-files">Missing Features in Exported Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#session-won-t-load">Session Won’t Load</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#mesh-generation-failures">Mesh Generation Failures</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference/issues.html">Issues</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Further Information</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="misc/license.html">License</a></li>
+</ul>
+</div>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../index.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">mosaic documentation</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="installation.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Installation</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,41 @@
+﻿mosaic.parametrization.MarchingCubes
+====================================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: MarchingCubes
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MarchingCubes.__init__
+      ~MarchingCubes.add_projections
+      ~MarchingCubes.compute_curvature
+      ~MarchingCubes.compute_distance
+      ~MarchingCubes.compute_normal
+      ~MarchingCubes.compute_vertex_normals
+      ~MarchingCubes.fit
+      ~MarchingCubes.from_file
+      ~MarchingCubes.geodesic_distance
+      ~MarchingCubes.points_per_sampling
+      ~MarchingCubes.sample
+      ~MarchingCubes.subset
+      ~MarchingCubes.to_file
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MarchingCubes.triangles
+      ~MarchingCubes.vertices
+   
+   

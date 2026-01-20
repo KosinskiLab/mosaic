@@ -1,0 +1,6 @@
+﻿mosaic.operations.compute\_normals
+==================================
+
+.. currentmodule:: mosaic.operations
+
+.. autofunction:: compute_normals

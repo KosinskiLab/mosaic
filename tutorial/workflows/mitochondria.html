@@ -1,0 +1,782 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>HeLa Mitochondria &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial/workflows/mitochondria';</script>
+    <link rel="icon" href="../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">HeLa Mitochondria</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="hela-mitochondria">
+<h1>HeLa Mitochondria<a class="headerlink" href="#hela-mitochondria" title="Link to this heading">#</a></h1>
+<section id="mitochondria-workflow">
+<h2>Mitochondria Workflow<a class="headerlink" href="#mitochondria-workflow" title="Link to this heading">#</a></h2>
+<p>This tutorial guides you through analyzing mitochondria from cellular tomography data using Mosaic, from acquiring segmentations to HMFF refinement and potential downstream applications.</p>
+<section id="overview">
+<h3>Overview<a class="headerlink" href="#overview" title="Link to this heading">#</a></h3>
+<p>The workflow consists of these major steps:</p>
+<ol class="arabic simple">
+<li><p>Data acquisition</p></li>
+<li><p>Initial mesh generation from segmentations</p></li>
+<li><p>Mesh cleaning and refinement</p></li>
+<li><p>HMFF simulation</p></li>
+<li><p>Analysis and downstream applications</p></li>
+</ol>
+</section>
+<section id="data-acquisition">
+<h3>1. Data Acquisition<a class="headerlink" href="#data-acquisition" title="Link to this heading">#</a></h3>
+<p>First, download the jrc-hela2 cellular segmentation dataset:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the jrc-hela2 dataset using the quilt data client</span>
+pip<span class="w"> </span>install<span class="w"> </span>quilt3
+
+<span class="c1"># Python script to download specific data</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import quilt3; quilt3.Package.browse(&#39;janelia-cosem-datasets/jrc_hela-2&#39;, registry=&#39;s3://janelia-cosem-datasets&#39;).fetch(&#39;jrc_hela-2/mitochondria/s0&#39;)&quot;</span>
+</pre></div>
+</div>
+<p>This will download the mitochondria segmentation volume at full resolution (4nm, 4nm, 5.24nm).</p>
+</section>
+<section id="initial-mesh-generation">
+<h3>2. Initial Mesh Generation<a class="headerlink" href="#initial-mesh-generation" title="Link to this heading">#</a></h3>
+<section id="convert-segmentation-to-mesh">
+<h4>2.1. Convert Segmentation to Mesh<a class="headerlink" href="#convert-segmentation-to-mesh" title="Link to this heading">#</a></h4>
+<p>Convert the volumetric segmentations to initial meshes using marching cubes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">zmesh</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">io</span>
+
+<span class="c1"># Load the segmentation volume</span>
+<span class="n">seg_volume</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="s2">&quot;jrc_hela-2/mitochondria/s0/volume.tif&quot;</span><span class="p">)</span>
+
+<span class="c1"># Split into manageable subvolumes</span>
+<span class="n">subvolume_size</span> <span class="o">=</span> <span class="mi">448</span>
+<span class="n">meshes</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="c1"># Process subvolumes with zmesh</span>
+<span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">seg_volume</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">subvolume_size</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">seg_volume</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">subvolume_size</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">seg_volume</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">subvolume_size</span><span class="p">):</span>
+            <span class="c1"># Extract subvolume</span>
+            <span class="n">x_end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">subvolume_size</span><span class="p">,</span> <span class="n">seg_volume</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">y_end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">y</span> <span class="o">+</span> <span class="n">subvolume_size</span><span class="p">,</span> <span class="n">seg_volume</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">z_end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">z</span> <span class="o">+</span> <span class="n">subvolume_size</span><span class="p">,</span> <span class="n">seg_volume</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+
+            <span class="n">subvol</span> <span class="o">=</span> <span class="n">seg_volume</span><span class="p">[</span><span class="n">x</span><span class="p">:</span><span class="n">x_end</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span><span class="n">y_end</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span><span class="n">z_end</span><span class="p">]</span>
+
+            <span class="c1"># Skip empty subvolumes</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">subvol</span><span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Generate mesh for subvolume</span>
+            <span class="n">submesh</span> <span class="o">=</span> <span class="n">zmesh</span><span class="o">.</span><span class="n">Mesh</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">subvol</span><span class="p">)</span>
+
+            <span class="c1"># Simplify mesh with reduction factor</span>
+            <span class="n">submesh</span> <span class="o">=</span> <span class="n">submesh</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">reduction_factor</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">max_error</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
+
+            <span class="n">meshes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">submesh</span><span class="p">)</span>
+
+<span class="c1"># Save the meshes for later use</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">mesh</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">meshes</span><span class="p">):</span>
+    <span class="n">mesh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mitochondria_submesh_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">.obj&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="merge-and-further-simplify-meshes">
+<h4>2.2. Merge and Further Simplify Meshes<a class="headerlink" href="#merge-and-further-simplify-meshes" title="Link to this heading">#</a></h4>
+<ol class="arabic">
+<li><p>Load the individual submeshes into Mosaic:</p>
+<ul class="simple">
+<li><p>Use <strong>File &gt; Open</strong> to load each .obj file.</p></li>
+</ul>
+</li>
+<li><p>Merge the submeshes:</p>
+<ul class="simple">
+<li><p>Select all loaded submeshes.</p></li>
+<li><p>In the <strong>Parametrization</strong> tab, click <strong>Merge</strong>.</p></li>
+</ul>
+</li>
+<li><p>Simplify the merged mesh using Mosaic’s mesh operations:</p>
+<ul class="simple">
+<li><p>Select the merged mesh.</p></li>
+<li><p>Click on <strong>Remesh</strong> with:</p>
+<ul>
+<li><p>Method: Quadratic Decimation</p></li>
+<li><p>Target Triangle Count: [Appropriate value, e.g., 50000]</p></li>
+</ul>
+</li>
+</ul>
+<p>Or alternatively, use pyfqmr for more control:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pyfqmr</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">trimesh</span>
+
+<span class="c1"># Load merged mesh</span>
+<span class="n">mesh</span> <span class="o">=</span> <span class="n">trimesh</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;merged_mitochondria.obj&quot;</span><span class="p">)</span>
+
+<span class="c1"># Setup mesh simplifier</span>
+<span class="n">simplifier</span> <span class="o">=</span> <span class="n">pyfqmr</span><span class="o">.</span><span class="n">Simplify</span><span class="p">()</span>
+<span class="n">simplifier</span><span class="o">.</span><span class="n">setMesh</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">vertices</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">faces</span><span class="p">)</span>
+
+<span class="c1"># Simplify with an aggressiveness of 5.5 and decimation factor of 2.0</span>
+<span class="n">simplifier</span><span class="o">.</span><span class="n">simplify_mesh</span><span class="p">(</span><span class="n">target_count</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">faces</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span>
+                         <span class="n">aggressiveness</span><span class="o">=</span><span class="mf">5.5</span><span class="p">,</span>
+                         <span class="n">preserve_border</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Get simplified mesh</span>
+<span class="n">v</span><span class="p">,</span> <span class="n">f</span> <span class="o">=</span> <span class="n">simplifier</span><span class="o">.</span><span class="n">getMesh</span><span class="p">()</span>
+
+<span class="c1"># Save simplified mesh</span>
+<span class="n">simplified_mesh</span> <span class="o">=</span> <span class="n">trimesh</span><span class="o">.</span><span class="n">Trimesh</span><span class="p">(</span><span class="n">vertices</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">faces</span><span class="o">=</span><span class="n">f</span><span class="p">)</span>
+<span class="n">simplified_mesh</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">&quot;simplified_mitochondria.obj&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="mesh-cleaning-and-refinement">
+<h3>3. Mesh Cleaning and Refinement<a class="headerlink" href="#mesh-cleaning-and-refinement" title="Link to this heading">#</a></h3>
+<section id="import-and-assess-mesh-quality">
+<h4>3.1. Import and Assess Mesh Quality<a class="headerlink" href="#import-and-assess-mesh-quality" title="Link to this heading">#</a></h4>
+<ol class="arabic simple">
+<li><p>Import the simplified mesh into Mosaic:</p>
+<ul class="simple">
+<li><p>Use <strong>File &gt; Open</strong> to load the simplified mesh.</p></li>
+</ul>
+</li>
+<li><p>Assess mesh quality:</p>
+<ul class="simple">
+<li><p>Inspect for disconnected components, holes, and non-manifold edges.</p></li>
+<li><p>Use the <strong>Analyze</strong> tool in the <strong>Mesh Operations</strong> section to check metrics.</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="clean-and-repair-the-mesh">
+<h4>3.2. Clean and Repair the Mesh<a class="headerlink" href="#clean-and-repair-the-mesh" title="Link to this heading">#</a></h4>
+<ol class="arabic simple">
+<li><p>Generate equidistant samples from the mesh:</p>
+<ul class="simple">
+<li><p>Select the mesh.</p></li>
+<li><p>Click on <strong>Sample</strong> with:</p>
+<ul>
+<li><p>Sampling Method: Distance</p></li>
+<li><p>Sampling: 20 (in nm, adjust based on your dataset)</p></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Remove erroneous segments manually.</p></li>
+<li><p>Close gaps by creating a new mesh from the cleaned samples:</p>
+<ul class="simple">
+<li><p>Select all cleaned samples.</p></li>
+<li><p>Click on <strong>Mesh</strong> using “Poisson” reconstruction:</p>
+<ul>
+<li><p>Depth: 9-14 (adjust based on complexity)</p></li>
+<li><p>Scale: 1.2</p></li>
+<li><p>Pointweight: 0.1</p></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Remesh to target edge length for simulation:</p>
+<ul class="simple">
+<li><p>Select the new mesh.</p></li>
+<li><p>Click on <strong>Remesh</strong>.</p></li>
+<li><p>Set method to “Edge Length” with target edge length of 20nm.</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<section id="hmff-simulation">
+<h3>4. HMFF Simulation<a class="headerlink" href="#hmff-simulation" title="Link to this heading">#</a></h3>
+<section id="prepare-the-tomogram">
+<h4>4.1. Prepare the Tomogram<a class="headerlink" href="#prepare-the-tomogram" title="Link to this heading">#</a></h4>
+<ol class="arabic simple">
+<li><p>Import the jrc-hela2 tomogram (at an appropriate binning level):</p>
+<ul class="simple">
+<li><p>From the <strong>View</strong> menu, open <strong>Volume Viewer</strong>.</p></li>
+<li><p>Load the tomogram with voxel size of 16nm × 16nm × 20.96nm.</p></li>
+</ul>
+</li>
+<li><p>No additional preprocessing is typically needed for this dataset.</p></li>
+</ol>
+</section>
+<section id="configure-hmff">
+<h4>4.2. Configure HMFF<a class="headerlink" href="#configure-hmff" title="Link to this heading">#</a></h4>
+<ol class="arabic simple">
+<li><p>Select the remeshed mitochondria model.</p></li>
+<li><p>Click on <strong>Setup</strong> in the <strong>HMFF Operations</strong> section.</p></li>
+<li><p>Configure parameters:</p>
+<ul class="simple">
+<li><p>Mesh: Select your remeshed mitochondria mesh</p></li>
+<li><p>Volume: Select your tomogram</p></li>
+<li><p>Invert Contrast: Based on your dataset contrast</p></li>
+<li><p>HMFF weight (ξ): 50.0</p></li>
+<li><p>Rigidity (κ): 15.0</p></li>
+<li><p>Steps: 50000</p></li>
+<li><p>Threads: Set based on your system</p></li>
+<li><p>Temperature (T): 1.5</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="run-the-hmff-simulation">
+<h4>4.3. Run the HMFF Simulation<a class="headerlink" href="#run-the-hmff-simulation" title="Link to this heading">#</a></h4>
+<ol class="arabic">
+<li><p>A simulation folder will be created by the setup step.</p></li>
+<li><p>Run the simulation using:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>/path/to/hmff_simulation_folder
+FreeDTS
+</pre></div>
+</div>
+</li>
+<li><p>Monitor the simulation progress and energy minimization.</p></li>
+</ol>
+</section>
+<section id="import-the-refined-mesh">
+<h4>4.4. Import the Refined Mesh<a class="headerlink" href="#import-the-refined-mesh" title="Link to this heading">#</a></h4>
+<ol class="arabic simple">
+<li><p>After simulation completion, import the final .tsi or .vtu file:</p>
+<ul class="simple">
+<li><p>In Mosaic, choose <strong>File &gt; Open</strong> and select the final configuration.</p></li>
+</ul>
+</li>
+<li><p>Visually inspect the refined mesh against the tomogram data.</p></li>
+</ol>
+</section>
+</section>
+<section id="analysis-and-downstream-applications">
+<h3>5. Analysis and Downstream Applications<a class="headerlink" href="#analysis-and-downstream-applications" title="Link to this heading">#</a></h3>
+<section id="quantitative-analysis">
+<h4>5.1. Quantitative Analysis<a class="headerlink" href="#quantitative-analysis" title="Link to this heading">#</a></h4>
+<ol class="arabic simple">
+<li><p>Calculate mesh properties:</p>
+<ul class="simple">
+<li><p>Select the refined mesh.</p></li>
+<li><p>Use the <strong>Analyze</strong> tool to compute properties like surface area, volume, and curvature.</p></li>
+</ul>
+</li>
+<li><p>Export statistics for further analysis:</p>
+<ul class="simple">
+<li><p>Save the generated statistics using the export function.</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="visualization">
+<h4>5.2. Visualization<a class="headerlink" href="#visualization" title="Link to this heading">#</a></h4>
+<ol class="arabic simple">
+<li><p>Create high-quality renderings:</p>
+<ul class="simple">
+<li><p>Use <strong>File &gt; Save Screenshot</strong> to capture the current view.</p></li>
+<li><p>Adjust lighting and backgrounds for optimal visualization.</p></li>
+</ul>
+</li>
+<li><p>Create videos of the mesh:</p>
+<ul class="simple">
+<li><p>Use <strong>File &gt; Export Animation</strong> to create a video rotating around the mitochondria.</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="further-modeling-optional">
+<h4>5.3. Further Modeling (Optional)<a class="headerlink" href="#further-modeling-optional" title="Link to this heading">#</a></h4>
+<p>If desired, you can proceed with additional modeling steps similar to the IAV and Mycoplasma workflows:</p>
+<ol class="arabic">
+<li><p>Generate seed points for protein placement.</p></li>
+<li><p>Map proteins of interest using constrained template matching.</p></li>
+<li><p>Backmap to coarse-grained models for simulations:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use TS2CG for backmapping (if applicable)</span>
+ts2cg.py<span class="w"> </span>PLM<span class="w"> </span>-f<span class="w"> </span>refined_mitochondria.obj<span class="w"> </span>-o<span class="w"> </span>bilayer_mesh.obj<span class="w"> </span>-w<span class="w"> </span><span class="m">4</span>.0
+ts2cg.py<span class="w"> </span>PCG<span class="w"> </span>-f<span class="w"> </span>bilayer_mesh.obj<span class="w"> </span>-o<span class="w"> </span>cg_system.gro<span class="w"> </span>-a<span class="w"> </span><span class="m">0</span>.64<span class="w"> </span>-l<span class="w"> </span>POPC:POPE:CARD<span class="w"> </span>-r<span class="w"> </span><span class="m">2</span>:2:1
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="conclusion">
+<h3>Conclusion<a class="headerlink" href="#conclusion" title="Link to this heading">#</a></h3>
+<p>You have now completed the workflow for analyzing mitochondria from cellular tomography data. This workflow demonstrates how to process complex cellular organelles from segmentations to refined meshes using Mosaic and HMFF. The resulting models can be used for structural analysis, visualization, and potentially as starting configurations for molecular simulations.</p>
+</section>
+<section id="references">
+<h3>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>JRC Hela-2 dataset: Heinrich et al. (2021) [Citation information]</p></li>
+<li><p>zmesh: [Citation for zmesh]</p></li>
+<li><p>pyfqmr: [Citation for pyfqmr]</p></li>
+<li><p>Igneous: [Citation for Igneous]</p></li>
+<li><p>FreeDTS: [Citation for FreeDTS]</p></li>
+<li><p>PyTME: [Citation for PyTME]</p></li>
+<li><p>TS2CG: [Citation for TS2CG]</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitochondria-workflow">Mitochondria Workflow</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#data-acquisition">1. Data Acquisition</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#initial-mesh-generation">2. Initial Mesh Generation</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#convert-segmentation-to-mesh">2.1. Convert Segmentation to Mesh</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#merge-and-further-simplify-meshes">2.2. Merge and Further Simplify Meshes</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mesh-cleaning-and-refinement">3. Mesh Cleaning and Refinement</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#import-and-assess-mesh-quality">3.1. Import and Assess Mesh Quality</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#clean-and-repair-the-mesh">3.2. Clean and Repair the Mesh</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hmff-simulation">4. HMFF Simulation</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#prepare-the-tomogram">4.1. Prepare the Tomogram</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#configure-hmff">4.2. Configure HMFF</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#run-the-hmff-simulation">4.3. Run the HMFF Simulation</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#import-the-refined-mesh">4.4. Import the Refined Mesh</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#analysis-and-downstream-applications">5. Analysis and Downstream Applications</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#quantitative-analysis">5.1. Quantitative Analysis</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#visualization">5.2. Visualization</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#further-modeling-optional">5.3. Further Modeling (Optional)</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#conclusion">Conclusion</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

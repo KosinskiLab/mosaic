@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.deselect\_points
+==========================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.deselect_points

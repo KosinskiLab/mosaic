@@ -1,0 +1,50 @@
+﻿mosaic.geometry.VolumeGeometry
+==============================
+
+.. currentmodule:: mosaic.geometry
+
+.. autoclass:: VolumeGeometry
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~VolumeGeometry.__init__
+      ~VolumeGeometry.change_representation
+      ~VolumeGeometry.color_points
+      ~VolumeGeometry.get_number_of_points
+      ~VolumeGeometry.get_point_data
+      ~VolumeGeometry.is_mesh_representation
+      ~VolumeGeometry.merge
+      ~VolumeGeometry.set_appearance
+      ~VolumeGeometry.set_color
+      ~VolumeGeometry.set_scalars
+      ~VolumeGeometry.set_visibility
+      ~VolumeGeometry.subset
+      ~VolumeGeometry.swap_data
+      ~VolumeGeometry.update_isovalue
+      ~VolumeGeometry.update_isovalue_quantile
+      ~VolumeGeometry.update_target_resolution
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~VolumeGeometry.actor
+      ~VolumeGeometry.model
+      ~VolumeGeometry.normals
+      ~VolumeGeometry.points
+      ~VolumeGeometry.quaternions
+      ~VolumeGeometry.sampling_rate
+      ~VolumeGeometry.vertex_properties
+      ~VolumeGeometry.visible
+   
+   

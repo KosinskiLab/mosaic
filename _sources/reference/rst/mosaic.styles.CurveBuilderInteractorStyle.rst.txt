@@ -1,0 +1,248 @@
+﻿mosaic.styles.CurveBuilderInteractorStyle
+=========================================
+
+.. currentmodule:: mosaic.styles
+
+.. autoclass:: CurveBuilderInteractorStyle
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CurveBuilderInteractorStyle.__init__
+      ~CurveBuilderInteractorStyle.cleanup
+      ~CurveBuilderInteractorStyle.on_key_press
+      ~CurveBuilderInteractorStyle.on_left_button_down
+      ~CurveBuilderInteractorStyle.on_left_button_release
+      ~CurveBuilderInteractorStyle.on_mouse_move
+      ~CurveBuilderInteractorStyle.override
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CurveBuilderInteractorStyle.AddObserver
+      ~CurveBuilderInteractorStyle.AutoAdjustCameraClippingRangeOff
+      ~CurveBuilderInteractorStyle.AutoAdjustCameraClippingRangeOn
+      ~CurveBuilderInteractorStyle.BreakOnError
+      ~CurveBuilderInteractorStyle.ComputeDisplayToWorld
+      ~CurveBuilderInteractorStyle.ComputeWorldToDisplay
+      ~CurveBuilderInteractorStyle.DebugOff
+      ~CurveBuilderInteractorStyle.DebugOn
+      ~CurveBuilderInteractorStyle.DelegateTDxEvent
+      ~CurveBuilderInteractorStyle.Dolly
+      ~CurveBuilderInteractorStyle.EnabledOff
+      ~CurveBuilderInteractorStyle.EnabledOn
+      ~CurveBuilderInteractorStyle.EndDolly
+      ~CurveBuilderInteractorStyle.EndEnvRotate
+      ~CurveBuilderInteractorStyle.EndGesture
+      ~CurveBuilderInteractorStyle.EndPan
+      ~CurveBuilderInteractorStyle.EndRotate
+      ~CurveBuilderInteractorStyle.EndSpin
+      ~CurveBuilderInteractorStyle.EndTimer
+      ~CurveBuilderInteractorStyle.EndTwoPointer
+      ~CurveBuilderInteractorStyle.EndUniformScale
+      ~CurveBuilderInteractorStyle.EndZoom
+      ~CurveBuilderInteractorStyle.EnvironmentRotate
+      ~CurveBuilderInteractorStyle.FastDelete
+      ~CurveBuilderInteractorStyle.FindPokedRenderer
+      ~CurveBuilderInteractorStyle.GetAddressAsString
+      ~CurveBuilderInteractorStyle.GetAutoAdjustCameraClippingRange
+      ~CurveBuilderInteractorStyle.GetAutoAdjustCameraClippingRangeMaxValue
+      ~CurveBuilderInteractorStyle.GetAutoAdjustCameraClippingRangeMinValue
+      ~CurveBuilderInteractorStyle.GetClassName
+      ~CurveBuilderInteractorStyle.GetCommand
+      ~CurveBuilderInteractorStyle.GetCurrentRenderer
+      ~CurveBuilderInteractorStyle.GetDebug
+      ~CurveBuilderInteractorStyle.GetDefaultRenderer
+      ~CurveBuilderInteractorStyle.GetEnabled
+      ~CurveBuilderInteractorStyle.GetGlobalWarningDisplay
+      ~CurveBuilderInteractorStyle.GetHandleObservers
+      ~CurveBuilderInteractorStyle.GetInteractor
+      ~CurveBuilderInteractorStyle.GetIsInMemkind
+      ~CurveBuilderInteractorStyle.GetKeyPressActivation
+      ~CurveBuilderInteractorStyle.GetKeyPressActivationValue
+      ~CurveBuilderInteractorStyle.GetMTime
+      ~CurveBuilderInteractorStyle.GetMotionFactor
+      ~CurveBuilderInteractorStyle.GetMouseWheelMotionFactor
+      ~CurveBuilderInteractorStyle.GetNumberOfGenerationsFromBase
+      ~CurveBuilderInteractorStyle.GetNumberOfGenerationsFromBaseType
+      ~CurveBuilderInteractorStyle.GetObjectDescription
+      ~CurveBuilderInteractorStyle.GetObjectName
+      ~CurveBuilderInteractorStyle.GetPickColor
+      ~CurveBuilderInteractorStyle.GetPickingManaged
+      ~CurveBuilderInteractorStyle.GetPriority
+      ~CurveBuilderInteractorStyle.GetPriorityMaxValue
+      ~CurveBuilderInteractorStyle.GetPriorityMinValue
+      ~CurveBuilderInteractorStyle.GetReferenceCount
+      ~CurveBuilderInteractorStyle.GetState
+      ~CurveBuilderInteractorStyle.GetTDxStyle
+      ~CurveBuilderInteractorStyle.GetTimerDuration
+      ~CurveBuilderInteractorStyle.GetTimerDurationMaxValue
+      ~CurveBuilderInteractorStyle.GetTimerDurationMinValue
+      ~CurveBuilderInteractorStyle.GetUseTimers
+      ~CurveBuilderInteractorStyle.GetUsingMemkind
+      ~CurveBuilderInteractorStyle.GlobalWarningDisplayOff
+      ~CurveBuilderInteractorStyle.GlobalWarningDisplayOn
+      ~CurveBuilderInteractorStyle.GrabFocus
+      ~CurveBuilderInteractorStyle.HandleObserversOff
+      ~CurveBuilderInteractorStyle.HandleObserversOn
+      ~CurveBuilderInteractorStyle.HasObserver
+      ~CurveBuilderInteractorStyle.HighlightActor2D
+      ~CurveBuilderInteractorStyle.HighlightProp
+      ~CurveBuilderInteractorStyle.HighlightProp3D
+      ~CurveBuilderInteractorStyle.InitializeObjectBase
+      ~CurveBuilderInteractorStyle.InvokeEvent
+      ~CurveBuilderInteractorStyle.IsA
+      ~CurveBuilderInteractorStyle.IsTypeOf
+      ~CurveBuilderInteractorStyle.KeyPressActivationOff
+      ~CurveBuilderInteractorStyle.KeyPressActivationOn
+      ~CurveBuilderInteractorStyle.Modified
+      ~CurveBuilderInteractorStyle.NewInstance
+      ~CurveBuilderInteractorStyle.Off
+      ~CurveBuilderInteractorStyle.On
+      ~CurveBuilderInteractorStyle.OnButton3D
+      ~CurveBuilderInteractorStyle.OnChar
+      ~CurveBuilderInteractorStyle.OnClip3D
+      ~CurveBuilderInteractorStyle.OnConfigure
+      ~CurveBuilderInteractorStyle.OnDropFiles
+      ~CurveBuilderInteractorStyle.OnDropLocation
+      ~CurveBuilderInteractorStyle.OnElevation3D
+      ~CurveBuilderInteractorStyle.OnEndPan
+      ~CurveBuilderInteractorStyle.OnEndPinch
+      ~CurveBuilderInteractorStyle.OnEndRotate
+      ~CurveBuilderInteractorStyle.OnEndSwipe
+      ~CurveBuilderInteractorStyle.OnEnter
+      ~CurveBuilderInteractorStyle.OnExpose
+      ~CurveBuilderInteractorStyle.OnFifthButtonDown
+      ~CurveBuilderInteractorStyle.OnFifthButtonUp
+      ~CurveBuilderInteractorStyle.OnFourthButtonDown
+      ~CurveBuilderInteractorStyle.OnFourthButtonUp
+      ~CurveBuilderInteractorStyle.OnKeyDown
+      ~CurveBuilderInteractorStyle.OnKeyPress
+      ~CurveBuilderInteractorStyle.OnKeyRelease
+      ~CurveBuilderInteractorStyle.OnKeyUp
+      ~CurveBuilderInteractorStyle.OnLeave
+      ~CurveBuilderInteractorStyle.OnLeftButtonDoubleClick
+      ~CurveBuilderInteractorStyle.OnLeftButtonDown
+      ~CurveBuilderInteractorStyle.OnLeftButtonUp
+      ~CurveBuilderInteractorStyle.OnLongTap
+      ~CurveBuilderInteractorStyle.OnMenu3D
+      ~CurveBuilderInteractorStyle.OnMiddleButtonDoubleClick
+      ~CurveBuilderInteractorStyle.OnMiddleButtonDown
+      ~CurveBuilderInteractorStyle.OnMiddleButtonUp
+      ~CurveBuilderInteractorStyle.OnMouseMove
+      ~CurveBuilderInteractorStyle.OnMouseWheelBackward
+      ~CurveBuilderInteractorStyle.OnMouseWheelForward
+      ~CurveBuilderInteractorStyle.OnMouseWheelLeft
+      ~CurveBuilderInteractorStyle.OnMouseWheelRight
+      ~CurveBuilderInteractorStyle.OnMove3D
+      ~CurveBuilderInteractorStyle.OnNextPose3D
+      ~CurveBuilderInteractorStyle.OnPan
+      ~CurveBuilderInteractorStyle.OnPick3D
+      ~CurveBuilderInteractorStyle.OnPinch
+      ~CurveBuilderInteractorStyle.OnPositionProp3D
+      ~CurveBuilderInteractorStyle.OnRightButtonDoubleClick
+      ~CurveBuilderInteractorStyle.OnRightButtonDown
+      ~CurveBuilderInteractorStyle.OnRightButtonUp
+      ~CurveBuilderInteractorStyle.OnRotate
+      ~CurveBuilderInteractorStyle.OnSelect3D
+      ~CurveBuilderInteractorStyle.OnStartPan
+      ~CurveBuilderInteractorStyle.OnStartPinch
+      ~CurveBuilderInteractorStyle.OnStartRotate
+      ~CurveBuilderInteractorStyle.OnStartSwipe
+      ~CurveBuilderInteractorStyle.OnSwipe
+      ~CurveBuilderInteractorStyle.OnTap
+      ~CurveBuilderInteractorStyle.OnTimer
+      ~CurveBuilderInteractorStyle.OnViewerMovement3D
+      ~CurveBuilderInteractorStyle.Pan
+      ~CurveBuilderInteractorStyle.PickingManagedOff
+      ~CurveBuilderInteractorStyle.PickingManagedOn
+      ~CurveBuilderInteractorStyle.Register
+      ~CurveBuilderInteractorStyle.ReleaseFocus
+      ~CurveBuilderInteractorStyle.RemoveAllObservers
+      ~CurveBuilderInteractorStyle.RemoveObserver
+      ~CurveBuilderInteractorStyle.RemoveObservers
+      ~CurveBuilderInteractorStyle.Rotate
+      ~CurveBuilderInteractorStyle.SafeDownCast
+      ~CurveBuilderInteractorStyle.SetAutoAdjustCameraClippingRange
+      ~CurveBuilderInteractorStyle.SetCurrentRenderer
+      ~CurveBuilderInteractorStyle.SetDebug
+      ~CurveBuilderInteractorStyle.SetDefaultRenderer
+      ~CurveBuilderInteractorStyle.SetEnabled
+      ~CurveBuilderInteractorStyle.SetGlobalWarningDisplay
+      ~CurveBuilderInteractorStyle.SetHandleObservers
+      ~CurveBuilderInteractorStyle.SetInteractor
+      ~CurveBuilderInteractorStyle.SetKeyPressActivation
+      ~CurveBuilderInteractorStyle.SetKeyPressActivationValue
+      ~CurveBuilderInteractorStyle.SetMemkindDirectory
+      ~CurveBuilderInteractorStyle.SetMotionFactor
+      ~CurveBuilderInteractorStyle.SetMouseWheelMotionFactor
+      ~CurveBuilderInteractorStyle.SetObjectName
+      ~CurveBuilderInteractorStyle.SetPickColor
+      ~CurveBuilderInteractorStyle.SetPickingManaged
+      ~CurveBuilderInteractorStyle.SetPriority
+      ~CurveBuilderInteractorStyle.SetReferenceCount
+      ~CurveBuilderInteractorStyle.SetTDxStyle
+      ~CurveBuilderInteractorStyle.SetTimerDuration
+      ~CurveBuilderInteractorStyle.SetUseTimers
+      ~CurveBuilderInteractorStyle.Spin
+      ~CurveBuilderInteractorStyle.StartAnimate
+      ~CurveBuilderInteractorStyle.StartDolly
+      ~CurveBuilderInteractorStyle.StartEnvRotate
+      ~CurveBuilderInteractorStyle.StartGesture
+      ~CurveBuilderInteractorStyle.StartPan
+      ~CurveBuilderInteractorStyle.StartRotate
+      ~CurveBuilderInteractorStyle.StartSelect
+      ~CurveBuilderInteractorStyle.StartSpin
+      ~CurveBuilderInteractorStyle.StartState
+      ~CurveBuilderInteractorStyle.StartTimer
+      ~CurveBuilderInteractorStyle.StartTwoPointer
+      ~CurveBuilderInteractorStyle.StartUniformScale
+      ~CurveBuilderInteractorStyle.StartZoom
+      ~CurveBuilderInteractorStyle.StopAnimate
+      ~CurveBuilderInteractorStyle.StopSelect
+      ~CurveBuilderInteractorStyle.StopState
+      ~CurveBuilderInteractorStyle.UnRegister
+      ~CurveBuilderInteractorStyle.UniformScale
+      ~CurveBuilderInteractorStyle.UseTimersOff
+      ~CurveBuilderInteractorStyle.UseTimersOn
+      ~CurveBuilderInteractorStyle.UsesGarbageCollector
+      ~CurveBuilderInteractorStyle.Zoom
+      ~CurveBuilderInteractorStyle.auto_adjust_camera_clipping_range
+      ~CurveBuilderInteractorStyle.class_name
+      ~CurveBuilderInteractorStyle.current_renderer
+      ~CurveBuilderInteractorStyle.debug
+      ~CurveBuilderInteractorStyle.default_renderer
+      ~CurveBuilderInteractorStyle.enabled
+      ~CurveBuilderInteractorStyle.global_warning_display
+      ~CurveBuilderInteractorStyle.handle_observers
+      ~CurveBuilderInteractorStyle.interactor
+      ~CurveBuilderInteractorStyle.is_in_memkind
+      ~CurveBuilderInteractorStyle.key_press_activation
+      ~CurveBuilderInteractorStyle.key_press_activation_value
+      ~CurveBuilderInteractorStyle.m_time
+      ~CurveBuilderInteractorStyle.memkind_directory
+      ~CurveBuilderInteractorStyle.motion_factor
+      ~CurveBuilderInteractorStyle.mouse_wheel_motion_factor
+      ~CurveBuilderInteractorStyle.object_description
+      ~CurveBuilderInteractorStyle.object_name
+      ~CurveBuilderInteractorStyle.pick_color
+      ~CurveBuilderInteractorStyle.picking_managed
+      ~CurveBuilderInteractorStyle.priority
+      ~CurveBuilderInteractorStyle.reference_count
+      ~CurveBuilderInteractorStyle.state
+      ~CurveBuilderInteractorStyle.t_dx_style
+      ~CurveBuilderInteractorStyle.timer_duration
+      ~CurveBuilderInteractorStyle.use_timers
+      ~CurveBuilderInteractorStyle.using_memkind
+   
+   

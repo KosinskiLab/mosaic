@@ -1,0 +1,6 @@
+﻿mosaic.operations.duplicate
+===========================
+
+.. currentmodule:: mosaic.operations
+
+.. autofunction:: duplicate

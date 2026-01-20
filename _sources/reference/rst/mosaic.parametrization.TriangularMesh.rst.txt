@@ -1,0 +1,41 @@
+﻿mosaic.parametrization.TriangularMesh
+=====================================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: TriangularMesh
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TriangularMesh.__init__
+      ~TriangularMesh.add_projections
+      ~TriangularMesh.compute_curvature
+      ~TriangularMesh.compute_distance
+      ~TriangularMesh.compute_normal
+      ~TriangularMesh.compute_vertex_normals
+      ~TriangularMesh.fit
+      ~TriangularMesh.from_file
+      ~TriangularMesh.geodesic_distance
+      ~TriangularMesh.points_per_sampling
+      ~TriangularMesh.sample
+      ~TriangularMesh.subset
+      ~TriangularMesh.to_file
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TriangularMesh.triangles
+      ~TriangularMesh.vertices
+   
+   

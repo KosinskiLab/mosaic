@@ -1,0 +1,1177 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mosaic.widgets.status_indicator &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/mosaic/widgets/status_indicator';</script>
+    <link rel="icon" href="../../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">mosaic.widgets.status_indicator</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for mosaic.widgets.status_indicator</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">StatusIndicator widget for visualization of current viewer modes.</span>
+
+<span class="sd">Copyright (c) 2025 European Molecular Biology Laboratory</span>
+
+<span class="sd">Author: Valentin Maurer &lt;valentin.maurer@embl-hamburg.de&gt;</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">qtpy.QtCore</span><span class="w"> </span><span class="kn">import</span> <span class="n">Qt</span><span class="p">,</span> <span class="n">QTimer</span><span class="p">,</span> <span class="n">Signal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qtpy.QtWidgets</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">QWidget</span><span class="p">,</span>
+    <span class="n">QLabel</span><span class="p">,</span>
+    <span class="n">QDialog</span><span class="p">,</span>
+    <span class="n">QVBoxLayout</span><span class="p">,</span>
+    <span class="n">QHBoxLayout</span><span class="p">,</span>
+    <span class="n">QScrollArea</span><span class="p">,</span>
+    <span class="n">QPushButton</span><span class="p">,</span>
+    <span class="n">QFrame</span><span class="p">,</span>
+    <span class="n">QGroupBox</span><span class="p">,</span>
+    <span class="n">QTextEdit</span><span class="p">,</span>
+    <span class="n">QProgressBar</span><span class="p">,</span>
+    <span class="n">QMessageBox</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qtpy.QtGui</span><span class="w"> </span><span class="kn">import</span> <span class="n">QFont</span><span class="p">,</span> <span class="n">QTextCursor</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">qtawesome</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">qta</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..stylesheets</span><span class="w"> </span><span class="kn">import</span> <span class="n">Colors</span><span class="p">,</span> <span class="n">QPushButton_style</span><span class="p">,</span> <span class="n">QScrollArea_style</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..parallel</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundTaskManager</span>
+
+
+<div class="viewcode-block" id="ViewerModes">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.widgets.ViewerModes.html#mosaic.widgets.ViewerModes">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ViewerModes</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">VIEWING</span> <span class="o">=</span> <span class="s2">&quot;Viewing&quot;</span>
+    <span class="n">SELECTION</span> <span class="o">=</span> <span class="s2">&quot;Selection&quot;</span>
+    <span class="n">DRAWING</span> <span class="o">=</span> <span class="s2">&quot;Drawing&quot;</span>
+    <span class="n">PICKING</span> <span class="o">=</span> <span class="s2">&quot;Picking&quot;</span>
+    <span class="n">MESH_DELETE</span> <span class="o">=</span> <span class="s2">&quot;MeshEdit&quot;</span>
+    <span class="n">MESH_ADD</span> <span class="o">=</span> <span class="s2">&quot;MeshAdd&quot;</span>
+    <span class="n">CURVE</span> <span class="o">=</span> <span class="s2">&quot;Curve&quot;</span></div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TextSpinnerLabel</span><span class="p">(</span><span class="n">QLabel</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frames</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;⠋&quot;</span><span class="p">,</span> <span class="s2">&quot;⠙&quot;</span><span class="p">,</span> <span class="s2">&quot;⠹&quot;</span><span class="p">,</span> <span class="s2">&quot;⠸&quot;</span><span class="p">,</span> <span class="s2">&quot;⠼&quot;</span><span class="p">,</span> <span class="s2">&quot;⠴&quot;</span><span class="p">,</span> <span class="s2">&quot;⠦&quot;</span><span class="p">,</span> <span class="s2">&quot;⠧&quot;</span><span class="p">,</span> <span class="s2">&quot;⠇&quot;</span><span class="p">,</span> <span class="s2">&quot;⠏&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_frame</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span> <span class="o">=</span> <span class="n">QTimer</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">timeout</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">next_frame</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;QLabel </span><span class="se">{{</span><span class="s2"> color: </span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">WARNING_DARK</span><span class="si">}</span><span class="s2">; font-weight: bold; </span><span class="se">}}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;✓&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">next_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_frame</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_frame</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_frame</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TaskCard</span><span class="p">(</span><span class="n">QFrame</span><span class="p">):</span>
+    <span class="n">cancel_requested</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>  <span class="c1"># task_id</span>
+
+    <span class="n">STATUS_COLORS</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;running&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">Colors</span><span class="o">.</span><span class="n">WARNING</span><span class="p">,</span> <span class="n">Colors</span><span class="o">.</span><span class="n">WARNING_BG</span><span class="p">,</span> <span class="n">Colors</span><span class="o">.</span><span class="n">WARNING_TEXT</span><span class="p">),</span>
+        <span class="s2">&quot;queued&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">Colors</span><span class="o">.</span><span class="n">NEUTRAL</span><span class="p">,</span> <span class="n">Colors</span><span class="o">.</span><span class="n">NEUTRAL_BG</span><span class="p">,</span> <span class="n">Colors</span><span class="o">.</span><span class="n">NEUTRAL_TEXT</span><span class="p">),</span>
+        <span class="s2">&quot;completed&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">Colors</span><span class="o">.</span><span class="n">SUCCESS</span><span class="p">,</span> <span class="n">Colors</span><span class="o">.</span><span class="n">SUCCESS_BG</span><span class="p">,</span> <span class="n">Colors</span><span class="o">.</span><span class="n">SUCCESS_TEXT</span><span class="p">),</span>
+        <span class="s2">&quot;failed&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">Colors</span><span class="o">.</span><span class="n">ERROR</span><span class="p">,</span> <span class="n">Colors</span><span class="o">.</span><span class="n">ERROR_BG</span><span class="p">,</span> <span class="n">Colors</span><span class="o">.</span><span class="n">ERROR_TEXT</span><span class="p">),</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_data</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_data</span> <span class="o">=</span> <span class="n">task_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_id</span> <span class="o">=</span> <span class="n">task_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">task_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;running&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compact</span> <span class="o">=</span> <span class="n">compact</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expanded</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stdout_buffer</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stderr_buffer</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setFrameShape</span><span class="p">(</span><span class="n">QFrame</span><span class="o">.</span><span class="n">Shape</span><span class="o">.</span><span class="n">StyledPanel</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setCursor</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">CursorShape</span><span class="o">.</span><span class="n">PointingHandCursor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_ui</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_styling</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_setup_ui</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">main_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">main_layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">main_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+
+        <span class="n">header_layout</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">()</span>
+        <span class="n">header_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_dot</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;●&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_dot</span><span class="o">.</span><span class="n">setFixedWidth</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+        <span class="n">header_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">status_dot</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">name_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;Unnamed Task&quot;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name_label</span><span class="o">.</span><span class="n">setFont</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_font</span><span class="p">(</span><span class="mi">9</span><span class="p">))</span>
+        <span class="n">header_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name_label</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compact</span><span class="p">:</span>
+            <span class="n">header_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name_label</span><span class="o">.</span><span class="n">setFixedWidth</span><span class="p">(</span><span class="mi">225</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span> <span class="o">=</span> <span class="n">QProgressBar</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span><span class="o">.</span><span class="n">setMaximumHeight</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span><span class="o">.</span><span class="n">setTextVisible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">header_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_text</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_text</span><span class="o">.</span><span class="n">setFont</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_font</span><span class="p">(</span><span class="mi">7</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_text</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;color: </span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">TEXT_MUTED</span><span class="si">}</span><span class="s2">;&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_text</span><span class="o">.</span><span class="n">setMinimumWidth</span><span class="p">(</span><span class="mi">35</span><span class="p">)</span>
+            <span class="n">header_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">progress_text</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">message_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">message_label</span><span class="o">.</span><span class="n">setFont</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_font</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="n">italic</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">message_label</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;color: </span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">TEXT_MUTED</span><span class="si">}</span><span class="s2">;&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">message_label</span><span class="o">.</span><span class="n">setFixedWidth</span><span class="p">(</span><span class="mi">90</span><span class="p">)</span>
+            <span class="n">header_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">message_label</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_badge</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_badge</span><span class="o">.</span><span class="n">setFont</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_font</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="n">bold</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">spacing</span><span class="o">=</span><span class="mf">0.5</span><span class="p">))</span>
+        <span class="n">header_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">status_badge</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">compact</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cancel_btn</span> <span class="o">=</span> <span class="n">QPushButton</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cancel_btn</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">qta</span><span class="o">.</span><span class="n">icon</span><span class="p">(</span><span class="s2">&quot;ph.x&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">ERROR</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cancel_btn</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span><span class="s2">&quot;Cancel task&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cancel_btn</span><span class="o">.</span><span class="n">setFixedSize</span><span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="mi">18</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cancel_btn</span><span class="o">.</span><span class="n">setCursor</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">CursorShape</span><span class="o">.</span><span class="n">PointingHandCursor</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cancel_btn</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cancel_task</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cancel_btn</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                QPushButton </span><span class="se">{{</span>
+<span class="s2">                    border: none;</span>
+<span class="s2">                    border-radius: 3px;</span>
+<span class="s2">                    background: transparent;</span>
+<span class="s2">                </span><span class="se">}}</span>
+<span class="s2">                QPushButton:hover </span><span class="se">{{</span><span class="s2"> background: </span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">ERROR_BG</span><span class="si">}</span><span class="s2">; </span><span class="se">}}</span>
+<span class="s2">            &quot;&quot;&quot;</span>
+            <span class="p">)</span>
+            <span class="n">header_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cancel_btn</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">main_layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="n">header_layout</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_view</span> <span class="o">=</span> <span class="n">QTextEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_view</span><span class="o">.</span><span class="n">setReadOnly</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_view</span><span class="o">.</span><span class="n">setMinimumHeight</span><span class="p">(</span><span class="mi">250</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_view</span><span class="o">.</span><span class="n">setVisible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_view</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QTextEdit </span><span class="se">{{</span>
+<span class="s2">                background: transparent; font-size: 9pt;</span>
+<span class="s2">                border: 1px solid </span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">BORDER_DARK</span><span class="si">}</span><span class="s2">;</span>
+<span class="s2">                border-radius: 3px;</span>
+<span class="s2">                padding: 4px;</span>
+<span class="s2">            </span><span class="se">}}</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">main_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_view</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_font</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">bold</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">italic</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">spacing</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">font</span> <span class="o">=</span> <span class="n">QFont</span><span class="p">()</span>
+        <span class="n">font</span><span class="o">.</span><span class="n">setPointSize</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">bold</span><span class="p">:</span>
+            <span class="n">font</span><span class="o">.</span><span class="n">setBold</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">italic</span><span class="p">:</span>
+            <span class="n">font</span><span class="o">.</span><span class="n">setItalic</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">spacing</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">font</span><span class="o">.</span><span class="n">setLetterSpacing</span><span class="p">(</span><span class="n">QFont</span><span class="o">.</span><span class="n">SpacingType</span><span class="o">.</span><span class="n">AbsoluteSpacing</span><span class="p">,</span> <span class="n">spacing</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">font</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_styling</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">color</span><span class="p">,</span> <span class="n">bg</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATUS_COLORS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATUS_COLORS</span><span class="p">[</span><span class="s2">&quot;queued&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">border_color</span> <span class="o">=</span> <span class="n">Colors</span><span class="o">.</span><span class="n">ICON_MUTED</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;queued&quot;</span> <span class="k">else</span> <span class="n">color</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_dot</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;color: </span><span class="si">{</span><span class="n">color</span><span class="si">}</span><span class="s2">; font-size: 12px;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_badge</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;background: </span><span class="si">{</span><span class="n">bg</span><span class="si">}</span><span class="s2">; color: </span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="s2">; padding: 2px 6px; border-radius: 3px;&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            TaskCard </span><span class="se">{{</span>
+<span class="s2">                border: 1px solid </span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">NEUTRAL_BG</span><span class="si">}</span><span class="s2">;</span>
+<span class="s2">                border-left: 2px solid </span><span class="si">{</span><span class="n">border_color</span><span class="si">}</span><span class="s2">;</span>
+<span class="s2">                border-radius: 4px; padding: 2px;</span>
+<span class="s2">            </span><span class="se">}}</span>
+<span class="s2">            TaskCard:hover </span><span class="se">{{</span><span class="s2"> background-color: rgba(107, 114, 128, 0.05); </span><span class="se">}}</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compact</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">is_active</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;running&quot;</span><span class="p">,</span> <span class="s2">&quot;queued&quot;</span><span class="p">)</span>
+        <span class="n">bar_color</span> <span class="o">=</span> <span class="n">Colors</span><span class="o">.</span><span class="n">WARNING</span> <span class="k">if</span> <span class="n">is_active</span> <span class="k">else</span> <span class="n">Colors</span><span class="o">.</span><span class="n">ICON_MUTED</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QProgressBar </span><span class="se">{{</span>
+<span class="s2">                border: none;</span>
+<span class="s2">                border-radius: 2px;</span>
+<span class="s2">                background: </span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">BORDER_DARK</span><span class="si">}</span><span class="s2">;</span>
+<span class="s2">            </span><span class="se">}}</span>
+<span class="s2">            QProgressBar::chunk </span><span class="se">{{</span><span class="s2"> border-radius: 2px; background: </span><span class="si">{</span><span class="n">bar_color</span><span class="si">}</span><span class="s2">; </span><span class="se">}}</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cancel_btn</span><span class="o">.</span><span class="n">setVisible</span><span class="p">(</span><span class="n">is_active</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;completed&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_active</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">message_label</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_text</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_task_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_data</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_data</span> <span class="o">=</span> <span class="n">task_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">task_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;running&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name_label</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="n">task_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;Unnamed Task&quot;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_badge</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_styling</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">expanded</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_output</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">progress</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">current</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the progress bar and text.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compact</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="s2">&quot;running&quot;</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">progress</span> <span class="o">*</span> <span class="mi">100</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_text</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">current</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">progress</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_text</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">progress</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="p">)</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the status message.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compact</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="s2">&quot;running&quot;</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message_label</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">append_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stream_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Append output text from worker.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">stream_type</span> <span class="o">==</span> <span class="s2">&quot;stdout&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stdout_buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stderr_buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">expanded</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_append_to_view</span><span class="p">(</span><span class="n">stream_type</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_append_to_view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stream_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_view</span><span class="o">.</span><span class="n">textCursor</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">movePosition</span><span class="p">(</span><span class="n">QTextCursor</span><span class="o">.</span><span class="n">MoveOperation</span><span class="o">.</span><span class="n">End</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_view</span><span class="o">.</span><span class="n">setTextCursor</span><span class="p">(</span><span class="n">cursor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_view</span><span class="o">.</span><span class="n">insertPlainText</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+        <span class="n">scrollbar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_view</span><span class="o">.</span><span class="n">verticalScrollBar</span><span class="p">()</span>
+        <span class="n">scrollbar</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">scrollbar</span><span class="o">.</span><span class="n">maximum</span><span class="p">())</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">mousePressEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">button</span><span class="p">()</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">MouseButton</span><span class="o">.</span><span class="n">LeftButton</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compact</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">cancel_btn</span><span class="o">.</span><span class="n">geometry</span><span class="p">()</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">()):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_toggle_expanded</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">mousePressEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_toggle_expanded</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Toggle the output view visibility.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expanded</span> <span class="o">=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">expanded</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_view</span><span class="o">.</span><span class="n">setVisible</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expanded</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">expanded</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_output</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_cancel_task</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Request cancellation of this task.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cancel_requested</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">mark_cancelled</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update UI to show task was cancelled.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_data</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_badge</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;CANCELLED&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_styling</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_output</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">stdout</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stdout_buffer</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stdout&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">stdout</span><span class="p">:</span>
+            <span class="n">output</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;--- STDOUT ---</span><span class="se">\n\n</span><span class="si">{</span><span class="n">stdout</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+
+        <span class="n">stderr</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stderr_buffer</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stderr&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">stderr</span><span class="p">:</span>
+            <span class="n">output</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;--- STDERR ---</span><span class="se">\n\n</span><span class="si">{</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">output</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;No output available&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_view</span><span class="o">.</span><span class="n">setPlainText</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TaskMonitorDialog</span><span class="p">(</span><span class="n">QDialog</span><span class="p">):</span>
+    <span class="n">cancel_task_requested</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>  <span class="c1"># task_id</span>
+    <span class="n">clear_finished_requested</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="s2">&quot;Task Monitor&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setMinimumSize</span><span class="p">(</span><span class="mi">700</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">800</span><span class="p">,</span> <span class="mi">600</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_ui</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_task_progress</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">task_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">progress</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">current</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">total</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle progress updates from workers.&quot;&quot;&quot;</span>
+        <span class="n">card</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">card</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">card</span><span class="o">.</span><span class="n">update_progress</span><span class="p">(</span><span class="n">progress</span><span class="p">,</span> <span class="n">current</span><span class="p">,</span> <span class="n">total</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_task_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">task_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle status message updates from workers.&quot;&quot;&quot;</span>
+        <span class="n">card</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">card</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">card</span><span class="o">.</span><span class="n">update_message</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_task_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">stream_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle stdout/stderr output from workers.&quot;&quot;&quot;</span>
+        <span class="n">card</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">card</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">card</span><span class="o">.</span><span class="n">append_output</span><span class="p">(</span><span class="n">stream_type</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_task_queued</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">task_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle task started - create a new card.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">task_data</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">task_name</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;queued&quot;</span><span class="p">}</span>
+        <span class="n">card</span> <span class="o">=</span> <span class="n">TaskCard</span><span class="p">(</span><span class="n">task_data</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">card</span><span class="o">.</span><span class="n">cancel_requested</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cancel_task_requested</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">card</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_tasks_layout</span><span class="o">.</span><span class="n">insertWidget</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">card</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_counts</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_task_started</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">task_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle task started - create a new card.&quot;&quot;&quot;</span>
+        <span class="n">card</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">card</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">card</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;running&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+            <span class="n">card</span><span class="o">.</span><span class="n">deleteLater</span><span class="p">()</span>
+
+        <span class="n">task_data</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">task_name</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;running&quot;</span><span class="p">}</span>
+        <span class="n">card</span> <span class="o">=</span> <span class="n">TaskCard</span><span class="p">(</span><span class="n">task_data</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">card</span><span class="o">.</span><span class="n">cancel_requested</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cancel_task_requested</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">card</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_tasks_layout</span><span class="o">.</span><span class="n">insertWidget</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">card</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_counts</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_task_completed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">task_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="nb">object</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle task completed - update card status.&quot;&quot;&quot;</span>
+        <span class="n">card</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">card</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">card</span><span class="o">.</span><span class="n">task_data</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;completed&quot;</span>
+        <span class="n">card</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;completed&quot;</span>
+        <span class="n">card</span><span class="o">.</span><span class="n">status_badge</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;COMPLETED&quot;</span><span class="p">)</span>
+        <span class="n">card</span><span class="o">.</span><span class="n">_update_styling</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_move_card_to_section</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">completed_tasks_layout</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_task_failed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">task_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">error</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle task failed - update card status.&quot;&quot;&quot;</span>
+        <span class="n">card</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">card</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">card</span><span class="o">.</span><span class="n">task_data</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>
+        <span class="n">card</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>
+        <span class="n">card</span><span class="o">.</span><span class="n">status_badge</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;FAILED&quot;</span><span class="p">)</span>
+        <span class="n">card</span><span class="o">.</span><span class="n">_update_styling</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_move_card_to_section</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">failed_tasks_layout</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_move_card_to_section</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">target_layout</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Move a card to a different section, recreating as compact.&quot;&quot;&quot;</span>
+        <span class="n">old_card</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">old_card</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Create compact version for finished section</span>
+        <span class="n">task_data</span> <span class="o">=</span> <span class="n">old_card</span><span class="o">.</span><span class="n">task_data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">task_data</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">task_id</span>
+        <span class="n">new_card</span> <span class="o">=</span> <span class="n">TaskCard</span><span class="p">(</span><span class="n">task_data</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">new_card</span><span class="o">.</span><span class="n">cancel_requested</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cancel_task_requested</span><span class="p">)</span>
+
+        <span class="c1"># Copy output buffers</span>
+        <span class="n">new_card</span><span class="o">.</span><span class="n">_stdout_buffer</span> <span class="o">=</span> <span class="n">old_card</span><span class="o">.</span><span class="n">_stdout_buffer</span>
+        <span class="n">new_card</span><span class="o">.</span><span class="n">_stderr_buffer</span> <span class="o">=</span> <span class="n">old_card</span><span class="o">.</span><span class="n">_stderr_buffer</span>
+
+        <span class="n">old_card</span><span class="o">.</span><span class="n">deleteLater</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_card</span>
+        <span class="n">target_layout</span><span class="o">.</span><span class="n">insertWidget</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">new_card</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_counts</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_setup_ui</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">main_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">12</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_section</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_tasks_layout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_section</span><span class="p">(</span><span class="s2">&quot;Active&quot;</span><span class="p">)</span>
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">active_section</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">finished_layout</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">()</span>
+        <span class="n">finished_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">completed_section</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">completed_tasks_layout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_section</span><span class="p">(</span>
+            <span class="s2">&quot;Completed&quot;</span>
+        <span class="p">)</span>
+        <span class="n">finished_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">completed_section</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">failed_section</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">failed_tasks_layout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_section</span><span class="p">(</span><span class="s2">&quot;Failed&quot;</span><span class="p">)</span>
+        <span class="n">finished_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">failed_section</span><span class="p">)</span>
+
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="n">finished_layout</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">footer_layout</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">()</span>
+        <span class="n">footer_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+
+        <span class="n">clear_btn</span> <span class="o">=</span> <span class="n">QPushButton</span><span class="p">(</span><span class="s2">&quot;Clear Finished&quot;</span><span class="p">)</span>
+        <span class="n">clear_btn</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">qta</span><span class="o">.</span><span class="n">icon</span><span class="p">(</span><span class="s2">&quot;ph.trash&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">TEXT_MUTED</span><span class="p">))</span>
+        <span class="n">clear_btn</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_clear_finished_tasks</span><span class="p">)</span>
+        <span class="n">footer_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">clear_btn</span><span class="p">)</span>
+
+        <span class="n">footer_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+
+        <span class="n">close_btn</span> <span class="o">=</span> <span class="n">QPushButton</span><span class="p">(</span><span class="s2">&quot;Close&quot;</span><span class="p">)</span>
+        <span class="n">close_btn</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">accept</span><span class="p">)</span>
+        <span class="n">close_btn</span><span class="o">.</span><span class="n">setDefault</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">footer_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">close_btn</span><span class="p">)</span>
+
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="n">footer_layout</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="n">QPushButton_style</span> <span class="o">+</span> <span class="n">QScrollArea_style</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_section</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">title</span><span class="p">):</span>
+        <span class="n">section</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="s2"> (0)&quot;</span><span class="p">)</span>
+        <span class="n">section</span><span class="o">.</span><span class="n">_title_base</span> <span class="o">=</span> <span class="n">title</span>  <span class="c1"># Store for updates</span>
+
+        <span class="n">section_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">()</span>
+        <span class="n">section_layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+        <span class="n">section_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+
+        <span class="n">scroll</span> <span class="o">=</span> <span class="n">QScrollArea</span><span class="p">()</span>
+        <span class="n">scroll</span><span class="o">.</span><span class="n">setWidgetResizable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">scroll</span><span class="o">.</span><span class="n">setHorizontalScrollBarPolicy</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">ScrollBarPolicy</span><span class="o">.</span><span class="n">ScrollBarAlwaysOff</span><span class="p">)</span>
+        <span class="n">scroll</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="n">QScrollArea_style</span><span class="p">)</span>
+
+        <span class="n">task_container</span> <span class="o">=</span> <span class="n">QWidget</span><span class="p">()</span>
+        <span class="n">task_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="n">task_container</span><span class="p">)</span>
+        <span class="n">task_layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">task_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">task_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+
+        <span class="n">scroll</span><span class="o">.</span><span class="n">setWidget</span><span class="p">(</span><span class="n">task_container</span><span class="p">)</span>
+        <span class="n">section_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">scroll</span><span class="p">)</span>
+        <span class="n">section</span><span class="o">.</span><span class="n">setLayout</span><span class="p">(</span><span class="n">section_layout</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">section</span><span class="p">,</span> <span class="n">task_layout</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_task_card</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">task_data</span><span class="p">):</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="n">task_data</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span>
+        <span class="n">card</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">card</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">card</span><span class="o">.</span><span class="n">task_data</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">status</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">task_data</span> <span class="o">=</span> <span class="n">task_data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">task_data</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">task_id</span>
+        <span class="n">is_finished</span> <span class="o">=</span> <span class="n">status</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;completed&quot;</span><span class="p">,</span> <span class="s2">&quot;failed&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">card</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">card</span> <span class="o">=</span> <span class="n">TaskCard</span><span class="p">(</span><span class="n">task_data</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="n">is_finished</span><span class="p">)</span>
+            <span class="n">card</span><span class="o">.</span><span class="n">cancel_requested</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cancel_task_requested</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># If switching between active and finished, recreate the card</span>
+            <span class="k">if</span> <span class="n">card</span><span class="o">.</span><span class="n">compact</span> <span class="o">!=</span> <span class="n">is_finished</span><span class="p">:</span>
+                <span class="n">card</span><span class="o">.</span><span class="n">deleteLater</span><span class="p">()</span>
+                <span class="n">card</span> <span class="o">=</span> <span class="n">TaskCard</span><span class="p">(</span><span class="n">task_data</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="n">is_finished</span><span class="p">)</span>
+                <span class="n">card</span><span class="o">.</span><span class="n">cancel_requested</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cancel_task_requested</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">card</span><span class="o">.</span><span class="n">update_task_data</span><span class="p">(</span><span class="n">task_data</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">status</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;running&quot;</span><span class="p">,</span> <span class="s2">&quot;queued&quot;</span><span class="p">):</span>
+            <span class="n">layout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_tasks_layout</span>
+        <span class="k">elif</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;completed&quot;</span><span class="p">:</span>
+            <span class="n">layout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">completed_tasks_layout</span>
+        <span class="k">elif</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;failed&quot;</span><span class="p">:</span>
+            <span class="n">layout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">failed_tasks_layout</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">card</span>
+        <span class="k">return</span> <span class="n">layout</span><span class="o">.</span><span class="n">insertWidget</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">card</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_counts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">status_counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">status</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">active_section</span><span class="p">:</span> <span class="n">status_counts</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">status_counts</span><span class="p">[</span><span class="s2">&quot;queued&quot;</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">completed_section</span><span class="p">:</span> <span class="n">status_counts</span><span class="p">[</span><span class="s2">&quot;completed&quot;</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">failed_section</span><span class="p">:</span> <span class="n">status_counts</span><span class="p">[</span><span class="s2">&quot;failed&quot;</span><span class="p">],</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">section</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">counts</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">section</span><span class="o">.</span><span class="n">setTitle</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">section</span><span class="o">.</span><span class="n">_title_base</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_clear_finished_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Request clearing of finished tasks.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clear_finished_requested</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">remove_finished_cards</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">removed_task_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove cards for finished tasks from UI.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="n">removed_task_ids</span><span class="p">:</span>
+            <span class="n">card</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">card</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">card</span><span class="o">.</span><span class="n">deleteLater</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_counts</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_card</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get task card by ID.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_cards</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="StatusIndicator">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.widgets.StatusIndicator.html#mosaic.widgets.StatusIndicator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StatusIndicator</span><span class="p">:</span>
+<div class="viewcode-block" id="StatusIndicator.__init__">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.widgets.StatusIndicator.html#mosaic.widgets.StatusIndicator.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">main_window</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">main_window</span> <span class="o">=</span> <span class="n">main_window</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">visible</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_target</span> <span class="o">=</span> <span class="s2">&quot;Clusters&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span> <span class="o">=</span> <span class="n">TaskMonitorDialog</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">main_window</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_status_bar</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_status</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">connect_signals</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Connect all BackgroundTaskManager signals to StatusIndicator and TaskMonitorDialog.&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">BackgroundTaskManager</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
+
+        <span class="c1"># StatusIndicator signals - busy/idle status only</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">running_tasks</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_running_tasks_changed</span><span class="p">)</span>
+
+        <span class="c1"># Task lifecycle signals - forwarded to dialog for card management</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">task_started</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_task_started</span><span class="p">)</span>
+
+        <span class="n">manager</span><span class="o">.</span><span class="n">task_queued</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">on_task_queued</span><span class="p">)</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">task_completed</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">on_task_completed</span><span class="p">)</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">task_failed</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">on_task_failed</span><span class="p">)</span>
+
+        <span class="c1"># Task update signals - forwarded directly to dialog</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">task_progress</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">on_task_progress</span><span class="p">)</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">task_message</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">on_task_message</span><span class="p">)</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">task_output</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">on_task_output</span><span class="p">)</span>
+
+        <span class="c1"># Dialog action signals</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">cancel_task_requested</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_cancel_task_requested</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">clear_finished_requested</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_on_clear_finished_requested</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_task_started</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">task_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle task started signal - update status and forward to dialog.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_status</span><span class="p">(</span><span class="n">busy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="n">task_name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">on_task_started</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">task_name</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_running_tasks_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle running tasks count change - busy/idle status only.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_task_styling</span><span class="p">(</span><span class="n">busy</span><span class="o">=</span><span class="n">count</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_cancel_task_requested</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle task cancellation request from dialog.&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">BackgroundTaskManager</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
+        <span class="n">task_info</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">task_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">task_name</span> <span class="o">=</span> <span class="n">task_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">)</span>
+
+        <span class="n">cancelled</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">cancel_task</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="n">card</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">get_card</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">cancelled</span> <span class="ow">and</span> <span class="n">card</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">card</span><span class="o">.</span><span class="n">mark_cancelled</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">cancelled</span><span class="p">:</span>
+            <span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="p">,</span>
+                <span class="s2">&quot;Cannot Cancel&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Task &#39;</span><span class="si">{</span><span class="n">task_name</span><span class="si">}</span><span class="s2">&#39; cannot be cancelled.&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_clear_finished_requested</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle clear finished tasks request from dialog.&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">BackgroundTaskManager</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
+        <span class="n">removed</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">clear_finished_tasks</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">remove_finished_cards</span><span class="p">(</span><span class="n">removed</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_setup_status_bar</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">status_bar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">main_window</span><span class="o">.</span><span class="n">statusBar</span><span class="p">()</span>
+        <span class="n">status_bar</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QStatusBar </span><span class="se">{{</span><span class="s2"> border-top: 1px solid </span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">BORDER_DARK</span><span class="si">}</span><span class="s2">; </span><span class="se">}}</span>
+<span class="s2">            QStatusBar::item </span><span class="se">{{</span><span class="s2"> border: none; </span><span class="se">}}</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">separator</span><span class="p">():</span>
+            <span class="n">lbl</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;•&quot;</span><span class="p">)</span>
+            <span class="n">lbl</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;QLabel </span><span class="se">{{</span><span class="s2"> color: </span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">ICON_MUTED</span><span class="si">}</span><span class="s2">; padding: 0 10px; </span><span class="se">}}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">lbl</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Mode: Viewing&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode_label</span><span class="o">.</span><span class="n">setMinimumWidth</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Clusters&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_label</span><span class="o">.</span><span class="n">setMinimumWidth</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">spinner</span> <span class="o">=</span> <span class="n">TextSpinnerLabel</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spinner</span><span class="o">.</span><span class="n">setFixedWidth</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_button</span> <span class="o">=</span> <span class="n">QPushButton</span><span class="p">(</span><span class="s2">&quot;Idle&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_button</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">qta</span><span class="o">.</span><span class="n">icon</span><span class="p">(</span><span class="s2">&quot;ph.caret-up&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">ICON_MUTED</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_button</span><span class="o">.</span><span class="n">setLayoutDirection</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">LayoutDirection</span><span class="o">.</span><span class="n">RightToLeft</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_button</span><span class="o">.</span><span class="n">setCursor</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">CursorShape</span><span class="o">.</span><span class="n">PointingHandCursor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_button</span><span class="o">.</span><span class="n">setFlat</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_button</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_button</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QPushButton </span><span class="se">{{</span><span class="s2"> padding: 0px; margin: 0px; border-radius: 4px; </span><span class="se">}}</span>
+<span class="s2">            QPushButton:hover </span><span class="se">{{</span>
+<span class="s2">                background: </span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">BG_HOVER</span><span class="si">}</span><span class="s2">;</span>
+<span class="s2">                border: 1px solid rgba(0, 0, 0, 0.08);</span>
+<span class="s2">            </span><span class="se">}}</span>
+<span class="s2">            QPushButton:pressed </span><span class="se">{{</span>
+<span class="s2">                background: </span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">BG_PRESSED</span><span class="si">}</span><span class="s2">;</span>
+<span class="s2">                border: 1px solid rgba(0, 0, 0, 0.12);</span>
+<span class="s2">            </span><span class="se">}}</span>
+<span class="s2">            QPushButton:focus </span><span class="se">{{</span><span class="s2"> outline: none; </span><span class="se">}}</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_button</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_show_task_monitor</span><span class="p">)</span>
+
+        <span class="n">status_bar</span><span class="o">.</span><span class="n">addPermanentWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mode_label</span><span class="p">)</span>
+        <span class="n">status_bar</span><span class="o">.</span><span class="n">addPermanentWidget</span><span class="p">(</span><span class="n">separator</span><span class="p">())</span>
+        <span class="n">status_bar</span><span class="o">.</span><span class="n">addPermanentWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_label</span><span class="p">)</span>
+        <span class="n">status_bar</span><span class="o">.</span><span class="n">addPermanentWidget</span><span class="p">(</span><span class="n">separator</span><span class="p">())</span>
+        <span class="n">status_bar</span><span class="o">.</span><span class="n">addPermanentWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spinner</span><span class="p">)</span>
+        <span class="n">status_bar</span><span class="o">.</span><span class="n">addPermanentWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_button</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">spinner</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_status</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">interaction</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">target</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">busy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">task</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">visible</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">interaction</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mode_label</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mode: </span><span class="si">{</span><span class="n">interaction</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">target</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_target</span> <span class="o">=</span> <span class="n">target</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">target_label</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">busy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_task_styling</span><span class="p">(</span><span class="n">busy</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">main_window</span><span class="o">.</span><span class="n">statusBar</span><span class="p">()</span><span class="o">.</span><span class="n">showMessage</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="mi">3000</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_task_styling</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">busy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_button</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;Busy&quot;</span> <span class="k">if</span> <span class="n">busy</span> <span class="k">else</span> <span class="s2">&quot;Idle&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">busy</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">spinner</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">spinner</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_show_task_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">raise_</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_monitor</span><span class="o">.</span><span class="n">activateWindow</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">show</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">visible</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">main_window</span><span class="o">.</span><span class="n">statusBar</span><span class="p">()</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">hide</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">visible</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">main_window</span><span class="o">.</span><span class="n">statusBar</span><span class="p">()</span><span class="o">.</span><span class="n">hide</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="CursorModeHandler">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.widgets.CursorModeHandler.html#mosaic.widgets.CursorModeHandler">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CursorModeHandler</span><span class="p">:</span>
+<div class="viewcode-block" id="CursorModeHandler.__init__">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.widgets.CursorModeHandler.html#mosaic.widgets.CursorModeHandler.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">widget</span><span class="p">:</span> <span class="n">QWidget</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">widget</span> <span class="o">=</span> <span class="n">widget</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_mode</span> <span class="o">=</span> <span class="n">ViewerModes</span><span class="o">.</span><span class="n">VIEWING</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cursors</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">ViewerModes</span><span class="o">.</span><span class="n">VIEWING</span><span class="p">:</span> <span class="n">Qt</span><span class="o">.</span><span class="n">CursorShape</span><span class="o">.</span><span class="n">ArrowCursor</span><span class="p">,</span>
+            <span class="n">ViewerModes</span><span class="o">.</span><span class="n">SELECTION</span><span class="p">:</span> <span class="n">Qt</span><span class="o">.</span><span class="n">CursorShape</span><span class="o">.</span><span class="n">CrossCursor</span><span class="p">,</span>
+            <span class="n">ViewerModes</span><span class="o">.</span><span class="n">DRAWING</span><span class="p">:</span> <span class="n">Qt</span><span class="o">.</span><span class="n">CursorShape</span><span class="o">.</span><span class="n">PointingHandCursor</span><span class="p">,</span>
+            <span class="n">ViewerModes</span><span class="o">.</span><span class="n">PICKING</span><span class="p">:</span> <span class="n">Qt</span><span class="o">.</span><span class="n">CursorShape</span><span class="o">.</span><span class="n">WhatsThisCursor</span><span class="p">,</span>
+            <span class="n">ViewerModes</span><span class="o">.</span><span class="n">MESH_DELETE</span><span class="p">:</span> <span class="n">Qt</span><span class="o">.</span><span class="n">CursorShape</span><span class="o">.</span><span class="n">ForbiddenCursor</span><span class="p">,</span>
+            <span class="n">ViewerModes</span><span class="o">.</span><span class="n">MESH_ADD</span><span class="p">:</span> <span class="n">Qt</span><span class="o">.</span><span class="n">CursorShape</span><span class="o">.</span><span class="n">PointingHandCursor</span><span class="p">,</span>
+            <span class="n">ViewerModes</span><span class="o">.</span><span class="n">CURVE</span><span class="p">:</span> <span class="n">Qt</span><span class="o">.</span><span class="n">CursorShape</span><span class="o">.</span><span class="n">CrossCursor</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="n">ViewerModes</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_mode</span> <span class="o">=</span> <span class="n">mode</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">widget</span><span class="o">.</span><span class="n">setCursor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cursors</span><span class="p">[</span><span class="n">mode</span><span class="p">])</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">current_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_mode</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

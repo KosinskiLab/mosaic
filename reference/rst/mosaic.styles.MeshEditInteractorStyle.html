@@ -1,0 +1,1365 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>mosaic.styles.MeshEditInteractorStyle &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/rst/mosaic.styles.MeshEditInteractorStyle';</script>
+    <link rel="icon" href="../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="mosaic.styles.CurveBuilderInteractorStyle" href="mosaic.styles.CurveBuilderInteractorStyle.html" />
+    <link rel="prev" title="mosaic.tabs.IntelligenceTab.show_ribbon" href="mosaic.tabs.IntelligenceTab.show_ribbon.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Data Structures</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../data_structures/geometry.html">Geometry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.html">mosaic.geometry.Geometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.points.html">mosaic.geometry.Geometry.points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.normals.html">mosaic.geometry.Geometry.normals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.quaternions.html">mosaic.geometry.Geometry.quaternions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.sampling_rate.html">mosaic.geometry.Geometry.sampling_rate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.model.html">mosaic.geometry.Geometry.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.actor.html">mosaic.geometry.Geometry.actor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.visible.html">mosaic.geometry.Geometry.visible</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.set_color.html">mosaic.geometry.Geometry.set_color</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.set_visibility.html">mosaic.geometry.Geometry.set_visibility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.set_appearance.html">mosaic.geometry.Geometry.set_appearance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.change_representation.html">mosaic.geometry.Geometry.change_representation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.is_mesh_representation.html">mosaic.geometry.Geometry.is_mesh_representation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.color_points.html">mosaic.geometry.Geometry.color_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.set_scalars.html">mosaic.geometry.Geometry.set_scalars</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.swap_data.html">mosaic.geometry.Geometry.swap_data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.merge.html">mosaic.geometry.Geometry.merge</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.subset.html">mosaic.geometry.Geometry.subset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.get_point_data.html">mosaic.geometry.Geometry.get_point_data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.get_number_of_points.html">mosaic.geometry.Geometry.get_number_of_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.__getstate__.html">mosaic.geometry.Geometry.__getstate__</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.geometry.Geometry.__setstate__.html">mosaic.geometry.Geometry.__setstate__</a></li>
+</ul>
+</details></li>
+
+
+<li class="toctree-l1 has-children"><a class="reference internal" href="../data_structures/container.html">DataContainer</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.html">mosaic.container.DataContainer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.add.html">mosaic.container.DataContainer.add</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.remove.html">mosaic.container.DataContainer.remove</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.get.html">mosaic.container.DataContainer.get</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.update.html">mosaic.container.DataContainer.update</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.clear.html">mosaic.container.DataContainer.clear</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.get_actors.html">mosaic.container.DataContainer.get_actors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.uuid_to_index.html">mosaic.container.DataContainer.uuid_to_index</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.highlight.html">mosaic.container.DataContainer.highlight</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.highlight_points.html">mosaic.container.DataContainer.highlight_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.container.DataContainer.update_appearance.html">mosaic.container.DataContainer.update_appearance</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../data_structures/data.html">MosaicData</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.html">mosaic.data.MosaicData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.swap_area_picker.html">mosaic.data.MosaicData.swap_area_picker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.activate_viewing_mode.html">mosaic.data.MosaicData.activate_viewing_mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.highlight_clusters_from_selected_points.html">mosaic.data.MosaicData.highlight_clusters_from_selected_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.to_file.html">mosaic.data.MosaicData.to_file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.load_session.html">mosaic.data.MosaicData.load_session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.data.MosaicData.format_datalist.html">mosaic.data.MosaicData.format_datalist</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../data_structures/interactor.html">DataContainerInteractor</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.html">mosaic.interactor.DataContainerInteractor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.attach_area_picker.html">mosaic.interactor.DataContainerInteractor.attach_area_picker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.activate_viewing_mode.html">mosaic.interactor.DataContainerInteractor.activate_viewing_mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.set_selection_by_uuid.html">mosaic.interactor.DataContainerInteractor.set_selection_by_uuid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.deselect.html">mosaic.interactor.DataContainerInteractor.deselect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.deselect_points.html">mosaic.interactor.DataContainerInteractor.deselect_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.highlight_selected_points.html">mosaic.interactor.DataContainerInteractor.highlight_selected_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.highlight_clusters_from_selected_points.html">mosaic.interactor.DataContainerInteractor.highlight_clusters_from_selected_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.add.html">mosaic.interactor.DataContainerInteractor.add</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.merge.html">mosaic.interactor.DataContainerInteractor.merge</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.remove.html">mosaic.interactor.DataContainerInteractor.remove</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.cluster.html">mosaic.interactor.DataContainerInteractor.cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.remove_outliers.html">mosaic.interactor.DataContainerInteractor.remove_outliers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.downsample.html">mosaic.interactor.DataContainerInteractor.downsample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.duplicate.html">mosaic.interactor.DataContainerInteractor.duplicate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.change_representation.html">mosaic.interactor.DataContainerInteractor.change_representation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.render.html">mosaic.interactor.DataContainerInteractor.render</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.interactor.DataContainerInteractor.render_vtk.html">mosaic.interactor.DataContainerInteractor.render_vtk</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Processing</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../operations.html">Operations</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.use_point_data.html">mosaic.operations.use_point_data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.downsample.html">mosaic.operations.downsample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.remove_outliers.html">mosaic.operations.remove_outliers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.skeletonize.html">mosaic.operations.skeletonize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.crop.html">mosaic.operations.crop</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.cluster.html">mosaic.operations.cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.compute_normals.html">mosaic.operations.compute_normals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.fit.html">mosaic.operations.fit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.sample.html">mosaic.operations.sample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.remesh.html">mosaic.operations.remesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.smooth.html">mosaic.operations.smooth</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.duplicate.html">mosaic.operations.duplicate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.visibility.html">mosaic.operations.visibility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.operations.GeometryOperations.html">mosaic.operations.GeometryOperations</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../parametrization.html">Parametrization</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.Parametrization.html">mosaic.parametrization.Parametrization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.Sphere.html">mosaic.parametrization.Sphere</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.Ellipsoid.html">mosaic.parametrization.Ellipsoid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.Cylinder.html">mosaic.parametrization.Cylinder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.RBF.html">mosaic.parametrization.RBF</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.SplineCurve.html">mosaic.parametrization.SplineCurve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.TriangularMesh.html">mosaic.parametrization.TriangularMesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.PoissonMesh.html">mosaic.parametrization.PoissonMesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.ClusteredBallPivotingMesh.html">mosaic.parametrization.ClusteredBallPivotingMesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.ConvexHull.html">mosaic.parametrization.ConvexHull</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.FlyingEdges.html">mosaic.parametrization.FlyingEdges</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.MarchingCubes.html">mosaic.parametrization.MarchingCubes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parametrization.merge.html">mosaic.parametrization.merge</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../parallel.html">Parallel</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parallel.BackgroundTaskManager.html">mosaic.parallel.BackgroundTaskManager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parallel.submit_task.html">mosaic.parallel.submit_task</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.parallel.submit_task_batch.html">mosaic.parallel.submit_task_batch</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">File I/O</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../formats.html">Formats</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.formats.open_file.html">mosaic.formats.open_file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.formats.open_session.html">mosaic.formats.open_session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.formats.OrientationsWriter.html">mosaic.formats.OrientationsWriter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.formats.write_density.html">mosaic.formats.write_density</a></li>
+</ul>
+</details></li>
+
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">GUI</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../gui/widgets.html">Widgets</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.ObjectBrowserSidebar.html">mosaic.widgets.ObjectBrowserSidebar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.RibbonToolBar.html">mosaic.widgets.RibbonToolBar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.ContainerListWidget.html">mosaic.widgets.ContainerListWidget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.StyledListWidgetItem.html">mosaic.widgets.StyledListWidgetItem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.AxesWidget.html">mosaic.widgets.AxesWidget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.ScaleBarWidget.html">mosaic.widgets.ScaleBarWidget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.LegendWidget.html">mosaic.widgets.LegendWidget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.MultiVolumeViewer.html">mosaic.widgets.MultiVolumeViewer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.TrajectoryPlayer.html">mosaic.widgets.TrajectoryPlayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.ViewerModes.html">mosaic.widgets.ViewerModes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.CursorModeHandler.html">mosaic.widgets.CursorModeHandler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.StatusIndicator.html">mosaic.widgets.StatusIndicator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.widgets.create_button.html">mosaic.widgets.create_button</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../gui/dialogs.html">Dialogs</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.ImportDataDialog.html">mosaic.dialogs.ImportDataDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.ExportDialog.html">mosaic.dialogs.ExportDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.PropertyAnalysisDialog.html">mosaic.dialogs.PropertyAnalysisDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.HistogramDialog.html">mosaic.dialogs.HistogramDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.GeometryPropertiesDialog.html">mosaic.dialogs.GeometryPropertiesDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.MeshEquilibrationDialog.html">mosaic.dialogs.MeshEquilibrationDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.HMFFDialog.html">mosaic.dialogs.HMFFDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.TemplateMatchingDialog.html">mosaic.dialogs.TemplateMatchingDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.MeshMappingDialog.html">mosaic.dialogs.MeshMappingDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.ProgressDialog.html">mosaic.dialogs.ProgressDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.TiltControlDialog.html">mosaic.dialogs.TiltControlDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.dialogs.DistanceCropDialog.html">mosaic.dialogs.DistanceCropDialog</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../gui/tabs.html">Tabs</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.tabs.SegmentationTab.html">mosaic.tabs.SegmentationTab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.tabs.ModelTab.html">mosaic.tabs.ModelTab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.tabs.IntelligenceTab.html">mosaic.tabs.IntelligenceTab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.tabs.SegmentationTab.show_ribbon.html">mosaic.tabs.SegmentationTab.show_ribbon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.tabs.ModelTab.show_ribbon.html">mosaic.tabs.ModelTab.show_ribbon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mosaic.tabs.IntelligenceTab.show_ribbon.html">mosaic.tabs.IntelligenceTab.show_ribbon</a></li>
+</ul>
+</details></li>
+
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">API</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../gui/tabs.html" class="nav-link">Tabs</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">mosaic.styles.MeshEditInteractorStyle</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="mosaic-styles-mesheditinteractorstyle">
+<h1>mosaic.styles.MeshEditInteractorStyle<a class="headerlink" href="#mosaic-styles-mesheditinteractorstyle" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="mosaic.styles.MeshEditInteractorStyle">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MeshEditInteractorStyle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cdata</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/mosaic/styles.html#MeshEditInteractorStyle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mosaic.styles.MeshEditInteractorStyle" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">vtkInteractorStyleTrackballCamera</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="mosaic.styles.MeshEditInteractorStyle.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cdata</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/mosaic/styles.html#MeshEditInteractorStyle.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mosaic.styles.MeshEditInteractorStyle.__init__" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mosaic.styles.MeshEditInteractorStyle.__init__" title="mosaic.styles.MeshEditInteractorStyle.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(parent, cdata)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cleanup</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_face_selection</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_point_selection</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_new_face</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">delete_selected_faces</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">handle_face_selection</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">handle_point_selection</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">highlight_selected_faces</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">on_key_press</span></code>(obj, event)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">on_left_button_down</span></code>(obj, event)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">on_left_button_up</span></code>(obj, event)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">on_mouse_move</span></code>(obj, event)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">override</span></code></p></td>
+<td><p>This method can be used to override a VTK class with a Python subclass.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">toggle_add_face_mode</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="rubric">Attributes</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">AddObserver</span></code>(self, event, command, priority)</p></td>
+<td><p>C++: unsigned long AddObserver(const char* event,</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">AutoAdjustCameraClippingRangeOff</span></code>(self)</p></td>
+<td><p>C++: virtual void AutoAdjustCameraClippingRangeOff()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">AutoAdjustCameraClippingRangeOn</span></code>(self)</p></td>
+<td><p>C++: virtual void AutoAdjustCameraClippingRangeOn()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">BreakOnError</span></code>()</p></td>
+<td><p>C++: static void BreakOnError()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ComputeDisplayToWorld</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ComputeWorldToDisplay</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">DebugOff</span></code>(self)</p></td>
+<td><p>C++: virtual void DebugOff()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">DebugOn</span></code>(self)</p></td>
+<td><p>C++: virtual void DebugOn()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">DelegateTDxEvent</span></code>(self, event, calldata)</p></td>
+<td><p>C++: void DelegateTDxEvent(unsigned long event, void <a href="#id1"><span class="problematic" id="id2">*</span></a>calldata)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Dolly</span></code>(-&gt; None)</p></td>
+<td><p>C++: void Dolly() override;</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EnabledOff</span></code>(self)</p></td>
+<td><p>C++: void EnabledOff()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EnabledOn</span></code>(self)</p></td>
+<td><p>C++: void EnabledOn()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EndDolly</span></code>(self)</p></td>
+<td><p>C++: virtual void EndDolly()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EndEnvRotate</span></code>(self)</p></td>
+<td><p>C++: virtual void EndEnvRotate()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EndGesture</span></code>(self)</p></td>
+<td><p>C++: virtual void EndGesture()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EndPan</span></code>(self)</p></td>
+<td><p>C++: virtual void EndPan()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EndRotate</span></code>(self)</p></td>
+<td><p>C++: virtual void EndRotate()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EndSpin</span></code>(self)</p></td>
+<td><p>C++: virtual void EndSpin()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EndTimer</span></code>(self)</p></td>
+<td><p>C++: virtual void EndTimer()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EndTwoPointer</span></code>(self)</p></td>
+<td><p>C++: virtual void EndTwoPointer()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EndUniformScale</span></code>(self)</p></td>
+<td><p>C++: virtual void EndUniformScale()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EndZoom</span></code>(self)</p></td>
+<td><p>C++: virtual void EndZoom()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">EnvironmentRotate</span></code>(-&gt; None)</p></td>
+<td><p>C++: void EnvironmentRotate() override;</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">FastDelete</span></code>(self)</p></td>
+<td><p>C++: virtual void FastDelete()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">FindPokedRenderer</span></code>(self, __a, __b)</p></td>
+<td><p>C++: void FindPokedRenderer(int, int)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetAddressAsString</span></code>(-&gt; str)</p></td>
+<td><p>Get address of C++ object in format 'Addr=%p' after casting to the specified type.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetAutoAdjustCameraClippingRange</span></code>(self)</p></td>
+<td><p>C++: virtual vtkTypeBool GetAutoAdjustCameraClippingRange()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetAutoAdjustCameraClippingRangeMaxValue</span></code>(self)</p></td>
+<td><p>C++: virtual vtkTypeBool GetAutoAdjustCameraClippingRangeMaxValue(</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetAutoAdjustCameraClippingRangeMinValue</span></code>(self)</p></td>
+<td><p>C++: virtual vtkTypeBool GetAutoAdjustCameraClippingRangeMinValue(</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetClassName</span></code>(self)</p></td>
+<td><p>C++: const char <a href="#id3"><span class="problematic" id="id4">*</span></a>GetClassName()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetCommand</span></code>(self, tag)</p></td>
+<td><p>C++: vtkCommand <a href="#id5"><span class="problematic" id="id6">*</span></a>GetCommand(unsigned long tag)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetCurrentRenderer</span></code>(self)</p></td>
+<td><p>C++: virtual vtkRenderer <a href="#id7"><span class="problematic" id="id8">*</span></a>GetCurrentRenderer()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetDebug</span></code>(self)</p></td>
+<td><p>C++: bool GetDebug()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetDefaultRenderer</span></code>(self)</p></td>
+<td><p>C++: virtual vtkRenderer <a href="#id9"><span class="problematic" id="id10">*</span></a>GetDefaultRenderer()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetEnabled</span></code>(self)</p></td>
+<td><p>C++: int GetEnabled()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetGlobalWarningDisplay</span></code>()</p></td>
+<td><p>C++: static vtkTypeBool GetGlobalWarningDisplay()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetHandleObservers</span></code>(self)</p></td>
+<td><p>C++: virtual vtkTypeBool GetHandleObservers()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetInteractor</span></code>(self)</p></td>
+<td><p>C++: virtual vtkRenderWindowInteractor <a href="#id11"><span class="problematic" id="id12">*</span></a>GetInteractor()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetIsInMemkind</span></code>(self)</p></td>
+<td><p>C++: bool GetIsInMemkind()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetKeyPressActivation</span></code>(self)</p></td>
+<td><p>C++: virtual vtkTypeBool GetKeyPressActivation()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetKeyPressActivationValue</span></code>(self)</p></td>
+<td><p>C++: virtual char GetKeyPressActivationValue()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetMTime</span></code>(self)</p></td>
+<td><p>C++: virtual vtkMTimeType GetMTime()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetMotionFactor</span></code>(self)</p></td>
+<td><p>C++: virtual double GetMotionFactor()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetMouseWheelMotionFactor</span></code>(self)</p></td>
+<td><p>C++: virtual double GetMouseWheelMotionFactor()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetNumberOfGenerationsFromBase</span></code>(-&gt; int)</p></td>
+<td><p>C++: vtkIdType GetNumberOfGenerationsFromBase(const char <a href="#id13"><span class="problematic" id="id14">*</span></a>type)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetNumberOfGenerationsFromBaseType</span></code>(type)</p></td>
+<td><p>C++: static vtkIdType GetNumberOfGenerationsFromBaseType(</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetObjectDescription</span></code>(-&gt; str)</p></td>
+<td><p>C++: std::string GetObjectDescription() override;</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetObjectName</span></code>(self)</p></td>
+<td><p>C++: virtual std::string GetObjectName()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetPickColor</span></code>(self)</p></td>
+<td><p>C++: virtual double <a href="#id15"><span class="problematic" id="id16">*</span></a>GetPickColor()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetPickingManaged</span></code>(self)</p></td>
+<td><p>C++: virtual bool GetPickingManaged()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetPriority</span></code>(self)</p></td>
+<td><p>C++: virtual float GetPriority()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetPriorityMaxValue</span></code>(self)</p></td>
+<td><p>C++: virtual float GetPriorityMaxValue()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetPriorityMinValue</span></code>(self)</p></td>
+<td><p>C++: virtual float GetPriorityMinValue()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetReferenceCount</span></code>(self)</p></td>
+<td><p>C++: int GetReferenceCount()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetState</span></code>(self)</p></td>
+<td><p>C++: virtual int GetState()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetTDxStyle</span></code>(self)</p></td>
+<td><p>C++: virtual vtkTDxInteractorStyle <a href="#id17"><span class="problematic" id="id18">*</span></a>GetTDxStyle()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetTimerDuration</span></code>(self)</p></td>
+<td><p>C++: virtual unsigned long GetTimerDuration()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetTimerDurationMaxValue</span></code>(self)</p></td>
+<td><p>C++: virtual unsigned long GetTimerDurationMaxValue()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetTimerDurationMinValue</span></code>(self)</p></td>
+<td><p>C++: virtual unsigned long GetTimerDurationMinValue()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetUseTimers</span></code>(self)</p></td>
+<td><p>C++: virtual vtkTypeBool GetUseTimers()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetUsingMemkind</span></code>()</p></td>
+<td><p>C++: static bool GetUsingMemkind()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GlobalWarningDisplayOff</span></code>()</p></td>
+<td><p>C++: static void GlobalWarningDisplayOff()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GlobalWarningDisplayOn</span></code>()</p></td>
+<td><p>C++: static void GlobalWarningDisplayOn()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GrabFocus</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">HandleObserversOff</span></code>(self)</p></td>
+<td><p>C++: virtual void HandleObserversOff()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">HandleObserversOn</span></code>(self)</p></td>
+<td><p>C++: virtual void HandleObserversOn()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">HasObserver</span></code>(self, event, __b)</p></td>
+<td><p>C++: vtkTypeBool HasObserver(unsigned long event, vtkCommand <a href="#id19"><span class="problematic" id="id20">*</span></a>) HasObserver(self, event:str, __b:vtkCommand) -&gt; int C++: vtkTypeBool HasObserver(const char <a href="#id21"><span class="problematic" id="id22">*</span></a>event, vtkCommand <a href="#id23"><span class="problematic" id="id24">*</span></a>) HasObserver(self, event:int) -&gt; int C++: vtkTypeBool HasObserver(unsigned long event) HasObserver(self, event:str) -&gt; int C++: vtkTypeBool HasObserver(const char <a href="#id25"><span class="problematic" id="id26">*</span></a>event)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">HighlightActor2D</span></code>(self, actor2D)</p></td>
+<td><p>C++: virtual void HighlightActor2D(vtkActor2D <a href="#id27"><span class="problematic" id="id28">*</span></a>actor2D)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">HighlightProp</span></code>(self, prop)</p></td>
+<td><p>C++: virtual void HighlightProp(vtkProp <a href="#id29"><span class="problematic" id="id30">*</span></a>prop)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">HighlightProp3D</span></code>(self, prop3D)</p></td>
+<td><p>C++: virtual void HighlightProp3D(vtkProp3D <a href="#id31"><span class="problematic" id="id32">*</span></a>prop3D)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">InitializeObjectBase</span></code>(self)</p></td>
+<td><p>C++: void InitializeObjectBase()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvokeEvent</span></code>(self, event, callData)</p></td>
+<td><p>C++: int InvokeEvent(unsigned long event, void* callData) InvokeEvent(self, event:str, callData:Any) -&gt; int C++: int InvokeEvent(const char* event, void* callData) InvokeEvent(self, event:int) -&gt; int C++: int InvokeEvent(unsigned long event) InvokeEvent(self, event:str) -&gt; int C++: int InvokeEvent(const char* event)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">IsA</span></code>(-&gt; int)</p></td>
+<td><p>C++: vtkTypeBool IsA(const char <a href="#id33"><span class="problematic" id="id34">*</span></a>type) override;</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">IsTypeOf</span></code>(type)</p></td>
+<td><p>C++: static vtkTypeBool IsTypeOf(const char <a href="#id35"><span class="problematic" id="id36">*</span></a>type)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">KeyPressActivationOff</span></code>(self)</p></td>
+<td><p>C++: virtual void KeyPressActivationOff()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">KeyPressActivationOn</span></code>(self)</p></td>
+<td><p>C++: virtual void KeyPressActivationOn()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Modified</span></code>(self)</p></td>
+<td><p>C++: virtual void Modified()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">NewInstance</span></code>(self)</p></td>
+<td><p>C++: vtkInteractorStyleTrackballCamera <a href="#id37"><span class="problematic" id="id38">*</span></a>NewInstance()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Off</span></code>(self)</p></td>
+<td><p>C++: void Off()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">On</span></code>(self)</p></td>
+<td><p>C++: void On()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnButton3D</span></code>(self, __a)</p></td>
+<td><p>C++: virtual void OnButton3D(vtkEventData <a href="#id39"><span class="problematic" id="id40">*</span></a>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnChar</span></code>(-&gt; None)</p></td>
+<td><p>C++: void OnChar() override;</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnClip3D</span></code>(self, __a)</p></td>
+<td><p>C++: virtual void OnClip3D(vtkEventData <a href="#id41"><span class="problematic" id="id42">*</span></a>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnConfigure</span></code>(self)</p></td>
+<td><p>C++: virtual void OnConfigure()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnDropFiles</span></code>(self, filePaths)</p></td>
+<td><p>C++: virtual void OnDropFiles(vtkStringArray <a href="#id43"><span class="problematic" id="id44">*</span></a>filePaths)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnDropLocation</span></code>(self, position, ...])</p></td>
+<td><p>C++: virtual void OnDropLocation(double <a href="#id45"><span class="problematic" id="id46">*</span></a>position)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnElevation3D</span></code>(self, __a)</p></td>
+<td><p>C++: virtual void OnElevation3D(vtkEventData <a href="#id47"><span class="problematic" id="id48">*</span></a>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnEndPan</span></code>(self)</p></td>
+<td><p>C++: virtual void OnEndPan()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnEndPinch</span></code>(self)</p></td>
+<td><p>C++: virtual void OnEndPinch()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnEndRotate</span></code>(self)</p></td>
+<td><p>C++: virtual void OnEndRotate()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnEndSwipe</span></code>(self)</p></td>
+<td><p>C++: virtual void OnEndSwipe()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnEnter</span></code>(self)</p></td>
+<td><p>C++: virtual void OnEnter()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnExpose</span></code>(self)</p></td>
+<td><p>C++: virtual void OnExpose()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnFifthButtonDown</span></code>(self)</p></td>
+<td><p>C++: virtual void OnFifthButtonDown()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnFifthButtonUp</span></code>(self)</p></td>
+<td><p>C++: virtual void OnFifthButtonUp()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnFourthButtonDown</span></code>(self)</p></td>
+<td><p>C++: virtual void OnFourthButtonDown()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnFourthButtonUp</span></code>(self)</p></td>
+<td><p>C++: virtual void OnFourthButtonUp()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnKeyDown</span></code>(self)</p></td>
+<td><p>C++: virtual void OnKeyDown()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnKeyPress</span></code>(self)</p></td>
+<td><p>C++: virtual void OnKeyPress()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnKeyRelease</span></code>(self)</p></td>
+<td><p>C++: virtual void OnKeyRelease()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnKeyUp</span></code>(self)</p></td>
+<td><p>C++: virtual void OnKeyUp()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnLeave</span></code>(self)</p></td>
+<td><p>C++: virtual void OnLeave()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnLeftButtonDoubleClick</span></code>(self)</p></td>
+<td><p>C++: virtual void OnLeftButtonDoubleClick()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnLeftButtonDown</span></code>(-&gt; None)</p></td>
+<td><p>C++: void OnLeftButtonDown() override;</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnLeftButtonUp</span></code>(-&gt; None)</p></td>
+<td><p>C++: void OnLeftButtonUp() override;</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnLongTap</span></code>(self)</p></td>
+<td><p>C++: virtual void OnLongTap()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnMenu3D</span></code>(self, __a)</p></td>
+<td><p>C++: virtual void OnMenu3D(vtkEventData <a href="#id49"><span class="problematic" id="id50">*</span></a>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnMiddleButtonDoubleClick</span></code>(self)</p></td>
+<td><p>C++: virtual void OnMiddleButtonDoubleClick()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnMiddleButtonDown</span></code>(-&gt; None)</p></td>
+<td><p>C++: void OnMiddleButtonDown() override;</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnMiddleButtonUp</span></code>(-&gt; None)</p></td>
+<td><p>C++: void OnMiddleButtonUp() override;</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnMouseMove</span></code>(-&gt; None)</p></td>
+<td><p>C++: void OnMouseMove() override;</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnMouseWheelBackward</span></code>(-&gt; None)</p></td>
+<td><p>C++: void OnMouseWheelBackward() override;</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnMouseWheelForward</span></code>(-&gt; None)</p></td>
+<td><p>C++: void OnMouseWheelForward() override;</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnMouseWheelLeft</span></code>(self)</p></td>
+<td><p>C++: virtual void OnMouseWheelLeft()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnMouseWheelRight</span></code>(self)</p></td>
+<td><p>C++: virtual void OnMouseWheelRight()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnMove3D</span></code>(self, __a)</p></td>
+<td><p>C++: virtual void OnMove3D(vtkEventData <a href="#id51"><span class="problematic" id="id52">*</span></a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnNextPose3D</span></code>(self, __a)</p></td>
+<td><p>C++: virtual void OnNextPose3D(vtkEventData <a href="#id53"><span class="problematic" id="id54">*</span></a>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnPan</span></code>(self)</p></td>
+<td><p>C++: virtual void OnPan()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnPick3D</span></code>(self, __a)</p></td>
+<td><p>C++: virtual void OnPick3D(vtkEventData <a href="#id55"><span class="problematic" id="id56">*</span></a>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnPinch</span></code>(self)</p></td>
+<td><p>C++: virtual void OnPinch()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnPositionProp3D</span></code>(self, __a)</p></td>
+<td><p>C++: virtual void OnPositionProp3D(vtkEventData <a href="#id57"><span class="problematic" id="id58">*</span></a>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnRightButtonDoubleClick</span></code>(self)</p></td>
+<td><p>C++: virtual void OnRightButtonDoubleClick()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnRightButtonDown</span></code>(-&gt; None)</p></td>
+<td><p>C++: void OnRightButtonDown() override;</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnRightButtonUp</span></code>(-&gt; None)</p></td>
+<td><p>C++: void OnRightButtonUp() override;</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnRotate</span></code>(self)</p></td>
+<td><p>C++: virtual void OnRotate()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnSelect3D</span></code>(self, __a)</p></td>
+<td><p>C++: virtual void OnSelect3D(vtkEventData <a href="#id59"><span class="problematic" id="id60">*</span></a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnStartPan</span></code>(self)</p></td>
+<td><p>C++: virtual void OnStartPan()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnStartPinch</span></code>(self)</p></td>
+<td><p>C++: virtual void OnStartPinch()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnStartRotate</span></code>(self)</p></td>
+<td><p>C++: virtual void OnStartRotate()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnStartSwipe</span></code>(self)</p></td>
+<td><p>C++: virtual void OnStartSwipe()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnSwipe</span></code>(self)</p></td>
+<td><p>C++: virtual void OnSwipe()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnTap</span></code>(self)</p></td>
+<td><p>C++: virtual void OnTap()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnTimer</span></code>(self)</p></td>
+<td><p>C++: virtual void OnTimer()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">OnViewerMovement3D</span></code>(self, __a)</p></td>
+<td><p>C++: virtual void OnViewerMovement3D(vtkEventData <a href="#id61"><span class="problematic" id="id62">*</span></a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Pan</span></code>(-&gt; None)</p></td>
+<td><p>C++: void Pan() override;</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">PickingManagedOff</span></code>(self)</p></td>
+<td><p>C++: virtual void PickingManagedOff()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">PickingManagedOn</span></code>(self)</p></td>
+<td><p>C++: virtual void PickingManagedOn()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Register</span></code>(self, o)</p></td>
+<td><p>C++: virtual void Register(vtkObjectBase <a href="#id63"><span class="problematic" id="id64">*</span></a>o)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ReleaseFocus</span></code>(self)</p></td>
+<td><p>C++: void ReleaseFocus()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RemoveAllObservers</span></code>(self)</p></td>
+<td><p>C++: void RemoveAllObservers()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RemoveObserver</span></code>(self, __a)</p></td>
+<td><p>C++: void RemoveObserver(vtkCommand <a href="#id65"><span class="problematic" id="id66">*</span></a>) RemoveObserver(self, <a class="reference external" href="tag:int">tag:int</a>) -&gt; None C++: void RemoveObserver(unsigned long tag)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RemoveObservers</span></code>(self, event, __b)</p></td>
+<td><p>C++: void RemoveObservers(unsigned long event, vtkCommand <a href="#id67"><span class="problematic" id="id68">*</span></a>) RemoveObservers(self, event:str, __b:vtkCommand) -&gt; None C++: void RemoveObservers(const char <a href="#id69"><span class="problematic" id="id70">*</span></a>event, vtkCommand <a href="#id71"><span class="problematic" id="id72">*</span></a>) RemoveObservers(self, event:int) -&gt; None C++: void RemoveObservers(unsigned long event) RemoveObservers(self, event:str) -&gt; None C++: void RemoveObservers(const char <a href="#id73"><span class="problematic" id="id74">*</span></a>event)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Rotate</span></code>(-&gt; None)</p></td>
+<td><p>C++: void Rotate() override;</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SafeDownCast</span></code>(o)</p></td>
+<td><p>C++: static vtkInteractorStyleTrackballCamera <a href="#id75"><span class="problematic" id="id76">*</span></a>SafeDownCast( vtkObjectBase <a href="#id77"><span class="problematic" id="id78">*</span></a>o)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetAutoAdjustCameraClippingRange</span></code>(self, _arg)</p></td>
+<td><p>C++: virtual void SetAutoAdjustCameraClippingRange(</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetCurrentRenderer</span></code>(self, __a)</p></td>
+<td><p>C++: virtual void SetCurrentRenderer(vtkRenderer <a href="#id79"><span class="problematic" id="id80">*</span></a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetDebug</span></code>(self, debugFlag)</p></td>
+<td><p>C++: void SetDebug(bool debugFlag)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetDefaultRenderer</span></code>(self, __a)</p></td>
+<td><p>C++: virtual void SetDefaultRenderer(vtkRenderer <a href="#id81"><span class="problematic" id="id82">*</span></a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetEnabled</span></code>(-&gt; None)</p></td>
+<td><p>C++: void SetEnabled(int) override;</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetGlobalWarningDisplay</span></code>(val)</p></td>
+<td><p>C++: static void SetGlobalWarningDisplay(vtkTypeBool val)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetHandleObservers</span></code>(self, _arg)</p></td>
+<td><p>C++: virtual void SetHandleObservers(vtkTypeBool _arg)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetInteractor</span></code>(-&gt; None)</p></td>
+<td><p>C++: void SetInteractor(vtkRenderWindowInteractor <a href="#id83"><span class="problematic" id="id84">*</span></a>interactor)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetKeyPressActivation</span></code>(self, _arg)</p></td>
+<td><p>C++: virtual void SetKeyPressActivation(vtkTypeBool _arg)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetKeyPressActivationValue</span></code>(self, _arg)</p></td>
+<td><p>C++: virtual void SetKeyPressActivationValue(char _arg)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetMemkindDirectory</span></code>(directoryname)</p></td>
+<td><p>C++: static void SetMemkindDirectory(const char <a href="#id85"><span class="problematic" id="id86">*</span></a>directoryname)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetMotionFactor</span></code>(self, _arg)</p></td>
+<td><p>C++: virtual void SetMotionFactor(double _arg)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetMouseWheelMotionFactor</span></code>(self, _arg)</p></td>
+<td><p>C++: virtual void SetMouseWheelMotionFactor(double _arg)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetObjectName</span></code>(self, objectName)</p></td>
+<td><p>C++: virtual void SetObjectName(const std::string &amp;objectName)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetPickColor</span></code>(self, _arg1, _arg2, _arg3)</p></td>
+<td><p>C++: virtual void SetPickColor(double _arg1, double _arg2,</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetPickingManaged</span></code>(self, managed)</p></td>
+<td><p>C++: virtual void SetPickingManaged(bool managed)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetPriority</span></code>(self, _arg)</p></td>
+<td><p>C++: virtual void SetPriority(float _arg)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetReferenceCount</span></code>(self, __a)</p></td>
+<td><p>C++: void SetReferenceCount(int)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetTDxStyle</span></code>(self, tdxStyle)</p></td>
+<td><p>C++: virtual void SetTDxStyle(vtkTDxInteractorStyle <a href="#id87"><span class="problematic" id="id88">*</span></a>tdxStyle)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetTimerDuration</span></code>(self, _arg)</p></td>
+<td><p>C++: virtual void SetTimerDuration(unsigned long _arg)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SetUseTimers</span></code>(self, _arg)</p></td>
+<td><p>C++: virtual void SetUseTimers(vtkTypeBool _arg)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Spin</span></code>(-&gt; None)</p></td>
+<td><p>C++: void Spin() override;</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StartAnimate</span></code>(self)</p></td>
+<td><p>C++: virtual void StartAnimate()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StartDolly</span></code>(self)</p></td>
+<td><p>C++: virtual void StartDolly()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StartEnvRotate</span></code>(self)</p></td>
+<td><p>C++: virtual void StartEnvRotate()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StartGesture</span></code>(self)</p></td>
+<td><p>C++: virtual void StartGesture()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StartPan</span></code>(self)</p></td>
+<td><p>C++: virtual void StartPan()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StartRotate</span></code>(self)</p></td>
+<td><p>C++: virtual void StartRotate()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StartSpin</span></code>(self)</p></td>
+<td><p>C++: virtual void StartSpin()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StartState</span></code>(self, newstate)</p></td>
+<td><p>C++: virtual void StartState(int newstate)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StartTimer</span></code>(self)</p></td>
+<td><p>C++: virtual void StartTimer()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StartTwoPointer</span></code>(self)</p></td>
+<td><p>C++: virtual void StartTwoPointer()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StartUniformScale</span></code>(self)</p></td>
+<td><p>C++: virtual void StartUniformScale()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StartZoom</span></code>(self)</p></td>
+<td><p>C++: virtual void StartZoom()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StopAnimate</span></code>(self)</p></td>
+<td><p>C++: virtual void StopAnimate()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">StopState</span></code>(self)</p></td>
+<td><p>C++: virtual void StopState()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">UnRegister</span></code>(self, o)</p></td>
+<td><p>C++: virtual void UnRegister(vtkObjectBase* o)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">UniformScale</span></code>(self)</p></td>
+<td><p>C++: virtual void UniformScale()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">UseTimersOff</span></code>(self)</p></td>
+<td><p>C++: virtual void UseTimersOff()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">UseTimersOn</span></code>(self)</p></td>
+<td><p>C++: virtual void UseTimersOn()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">UsesGarbageCollector</span></code>(self)</p></td>
+<td><p>C++: virtual bool UsesGarbageCollector()</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Zoom</span></code>(self)</p></td>
+<td><p>C++: virtual void Zoom()</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">auto_adjust_camera_clipping_range</span></code></p></td>
+<td><p>read-write, Calls GetAutoAdjustCameraClippingRange/SetAutoAdjustCameraClippingRange</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">class_name</span></code></p></td>
+<td><p>read-only, Calls GetClassName</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">current_renderer</span></code></p></td>
+<td><p>read-write, Calls GetCurrentRenderer/SetCurrentRenderer</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">debug</span></code></p></td>
+<td><p>read-write, Calls GetDebug/SetDebug</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">default_renderer</span></code></p></td>
+<td><p>read-write, Calls GetDefaultRenderer/SetDefaultRenderer</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">enabled</span></code></p></td>
+<td><p>write-only, Calls SetEnabled</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">global_warning_display</span></code></p></td>
+<td><p>read-write, Calls GetGlobalWarningDisplay/SetGlobalWarningDisplay</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">handle_observers</span></code></p></td>
+<td><p>read-write, Calls GetHandleObservers/SetHandleObservers</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">interactor</span></code></p></td>
+<td><p>write-only, Calls SetInteractor</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_in_memkind</span></code></p></td>
+<td><p>read-only, Calls GetIsInMemkind</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">key_press_activation</span></code></p></td>
+<td><p>read-write, Calls GetKeyPressActivation/SetKeyPressActivation</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">key_press_activation_value</span></code></p></td>
+<td><p>read-write, Calls GetKeyPressActivationValue/SetKeyPressActivationValue</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">m_time</span></code></p></td>
+<td><p>read-only, Calls GetMTime</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">memkind_directory</span></code></p></td>
+<td><p>write-only, Calls SetMemkindDirectory</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">motion_factor</span></code></p></td>
+<td><p>read-write, Calls GetMotionFactor/SetMotionFactor</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">mouse_wheel_motion_factor</span></code></p></td>
+<td><p>read-write, Calls GetMouseWheelMotionFactor/SetMouseWheelMotionFactor</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">object_description</span></code></p></td>
+<td><p>read-only, Calls GetObjectDescription</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">object_name</span></code></p></td>
+<td><p>read-write, Calls GetObjectName/SetObjectName</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pick_color</span></code></p></td>
+<td><p>read-write, Calls GetPickColor/SetPickColor</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">picking_managed</span></code></p></td>
+<td><p>read-write, Calls GetPickingManaged/SetPickingManaged</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">priority</span></code></p></td>
+<td><p>read-write, Calls GetPriority/SetPriority</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_count</span></code></p></td>
+<td><p>read-write, Calls GetReferenceCount/SetReferenceCount</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">state</span></code></p></td>
+<td><p>read-only, Calls GetState</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">t_dx_style</span></code></p></td>
+<td><p>read-write, Calls GetTDxStyle/SetTDxStyle</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">timer_duration</span></code></p></td>
+<td><p>read-write, Calls GetTimerDuration/SetTimerDuration</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">use_timers</span></code></p></td>
+<td><p>read-write, Calls GetUseTimers/SetUseTimers</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">using_memkind</span></code></p></td>
+<td><p>read-only, Calls GetUsingMemkind</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="mosaic.tabs.IntelligenceTab.show_ribbon.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">mosaic.tabs.IntelligenceTab.show_ribbon</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="mosaic.styles.CurveBuilderInteractorStyle.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">mosaic.styles.CurveBuilderInteractorStyle</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mosaic.styles.MeshEditInteractorStyle"><code class="docutils literal notranslate"><span class="pre">MeshEditInteractorStyle</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mosaic.styles.MeshEditInteractorStyle.__init__"><code class="docutils literal notranslate"><span class="pre">MeshEditInteractorStyle.__init__()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

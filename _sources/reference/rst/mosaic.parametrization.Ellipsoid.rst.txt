@@ -1,0 +1,27 @@
+﻿mosaic.parametrization.Ellipsoid
+================================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: Ellipsoid
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Ellipsoid.__init__
+      ~Ellipsoid.compute_distance
+      ~Ellipsoid.compute_normal
+      ~Ellipsoid.fit
+      ~Ellipsoid.points_per_sampling
+      ~Ellipsoid.sample
+   
+   
+
+   
+   
+   

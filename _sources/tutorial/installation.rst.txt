@@ -1,0 +1,169 @@
+============
+Installation
+============
+
+.. include:: ../substitutions.rst
+
+Before installing Mosaic, ensure your system meets the following requirements.
+
+Prerequisites
+-------------
+
+- **Python**: 3.11+ (3.11 recommended)
+- **Operating System**:
+
+  - Linux (recommended)
+  - macOS (some performance limitations noted below)
+  - Windows 10+ (not tested but principally supported)
+- **Hardware**:
+
+  - Standard consumer laptops (8GB RAM recommended)
+  - NVIDIA GPU with CUDA support required for: membrane segmentation, template matching and molecular dynamics simulations (oldest model tested: RTX 3090)
+
+.. note::
+   macOS Users: Due to compatibility issues, some functions (edge length-based remeshing and certain parametrizations) have reduced performance compared to Linux systems, but yield the same output.
+
+
+Installation
+------------
+
+.. _installation-section:
+
+We recommend creating a virtual environment for a clean and isolated setup.
+
+.. tab-set::
+
+   .. tab-item:: Venv
+
+      Python's built-in option, suitable for simpler setups.
+
+      .. code-block:: bash
+
+         python3 -m venv mosaic
+         source mosaic/bin/activate
+
+   .. tab-item:: Conda
+
+      Best for cross-platform compatibility and managing complex dependencies.
+
+      .. code-block:: bash
+
+         conda create --name mosaic -c conda-forge python=3.11
+         conda activate mosaic
+
+After setting up your environment, Mosaic can be installed from PyPI
+
+.. code-block:: bash
+
+   pip install "mosaic-gui[all]"
+   mosaic --version          # Smoke test to verify installation
+
+
+.. note::
+
+   Installing pymeshlab from PyPi has proven troublesome on some Linux distributions. If the Mosaic installation fails with pymeshlab-related issues, you can either build pymeshlab from GitHub
+
+   .. code-block:: bash
+
+      python3 -m pip install git+https://github.com/cnr-isti-vclab/PyMeshLab.git@main
+
+   or follow their `Tutorial <https://github.com/cnr-isti-vclab/PyMeshLab/wiki/How-to-install-the-last-nightly-version>`_ for installing the lastest binaries for your system.
+
+   The last tested version is `2025.4.17.dev0 <https://github.com/cnr-isti-vclab/PyMeshLab/actions/runs/16443660017>`_. After installing pymeshlab you have to install Mosaic again.
+
+
+Optional Dependencies
+---------------------
+
+Mosaic provides specialized functionality through the following optional components.
+
+.. _installation-dts:
+
+DTS Simulations
+^^^^^^^^^^^^^^^
+
+If you intend to use Mosaic for dynamically triangulated surface (DTS) simulations, please install these additional tools
+
+**FreeDTS**: Can be installed by following the instructions at https://github.com/weria-pezeshkian/FreeDTS. Alternatively, use our Python wrapper
+
+.. code-block:: bash
+
+   pip install pyfreedts
+   dts -h                # smoke test
+
+**Trimem**: Install from the repository at https://github.com/bio-phys/trimem
+
+.. code-block:: bash
+
+   git clone --recurse-submodules https://github.com/bio-phys/trimem.git
+   export CMAKE_POLICY_VERSION_MINIMUM=3.5
+   pip install trimem/
+
+On MacOS, libomp needs to be installed separately to install trimem
+
+.. code-block:: bash
+
+   brew install libomp
+
+   export LIBOMP_PATH=/opt/homebrew/opt/libomp
+   export CMAKE_POLICY_VERSION_MINIMUM=3.5
+   export CXXFLAGS="-Xpreprocessor -fopenmp -I$LIBOMP_PATH/include"
+   export CFLAGS="-Xpreprocessor -fopenmp -I$LIBOMP_PATH/include"
+   export LDFLAGS="-L$LIBOMP_PATH/lib -Wl,-rpath,$LIBOMP_PATH/lib -lomp"
+   export CMAKE_ARGS="-DCMAKE_C_COMPILER=$(which clang) -DCMAKE_CXX_COMPILER=$(which clang++)"
+   pip install trimem/
+
+You can smoke test your installation using
+
+.. code-block:: bash
+
+   mc_app run --help
+
+which should output similar to the message shown below
+
+.. code-block:: text
+
+   usage: mc_app run [-h] --conf CONF [--restart [RESTART]]
+   Run a simulation parametrized by a configuration file.
+
+   options:
+     -h, --help           show this help message and exit
+     --conf CONF          configuration file name (see `mc_app config --help`).
+     --restart [RESTART]  restart index.
+
+.. _installation-backmapping:
+
+DTS Backmapping
+^^^^^^^^^^^^^^^
+
+If you intend to use Mosaic for creating coarse-grained representations of meshes, install TS2CG (https://github.com/weria-pezeshkian/TS2CG-v2.0) for backmapping and Martinize2 (https://github.com/marrink-lab/vermouth-martinize) for creating coarse-grained representations of atomic structures
+
+.. code-block:: bash
+
+   pip install TS2CG vermouth
+
+We use Gromacs for equilibrating coarse-grained Martini models. The installation instructions are available `here <https://manual.gromacs.org/current/install-guide/index.html>`_.
+
+
+Instructions for Developers
+---------------------------
+
+The latest development version of Mosaic can be installed from GitHub
+
+.. code-block:: bash
+
+   pip install git+https://github.com/KosinskiLab/mosaic.git
+
+If you want to modify the codebase
+
+.. code-block:: bash
+
+   git clone https://github.com/KosinskiLab/mosaic.git
+   pip install -e mosaic
+
+
+Getting Help
+------------
+
+- Check the :doc:`troubleshooting guide <reference/troubleshooting>`.
+- Open an issue on :doc:`GitHub <reference/issues>`.

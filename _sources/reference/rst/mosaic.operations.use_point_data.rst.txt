@@ -1,0 +1,6 @@
+﻿mosaic.operations.use\_point\_data
+==================================
+
+.. currentmodule:: mosaic.operations
+
+.. autofunction:: use_point_data

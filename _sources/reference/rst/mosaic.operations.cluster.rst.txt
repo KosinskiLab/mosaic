@@ -1,0 +1,6 @@
+﻿mosaic.operations.cluster
+=========================
+
+.. currentmodule:: mosaic.operations
+
+.. autofunction:: cluster

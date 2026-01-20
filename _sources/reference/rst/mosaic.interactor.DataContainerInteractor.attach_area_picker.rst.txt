@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.attach\_area\_picker
+==============================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.attach_area_picker

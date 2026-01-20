@@ -1,0 +1,27 @@
+﻿mosaic.parametrization.SplineCurve
+==================================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: SplineCurve
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SplineCurve.__init__
+      ~SplineCurve.compute_distance
+      ~SplineCurve.compute_normal
+      ~SplineCurve.fit
+      ~SplineCurve.points_per_sampling
+      ~SplineCurve.sample
+   
+   
+
+   
+   
+   

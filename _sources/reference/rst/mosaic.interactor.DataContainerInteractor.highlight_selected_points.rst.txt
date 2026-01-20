@@ -1,0 +1,6 @@
+﻿mosaic.interactor.DataContainerInteractor.highlight\_selected\_points
+=====================================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.highlight_selected_points

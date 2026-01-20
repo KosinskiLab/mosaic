@@ -1,0 +1,29 @@
+﻿mosaic.widgets.CursorModeHandler
+================================
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: CursorModeHandler
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CursorModeHandler.__init__
+      ~CursorModeHandler.update_mode
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CursorModeHandler.current_mode
+   
+   

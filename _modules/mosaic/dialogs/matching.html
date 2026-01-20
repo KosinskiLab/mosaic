@@ -1,0 +1,1158 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mosaic.dialogs.matching &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/mosaic/dialogs/matching';</script>
+    <link rel="icon" href="../../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">mosaic.dialogs.matching</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for mosaic.dialogs.matching</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">textwrap</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">os</span><span class="w"> </span><span class="kn">import</span> <span class="n">makedirs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">os.path</span><span class="w"> </span><span class="kn">import</span> <span class="n">join</span><span class="p">,</span> <span class="n">splitext</span><span class="p">,</span> <span class="n">basename</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tme</span><span class="w"> </span><span class="kn">import</span> <span class="n">Density</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qtpy.QtWidgets</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">QDialog</span><span class="p">,</span>
+    <span class="n">QTabWidget</span><span class="p">,</span>
+    <span class="n">QVBoxLayout</span><span class="p">,</span>
+    <span class="n">QLabel</span><span class="p">,</span>
+    <span class="n">QLineEdit</span><span class="p">,</span>
+    <span class="n">QGroupBox</span><span class="p">,</span>
+    <span class="n">QCheckBox</span><span class="p">,</span>
+    <span class="n">QComboBox</span><span class="p">,</span>
+    <span class="n">QScrollArea</span><span class="p">,</span>
+    <span class="n">QSpinBox</span><span class="p">,</span>
+    <span class="n">QDoubleSpinBox</span><span class="p">,</span>
+    <span class="n">QWidget</span><span class="p">,</span>
+    <span class="n">QGridLayout</span><span class="p">,</span>
+    <span class="n">QMessageBox</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">qtawesome</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">qta</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..widgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">PathSelector</span><span class="p">,</span> <span class="n">DialogFooter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..stylesheets</span><span class="w"> </span><span class="kn">import</span> <span class="n">QPushButton_style</span><span class="p">,</span> <span class="n">QScrollArea_style</span><span class="p">,</span> <span class="n">QTabBar_style</span><span class="p">,</span> <span class="n">Colors</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">InputDataTab</span><span class="p">(</span><span class="n">QWidget</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tab for input data selection&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c1"># Create a scroll area</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span> <span class="o">=</span> <span class="n">QScrollArea</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidgetResizable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span> <span class="o">=</span> <span class="n">QWidget</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;Working Directory&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_group</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_selector</span> <span class="o">=</span> <span class="n">PathSelector</span><span class="p">(</span>
+            <span class="s2">&quot;Output Directory:&quot;</span><span class="p">,</span> <span class="s2">&quot;Path to working directory&quot;</span><span class="p">,</span> <span class="n">file_mode</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_selector</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_group</span><span class="p">)</span>
+
+        <span class="c1"># Target section</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;Target&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_group</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tomogram_selector</span> <span class="o">=</span> <span class="n">PathSelector</span><span class="p">(</span><span class="s2">&quot;Tomogram:&quot;</span><span class="p">,</span> <span class="s2">&quot;Path to target&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tomogram_selector</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_mask_selector</span> <span class="o">=</span> <span class="n">PathSelector</span><span class="p">(</span>
+            <span class="s2">&quot;Target Mask (Optional):&quot;</span><span class="p">,</span> <span class="s2">&quot;Path to target mask&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_mask_selector</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_group</span><span class="p">)</span>
+
+        <span class="c1"># Templates section</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">template_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;Template&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">template_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">template_group</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">template_selector</span> <span class="o">=</span> <span class="n">PathSelector</span><span class="p">(</span><span class="s2">&quot;Template:&quot;</span><span class="p">,</span> <span class="s2">&quot;Path to template&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">template_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">template_selector</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">template_mask_selector</span> <span class="o">=</span> <span class="n">PathSelector</span><span class="p">(</span>
+            <span class="s2">&quot;Template Mask (Optional):&quot;</span><span class="p">,</span> <span class="s2">&quot;Path to template mask&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">template_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">template_mask_selector</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">template_group</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;output_directory&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_selector</span><span class="o">.</span><span class="n">get_path</span><span class="p">(),</span>
+            <span class="s2">&quot;tomogram&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">tomogram_selector</span><span class="o">.</span><span class="n">get_path</span><span class="p">(),</span>
+            <span class="s2">&quot;target_mask&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_mask_selector</span><span class="o">.</span><span class="n">get_path</span><span class="p">(),</span>
+            <span class="s2">&quot;template&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">template_selector</span><span class="o">.</span><span class="n">get_path</span><span class="p">(),</span>
+            <span class="s2">&quot;template_mask&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">template_mask_selector</span><span class="o">.</span><span class="n">get_path</span><span class="p">(),</span>
+        <span class="p">}</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PreprocessTab</span><span class="p">(</span><span class="n">QWidget</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tab for template preprocessing&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span> <span class="o">=</span> <span class="n">QScrollArea</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidgetResizable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span> <span class="o">=</span> <span class="n">QWidget</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">skip_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;Control&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skip_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_group</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skip_preprocessing_check</span> <span class="o">=</span> <span class="n">QCheckBox</span><span class="p">(</span>
+            <span class="s2">&quot;Skip preprocessing (template is already prepared)&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skip_preprocessing_check</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span>
+            <span class="s2">&quot;Use this option if your template is already correctly prepared&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skip_preprocessing_check</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skip_preprocessing_check</span><span class="o">.</span><span class="n">toggled</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_toggle_options</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skip_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_preprocessing_check</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_group</span><span class="p">)</span>
+
+        <span class="c1"># Filters section</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_filters_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;Filters&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_filters_layout</span> <span class="o">=</span> <span class="n">QGridLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preproc_filters_group</span><span class="p">)</span>
+
+        <span class="n">preproc_lowpass_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Lowpass (Å):&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_lowpass_input</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_lowpass_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;e.g., 20&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_lowpass_input</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span><span class="s2">&quot;Low-pass filter cutoff in Angstroms&quot;</span><span class="p">)</span>
+
+        <span class="n">preproc_highpass_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Highpass (Å):&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_highpass_input</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_highpass_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;e.g., 200&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_highpass_input</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span><span class="s2">&quot;High-pass filter cutoff in Angstroms&quot;</span><span class="p">)</span>
+
+        <span class="n">invert_template_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Contrast:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">invert_template_check</span> <span class="o">=</span> <span class="n">QCheckBox</span><span class="p">(</span><span class="s2">&quot;Invert template contrast&quot;</span><span class="p">)</span>
+        <span class="n">contrast_help</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Invert template contrast to match target contrast.&quot;</span><span class="p">)</span>
+        <span class="n">contrast_help</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;color: #64748b; font-size: 10px;&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">preproc_lowpass_label</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preproc_lowpass_input</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">preproc_highpass_label</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preproc_highpass_input</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">invert_template_label</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">invert_template_check</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">contrast_help</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preproc_filters_group</span><span class="p">)</span>
+
+        <span class="c1"># Alignment section (for constrained matching)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alignment_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;Alignment&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alignment_layout</span> <span class="o">=</span> <span class="n">QGridLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alignment_group</span><span class="p">)</span>
+
+        <span class="n">align_axis_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Align Template Axis:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">align_axis_combo</span> <span class="o">=</span> <span class="n">QComboBox</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">align_axis_combo</span><span class="o">.</span><span class="n">addItems</span><span class="p">([</span><span class="s2">&quot;None&quot;</span><span class="p">,</span> <span class="s2">&quot;X&quot;</span><span class="p">,</span> <span class="s2">&quot;Y&quot;</span><span class="p">,</span> <span class="s2">&quot;Z&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">align_axis_combo</span><span class="o">.</span><span class="n">setCurrentIndex</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">align_axis_combo</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span><span class="s2">&quot;Align template along a specific axis&quot;</span><span class="p">)</span>
+
+        <span class="n">align_eigen_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Align Eigenvector:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">align_eigen_combo</span> <span class="o">=</span> <span class="n">QComboBox</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">align_eigen_combo</span><span class="o">.</span><span class="n">addItems</span><span class="p">([</span><span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">align_eigen_combo</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span><span class="s2">&quot;Eigenvector to use for alignment&quot;</span><span class="p">)</span>
+        <span class="n">align_help</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span>
+            <span class="s2">&quot;Templates including membrane typically align on eigenvector 2.&quot;</span>
+        <span class="p">)</span>
+        <span class="n">align_help</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;color: #64748b; font-size: 10px;&quot;</span><span class="p">)</span>
+
+        <span class="n">flip_axis_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Flip Template:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flip_axis_check</span> <span class="o">=</span> <span class="n">QCheckBox</span><span class="p">(</span><span class="s2">&quot;Flip template along alignment axis&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flip_axis_check</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span>
+            <span class="s2">&quot;Invert template orientation along the alignment axis&quot;</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">alignment_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">align_axis_label</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alignment_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">align_axis_combo</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">alignment_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">align_eigen_label</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alignment_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">align_eigen_combo</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alignment_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">align_help</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">alignment_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">flip_axis_label</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alignment_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flip_axis_check</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alignment_group</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_toggle_options</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">skip_preprocessing_check</span><span class="o">.</span><span class="n">isChecked</span><span class="p">())</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_toggle_options</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">skip_preprocessing</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preproc_filters_group</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="ow">not</span> <span class="n">skip_preprocessing</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alignment_group</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="ow">not</span> <span class="n">skip_preprocessing</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;skip_preprocessing&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">skip_preprocessing_check</span><span class="o">.</span><span class="n">isChecked</span><span class="p">(),</span>
+            <span class="s2">&quot;lowpass&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">preproc_lowpass_input</span><span class="o">.</span><span class="n">text</span><span class="p">(),</span>
+            <span class="s2">&quot;highpass&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">preproc_highpass_input</span><span class="o">.</span><span class="n">text</span><span class="p">(),</span>
+            <span class="s2">&quot;invert_template_contrast&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">invert_template_check</span><span class="o">.</span><span class="n">isChecked</span><span class="p">(),</span>
+            <span class="s2">&quot;align_axis&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">align_axis_combo</span><span class="o">.</span><span class="n">currentText</span><span class="p">(),</span>
+            <span class="s2">&quot;align_eigenvector&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">align_eigen_combo</span><span class="o">.</span><span class="n">currentText</span><span class="p">(),</span>
+            <span class="s2">&quot;flip_template&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">flip_axis_check</span><span class="o">.</span><span class="n">isChecked</span><span class="p">(),</span>
+        <span class="p">}</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MatchingTab</span><span class="p">(</span><span class="n">QWidget</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tab for matching settings&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span> <span class="o">=</span> <span class="n">QScrollArea</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidgetResizable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span> <span class="o">=</span> <span class="n">QWidget</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span><span class="p">)</span>
+
+        <span class="c1"># Angular Sampling section</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">angular_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;Sampling&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">angular_layout</span> <span class="o">=</span> <span class="n">QGridLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">angular_group</span><span class="p">)</span>
+
+        <span class="n">step_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Angular Step (degrees):&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_input</span> <span class="o">=</span> <span class="n">QSpinBox</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_input</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_input</span><span class="o">.</span><span class="n">setRange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">360</span><span class="p">)</span>
+
+        <span class="n">score_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Score Function:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">score_combo</span> <span class="o">=</span> <span class="n">QComboBox</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">score_combo</span><span class="o">.</span><span class="n">addItems</span><span class="p">([</span><span class="s2">&quot;FLCSphericalMask&quot;</span><span class="p">,</span> <span class="s2">&quot;FLC&quot;</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">angular_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">step_label</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">angular_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">step_input</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">angular_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">score_label</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">angular_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">score_combo</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">angular_group</span><span class="p">)</span>
+
+        <span class="c1"># Constrained template matching</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;Constraints&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_layout</span> <span class="o">=</span> <span class="n">QGridLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">orientation_group</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientations_selector</span> <span class="o">=</span> <span class="n">PathSelector</span><span class="p">(</span>
+            <span class="s2">&quot;Orientations File (Optional):&quot;</span><span class="p">,</span> <span class="s2">&quot;Path to orientations file&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">scaling_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Scaling:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_scaling</span> <span class="o">=</span> <span class="n">QDoubleSpinBox</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_scaling</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_scaling</span><span class="o">.</span><span class="n">setRange</span><span class="p">(</span><span class="mf">1e-6</span><span class="p">,</span> <span class="mf">1e12</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_scaling</span><span class="o">.</span><span class="n">setSingleStep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+        <span class="n">scaling_help</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span>
+            <span class="s2">&quot;2 if orientations are at 3 Apx and tomogram is at 6 Apx.&quot;</span>
+        <span class="p">)</span>
+        <span class="n">scaling_help</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;color: #64748b; font-size: 10px;&quot;</span><span class="p">)</span>
+
+        <span class="n">rotational_uncertainty_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Rotational Uncertainty:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rotational_uncertainty</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rotational_uncertainty</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;40&quot;</span><span class="p">)</span>
+        <span class="n">rotational_uncertainty_help</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span>
+            <span class="s2">&quot;Deviation from seed point normal in degrees.&quot;</span>
+        <span class="p">)</span>
+        <span class="n">rotational_uncertainty_help</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;color: #64748b; font-size: 10px;&quot;</span><span class="p">)</span>
+
+        <span class="n">translational_uncertainty_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Translational Uncertainty:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">translational_uncertainty</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">translational_uncertainty</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s2">&quot;10,10,15&quot;</span><span class="p">)</span>
+        <span class="n">translational_uncertainty_help</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span>
+            <span class="s2">&quot;x, y, z deviation from seed point in voxels.&quot;</span>
+        <span class="p">)</span>
+        <span class="n">translational_uncertainty_help</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;color: #64748b; font-size: 10px;&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">orientations_selector</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">scaling_label</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">orientation_scaling</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">scaling_help</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">rotational_uncertainty_label</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rotational_uncertainty</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">rotational_uncertainty_help</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">translational_uncertainty_label</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">translational_uncertainty</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orientation_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">translational_uncertainty_help</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">orientation_group</span><span class="p">)</span>
+
+        <span class="c1"># Filters section</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;Filters&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span> <span class="o">=</span> <span class="n">QGridLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filters_group</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ctf_file</span> <span class="o">=</span> <span class="n">PathSelector</span><span class="p">(</span>
+            <span class="s2">&quot;CTF File:&quot;</span><span class="p">,</span> <span class="s2">&quot;Can be a path to mdoc, warp xml or tomostar file.&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">lowpass_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Lowpass (Å):&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lowpass_input</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lowpass_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;e.g., 20&quot;</span><span class="p">)</span>
+
+        <span class="n">highpass_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Highpass (Å):&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">highpass_input</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">highpass_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;e.g., 200&quot;</span><span class="p">)</span>
+
+        <span class="n">tilt_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Tilt Range:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tilt_input</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tilt_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;e.g., 57,60&quot;</span><span class="p">)</span>
+        <span class="n">tilt_help</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Format: start_angle,stop_angle&quot;</span><span class="p">)</span>
+        <span class="n">tilt_help</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;color: #64748b; font-size: 10px;&quot;</span><span class="p">)</span>
+
+        <span class="n">axes_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Wedge Axes:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes_input</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;e.g., 2,0&quot;</span><span class="p">)</span>
+        <span class="n">axes_help</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Format: opening_axis,tilt_axis&quot;</span><span class="p">)</span>
+        <span class="n">axes_help</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;color: #64748b; font-size: 10px;&quot;</span><span class="p">)</span>
+
+        <span class="n">defocus_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Defocus (Å):&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocus_input</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocus_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;e.g., 30000&quot;</span><span class="p">)</span>
+
+        <span class="n">whitening_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Spectral Whitening:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">whitening_check</span> <span class="o">=</span> <span class="n">QCheckBox</span><span class="p">(</span><span class="s2">&quot;Apply&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ctf_file</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">lowpass_label</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lowpass_input</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">highpass_label</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">highpass_input</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">tilt_label</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tilt_input</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">tilt_help</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">axes_label</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axes_input</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">axes_help</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">defocus_label</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">defocus_input</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">whitening_label</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">whitening_check</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filters_group</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;angular_step&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_input</span><span class="o">.</span><span class="n">value</span><span class="p">(),</span>
+            <span class="s2">&quot;score_function&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">score_combo</span><span class="o">.</span><span class="n">currentText</span><span class="p">(),</span>
+            <span class="s2">&quot;orientations_file&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">orientations_selector</span><span class="o">.</span><span class="n">get_path</span><span class="p">(),</span>
+            <span class="s2">&quot;orientation_scaling&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">orientation_scaling</span><span class="o">.</span><span class="n">value</span><span class="p">(),</span>
+            <span class="s2">&quot;rotational_uncertainty&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">rotational_uncertainty</span><span class="o">.</span><span class="n">text</span><span class="p">(),</span>
+            <span class="s2">&quot;translational_uncertainty&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">translational_uncertainty</span><span class="o">.</span><span class="n">text</span><span class="p">(),</span>
+            <span class="s2">&quot;lowpass&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">lowpass_input</span><span class="o">.</span><span class="n">text</span><span class="p">(),</span>
+            <span class="s2">&quot;highpass&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">highpass_input</span><span class="o">.</span><span class="n">text</span><span class="p">(),</span>
+            <span class="s2">&quot;tilt_range&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">tilt_input</span><span class="o">.</span><span class="n">text</span><span class="p">(),</span>
+            <span class="s2">&quot;wedge_axes&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_input</span><span class="o">.</span><span class="n">text</span><span class="p">(),</span>
+            <span class="s2">&quot;defocus&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocus_input</span><span class="o">.</span><span class="n">text</span><span class="p">(),</span>
+            <span class="s2">&quot;whitening&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">whitening_check</span><span class="o">.</span><span class="n">isChecked</span><span class="p">(),</span>
+            <span class="s2">&quot;ctf_file&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ctf_file</span><span class="o">.</span><span class="n">get_path</span><span class="p">(),</span>
+        <span class="p">}</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PeakCallingTab</span><span class="p">(</span><span class="n">QWidget</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tab for peak calling settings&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span> <span class="o">=</span> <span class="n">QScrollArea</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidgetResizable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span> <span class="o">=</span> <span class="n">QWidget</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">peak_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;Peak Properties&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peak_layout</span> <span class="o">=</span> <span class="n">QGridLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">peak_group</span><span class="p">)</span>
+
+        <span class="n">caller_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Peak Caller:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">caller_combo</span> <span class="o">=</span> <span class="n">QComboBox</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">caller_combo</span><span class="o">.</span><span class="n">addItems</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="s2">&quot;PeakCallerMaximumFilter&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;PeakCallerRecursiveMasking&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;PeakCallerScipy&quot;</span><span class="p">,</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Number of Peaks</span>
+        <span class="n">peaks_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Number of Peaks:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peaks_input</span> <span class="o">=</span> <span class="n">QSpinBox</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peaks_input</span><span class="o">.</span><span class="n">setRange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peaks_input</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+
+        <span class="c1"># Minimum Distance</span>
+        <span class="n">distance_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Minimum Distance (voxels):&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">distance_input</span> <span class="o">=</span> <span class="n">QSpinBox</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">distance_input</span><span class="o">.</span><span class="n">setRange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">distance_input</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">peak_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">caller_label</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peak_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">caller_combo</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peak_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">peaks_label</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peak_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">peaks_input</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peak_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">distance_label</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peak_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">distance_input</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">peak_group</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;peak_caller&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">caller_combo</span><span class="o">.</span><span class="n">currentText</span><span class="p">(),</span>
+            <span class="s2">&quot;num_peaks&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">peaks_input</span><span class="o">.</span><span class="n">value</span><span class="p">(),</span>
+            <span class="s2">&quot;min_distance&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">distance_input</span><span class="o">.</span><span class="n">value</span><span class="p">(),</span>
+        <span class="p">}</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ComputeTab</span><span class="p">(</span><span class="n">QWidget</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tab for computation settings&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span> <span class="o">=</span> <span class="n">QScrollArea</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidgetResizable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span> <span class="o">=</span> <span class="n">QWidget</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_group</span> <span class="o">=</span> <span class="n">QGroupBox</span><span class="p">(</span><span class="s2">&quot;Computation Settings&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_layout</span> <span class="o">=</span> <span class="n">QGridLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">compute_group</span><span class="p">)</span>
+
+        <span class="n">cores_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;CPU Cores:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cores_input</span> <span class="o">=</span> <span class="n">QSpinBox</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cores_input</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cores_input</span><span class="o">.</span><span class="n">setRange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">128</span><span class="p">)</span>
+
+        <span class="n">memory_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Memory Usage:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_input</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;e.g., 85 to use 85</span><span class="si">% o</span><span class="s2">f available memory.&quot;</span><span class="p">)</span>
+
+        <span class="n">backend_label</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Backend:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backend_combo</span> <span class="o">=</span> <span class="n">QComboBox</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backend_combo</span><span class="o">.</span><span class="n">addItems</span><span class="p">([</span><span class="s2">&quot;numpyfftw&quot;</span><span class="p">,</span> <span class="s2">&quot;cupy&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backend_combo</span><span class="o">.</span><span class="n">setCurrentText</span><span class="p">(</span><span class="s2">&quot;numpyfftw&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">cores_label</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cores_input</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">memory_label</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_input</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">backend_label</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend_combo</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">compute_group</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_content</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;cores&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cores_input</span><span class="o">.</span><span class="n">value</span><span class="p">(),</span>
+            <span class="s2">&quot;memory&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_input</span><span class="o">.</span><span class="n">text</span><span class="p">(),</span>
+            <span class="s2">&quot;backend&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend_combo</span><span class="o">.</span><span class="n">currentText</span><span class="p">(),</span>
+        <span class="p">}</span>
+
+
+<div class="viewcode-block" id="TemplateMatchingDialog">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.dialogs.TemplateMatchingDialog.html#mosaic.dialogs.TemplateMatchingDialog">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TemplateMatchingDialog</span><span class="p">(</span><span class="n">QDialog</span><span class="p">):</span>
+<div class="viewcode-block" id="TemplateMatchingDialog.__init__">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.dialogs.TemplateMatchingDialog.html#mosaic.dialogs.TemplateMatchingDialog.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="s2">&quot;Pytme Setup&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">650</span><span class="p">,</span> <span class="mi">600</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tabs</span> <span class="o">=</span> <span class="n">QTabWidget</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_tab</span> <span class="o">=</span> <span class="n">InputDataTab</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preprocess_tab</span> <span class="o">=</span> <span class="n">PreprocessTab</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">matching_tab</span> <span class="o">=</span> <span class="n">MatchingTab</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peak_tab</span> <span class="o">=</span> <span class="n">PeakCallingTab</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_tab</span> <span class="o">=</span> <span class="n">ComputeTab</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">tabs</span><span class="o">.</span><span class="n">addTab</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_tab</span><span class="p">,</span> <span class="n">qta</span><span class="o">.</span><span class="n">icon</span><span class="p">(</span><span class="s2">&quot;ph.file-arrow-down&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">ICON</span><span class="p">),</span> <span class="s2">&quot;Data&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tabs</span><span class="o">.</span><span class="n">addTab</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">preprocess_tab</span><span class="p">,</span>
+            <span class="n">qta</span><span class="o">.</span><span class="n">icon</span><span class="p">(</span><span class="s2">&quot;ph.wrench&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">ICON</span><span class="p">),</span>
+            <span class="s2">&quot;Preprocess&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tabs</span><span class="o">.</span><span class="n">addTab</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">matching_tab</span><span class="p">,</span> <span class="n">qta</span><span class="o">.</span><span class="n">icon</span><span class="p">(</span><span class="s2">&quot;ph.sliders&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">ICON</span><span class="p">),</span> <span class="s2">&quot;Matching&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tabs</span><span class="o">.</span><span class="n">addTab</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">peak_tab</span><span class="p">,</span>
+            <span class="n">qta</span><span class="o">.</span><span class="n">icon</span><span class="p">(</span><span class="s2">&quot;ph.magnifying-glass&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">ICON</span><span class="p">),</span>
+            <span class="s2">&quot;Peak Calling&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tabs</span><span class="o">.</span><span class="n">addTab</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">compute_tab</span><span class="p">,</span>
+            <span class="n">qta</span><span class="o">.</span><span class="n">icon</span><span class="p">(</span><span class="s2">&quot;ph.hard-drives&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">ICON</span><span class="p">),</span>
+            <span class="s2">&quot;Compute&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tabs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">footer</span> <span class="o">=</span> <span class="n">DialogFooter</span><span class="p">(</span>
+            <span class="n">info_text</span><span class="o">=</span><span class="s2">&quot;Define target tomogram and template structures&quot;</span><span class="p">,</span>
+            <span class="n">dialog</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="n">margin</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">footer</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="n">QTabBar_style</span> <span class="o">+</span> <span class="n">QPushButton_style</span> <span class="o">+</span> <span class="n">QScrollArea_style</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_help_text</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="n">help_texts</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;Define target tomogram and template structures&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Create a template for template matching&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Configure template matching parameters&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Set up peak calling for candidate detection&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Configure computing resources and output&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">help_text</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="n">help_texts</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_tab</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
+        <span class="n">preprocess</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess_tab</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
+        <span class="n">peak_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_tab</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
+
+        <span class="c1"># Setup working directory</span>
+        <span class="n">directory</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;output_directory&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="s2">&quot;Missing working directory specification.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">target_path</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tomogram&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">template_path</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;template&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_path</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">template_path</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="s2">&quot;Missing template or tomogram path specification.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">templates_dir</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;templates&quot;</span><span class="p">)</span>
+        <span class="n">match_dir</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;match&quot;</span><span class="p">)</span>
+        <span class="n">orientations_dir</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;orientations&quot;</span><span class="p">)</span>
+        <span class="n">makedirs</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">makedirs</span><span class="p">(</span><span class="n">templates_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">makedirs</span><span class="p">(</span><span class="n">match_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">makedirs</span><span class="p">(</span><span class="n">orientations_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">processed_template</span> <span class="o">=</span> <span class="n">template_path</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">preprocess</span><span class="p">[</span><span class="s2">&quot;skip_preprocessing&quot;</span><span class="p">]:</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="k">if</span> <span class="n">preprocess</span><span class="p">[</span><span class="s2">&quot;align_axis&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;None&quot;</span><span class="p">:</span>
+                <span class="n">axis_map</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;X&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;Y&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;Z&quot;</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span><span class="p">,</span> <span class="s2">&quot;None&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">}</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--align-axis </span><span class="si">{</span><span class="n">axis_map</span><span class="p">[</span><span class="n">preprocess</span><span class="p">[</span><span class="s1">&#39;align_axis&#39;</span><span class="p">]]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--align-eigenvector </span><span class="si">{</span><span class="n">preprocess</span><span class="p">[</span><span class="s1">&#39;align_eigenvector&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">preprocess</span><span class="p">[</span><span class="s2">&quot;flip_template&quot;</span><span class="p">]:</span>
+                    <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--flip-axis&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">preprocess</span><span class="p">[</span><span class="s2">&quot;lowpass&quot;</span><span class="p">]:</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--lowpass </span><span class="si">{</span><span class="n">preprocess</span><span class="p">[</span><span class="s1">&#39;lowpass&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">preprocess</span><span class="p">[</span><span class="s2">&quot;highpass&quot;</span><span class="p">]:</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--highpass </span><span class="si">{</span><span class="n">preprocess</span><span class="p">[</span><span class="s1">&#39;highpass&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">preprocess</span><span class="p">[</span><span class="s2">&quot;invert_template_contrast&quot;</span><span class="p">]:</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--invert-contrast&quot;</span><span class="p">)</span>
+
+            <span class="n">args</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">                    &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2"> </span><span class="se">\\</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">args</span><span class="p">])</span>
+            <span class="n">processed_template</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">splitext</span><span class="p">(</span><span class="n">basename</span><span class="p">(</span><span class="n">template_path</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">_processed.mrc&quot;</span>
+            <span class="n">processed_template</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">templates_dir</span><span class="p">,</span> <span class="n">processed_template</span><span class="p">)</span>
+            <span class="n">sampling_rate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span>
+                <span class="n">Density</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="n">target_path</span><span class="p">,</span> <span class="n">use_memmap</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">sampling_rate</span>
+            <span class="p">)</span>
+            <span class="n">generate_template</span> <span class="o">=</span> <span class="n">textwrap</span><span class="o">.</span><span class="n">dedent</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                #!/bin/bash</span>
+
+<span class="s2">                # Create symlinks to original data if needed</span>
+<span class="s2">                mkdir -p </span><span class="si">{</span><span class="n">templates_dir</span><span class="si">}</span>
+
+<span class="s2">                # Preprocess the template</span>
+<span class="s2">                preprocess.py </span><span class="se">\\</span>
+<span class="s2">                    -m </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;template&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="se">\\</span>
+<span class="s2">                    --sampling-rate </span><span class="si">{</span><span class="n">sampling_rate</span><span class="si">}</span><span class="s2"> </span><span class="se">\\</span>
+<span class="s2">                    </span><span class="si">{</span><span class="n">args</span><span class="si">}</span>
+<span class="s2">                    -o </span><span class="si">{</span><span class="n">processed_template</span><span class="si">}</span>
+
+<span class="s2">                echo &quot;Template preprocessing complete.&quot;</span>
+<span class="s2">            &quot;&quot;&quot;</span>
+            <span class="p">)</span>
+
+            <span class="n">script_path</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;create_template.sh&quot;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">script_path</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">ofile</span><span class="p">:</span>
+                <span class="n">ofile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">generate_template</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">args</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">matching</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">matching_tab</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">matching</span><span class="p">[</span><span class="s2">&quot;orientations_file&quot;</span><span class="p">]:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--orientations </span><span class="si">{</span><span class="n">matching</span><span class="p">[</span><span class="s1">&#39;orientations_file&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--orientations-scaling </span><span class="si">{</span><span class="n">matching</span><span class="p">[</span><span class="s1">&#39;orientation_scaling&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--orientations-cone </span><span class="si">{</span><span class="n">matching</span><span class="p">[</span><span class="s1">&#39;rotational_uncertainty&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;--orientations-uncertainty </span><span class="si">{</span><span class="n">matching</span><span class="p">[</span><span class="s1">&#39;translational_uncertainty&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">matching</span><span class="p">[</span><span class="s2">&quot;ctf_file&quot;</span><span class="p">]:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--ctf-file </span><span class="si">{</span><span class="n">matching</span><span class="p">[</span><span class="s1">&#39;ctf_file&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matching</span><span class="p">[</span><span class="s2">&quot;lowpass&quot;</span><span class="p">]:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--lowpass </span><span class="si">{</span><span class="n">matching</span><span class="p">[</span><span class="s1">&#39;lowpass&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matching</span><span class="p">[</span><span class="s2">&quot;highpass&quot;</span><span class="p">]:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--highpass </span><span class="si">{</span><span class="n">matching</span><span class="p">[</span><span class="s1">&#39;highpass&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matching</span><span class="p">[</span><span class="s2">&quot;wedge_axes&quot;</span><span class="p">]:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--wedge-axes </span><span class="si">{</span><span class="n">matching</span><span class="p">[</span><span class="s1">&#39;wedge_axes&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matching</span><span class="p">[</span><span class="s2">&quot;tilt_range&quot;</span><span class="p">]:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--tilt-angles </span><span class="si">{</span><span class="n">matching</span><span class="p">[</span><span class="s1">&#39;tilt_range&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matching</span><span class="p">[</span><span class="s2">&quot;defocus&quot;</span><span class="p">]:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--defocus </span><span class="si">{</span><span class="n">matching</span><span class="p">[</span><span class="s1">&#39;defocus&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matching</span><span class="p">[</span><span class="s2">&quot;whitening&quot;</span><span class="p">]:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--whiten-spectrum&quot;</span><span class="p">)</span>
+
+        <span class="n">compute</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_tab</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--backend </span><span class="si">{</span><span class="n">compute</span><span class="p">[</span><span class="s1">&#39;backend&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">compute</span><span class="p">[</span><span class="s2">&quot;memory&quot;</span><span class="p">]:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--memory-scaling </span><span class="si">{</span><span class="n">compute</span><span class="p">[</span><span class="s1">&#39;memory&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;-n </span><span class="si">{</span><span class="n">compute</span><span class="p">[</span><span class="s1">&#39;cores&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">output_basename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">splitext</span><span class="p">(</span><span class="n">basename</span><span class="p">(</span><span class="n">target_path</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">_&quot;</span>
+        <span class="n">output_basename</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">splitext</span><span class="p">(</span><span class="n">basename</span><span class="p">(</span><span class="n">template_path</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">match_output</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">match_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">output_basename</span><span class="si">}</span><span class="s2">.pickle&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_mask</span> <span class="o">:=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;target_mask&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--target-mask </span><span class="si">{</span><span class="n">target_mask</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">template_mask</span> <span class="o">:=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;template_mask&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--template-mask </span><span class="si">{</span><span class="n">template_mask</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">args</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">                &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2"> </span><span class="se">\\</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">args</span><span class="p">])</span>
+        <span class="n">match_template</span> <span class="o">=</span> <span class="n">textwrap</span><span class="o">.</span><span class="n">dedent</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            #!/bin/bash</span>
+
+<span class="s2">            match_template.py </span><span class="se">\\</span>
+<span class="s2">                --target </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;tomogram&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="se">\\</span>
+<span class="s2">                --template </span><span class="si">{</span><span class="n">processed_template</span><span class="si">}</span><span class="s2"> </span><span class="se">\\</span>
+<span class="s2">                --score </span><span class="si">{</span><span class="n">matching</span><span class="p">[</span><span class="s2">&quot;score_function&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="se">\\</span>
+<span class="s2">                --angular-sampling </span><span class="si">{</span><span class="n">matching</span><span class="p">[</span><span class="s2">&quot;angular_step&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="se">\\</span>
+<span class="s2">                </span><span class="si">{</span><span class="n">args</span><span class="si">}</span>
+<span class="s2">                --output </span><span class="si">{</span><span class="n">match_output</span><span class="si">}</span>
+
+<span class="s2">            echo &quot;Template matching complete. Results saved to </span><span class="si">{</span><span class="n">match_output</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">match_script_path</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;match.sh&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">match_script_path</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">ofile</span><span class="p">:</span>
+            <span class="n">ofile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">match_template</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">peak_output_prefix</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">orientations_dir</span><span class="p">,</span> <span class="n">output_basename</span><span class="p">)</span>
+        <span class="n">extract_matches</span> <span class="o">=</span> <span class="n">textwrap</span><span class="o">.</span><span class="n">dedent</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            #!/bin/bash</span>
+
+<span class="s2">            # Extract peaks from matching results</span>
+<span class="s2">            postprocess.py </span><span class="se">\\</span>
+<span class="s2">              --input-file </span><span class="si">{</span><span class="n">match_output</span><span class="si">}</span><span class="s2"> </span><span class="se">\\</span>
+<span class="s2">              --peak-caller </span><span class="si">{</span><span class="n">peak_data</span><span class="p">[</span><span class="s2">&quot;peak_caller&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="se">\\</span>
+<span class="s2">              --num-peaks </span><span class="si">{</span><span class="n">peak_data</span><span class="p">[</span><span class="s2">&quot;num_peaks&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="se">\\</span>
+<span class="s2">              --min-distance </span><span class="si">{</span><span class="n">peak_data</span><span class="p">[</span><span class="s2">&quot;min_distance&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="se">\\</span>
+<span class="s2">              --output-format orientations </span><span class="se">\\</span>
+<span class="s2">              --output-prefix </span><span class="si">{</span><span class="n">peak_output_prefix</span><span class="si">}</span>
+
+<span class="s2">            echo &quot;Peak extraction complete. Results saved with prefix </span><span class="si">{</span><span class="n">peak_output_prefix</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">script_path</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;extract.sh&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">script_path</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">ofile</span><span class="p">:</span>
+            <span class="n">ofile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">extract_matches</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">master_script</span> <span class="o">=</span> <span class="n">textwrap</span><span class="o">.</span><span class="n">dedent</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            #!/bin/bash</span>
+
+<span class="s2">            echo &quot;Starting template matching pipeline...&quot;</span>
+
+<span class="s2">            # Set up environment - modify as needed</span>
+<span class="s2">            # source activate your_env</span>
+
+<span class="s2">            if [ &quot;</span><span class="si">{</span><span class="n">preprocess</span><span class="p">[</span><span class="s1">&#39;skip_preprocessing&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot; = &quot;True&quot; ]; then</span>
+<span class="s2">                echo &quot;Skip preprocessing - using existing template&quot;</span>
+<span class="s2">            else</span>
+<span class="s2">                echo &quot;Preprocessing template...&quot;</span>
+<span class="s2">                bash create_template.sh</span>
+<span class="s2">                echo &quot;Template preprocessing done.&quot;</span>
+<span class="s2">            fi</span>
+
+<span class="s2">            echo &quot;Running template matching...&quot;</span>
+<span class="s2">            bash match.sh</span>
+<span class="s2">            echo &quot;Template matching done.&quot;</span>
+
+<span class="s2">            echo &quot;Extracting peaks...&quot;</span>
+<span class="s2">            bash extract.sh</span>
+<span class="s2">            echo &quot;Peak extraction done.&quot;</span>
+
+<span class="s2">            echo &quot;Template matching pipeline complete!&quot;</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">script_path</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;run_pipeline.sh&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">script_path</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">ofile</span><span class="p">:</span>
+            <span class="n">ofile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">master_script</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

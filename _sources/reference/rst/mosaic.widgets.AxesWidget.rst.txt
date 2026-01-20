@@ -1,0 +1,26 @@
+﻿mosaic.widgets.AxesWidget
+=========================
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: AxesWidget
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~AxesWidget.__init__
+      ~AxesWidget.set_arrow_heads_visible
+      ~AxesWidget.set_colored
+      ~AxesWidget.set_labels_visible
+      ~AxesWidget.set_visibility
+   
+   
+
+   
+   
+   

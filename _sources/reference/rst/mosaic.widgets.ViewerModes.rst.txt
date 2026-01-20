@@ -1,0 +1,28 @@
+﻿mosaic.widgets.ViewerModes
+==========================
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: ViewerModes
+
+   
+   .. automethod:: __init__
+
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ViewerModes.VIEWING
+      ~ViewerModes.SELECTION
+      ~ViewerModes.DRAWING
+      ~ViewerModes.PICKING
+      ~ViewerModes.MESH_DELETE
+      ~ViewerModes.MESH_ADD
+      ~ViewerModes.CURVE
+   
+   

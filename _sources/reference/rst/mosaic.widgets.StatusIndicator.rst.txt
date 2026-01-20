@@ -1,0 +1,26 @@
+﻿mosaic.widgets.StatusIndicator
+==============================
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: StatusIndicator
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~StatusIndicator.__init__
+      ~StatusIndicator.connect_signals
+      ~StatusIndicator.hide
+      ~StatusIndicator.show
+      ~StatusIndicator.update_status
+   
+   
+
+   
+   
+   

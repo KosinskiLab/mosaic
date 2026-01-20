@@ -1,0 +1,6 @@
+﻿mosaic.widgets.create\_button
+=============================
+
+.. currentmodule:: mosaic.widgets
+
+.. autofunction:: create_button

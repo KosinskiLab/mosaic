@@ -1,0 +1,6 @@
+﻿mosaic.operations.fit
+=====================
+
+.. currentmodule:: mosaic.operations
+
+.. autofunction:: fit

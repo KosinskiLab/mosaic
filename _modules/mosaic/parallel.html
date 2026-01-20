@@ -1,0 +1,1159 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mosaic.parallel &#8212; mosaic 1.1.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=58fbf978"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/mosaic/parallel';</script>
+    <link rel="icon" href="../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">mosaic.parallel</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for mosaic.parallel</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Parallel backend for offloading compute heavy tasks.</span>
+
+<span class="sd">Copyright (c) 2025 European Molecular Biology Laboratory</span>
+
+<span class="sd">Author: Valentin Maurer &lt;valentin.maurer@embl-hamburg.de&gt;</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">queue</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">concurrent</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qtpy.QtWidgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">QMessageBox</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qtpy.QtCore</span><span class="w"> </span><span class="kn">import</span> <span class="n">QObject</span><span class="p">,</span> <span class="n">Signal</span><span class="p">,</span> <span class="n">QTimer</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;report_progress&quot;</span><span class="p">,</span> <span class="s2">&quot;submit_task&quot;</span><span class="p">,</span> <span class="s2">&quot;submit_task_batch&quot;</span><span class="p">]</span>
+
+<span class="c1"># Worker-side globals (set by initializer, used by worker functions)</span>
+<span class="n">_worker_queue</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">multiprocessing</span><span class="o">.</span><span class="n">Queue</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">_worker_task_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">_original_stdout</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">io</span><span class="o">.</span><span class="n">TextIOBase</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">_original_stderr</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">io</span><span class="o">.</span><span class="n">TextIOBase</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MessageType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Types of messages sent from workers to the main process.&quot;&quot;&quot;</span>
+
+    <span class="n">PROGRESS</span> <span class="o">=</span> <span class="s2">&quot;progress&quot;</span>
+    <span class="n">MESSAGE</span> <span class="o">=</span> <span class="s2">&quot;message&quot;</span>
+    <span class="n">STDOUT</span> <span class="o">=</span> <span class="s2">&quot;stdout&quot;</span>
+    <span class="n">STDERR</span> <span class="o">=</span> <span class="s2">&quot;stderr&quot;</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">WorkerMessage</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Message sent from worker to main process via queue.&quot;&quot;&quot;</span>
+
+    <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="nb">type</span><span class="p">:</span> <span class="n">MessageType</span>
+    <span class="n">value</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="n">current</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">total</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">QueueStream</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">TextIOBase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A file-like stream that redirects writes to a multiprocessing Queue.</span>
+
+<span class="sd">    This allows capturing stdout/stderr from worker processes without</span>
+<span class="sd">    the instability of direct fd redirection.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    queue : multiprocessing.Queue</span>
+<span class="sd">        Queue to send messages to.</span>
+<span class="sd">    stream_type : MessageType</span>
+<span class="sd">        Type of stream (STDOUT or STDERR).</span>
+<span class="sd">    fallback_stream : io.TextIOBase</span>
+<span class="sd">        Original stream to also write to (for debugging).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">queue</span><span class="p">:</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">Queue</span><span class="p">,</span>
+        <span class="n">stream_type</span><span class="p">:</span> <span class="n">MessageType</span><span class="p">,</span>
+        <span class="n">fallback_stream</span><span class="p">:</span> <span class="n">io</span><span class="o">.</span><span class="n">TextIOBase</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_queue</span> <span class="o">=</span> <span class="n">queue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_type</span> <span class="o">=</span> <span class="n">stream_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fallback</span> <span class="o">=</span> <span class="n">fallback_stream</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fallback</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_fallback</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_fallback</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="o">+=</span> <span class="n">text</span>
+        <span class="k">while</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="p">:</span>
+            <span class="n">line</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">line</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send text to queue, handling task_id lookup.&quot;&quot;&quot;</span>
+        <span class="k">global</span> <span class="n">_worker_task_id</span>
+        <span class="k">if</span> <span class="n">_worker_task_id</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_queue</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_queue</span><span class="o">.</span><span class="n">put_nowait</span><span class="p">(</span>
+                    <span class="n">WorkerMessage</span><span class="p">(</span>
+                        <span class="n">task_id</span><span class="o">=</span><span class="n">_worker_task_id</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_stream_type</span><span class="p">,</span>
+                        <span class="n">value</span><span class="o">=</span><span class="n">text</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Flush any remaining buffered content.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fallback</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_fallback</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">readable</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">writable</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">seekable</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_init_worker_with_queue</span><span class="p">(</span><span class="n">progress_queue</span><span class="p">:</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">Queue</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialize worker process with progress queue and stdout/stderr capture.</span>
+
+<span class="sd">    This is called once when each worker process starts.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">_worker_queue</span><span class="p">,</span> <span class="n">_original_stdout</span><span class="p">,</span> <span class="n">_original_stderr</span>
+
+    <span class="n">_worker_queue</span> <span class="o">=</span> <span class="n">progress_queue</span>
+
+    <span class="n">_original_stdout</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+    <span class="n">_original_stderr</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span>
+
+    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">QueueStream</span><span class="p">(</span><span class="n">progress_queue</span><span class="p">,</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">,</span> <span class="n">_original_stdout</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span> <span class="o">=</span> <span class="n">QueueStream</span><span class="p">(</span><span class="n">progress_queue</span><span class="p">,</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">STDERR</span><span class="p">,</span> <span class="n">_original_stderr</span><span class="p">)</span>
+
+    <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+    <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;OMP&quot;</span><span class="p">,</span> <span class="s2">&quot;OPENBLAS&quot;</span><span class="p">,</span> <span class="s2">&quot;MKL&quot;</span><span class="p">,</span> <span class="s2">&quot;VECLIB_MAXIMUM&quot;</span><span class="p">,</span> <span class="s2">&quot;NUMEXPR&quot;</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2">_NUM_THREADS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_wrap_task</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">task_id</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Wrapper that sets task context and captures warnings.</span>
+
+<span class="sd">    This runs in the worker process for each task.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">_worker_task_id</span>
+
+    <span class="n">_worker_task_id</span> <span class="o">=</span> <span class="n">task_id</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">(</span><span class="n">record</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">warning_list</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;always&quot;</span><span class="p">)</span>
+
+            <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="n">warning_msg</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="k">for</span> <span class="n">warning_item</span> <span class="ow">in</span> <span class="n">warning_list</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;citation&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">warning_item</span><span class="o">.</span><span class="n">message</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">warning_item</span><span class="o">.</span><span class="n">category</span> <span class="ow">is</span> <span class="ne">DeprecationWarning</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">warning_msg</span> <span class="o">+=</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">warning_item</span><span class="o">.</span><span class="n">category</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">warning_item</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span>
+                <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warning_msg</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="k">if</span> <span class="n">warning_msg</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="p">}</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="n">_worker_task_id</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_default_handler</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">task_name</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">is_warning</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="n">readable_name</span> <span class="o">=</span> <span class="n">task_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">title</span><span class="p">()</span>
+    <span class="n">icon</span> <span class="o">=</span> <span class="n">QMessageBox</span><span class="o">.</span><span class="n">Icon</span><span class="o">.</span><span class="n">Warning</span> <span class="k">if</span> <span class="n">is_warning</span> <span class="k">else</span> <span class="n">QMessageBox</span><span class="o">.</span><span class="n">Icon</span><span class="o">.</span><span class="n">Critical</span>
+    <span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;Operation Warning&quot;</span> <span class="k">if</span> <span class="n">is_warning</span> <span class="k">else</span> <span class="s2">&quot;Operation Failed&quot;</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">readable_name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;Completed with Warnings&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">is_warning</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;Failed with Errors&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="n">msg_box</span> <span class="o">=</span> <span class="n">QMessageBox</span><span class="p">()</span>
+    <span class="n">msg_box</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">icon</span><span class="p">)</span>
+    <span class="n">msg_box</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+    <span class="n">msg_box</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+    <span class="n">msg_box</span><span class="o">.</span><span class="n">setInformativeText</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">msg</span><span class="p">))</span>
+    <span class="n">msg_box</span><span class="o">.</span><span class="n">setStandardButtons</span><span class="p">(</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">StandardButton</span><span class="o">.</span><span class="n">Ok</span><span class="p">)</span>
+    <span class="n">msg_box</span><span class="o">.</span><span class="n">exec</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="BackgroundTaskManager">
+<a class="viewcode-back" href="../../reference/rst/mosaic.parallel.BackgroundTaskManager.html#mosaic.parallel.BackgroundTaskManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BackgroundTaskManager</span><span class="p">(</span><span class="n">QObject</span><span class="p">):</span>
+    <span class="n">task_queued</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>  <span class="c1"># task_id, task_name</span>
+    <span class="n">task_started</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>  <span class="c1"># task_id, task_name</span>
+    <span class="n">task_completed</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">)</span>  <span class="c1"># task_id, task_name, result</span>
+    <span class="n">task_failed</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>  <span class="c1"># task_id, task_name, error</span>
+    <span class="n">task_warning</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>  <span class="c1"># task_id, task_name, warning</span>
+    <span class="n">running_tasks</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>  <span class="c1"># count of running tasks</span>
+
+    <span class="n">task_progress</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>  <span class="c1"># id, name, progress, cur, total</span>
+    <span class="n">task_message</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>  <span class="c1"># task_id, name, message</span>
+    <span class="n">task_output</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>  <span class="c1"># task_id, stream_type, text</span>
+
+    <span class="n">_instance</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">instance</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_instance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">_instance</span> <span class="o">=</span> <span class="n">BackgroundTaskManager</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_instance</span>
+
+<div class="viewcode-block" id="BackgroundTaskManager.__init__">
+<a class="viewcode-back" href="../../reference/rst/mosaic.parallel.BackgroundTaskManager.html#mosaic.parallel.BackgroundTaskManager.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="c1"># Task tracking</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">futures</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">concurrent</span><span class="o">.</span><span class="n">futures</span><span class="o">.</span><span class="n">Future</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Batch limits</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_limits</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_running</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">set</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Output accumulation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task_stdout</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task_stderr</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialize</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span> <span class="o">=</span> <span class="n">QTimer</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">timeout</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_process_tasks</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_failed</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="o">*</span><span class="n">a</span><span class="p">:</span> <span class="n">_default_handler</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="n">is_warning</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_warning</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="o">*</span><span class="n">a</span><span class="p">:</span> <span class="n">_default_handler</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="n">is_warning</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize or reinitialize executors.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">futures</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">:</span>
+                <span class="n">task_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">[</span><span class="n">task_id</span><span class="p">][</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">task_failed</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span>
+                    <span class="n">task_id</span><span class="p">,</span>
+                    <span class="n">task_name</span><span class="p">,</span>
+                    <span class="s2">&quot;Task cancelled: executor was broken by worker crash&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">futures</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">futures</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shutdown</span><span class="p">()</span>
+
+        <span class="c1"># Create manager for shared queue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_manager</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">Manager</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_progress_queue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_manager</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">executor</span> <span class="o">=</span> <span class="n">concurrent</span><span class="o">.</span><span class="n">futures</span><span class="o">.</span><span class="n">ProcessPoolExecutor</span><span class="p">(</span>
+            <span class="n">max_workers</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">Settings</span><span class="o">.</span><span class="n">rendering</span><span class="o">.</span><span class="n">parallel_worker</span><span class="p">),</span>
+            <span class="n">initializer</span><span class="o">=</span><span class="n">_init_worker_with_queue</span><span class="p">,</span>
+            <span class="n">initargs</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_progress_queue</span><span class="p">,),</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">executor_pipeline</span> <span class="o">=</span> <span class="n">concurrent</span><span class="o">.</span><span class="n">futures</span><span class="o">.</span><span class="n">ProcessPoolExecutor</span><span class="p">(</span>
+            <span class="n">mp_context</span><span class="o">=</span><span class="n">multiprocessing</span><span class="o">.</span><span class="n">get_context</span><span class="p">(</span><span class="s2">&quot;spawn&quot;</span><span class="p">),</span>
+            <span class="n">max_workers</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">Settings</span><span class="o">.</span><span class="n">rendering</span><span class="o">.</span><span class="n">pipeline_worker</span><span class="p">),</span>
+            <span class="n">max_tasks_per_child</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">initializer</span><span class="o">=</span><span class="n">_init_worker_with_queue</span><span class="p">,</span>
+            <span class="n">initargs</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_progress_queue</span><span class="p">,),</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">running_tasks</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">futures</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean shutdown of executors and queues.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">futures</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_limits</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_running</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task_stdout</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task_stderr</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">executor</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cancel_futures</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">executor_pipeline</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cancel_futures</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_manager&quot;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_manager</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_process_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Timer callback: process queue, check completed, submit new tasks.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_poll_progress_queue</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_completed_tasks</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_submit_queued_tasks</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">running_tasks</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">futures</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_poll_progress_queue</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Drain the progress queue and emit appropriate signals.&quot;&quot;&quot;</span>
+        <span class="n">messages_processed</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">max_messages_per_tick</span> <span class="o">=</span> <span class="mi">100</span>
+
+        <span class="k">while</span> <span class="n">messages_processed</span> <span class="o">&lt;</span> <span class="n">max_messages_per_tick</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">msg</span><span class="p">:</span> <span class="n">WorkerMessage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_progress_queue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
+                <span class="n">messages_processed</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="n">task_id</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">task_id</span>
+                <span class="n">task_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="n">task_name</span> <span class="o">=</span> <span class="n">task_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">msg</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">PROGRESS</span><span class="p">:</span>
+                    <span class="n">progress</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">value</span>
+                    <span class="k">if</span> <span class="n">progress</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">msg</span><span class="o">.</span><span class="n">total</span><span class="p">:</span>
+                        <span class="n">progress</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">current</span> <span class="o">/</span> <span class="n">msg</span><span class="o">.</span><span class="n">total</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">task_progress</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span>
+                        <span class="n">task_id</span><span class="p">,</span>
+                        <span class="n">task_name</span><span class="p">,</span>
+                        <span class="n">progress</span> <span class="ow">or</span> <span class="mf">0.0</span><span class="p">,</span>
+                        <span class="n">msg</span><span class="o">.</span><span class="n">current</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">,</span>
+                        <span class="n">msg</span><span class="o">.</span><span class="n">total</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+                <span class="k">elif</span> <span class="n">msg</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">MESSAGE</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">task_message</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">task_name</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+                <span class="k">elif</span> <span class="n">msg</span><span class="o">.</span><span class="n">type</span> <span class="ow">in</span> <span class="p">(</span><span class="n">MessageType</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">,</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">STDERR</span><span class="p">):</span>
+                    <span class="n">stream</span> <span class="o">=</span> <span class="s2">&quot;stdout&quot;</span> <span class="k">if</span> <span class="n">msg</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">STDOUT</span> <span class="k">else</span> <span class="s2">&quot;stderr&quot;</span>
+                    <span class="n">buffer</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_task_stdout</span> <span class="k">if</span> <span class="n">stream</span> <span class="o">==</span> <span class="s2">&quot;stdout&quot;</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_stderr</span>
+                    <span class="p">)</span>
+                    <span class="n">buffer</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">task_output</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">stream</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">break</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">submit_task</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+        <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">batch_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">args</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="p">(),</span>
+        <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">reuse_worker</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Submit a single task to the queue.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str</span>
+<span class="sd">            Name of the task.</span>
+<span class="sd">        func : Callable</span>
+<span class="sd">            Function to execute.</span>
+<span class="sd">        callback : Callable, optional</span>
+<span class="sd">            Callback function to execute on completion.</span>
+<span class="sd">        batch_id : str, optional</span>
+<span class="sd">            Existing batch ID to add tasks to. If None, creates new batch.</span>
+<span class="sd">        args: tuple, optional</span>
+<span class="sd">            Args to pass to func.</span>
+<span class="sd">        kwargs: dict, optional</span>
+<span class="sd">            Kwargs to pass to func.</span>
+<span class="sd">        reuse_worker : bool, optional</span>
+<span class="sd">            Reuse worker this operation was executed on.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">task_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span>
+                <span class="s2">&quot;batch_id&quot;</span><span class="p">:</span> <span class="n">batch_id</span><span class="p">,</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
+                <span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="n">func</span><span class="p">,</span>
+                <span class="s2">&quot;args&quot;</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span>
+                <span class="s2">&quot;kwargs&quot;</span><span class="p">:</span> <span class="n">kwargs</span> <span class="ow">or</span> <span class="p">{},</span>
+                <span class="s2">&quot;callback&quot;</span><span class="p">:</span> <span class="n">callback</span><span class="p">,</span>
+                <span class="s2">&quot;reuse_worker&quot;</span><span class="p">:</span> <span class="n">reuse_worker</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
+            <span class="s2">&quot;batch_id&quot;</span><span class="p">:</span> <span class="n">batch_id</span><span class="p">,</span>
+            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;queued&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task_stdout</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task_stderr</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">:</span>
+            <span class="n">oldest</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">oldest</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_queued</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">task_id</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">submit_task_batch</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tasks</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
+        <span class="n">max_concurrent</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">batch_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">reuse_worker</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Submit batch of tasks with optional concurrency limit.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tasks : list of dict</span>
+<span class="sd">            Each dict: {&quot;name&quot;: str, &quot;func&quot;: callable, &quot;args&quot;: tuple,</span>
+<span class="sd">                       &quot;kwargs&quot;: dict, &quot;callback&quot;: callable}</span>
+<span class="sd">        max_concurrent : int, optional</span>
+<span class="sd">            Max tasks from this batch running simultaneously.</span>
+<span class="sd">            If None, no limit (uses global worker limit).</span>
+<span class="sd">        batch_id : str, optional</span>
+<span class="sd">            Existing batch ID to add tasks to. If None, creates new batch.</span>
+<span class="sd">        reuse_worker : bool, optional</span>
+<span class="sd">            Reuse worker this operation was executed on.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        str</span>
+<span class="sd">            Batch ID for tracking</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">batch_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">batch_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+
+        <span class="k">if</span> <span class="n">batch_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_limits</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">batch_limits</span><span class="p">[</span><span class="n">batch_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">max_concurrent</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">batch_running</span><span class="p">[</span><span class="n">batch_id</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">submit_task</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;Unnamed Task&quot;</span><span class="p">),</span>
+                <span class="n">func</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;func&quot;</span><span class="p">],</span>
+                <span class="n">callback</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;callback&quot;</span><span class="p">),</span>
+                <span class="n">batch_id</span><span class="o">=</span><span class="n">batch_id</span><span class="p">,</span>
+                <span class="n">args</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;args&quot;</span><span class="p">,</span> <span class="p">()),</span>
+                <span class="n">kwargs</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;kwargs&quot;</span><span class="p">,</span> <span class="p">{}),</span>
+                <span class="n">reuse_worker</span><span class="o">=</span><span class="n">reuse_worker</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">batch_id</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_submit_queued_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Submit queued tasks that respect batch limits.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">batch_running</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_running</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="n">tasks_to_submit</span><span class="p">,</span> <span class="n">remaining_queue</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">queued_task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span><span class="p">:</span>
+            <span class="n">can_run</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">batch_id</span> <span class="o">=</span> <span class="n">queued_task</span><span class="p">[</span><span class="s2">&quot;batch_id&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">batch_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">batch_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_limits</span><span class="p">:</span>
+                <span class="n">max_concurrent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_limits</span><span class="p">[</span><span class="n">batch_id</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">max_concurrent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">can_run</span> <span class="o">=</span> <span class="n">batch_running</span><span class="p">[</span><span class="n">batch_id</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">max_concurrent</span>
+                <span class="n">batch_running</span><span class="p">[</span><span class="n">batch_id</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">can_run</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">can_run</span><span class="p">:</span>
+                <span class="n">tasks_to_submit</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">queued_task</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">remaining_queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">queued_task</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span> <span class="o">=</span> <span class="n">remaining_queue</span>
+        <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">tasks_to_submit</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_submit_from_queue</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_submit_from_queue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Submit a queued task to the executor.&quot;&quot;&quot;</span>
+        <span class="n">task_id</span> <span class="o">=</span> <span class="n">task</span><span class="p">[</span><span class="s2">&quot;task_id&quot;</span><span class="p">]</span>
+        <span class="n">batch_id</span> <span class="o">=</span> <span class="n">task</span><span class="p">[</span><span class="s2">&quot;batch_id&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">batch_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">batch_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_running</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">batch_running</span><span class="p">[</span><span class="n">batch_id</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">task</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;callback&quot;</span><span class="p">:</span> <span class="n">task</span><span class="p">[</span><span class="s2">&quot;callback&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;batch_id&quot;</span><span class="p">:</span> <span class="n">batch_id</span><span class="p">,</span>
+            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;running&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="n">executor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executor_pipeline</span>
+        <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reuse_worker&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+            <span class="n">executor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executor</span>
+
+        <span class="n">future</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span>
+            <span class="n">_wrap_task</span><span class="p">,</span>
+            <span class="n">task</span><span class="p">[</span><span class="s2">&quot;func&quot;</span><span class="p">],</span>
+            <span class="n">task_id</span><span class="p">,</span>
+            <span class="o">*</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;args&quot;</span><span class="p">],</span>
+            <span class="o">**</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;kwargs&quot;</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">futures</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">future</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_started</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">task</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_completed_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check for completed futures and handle results.&quot;&quot;&quot;</span>
+        <span class="n">completed_tasks</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">executor_broken</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">for</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">future</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">futures</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">future</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
+                <span class="n">task_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">task_info</span><span class="p">:</span>
+                    <span class="n">completed_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+                    <span class="k">continue</span>
+
+                <span class="n">task_name</span> <span class="o">=</span> <span class="n">task_info</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+                <span class="n">task_info</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>
+                <span class="n">batch_id</span> <span class="o">=</span> <span class="n">task_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;batch_id&quot;</span><span class="p">)</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">ret</span> <span class="o">=</span> <span class="n">future</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+
+                    <span class="n">result</span> <span class="o">=</span> <span class="n">ret</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">]</span>
+                    <span class="n">warnings_msg</span> <span class="o">=</span> <span class="n">ret</span><span class="p">[</span><span class="s2">&quot;warnings&quot;</span><span class="p">]</span>
+
+                    <span class="n">task_info</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;completed&quot;</span>
+                    <span class="n">task_info</span><span class="p">[</span><span class="s2">&quot;stdout&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_task_stdout</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="p">[]))</span>
+                    <span class="n">task_info</span><span class="p">[</span><span class="s2">&quot;stderr&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_task_stderr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="p">[]))</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">task_completed</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">task_name</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">task_info</span><span class="p">[</span><span class="s2">&quot;callback&quot;</span><span class="p">]:</span>
+                        <span class="n">task_info</span><span class="p">[</span><span class="s2">&quot;callback&quot;</span><span class="p">](</span><span class="n">result</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">warnings_msg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">task_warning</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">task_name</span><span class="p">,</span> <span class="n">warnings_msg</span><span class="p">)</span>
+
+                <span class="k">except</span> <span class="n">concurrent</span><span class="o">.</span><span class="n">futures</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">BrokenProcessPool</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">error_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Worker process died unexpectedly: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">task_failed</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">task_name</span><span class="p">,</span> <span class="n">error_msg</span><span class="p">)</span>
+                    <span class="n">executor_broken</span> <span class="o">=</span> <span class="kc">True</span>
+
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">error_msg</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">task_failed</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">task_name</span><span class="p">,</span> <span class="n">error_msg</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">batch_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">batch_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_running</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">batch_running</span><span class="p">[</span><span class="n">batch_id</span><span class="p">]</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+
+                <span class="n">completed_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="n">completed_tasks</span><span class="p">:</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">futures</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_stdout</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_stderr</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">:</span>
+                <span class="n">task_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+                <span class="n">_keys</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;stdout&quot;</span><span class="p">,</span> <span class="s2">&quot;stderr&quot;</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">task_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">_keys</span><span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">executor_broken</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialize</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_task_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get accumulated stdout/stderr for a task.</span>
+
+<span class="sd">        Works for both running and completed tasks.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        task_id : str</span>
+<span class="sd">            The task identifier.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dict[str, str]</span>
+<span class="sd">            Dictionary with &#39;stdout&#39; and &#39;stderr&#39; keys.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">:</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span>
+            <span class="k">if</span> <span class="s2">&quot;stdout&quot;</span> <span class="ow">in</span> <span class="n">info</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;stdout&quot;</span><span class="p">:</span> <span class="n">info</span><span class="p">[</span><span class="s2">&quot;stdout&quot;</span><span class="p">],</span> <span class="s2">&quot;stderr&quot;</span><span class="p">:</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stderr&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)}</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;stdout&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_task_stdout</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="p">[])),</span>
+            <span class="s2">&quot;stderr&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_task_stderr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="p">[])),</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">cancel_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Cancel a task if possible.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        task_id : str</span>
+<span class="sd">            The task identifier.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bool</span>
+<span class="sd">            True if the task was cancelled, False if it&#39;s already running.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">future</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">futures</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">future</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">cancelled</span> <span class="o">=</span> <span class="n">future</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">cancelled</span> <span class="ow">and</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">[</span><span class="n">task_id</span><span class="p">][</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>
+
+        <span class="k">return</span> <span class="n">cancelled</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">clear_finished_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove finished tasks from tracking.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list</span>
+<span class="sd">            List of removed task IDs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">removed</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">status</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;completed&quot;</span><span class="p">,</span> <span class="s2">&quot;failed&quot;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">task_info</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">removed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">removed</span></div>
+
+
+
+<div class="viewcode-block" id="submit_task">
+<a class="viewcode-back" href="../../reference/rst/mosaic.parallel.submit_task.html#mosaic.parallel.submit_task">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">submit_task</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">BackgroundTaskManager</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">submit_task</span><span class="p">(</span>
+        <span class="n">name</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="n">kwargs</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="submit_task_batch">
+<a class="viewcode-back" href="../../reference/rst/mosaic.parallel.submit_task_batch.html#mosaic.parallel.submit_task_batch">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">submit_task_batch</span><span class="p">(</span><span class="n">tasks</span><span class="p">,</span> <span class="n">max_concurrent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">batch_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reuse_worker</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">BackgroundTaskManager</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">submit_task_batch</span><span class="p">(</span>
+        <span class="n">tasks</span><span class="p">,</span> <span class="n">max_concurrent</span><span class="p">,</span> <span class="n">batch_id</span><span class="p">,</span> <span class="n">reuse_worker</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">report_progress</span><span class="p">(</span>
+    <span class="n">progress</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">message</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">current</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">total</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Report progress from within a worker function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    progress : float, optional</span>
+<span class="sd">        Progress as a fraction (0.0 to 1.0).</span>
+<span class="sd">    message : str, optional</span>
+<span class="sd">        Status message to display.</span>
+<span class="sd">    current : int, optional</span>
+<span class="sd">        Current step number (alternative to progress fraction).</span>
+<span class="sd">    total : int, optional</span>
+<span class="sd">        Total number of steps (used with current).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">_worker_queue</span><span class="p">,</span> <span class="n">_worker_task_id</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_worker_queue</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">_worker_task_id</span><span class="p">:</span>
+        <span class="k">return</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">message</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_worker_queue</span><span class="o">.</span><span class="n">put_nowait</span><span class="p">(</span>
+                <span class="n">WorkerMessage</span><span class="p">(</span>
+                    <span class="n">task_id</span><span class="o">=</span><span class="n">_worker_task_id</span><span class="p">,</span>
+                    <span class="nb">type</span><span class="o">=</span><span class="n">MessageType</span><span class="o">.</span><span class="n">MESSAGE</span><span class="p">,</span>
+                    <span class="n">value</span><span class="o">=</span><span class="n">message</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">progress</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">current</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_worker_queue</span><span class="o">.</span><span class="n">put_nowait</span><span class="p">(</span>
+                <span class="n">WorkerMessage</span><span class="p">(</span>
+                    <span class="n">task_id</span><span class="o">=</span><span class="n">_worker_task_id</span><span class="p">,</span>
+                    <span class="nb">type</span><span class="o">=</span><span class="n">MessageType</span><span class="o">.</span><span class="n">PROGRESS</span><span class="p">,</span>
+                    <span class="n">value</span><span class="o">=</span><span class="n">progress</span><span class="p">,</span>
+                    <span class="n">current</span><span class="o">=</span><span class="n">current</span><span class="p">,</span>
+                    <span class="n">total</span><span class="o">=</span><span class="n">total</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

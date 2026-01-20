@@ -1,0 +1,27 @@
+﻿mosaic.parametrization.RBF
+==========================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: RBF
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~RBF.__init__
+      ~RBF.compute_distance
+      ~RBF.compute_normal
+      ~RBF.fit
+      ~RBF.points_per_sampling
+      ~RBF.sample
+   
+   
+
+   
+   
+   
