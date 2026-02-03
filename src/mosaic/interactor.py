@@ -330,10 +330,10 @@ class DataContainerInteractor(QObject):
         r = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
         picker.Pick(*event_pos, r)
 
-        picked_actor = picker.GetActor()
+        picked_prop = picker.GetViewProp()
         actors = self.container.get_actors()
-        if picked_actor in actors:
-            index = actors.index(picked_actor)
+        if picked_prop in actors:
+            index = actors.index(picked_prop)
             uuid = self.container.get(index).uuid
             self.set_selection_by_uuid([uuid, *self._get_selected_uuids()])
         return None

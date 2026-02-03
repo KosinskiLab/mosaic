@@ -1,5 +1,5 @@
 import warnings
-from functools import wraps
+from functools import lru_cache, wraps
 from typing import Callable, List, Union
 
 import numpy as np
@@ -280,6 +280,53 @@ def vertex_property(geometry, name: str, *args, **kwargs):
     return geometry.vertex_properties.get_property(name).copy()
 
 
+@lru_cache(maxsize=4)
+def _load_tomogram_cached(file_path: str):
+    """Load and cache tomogram data."""
+    from .formats.parser import load_density
+
+    density = load_density(file_path)
+    return density.data.astype(np.float32), np.mean(density.sampling_rate)
+
+
+@get_mesh
+def mesh_tomogram(fit, file_path: str, normal_offset: float = 0.0, **kwargs):
+    """
+    Sample values from a tomogram at mesh vertex positions.
+
+    Parameters
+    ----------
+    fit : object
+        Fitted mesh model with vertices attribute.
+    file_path : str
+        Path to the tomogram file (MRC, EM, MAP, etc.).
+    normal_offset : float, optional
+        Offset along vertex normals in voxel units. Positive values
+        move outward from the surface, negative values move inward.
+        Default is 0.0 (sample at surface).
+
+    Returns
+    -------
+    np.ndarray
+        Tomogram values sampled at each mesh vertex.
+    """
+    from scipy.ndimage import map_coordinates
+
+    volume, sampling_rate = _load_tomogram_cached(file_path)
+
+    sample_points = fit.vertices
+    if normal_offset != 0.0:
+        normals = fit.compute_vertex_normals()
+        physical_offset = normal_offset * sampling_rate
+        sample_points = sample_points + physical_offset * normals
+
+    voxel_coords = sample_points / sampling_rate
+    return map_coordinates(volume, voxel_coords.T, order=1, mode="constant", cval=0.0)
+
+    v_min = values.min()
+    return np.divide(values - v_min, values.max() - v_min, out=values)
+
+
 def thickness(
     geometry: Geometry,
     queries: List[Union[np.ndarray, Geometry]] = [],
@@ -389,6 +436,7 @@ class GeometryProperties:
         "mesh_area": mesh_area,
         "mesh_volume": mesh_volume,
         "mesh_statistics": mesh_statistics,
+        "mesh_tomogram": mesh_tomogram,
         "projected_curvature": projected_curvature,
         "geodesic_distance": geodesic_distance,
         "vertex_property": vertex_property,

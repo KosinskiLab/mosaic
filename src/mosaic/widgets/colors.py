@@ -41,6 +41,7 @@ DEFAULT_COLORMAP_CATEGORIES: Dict[str, List[str]] = {
         "cividis",
         "turbo",
         "jet",
+        "grey",
     ],
     "Diverging": [
         "coolwarm",

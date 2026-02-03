@@ -533,7 +533,7 @@ class Geometry:
         if color is None:
             color = self._appearance["base_color"]
         self.color_points(
-            np.arange(self._points.GetNumberOfPoints(), dtype=np.int32), color=color
+            np.arange(self.get_number_of_points(), dtype=np.int32), color=color
         )
 
     def set_visibility(self, visibility: bool = True):
@@ -679,7 +679,7 @@ class Geometry:
                 (self.get_number_of_points()), fill_value=scalars, dtype=scalars.dtype
             )
 
-        if scalars.size != self.points.shape[0]:
+        if scalars.size != self.get_number_of_points():
             return None
 
         mapper = self._actor.GetMapper()
@@ -719,7 +719,7 @@ class Geometry:
             return False
 
         scalars_np = vtk.util.numpy_support.vtk_to_numpy(cur_scalars)
-        if scalars_np.shape[0] != self._points.GetNumberOfPoints():
+        if scalars_np.shape[0] != self.get_number_of_points():
             return False
 
         scalars_np.fill(0.0)
@@ -766,7 +766,7 @@ class Geometry:
         color : tuple of float
             RGB color values (0-1) to apply to selected points
         """
-        n_points = self._points.GetNumberOfPoints()
+        n_points = self.get_number_of_points()
         if not isinstance(point_ids, np.ndarray):
             point_ids = np.asarray(point_ids, dtype=np.int32)
 
