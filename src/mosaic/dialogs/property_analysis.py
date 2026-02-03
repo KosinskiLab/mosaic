@@ -273,6 +273,7 @@ class PropertyAnalysisDialog(QDialog):
             "Volume",
             "Mesh Statistics",
             "Thickness",
+            "Tomogram",
         ],
         "Projection": ["Projected Curvature", "Geodesic Distance", "Angle"],
         "Geometric": [
@@ -294,6 +295,7 @@ class PropertyAnalysisDialog(QDialog):
         "Area": "mesh_area",
         "Volume": "mesh_volume",
         "Mesh Statistics": "mesh_statistics",
+        "Tomogram": "mesh_tomogram",
         "Identity": "identity",
         "Width (X-axis)": "width",
         "Depth (Y-axis)": "depth",
@@ -556,6 +558,7 @@ class PropertyAnalysisDialog(QDialog):
         filter_btn_layout.addStretch()
 
         self.filter_live_checkbox = QCheckBox("Live")
+        self.filter_live_checkbox.setChecked(True)
         self.filter_live_checkbox.setToolTip("Update preview while dragging slider")
         filter_btn_layout.addWidget(self.filter_live_checkbox)
 
@@ -921,6 +924,45 @@ class PropertyAnalysisDialog(QDialog):
             self.option_widgets["queries"] = target_list
             self.option_widgets["smoothing_radius"] = smoothing_spin
 
+        elif property_name == "Tomogram":
+            from ..widgets import PathSelector, SliderRow
+
+            path_selector = PathSelector(
+                placeholder="Path to tomogram (MRC, EM, MAP, ...)",
+                file_mode=True,
+            )
+            self.property_options_layout.addRow("Tomogram:", path_selector)
+            self.option_widgets["file_path"] = path_selector
+
+            offset_slider = SliderRow(
+                label="Normal Offset",
+                min_val=-50.0,
+                max_val=50.0,
+                default=0.0,
+                decimals=0,
+                suffix=" vox",
+                steps=100,
+            )
+            offset_slider.setToolTip(
+                "Offset along surface normals in voxels. "
+                "Positive = outward, negative = inward."
+            )
+
+            def _update_density(_):
+                if not path_selector.get_path():
+                    return
+                try:
+                    self.cdata.data.blockSignals(True)
+                    self.cdata.models.blockSignals(True)
+                    self._preview()
+                finally:
+                    self.cdata.data.blockSignals(False)
+                    self.cdata.models.blockSignals(False)
+
+            offset_slider.valueChanged.connect(_update_density)
+            self.property_options_layout.addRow(offset_slider)
+            self.option_widgets["normal_offset"] = offset_slider
+
         elif property_name == "To Cluster":
             group, layout, target_list, compare_all = self._create_target_list_group(
                 "Options", "data", with_compare_all=True
@@ -1162,8 +1204,18 @@ class PropertyAnalysisDialog(QDialog):
             values = np.asarray(values).flatten()
             geometry.set_scalars(values, lut, lut_range)
 
-        self.cdata.data.render_vtk()
-        self.cdata.models.render_vtk()
+        # Avoid unwanted calls to _on_render_update
+        try:
+            self.cdata.data.blockSignals(True)
+            self.cdata.models.blockSignals(True)
+
+            self.cdata.data.render_vtk()
+            self.cdata.models.render_vtk()
+        except Exception:
+            pass
+        finally:
+            self.cdata.data.blockSignals(False)
+            self.cdata.models.blockSignals(False)
 
     def _on_filter_dragging(self, lower, upper):
         """Handle slider drag events with throttling for live preview."""
