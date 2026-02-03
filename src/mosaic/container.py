@@ -51,8 +51,8 @@ class DataContainer:
 
         Parameters
         ----------
-        points : np.ndarray or Geometry
-            Points to add to the container.
+        points : np.ndarray or Geometry or SegmentationGeometry
+            Points to add to the container, or an existing geometry object.
         color : tuple of float, optional
             RGB color values for the point cloud.
 
@@ -66,7 +66,8 @@ class DataContainer:
         if color is None:
             color = self.base_color
 
-        if issubclass(type(points), Geometry):
+        is_geometry = hasattr(points, "actor") and hasattr(points, "uuid")
+        if is_geometry:
             new_geometry = points
         else:
             new_geometry = Geometry(points, color=color, **kwargs)
@@ -263,7 +264,7 @@ class DataContainer:
 
         Parameters
         ----------
-        uuid_or_geometry : str or Geometry
+        uuid_or_geometry : str or Geometry or SegmentationGeometry
             UUID or geometry object
 
         Returns
@@ -271,9 +272,8 @@ class DataContainer:
         str
             UUID string
         """
-        from .geometry import Geometry
-
-        if isinstance(uuid_or_geometry, Geometry):
+        # Check if input is a geometry-like object (has uuid attribute)
+        if hasattr(uuid_or_geometry, "uuid"):
             uuid_or_geometry = uuid_or_geometry.uuid
         return uuid_or_geometry
 
