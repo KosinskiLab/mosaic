@@ -1066,7 +1066,7 @@ class Geometry:
                 prop.SetRepresentationToSurface()
                 prop.SetEdgeVisibility(representation == "mesh")
 
-                self._appearance["size"] = 2
+                self._appearance["size"] = 1
                 prop.SetPointSize(self._appearance["size"])
 
         if clipping_planes:

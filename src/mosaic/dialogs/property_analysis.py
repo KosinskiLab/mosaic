@@ -934,6 +934,22 @@ class PropertyAnalysisDialog(QDialog):
             self.property_options_layout.addRow("Tomogram:", path_selector)
             self.option_widgets["file_path"] = path_selector
 
+            use_texture = QCheckBox("Use Texture Mapping")
+            use_texture.setToolTip(
+                "Use UV texture mapping for higher quality visualization. "
+            )
+            self.property_options_layout.addRow(use_texture)
+            self.option_widgets["use_texture"] = use_texture
+
+            texture_size = QSpinBox()
+            texture_size.setRange(256, 2048)
+            texture_size.setValue(512)
+            texture_size.setSingleStep(128)
+            texture_size.setToolTip("Texture resolution in pixels")
+
+            self.property_options_layout.addRow("Texture Size:", texture_size)
+            self.option_widgets["texture_size"] = texture_size
+
             offset_slider = SliderRow(
                 label="Normal Offset",
                 min_val=-50.0,
@@ -948,18 +964,17 @@ class PropertyAnalysisDialog(QDialog):
                 "Positive = outward, negative = inward."
             )
 
-            def _update_density(_):
-                if not path_selector.get_path():
-                    return
-                try:
-                    self.cdata.data.blockSignals(True)
-                    self.cdata.models.blockSignals(True)
-                    self._preview()
-                finally:
-                    self.cdata.data.blockSignals(False)
-                    self.cdata.models.blockSignals(False)
+            def _on_texture_mode_changed(checked):
+                texture_size.setEnabled(checked)
+                if hasattr(self, "_texture_samplers"):
+                    for sampler in self._texture_samplers.values():
+                        sampler.cleanup()
+                    self._texture_samplers.clear()
 
-            offset_slider.valueChanged.connect(_update_density)
+            texture_size.setEnabled(use_texture.isChecked())
+
+            use_texture.stateChanged.connect(_on_texture_mode_changed)
+            offset_slider.valueChanged.connect(self._preview)
             self.property_options_layout.addRow(offset_slider)
             self.option_widgets["normal_offset"] = offset_slider
 
@@ -1008,10 +1023,13 @@ class PropertyAnalysisDialog(QDialog):
         for k, widget in self.option_widgets.items():
             if k in previous_parameters:
                 value = previous_parameters[k]
+
+                widget.blockSignals(True)
                 if isinstance(widget, (QListWidget, ContainerTreeWidget)):
                     widget.set_selection(value)
                     continue
                 set_widget_value(widget, value)
+                widget.blockSignals(False)
 
     def toggle_all_targets(self, state, target_list):
         target_list.setEnabled(not bool(state))
@@ -1035,6 +1053,54 @@ class PropertyAnalysisDialog(QDialog):
             *self.cdata.format_datalist("data", selected=selected),
             *self.cdata.format_datalist("models", selected=selected),
         ]
+
+    def _get_or_create_texture_sampler(
+        self, geometry, file_path: str, texture_size: int
+    ):
+        """Get cached TextureSampler or create a new one."""
+        from .. import meshing
+
+        if not hasattr(self, "_texture_samplers"):
+            self._texture_samplers = {}
+
+        cache_key = (geometry.uuid, file_path, texture_size)
+        if cache_key not in self._texture_samplers:
+            try:
+                sampler = meshing.TextureSampler(
+                    geometry=geometry,
+                    tomogram_path=file_path,
+                    texture_size=texture_size,
+                )
+                self._texture_samplers[cache_key] = sampler
+            except Exception as e:
+                QMessageBox.warning(self, "Texture Error", str(e))
+                return None
+
+        return self._texture_samplers[cache_key]
+
+    def _update_texture_offset(self, normal_offset: float):
+        """Update texture samplers with new normal offset (fast path)."""
+        geometries = self._get_selected_geometries()
+        file_path = get_widget_value(self.option_widgets.get("file_path"))
+        texture_size = get_widget_value(self.option_widgets.get("texture_size", 512))
+
+        if not geometries or not len(file_path):
+            return None
+
+        colormap = self.colormap_combo.currentText()
+        if self.invert_checkbox.isChecked():
+            colormap += "_r"
+
+        for geometry in geometries:
+            sampler = self._get_or_create_texture_sampler(
+                geometry, file_path, texture_size
+            )
+            if sampler is None:
+                continue
+
+            sampler.update(normal_offset=normal_offset, colormap=colormap)
+
+        self.render()
 
     def _compute_properties(self):
         from ..properties import GeometryProperties
@@ -1126,6 +1192,15 @@ class PropertyAnalysisDialog(QDialog):
         if not geometries:
             return None
 
+        # Ask for forgiveness here rather than handling this in _update_options
+        try:
+            if self.option_widgets["use_texture"].isChecked():
+                return self._update_texture_offset(
+                    self.option_widgets["normal_offset"].value()
+                )
+        except:
+            pass
+
         self._compute_properties()
         colormap = self.colormap_combo.currentText()
         if self.invert_checkbox.isChecked():
@@ -1177,8 +1252,18 @@ class PropertyAnalysisDialog(QDialog):
         self.filter_slider.setData(all_values)
 
         if render:
+            self.render()
+
+    def render(self):
+        try:
+            self.cdata.data.blockSignals(True)
+            self.cdata.models.blockSignals(True)
+
             self.cdata.data.render_vtk()
             self.cdata.models.render_vtk()
+        finally:
+            self.cdata.data.blockSignals(False)
+            self.cdata.models.blockSignals(False)
 
     def _on_filter_changed(self, lower, upper):
         """Hide points outside the filter range using transparent LUT colors."""
@@ -1204,18 +1289,7 @@ class PropertyAnalysisDialog(QDialog):
             values = np.asarray(values).flatten()
             geometry.set_scalars(values, lut, lut_range)
 
-        # Avoid unwanted calls to _on_render_update
-        try:
-            self.cdata.data.blockSignals(True)
-            self.cdata.models.blockSignals(True)
-
-            self.cdata.data.render_vtk()
-            self.cdata.models.render_vtk()
-        except Exception:
-            pass
-        finally:
-            self.cdata.data.blockSignals(False)
-            self.cdata.models.blockSignals(False)
+        self.render()
 
     def _on_filter_dragging(self, lower, upper):
         """Handle slider drag events with throttling for live preview."""

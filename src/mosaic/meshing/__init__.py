@@ -32,6 +32,7 @@ _module_map = {
     ],
     ".hmff": ["equilibrate_fit", "setup_hmff"],
     ".coarse_graining": ["mesh_to_cg"],
+    ".texture": ["TextureSampler"],
 }
 
 _lazy_imports = {}
