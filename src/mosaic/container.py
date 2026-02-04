@@ -92,22 +92,7 @@ class DataContainer:
         uuids_or_geometries : str, list of str, Geometry, or list of Geometry
             UUIDs of geometries to remove or geometry objects to remove.
         """
-
         indices = [self.uuid_to_index(x) for x in self._to_uuids(uuids_or_geometries)]
-        from .geometry import Geometry
-
-        if not isinstance(items, (list, tuple)):
-            items = [items]
-
-        indices = []
-        for item in items:
-            if isinstance(item, Geometry):
-                try:
-                    item = self.data.index(item)
-                except ValueError:
-                    continue
-            indices.append(item)
-
         indices = list(set(x for x in indices if self._index_ok(x)))
 
         # Reverse order to avoid potential shift issue
@@ -279,7 +264,7 @@ class DataContainer:
 
         Parameters
         ----------
-        uuid_or_geometry : str or Geometry or SegmentationGeometry
+        uuid_or_geometry : str or Geometry
             UUID or geometry object
 
         Returns

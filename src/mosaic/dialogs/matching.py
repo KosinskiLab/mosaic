@@ -587,6 +587,7 @@ class TemplateMatchingDialog(QDialog):
             generate_template = textwrap.dedent(
                 f"""
                 #!/bin/bash
+                set -e
 
                 # Create symlinks to original data if needed
                 mkdir -p {templates_dir}
@@ -649,6 +650,7 @@ class TemplateMatchingDialog(QDialog):
         match_template = textwrap.dedent(
             f"""
             #!/bin/bash
+            set -e
 
             match_template.py \\
                 --target {data["tomogram"]} \\
@@ -670,6 +672,7 @@ class TemplateMatchingDialog(QDialog):
         extract_matches = textwrap.dedent(
             f"""
             #!/bin/bash
+            set -e
 
             # Extract peaks from matching results
             postprocess.py \\
@@ -691,6 +694,7 @@ class TemplateMatchingDialog(QDialog):
         master_script = textwrap.dedent(
             f"""
             #!/bin/bash
+            set -e
 
             echo "Starting template matching pipeline..."
 
@@ -701,16 +705,25 @@ class TemplateMatchingDialog(QDialog):
                 echo "Skip preprocessing - using existing template"
             else
                 echo "Preprocessing template..."
-                bash create_template.sh
+                if ! bash create_template.sh; then
+                    echo "ERROR: Template preprocessing failed!" >&2
+                    exit 1
+                fi
                 echo "Template preprocessing done."
             fi
 
             echo "Running template matching..."
-            bash match.sh
+            if ! bash match.sh; then
+                echo "ERROR: Template matching failed!" >&2
+                exit 1
+            fi
             echo "Template matching done."
 
             echo "Extracting peaks..."
-            bash extract.sh
+            if ! bash extract.sh; then
+                echo "ERROR: Peak extraction failed!" >&2
+                exit 1
+            fi
             echo "Peak extraction done."
 
             echo "Template matching pipeline complete!"
