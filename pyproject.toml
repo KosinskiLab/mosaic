@@ -39,9 +39,13 @@ packaging = "*"
 imageio = "*"
 imageio-ffmpeg = "*"
 importlib_resources = "*"
+xatlas = {version = "*", optional = true}
+membrain-seg = {version = "==0.0.5", optional = true}
 
-[tool.poetry.group.optional.dependencies]
-membrain-seg = "==0.0.5"
+[tool.poetry.extras]
+texture = ["xatlas"]
+segmentation = ["membrain-seg"]
+all = ["xatlas", "membrain-seg"]
 
 [tool.poetry.group.test.dependencies]
 pytest = ">=7.0.0"
