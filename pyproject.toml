@@ -4,11 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "mosaic-gui"
-<<<<<<< Updated upstream
 version = "1.1.1"
-=======
-version = "1.0.5"
->>>>>>> Stashed changes
 description = "mosaic"
 authors = ["Valentin Maurer <valentin.maurer@embl-hamburg.de>"]
 license = "GPL-2.0-only"
