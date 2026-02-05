@@ -331,6 +331,9 @@ class TextureSampler:
             deep=True,
             array_type=vtk.VTK_UNSIGNED_CHAR,
         )
+
+        # We set this again in case the object was deselected
+        self.geometry.actor.GetMapper().ScalarVisibilityOff()
         self._vtk_image.GetPointData().SetScalars(vtk_array)
         self._vtk_image.Modified()
 

@@ -1,7 +1,7 @@
 import time
 
 import numpy as np
-from qtpy.QtWidgets import QWidget, QVBoxLayout
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSpinBox, QLabel
 
 from ..widgets.ribbon import create_button
 
@@ -65,6 +65,61 @@ class DevelopmentTab(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.ribbon)
 
+        self._offset_x = None
+        self._offset_y = None
+        self._offset_z = None
+
+    def _create_offset_spinbox(self):
+        """Create a QDoubleSpinBox for offset values."""
+        spinbox = QSpinBox()
+        spinbox.setMinimumWidth(80)
+        spinbox.setRange(-100000, 100000)
+        spinbox.setSingleStep(1)
+        spinbox.setValue(0)
+        return spinbox
+
+    def _create_translation_widget(self):
+        """Create a widget with X, Y, Z offset spinboxes."""
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(5, 0, 5, 0)
+        layout.setSpacing(8)
+
+        layout.addWidget(QLabel("X:"))
+        self._offset_x = self._create_offset_spinbox()
+        layout.addWidget(self._offset_x)
+
+        layout.addWidget(QLabel("Y:"))
+        self._offset_y = self._create_offset_spinbox()
+        layout.addWidget(self._offset_y)
+
+        layout.addWidget(QLabel("Z:"))
+        self._offset_z = self._create_offset_spinbox()
+        layout.addWidget(self._offset_z)
+
+        return container
+
+    def translate_geometries(self, *args):
+        """Translate all geometries by the specified offsets."""
+        if self._offset_x is None:
+            return
+
+        offset_x = self._offset_x.value()
+        offset_y = self._offset_y.value()
+        offset_z = self._offset_z.value()
+        offset = np.array([offset_x, offset_y, offset_z], dtype=np.float32)
+
+        if np.allclose(offset, 0):
+            return
+
+        for geometry in self.cdata.data.get_selected_geometries():
+            points = geometry.points.copy()
+            points += offset * geometry.sampling_rate
+            geometry.points = points
+            geometry._data.Modified()
+
+        self.cdata.data.render()
+
     def show_ribbon(self):
         self.ribbon.clear()
         cluster_actions = [
@@ -80,6 +135,16 @@ class DevelopmentTab(QWidget):
             ),
         ]
         self.ribbon.add_section("Base Operations", cluster_actions)
+
+        translation_widget = self._create_translation_widget()
+        translate_button = create_button(
+            "Translate",
+            "mdi.arrow-all",
+            self,
+            self.translate_geometries,
+            "Translate all geometries by offset",
+        )
+        self.ribbon.add_section("Translation", [translation_widget, translate_button])
 
     def add_cloud(self, *args):
         num_points = 1000

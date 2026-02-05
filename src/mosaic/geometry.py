@@ -344,6 +344,12 @@ class Geometry:
 
             model = merge(data.pop("models"))
 
+        # TODO: We can handle merging of VolumeGeometries propertly, but
+        # need to make sure they contain the same volume. For now we just
+        # render them as point cloud
+        if representation == "volume":
+            representation = "pointcloud"
+
         state = {
             "sampling_rate": sampling_rate,
             "visible": any(x.visible for x in geometries),
