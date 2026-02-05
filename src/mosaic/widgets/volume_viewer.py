@@ -78,6 +78,9 @@ class VolumeViewer(QWidget):
 
         self.orientation_selector = QComboBox()
         self.orientation_selector.addItems(["X", "Y", "Z"])
+
+        # Save that extra click
+        self.orientation_selector.setCurrentText("Z")
         self._orientation_mapping = {"X": 0, "Y": 1, "Z": 2}
         self.orientation_selector.currentTextChanged.connect(self.change_orientation)
         self.orientation_selector.setEnabled(False)
@@ -194,11 +197,10 @@ class VolumeViewer(QWidget):
         self.contrast_slider.setValues(0, 100)
         self.contrast_value_label.setText("0.00 - 1.00")
         self.gamma_row.setValue(1.0)
-        self.orientation_selector.setCurrentIndex(0)
+        self.orientation_selector.setCurrentText("Z")
         self.color_selector.setCurrentText("gray")
 
-        if self.project_selector.currentText() != "Off":
-            self.handle_projection_change("Off")
+        self.project_selector.setCurrentText("Off")
 
         self.volume = None
         self.renderer.RemoveViewProp(self.slice)
@@ -230,8 +232,8 @@ class VolumeViewer(QWidget):
     def swap_volume(self, new_volume):
         self.volume = new_volume
         self.slice_mapper.SetInputData(self.volume)
-        self.slice_mapper.SetOrientationToX()
-        self.slice_mapper.SetSliceNumber(0)
+
+        self.change_orientation(self.orientation_selector.currentText())
 
         self.slice.SetMapper(self.slice_mapper)
         self.renderer.AddViewProp(self.slice)
@@ -352,9 +354,6 @@ class VolumeViewer(QWidget):
                 mapper.RemoveClippingPlane(self.clipping_plane)
 
     def handle_projection_change(self, state=None):
-        if self.volume is None:
-            return
-
         if state is None:
             state = self.project_selector.currentText()
 

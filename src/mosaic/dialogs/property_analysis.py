@@ -155,6 +155,226 @@ def _populate_list(geometries):
     return target_list
 
 
+def _build_type_combo_option(dlg, key, items):
+    """Add a QComboBox option row with given key and items."""
+    combo = QComboBox()
+    combo.addItems(items)
+    dlg.property_options_layout.addRow("Type:", combo)
+    dlg.option_widgets[key] = combo
+
+
+def _build_vertex_properties_options(dlg):
+    geometries = dlg._get_all_geometries()
+    properties = set()
+    for geometry in geometries:
+        if geometry.vertex_properties is None:
+            continue
+        properties |= set(geometry.vertex_properties.properties)
+
+    if len(properties) == 0:
+        return dlg.property_combo.clear()
+
+    options = QComboBox()
+    options.addItems(sorted(list(properties)))
+    dlg.property_options_layout.addRow("Type:", options)
+    dlg.option_widgets["name"] = options
+
+
+def _build_curvature_options(dlg):
+    curvature, radius = dlg._create_curvature_options(dlg.property_options_layout)
+    dlg.option_widgets["curvature"] = curvature
+    dlg.option_widgets["radius"] = radius
+
+
+def _build_area_options(dlg):
+    _build_type_combo_option(dlg, "area_type", ["Total", "Per-Triangle"])
+
+
+def _build_volume_options(dlg):
+    _build_type_combo_option(dlg, "volume_type", ["Total", "Per-Triangle"])
+
+
+def _build_mesh_statistics_options(dlg):
+    _build_type_combo_option(
+        dlg, "stat_type", ["Vertex Count", "Triangle Count", "Edge Length"]
+    )
+
+
+def _build_projected_curvature_options(dlg):
+    group, layout, target_list, _ = dlg._create_target_list_group(
+        "Target Mesh", "models", mesh_only=True
+    )
+    options_layout = QFormLayout()
+    curvature, radius = dlg._create_curvature_options(options_layout)
+    layout.addLayout(options_layout)
+
+    dlg.property_options_layout.addRow(group)
+    dlg.option_widgets["queries"] = target_list
+    dlg.option_widgets["curvature"] = curvature
+    dlg.option_widgets["radius"] = radius
+
+
+def _build_angle_options(dlg):
+    group, layout, target_list, _ = dlg._create_target_list_group(
+        "Target Mesh", "models", mesh_only=True
+    )
+    dlg.property_options_layout.addRow(group)
+    dlg.option_widgets["queries"] = target_list
+
+
+def _build_geodesic_distance_options(dlg):
+    group, layout, target_list, _ = dlg._create_target_list_group(
+        "Target Mesh", "models", mesh_only=True
+    )
+    k_start, k_end, aggregation = dlg._create_knn_range_widget(layout)
+
+    dlg.property_options_layout.addRow(group)
+    dlg.option_widgets["queries"] = target_list
+    dlg.option_widgets["k_start"] = k_start
+    dlg.option_widgets["k"] = k_end
+    dlg.option_widgets["aggregation"] = aggregation
+
+
+def _build_thickness_options(dlg):
+    group, layout, target_list, _ = dlg._create_target_list_group(
+        "Target Cluster", "data", with_compare_all=False
+    )
+    smoothing_layout = QHBoxLayout()
+    smoothing_layout.addWidget(QLabel("Smoothing Radius:"))
+    smoothing_spin = QDoubleSpinBox()
+    smoothing_spin.setRange(0.0, 1000.0)
+    smoothing_spin.setValue(0.0)
+    smoothing_spin.setDecimals(1)
+    smoothing_spin.setSingleStep(1.0)
+    smoothing_spin.setToolTip(
+        "Radius for Gaussian-weighted spatial smoothing (0 = no smoothing)"
+    )
+    smoothing_layout.addWidget(smoothing_spin)
+    layout.addLayout(smoothing_layout)
+
+    dlg.property_options_layout.addRow(group)
+    dlg.option_widgets["queries"] = target_list
+    dlg.option_widgets["smoothing_radius"] = smoothing_spin
+
+
+def _build_tomogram_options(dlg):
+    from mosaic.widgets import PathSelector, SliderRow
+
+    previous_parameters = dlg._previous_parameters
+
+    path_selector = PathSelector(
+        placeholder="Path to tomogram (MRC, EM, MAP, ...)",
+        file_mode=True,
+    )
+    dlg.property_options_layout.addRow("Tomogram:", path_selector)
+    dlg.option_widgets["file_path"] = path_selector
+
+    use_texture = QCheckBox("Use Texture Mapping")
+    use_texture.setToolTip("Use UV texture mapping for higher quality visualization. ")
+    dlg.property_options_layout.addRow(use_texture)
+    dlg.option_widgets["use_texture"] = use_texture
+
+    texture_size = QSpinBox()
+    texture_size.setRange(256, 2048)
+    texture_size.setValue(512)
+    texture_size.setSingleStep(128)
+    texture_size.setToolTip("Texture resolution in pixels")
+
+    dlg.property_options_layout.addRow("Texture Size:", texture_size)
+    dlg.option_widgets["texture_size"] = texture_size
+
+    offset_slider = SliderRow(
+        label="Normal Offset",
+        min_val=-20.0,
+        max_val=20.0,
+        default=0.0,
+        decimals=1,
+        suffix=" vox",
+        steps=80,
+    )
+    offset_slider.setToolTip(
+        "Offset along surface normals in voxels. "
+        "Positive = outward, negative = inward."
+    )
+
+    def _on_texture_mode_changed(checked):
+        texture_size.setEnabled(checked)
+        if hasattr(dlg, "_texture_samplers"):
+            for sampler in dlg._texture_samplers.values():
+                sampler.cleanup()
+            dlg._texture_samplers.clear()
+
+    texture_size.setEnabled(use_texture.isChecked())
+    if "use_texture" in previous_parameters:
+        texture_size.setEnabled(previous_parameters["use_texture"])
+
+    use_texture.stateChanged.connect(_on_texture_mode_changed)
+    offset_slider.valueChanged.connect(dlg._preview)
+    dlg.property_options_layout.addRow(offset_slider)
+    dlg.option_widgets["normal_offset"] = offset_slider
+
+
+def _build_to_cluster_options(dlg):
+    group, layout, target_list, compare_all = dlg._create_target_list_group(
+        "Options", "data", with_compare_all=True
+    )
+    include_self = QCheckBox("Within-Cluster Distance")
+    # Insert checkbox next to Compare to All
+    checkbox_layout = layout.itemAt(1).layout()
+    checkbox_layout.addWidget(include_self)
+
+    k_start, k_end, aggregation = dlg._create_knn_range_widget(layout)
+
+    dlg.property_options_layout.addRow(group)
+    dlg.option_widgets["queries"] = target_list
+    dlg.option_widgets["include_self"] = include_self
+    dlg.option_widgets["compare_to_all"] = compare_all
+    dlg.option_widgets["k_start"] = k_start
+    dlg.option_widgets["k"] = k_end
+    dlg.option_widgets["aggregation"] = aggregation
+
+
+def _build_to_self_options(dlg):
+    group = QGroupBox("Options")
+    layout = QVBoxLayout(group)
+
+    self_checkbox = QCheckBox()
+    self_checkbox.setChecked(True)
+    k_start, k_end, aggregation = dlg._create_knn_range_widget(layout)
+
+    dlg.property_options_layout.addRow(group)
+    dlg.option_widgets["only_self"] = self_checkbox
+    dlg.option_widgets["k_start"] = k_start
+    dlg.option_widgets["k"] = k_end
+    dlg.option_widgets["aggregation"] = aggregation
+
+
+def _build_to_model_options(dlg):
+    group, layout, target_list, compare_all = dlg._create_target_list_group(
+        "Target Models", "models", with_compare_all=True
+    )
+    dlg.property_options_layout.addRow(group)
+    dlg.option_widgets["queries"] = target_list
+    dlg.option_widgets["compare_to_all"] = compare_all
+
+
+_OPTION_BUILDERS = {
+    "Vertex Properties": _build_vertex_properties_options,
+    "Curvature": _build_curvature_options,
+    "Area": _build_area_options,
+    "Volume": _build_volume_options,
+    "Mesh Statistics": _build_mesh_statistics_options,
+    "Projected Curvature": _build_projected_curvature_options,
+    "Angle": _build_angle_options,
+    "Geodesic Distance": _build_geodesic_distance_options,
+    "Thickness": _build_thickness_options,
+    "Tomogram": _build_tomogram_options,
+    "To Cluster": _build_to_cluster_options,
+    "To Self": _build_to_self_options,
+    "To Model": _build_to_model_options,
+}
+
+
 class ColorScaleSettingsDialog(QDialog):
     """Dialog for configuring color scale thresholds"""
 
@@ -815,9 +1035,9 @@ class PropertyAnalysisDialog(QDialog):
         if property_name is None:
             property_name = self.property_combo.currentText()
 
-        previous_parameters = {}
+        self._previous_parameters = {}
         if hasattr(self, "option_widgets"):
-            previous_parameters = {
+            self._previous_parameters = {
                 k: (
                     get_widget_value(w)
                     if not isinstance(w, (QListWidget, ContainerTreeWidget))
@@ -830,199 +1050,14 @@ class PropertyAnalysisDialog(QDialog):
             self.property_options_layout.removeRow(0)
 
         self.option_widgets = {}
-        if property_name == "Vertex Properties":
-            geometries = self._get_all_geometries()
-            properties = set()
-            for geometry in geometries:
-                if geometry.vertex_properties is None:
-                    continue
-                properties |= set(geometry.vertex_properties.properties)
-
-            if len(properties) == 0:
-                return self.property_combo.clear()
-
-            options = QComboBox()
-            options.addItems(sorted(list(properties)))
-            self.property_options_layout.addRow("Type:", options)
-            self.option_widgets["name"] = options
-
-        elif property_name == "Curvature":
-            curvature, radius = self._create_curvature_options(
-                self.property_options_layout
-            )
-            self.option_widgets["curvature"] = curvature
-            self.option_widgets["radius"] = radius
-
-        elif property_name == "Area":
-            area_type = QComboBox()
-            area_type.addItems(["Total", "Per-Triangle"])
-            self.property_options_layout.addRow("Type:", area_type)
-            self.option_widgets["area_type"] = area_type
-
-        elif property_name == "Volume":
-            volume_type = QComboBox()
-            volume_type.addItems(["Total", "Per-Triangle"])
-            self.property_options_layout.addRow("Type:", volume_type)
-            self.option_widgets["volume_type"] = volume_type
-
-        elif property_name == "Mesh Statistics":
-            stat_type = QComboBox()
-            stat_type.addItems(["Vertex Count", "Triangle Count", "Edge Length"])
-            self.property_options_layout.addRow("Type:", stat_type)
-            self.option_widgets["stat_type"] = stat_type
-
-        elif property_name == "Projected Curvature":
-            group, layout, target_list, _ = self._create_target_list_group(
-                "Target Mesh", "models", mesh_only=True
-            )
-            options_layout = QFormLayout()
-            curvature, radius = self._create_curvature_options(options_layout)
-            layout.addLayout(options_layout)
-
-            self.property_options_layout.addRow(group)
-            self.option_widgets["queries"] = target_list
-            self.option_widgets["curvature"] = curvature
-            self.option_widgets["radius"] = radius
-
-        elif property_name == "Angle":
-            group, layout, target_list, _ = self._create_target_list_group(
-                "Target Mesh", "models", mesh_only=True
-            )
-            self.property_options_layout.addRow(group)
-            self.option_widgets["queries"] = target_list
-
-        elif property_name == "Geodesic Distance":
-            group, layout, target_list, _ = self._create_target_list_group(
-                "Target Mesh", "models", mesh_only=True
-            )
-            k_start, k_end, aggregation = self._create_knn_range_widget(layout)
-
-            self.property_options_layout.addRow(group)
-            self.option_widgets["queries"] = target_list
-            self.option_widgets["k_start"] = k_start
-            self.option_widgets["k"] = k_end
-            self.option_widgets["aggregation"] = aggregation
-
-        elif property_name == "Thickness":
-            group, layout, target_list, _ = self._create_target_list_group(
-                "Target Cluster", "data", with_compare_all=False
-            )
-            smoothing_layout = QHBoxLayout()
-            smoothing_layout.addWidget(QLabel("Smoothing Radius:"))
-            smoothing_spin = QDoubleSpinBox()
-            smoothing_spin.setRange(0.0, 1000.0)
-            smoothing_spin.setValue(0.0)
-            smoothing_spin.setDecimals(1)
-            smoothing_spin.setSingleStep(1.0)
-            smoothing_spin.setToolTip(
-                "Radius for Gaussian-weighted spatial smoothing (0 = no smoothing)"
-            )
-            smoothing_layout.addWidget(smoothing_spin)
-            layout.addLayout(smoothing_layout)
-
-            self.property_options_layout.addRow(group)
-            self.option_widgets["queries"] = target_list
-            self.option_widgets["smoothing_radius"] = smoothing_spin
-
-        elif property_name == "Tomogram":
-            from ..widgets import PathSelector, SliderRow
-
-            path_selector = PathSelector(
-                placeholder="Path to tomogram (MRC, EM, MAP, ...)",
-                file_mode=True,
-            )
-            self.property_options_layout.addRow("Tomogram:", path_selector)
-            self.option_widgets["file_path"] = path_selector
-
-            use_texture = QCheckBox("Use Texture Mapping")
-            use_texture.setToolTip(
-                "Use UV texture mapping for higher quality visualization. "
-            )
-            self.property_options_layout.addRow(use_texture)
-            self.option_widgets["use_texture"] = use_texture
-
-            texture_size = QSpinBox()
-            texture_size.setRange(256, 2048)
-            texture_size.setValue(512)
-            texture_size.setSingleStep(128)
-            texture_size.setToolTip("Texture resolution in pixels")
-
-            self.property_options_layout.addRow("Texture Size:", texture_size)
-            self.option_widgets["texture_size"] = texture_size
-
-            offset_slider = SliderRow(
-                label="Normal Offset",
-                min_val=-50.0,
-                max_val=50.0,
-                default=0.0,
-                decimals=0,
-                suffix=" vox",
-                steps=100,
-            )
-            offset_slider.setToolTip(
-                "Offset along surface normals in voxels. "
-                "Positive = outward, negative = inward."
-            )
-
-            def _on_texture_mode_changed(checked):
-                texture_size.setEnabled(checked)
-                if hasattr(self, "_texture_samplers"):
-                    for sampler in self._texture_samplers.values():
-                        sampler.cleanup()
-                    self._texture_samplers.clear()
-
-            texture_size.setEnabled(use_texture.isChecked())
-
-            use_texture.stateChanged.connect(_on_texture_mode_changed)
-            offset_slider.valueChanged.connect(self._preview)
-            self.property_options_layout.addRow(offset_slider)
-            self.option_widgets["normal_offset"] = offset_slider
-
-        elif property_name == "To Cluster":
-            group, layout, target_list, compare_all = self._create_target_list_group(
-                "Options", "data", with_compare_all=True
-            )
-            include_self = QCheckBox("Within-Cluster Distance")
-            # Insert checkbox next to Compare to All
-            checkbox_layout = layout.itemAt(1).layout()
-            checkbox_layout.addWidget(include_self)
-
-            k_start, k_end, aggregation = self._create_knn_range_widget(layout)
-
-            self.property_options_layout.addRow(group)
-            self.option_widgets["queries"] = target_list
-            self.option_widgets["include_self"] = include_self
-            self.option_widgets["compare_to_all"] = compare_all
-            self.option_widgets["k_start"] = k_start
-            self.option_widgets["k"] = k_end
-            self.option_widgets["aggregation"] = aggregation
-
-        elif property_name == "To Self":
-            group = QGroupBox("Options")
-            layout = QVBoxLayout(group)
-
-            self_checkbox = QCheckBox()
-            self_checkbox.setChecked(True)
-            k_start, k_end, aggregation = self._create_knn_range_widget(layout)
-
-            self.property_options_layout.addRow(group)
-            self.option_widgets["only_self"] = self_checkbox
-            self.option_widgets["k_start"] = k_start
-            self.option_widgets["k"] = k_end
-            self.option_widgets["aggregation"] = aggregation
-
-        elif property_name == "To Model":
-            group, layout, target_list, compare_all = self._create_target_list_group(
-                "Target Models", "models", with_compare_all=True
-            )
-            self.property_options_layout.addRow(group)
-            self.option_widgets["queries"] = target_list
-            self.option_widgets["compare_to_all"] = compare_all
+        builder = _OPTION_BUILDERS.get(property_name)
+        if builder is not None:
+            builder(self)
 
         # Restore previous parameter values
         for k, widget in self.option_widgets.items():
-            if k in previous_parameters:
-                value = previous_parameters[k]
+            if k in self._previous_parameters:
+                value = self._previous_parameters[k]
 
                 widget.blockSignals(True)
                 if isinstance(widget, (QListWidget, ContainerTreeWidget)):
@@ -1030,6 +1065,8 @@ class PropertyAnalysisDialog(QDialog):
                     continue
                 set_widget_value(widget, value)
                 widget.blockSignals(False)
+
+        self._previous_parameters = {}
 
     def toggle_all_targets(self, state, target_list):
         target_list.setEnabled(not bool(state))
@@ -1087,11 +1124,13 @@ class PropertyAnalysisDialog(QDialog):
         if not geometries or not len(file_path):
             return None
 
-        colormap = self.colormap_combo.currentText()
-        if self.invert_checkbox.isChecked():
-            colormap += "_r"
+        colormap = self._get_colormap()
 
         for geometry in geometries:
+            fit = geometry.model
+            if not hasattr(fit, "mesh"):
+                continue
+
             sampler = self._get_or_create_texture_sampler(
                 geometry, file_path, texture_size
             )
@@ -1202,9 +1241,7 @@ class PropertyAnalysisDialog(QDialog):
             pass
 
         self._compute_properties()
-        colormap = self.colormap_combo.currentText()
-        if self.invert_checkbox.isChecked():
-            colormap += "_r"
+        colormap = self._get_colormap()
 
         # Build properties dict from cache for selected geometries
         properties = {
@@ -1254,6 +1291,13 @@ class PropertyAnalysisDialog(QDialog):
         if render:
             self.render()
 
+    def _get_colormap(self) -> str:
+        """Get the current colormap name, with inversion suffix if enabled."""
+        colormap = self.colormap_combo.currentText()
+        if self.invert_checkbox.isChecked():
+            colormap += "_r"
+        return colormap
+
     def render(self):
         try:
             self.cdata.data.blockSignals(True)
@@ -1273,9 +1317,7 @@ class PropertyAnalysisDialog(QDialog):
         if not geometries:
             return
 
-        colormap = self.colormap_combo.currentText()
-        if self.invert_checkbox.isChecked():
-            colormap += "_r"
+        colormap = self._get_colormap()
 
         lut, lut_range = cmap_to_vtkctf(
             colormap, upper, min_value=lower, transparent_range=True
@@ -1356,6 +1398,12 @@ class PropertyAnalysisDialog(QDialog):
             ),
         )
 
+    def _set_stat_cell(self, row, col, text):
+        """Set a read-only text cell in the statistics table."""
+        item = QTableWidgetItem(text)
+        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+        self.stats_table.setItem(row, col, item)
+
     def _update_statistics(self):
         selected_items = self._get_selection()
         self.stats_table.setRowCount(len(selected_items))
@@ -1367,25 +1415,11 @@ class PropertyAnalysisDialog(QDialog):
                 continue
 
             row_count += 1
-            item = QTableWidgetItem(item_text)
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self.stats_table.setItem(index, 0, item)
-
-            item = QTableWidgetItem(str(np.round(np.min(value), n_decimals)))
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self.stats_table.setItem(index, 1, item)
-
-            item = QTableWidgetItem(str(np.round(np.max(value), n_decimals)))
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self.stats_table.setItem(index, 2, item)
-
-            item = QTableWidgetItem(str(np.round(np.mean(value), n_decimals)))
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self.stats_table.setItem(index, 3, item)
-
-            item = QTableWidgetItem(str(np.round(np.std(value), n_decimals)))
-            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self.stats_table.setItem(index, 4, item)
+            self._set_stat_cell(index, 0, item_text)
+            self._set_stat_cell(index, 1, str(np.round(np.min(value), n_decimals)))
+            self._set_stat_cell(index, 2, str(np.round(np.max(value), n_decimals)))
+            self._set_stat_cell(index, 3, str(np.round(np.mean(value), n_decimals)))
+            self._set_stat_cell(index, 4, str(np.round(np.std(value), n_decimals)))
         self.stats_table.setRowCount(row_count)
 
     def _set_plot_type(self, plot_type):
@@ -1504,18 +1538,66 @@ class PropertyAnalysisDialog(QDialog):
             plot.addItem(scatter)
         plot.addLegend(offset=(-10, 10))
 
+    def _create_plot_item(
+        self,
+        plot_type,
+        values,
+        color,
+        name=None,
+        bins=None,
+        x_range=None,
+        offset=0,
+        bar_width=None,
+    ):
+        """Create a single pyqtgraph item for the given plot type."""
+        if plot_type == "Histogram":
+            hist, edges = np.histogram(values, bins=bins)
+            x = (edges[:-1] + edges[1:]) / 2
+            width = bar_width if bar_width is not None else (edges[1] - edges[0]) * 0.8
+            return pg.BarGraphItem(
+                x=x + offset,
+                height=hist,
+                width=width,
+                brush=color,
+                pen=pg.mkPen("k", width=1),
+                name=name,
+            )
+        elif plot_type == "Density":
+            from scipy.stats import gaussian_kde
+
+            kde = gaussian_kde(values)
+            density = kde(x_range)
+            return pg.PlotDataItem(
+                x_range,
+                density,
+                pen=pg.mkPen(color, width=2),
+                fillLevel=0,
+                fillBrush=color,
+                name=name,
+            )
+        else:
+            x = np.arange(len(values))
+            return pg.PlotDataItem(
+                x,
+                values,
+                pen=pg.mkPen(color, width=2),
+                name=name,
+                symbol="o",
+                symbolSize=5,
+                symbolBrush=color,
+            )
+
     def _create_plot(self, data_series, all_values, plot_mode, plot_type):
         """Create either histogram, density or line plot based on plot_type"""
         property_name = self.property_combo.currentText()
 
+        bins, x_range = None, None
         if plot_type == "Histogram":
             all_data = np.concatenate(all_values)
             bins = np.histogram_bin_edges(all_data, bins="auto")
             y_label = "Frequency"
             x_label = property_name
         elif plot_type == "Density":
-            from scipy.stats import gaussian_kde
-
             all_data = np.concatenate(all_values)
             x_min, x_max = np.min(all_data), np.max(all_data)
             x_range = np.linspace(x_min, x_max, 500)
@@ -1538,54 +1620,32 @@ class PropertyAnalysisDialog(QDialog):
             plot.disableAutoRange()
             plot.addLegend(offset=(-10, 10))
 
+            # Compute per-series bar width for grouped histograms
+            base_bar_width = None
+            if plot_type == "Histogram" and len(data_series) > 1:
+                _, edges = np.histogram(all_values[0], bins=bins)
+                base_bar_width = (edges[1] - edges[0]) * 0.8 / len(data_series)
+
             for i, (name, obj, values, color) in enumerate(data_series):
-                if plot_type == "Histogram":
-                    hist, edges = np.histogram(values, bins=bins)
-                    x = (edges[:-1] + edges[1:]) / 2
-                    width = (edges[1] - edges[0]) * 0.8
-
-                    if len(data_series) > 1:
-                        width = width / len(data_series)
-                        offset = (i - (len(data_series) - 1) / 2) * width
-                    else:
-                        offset = 0
-
-                    item = pg.BarGraphItem(
-                        x=x + offset,
-                        height=hist,
-                        width=width,
-                        brush=color,
-                        pen=pg.mkPen("k", width=1),
-                        name=name,
-                    )
-                elif plot_type == "Density":
-                    try:
-                        kde = gaussian_kde(values)
-                        density = kde(x_range)
-                        item = pg.PlotDataItem(
-                            x_range,
-                            density,
-                            pen=pg.mkPen(color, width=2),
-                            fillLevel=0,
-                            fillBrush=color,
-                            name=name,
-                        )
-                    except Exception as e:
-                        print(f"Error computing KDE for {name}: {e}")
-                        continue
-                else:
-                    x = np.arange(len(values))
-                    item = pg.PlotDataItem(
-                        x,
+                try:
+                    bar_offset = 0
+                    bar_width = None
+                    if plot_type == "Histogram" and base_bar_width is not None:
+                        bar_width = base_bar_width
+                        bar_offset = (i - (len(data_series) - 1) / 2) * base_bar_width
+                    item = self._create_plot_item(
+                        plot_type,
                         values,
-                        pen=pg.mkPen(color, width=2),
+                        color,
                         name=name,
-                        symbol="o",
-                        symbolSize=5,
-                        symbolBrush=color,
+                        bins=bins,
+                        x_range=x_range,
+                        offset=bar_offset,
+                        bar_width=bar_width,
                     )
-
-                plot.addItem(item)
+                    plot.addItem(item)
+                except Exception as e:
+                    print(f"Error creating plot for {name}: {e}")
 
             plot.enableAutoRange()
             plot.autoRange()
@@ -1598,44 +1658,17 @@ class PropertyAnalysisDialog(QDialog):
             plot.setLabel("left", y_label)
             plot.setLabel("bottom", x_label)
 
-            if plot_type == "Histogram":
-                hist, edges = np.histogram(values, bins=bins)
-                x = (edges[:-1] + edges[1:]) / 2
-                width = (edges[1] - edges[0]) * 0.8
-
-                item = pg.BarGraphItem(
-                    x=x,
-                    height=hist,
-                    width=width,
-                    brush=color,
-                    pen=pg.mkPen("k", width=1),
-                )
-            elif plot_type == "Density":
-                try:
-                    kde = gaussian_kde(values)
-                    density = kde(x_range)
-                    item = pg.PlotDataItem(
-                        x_range,
-                        density,
-                        pen=pg.mkPen(color, width=2),
-                        fillLevel=0,
-                        fillBrush=color,
-                    )
-                except Exception as e:
-                    print(f"Error computing KDE for {name}: {e}")
-                    continue
-            else:  # Line plot
-                x = np.arange(len(values))
-                item = pg.PlotDataItem(
-                    x,
+            try:
+                item = self._create_plot_item(
+                    plot_type,
                     values,
-                    pen=pg.mkPen(color, width=2),
-                    symbol="o",
-                    symbolSize=5,
-                    symbolBrush=color,
+                    color,
+                    bins=bins,
+                    x_range=x_range,
                 )
-
-            plot.addItem(item)
+                plot.addItem(item)
+            except Exception as e:
+                print(f"Error creating plot for {name}: {e}")
 
     def _run_export(self, title: str, file_filter: str, export_func) -> None:
         """Run an export operation with file dialog and error handling."""
