@@ -384,6 +384,8 @@ class DataContainerInteractor(QObject):
         if any(hasattr(x.model, "mesh") for x in selected):
             formats.extend(extended_formats)
 
+        formats.extend([None, "Segmentation"])
+
         _formap_map = {k: k.lower().replace(" ", "_") for k in formats if k is not None}
         _formap_map["Points"] = "pointcloud"
 
@@ -584,12 +586,12 @@ class DataContainerInteractor(QObject):
         current_actors = set(self.container.get_actors())
         actors_to_remove = self.rendered_actors - current_actors
         for actor in actors_to_remove:
-            renderer.RemoveActor(actor)
+            renderer.RemoveViewProp(actor)
             self.rendered_actors.remove(actor)
 
         actors_to_add = current_actors - self.rendered_actors
         for actor in actors_to_add:
-            renderer.AddActor(actor)
+            renderer.AddViewProp(actor)
             self.rendered_actors.add(actor)
 
         uuid_to_items = self._uuid_to_items()
@@ -628,10 +630,39 @@ class DataContainerInteractor(QObject):
         return self.set_selection_by_uuid(list(self.point_selection.keys()))
 
     def change_representation(self, representation: str):
+        from .geometry import Geometry, SegmentationGeometry
+
         if not len(geometries := self.get_selected_geometries()):
             return -1
 
         for geometry in geometries:
+            if representation == "segmentation":
+                if isinstance(geometry, SegmentationGeometry):
+                    continue
+                points, _, _ = geometry.get_point_data()
+                seg = SegmentationGeometry(
+                    points=points,
+                    sampling_rate=geometry.sampling_rate,
+                    color=geometry._appearance.get("base_color", (0.7, 0.7, 0.7)),
+                    meta=geometry._meta,
+                )
+                seg._appearance.update(geometry._appearance)
+                self.container.update(geometry.uuid, seg)
+                continue
+
+            if isinstance(geometry, SegmentationGeometry):
+                # Convert back to regular Geometry
+                points, _, _ = geometry.get_point_data()
+                new_geom = Geometry(
+                    points=points,
+                    sampling_rate=geometry.sampling_rate,
+                    color=geometry._appearance.get("base_color", (0.7, 0.7, 0.7)),
+                    meta=geometry._meta,
+                )
+                new_geom._appearance.update(geometry._appearance)
+                self.container.update(geometry.uuid, new_geom)
+                geometry = self.container.get(geometry.uuid)
+
             # BUG: Moving from pointcloud_normals to a different representation and
             # back breaks glyph rendering. This could be due to incorrect cleanup in
             # Geometry.change_representation or an issue of vtk 9.3.1. Creating a copy
