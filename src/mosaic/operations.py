@@ -180,6 +180,7 @@ def downsample(geometry, method: str = "radius", **kwargs):
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(points)
         pcd.normals = o3d.utility.Vector3dVector(normals)
+
         pcd = pcd.voxel_down_sample(**kwargs)
         points = np.asarray(pcd.points)
         normals = np.asarray(pcd.normals)

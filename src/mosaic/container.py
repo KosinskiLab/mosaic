@@ -216,7 +216,7 @@ class DataContainer:
         bool
             True if full render required (actor was replaced)
         """
-        from .geometry import VolumeGeometry
+        from .geometry import VolumeGeometry, SegmentationGeometry
         from .formats.parser import load_density
 
         volume = parameters.get("volume", None)
@@ -232,6 +232,10 @@ class DataContainer:
         parameters["isovalue_percentile"] = parameters.get("isovalue_percentile", 99.5)
         for uuid in self._to_uuids(uuids_or_geometries):
             if (geometry := self.get(uuid)) is None:
+                continue
+
+            if isinstance(geometry, SegmentationGeometry):
+                geometry.set_appearance(**parameters)
                 continue
 
             if volume is not None:

@@ -18,7 +18,7 @@ from .actor import create_actor
 from .utils import find_closest_points, normals_to_rot, apply_quat, NORMAL_REFERENCE
 
 
-__all__ = ["Geometry", "VolumeGeometry", "GeometryTrajectory"]
+__all__ = ["Geometry", "VolumeGeometry", "SegmentationGeometry", "GeometryTrajectory"]
 
 
 BASE_COLOR = (0.7, 0.7, 0.7)
@@ -349,6 +349,8 @@ class Geometry:
         # render them as point cloud
         if representation == "volume":
             representation = "pointcloud"
+            _ = appearance.pop("volume_path", None)
+            _ = appearance.pop("isovalue_percentile", None)
 
         state = {
             "sampling_rate": sampling_rate,
@@ -358,6 +360,8 @@ class Geometry:
             "appearance": appearance,
             "model": model,
         }
+        print(state)
+
         state |= {
             k: np.concatenate(data[k]) if len(data[k]) else None
             for k in ("points", "quaternions", "normals")
@@ -1293,6 +1297,499 @@ class VolumeGeometry(Geometry):
         else:
             self._smoother.SetStandardDeviation(0.0)
         self._smoother.Modified()
+
+
+class SegmentationGeometry(Geometry):
+    """
+    Geometry class for binary segmentation volumes rendered via GPU ray casting.
+
+    Parameters
+    ----------
+    points : np.ndarray, optional
+        3D point coordinates with shape (n, 3).
+    sampling_rate : np.ndarray, optional
+        Voxel spacing along each axis.
+    color : tuple, optional
+        Base RGB color, by default (0.7, 0.7, 0.7).
+    meta : dict, optional
+        Metadata dictionary.
+    **kwargs
+        Additional keyword arguments (ignored).
+    """
+
+    def __init__(
+        self,
+        points=None,
+        sampling_rate=None,
+        color=BASE_COLOR,
+        meta=None,
+        **kwargs,
+    ):
+        from .utils import points_to_volume
+
+        self.uuid = str(uuid4())
+        self._cache = {}
+        self._meta = {} if meta is None else meta
+        self._model = None
+        self._representation = "segmentation"
+        self._vertex_properties = None
+
+        self.sampling_rate = sampling_rate
+
+        self._appearance = {
+            "size": 8,
+            "opacity": 1.0,
+            "ambient": 0.3,
+            "diffuse": 0.7,
+            "specular": 0.2,
+            "render_spheres": True,
+            "base_color": color,
+        }
+
+        if points is not None:
+            points = np.asarray(points, dtype=np.float32)
+            self._input_points = points
+            vol, offset = points_to_volume(
+                points,
+                sampling_rate=np.max(self.sampling_rate),
+                use_offset=True,
+                out_dtype=np.uint8,
+            )
+            self._raw_volume = vol
+            self._origin = (offset * self.sampling_rate).astype(np.float32)
+        else:
+            self._input_points = np.empty((0, 3), dtype=np.float32)
+            self._raw_volume = np.zeros((1, 1, 1), dtype=np.uint8)
+            self._origin = np.zeros(3, dtype=np.float32)
+
+        self._build_volume_pipeline()
+        self._set_appearance()
+
+    def _build_volume_pipeline(self):
+        """Create vtkImageData, mapper, volume property, and vtkVolume."""
+        vol = self._raw_volume
+        spacing = self.sampling_rate.astype(np.float64)
+
+        self._volume = vtk.vtkImageData()
+        self._volume.SetDimensions(vol.shape)
+        self._volume.SetSpacing(spacing)
+        self._volume.SetOrigin(self._origin.astype(np.float64))
+        self._volume.AllocateScalars(vtk.VTK_UNSIGNED_CHAR, 1)
+
+        vtk_arr = numpy_support.numpy_to_vtk(
+            vol.ravel(order="F"), deep=True, array_type=vtk.VTK_UNSIGNED_CHAR
+        )
+        self._volume.GetPointData().SetScalars(vtk_arr)
+
+        self._vtk_mapper = vtk.vtkGPUVolumeRayCastMapper()
+        self._vtk_mapper.SetInputData(self._volume)
+        self._vtk_mapper.SetBlendModeToComposite()
+        self._vtk_mapper.SetAutoAdjustSampleDistances(False)
+        self._vtk_mapper.SetSampleDistance(float(min(spacing)))
+        self._vtk_mapper.SetUseJittering(True)
+
+        color_tf = vtk.vtkColorTransferFunction()
+        self._update_color_tf(color_tf, self._appearance["base_color"])
+
+        opacity_tf = vtk.vtkPiecewiseFunction()
+        opacity = self._appearance.get("opacity", 1.0)
+        opacity_tf.AddPoint(0, 0.0)
+        opacity_tf.AddPoint(1, opacity)
+        opacity_tf.AddPoint(255, opacity)
+
+        self._vtk_property = vtk.vtkVolumeProperty()
+        self._vtk_property.SetColor(color_tf)
+        self._vtk_property.SetScalarOpacity(opacity_tf)
+        self._vtk_property.SetInterpolationTypeToNearest()
+        self._vtk_property.ShadeOn()
+        self._vtk_property.SetAmbient(self._appearance.get("ambient", 0.3))
+        self._vtk_property.SetDiffuse(self._appearance.get("diffuse", 0.7))
+        self._vtk_property.SetSpecular(self._appearance.get("specular", 0.2))
+
+        self._vtk_volume = vtk.vtkVolume()
+        self._vtk_volume.SetMapper(self._vtk_mapper)
+        self._vtk_volume.SetProperty(self._vtk_property)
+
+        # Alias so parents set_visibility work unchanged
+        self._actor = self._vtk_volume
+        self._highlighted_flat = None
+
+    @staticmethod
+    def _update_color_tf(color_tf, base_color, highlight_color=None):
+        """Update the color transfer function.
+
+        Parameters
+        ----------
+        color_tf : vtk.vtkColorTransferFunction
+            Color transfer function to populate.
+        base_color : tuple
+            RGB base color (0-1).
+        highlight_color : tuple, optional
+            RGB highlight color (0-1). Defaults to base_color.
+        """
+        if highlight_color is None:
+            highlight_color = base_color
+
+        color_tf.RemoveAllPoints()
+        color_tf.AddRGBPoint(0, 0, 0, 0)
+        color_tf.AddRGBPoint(1, *base_color)
+        color_tf.AddRGBPoint(2, *highlight_color)
+
+    @property
+    def _data(self):
+        """Return vtkImageData for GetBounds() compatibility."""
+        return self._volume
+
+    @property
+    def points(self):
+        """Original input point coordinates.
+
+        Returns
+        -------
+        np.ndarray
+            Point coordinates with shape (n_points, 3).
+        """
+        return self._input_points
+
+    @points.setter
+    def points(self, value):
+        # Points are set via __init__ — ignore explicit sets
+        pass
+
+    def _coord_to_voxel(self, coords):
+        """Convert world coordinates to voxel indices.
+
+        Parameters
+        ----------
+        coords : np.ndarray
+            World coordinates, shape (..., 3).
+
+        Returns
+        -------
+        np.ndarray
+            Integer voxel indices.
+        """
+        return np.rint((np.asarray(coords) - self._origin) / self.sampling_rate).astype(
+            int
+        )
+
+    def get_number_of_points(self):
+        """Number of points in the segmentation.
+
+        Returns
+        -------
+        int
+            Number of input points.
+        """
+        return self._input_points.shape[0]
+
+    # def get_point_data(self):
+    #     """Return (points, None, None) for merge/export compatibility."""
+    #     return (self.points, None, None)
+
+    def subset(self, idx, copy=False):
+        """Subset the segmentation to keep only selected points.
+
+        Parameters
+        ----------
+        idx : int, slice, np.ndarray
+            Indices into the point array (same order as ``.points``).
+        copy : bool, optional
+            If True, return a new SegmentationGeometry; otherwise modify in-place.
+
+        Returns
+        -------
+        SegmentationGeometry
+            The subsetted geometry.
+        """
+        n_points = self.get_number_of_points()
+        if isinstance(idx, (int, np.integer)):
+            idx = [idx]
+        elif isinstance(idx, slice) or idx is ...:
+            idx = np.arange(n_points)[idx]
+
+        idx = np.asarray(idx)
+        if idx.dtype == bool:
+            idx = np.where(idx)[0]
+        idx = idx[idx < n_points]
+
+        new_points = self._input_points[idx]
+
+        if copy:
+            state = self.__getstate__()
+            state["points"] = new_points
+            state.pop("uuid", None)
+            ret = self.__class__.__new__(self.__class__)
+            ret.__setstate__(state)
+            return ret
+
+        from .utils import points_to_volume
+
+        self._input_points = new_points
+        if new_points.shape[0] > 0:
+            vol, offset = points_to_volume(
+                new_points,
+                sampling_rate=np.max(self.sampling_rate),
+                use_offset=True,
+                out_dtype=np.uint8,
+            )
+            self._raw_volume = vol
+            self._origin = (offset * self.sampling_rate).astype(np.float32)
+        else:
+            self._raw_volume = np.zeros((1, 1, 1), dtype=np.uint8)
+            self._origin = np.zeros(3, dtype=np.float32)
+
+        self._cache.clear()
+        self._build_volume_pipeline()
+        self._set_appearance()
+        return self
+
+    def __getitem__(self, idx):
+        """Array-like indexing returning a copy."""
+        return self.subset(idx, copy=True)
+
+    def _reset_highlights(self):
+        """Reset previously highlighted voxels back to label 1. O(n_highlighted)."""
+        if self._highlighted_flat is None:
+            return
+        scalars = numpy_support.vtk_to_numpy(self._volume.GetPointData().GetScalars())
+        scalars[self._highlighted_flat] = 1
+        self._highlighted_flat = None
+        self._volume.GetPointData().GetScalars().Modified()
+        self._volume.Modified()
+
+    def color_points(self, point_ids, color):
+        """Highlight specific points via transfer function labeling.
+
+        Parameters
+        ----------
+        point_ids : np.ndarray
+            Indices into the point array to highlight.
+        color : tuple of float
+            RGB highlight color (0-1).
+        """
+        if not isinstance(point_ids, np.ndarray):
+            point_ids = np.asarray(point_ids, dtype=np.int32)
+        point_ids = point_ids[point_ids < self.get_number_of_points()]
+
+        self._reset_highlights()
+
+        highlighted = self._coord_to_voxel(self._input_points[point_ids])
+        shape = np.array(self._raw_volume.shape)
+        mask = np.all((highlighted >= 0) & (highlighted < shape), axis=1)
+        highlighted = highlighted[mask]
+
+        if highlighted.shape[0] > 0:
+            flat_idx = np.ravel_multi_index(
+                (highlighted[:, 0], highlighted[:, 1], highlighted[:, 2]),
+                self._raw_volume.shape,
+                order="F",
+            )
+            scalars = numpy_support.vtk_to_numpy(
+                self._volume.GetPointData().GetScalars()
+            )
+            scalars[flat_idx] = 2
+            self._highlighted_flat = flat_idx
+            self._volume.GetPointData().GetScalars().Modified()
+            self._volume.Modified()
+
+        color_tf = self._vtk_property.GetRGBTransferFunction()
+        self._update_color_tf(color_tf, self._appearance["base_color"], color)
+        self._vtk_property.Modified()
+
+    def set_color(self, color=None):
+        """Set the displayed color, resetting any per-point highlights.
+
+        Parameters
+        ----------
+        color : tuple of float, optional
+            RGB color values (0-1). Uses stored base color if None.
+        """
+        if color is None:
+            color = self._appearance["base_color"]
+
+        self._reset_highlights()
+
+        color_tf = self._vtk_property.GetRGBTransferFunction()
+        self._update_color_tf(color_tf, color)
+        self._vtk_property.Modified()
+
+    def set_appearance(
+        self,
+        size=None,
+        opacity=None,
+        render_spheres=None,
+        ambient=None,
+        diffuse=None,
+        specular=None,
+        color=None,
+        **kwargs,
+    ):
+        """Set visual appearance, ignoring point-specific parameters.
+
+        Parameters
+        ----------
+        size : ignored
+        opacity : float, optional
+        render_spheres : ignored
+        ambient : float, optional
+        diffuse : float, optional
+        specular : float, optional
+        color : tuple of float, optional
+        **kwargs
+            Additional parameters (e.g. base_color, highlight_color)
+            stored in appearance dict for compatibility with base class.
+        """
+        params = {
+            "opacity": opacity,
+            "ambient": ambient,
+            "diffuse": diffuse,
+            "specular": specular,
+            **kwargs,
+        }
+        self._appearance.update({k: v for k, v in params.items() if v is not None})
+        self._set_appearance()
+
+        if color is None:
+            color = self._appearance.get("base_color", BASE_COLOR)
+        self._appearance["base_color"] = color
+        self.set_color(color)
+
+    def _set_appearance(self):
+        """Propagate appearance settings to vtkVolumeProperty."""
+        if not hasattr(self, "_vtk_property"):
+            return
+        self._vtk_property.SetAmbient(self._appearance.get("ambient", 0.3))
+        self._vtk_property.SetDiffuse(self._appearance.get("diffuse", 0.7))
+        self._vtk_property.SetSpecular(self._appearance.get("specular", 0.2))
+
+        opacity = self._appearance.get("opacity", 1.0)
+        opacity_tf = self._vtk_property.GetScalarOpacity()
+        opacity_tf.RemoveAllPoints()
+        opacity_tf.AddPoint(0, 0.0)
+        opacity_tf.AddPoint(1, opacity)
+        opacity_tf.AddPoint(255, opacity)
+
+    def __getstate__(self):
+        return {
+            "points": self._input_points,
+            "sampling_rate": self.sampling_rate,
+            "meta": self._meta,
+            "visible": self.visible,
+            "appearance": self._appearance,
+            "uuid": self.uuid,
+        }
+
+    def __setstate__(self, state):
+        uuid = state.pop("uuid", None)
+        visible = state.pop("visible", True)
+        appearance = state.pop("appearance", {})
+
+        self.__init__(**state)
+        self.set_visibility(visible)
+
+        if uuid is not None:
+            self.uuid = uuid
+        self.set_appearance(**appearance)
+
+    @property
+    def normals(self):
+        return super().normals
+
+    @normals.setter
+    def normals(self, value):
+        pass
+
+    @property
+    def quaternions(self):
+        return super().quaternions
+
+    @quaternions.setter
+    def quaternions(self, value):
+        pass
+
+    def change_representation(self, representation=None):
+        """Volume-only geometry — representation changes are not supported."""
+        warnings.warn("SegmentationGeometry does not support representation changes.")
+        return None
+
+    def is_mesh_representation(self, representation=None):
+        return False
+
+    def set_scalars(self, scalars, color_lut, scalar_range=None, use_point=False):
+        """Set scalar data for coloring points via the volume transfer function.
+
+        Quantizes scalars to uint8 [1, 255] (0 = transparent background),
+        writes them into voxels in-place, and builds a color transfer function
+        by sampling the lookup table.
+
+        Parameters
+        ----------
+        scalars : array-like
+            Scalar values for each point.
+        color_lut : vtk.vtkLookupTable
+            Color lookup table for mapping scalars to colors.
+        scalar_range : tuple, optional
+            Min and max scalar range for color mapping.
+        use_point : bool, optional
+            Ignored (kept for API compatibility with base class).
+        """
+        scalars = np.asarray(scalars, dtype=np.float32).ravel()
+        if scalars.size == 1:
+            scalars = np.full(
+                self.get_number_of_points(), fill_value=scalars, dtype=np.float32
+            )
+        if scalars.size != self.get_number_of_points():
+            return None
+
+        if scalar_range is None:
+            scalar_range = (float(scalars.min()), float(scalars.max()))
+        smin, smax = scalar_range
+
+        # Quantize to [1, 255], 0 is reserved for transparent background
+        if smax > smin:
+            normalized = (scalars - smin) / (smax - smin)
+        else:
+            normalized = np.full_like(scalars, 0.5)
+        quantized = np.clip(np.rint(normalized * 254 + 1), 1, 255).astype(np.uint8)
+
+        self._reset_highlights()
+
+        voxel_coords = self._coord_to_voxel(self._input_points)
+        shape = np.array(self._raw_volume.shape)
+        mask = np.all((voxel_coords >= 0) & (voxel_coords < shape), axis=1)
+        valid_coords = voxel_coords[mask]
+        valid_quantized = quantized[mask]
+
+        flat_idx = np.ravel_multi_index(
+            (valid_coords[:, 0], valid_coords[:, 1], valid_coords[:, 2]),
+            self._raw_volume.shape,
+            order="F",
+        )
+
+        vtk_scalars = numpy_support.vtk_to_numpy(
+            self._volume.GetPointData().GetScalars()
+        )
+        vtk_scalars[flat_idx] = valid_quantized
+        self._highlighted_flat = flat_idx
+        self._volume.GetPointData().GetScalars().Modified()
+        self._volume.Modified()
+
+        # Build color TF by sampling the LUT across the quantized range
+        color_tf = self._vtk_property.GetRGBTransferFunction()
+        color_tf.RemoveAllPoints()
+        color_tf.AddRGBPoint(0, 0, 0, 0)
+        rgb = [0.0, 0.0, 0.0]
+        for q in range(1, 256):
+            t = (q - 1) / 254.0
+            color_lut.GetColor(smin + t * (smax - smin), rgb)
+            color_tf.AddRGBPoint(q, *rgb)
+        self._vtk_property.Modified()
+
+    def swap_data(self, *args, **kwargs):
+        """Data swapping not supported for volume geometry."""
+        warnings.warn("swap_data is not supported for SegmentationGeometry.")
+        return None
 
 
 class GeometryTrajectory(Geometry):
