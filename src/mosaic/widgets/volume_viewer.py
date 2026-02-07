@@ -242,7 +242,6 @@ class VolumeViewer(QWidget):
         self.update_contrast_and_gamma()
 
         dimensions = self.get_dimensions()
-        self.slice_row.setRange(0, dimensions[0] - 1)
         self.slice_row.setValue(0)
 
         self.change_widget_state(is_enabled=True)
