@@ -7,7 +7,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from typing import List, Optional
-from functools import wraps
 
 import numpy as np
 
@@ -28,54 +27,6 @@ from .utils import (
 __all__ = ["GeometryOperations"]
 
 
-def use_point_data(operation):
-    """
-    Decorator to ensure operations work on underlying point cloud data.
-
-    When a geometry is in mesh representation, operations should work on the
-    original point cloud data (stored in _point_data), not the mesh vertices.
-    This decorator handles that conversion.
-    """
-
-    @wraps(operation)
-    def wrapper(geometry, *args, **kwargs):
-        from .geometry import Geometry
-
-        temp_geometry = geometry
-        has_mesh_model = hasattr(geometry.model, "vertices")
-        is_mesh_representation = geometry.is_mesh_representation()
-
-        # In this case, geometry.points, normals and quaternions contains the
-        # information from the mesh representation. Not the underlying point
-        # cloud the object should represent. If we are dealing with an actual
-        # model however, its fine to use the geometry attributes directly
-        if is_mesh_representation and not has_mesh_model:
-            points, normals, quaternions = geometry.get_point_data()
-            temp_geometry = Geometry(
-                points=points,
-                normals=normals,
-                quaternions=quaternions,
-                sampling_rate=geometry.sampling_rate,
-            )
-
-        results = operation(temp_geometry, *args, **kwargs)
-
-        # We do not care about the representation in this case. However when
-        # we explicitly start with a surface representation for rendering purposes
-        # we make sure this is propagated.
-        if not is_mesh_representation or has_mesh_model:
-            return results
-
-        if isinstance(results, Geometry):
-            results.change_representation("surface")
-        elif isinstance(results, (tuple, list)):
-            [x.change_representation("surface") for x in results]
-        return results
-
-    return wrapper
-
-
-@use_point_data
 def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
     """
     Extract structural skeleton from point cloud.
@@ -145,7 +96,6 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
     return Geometry(points, sampling_rate=geometry.sampling_rate)
 
 
-@use_point_data
 def downsample(geometry, method: str = "radius", **kwargs):
     """
     Reduces point density by removing points based on spatial or random criteria.
@@ -201,7 +151,6 @@ def downsample(geometry, method: str = "radius", **kwargs):
     return Geometry(points, normals=normals, sampling_rate=geometry._sampling_rate)
 
 
-@use_point_data
 def crop(geometry, distance: float, query: np.ndarray, keep_smaller: bool = True):
     """
     Filters points based on their distance to a set of query points.
@@ -235,7 +184,6 @@ def crop(geometry, distance: float, query: np.ndarray, keep_smaller: bool = True
     return geometry[mask]
 
 
-@use_point_data
 def sample(
     geometry,
     sampling: float,
@@ -297,7 +245,6 @@ def sample(
     return Geometry(points, normals=normals, sampling_rate=geometry.sampling_rate)
 
 
-@use_point_data
 def cluster(
     geometry,
     method: str,
@@ -388,7 +335,6 @@ def cluster(
     return result_geometries
 
 
-@use_point_data
 def remove_outliers(geometry, method: str = "statistical", **kwargs):
     """
     Filters out points that are statistical outliers based on local neighborhoods.
@@ -427,7 +373,6 @@ def remove_outliers(geometry, method: str = "statistical", **kwargs):
     return geometry[mask]
 
 
-@use_point_data
 def compute_normals(
     geometry, method: str = "Compute", k: int = 15, **kwargs
 ) -> Optional:
@@ -589,7 +534,7 @@ def fit(geometry, method, **kwargs):
     if fit_object is None:
         raise ValueError(f"{method} is not supported ({PARAMETRIZATION_TYPE.keys()}).")
 
-    points, *_ = geometry.get_point_data()
+    points = geometry.points
 
     n = points.shape[0]
     if n < 50 and method not in ["convexhull", "spline"]:

@@ -17,7 +17,6 @@ from qtpy.QtCore import (
     QEvent,
     QSize,
     QTimer,
-    QThread,
     QPropertyAnimation,
     QEasingCurve,
     QRect,
@@ -77,14 +76,6 @@ from .widgets import (
     CursorModeHandler,
     BoundingBoxManager,
 )
-
-
-class ImportThread(QThread):
-    def run(self):
-        from .meshing.utils import to_open3d
-        from .parametrization import TriangularMesh
-        from .dialogs import PropertyAnalysisDialog
-        from .parametrization import PARAMETRIZATION_TYPE
 
 
 class App(QMainWindow):
@@ -210,9 +201,6 @@ class App(QMainWindow):
 
         self.actor_collection = vtk.vtkActorCollection()
         self.setup_menu()
-
-        self._import_thread = ImportThread()
-        self._import_thread.start()
 
         self.escape_shortcut = QShortcut(Qt.Key.Key_Escape, self.vtk_widget)
         self.escape_shortcut.activated.connect(self.handle_escape_key)
@@ -1242,8 +1230,18 @@ class App(QMainWindow):
                 )
 
             geometry = container.get(interactor.add(**geom_data))
-            if parameters.get("render_as_surface", False) or data.faces is not None:
+            if data.faces is not None:
                 geometry.change_representation("surface")
+            elif parameters.get("render_as_segmentation", False):
+                from .geometry import SegmentationGeometry
+
+                seg = SegmentationGeometry(
+                    points=geometry.points,
+                    sampling_rate=geometry.sampling_rate,
+                    color=geometry._appearance.get("base_color", (0.7, 0.7, 0.7)),
+                    meta=geometry._meta,
+                )
+                container.update(geometry.uuid, seg)
 
             if container.metadata.get("shape") is None:
                 container.metadata["shape"] = data_shape

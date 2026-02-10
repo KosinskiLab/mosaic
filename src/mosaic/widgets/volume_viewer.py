@@ -153,12 +153,11 @@ class VolumeViewer(QWidget):
 
     def toggle_visibility(self):
         """Toggle the visibility of the volume slice"""
-        if self.volume is None:
-            return
+        return self.set_visibility(not self.slice.GetVisibility())
 
-        self.is_visible = not self.is_visible
+    def set_visibility(self, visible: bool):
+        self.is_visible = visible
         self.slice.SetVisibility(self.is_visible)
-
         self.visibility_button.setIcon(qta.icon("ph.eye-slash", color=Colors.ICON))
         self.visibility_button.setToolTip("Show volume")
         if self.is_visible:
@@ -207,7 +206,10 @@ class VolumeViewer(QWidget):
         self.slice_mapper = vtk.vtkImageSliceMapper()
         self.slice = vtk.vtkImageSlice()
 
+        # Reset to initial state
+        self.set_visibility(True)
         self.change_widget_state(is_enabled=False)
+
         self.vtk_widget.GetRenderWindow().Render()
 
     def change_widget_state(self, is_enabled: bool = False):
@@ -246,7 +248,6 @@ class VolumeViewer(QWidget):
 
         self.change_widget_state(is_enabled=True)
 
-        self.renderer.ResetCamera()
         self.vtk_widget.GetRenderWindow().Render()
 
     def _on_slice_changed(self, value: float):

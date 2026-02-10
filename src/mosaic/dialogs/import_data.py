@@ -139,20 +139,20 @@ class ImportDataDialog(QDialog):
         checkbox_layout.addWidget(self.axis_checkbox)
         checkbox_layout.addSpacing(20)
 
-        surface_label = QLabel("Render as Surface")
-        surface_settings = {
-            "label": "Render as Surface",
+        segmentation_label = QLabel("Segmentation Volume")
+        segmentation_settings = {
+            "label": "Segmentation Volume",
             "type": "boolean",
             "default": False,
-            "description": "Render input as surface instead of points. Improves "
-            "rendering performance for large inputs.",
+            "description": "Render as dense segmentation volume. Improves rendering "
+            "performance for large point clouds.",
         }
-        self.surface_checkbox = create_setting_widget(surface_settings)
-        self.surface_checkbox.setChecked(False)
+        self.segmentation_checkbox = create_setting_widget(segmentation_settings)
+        self.segmentation_checkbox.setChecked(False)
 
-        checkbox_layout.addWidget(surface_label)
+        checkbox_layout.addWidget(segmentation_label)
         checkbox_layout.addSpacing(20)
-        checkbox_layout.addWidget(self.surface_checkbox)
+        checkbox_layout.addWidget(self.segmentation_checkbox)
 
         checkbox_layout.addStretch()
 
@@ -301,7 +301,7 @@ class ImportDataDialog(QDialog):
                 get_widget_value(self.sampling_y),
                 get_widget_value(self.sampling_z),
             ),
-            "render_as_surface": get_widget_value(self.surface_checkbox),
+            "render_as_segmentation": get_widget_value(self.segmentation_checkbox),
         }
 
     def load_file_parameters(self, filename):
