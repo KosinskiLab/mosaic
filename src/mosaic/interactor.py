@@ -185,13 +185,17 @@ class DataContainerInteractor(QObject):
         self.data_changed.emit()
         return ret
 
-    def add_selection(self, selected_point_ids: Dict[vtk.vtkActor, np.ndarray]) -> int:
+    def add_selection(
+        self, selected_point_ids: Dict[vtk.vtkActor, np.ndarray], add: bool = True
+    ) -> int:
         """Add new cloud from selected points.
 
         Parameters
         ----------
         selected_point_ids : dict
             Mapping of vtkActor to selected point IDs.
+        add : bool
+            Whether to add the Geometry defined by selected points.
 
         Returns
         -------
@@ -200,6 +204,9 @@ class DataContainerInteractor(QObject):
         """
         from .geometry import Geometry
 
+        from time import time
+
+        start = time()
         new_cluster, remove_cluster = [], []
         for uuid, point_ids in selected_point_ids.items():
             if (geometry := self.container.get(uuid)) is None:
@@ -211,7 +218,10 @@ class DataContainerInteractor(QObject):
 
             inverse = np.ones(n_points, dtype=bool)
             inverse[point_ids] = False
-            new_cluster.append(geometry[point_ids])
+
+            if add:
+                new_cluster.append(geometry[point_ids])
+
             if inverse.sum() != 0:
                 self.container.update(uuid, geometry.subset(inverse))
             else:
@@ -219,8 +229,8 @@ class DataContainerInteractor(QObject):
                 remove_cluster.append(geometry)
 
         self.container.remove(remove_cluster)
-        if len(new_cluster):
-            return self.add(Geometry.merge(new_cluster))
+        if len(new_cluster) and add:
+            idx = self.add(Geometry.merge(new_cluster))
         return -1
 
     def _add_point(self, point):
@@ -372,19 +382,24 @@ class DataContainerInteractor(QObject):
             "Gaussian Density",
             "Normals",
             "Basis",
+        ]
+        mesh_formats = [
             None,
             "Surface",
-        ]
-        extended_formats = [
             "Mesh",
             "Wireframe",
         ]
 
         selected = self.get_selected_geometries()
         if any(hasattr(x.model, "mesh") for x in selected):
-            formats.extend(extended_formats)
+            formats.extend(mesh_formats)
 
-        formats.extend([None, "Segmentation"])
+        # We might need a more reliable check for assessing whether
+        # this is the Cluster interactor. This safeguard prevents converting
+        # meshes to Segmentation volumes, which will cause out of memory
+        # issues on the majority of systems
+        if all(x.model is None for x in selected):
+            formats.extend([None, "Segmentation"])
 
         _formap_map = {k: k.lower().replace(" ", "_") for k in formats if k is not None}
         _formap_map["Points"] = "pointcloud"
@@ -624,7 +639,6 @@ class DataContainerInteractor(QObject):
     def highlight_selected_points(self, color):
         for uuid, point_ids in self.point_selection.items():
             self.container.highlight_points(uuid, point_ids, color)
-        return self.render_vtk()
 
     def highlight_clusters_from_selected_points(self):
         return self.set_selection_by_uuid(list(self.point_selection.keys()))
@@ -639,22 +653,18 @@ class DataContainerInteractor(QObject):
             if representation == "segmentation":
                 if isinstance(geometry, SegmentationGeometry):
                     continue
-                points, _, _ = geometry.get_point_data()
                 seg = SegmentationGeometry(
-                    points=points,
+                    points=geometry.points,
                     sampling_rate=geometry.sampling_rate,
                     color=geometry._appearance.get("base_color", (0.7, 0.7, 0.7)),
                     meta=geometry._meta,
                 )
-                seg._appearance.update(geometry._appearance)
                 self.container.update(geometry.uuid, seg)
                 continue
 
             if isinstance(geometry, SegmentationGeometry):
-                # Convert back to regular Geometry
-                points, _, _ = geometry.get_point_data()
                 new_geom = Geometry(
-                    points=points,
+                    points=geometry.points,
                     sampling_rate=geometry.sampling_rate,
                     color=geometry._appearance.get("base_color", (0.7, 0.7, 0.7)),
                     meta=geometry._meta,
@@ -735,12 +745,10 @@ class DataContainerInteractor(QObject):
 
     def remove(self):
         self._backup()
-        added_cluster = self.add_selection(self.point_selection)
+        self.add_selection(self.point_selection, add=False)
         self.point_selection.clear()
 
-        self.container.remove(
-            [self.container.get(added_cluster), *self.get_selected_geometries()]
-        )
+        self.container.remove(self.get_selected_geometries())
         self.data_changed.emit()
         self.render()
 
@@ -816,9 +824,7 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
                 if geometry is None:
                     continue
 
-                is_mesh = geometry.is_mesh_representation()
-
-                def _callback(ret, geom=geometry, mesh=is_mesh):
+                def _callback(ret, geom=geometry):
                     if ret is None:
                         return None
 
@@ -826,8 +832,6 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
                         ret = (ret,)
 
                     for new_geom in ret:
-                        if mesh:
-                            new_geom.change_representation("surface")
                         self.add(new_geom)
 
                     if remove_orig:
@@ -835,11 +839,6 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
 
                     if not batch_flag:
                         _render_callback()
-
-                # Save some time on pickling
-                if remove_orig and geometry.is_mesh_representation():
-                    geometry.change_representation("pointcloud")
-                    geometry._cache.clear()
 
                 func = getattr(GeometryOperations, op_name)
 

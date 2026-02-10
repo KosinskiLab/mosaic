@@ -15,7 +15,7 @@ import numpy as np
 from vtk.util import numpy_support
 
 from .actor import create_actor
-from .utils import find_closest_points, normals_to_rot, apply_quat, NORMAL_REFERENCE
+from .utils import normals_to_rot, apply_quat, NORMAL_REFERENCE
 
 
 __all__ = ["Geometry", "VolumeGeometry", "SegmentationGeometry", "GeometryTrajectory"]
@@ -102,7 +102,6 @@ class Geometry:
             self.quaternions = quaternions
 
         self._model = model
-        self._cache = {}
         self._meta = {} if meta is None else meta
         self._representation = "pointcloud"
 
@@ -187,17 +186,12 @@ class Geometry:
         if uuid is not None:
             self.uuid = uuid
 
-        if (cache := state.get("cache")) is not None:
-            self._cache = cache
-
         # Required to support loading VolumeGeometries
         if state.get("representation") != self._representation:
             self.change_representation(state.get("representation"))
         self.set_appearance(**appearance)
 
     def subset(self, idx, copy: bool = False):
-        full_copy = ... is idx
-
         n_points = self.get_number_of_points()
         if isinstance(idx, (int, np.integer)):
             idx = [idx]
@@ -213,40 +207,7 @@ class Geometry:
         if "meta" in state and copy:
             state["meta"] = state["meta"].copy()
 
-        # Check if we are subsetting a valid mesh representation
-        _mesh = self._cache.get("mesh")
-        _data = self._cache.get("point_data")
         data_array = ("points", "normals", "quaternions")
-        if _mesh is not None and _data is not None:
-
-            indices = self._cache.get("vmap", None)
-            state["cache"] = {"mesh": _mesh.subset(idx)}
-
-            old_vmap = indices is None or indices.shape[0] != _data[0].shape[0]
-            if not full_copy and old_vmap:
-                # Map points to closest vertex in the mesh (now in self.points)
-                _, indices = find_closest_points(self.points, _data[0], k=1)
-                self._cache["vmap"] = indices
-
-            if not full_copy:
-                indices = self._cache.get("vmap")
-
-                # Subset to points that are associated with a kept vertex
-                keep = np.in1d(indices, idx)
-
-                # Update vmap to point to new vertex ids
-                inverse_map = np.empty(np.max(idx) + 1, dtype=np.int32)
-                inverse_map[idx] = np.arange(len(idx))
-                state["cache"]["vmap"] = inverse_map[indices[keep]]
-
-                idx = keep
-            else:
-                idx = ...
-
-            # This will be copied to point_data in __setstate__
-            # when setting the representation
-            state |= {k: x for k, x in zip(data_array, _data)}
-
         if (vertex_properties := state.get("vertex_properties")) is not None:
             state["vertex_properties"] = vertex_properties[idx]
 
@@ -299,7 +260,6 @@ class Geometry:
             "points": [],
             "quaternions": [],
             "normals": [],
-            "isosurfaces": [],
             "models": [],
         }
 
@@ -312,9 +272,6 @@ class Geometry:
 
             if _quaternions is not None:
                 data["quaternions"].append(_quaternions)
-
-            if (mesh := geometry._cache.get("mesh")) is not None:
-                data["isosurfaces"].append(mesh)
 
             if (model := geometry.model) is not None:
                 data["models"].append(model)
@@ -331,12 +288,6 @@ class Geometry:
         appearance = [
             x._appearance for x in geometries if x._representation == representation
         ][0]
-
-        cache = {}
-        if len(data["isosurfaces"]):
-            from .parametrization import merge
-
-            cache["mesh"] = merge(data.pop("isosurfaces"))
 
         model = None
         if len(data["models"]):
@@ -356,11 +307,9 @@ class Geometry:
             "sampling_rate": sampling_rate,
             "visible": any(x.visible for x in geometries),
             "representation": representation,
-            "cache": cache,
             "appearance": appearance,
             "model": model,
         }
-        print(state)
 
         state |= {
             k: np.concatenate(data[k]) if len(data[k]) else None
@@ -907,22 +856,16 @@ class Geometry:
             )
         clipping_planes = self._actor.GetMapper().GetClippingPlanes()
 
-        # Use fitted mesh representation or create a new one
+        # Use fitted mesh representation
         to_mesh = self.is_mesh_representation(representation)
         if to_mesh:
             mesh = self.model
-            if mesh is None and "mesh" in self._cache:
-                mesh = self._cache["mesh"]
-
             if not hasattr(mesh, "mesh"):
-                from .parametrization import FlyingEdges
-
-                try:
-                    mesh = FlyingEdges.fit(self.points, np.max(self.sampling_rate))
-                except Exception as e:
-                    warnings.warn(f"Failed to mesh object: {str(e)}.")
-                    return None
-                self._cache["mesh"] = mesh
+                warnings.warn(
+                    "Surface/mesh/wireframe requires a fitted mesh model. "
+                    "Fit a mesh parametrization first."
+                )
+                return None
 
         mapper = vtk.vtkPolyDataMapper()
         if representation == "gaussian_density":
@@ -938,29 +881,6 @@ class Geometry:
         self._appearance.update({"opacity": 1, "size": 8, "render_spheres": True})
         if representation == "gaussian_density":
             self._appearance["render_spheres"] = False
-
-        # Backup to support treating point clouds as mesh
-        if self._cache.get("point_data") is not None and not to_mesh:
-            self._points = vtk.vtkPoints()
-            self._points.SetDataTypeToFloat()
-
-            self._cells = vtk.vtkCellArray()
-            self._normals = vtk.vtkFloatArray()
-            self._normals.SetNumberOfComponents(3)
-            self._normals.SetName("Normals")
-
-            self._data = vtk.vtkPolyData()
-            self._data.SetPoints(self._points)
-            self._data.SetVerts(self._cells)
-
-            self.points, normals, quaternions = self.get_point_data()
-            if normals is not None:
-                self.normals = normals
-            if quaternions is not None:
-                self.quaternions = quaternions
-
-            # Discard the mesh representation and associated data
-            self._cache.clear()
 
         scale = 15 * np.max(self.sampling_rate)
         mapper, prop = self._actor.GetMapper(), self._actor.GetProperty()
@@ -1055,10 +975,6 @@ class Geometry:
             self._actor.SetMapper(mapper)
 
         elif to_mesh:
-            # No backup if we are dealing with a fitted mesh
-            if self.model is None:
-                self._cache["point_data"] = self.get_point_data()
-
             self._cells.Reset()
             self._points.Reset()
 
@@ -1091,17 +1007,15 @@ class Geometry:
         return representation in ("mesh", "surface", "wireframe")
 
     def get_point_data(self):
-        if (point_data := self._cache.get("point_data")) is None:
-            quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
-            if quaternions is not None:
-                quaternions = self.quaternions
+        normals = self._data.GetPointData().GetNormals()
+        if normals is not None:
+            normals = np.asarray(normals)
 
-            normals = self._data.GetPointData().GetNormals()
-            if normals is not None:
-                normals = self.normals
+        quaternions = self._data.GetPointData().GetArray("OrientationQuaternion")
+        if quaternions is not None:
+            quaternions = np.asarray(quaternions)
 
-            return self.points, normals, quaternions
-        return point_data
+        return self.points, normals, quaternions
 
 
 # For backwards compatibility
@@ -1317,6 +1231,9 @@ class SegmentationGeometry(Geometry):
         Additional keyword arguments (ignored).
     """
 
+    # Rebuild volume when current size exceeds optimal by this factor
+    _COMPACTION_THRESHOLD = 2.0
+
     def __init__(
         self,
         points=None,
@@ -1339,9 +1256,9 @@ class SegmentationGeometry(Geometry):
         self._appearance = {
             "size": 8,
             "opacity": 1.0,
-            "ambient": 0.3,
+            "ambient": 0.5,
             "diffuse": 0.7,
-            "specular": 0.2,
+            "specular": 0.0,
             "render_spheres": True,
             "base_color": color,
         }
@@ -1355,31 +1272,36 @@ class SegmentationGeometry(Geometry):
                 use_offset=True,
                 out_dtype=np.uint8,
             )
-            self._raw_volume = vol
+            self._volume_shape = vol.shape
             self._origin = (offset * self.sampling_rate).astype(np.float32)
         else:
             self._input_points = np.empty((0, 3), dtype=np.float32)
-            self._raw_volume = np.zeros((1, 1, 1), dtype=np.uint8)
+            self._volume_shape = (1, 1, 1)
+            vol = None
             self._origin = np.zeros(3, dtype=np.float32)
 
-        self._build_volume_pipeline()
+        self._build_volume_pipeline(vol)
         self._set_appearance()
 
-    def _build_volume_pipeline(self):
-        """Create vtkImageData, mapper, volume property, and vtkVolume."""
-        vol = self._raw_volume
+    def _build_volume_pipeline(self, initial_data=None):
+        """Create vtkImageData, mapper, volume property, and vtkVolume.
+
+        Parameters
+        ----------
+        initial_data : np.ndarray, optional
+            Initial volume data (3D array). If None, volume is zero-filled.
+        """
         spacing = self.sampling_rate.astype(np.float64)
 
         self._volume = vtk.vtkImageData()
-        self._volume.SetDimensions(vol.shape)
+        self._volume.SetDimensions(self._volume_shape)
         self._volume.SetSpacing(spacing)
         self._volume.SetOrigin(self._origin.astype(np.float64))
         self._volume.AllocateScalars(vtk.VTK_UNSIGNED_CHAR, 1)
 
-        vtk_arr = numpy_support.numpy_to_vtk(
-            vol.ravel(order="F"), deep=True, array_type=vtk.VTK_UNSIGNED_CHAR
-        )
-        self._volume.GetPointData().SetScalars(vtk_arr)
+        # Initialize from data if provided, otherwise leave zero-filled
+        if initial_data is not None:
+            np.copyto(self._vtk_scalars, initial_data.ravel(order="F"))
 
         self._vtk_mapper = vtk.vtkGPUVolumeRayCastMapper()
         self._vtk_mapper.SetInputData(self._volume)
@@ -1402,9 +1324,9 @@ class SegmentationGeometry(Geometry):
         self._vtk_property.SetScalarOpacity(opacity_tf)
         self._vtk_property.SetInterpolationTypeToNearest()
         self._vtk_property.ShadeOn()
-        self._vtk_property.SetAmbient(self._appearance.get("ambient", 0.3))
+        self._vtk_property.SetAmbient(self._appearance.get("ambient", 0.5))
         self._vtk_property.SetDiffuse(self._appearance.get("diffuse", 0.7))
-        self._vtk_property.SetSpecular(self._appearance.get("specular", 0.2))
+        self._vtk_property.SetSpecular(self._appearance.get("specular", 0.0))
 
         self._vtk_volume = vtk.vtkVolume()
         self._vtk_volume.SetMapper(self._vtk_mapper)
@@ -1413,6 +1335,41 @@ class SegmentationGeometry(Geometry):
         # Alias so parents set_visibility work unchanged
         self._actor = self._vtk_volume
         self._highlighted_flat = None
+
+    @property
+    def _vtk_scalars(self):
+        """Numpy view of VTK scalar array (flat, Fortran order)."""
+        return numpy_support.vtk_to_numpy(self._volume.GetPointData().GetScalars())
+
+    def _coords_to_flat_indices(self, coords):
+        """Convert world coordinates to flat volume indices.
+
+        Parameters
+        ----------
+        coords : np.ndarray
+            World coordinates, shape (n, 3).
+
+        Returns
+        -------
+        np.ndarray
+            Flat indices into the volume array (Fortran order).
+            Only valid coordinates are returned.
+        """
+        voxel_coords = self._coord_to_voxel(coords)
+        shape = np.asarray(self._volume_shape)
+
+        # Filter to valid voxel indices
+        mask = np.all((voxel_coords >= 0) & (voxel_coords < shape), axis=1)
+        valid_coords = voxel_coords[mask]
+
+        if valid_coords.shape[0] == 0:
+            return np.array([], dtype=np.intp)
+
+        return np.ravel_multi_index(
+            (valid_coords[:, 0], valid_coords[:, 1], valid_coords[:, 2]),
+            self._volume_shape,
+            order="F",
+        )
 
     @staticmethod
     def _update_color_tf(color_tf, base_color, highlight_color=None):
@@ -1483,12 +1440,13 @@ class SegmentationGeometry(Geometry):
         """
         return self._input_points.shape[0]
 
-    # def get_point_data(self):
-    #     """Return (points, None, None) for merge/export compatibility."""
-    #     return (self.points, None, None)
-
     def subset(self, idx, copy=False):
-        """Subset the segmentation to keep only selected points.
+        """
+        Subset the segmentation to keep only selected points.
+
+        Uses deferred volume compaction: removed voxels are masked to 0 (transparent)
+        rather than immediately rebuilding the volume. The volume is only rebuilt
+        when its size exceeds the optimal bounding box by _COMPACTION_THRESHOLD.
 
         Parameters
         ----------
@@ -1523,26 +1481,92 @@ class SegmentationGeometry(Geometry):
             ret.__setstate__(state)
             return ret
 
-        from .utils import points_to_volume
+        removed_mask = np.ones(n_points, dtype=bool)
+        removed_mask[idx] = False
+        removed_points = self._input_points[removed_mask]
 
         self._input_points = new_points
-        if new_points.shape[0] > 0:
-            vol, offset = points_to_volume(
-                new_points,
-                sampling_rate=np.max(self.sampling_rate),
-                use_offset=True,
-                out_dtype=np.uint8,
-            )
-            self._raw_volume = vol
-            self._origin = (offset * self.sampling_rate).astype(np.float32)
-        else:
-            self._raw_volume = np.zeros((1, 1, 1), dtype=np.uint8)
-            self._origin = np.zeros(3, dtype=np.float32)
-
         self._cache.clear()
-        self._build_volume_pipeline()
-        self._set_appearance()
+
+        if new_points.shape[0] == 0:
+            self._volume_shape = (1, 1, 1)
+            self._origin = np.zeros(3, dtype=np.float32)
+            self._build_volume_pipeline()
+            self._set_appearance()
+            return self
+
+        if removed_points.shape[0] > 0:
+            self._mask_voxels(removed_points)
+
+        if self._should_compact(new_points):
+            self._compact_volume(new_points)
         return self
+
+    def _mask_voxels(self, points_to_mask):
+        """Set voxels corresponding to given points to 0 (transparent).
+
+        Parameters
+        ----------
+        points_to_mask : np.ndarray
+            World coordinates of points to mask out, shape (n, 3).
+        """
+        flat_idx = self._coords_to_flat_indices(points_to_mask)
+        if flat_idx.size == 0:
+            return
+
+        self._vtk_scalars[flat_idx] = 0
+
+        # Clear highlights to prevent _reset_highlights from restoring masked voxels
+        self._highlighted_flat = None
+        self._volume.GetPointData().GetScalars().Modified()
+        self._volume.Modified()
+
+    def _should_compact(self, current_points):
+        """Check if the volume should be rebuilt with a tighter bounding box.
+
+        Parameters
+        ----------
+        current_points : np.ndarray
+            Current active points, shape (n, 3).
+
+        Returns
+        -------
+        bool
+            True if volume should be compacted.
+        """
+        if current_points.shape[0] == 0:
+            return False
+
+        current_volume_size = np.prod(self._volume_shape)
+
+        # Compute optimal bounding box for current points
+        sampling = np.max(self.sampling_rate)
+        positions = np.rint(np.divide(current_points, sampling)).astype(int)
+        optimal_shape = positions.max(axis=0) - positions.min(axis=0) + 1
+        optimal_size = np.prod(optimal_shape)
+
+        return current_volume_size > self._COMPACTION_THRESHOLD * optimal_size
+
+    def _compact_volume(self, current_points):
+        """Rebuild the volume with a tight bounding box around current points.
+
+        Parameters
+        ----------
+        current_points : np.ndarray
+            Current active points, shape (n, 3).
+        """
+        from .utils import points_to_volume
+
+        vol, offset = points_to_volume(
+            current_points,
+            sampling_rate=np.max(self.sampling_rate),
+            use_offset=True,
+            out_dtype=np.uint8,
+        )
+        self._volume_shape = vol.shape
+        self._origin = (offset * self.sampling_rate).astype(np.float32)
+        self._build_volume_pipeline(vol)
+        self._set_appearance()
 
     def __getitem__(self, idx):
         """Array-like indexing returning a copy."""
@@ -1552,8 +1576,7 @@ class SegmentationGeometry(Geometry):
         """Reset previously highlighted voxels back to label 1. O(n_highlighted)."""
         if self._highlighted_flat is None:
             return
-        scalars = numpy_support.vtk_to_numpy(self._volume.GetPointData().GetScalars())
-        scalars[self._highlighted_flat] = 1
+        self._vtk_scalars[self._highlighted_flat] = 1
         self._highlighted_flat = None
         self._volume.GetPointData().GetScalars().Modified()
         self._volume.Modified()
@@ -1573,22 +1596,9 @@ class SegmentationGeometry(Geometry):
         point_ids = point_ids[point_ids < self.get_number_of_points()]
 
         self._reset_highlights()
-
-        highlighted = self._coord_to_voxel(self._input_points[point_ids])
-        shape = np.array(self._raw_volume.shape)
-        mask = np.all((highlighted >= 0) & (highlighted < shape), axis=1)
-        highlighted = highlighted[mask]
-
-        if highlighted.shape[0] > 0:
-            flat_idx = np.ravel_multi_index(
-                (highlighted[:, 0], highlighted[:, 1], highlighted[:, 2]),
-                self._raw_volume.shape,
-                order="F",
-            )
-            scalars = numpy_support.vtk_to_numpy(
-                self._volume.GetPointData().GetScalars()
-            )
-            scalars[flat_idx] = 2
+        flat_idx = self._coords_to_flat_indices(self._input_points[point_ids])
+        if flat_idx.size > 0:
+            self._vtk_scalars[flat_idx] = 2
             self._highlighted_flat = flat_idx
             self._volume.GetPointData().GetScalars().Modified()
             self._volume.Modified()
@@ -1658,10 +1668,11 @@ class SegmentationGeometry(Geometry):
     def _set_appearance(self):
         """Propagate appearance settings to vtkVolumeProperty."""
         if not hasattr(self, "_vtk_property"):
-            return
-        self._vtk_property.SetAmbient(self._appearance.get("ambient", 0.3))
+            return None
+
+        self._vtk_property.SetAmbient(self._appearance.get("ambient", 0.5))
         self._vtk_property.SetDiffuse(self._appearance.get("diffuse", 0.7))
-        self._vtk_property.SetSpecular(self._appearance.get("specular", 0.2))
+        self._vtk_property.SetSpecular(self._appearance.get("specular", 0.0))
 
         opacity = self._appearance.get("opacity", 1.0)
         opacity_tf = self._vtk_property.GetScalarOpacity()
@@ -1755,22 +1766,23 @@ class SegmentationGeometry(Geometry):
 
         self._reset_highlights()
 
+        # Get flat indices and corresponding quantized values for valid coords
         voxel_coords = self._coord_to_voxel(self._input_points)
-        shape = np.array(self._raw_volume.shape)
+        shape = np.asarray(self._volume_shape)
         mask = np.all((voxel_coords >= 0) & (voxel_coords < shape), axis=1)
         valid_coords = voxel_coords[mask]
         valid_quantized = quantized[mask]
 
+        if valid_coords.shape[0] == 0:
+            return None
+
         flat_idx = np.ravel_multi_index(
             (valid_coords[:, 0], valid_coords[:, 1], valid_coords[:, 2]),
-            self._raw_volume.shape,
+            self._volume_shape,
             order="F",
         )
 
-        vtk_scalars = numpy_support.vtk_to_numpy(
-            self._volume.GetPointData().GetScalars()
-        )
-        vtk_scalars[flat_idx] = valid_quantized
+        self._vtk_scalars[flat_idx] = valid_quantized
         self._highlighted_flat = flat_idx
         self._volume.GetPointData().GetScalars().Modified()
         self._volume.Modified()
