@@ -377,8 +377,11 @@ class Geometry:
         vertex_cells.SetCells(idx.size, numpy_support.numpy_to_vtkIdTypeArray(cells))
 
         self._points.SetData(numpy_support.numpy_to_vtk(points, deep=False))
+        if getattr(self, "_representation", None) in ("surface", "wireframe"):
+            vertex_cells = None
+
         self._data.SetVerts(vertex_cells)
-        self._data.Modified()
+        return self._data.Modified()
 
     @property
     def normals(self):
@@ -887,6 +890,8 @@ class Geometry:
         prop.SetOpacity(self._appearance["opacity"])
         prop.SetPointSize(self._appearance["size"])
         prop.SetRenderPointsAsSpheres(self._appearance["render_spheres"])
+
+        self._representation = representation
         if representation == "pointcloud":
             prop.SetRepresentationToPoints()
             mapper.SetInputData(self._data)
@@ -982,23 +987,19 @@ class Geometry:
             self._set_faces(mesh.triangles)
             self.normals = mesh.compute_vertex_normals()
 
-            if representation in ("surface", "wireframe"):
-                self._data.SetVerts(None)
-
             mapper.SetInputData(self._data)
             if representation == "wireframe":
                 prop.SetRepresentationToWireframe()
             else:
                 prop.SetRepresentationToSurface()
                 prop.SetEdgeVisibility(representation == "mesh")
+                self._appearance["size"] = 2 if representation == "mesh" else 0
 
-                self._appearance["size"] = 1
-                prop.SetPointSize(self._appearance["size"])
+            if representation in ("surface", "wireframe"):
+                prop.SetVertexVisibility(False)
 
         if clipping_planes:
             mapper.SetClippingPlanes(clipping_planes)
-
-        self._representation = representation
         return self.set_appearance()
 
     def is_mesh_representation(self, representation: str = None) -> bool:

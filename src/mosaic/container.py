@@ -51,7 +51,7 @@ class DataContainer:
 
         Parameters
         ----------
-        points : np.ndarray or Geometry or SegmentationGeometry
+        points_or_geometry : np.ndarray or Geometry or SegmentationGeometry
             Points to add to the container, or an existing geometry object.
         color : tuple of float, optional
             RGB color values for the point cloud.
@@ -66,22 +66,12 @@ class DataContainer:
         if color is None:
             color = self.base_color
 
-        is_geometry = hasattr(points, "actor") and hasattr(points, "uuid")
-        if is_geometry:
-            new_geometry = points
-        else:
-            new_geometry = Geometry(points, color=color, **kwargs)
-            new_geometry.set_appearance(
-                base_color=color, highlight_color=self.highlight_color
-            )
+        geometry = points
+        if not isinstance(geometry, Geometry):
+            geometry = Geometry(points=points, **kwargs)
 
-        appearance = new_geometry._appearance
-        if "base_color" not in appearance:
-            appearance["base_color"] = color
-        if "highlight_color" not in appearance:
-            appearance["highlight_color"] = self.highlight_color
-
-        self.data.append(new_geometry)
+        geometry.set_appearance(base_color=color, highlight_color=self.highlight_color)
+        self.data.append(geometry)
         return len(self.data) - 1
 
     def remove(self, uuids_or_geometries: Union[List[str], List["Geometry"]]):

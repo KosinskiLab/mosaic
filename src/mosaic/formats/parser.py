@@ -331,9 +331,7 @@ def _read_orientations(filename: str):
 
     normals = angles.apply(NORMAL_REFERENCE)
     quaternions = angles.as_quat(scalar_first=True)
-
-    cluster = data.details.astype(int)
-    indices = [np.where(cluster == x) for x in np.unique(cluster)]
+    indices = [np.where(data.details == x) for x in np.unique(data.details)]
 
     try:
         vertex_properties = [
