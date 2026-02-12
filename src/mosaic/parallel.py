@@ -281,6 +281,7 @@ class BackgroundTaskManager(QObject):
         self._progress_queue = self._manager.Queue()
 
         self.executor = concurrent.futures.ProcessPoolExecutor(
+            mp_context=multiprocessing.get_context("spawn"),
             max_workers=int(Settings.rendering.parallel_worker),
             initializer=_init_worker_with_queue,
             initargs=(self._progress_queue,),

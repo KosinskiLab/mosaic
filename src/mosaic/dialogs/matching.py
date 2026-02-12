@@ -470,7 +470,7 @@ class ComputeTab(QWidget):
     def get_settings(self):
         return {
             "cores": self.cores_input.value(),
-            "memory": self.memory_input.text(),
+            "memory": float(self.memory_input.text()) / 100,
             "backend": self.backend_combo.currentText(),
         }
 
