@@ -30,13 +30,18 @@ __all__ = [
     "compute_scale_factor_lower",
     "center_mesh",
     "to_tsi",
+    "medial_mesh",
 ]
 
 
-def to_open3d(vertices, faces) -> o3d.geometry.TriangleMesh:
+def to_open3d(vertices, faces, normals=None) -> o3d.geometry.TriangleMesh:
     ret = o3d.geometry.TriangleMesh()
     ret.vertices = o3d.utility.Vector3dVector(np.asarray(vertices, dtype=np.float64))
     ret.triangles = o3d.utility.Vector3iVector(np.asarray(faces, dtype=np.int32))
+    if normals is not None:
+        ret.vertex_normals = o3d.utility.Vector3dVector(
+            np.asarray(normals, dtype=np.float64)
+        )
     return ret
 
 
@@ -144,11 +149,17 @@ def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
     return to_open3d(remeshed.vertex_matrix(), remeshed.face_matrix())
 
 
-def merge_meshes(vertices: List[np.ndarray], faces: List[np.ndarray]):
+def merge_meshes(
+    vertices: List[np.ndarray],
+    faces: List[np.ndarray],
+    normals: List[np.ndarray] = None,
+):
     if len(vertices) != len(faces):
         raise ValueError("Length of vertex and face list needs to match.")
     elif len(vertices) == 1:
-        return *vertices, *faces
+        if normals is not None:
+            return *vertices, *faces, *normals
+        return *vertices, *faces, None
 
     faces = [np.asarray(x) for x in faces]
     vertices = [np.asarray(x) for x in vertices]
@@ -156,12 +167,22 @@ def merge_meshes(vertices: List[np.ndarray], faces: List[np.ndarray]):
     vertex_ct = np.zeros(len(vertices) + 1, np.uint32)
     vertex_ct[1:] = np.cumsum([len(x) for x in vertices])
 
+    concat_normals = None
+    if normals is not None:
+        concat_normals = np.concatenate([np.asarray(x) for x in normals])
+
     mesh = to_open3d(
         vertices=np.concatenate([x for x in vertices]),
         faces=np.concatenate([face + vertex_ct[i] for i, face in enumerate(faces)]),
+        normals=concat_normals,
     )
     mesh = mesh.remove_duplicated_vertices()
-    return np.asarray(mesh.vertices), np.asarray(mesh.triangles)
+
+    out_normals = None
+    if mesh.has_vertex_normals():
+        out_normals = np.asarray(mesh.vertex_normals)
+
+    return np.asarray(mesh.vertices), np.asarray(mesh.triangles), out_normals
 
 
 def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
@@ -336,3 +357,55 @@ def to_tsi(vertices, faces, margin: int = 0) -> Dict:
         "n_faces": _faces.shape[0],
         "faces": _faces,
     }
+
+
+def medial_mesh(vertices, triangles, voxel_size):
+    """
+    Compute the medial surface skeleton from a shell mesh.
+
+    Parameters
+    ----------
+    vertices : np.ndarray
+        Mesh vertex positions (N, 3).
+    triangles : np.ndarray
+        Mesh triangle indices (M, 3).
+    voxel_size : float
+        Voxel size for the occupancy grid.
+
+    Returns
+    -------
+    skeleton_points : np.ndarray
+        Coordinates of skeleton voxels in world space (K, 3).
+    """
+    from ..utils import skeletonize
+
+    vertices = np.asarray(vertices, dtype=np.float64)
+    triangles = np.asarray(triangles, dtype=np.int32)
+
+    padding = voxel_size * 2
+    grid_min = vertices.min(axis=0) - padding
+    grid_max = vertices.max(axis=0) + padding
+    grid_shape = np.ceil((grid_max - grid_min) / voxel_size).astype(int)
+
+    scene = o3d.t.geometry.RaycastingScene()
+    mesh_t = o3d.t.geometry.TriangleMesh.from_legacy(to_open3d(vertices, triangles))
+    scene.add_triangles(mesh_t)
+
+    xi = np.arange(grid_shape[0]) * voxel_size + grid_min[0]
+    yi = np.arange(grid_shape[1]) * voxel_size + grid_min[1]
+    zi = np.arange(grid_shape[2]) * voxel_size + grid_min[2]
+    X, Y, Z = np.meshgrid(xi, yi, zi, indexing="ij")
+    points = np.stack([X, Y, Z], axis=-1).reshape(-1, 3).astype(np.float32)
+
+    occupancy = (
+        scene.compute_occupancy(o3d.core.Tensor(points)).numpy().reshape(grid_shape)
+    )
+    shell_volume = (occupancy > 0.5).astype(np.uint8)
+
+    skeleton = skeletonize(shell_volume, mode="core")
+    skel_coords = np.argwhere(skeleton > 0).astype(np.float64)
+    if len(skel_coords) == 0:
+        raise ValueError("Could not compute medial surface — empty skeleton.")
+    skeleton_points = skel_coords * voxel_size + grid_min
+
+    return skeleton_points

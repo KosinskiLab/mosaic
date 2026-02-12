@@ -175,7 +175,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         faces = np.arange(vertices.size // 3).reshape(-1, 3)
 
         meshes = [*[x.model.mesh for x in geoms], to_open3d(vertices, faces)]
-        vertices, faces = merge_meshes(
+        vertices, faces, _ = merge_meshes(
             vertices=[np.asarray(x.vertices) for x in meshes],
             faces=[np.asarray(x.triangles) for x in meshes],
         )

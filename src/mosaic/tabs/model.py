@@ -8,6 +8,31 @@ from ..widgets.ribbon import create_button
 from ..parallel import submit_task, submit_task_batch
 
 
+def _extract_medial_mesh(mesh_geometry):
+    from ..geometry import Geometry
+    from ..parametrization import TriangularMesh, PoissonMesh
+
+    model = mesh_geometry.model
+    if not model.mesh.is_watertight():
+        raise ValueError(
+            "Mesh is not watertight. Occupancy-based medial extraction requires "
+            "a closed surface to determine interior voxels."
+        )
+
+    voxel_size = max(mesh_geometry.sampling_rate)
+    skel_points = meshing.medial_mesh(
+        model.vertices, model.triangles, voxel_size=voxel_size
+    )
+
+    # Much slower than ball pivoting but more robust fits
+    model = PoissonMesh.fit(
+        positions=skel_points, voxel_size=voxel_size, deldist=2 * voxel_size, depth=7
+    )
+    geom = Geometry(model=model, sampling_rate=mesh_geometry.sampling_rate)
+    geom.change_representation("surface")
+    return geom
+
+
 def _project(
     mesh_geometry,
     geometries,
@@ -166,6 +191,13 @@ class ModelTab(QWidget):
                 "Project points onto mesh",
                 PROJECTION_SETTINGS,
             ),
+            create_button(
+                "Medial",
+                "ph.intersect",
+                self,
+                self._extract_medial_volumetric,
+                "Extract medial surface skeleton from a shell mesh",
+            ),
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
 
@@ -195,6 +227,7 @@ class ModelTab(QWidget):
         curvature_weight=0,
         volume_weight=0,
         boundary_ring=0,
+        flip_normals=False,
         **kwargs,
     ):
         from ..parametrization import TriangularMesh
@@ -215,6 +248,8 @@ class ModelTab(QWidget):
                 hole_len_thr=max_hole_size,
                 n_ring=boundary_ring,
             )
+            if flip_normals:
+                fs = fs[:, ::-1]
             geom = geometry[...]
             geom._model = TriangularMesh(meshing.to_open3d(vs, fs))
             geom.change_representation("surface")
@@ -284,6 +319,20 @@ class ModelTab(QWidget):
                 method,
                 **kwargs,
             )
+
+    def _extract_medial_volumetric(self, **kwargs):
+        tasks = []
+        for geometry in self._get_selected_meshes():
+            tasks.append(
+                {
+                    "name": "Medial Mesh",
+                    "func": _extract_medial_mesh,
+                    "callback": self._default_callback,
+                    "kwargs": {"mesh_geometry": geometry},
+                }
+            )
+        # Setting concurency due to PoissonMesh
+        submit_task_batch(tasks, max_concurrent=1)
 
     def _project_on_mesh(
         self,
@@ -443,6 +492,13 @@ REPAIR_SETTINGS = {
             "min": -1.0,
             "default": -1.0,
             "description": "Maximum surface area of holes considered for triangulation.",
+        },
+        {
+            "label": "Flip Normals",
+            "parameter": "flip_normals",
+            "type": "boolean",
+            "default": False,
+            "description": "Reverse normal direction of the mesh.",
         },
     ],
 }
@@ -655,7 +711,7 @@ MESH_SETTINGS = {
                 "description": "Ball radii used for surface reconstruction.",
                 "notes": "Use commas to specify multiple radii, e.g. '50,30.5,10.0'.",
             },
-            REPAIR_SETTINGS["settings"][-1],
+            REPAIR_SETTINGS["settings"][5],  # Hole Size
             {
                 "label": "Downsample",
                 "parameter": "downsample_input",

@@ -1580,11 +1580,19 @@ def merge(models: Tuple[Parametrization]) -> Parametrization:
         return None
 
     if all(isinstance(x, TriangularMesh) for x in models):
-        vertices, faces = meshing.merge_meshes(
+        has_normals = all(x.mesh.has_vertex_normals() for x in models)
+        vertices, faces, normals = meshing.merge_meshes(
             vertices=[x.vertices for x in models],
             faces=[x.triangles for x in models],
+            normals=(
+                [np.asarray(x.mesh.vertex_normals) for x in models]
+                if has_normals
+                else None
+            ),
         )
-        return TriangularMesh(meshing.to_open3d(vertices, faces), repair=False)
+        return TriangularMesh(
+            meshing.to_open3d(vertices, faces, normals=normals), repair=False
+        )
     warnings.warn("Currently only mesh merging is supported.")
     return models[0]
 

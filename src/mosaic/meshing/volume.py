@@ -192,10 +192,13 @@ class MeshMerger:
     def execute(self):
         meshes = [o3d.io.read_triangle_mesh(x) for x in self._get_submeshes()]
 
-        vertices, faces = merge_meshes(
-            [mesh.vertices for mesh in meshes], [mesh.triangles for mesh in meshes]
+        has_normals = all(m.has_vertex_normals() for m in meshes)
+        vertices, faces, normals = merge_meshes(
+            vertices=[mesh.vertices for mesh in meshes],
+            faces=[mesh.triangles for mesh in meshes],
+            normals=[mesh.vertex_normals for mesh in meshes] if has_normals else None,
         )
-        mesh = to_open3d(vertices, faces)
+        mesh = to_open3d(vertices, faces, normals=normals)
 
         opath = join(self.output_dir, f"{self.seq_id}.obj")
         o3d.io.write_triangle_mesh(opath, mesh)
