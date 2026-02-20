@@ -1156,7 +1156,8 @@ class VolumeGeometry(Geometry):
         lower : float, optional
             Lower isovalue threshold, by default 0.
         """
-        return self._surface.SetValue(int(lower), upper)
+        if self._representation == "volume":
+            return self._surface.SetValue(int(lower), upper)
 
     def update_isovalue_quantile(
         self, upper_quantile: float, lower_quantile: float = 0.0

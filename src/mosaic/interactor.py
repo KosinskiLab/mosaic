@@ -204,9 +204,6 @@ class DataContainerInteractor(QObject):
         """
         from .geometry import Geometry
 
-        from time import time
-
-        start = time()
         new_cluster, remove_cluster = [], []
         for uuid, point_ids in selected_point_ids.items():
             if (geometry := self.container.get(uuid)) is None:
@@ -230,7 +227,7 @@ class DataContainerInteractor(QObject):
 
         self.container.remove(remove_cluster)
         if len(new_cluster) and add:
-            idx = self.add(Geometry.merge(new_cluster))
+            return self.add(Geometry.merge(new_cluster))
         return -1
 
     def _add_point(self, point):
@@ -564,7 +561,7 @@ class DataContainerInteractor(QObject):
         dialog.parametersChanged.connect(on_parameters_changed)
 
         if dialog.exec() == QDialog.DialogCode.Rejected:
-            on_parameters_changed(base_parameters)
+            pass
         return 1
 
     def _uuid_to_items(self):
@@ -650,9 +647,11 @@ class DataContainerInteractor(QObject):
             return -1
 
         for geometry in geometries:
+
             if representation == "segmentation":
                 if isinstance(geometry, SegmentationGeometry):
                     continue
+
                 seg = SegmentationGeometry(
                     points=geometry.points,
                     sampling_rate=geometry.sampling_rate,

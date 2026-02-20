@@ -335,7 +335,13 @@ def _read_orientations(filename: str):
 
     try:
         vertex_properties = [
-            VertexPropertyContainer({"pytme_score": data.scores[x]}) for x in indices
+            VertexPropertyContainer(
+                {
+                    "pytme_score": data.scores[x],
+                    "entity": data.details[x],
+                }
+            )
+            for x in indices
         ]
     except Exception:
         vertex_properties = None
@@ -532,15 +538,13 @@ def _return_mesh(mesh, vertex_properties: dict = None) -> GeometryDataContainer:
     GeometryDataContainer
         Converted geometry data container.
     """
-    mesh.compute_vertex_normals()
-    vertices = np.asarray(mesh.vertices)
-    faces = np.asarray(mesh.triangles)
-    normals = np.asarray(mesh.vertex_normals)
+    if not mesh.has_vertex_normals():
+        mesh.compute_vertex_normals()
 
     return GeometryDataContainer(
-        vertices=[vertices],
-        faces=[faces],
-        normals=[normals],
+        vertices=[np.asarray(mesh.vertices)],
+        faces=[np.asarray(mesh.triangles)],
+        normals=[np.asarray(mesh.vertex_normals)],
         vertex_properties=[VertexPropertyContainer(vertex_properties)],
     )
 
