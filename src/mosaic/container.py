@@ -8,8 +8,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from typing import List, Tuple, Union, Dict
 
-import numpy as np
-
 __all__ = ["DataContainer"]
 
 
@@ -206,21 +204,32 @@ class DataContainer:
         bool
             True if full render required (actor was replaced)
         """
-        from .geometry import VolumeGeometry, SegmentationGeometry
         from .formats.parser import load_density
+        from .geometry import VolumeGeometry, SegmentationGeometry
 
-        volume = parameters.get("volume", None)
-        volume_path = parameters.get("volume_path", None)
+        uuids = self._to_uuids(uuids_or_geometries)
+        geometries = [self.get(x) for x in uuids if self.get(x) is not None]
+
+        # Omit reload if this volume is already shown for all volume representations
+        if (volume_path := parameters.get("volume_path", None)) is not None:
+            paths = [
+                x._meta.get("volume_path")
+                for x in geometries
+                if "volume_path" in x._meta and x._representation == "volume"
+            ]
+            if len(paths) == 1 and volume_path in paths:
+                volume_path = None
+
+        volume = None
         if volume_path is not None:
-            volume = load_density(volume_path)
+            density = load_density(volume_path)
 
-        if volume is not None:
-            sampling = volume.sampling_rate
-            volume = volume.data * parameters.get("scale", 1.0)
+            sampling = density.sampling_rate
+            volume = density.data * parameters.get("scale", 1.0)
 
         full_render = False
         parameters["isovalue_percentile"] = parameters.get("isovalue_percentile", 99.5)
-        for uuid in self._to_uuids(uuids_or_geometries):
+        for uuid in uuids:
             if (geometry := self.get(uuid)) is None:
                 continue
 
@@ -233,21 +242,14 @@ class DataContainer:
                     geometry = geometry[...]
                 state = geometry.__getstate__()
 
-                try:
-                    data_recent = np.allclose(state["volume"], volume)
-                    # Check if representation has been switched in the meantime
-                    data_recent = data_recent and geometry._representation == "volume"
-                except Exception:
-                    data_recent = False
+                state["volume"] = volume
+                state["volume_sampling_rate"] = sampling
+                state["meta"]["volume_path"] = volume_path
 
-                if not data_recent:
-                    state["volume"] = volume
-                    state["volume_sampling_rate"] = sampling
-
-                    # New actor so make sure to re-render
-                    full_render = True
-                    geometry = VolumeGeometry(**state)
-                    self.update(uuid, geometry)
+                # New actor so make sure to re-render
+                full_render = True
+                geometry = VolumeGeometry(**state)
+                self.update(uuid, geometry)
 
             geometry.set_appearance(**parameters)
 

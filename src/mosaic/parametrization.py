@@ -912,7 +912,8 @@ class TriangularMesh(Parametrization):
             raise ValueError("Only 'gaussian' and 'mean' curvature supported.")
 
     def compute_vertex_normals(self) -> np.ndarray:
-        self.mesh.compute_vertex_normals()
+        if not self.mesh.has_vertex_normals():
+            self.mesh.compute_vertex_normals()
         return np.asarray(self.mesh.vertex_normals).copy()
 
     def points_per_sampling(

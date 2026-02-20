@@ -327,10 +327,17 @@ class GeometryPropertiesDialog(QDialog):
         self.sampling_z.textChanged.connect(self.emit_parameters)
         self.base_color_picker.colorChanged.connect(self.emit_parameters)
         self.highlight_color_picker.colorChanged.connect(self.emit_parameters)
-        self.attach_button.clicked.connect(self.emit_parameters)
+
+        self.attach_button.clicked.connect(self.reattach_emit)
+
+    def reattach_emit(self):
+        parameters = self.get_parameters()
+        self.parametersChanged.emit(parameters)
 
     def emit_parameters(self):
         parameters = self.get_parameters()
+        if self.volume_path == self.initial_properties.get("volume_path"):
+            parameters["volume_path"] = None
         self.parametersChanged.emit(parameters)
 
     def _reset_to_defaults(self):

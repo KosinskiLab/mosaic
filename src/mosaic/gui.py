@@ -1226,7 +1226,7 @@ class App(QMainWindow):
 
                 container, interactor = self.cdata._models, self.cdata.models
                 geom_data["model"] = TriangularMesh(
-                    to_open3d(data.vertices, data.faces)
+                    to_open3d(data.vertices, data.faces, data.normals)
                 )
 
             geometry = container.get(interactor.add(**geom_data))
