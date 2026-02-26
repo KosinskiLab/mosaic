@@ -230,7 +230,7 @@ class GeometryPropertiesDialog(QDialog):
         self.scale_positive.setToolTip("Use positive density values")
         self.scale_negative = QRadioButton("-1")
         self.scale_negative.setToolTip("Invert density (for negative stain maps)")
-        if self.initial_properties.get("scale", 0) >= 0:
+        if self.initial_properties.get("volume_scale", 0) >= 0:
             self.scale_positive.setChecked(True)
         else:
             self.scale_negative.setChecked(True)
@@ -332,12 +332,11 @@ class GeometryPropertiesDialog(QDialog):
 
     def reattach_emit(self):
         parameters = self.get_parameters()
+        parameters["reattach_volume"] = True
         self.parametersChanged.emit(parameters)
 
     def emit_parameters(self):
         parameters = self.get_parameters()
-        if self.volume_path == self.initial_properties.get("volume_path"):
-            parameters["volume_path"] = None
         self.parametersChanged.emit(parameters)
 
     def _reset_to_defaults(self):
@@ -399,6 +398,7 @@ class GeometryPropertiesDialog(QDialog):
             "scale": -1 if self.scale_negative.isChecked() else 1,
             "isovalue_percentile": self.isovalue_slider.value(),
             "volume_path": self.volume_path,
+            "reattach_volume": False,
             "sampling_rate": (
                 float(get_widget_value(self.sampling_x)),
                 float(get_widget_value(self.sampling_y)),

@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 from vtk import vtkTransform
 from qtpy.QtWidgets import QDialog
 
-from ..stylesheets import Colors, QPushButton_style
+from ..stylesheets import Colors, QPushButton_style, QScrollArea_style
 
 
 class BaseAnimation(ABC):
@@ -59,6 +59,15 @@ class BaseAnimation(ABC):
         """Update parameter settings and handle associated depencies"""
         self.parameters.update(**kwargs)
 
+    def reset(self) -> None:
+        """Reset any externally-modified state before a new frame is applied.
+
+        Called by the composer before each frame so that animations which
+        modify shared state (e.g. actor opacity) can restore defaults first.
+        Override in subclasses that need this; the base implementation is a no-op.
+        """
+        pass
+
     def update(self, global_frame: int) -> None:
         """Update animation state for the given global frame"""
         if not self.enabled:
@@ -78,6 +87,17 @@ class BaseAnimation(ABC):
         if return_renderer:
             return camera, renderer
         return camera
+
+    def _get_progress(self, frame: int):
+        """Compute eased progress in [0, 1] for the given local frame.
+
+        Returns None if the animation has zero duration.
+        """
+        duration = self.stop_frame - self.start_frame
+        if duration <= 0:
+            return None
+        t = (frame - self.start_frame) / duration
+        return self._ease(max(0.0, min(1.0, t)))
 
     def _ease(self, t: float) -> float:
         """Apply easing function to progress value t in [0, 1]."""
@@ -161,6 +181,9 @@ class VolumeAnimation(BaseAnimation):
         self.parameters.clear()
         self.parameters["direction"] = "forward"
         self.parameters["projection"] = "Off"
+        self.parameters["axis"] = "Z"
+        self.parameters["hide"] = False
+        self._original_visibility = None
         try:
             self.update_parameters(
                 axis=self.volume_viewer.primary.orientation_selector.currentText().lower()
@@ -168,16 +191,14 @@ class VolumeAnimation(BaseAnimation):
         except Exception:
             pass
 
-    def update_parameters(self, **kwargs):
-        new_axis = kwargs.get("axis")
-        if new_axis and new_axis != self.parameters.get("axis"):
-            _mapping = {"x": 0, "y": 1, "z": 2}
-            shape = self.volume_viewer.primary.get_dimensions()
-            self.start_frame = 0
-            self.stop_frame = shape[_mapping.get(new_axis, 0)]
-            kwargs["axis"] = new_axis.upper()
+    def reset(self) -> None:
+        """Restore volume visibility to the state before this animation touched it.
 
-        return super().update_parameters(**kwargs)
+        Uses the VTK actor directly to avoid triggering intermediate renders
+        that would cause flickering during playback.
+        """
+        if self._original_visibility is not None:
+            self.volume_viewer.primary.slice.SetVisibility(self._original_visibility)
 
     def get_settings(self) -> List[Dict[str, Any]]:
         projection = [
@@ -205,13 +226,61 @@ class VolumeAnimation(BaseAnimation):
                 "default": self.volume_viewer.primary.orientation_selector.currentText(),
                 "description": "Direction to slice through.",
             },
+            {
+                "label": "hide",
+                "type": "select",
+                "options": ["False", "True"],
+                "default": str(self.parameters.get("hide", False)),
+                "description": "Hide the volume during the animation.",
+            },
         ]
+
+    def update_parameters(self, **kwargs):
+        if "hide" in kwargs:
+            value = kwargs["hide"]
+            if isinstance(value, str):
+                value = value == "True"
+            kwargs["hide"] = value
+
+        new_axis = kwargs.get("axis")
+        if new_axis and new_axis != self.parameters.get("axis"):
+            _mapping = {"x": 0, "y": 1, "z": 2}
+            shape = self.volume_viewer.primary.get_dimensions()
+            self.start_frame = 0
+            self.stop_frame = shape[_mapping.get(new_axis, 0)]
+            kwargs["axis"] = new_axis.upper()
+
+        # Skip the duplicate axis handling in the parent by calling grandparent
+        self.parameters.update(**kwargs)
+
+    def update(self, global_frame: int) -> None:
+        """Apply hide visibility with forwards-fill semantics.
+
+        Before the range the volume keeps whatever visibility was set by
+        ``reset()`` or an earlier animation. During and after the range
+        the hide state persists so that later animations can build on it.
+        """
+        if not self.enabled:
+            return
+        local_frame = global_frame - self.global_start_frame + self.start_frame
+        if local_frame < self.start_frame:
+            return
+        local_frame = min(self.stop_frame, local_frame)
+        if (local_frame >= self.start_frame) and (local_frame % self.stride) == 0:
+            self._update(local_frame)
 
     def _update(self, frame: int) -> None:
         if self.parameters["direction"] == "backward":
             frame = self.stop_frame - frame
 
         viewer = self.volume_viewer.primary
+
+        # Track original visibility so reset() can restore it
+        if self._original_visibility is None:
+            self._original_visibility = viewer.is_visible
+
+        if self.parameters.get("hide", False):
+            viewer.slice.SetVisibility(False)
 
         # We change the widgets rather than calling the underlying functions
         # to ensure the GUI is updated accordingly for interactive views
@@ -278,13 +347,9 @@ class CameraAnimation(BaseAnimation):
             self._initial_focal = camera.GetFocalPoint()
             self._initial_view_up = camera.GetViewUp()
 
-        # Calculate progress through the animation
-        duration = self.stop_frame - self.start_frame
-        if duration <= 0:
+        progress = self._get_progress(frame)
+        if progress is None:
             return
-
-        progress = (frame - self.start_frame) / duration
-        progress = max(0.0, min(1.0, progress))
 
         # Calculate total rotation angle at this point
         total_degrees = self.parameters["degrees"]
@@ -344,7 +409,7 @@ class ActorSelectionDialog(QDialog):
         self.setWindowTitle("Select Objects")
         self.resize(400, 500)
         self.setModal(True)
-        self.setStyleSheet(QPushButton_style)
+        self.setStyleSheet(QPushButton_style + QScrollArea_style)
 
         self._cdata = cdata
         self._trees = []
@@ -397,10 +462,13 @@ class ActorSelectionDialog(QDialog):
                     obj.visible,
                     {"object_id": id(obj), "data_type": data_type, **obj._meta},
                 )
-                item.setSelected(id(obj) in current_selection)
                 uuid_to_item[uuid] = item
 
             tree.apply_state(state, uuid_to_item)
+
+            for uuid, obj in objects.items():
+                if uuid in uuid_to_item and id(obj) in current_selection:
+                    uuid_to_item[uuid].setSelected(True)
             layout.addWidget(tree)
 
             separator = QFrame()
@@ -440,6 +508,7 @@ class VisibilityAnimation(BaseAnimation):
         self.parameters.update(
             {"start_opacity": 1.0, "target_opacity": 0.0, "easing": "instant"}
         )
+        self._original_opacities = {}
 
     def get_settings(self) -> List[Dict[str, Any]]:
         return [
@@ -508,124 +577,346 @@ class VisibilityAnimation(BaseAnimation):
 
         return actors
 
+    def reset(self) -> None:
+        """Restore actors to the opacity they had before this animation touched them."""
+        for actor in self._get_actors():
+            original = self._original_opacities.get(id(actor))
+            if original is not None:
+                actor.GetProperty().SetOpacity(original)
+
+    def update(self, global_frame: int) -> None:
+        """Forwards-fill: apply during and after the range, skip before.
+
+        Before the range the actor keeps whatever opacity was set by reset()
+        or an earlier animation.  After the range the end state persists.
+        """
+        if not self.enabled:
+            return
+        local_frame = global_frame - self.global_start_frame + self.start_frame
+        if local_frame < self.start_frame:
+            return
+        local_frame = min(self.stop_frame, local_frame)
+        self._update(local_frame)
+
     def _update(self, frame: int) -> None:
-        # Calculate progress through the animation
-        duration = self.stop_frame - self.start_frame
-        if duration <= 0:
+        progress = self._get_progress(frame)
+        if progress is None:
             return
 
-        progress = (frame - self.start_frame) / duration
-        progress = max(0.0, min(1.0, progress))
-
-        # Apply easing
-        eased_progress = self._ease(progress)
-
-        # Interpolate opacity
         start_opacity = self.parameters["start_opacity"]
         target_opacity = self.parameters["target_opacity"]
-        current_opacity = (
-            start_opacity + (target_opacity - start_opacity) * eased_progress
-        )
+        current_opacity = start_opacity + (target_opacity - start_opacity) * progress
 
         for actor in self._get_actors():
+            if id(actor) not in self._original_opacities:
+                self._original_opacities[id(actor)] = actor.GetProperty().GetOpacity()
             actor.GetProperty().SetOpacity(current_opacity)
 
 
 class WaypointAnimation(BaseAnimation):
-    """Animation that smoothly moves between defined waypoints"""
+    """Animation that smoothly moves the camera between captured waypoints.
+
+    Each waypoint stores the full camera state (position, focal point, view-up)
+    so that the camera orientation is interpolated correctly along the path.
+    """
 
     def _init_parameters(self) -> None:
         self.parameters.clear()
         self.parameters.update(
-            {"waypoints": [], "spline_order": 3, "target_position": [0.0, 0.0, 0.0]}
+            {
+                "waypoints": [],
+                "spline_order": 3,
+                "easing": "linear",
+            }
         )
-        camera = self._get_rendering_context()
-        self.parameters["waypoints"].append(camera.GetPosition())
+        self._path_actors = []
+        self._curve = None
+        self._positions = None
+        self._focal_points = None
+        self._view_ups = None
 
     def update_parameters(self, **kwargs):
-        if "target_position" in kwargs:
-            target = kwargs["target_position"].split(",")
-            try:
-                target = [float(x) for x in target]
-            except ValueError:
-                return None
-            if len(target) == 3:
-                self.parameters["waypoints"].append(target)
-                self._init_spline()
+        if "add_waypoint" in kwargs:
+            self._capture_waypoint()
+            kwargs.pop("add_waypoint")
+
+        if "remove_waypoint" in kwargs:
+            self._remove_last_waypoint()
+            kwargs.pop("remove_waypoint")
+
+        if "clear_waypoints" in kwargs:
+            self._clear_waypoints()
+            kwargs.pop("clear_waypoints")
+
+        if "waypoints" in kwargs:
+            self.parameters["waypoints"] = kwargs.pop("waypoints")
+            self._init_spline()
 
         if "spline_order" in kwargs:
-            self.parameters["spline_order"] = kwargs["spline_order"]
+            self.parameters["spline_order"] = int(kwargs.pop("spline_order"))
             self._init_spline()
+            self._update_path_preview()
+
+        if "easing" in kwargs:
+            self.parameters["easing"] = kwargs.pop("easing")
 
         return super().update_parameters(**kwargs)
 
+    def _capture_waypoint(self):
+        """Capture the current camera state as a new waypoint."""
+        camera = self._get_rendering_context()
+        waypoint = {
+            "position": list(camera.GetPosition()),
+            "focal_point": list(camera.GetFocalPoint()),
+            "view_up": list(camera.GetViewUp()),
+        }
+        self.parameters["waypoints"].append(waypoint)
+        self._init_spline()
+        self._update_path_preview()
+
+    def _remove_last_waypoint(self):
+        """Remove the most recently added waypoint."""
+        waypoints = self.parameters["waypoints"]
+        if waypoints:
+            waypoints.pop()
+            self._init_spline()
+            self._update_path_preview()
+
+    def _clear_waypoints(self):
+        """Remove all waypoints."""
+        self.parameters["waypoints"].clear()
+        self._init_spline()
+        self.cleanup_preview()
+
     def _init_spline(self):
-        """Initialize the spline curve from waypoints"""
+        """Initialize the spline curve from waypoints."""
+        import numpy as np
         from mosaic.parametrization import SplineCurve
 
         waypoints = self.parameters.get("waypoints", [])
         if len(waypoints) < 2:
-            print("Need at least two waypoints")
-            return None
+            self._curve = None
+            self._positions = None
+            self._focal_points = None
+            self._view_ups = None
+            return
 
-        self._curve = SplineCurve(
-            positions=waypoints, order=int(self.parameters.get("spline_order", 3))
+        positions = np.array([w["position"] for w in waypoints])
+        focal_points = np.array([w["focal_point"] for w in waypoints])
+        view_ups = np.array([w["view_up"] for w in waypoints])
+
+        order = int(self.parameters.get("spline_order", 3))
+        order = min(order, len(waypoints) - 1)
+
+        self._curve = SplineCurve(positions=positions, order=order)
+
+        n_samples = max(self.stop_frame - self.start_frame + 1, 2)
+        self._positions = self._curve.sample(n_samples)
+
+        # Linear interpolation for focal points and view-up vectors
+        t = np.linspace(0, 1, n_samples)
+        t_wp = np.linspace(0, 1, len(waypoints))
+        self._focal_points = np.column_stack(
+            [np.interp(t, t_wp, focal_points[:, i]) for i in range(3)]
         )
-        self._positions = self._curve.sample(self.stop_frame)
+        self._view_ups = np.column_stack(
+            [np.interp(t, t_wp, view_ups[:, i]) for i in range(3)]
+        )
 
-        # Save initial state
-        camera, renderer = self._get_rendering_context(return_renderer=True)
-        self._initial_position = camera.GetPosition()
-        self._initial_focal = camera.GetFocalPoint()
-        self._initial_view_up = camera.GetViewUp()
+    def _update_path_preview(self):
+        """Visualize the camera path in the 3D viewport.
+
+        Draws from the same sampled positions used by the animation so the
+        preview exactly matches what plays back.
+        """
+        import vtk
+
+        _, renderer = self._get_rendering_context(return_renderer=True)
+
+        # Remove old preview actors
+        self.cleanup_preview()
+
+        waypoints = self.parameters.get("waypoints", [])
+
+        # Show point markers even for a single waypoint
+        if len(waypoints) < 2 or self._positions is None:
+            for wp in waypoints:
+                actor = self._create_waypoint_marker(wp["position"])
+                renderer.AddActor(actor)
+                self._path_actors.append(actor)
+            self.vtk_widget.GetRenderWindow().Render()
+            return
+
+        # Build a polyline from the sampled animation positions
+        vtk_points = vtk.vtkPoints()
+        for pos in self._positions:
+            vtk_points.InsertNextPoint(pos)
+
+        lines = vtk.vtkCellArray()
+        n_pts = len(self._positions)
+        lines.InsertNextCell(n_pts)
+        for i in range(n_pts):
+            lines.InsertCellPoint(i)
+
+        poly_data = vtk.vtkPolyData()
+        poly_data.SetPoints(vtk_points)
+        poly_data.SetLines(lines)
+
+        tube_filter = vtk.vtkTubeFilter()
+        tube_filter.SetInputData(poly_data)
+        tube_filter.SetRadius(1.0)
+        tube_filter.SetNumberOfSides(8)
+        tube_filter.SetVaryRadiusToVaryRadiusOff()
+        tube_filter.Update()
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(tube_filter.GetOutputPort())
+        mapper.SetResolveCoincidentTopologyToPolygonOffset()
+        mapper.SetScalarVisibility(False)
+
+        path_actor = vtk.vtkActor()
+        path_actor.SetMapper(mapper)
+        # Pink #ec4899 → RGB
+        path_actor.GetProperty().SetColor(0.925, 0.286, 0.6)
+        path_actor.GetProperty().SetOpacity(0.7)
+        renderer.AddActor(path_actor)
+        self._path_actors.append(path_actor)
+
+        # Add sphere markers at each waypoint
+        for wp in waypoints:
+            actor = self._create_waypoint_marker(wp["position"])
+            renderer.AddActor(actor)
+            self._path_actors.append(actor)
+
+        self.vtk_widget.GetRenderWindow().Render()
+
+    def _create_waypoint_marker(self, position):
+        """Create a small sphere actor at the given position."""
+        import vtk
+
+        point_data = vtk.vtkPoints()
+        point_data.InsertNextPoint(position)
+
+        vertices = vtk.vtkCellArray()
+        vertices.InsertNextCell(1)
+        vertices.InsertCellPoint(0)
+
+        poly_data = vtk.vtkPolyData()
+        poly_data.SetPoints(point_data)
+        poly_data.SetVerts(vertices)
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputData(poly_data)
+        mapper.SetResolveCoincidentTopologyToPolygonOffset()
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        # Pink #ec4899
+        actor.GetProperty().SetColor(0.925, 0.286, 0.6)
+        actor.GetProperty().SetPointSize(12)
+        actor.GetProperty().SetRenderPointsAsSpheres(True)
+
+        return actor
+
+    def cleanup_preview(self):
+        """Remove all preview actors from the renderer."""
+        try:
+            _, renderer = self._get_rendering_context(return_renderer=True)
+            for actor in self._path_actors:
+                renderer.RemoveActor(actor)
+            self._path_actors.clear()
+            self.vtk_widget.GetRenderWindow().Render()
+        except Exception:
+            self._path_actors.clear()
 
     def get_settings(self) -> List[Dict[str, Any]]:
-        current_position = self._get_rendering_context().GetPosition()
-        current_position = ",".join([str(round(x, 2)) for x in current_position])
-        settings = [
+        n = len(self.parameters.get("waypoints", []))
+        count_text = f"{n} waypoint{'s' if n != 1 else ''} defined"
+        return [
             {
-                "label": "target_position",
-                "type": "text",
-                "default": current_position,
-                "description": "Target position to move to (format: x, y, z)",
+                "label": "Capture Current View",
+                "type": "button",
+                "text": "Capture",
+                "callback": lambda _=None: self.update_parameters(add_waypoint=True),
+                "description": "Add the current camera position as a waypoint",
+            },
+            {
+                "label": "Remove Last",
+                "type": "button",
+                "text": "Remove",
+                "callback": lambda _=None: self.update_parameters(remove_waypoint=True),
+                "description": "Remove the last waypoint",
+            },
+            {
+                "label": "Clear All",
+                "type": "button",
+                "text": "Clear",
+                "callback": lambda _=None: self.update_parameters(clear_waypoints=True),
+                "description": "Remove all waypoints",
+            },
+            {
+                "label": "waypoints_count",
+                "type": "label",
+                "text": count_text,
+                "description": "Number of waypoints defined",
             },
             {
                 "label": "spline_order",
                 "type": "select",
                 "options": ["1", "2", "3"],
                 "default": str(self.parameters.get("spline_order", 3)),
-                "description": "Order of spline interpolation (1=linear, 2=quadratic, 3=cubic)",
+                "description": "Spline interpolation order (1=linear, 2=quadratic, 3=cubic)",
+            },
+            {
+                "label": "easing",
+                "type": "select",
+                "options": ["linear", "ease-in", "ease-out", "ease-in-out"],
+                "default": self.parameters.get("easing", "linear"),
+                "description": "Easing function for playback speed",
             },
         ]
-        return settings
 
     def _update(self, frame: int) -> None:
-        if not hasattr(self, "_curve"):
-            self._init_spline()
-            if not hasattr(self, "_curve"):
-                return None
+        import numpy as np
 
-        duration = self.stop_frame - self.start_frame
-        if duration <= 0:
+        if len(self.parameters.get("waypoints", [])) < 2:
             return
 
-        # Resample if duration changed
-        if len(self._positions) != duration + 1:
-            self._positions = self._curve.sample(duration + 1)
+        # (Re)sample if needed
+        n_samples = self.stop_frame - self.start_frame + 1
+        if self._positions is None or len(self._positions) != n_samples:
+            self._init_spline()
+            if self._positions is None:
+                return
 
-        # Calculate local frame index
-        local_frame = frame - self.start_frame
-        local_frame = max(0, min(len(self._positions) - 1, local_frame))
+        progress = self._get_progress(frame)
+        if progress is None:
+            return
+
+        # Map eased progress to sample index
+        idx = progress * (n_samples - 1)
+        idx_low = int(idx)
+        idx_high = min(idx_low + 1, n_samples - 1)
+        frac = idx - idx_low
+
+        # Linearly interpolate between adjacent samples
+        new_pos = (1 - frac) * self._positions[idx_low] + frac * self._positions[
+            idx_high
+        ]
+        new_focal = (1 - frac) * self._focal_points[
+            idx_low
+        ] + frac * self._focal_points[idx_high]
+        new_up = (1 - frac) * self._view_ups[idx_low] + frac * self._view_ups[idx_high]
+
+        # Normalize view-up vector
+        up_len = np.linalg.norm(new_up)
+        if up_len > 0:
+            new_up = new_up / up_len
 
         camera, renderer = self._get_rendering_context(return_renderer=True)
-
-        new_pos = self._positions[local_frame]
-        displacement = [new_pos[i] - self._initial_position[i] for i in range(3)]
-
-        new_focal = [self._initial_focal[i] + displacement[i] for i in range(3)]
         camera.SetPosition(*new_pos)
         camera.SetFocalPoint(*new_focal)
-
+        camera.SetViewUp(*new_up)
         renderer.ResetCameraClippingRange()
 
 
@@ -669,20 +960,16 @@ class ZoomAnimation(BaseAnimation):
             self._initial_position = camera.GetPosition()
             self._initial_focal = camera.GetFocalPoint()
 
-        duration = self.stop_frame - self.start_frame
-        if duration <= 0:
+        progress = self._get_progress(frame)
+        if progress is None:
             return
-
-        progress = (frame - self.start_frame) / duration
-        progress = max(0.0, min(1.0, progress))
-        eased_progress = self._ease(progress)
 
         zoom_factor = self.parameters["zoom_factor"]
         target_distance = self._initial_distance / zoom_factor
 
         current_distance = (
             self._initial_distance
-            + (target_distance - self._initial_distance) * eased_progress
+            + (target_distance - self._initial_distance) * progress
         )
 
         # Move camera along the view direction

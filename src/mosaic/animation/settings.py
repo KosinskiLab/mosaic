@@ -166,7 +166,16 @@ class AnimationSettings(QGroupBox):
         for widget_settings in animation.get_settings():
             if widget_settings["type"] == "button":
                 widget = QPushButton(widget_settings["text"])
-                widget.clicked.connect(widget_settings["callback"])
+
+                def _on_button(_checked, cb=widget_settings["callback"]):
+                    cb(_checked)
+                    if self.animation:
+                        self.set_animation(self.animation)
+
+                widget.clicked.connect(_on_button)
+            elif widget_settings["type"] == "label":
+                widget = QLabel(widget_settings.get("text", ""))
+                widget.setStyleSheet("color: #9ca3af;")
             else:
                 widget = create_setting_widget(widget_settings)
 

@@ -23,8 +23,6 @@ from qtpy.QtWidgets import (
     QToolButton,
     QSpinBox,
     QGroupBox,
-    QScrollArea,
-    QFrame,
     QFileDialog,
     QMessageBox,
     QApplication,
@@ -221,33 +219,17 @@ class AnimationComposerDialog(QDialog):
             anims_layout.addWidget(btn, i // cols, i % cols)
         main_layout.addWidget(anims_group)
 
-        # Scrollable settings area
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-
-        scroll_content = QWidget()
-        scroll_content.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
-        )
-        scroll_layout = QVBoxLayout(scroll_content)
-        scroll_layout.setContentsMargins(0, 0, 0, 0)
-        scroll_layout.setSpacing(8)
-
+        # Track settings
         self.properties_panel = AnimationSettings()
         self.properties_panel.animationChanged.connect(self._on_animation_changed)
-        scroll_layout.addWidget(self.properties_panel)
-        scroll_layout.addStretch()
-
-        scroll_area.setWidget(scroll_content)
-        main_layout.addWidget(scroll_area, 1)
+        main_layout.addWidget(self.properties_panel)
 
         self.setMinimumWidth(280)
         self.resize(300, 700)
 
     def _load_preset(self, preset_type: str):
         """Load a preset animation configuration."""
+        self._cleanup_tracks()
         self.tracks.clear()
         self.timeline.set_tracks(self.tracks)
 
@@ -401,11 +383,20 @@ class AnimationComposerDialog(QDialog):
             t.animation.global_start_frame + t.animation.duration for t in self.tracks
         )
 
+    def _cleanup_tracks(self, tracks=None):
+        """Reset animation state and remove preview actors for the given tracks."""
+        for track in tracks or self.tracks:
+            track.animation.reset()
+            if hasattr(track.animation, "cleanup_preview"):
+                track.animation.cleanup_preview()
+
     def _get_track(self, track_id: str):
         return next((t for t in self.tracks if t.id == track_id), None)
 
     def delete_track(self, track_id: str):
         """Remove a track from the timeline."""
+        removed = [t for t in self.tracks if t.id == track_id]
+        self._cleanup_tracks(removed)
         self.tracks = [t for t in self.tracks if t.id != track_id]
         if self.selected_track == track_id:
             self.selected_track = None
@@ -461,6 +452,8 @@ class AnimationComposerDialog(QDialog):
             self.toggle_play()
 
         for track in self.tracks:
+            track.animation.reset()
+        for track in self.tracks:
             track.animation.update(self.current_frame)
 
         self.vtk_widget.GetRenderWindow().Render()
@@ -469,14 +462,23 @@ class AnimationComposerDialog(QDialog):
         """Jump to the last frame."""
         self.set_current_frame(self._get_total_frames())
 
+    def _set_preview_visibility(self, visible: bool):
+        """Show or hide preview actors (e.g. waypoint path) on all tracks."""
+        for track in self.tracks:
+            for actor in getattr(track.animation, "_path_actors", []):
+                actor.SetVisibility(visible)
+        self.vtk_widget.GetRenderWindow().Render()
+
     def toggle_play(self):
         """Toggle playback state."""
         self.is_playing = not self.is_playing
 
         if self.is_playing:
+            self._set_preview_visibility(False)
             self.play_btn.setIcon(qta.icon("ph.pause"))
             self.timer.start(1000 // self.playback_fps)
         else:
+            self._set_preview_visibility(True)
             self.play_btn.setIcon(qta.icon("ph.play"))
             self.timer.stop()
 
@@ -530,6 +532,11 @@ class AnimationComposerDialog(QDialog):
             lambda: self.set_current_frame(self.current_frame + 1)
         )
 
+    def closeEvent(self, event):
+        """Clean up all tracks when the dialog is closed."""
+        self._cleanup_tracks()
+        super().closeEvent(event)
+
     def _toggle_loop(self):
         """Toggle loop playback."""
         self.loop_checkbox.setChecked(not self.loop_checkbox.isChecked())
@@ -548,6 +555,7 @@ class AnimationComposerDialog(QDialog):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
+            self._cleanup_tracks()
             self.tracks.clear()
             self.selected_track = None
             self.timeline.set_tracks(self.tracks)
@@ -639,6 +647,7 @@ class AnimationComposerDialog(QDialog):
         try:
             from mosaic.dialogs import ProgressDialog
 
+            self._set_preview_visibility(False)
             render_window.SetOffScreenRendering(1)
 
             # Store original multisamples and apply export settings
@@ -672,6 +681,7 @@ class AnimationComposerDialog(QDialog):
             QMessageBox.warning(self, "Export Error", f"Failed to export: {e}")
 
         finally:
+            self._set_preview_visibility(True)
             render_window.SetOffScreenRendering(0)
             render_window.SetSize(*original_size)
             render_window.Render()
@@ -735,9 +745,20 @@ class AnimationComposerDialog(QDialog):
         serialized = {}
         for key, value in params.items():
             if isinstance(value, (list, tuple)):
-                serialized[key] = [
-                    float(v) if isinstance(v, (int, float)) else str(v) for v in value
-                ]
+                items = []
+                for v in value:
+                    if isinstance(v, dict):
+                        items.append(
+                            {
+                                k: list(val) if isinstance(val, tuple) else val
+                                for k, val in v.items()
+                            }
+                        )
+                    elif isinstance(v, (int, float)):
+                        items.append(float(v))
+                    else:
+                        items.append(str(v))
+                serialized[key] = items
             elif isinstance(value, (int, float, str, bool)):
                 serialized[key] = value
             else:
@@ -760,6 +781,7 @@ class AnimationComposerDialog(QDialog):
             QMessageBox.warning(self, "Load Error", f"Failed to read project file: {e}")
             return
 
+        self._cleanup_tracks()
         self.tracks.clear()
         self.timeline.set_tracks(self.tracks)
         for track_data in project_data.get("tracks", []):

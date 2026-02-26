@@ -538,9 +538,9 @@ class DataContainerInteractor(QObject):
         if not len(uuids):
             return -1
 
-        base_container = self.container.get(uuids[0])
-        base_parameters = base_container._appearance.copy()
-        base_parameters["sampling_rate"] = base_container.sampling_rate
+        geometry = self.container.get(uuids[0])
+        base_parameters = geometry._appearance.copy()
+        base_parameters["sampling_rate"] = geometry.sampling_rate
 
         dialog = GeometryPropertiesDialog(initial_properties=base_parameters)
 
@@ -641,7 +641,7 @@ class DataContainerInteractor(QObject):
         return self.set_selection_by_uuid(list(self.point_selection.keys()))
 
     def change_representation(self, representation: str):
-        from .geometry import Geometry, SegmentationGeometry
+        from .geometry import Geometry, VolumeGeometry, SegmentationGeometry
 
         if not len(geometries := self.get_selected_geometries()):
             return -1
@@ -664,6 +664,21 @@ class DataContainerInteractor(QObject):
             if isinstance(geometry, SegmentationGeometry):
                 new_geom = Geometry(
                     points=geometry.points,
+                    sampling_rate=geometry.sampling_rate,
+                    color=geometry._appearance.get("base_color", (0.7, 0.7, 0.7)),
+                    meta=geometry._meta,
+                )
+                new_geom._appearance.update(geometry._appearance)
+                self.container.update(geometry.uuid, new_geom)
+                geometry = self.container.get(geometry.uuid)
+
+            # Its less of a headache to handle this here, because normals and basis
+            # representation rely on similar glyph rendering mechanisms than the volume
+            elif isinstance(geometry, VolumeGeometry) and representation != "volume":
+                new_geom = Geometry(
+                    points=geometry.points,
+                    normals=geometry.normals,
+                    quaternions=geometry.quaternions,
                     sampling_rate=geometry.sampling_rate,
                     color=geometry._appearance.get("base_color", (0.7, 0.7, 0.7)),
                     meta=geometry._meta,
