@@ -67,8 +67,10 @@ class DataContainer:
         geometry = points
         if not isinstance(geometry, Geometry):
             geometry = Geometry(points=points, **kwargs)
+            geometry.set_appearance(
+                base_color=color, highlight_color=self.highlight_color
+            )
 
-        geometry.set_appearance(base_color=color, highlight_color=self.highlight_color)
         self.data.append(geometry)
         return len(self.data) - 1
 
@@ -210,14 +212,24 @@ class DataContainer:
         uuids = self._to_uuids(uuids_or_geometries)
         geometries = [self.get(x) for x in uuids if self.get(x) is not None]
 
-        # Omit reload if this volume is already shown for all volume representations
-        if (volume_path := parameters.get("volume_path", None)) is not None:
-            paths = [
-                x._meta.get("volume_path")
-                for x in geometries
-                if "volume_path" in x._meta and x._representation == "volume"
-            ]
-            if len(paths) == 1 and volume_path in paths:
+        scale, volume_path = parameters.get("scale", 1.0), parameters.get("volume_path")
+        if volume_path is not None:
+            rel_geoms = [x for x in geometries if "volume_path" in x._meta]
+
+            paths = set([x._meta.get("volume_path") for x in rel_geoms])
+            scales = set([x._meta.get("volume_scale") for x in rel_geoms])
+
+            # We are dealing with a VolumeGeometry for which we might have
+            # to update the volume to account for scale changes
+            same_volume = len(paths) == 1 and volume_path in paths
+            same_scale = len(scales) == 1 and scale in scales
+            if same_volume and same_scale:
+                volume_path = None
+
+            # We are dealing with a reattach, where a Geometry instance has volume_path
+            # in its metadata to be quickly converted into a VolumeGeometry
+            same_geom = len([x for x in rel_geoms if isinstance(x, VolumeGeometry)])
+            if same_geom != len(rel_geoms) and not parameters.get("reattach_volume"):
                 volume_path = None
 
         volume = None
@@ -225,7 +237,7 @@ class DataContainer:
             density = load_density(volume_path)
 
             sampling = density.sampling_rate
-            volume = density.data * parameters.get("scale", 1.0)
+            volume = density.data * scale
 
         full_render = False
         parameters["isovalue_percentile"] = parameters.get("isovalue_percentile", 99.5)
@@ -245,6 +257,7 @@ class DataContainer:
                 state["volume"] = volume
                 state["volume_sampling_rate"] = sampling
                 state["meta"]["volume_path"] = volume_path
+                state["meta"]["volume_scale"] = scale
 
                 # New actor so make sure to re-render
                 full_render = True

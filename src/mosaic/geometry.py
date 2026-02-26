@@ -1123,16 +1123,10 @@ class VolumeGeometry(Geometry):
         mapper.OrientOn()
         self._actor.SetMapper(mapper)
 
-        if "upper_quantile" in kwargs and "lower_quantile" in kwargs:
-            self.update_isovalue_quantile(
-                upper_quantile=kwargs.get("upper_quantile"),
-                lower_quantile=kwargs.get("lower_quantile"),
-            )
         self._representation = "volume"
 
     def __getstate__(self):
         state = super().__getstate__()
-
         if self._volume is not None:
             state.update(
                 {
@@ -1189,8 +1183,9 @@ class VolumeGeometry(Geometry):
         upper_value = np.quantile(self._raw_volume, self._upper_quantile)
         return self.update_isovalue(upper=upper_value, lower=lower_value)
 
-    def set_appearance(self, isovalue_percentile=99.5, **kwargs):
-        if hasattr(self, "_raw_volume"):
+    def set_appearance(self, **kwargs):
+        isovalue_percentile = kwargs.get("isovalue_percentile")
+        if hasattr(self, "_raw_volume") and isovalue_percentile is not None:
             self._appearance["isovalue_percentile"] = isovalue_percentile
             self.update_isovalue_quantile(upper_quantile=isovalue_percentile / 100)
         super().set_appearance(**kwargs)

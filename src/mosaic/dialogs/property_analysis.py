@@ -269,16 +269,14 @@ def _build_tomogram_options(dlg):
     dlg.property_options_layout.addRow("Tomogram:", path_selector)
     dlg.option_widgets["file_path"] = path_selector
 
-    use_texture = QCheckBox("Use Texture Mapping")
-    use_texture.setToolTip("Use UV texture mapping for higher quality visualization. ")
-    dlg.property_options_layout.addRow(use_texture)
-    dlg.option_widgets["use_texture"] = use_texture
-
     texture_size = QSpinBox()
     texture_size.setRange(256, 2048)
     texture_size.setValue(512)
     texture_size.setSingleStep(128)
-    texture_size.setToolTip("Texture resolution in pixels")
+    texture_size.setToolTip(
+        "Texture resolution in pixels. Larger meshes require larger textures to "
+        "maintain texture resolution."
+    )
 
     dlg.property_options_layout.addRow("Texture Size:", texture_size)
     dlg.option_widgets["texture_size"] = texture_size
@@ -297,18 +295,6 @@ def _build_tomogram_options(dlg):
         "Positive = outward, negative = inward."
     )
 
-    def _on_texture_mode_changed(checked):
-        texture_size.setEnabled(checked)
-        if hasattr(dlg, "_texture_samplers"):
-            for sampler in dlg._texture_samplers.values():
-                sampler.cleanup()
-            dlg._texture_samplers.clear()
-
-    texture_size.setEnabled(use_texture.isChecked())
-    if "use_texture" in previous_parameters:
-        texture_size.setEnabled(previous_parameters["use_texture"])
-
-    use_texture.stateChanged.connect(_on_texture_mode_changed)
     offset_slider.valueChanged.connect(dlg._preview)
     dlg.property_options_layout.addRow(offset_slider)
     dlg.option_widgets["normal_offset"] = offset_slider
@@ -528,6 +514,9 @@ class PropertyAnalysisDialog(QDialog):
         "Vertex Properties": "vertex_property",
     }
 
+    # Properties that bypass the standard compute + colormap preview flow.
+    _CUSTOM_PREVIEWS = {"mesh_tomogram"}
+
     def __init__(self, cdata, legend=None, parent=None):
         super().__init__(parent)
         self.cdata = cdata
@@ -553,9 +542,6 @@ class PropertyAnalysisDialog(QDialog):
 
         self.cdata.data.vtk_pre_render.connect(self._on_render_update)
         self.cdata.models.vtk_pre_render.connect(self._on_render_update)
-
-    def sizeHint(self):
-        return QSize(400, 350)
 
     def _on_render_update(self):
         """Re-apply properties when models are re-rendered."""
@@ -870,7 +856,7 @@ class PropertyAnalysisDialog(QDialog):
         button_layout.addWidget(self.live_update_checkbox)
         button_layout.addStretch()
 
-        self.visualize_export_btn = QPushButton("Export Data")
+        self.visualize_export_btn = QPushButton("Export")
         self.visualize_export_btn.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
         self.visualize_export_btn.clicked.connect(self._export_data)
         button_layout.addWidget(self.visualize_export_btn)
@@ -1231,14 +1217,11 @@ class PropertyAnalysisDialog(QDialog):
         if not geometries:
             return None
 
-        # Ask for forgiveness here rather than handling this in _update_options
-        try:
-            if self.option_widgets["use_texture"].isChecked():
-                return self._update_texture_offset(
-                    self.option_widgets["normal_offset"].value()
-                )
-        except:
-            pass
+        property_name = self.PROPERTY_MAP.get(self.property_combo.currentText())
+        if property_name in self._CUSTOM_PREVIEWS:
+            return self._update_texture_offset(
+                get_widget_value(self.option_widgets.get("normal_offset", 0.0))
+            )
 
         self._compute_properties()
         colormap = self._get_colormap()

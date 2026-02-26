@@ -1,10 +1,22 @@
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, QSize
 from qtpy.QtWidgets import (
     QMessageBox,
     QDockWidget,
     QApplication,
     QMainWindow,
+    QScrollArea,
+    QFrame,
 )
+
+
+class VerticalScrollArea(QScrollArea):
+    def sizeHint(self):
+        return QSize(400, 350)
+
+    def resizeEvent(self, event):
+        if self.widget():
+            self.widget().setFixedWidth(self.viewport().width())
+        super().resizeEvent(event)
 
 
 def create_or_toggle_dock(
@@ -53,7 +65,16 @@ def create_or_toggle_dock(
         | QDockWidget.DockWidgetFloatable
         | QDockWidget.DockWidgetMovable
     )
-    dock.setWidget(dialog_widget)
+
+    from ..stylesheets import QScrollArea_style
+
+    scroll_area = VerticalScrollArea()
+    scroll_area.setWidgetResizable(True)
+    scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+    scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    scroll_area.setStyleSheet(QScrollArea_style)
+    scroll_area.setWidget(dialog_widget)
+    dock.setWidget(scroll_area)
 
     if hasattr(dialog_widget, "accepted"):
         dialog_widget.accepted.connect(_exit)

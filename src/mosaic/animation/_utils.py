@@ -46,7 +46,8 @@ def capture_frame(
     np.ndarray
         The captured frame as a numpy array (RGB or RGBA).
     """
-    render_window.SetAlphaBitPlanes(1)
+    original_alpha_bit_planes = render_window.GetAlphaBitPlanes()
+    render_window.SetAlphaBitPlanes(1 if transparent_bg else 0)
 
     original_size = render_window.GetSize()
     original_multisamples = render_window.GetMultiSamples()
@@ -85,6 +86,8 @@ def capture_frame(
     arr = np.ascontiguousarray(arr.reshape(img_height, img_width, -1)[::-1])
 
     # Restore original settings
+    render_window.SetAlphaBitPlanes(original_alpha_bit_planes)
+
     if multisamples is not None:
         render_window.SetMultiSamples(original_multisamples)
 

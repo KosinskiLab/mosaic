@@ -6,6 +6,7 @@ Copyright (c) 2025 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from functools import lru_cache
 from typing import Tuple, Optional
 
 import vtk
@@ -176,6 +177,15 @@ def _normalize_uvs(uvs: NDArray) -> NDArray:
     return uvs
 
 
+@lru_cache(maxsize=4)
+def _load_tomogram_cached(file_path: str):
+    """Load and cache tomogram data."""
+    from ..formats.parser import load_density
+
+    density = load_density(file_path)
+    return density.data.astype(np.float32), np.mean(density.sampling_rate)
+
+
 class TextureSampler:
     """
     Precomputed texture sampler for fast normal offset updates.
@@ -204,10 +214,7 @@ class TextureSampler:
 
         self.geometry = geometry
         self.texture_size = texture_size
-
-        density = load_density(tomogram_path)
-        self.tomogram = density.data.astype(np.float32)
-        sampling = float(np.mean(density.sampling_rate))
+        self.tomogram, sampling = _load_tomogram_cached(tomogram_path)
 
         # xatlas adds new vertices for seams, so we need to update the structure
         vertices = fit.vertices / sampling
@@ -351,3 +358,5 @@ class TextureSampler:
         self.geometry.points = self._model.vertices
         self.geometry._set_faces(self._model.triangles)
         self.geometry.normals = self._model.compute_vertex_normals()
+
+        self.tomogram = None

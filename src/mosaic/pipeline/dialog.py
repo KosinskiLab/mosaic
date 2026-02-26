@@ -386,16 +386,19 @@ class PipelineBuilderDialog(QDialog):
     def _add_card(self, name, info, color, node_id=None, settings=None):
         settings = settings if isinstance(settings, dict) else {}
 
-        if self.pipeline_tree.topLevelItemCount() == 0:
-            self._previous_node = None
+        previous_node = None
+        count = self.pipeline_tree.topLevelItemCount()
+        if count > 0:
+            last_item = self.pipeline_tree.topLevelItem(count - 1)
+            last_widget = self.pipeline_tree.itemWidget(last_item, 0)
+            if isinstance(last_widget, OperationCardWidget):
+                previous_node = last_widget.node_id
 
-        previous_node = getattr(self, "_previous_node", None)
         card = OperationCardWidget(name, info, color, node_id=node_id)
         if "inputs" not in settings:
             settings["inputs"] = [previous_node] if previous_node is not None else []
 
         card.set_settings(settings)
-        self._previous_node = card.node_id
         self.pipeline_tree.add_operation_card(card)
 
     def _load_preset(self, preset_name):
@@ -437,7 +440,6 @@ class PipelineBuilderDialog(QDialog):
 
         nodes = config["nodes"]
         self.pipeline_tree.clear()
-        self._previous_node = None
 
         self._update_library_state()
         total_ops, valid_ops = len(nodes), 0
