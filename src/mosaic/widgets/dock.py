@@ -11,12 +11,26 @@ from qtpy.QtWidgets import (
 
 class VerticalScrollArea(QScrollArea):
     def sizeHint(self):
+        """Return size hint based on contained widget, with reasonable defaults."""
+        if self.widget():
+            child_hint = self.widget().sizeHint()
+            if child_hint.isValid():
+                width = child_hint.width() + 20
+                return QSize(width, min(child_hint.height(), 600))
         return QSize(400, 350)
 
     def resizeEvent(self, event):
         if self.widget():
             self.widget().setFixedWidth(self.viewport().width())
         super().resizeEvent(event)
+
+    def __getattr__(self, name):
+        widget = self.widget()
+        if widget is not None and hasattr(widget, name):
+            return getattr(widget, name)
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
 
 
 def create_or_toggle_dock(

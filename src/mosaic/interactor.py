@@ -561,7 +561,7 @@ class DataContainerInteractor(QObject):
         dialog.parametersChanged.connect(on_parameters_changed)
 
         if dialog.exec() == QDialog.DialogCode.Rejected:
-            pass
+            on_parameters_changed(base_parameters)
         return 1
 
     def _uuid_to_items(self):

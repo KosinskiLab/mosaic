@@ -686,7 +686,7 @@ class RBF(Parametrization):
         normals = compute_normals(points, k=15)
         return _normalize(normals)
 
-    def points_per_sampling(self, sampling_density: float, **kwargs) -> int:
+    def points_per_sampling(self, sampling_density: float, normal_offset=None) -> int:
         (xmin, xmax), (ymin, ymax) = self.grid
         surface_area = (xmax - xmin) * (ymax - xmin)
 
@@ -1540,7 +1540,7 @@ class SplineCurve(Parametrization):
         normals[:, 1] = tangents[:, 0]
         return _normalize(normals)
 
-    def points_per_sampling(self, sampling_density: float, **kwargs) -> int:
+    def points_per_sampling(self, sampling_density: float, normal_offset=None) -> int:
         curve_points = self.sample(1000)
         segments = curve_points[1:] - curve_points[:-1]
         length = np.sum(np.linalg.norm(segments, axis=1))

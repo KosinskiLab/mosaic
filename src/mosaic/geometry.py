@@ -870,6 +870,10 @@ class Geometry:
                 )
                 return None
 
+        # Using the uv map will cause distortions in other representations
+        if self.actor.GetTexture():
+            self.actor.SetTexture(None)
+
         mapper = vtk.vtkPolyDataMapper()
         if representation == "gaussian_density":
             mapper = vtk.vtkPointGaussianMapper()
@@ -1242,7 +1246,6 @@ class SegmentationGeometry(Geometry):
         from .utils import points_to_volume
 
         self.uuid = str(uuid4())
-        self._cache = {}
         self._meta = {} if meta is None else meta
         self._model = None
         self._representation = "segmentation"
@@ -1483,7 +1486,6 @@ class SegmentationGeometry(Geometry):
         removed_points = self._input_points[removed_mask]
 
         self._input_points = new_points
-        self._cache.clear()
 
         if new_points.shape[0] == 0:
             self._volume_shape = (1, 1, 1)

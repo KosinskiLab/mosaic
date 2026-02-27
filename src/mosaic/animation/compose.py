@@ -9,6 +9,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import json
 from dataclasses import dataclass
 from typing import Dict, List, Any
+from uuid import uuid4
 
 import imageio
 from qtpy.QtCore import Qt, QTimer, QSize
@@ -32,7 +33,7 @@ from qtpy.QtWidgets import (
 import qtawesome as qta
 
 from .timeline import TimelineWidget
-from .animations import AnimationType
+from .animations import AnimationType, BaseAnimation
 from .settings import AnimationSettings, ExportDialog
 from ._utils import FrameWriter, capture_frame
 
@@ -56,7 +57,7 @@ from ..stylesheets import (
 @dataclass
 class Track:
     id: str
-    animation: object
+    animation: BaseAnimation
     color: str
 
 
@@ -365,7 +366,7 @@ class AnimationComposerDialog(QDialog):
             return None
 
         track = Track(
-            id=str(id(animation)),
+            id=str(uuid4()),
             animation=animation,
             color=anim_type.value["color"],
         )
@@ -494,7 +495,6 @@ class AnimationComposerDialog(QDialog):
                 next_frame = 0
             else:
                 self.set_current_frame(total_frames)
-                self.toggle_play()
                 return
 
         self.set_current_frame(next_frame)
@@ -577,7 +577,15 @@ class AnimationComposerDialog(QDialog):
 
         # Get current render window dimensions
         render_window = self.vtk_widget.GetRenderWindow()
+        if render_window is None:
+            QMessageBox.warning(self, "Error", "No render window available.")
+            return
+
         current_size = render_window.GetSize()
+
+        # Pause playback during export
+        if self.is_playing:
+            self.toggle_play()
 
         # Show export dialog
         total_frames = self._get_total_frames()
@@ -686,6 +694,7 @@ class AnimationComposerDialog(QDialog):
             render_window.SetSize(*original_size)
             render_window.Render()
             self.set_current_frame(original_frame)
+            # Note: Don't restore playback state - export is a deliberate user action
 
     def save_project(self):
         """Save the animation project to a JSON file."""
@@ -774,6 +783,10 @@ class AnimationComposerDialog(QDialog):
         if not filename:
             return
 
+        # Pause playback during load
+        if self.is_playing:
+            self.toggle_play()
+
         try:
             with open(filename, "r") as f:
                 project_data = json.load(f)
@@ -820,7 +833,7 @@ class AnimationComposerDialog(QDialog):
                     animation.update_parameters(**{key: value})
 
                 track = Track(
-                    id=str(id(animation)),
+                    id=str(uuid4()),
                     animation=animation,
                     color=anim_type.value["color"],
                 )

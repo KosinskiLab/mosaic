@@ -206,8 +206,6 @@ class TextureSampler:
         tomogram_path: str,
         texture_size: int = 1024,
     ):
-        from ..formats.parser import load_density
-
         fit = geometry.model
         if not hasattr(fit, "mesh"):
             raise ValueError("Geometry must have a fitted mesh model.")
