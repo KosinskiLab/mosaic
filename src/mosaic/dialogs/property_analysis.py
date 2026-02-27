@@ -7,7 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import numpy as np
-from qtpy.QtCore import Qt, QTimer, QSize
+from qtpy.QtCore import Qt, QSize, QTimer
 from qtpy.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -260,8 +260,6 @@ def _build_thickness_options(dlg):
 def _build_tomogram_options(dlg):
     from mosaic.widgets import PathSelector, SliderRow
 
-    previous_parameters = dlg._previous_parameters
-
     path_selector = PathSelector(
         placeholder="Path to tomogram (MRC, EM, MAP, ...)",
         file_mode=True,
@@ -389,6 +387,9 @@ class ColorScaleSettingsDialog(QDialog):
 
         self._setup_ui()
         self.setStyleSheet(QPushButton_style)
+
+    def sizeHint(self):
+        return QSize(400, 350)
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
@@ -1086,8 +1087,9 @@ class PropertyAnalysisDialog(QDialog):
         if not hasattr(self, "_texture_samplers"):
             self._texture_samplers = {}
 
+        no_texture = geometry.actor.GetTexture() is None
         cache_key = (geometry.uuid, file_path, texture_size)
-        if cache_key not in self._texture_samplers:
+        if cache_key not in self._texture_samplers or no_texture:
             try:
                 sampler = meshing.TextureSampler(
                     geometry=geometry,

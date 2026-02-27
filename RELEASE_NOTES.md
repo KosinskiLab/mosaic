@@ -1,3 +1,43 @@
+# Release Notes v1.2.0
+
+Version 1.2.0 introduces segmentation geometries, medial meshes, and interactive animation waypoints, alongside improvements to property analysis and rendering.
+
+## Features
+
+- **Segmentation Geometry:** A new geometry type for rendering dense segmentations more efficiently.
+- **Tomogram Visualization on Meshes:** Visualize tomogram data projected onto mesh surfaces.
+- **Membrane Thickness Computation:** Calculate membrane thickness as a geometry property.
+- **Projection Angle Calculation:** Compute projection angles for geometry data.
+- **Medial Meshes**
+- **Interactive Animation Waypoints**
+
+## Improvements
+
+- Added filtering to the Property Analysis dialog.
+- Added throttling to various interactive widgets for smoother performance.
+- Made automatic property updates on render changes opt-in.
+- LUT updates are now applied on filter changes.
+- Show queued tasks in the task manager.
+- Added mesh export support in pipeline configurations.
+- Dock widgets share available screen space using scroll areas, avoiding overdrawing.
+- Improved error handling in template matching scripts.
+
+## Bug Fixes
+
+- Fixed rendering inconsistencies with volume geometries.
+- Fixed minor coloring bugs.
+- Fixed normal vector rendering for geometries without normals.
+- Fixed visual issue with pipeline cards.
+- Fixed minor bugs in dialogs.
+
+## Installation
+
+```bash
+pip install -U mosaic-gui==1.2.0
+```
+
+---
+
 # Release Notes v1.1.0
 
 Version 1.1.0 introduces pipelines, a major new feature for batch processing and automation, alongside several improvements to mesh processing and user interface.

@@ -25,6 +25,7 @@ from qtpy.QtWidgets import (
 )
 from qtpy.QtCore import Qt, QSize
 from qtpy.QtGui import QFont
+import qtawesome as qta
 
 from .executor import generate_runs
 from ._utils import natural_sort_key, strip_filepath
@@ -556,7 +557,7 @@ class PipelineBuilderDialog(QDialog):
 class BatchNavigatorDialog(QWidget):
     """Widget for navigating through batch-created sessions."""
 
-    def __init__(self, session_files, main_window, parent=None):
+    def __init__(self, main_window, parent=None):
         super().__init__(parent)
         self.main_window = main_window
         self.current_index = -1
@@ -564,9 +565,7 @@ class BatchNavigatorDialog(QWidget):
         self._session_modified = False
         self.setWindowTitle("Batch Navigator")
 
-        self.session_files = sorted(
-            [f for f in session_files if f.endswith(".pickle")], key=natural_sort_key
-        )
+        self.session_files = []
 
         self.setup_ui()
         self.setStyleSheet(QPushButton_style + QScrollArea_style)
@@ -610,28 +609,51 @@ class BatchNavigatorDialog(QWidget):
             "Automatically save the current session when switching to another"
         )
 
-        sessions_layout.addWidget(self.search_widget)
+        # Top bar with search and action buttons
+        top_bar = QHBoxLayout()
+        top_bar.setSpacing(8)
+        top_bar.setContentsMargins(0, 0, 0, 0)
+        top_bar.addWidget(self.search_widget, 1)
+
+        self.add_btn = QPushButton()
+        self.add_btn.setIcon(qta.icon("ph.file-arrow-up", color=Colors.ICON))
+        self.add_btn.setToolTip("Add session files to the list")
+        self.add_btn.clicked.connect(self._add_sessions)
+        self.add_btn.setFixedSize(32, 32)
+
+        self.clear_btn = QPushButton()
+        self.clear_btn.setIcon(qta.icon("ph.x", color=Colors.ICON))
+        self.clear_btn.setToolTip("Remove all sessions from the list")
+        self.clear_btn.clicked.connect(self._clear_sessions)
+        self.clear_btn.setFixedSize(32, 32)
+
+        top_bar.addWidget(self.add_btn)
+        top_bar.addWidget(self.clear_btn)
+
+        sessions_layout.addLayout(top_bar)
         sessions_layout.addWidget(self.session_list, 1)
         sessions_layout.addWidget(self.auto_save_checkbox)
         layout.addWidget(self.sessions_group, 1)
 
         button_layout = QHBoxLayout()
         button_layout.setSpacing(8)
-        self.discard_btn = QPushButton("Discard Changes")
+
+        self.discard_btn = QPushButton("Reload")
         self.discard_btn.setIcon(
-            qta.icon("ph.arrow-counter-clockwise", color=Colors.PRIMARY)
+            qta.icon("ph.arrow-counter-clockwise", color=Colors.ICON)
         )
         self.discard_btn.clicked.connect(self._discard_changes)
         self.discard_btn.setToolTip(
             "Reload current session, discarding unsaved changes"
         )
 
-        self.save_btn = QPushButton("Save Current")
-        self.save_btn.setIcon(qta.icon("ph.floppy-disk", color=Colors.PRIMARY))
+        self.save_btn = QPushButton("Save")
+        self.save_btn.setToolTip("Save current session to disk")
+        self.save_btn.setIcon(qta.icon("ph.floppy-disk", color=Colors.ICON))
         self.save_btn.clicked.connect(self._save_current)
 
-        button_layout.addWidget(self.discard_btn)
-        button_layout.addWidget(self.save_btn)
+        button_layout.addWidget(self.discard_btn, 1)
+        button_layout.addWidget(self.save_btn, 1)
         layout.addLayout(button_layout)
 
     def _populate_session_list(self):
@@ -653,6 +675,23 @@ class BatchNavigatorDialog(QWidget):
         self.current_index = -1
         self.session_list.tree_widget.clearSelection()
         self._update_session_list()
+
+    def _remove_session_at_index(self, index):
+        """Remove a session from the list."""
+        if not (0 <= index < len(self.session_files)):
+            return
+
+        self.session_files.pop(index)
+
+        # If we removed the current session, reset
+        if index == self.current_index:
+            self._reset_selection()
+        # If we removed a session before the current, adjust index
+        elif index < self.current_index:
+            self.current_index -= 1
+            self._populate_session_list()
+        else:
+            self._populate_session_list()
 
     def _update_session_list(self):
         """Update visibility state of items in the list."""
@@ -721,6 +760,30 @@ class BatchNavigatorDialog(QWidget):
 
         if reply == QMessageBox.StandardButton.Yes:
             self._load_session_at_index(self.current_index)
+
+    def _clear_sessions(self):
+        """Remove all sessions from the list."""
+        self._save_current()
+        self.session_files.clear()
+        self.current_index = -1
+        self._populate_session_list()
+
+    def _add_sessions(self):
+        """Add session files via file dialog, deduplicating paths."""
+        filepaths, _ = QFileDialog.getOpenFileNames(
+            self, "Add Session Files", "", "Pickle Files (*.pickle)"
+        )
+        if not filepaths:
+            return
+
+        existing = set(self.session_files)
+        for fp in filepaths:
+            if fp not in existing:
+                self.session_files.append(fp)
+                existing.add(fp)
+
+        self.session_files.sort(key=natural_sort_key)
+        self._populate_session_list()
 
     def close(self):
         """Handle widget close, saving current session if auto-save is enabled."""

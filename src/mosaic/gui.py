@@ -278,9 +278,7 @@ class App(QMainWindow):
     def sizeHint(self):
         """Provide the preferred size for the main window."""
         screen = QGuiApplication.primaryScreen().geometry()
-        width = int(screen.width() * 0.9)
-        height = int(screen.height() * 0.9)
-        return QSize(width, height)
+        return QSize(int(screen.width() * 0.95), int(screen.height() * 0.95))
 
     def show(self):
         """Override show to position after Qt sizes the window."""
@@ -998,16 +996,7 @@ class App(QMainWindow):
         from .widgets.dock import create_or_toggle_dock
         from .pipeline.dialog import BatchNavigatorDialog
 
-        files, _ = getOpenFileNames(
-            self,
-            caption="Select Session Files",
-            filter="Pickle Files (*.pickle)",
-            use_native=False,
-        )
-        if not files:
-            return
-
-        dialog = BatchNavigatorDialog(files, self)
+        dialog = BatchNavigatorDialog(self)
         create_or_toggle_dock(self, "batch_navigator", dialog)
 
     def toggle_selection_menu(self):
