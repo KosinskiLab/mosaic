@@ -6,6 +6,7 @@ Copyright (c) 2025 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import warnings
 import numpy as np
 from qtpy.QtCore import Qt, QSize, QTimer
 from qtpy.QtWidgets import (
@@ -1630,7 +1631,7 @@ class PropertyAnalysisDialog(QDialog):
                     )
                     plot.addItem(item)
                 except Exception as e:
-                    print(f"Error creating plot for {name}: {e}")
+                    warnings.warn(f"Error creating plot for {name}: {e}")
 
             plot.enableAutoRange()
             plot.autoRange()
@@ -1653,7 +1654,7 @@ class PropertyAnalysisDialog(QDialog):
                 )
                 plot.addItem(item)
             except Exception as e:
-                print(f"Error creating plot for {name}: {e}")
+                warnings.warn(f"Error creating plot for {name}: {e}")
 
     def _run_export(self, title: str, file_filter: str, export_func) -> None:
         """Run an export operation with file dialog and error handling."""
