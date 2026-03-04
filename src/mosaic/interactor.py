@@ -17,7 +17,6 @@ from qtpy.QtGui import QAction
 from qtpy.QtWidgets import (
     QListWidget,
     QMenu,
-    QFileDialog,
     QMessageBox,
     QDialog,
 )
@@ -374,6 +373,12 @@ class DataContainerInteractor(QObject):
         remove_action.triggered.connect(self.remove)
         context_menu.addAction(remove_action)
 
+        selected_items = self.data_list.selected_items()
+        rename_action = QAction("Rename", self.data_list)
+        rename_action.triggered.connect(self._show_batch_rename_dialog)
+        rename_action.setEnabled(len(selected_items) >= 2)
+        context_menu.addAction(rename_action)
+
         formats = [
             "Points",
             "Gaussian Density",
@@ -464,14 +469,16 @@ class DataContainerInteractor(QObject):
     def _handle_export(self, *args, **kwargs):
         from .dialogs import ExportDialog
 
+        geometries = self.get_selected_geometries()
+
         enabled_categories = ["pointcloud", "volume"]
-        for geometry in self.get_selected_geometries():
+        for geometry in geometries:
             fit = geometry.model
             if hasattr(fit, "mesh"):
                 enabled_categories.append("mesh")
 
         sampling, shape = (1, 1, 1), (1, 1, 1)
-        for geometry in self.get_selected_geometries():
+        for geometry in geometries:
             sampling = np.maximum(sampling, geometry.sampling_rate)
             bounds = geometry._data.GetBounds()
             geom_shape = (bounds[1], bounds[3], bounds[5])
@@ -489,6 +496,8 @@ class DataContainerInteractor(QObject):
             shape = np.maximum(shape, container_shape)
 
         shape = tuple(int(x) for x in shape)
+        names = [g._meta.get("name", f"Geometry {i}") for i, g in enumerate(geometries)]
+
         dialog = ExportDialog(
             parent=None,
             enabled_categories=enabled_categories,
@@ -498,18 +507,14 @@ class DataContainerInteractor(QObject):
                 "shape_z": shape[2],
                 "sampling": sampling,
             },
+            names=names,
         )
 
         dialog.export_requested.connect(self._wrap_export)
         return dialog.exec()
 
     def _wrap_export(self, export_data):
-        file_format = export_data.get("format")
-
-        file_dialog = QFileDialog(None)
-        file_path, _ = file_dialog.getSaveFileName(
-            None, "Save File", "", f"{file_format.upper()} Files (*.{file_format})"
-        )
+        file_path = export_data.pop("file_path", None)
         if not file_path:
             return -1
 
@@ -562,6 +567,31 @@ class DataContainerInteractor(QObject):
 
         if dialog.exec() == QDialog.DialogCode.Rejected:
             on_parameters_changed(base_parameters)
+        return 1
+
+    def _show_batch_rename_dialog(self) -> int:
+        from .dialogs import BatchRenameDialog
+
+        items = self.data_list.selected_items()
+        if len(items) < 2:
+            return -1
+
+        uuids = [item.metadata.get("uuid") for item in items]
+        current_names = [item.text() for item in items]
+
+        dialog = BatchRenameDialog(names=current_names)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return -1
+
+        self.data_list.tree_widget.blockSignals(True)
+        for item, uuid, new_name in zip(items, uuids, dialog.result_names):
+            if (geometry := self.container.get(uuid)) is not None:
+                geometry._meta["name"] = new_name
+            item.setText(0, new_name)
+        self.data_list.tree_widget.blockSignals(False)
+
+        self.data_changed.emit()
+        self.render()
         return 1
 
     def _uuid_to_items(self):

@@ -8,77 +8,106 @@ from ..widgets.ribbon import create_button
 from ..parallel import submit_task, submit_task_batch
 
 
-def _extract_medial_mesh(mesh_geometry):
+def _fill_mesh(mesh_geometry):
     from ..geometry import Geometry
-    from ..parametrization import TriangularMesh, PoissonMesh
 
     model = mesh_geometry.model
-    if not model.mesh.is_watertight():
-        raise ValueError(
-            "Mesh is not watertight. Occupancy-based medial extraction requires "
-            "a closed surface to determine interior voxels."
-        )
-
     voxel_size = max(mesh_geometry.sampling_rate)
-    skel_points = meshing.medial_mesh(
-        model.vertices, model.triangles, voxel_size=voxel_size
-    )
-
-    # Much slower than ball pivoting but more robust fits
-    model = PoissonMesh.fit(
-        positions=skel_points, voxel_size=voxel_size, deldist=2 * voxel_size, depth=7
-    )
-    geom = Geometry(model=model, sampling_rate=mesh_geometry.sampling_rate)
-    geom.change_representation("surface")
-    return geom
+    points = meshing.fill_mesh(model.vertices, model.triangles, voxel_size=voxel_size)
+    return Geometry(points=points, sampling_rate=mesh_geometry.sampling_rate)
 
 
 def _project(
-    mesh_geometry,
+    mesh_geometries,
     geometries,
     use_normals: bool = False,
     invert_normals: bool = False,
     update_normals: bool = False,
+    partition: bool = False,
 ):
     from ..geometry import Geometry
 
-    mesh = mesh_geometry.model
-    new_geometries, projections, triangles = [], [], []
+    meshes = [mg.model for mg in mesh_geometries]
+    n_meshes = len(meshes)
+
+    data_out, meshes_out = [], []
+    mesh_subsets = [[] for _ in range(n_meshes)]
+    mesh_proj = [[] for _ in range(n_meshes)]
+    mesh_tri = [[] for _ in range(n_meshes)]
+
     for geometry in geometries:
         normals = geometry.normals if use_normals else None
         if normals is not None:
             normals = normals * (-1 if invert_normals else 1)
 
-        kwargs = {
-            "points": geometry.points,
-            "normals": normals,
-            "return_projection": True,
-            "return_indices": False,
-            "return_triangles": True,
-        }
-        _, projection, triangle = mesh.compute_distance(**kwargs)
-
-        normals = geometry.normals
-        if update_normals:
-            normals = mesh.compute_normal(projection)
-
-        projections.append(projection)
-        triangles.append(triangle)
-        new_geometries.append(
-            Geometry(
-                points=projection, normals=normals, sampling_rate=geometry.sampling_rate
+        all_dist, all_proj, all_tri = [], [], []
+        for mesh in meshes:
+            dist, proj, tri = mesh.compute_distance(
+                points=geometry.points,
+                normals=normals,
+                return_projection=True,
+                return_indices=False,
+                return_triangles=True,
             )
-        )
+            all_dist.append(dist)
+            all_proj.append(proj)
+            all_tri.append(tri)
 
-    if not len(projections):
-        return None
+        best = np.argmin(np.stack(all_dist), axis=0)
+        proj_sel = np.empty_like(all_proj[0])
 
-    projections = np.concatenate(projections)
-    triangles = np.concatenate(triangles)
-    new_mesh = mesh.add_projections(projections, triangles, return_indices=False)
-    new_mesh = Geometry(model=new_mesh, sampling_rate=mesh_geometry.sampling_rate)
+        for m in range(n_meshes):
+            mask = best == m
+            if not mask.any():
+                continue
+            if partition:
+                mesh_subsets[m].append(geometry[mask])
+            else:
+                proj_m = all_proj[m][mask]
+                proj_sel[mask] = proj_m
+                mesh_proj[m].append(proj_m)
+                mesh_tri[m].append(all_tri[m][mask])
 
-    return new_mesh, new_geometries
+        if not partition:
+            geo_normals = geometry.normals
+            if update_normals:
+                geo_normals = np.empty((len(geometry.points), 3))
+                for m in range(n_meshes):
+                    mask = best == m
+                    if mask.any():
+                        geo_normals[mask] = meshes[m].compute_normal(proj_sel[mask])
+            data_out.append(
+                Geometry(
+                    points=proj_sel,
+                    normals=geo_normals,
+                    sampling_rate=geometry.sampling_rate,
+                )
+            )
+
+    if partition:
+        for m, subsets in enumerate(mesh_subsets):
+            if subsets:
+                geom = subsets[0] if len(subsets) == 1 else Geometry.merge(subsets)
+                name = mesh_geometries[m]._meta.get("name", f"Mesh {m}")
+                geom._meta["name"] = f"{name}_partition"
+                data_out.append(geom)
+    else:
+        for m in range(n_meshes):
+            if not mesh_proj[m]:
+                continue
+            new_model = meshes[m].add_projections(
+                np.concatenate(mesh_proj[m]),
+                np.concatenate(mesh_tri[m]),
+                return_indices=False,
+            )
+            meshes_out.append(
+                Geometry(
+                    model=new_model,
+                    sampling_rate=mesh_geometries[m].sampling_rate,
+                )
+            )
+
+    return data_out, meshes_out
 
 
 class ModelTab(QWidget):
@@ -192,11 +221,11 @@ class ModelTab(QWidget):
                 PROJECTION_SETTINGS,
             ),
             create_button(
-                "Medial",
-                "ph.intersect",
+                "Fill",
+                "ph.cube",
                 self,
-                self._extract_medial_volumetric,
-                "Extract medial surface skeleton from a shell mesh",
+                self._fill_volumetric,
+                "Fill the interior of a closed mesh with points",
             ),
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
@@ -206,6 +235,11 @@ class ModelTab(QWidget):
 
         if isinstance(geom.model, TriangularMesh):
             geom.change_representation("surface")
+
+        if geom.model is None:
+            self.cdata.data.add(geom)
+            return self.cdata.data.render()
+
         self.cdata.models.add(geom)
         self.cdata.models.render()
 
@@ -261,7 +295,7 @@ class ModelTab(QWidget):
 
         # These methods are parallelize and would mess with the worker pool
         tasks, max_concurrent = [], None
-        if method in ("Poisson", "Marching Cubes"):
+        if method in ("Poisson",):
             max_concurrent = 1
 
         for geometry in self.cdata.data.get_selected_geometries():
@@ -320,55 +354,53 @@ class ModelTab(QWidget):
                 **kwargs,
             )
 
-    def _extract_medial_volumetric(self, **kwargs):
+    def _fill_volumetric(self, **kwargs):
         tasks = []
         for geometry in self._get_selected_meshes():
             tasks.append(
                 {
-                    "name": "Medial Mesh",
-                    "func": _extract_medial_mesh,
+                    "name": "Fill Mesh",
+                    "func": _fill_mesh,
                     "callback": self._default_callback,
                     "kwargs": {"mesh_geometry": geometry},
                 }
             )
-        # Setting concurency due to PoissonMesh
-        submit_task_batch(tasks, max_concurrent=1)
+        submit_task_batch(tasks)
 
     def _project_on_mesh(
         self,
         use_normals: bool = False,
         invert_normals: bool = False,
         update_normals: bool = False,
+        partition: bool = False,
         **kwargs,
     ):
         selected_meshes = self._get_selected_meshes()
-        if len(selected_meshes) != 1:
-            raise ValueError("Please select one mesh for projection.")
-
-        mesh = selected_meshes[0]
-        if mesh.model is None:
-            return None
+        if not selected_meshes:
+            raise ValueError("Please select at least one mesh for projection.")
 
         def _callback(ret):
-            new_mesh, new_geometries = ret
-
-            for new_geometry in new_geometries:
-                self.cdata.data.add(new_geometry)
-
-            new_mesh.change_representation("surface")
-            self.cdata.models.add(new_mesh)
-            self.cdata.data.render()
-            self.cdata.models.render()
+            data_geoms, mesh_geoms = ret
+            for geom in data_geoms:
+                self.cdata.data.add(geom)
+            for geom in mesh_geoms:
+                geom.change_representation("surface")
+                self.cdata.models.add(geom)
+            if data_geoms:
+                self.cdata.data.render()
+            if mesh_geoms:
+                self.cdata.models.render()
 
         submit_task(
             "Project",
             _project,
             _callback,
-            mesh,
+            selected_meshes,
             self.cdata.data.get_selected_geometries(),
             use_normals,
             invert_normals,
             update_normals,
+            partition,
         )
 
 
@@ -669,11 +701,9 @@ MESH_SETTINGS = {
                 "Cluster Ball Pivoting",
                 "Poisson",
                 "Flying Edges",
-                "Marching Cubes",
             ],
             "default": "Alpha Shape",
         },
-        *REPAIR_SETTINGS["settings"][:5],
     ],
     "method_settings": {
         "Alpha Shape": [
@@ -701,6 +731,7 @@ MESH_SETTINGS = {
                 "description": "Vertices further than distance time sampling rate are "
                 "labled as inferred for subsequent optimization.",
             },
+            *REPAIR_SETTINGS["settings"][:5],
         ],
         "Ball Pivoting": [
             {
@@ -736,6 +767,7 @@ MESH_SETTINGS = {
                 "description": "Number of neighbors for normal estimations.",
                 "notes": "Consider decreasing this value for small point clouds.",
             },
+            *REPAIR_SETTINGS["settings"][:5],
         ],
         "Cluster Ball Pivoting": [
             {
@@ -853,30 +885,34 @@ MESH_SETTINGS = {
                 "max": 1e32,
                 "notes": "Defaults to the sampling rate of the object.",
             },
-        ],
-        "Marching Cubes": [
             {
-                "label": "Simplifcation Factor",
-                "parameter": "simplification_factor",
+                "label": "Smoothing Iterations",
+                "parameter": "smoothing_iterations",
                 "type": "number",
-                "default": 100,
-                "min": 1,
-                "description": "Reduce initial mesh by x times the number of triangles.",
+                "default": 15,
+                "min": 0,
+                "description": "Number of windowed sinc smoothing iterations.",
             },
             {
-                "label": "Workers",
-                "parameter": "num_workers",
-                "type": "number",
-                "default": 8,
-                "min": 1,
-                "description": "Number of parallel workers to use.",
+                "label": "Smoothing Strength",
+                "parameter": "smoothing_strength",
+                "type": "float",
+                "default": 80.0,
+                "min": 0.0,
+                "max": 100.0,
+                "description": "Smoothing intensity (0 = none, 100 = maximum).",
             },
             {
-                "label": "Close Dataset Edges",
-                "parameter": "closed_dataset_edges",
-                "type": "boolean",
-                "default": True,
-                "description": "Close mesh at at dataset edges.",
+                "label": "Feature Angle",
+                "parameter": "feature_angle",
+                "type": "float",
+                "default": 120.0,
+                "min": 0.0,
+                "max": 180.0,
+                "description": "Edges sharper than this angle are preserved during "
+                "smoothing.",
+                "notes": "Angle between adjacent triangle normals. 180 smooths "
+                "everything, lower values protect more edges.",
             },
         ],
     },
@@ -906,6 +942,13 @@ PROJECTION_SETTINGS = {
             "type": "boolean",
             "default": False,
             "description": "Update normal vectors of projection based on the mesh.",
+        },
+        {
+            "label": "Partition",
+            "parameter": "partition",
+            "type": "boolean",
+            "default": False,
+            "description": "Assign points to nearest mesh instead of projecting.",
         },
     ],
 }

@@ -30,7 +30,7 @@ __all__ = [
     "compute_scale_factor_lower",
     "center_mesh",
     "to_tsi",
-    "medial_mesh",
+    "fill_mesh",
 ]
 
 
@@ -359,9 +359,9 @@ def to_tsi(vertices, faces, margin: int = 0) -> Dict:
     }
 
 
-def medial_mesh(vertices, triangles, voxel_size):
+def fill_mesh(vertices, triangles, voxel_size):
     """
-    Compute the medial surface skeleton from a shell mesh.
+    Fill the interior of a closed triangle mesh with regularly spaced points.
 
     Parameters
     ----------
@@ -370,15 +370,13 @@ def medial_mesh(vertices, triangles, voxel_size):
     triangles : np.ndarray
         Mesh triangle indices (M, 3).
     voxel_size : float
-        Voxel size for the occupancy grid.
+        Spacing between interior points.
 
     Returns
     -------
-    skeleton_points : np.ndarray
-        Coordinates of skeleton voxels in world space (K, 3).
+    interior_points : np.ndarray
+        Coordinates of interior points in world space (K, 3).
     """
-    from ..utils import skeletonize
-
     vertices = np.asarray(vertices, dtype=np.float64)
     triangles = np.asarray(triangles, dtype=np.int32)
 
@@ -397,15 +395,5 @@ def medial_mesh(vertices, triangles, voxel_size):
     X, Y, Z = np.meshgrid(xi, yi, zi, indexing="ij")
     points = np.stack([X, Y, Z], axis=-1).reshape(-1, 3).astype(np.float32)
 
-    occupancy = (
-        scene.compute_occupancy(o3d.core.Tensor(points)).numpy().reshape(grid_shape)
-    )
-    shell_volume = (occupancy > 0.5).astype(np.uint8)
-
-    skeleton = skeletonize(shell_volume, mode="core")
-    skel_coords = np.argwhere(skeleton > 0).astype(np.float64)
-    if len(skel_coords) == 0:
-        raise ValueError("Could not compute medial surface — empty skeleton.")
-    skeleton_points = skel_coords * voxel_size + grid_min
-
-    return skeleton_points
+    inside = scene.compute_occupancy(o3d.core.Tensor(points)).numpy() > 0.5
+    return points[inside]

@@ -171,7 +171,7 @@ class TrajectoryAnimation(BaseAnimation):
         self._trajectory.display_frame(frame)
         uuids = self.cdata.models._get_selected_uuids()
         if uuids:
-            self.cdata.models.set_selection_by_uuids(uuids)
+            self.cdata.models.set_selection_by_uuid(uuids)
 
 
 class VolumeAnimation(BaseAnimation):

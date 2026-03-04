@@ -70,6 +70,8 @@ class DataContainer:
             geometry.set_appearance(
                 base_color=color, highlight_color=self.highlight_color
             )
+        else:
+            geometry._appearance["base_color"] = color
 
         self.data.append(geometry)
         return len(self.data) - 1

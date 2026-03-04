@@ -13,7 +13,7 @@ _module_map = {
         "compute_scale_factor_lower",
         "center_mesh",
         "to_tsi",
-        "medial_mesh",
+        "fill_mesh",
     ],
     ".repair": [
         "triangulate_refine_fair",

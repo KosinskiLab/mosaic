@@ -899,8 +899,8 @@ class TriangularMesh(Parametrization):
         if radius < 2:
             radius, use_k_ring = 2, False
 
-        pd1, pd2, pv1, pv2 = igl.principal_curvature(
-            self.vertices, self.triangles, radius=radius, use_k_ring=use_k_ring
+        pd1, pd2, pv1, pv2, bad_vs = igl.principal_curvature(
+            self.vertices, self.triangles, radius=radius, useKring=use_k_ring
         )
 
         curvature = curvature.lower()
@@ -1373,58 +1373,6 @@ class FairHull(ConvexHull):
     pass
 
 
-class MarchingCubes(TriangularMesh):
-    """
-    Represent a point cloud as triangular mesh.
-
-    Parameters
-    ----------
-    mesh : open3d.cpu.pybind.geometry.TriangleMesh
-        Triangular mesh.
-    """
-
-    @classmethod
-    def fit(
-        cls,
-        positions: np.ndarray,
-        voxel_size: float = 1,
-        simplification_factor=100,
-        closed_dataset_edges=True,
-        num_workers: int = 8,
-        **kwargs,
-    ):
-        from tempfile import mkstemp, TemporaryDirectory
-        from .meshing.volume import mesh_volume
-        from .formats.writer import write_density
-
-        voxel_size = tuple(voxel_size for _ in range(positions.shape[1]))
-
-        _volume, offset = points_to_volume(positions, voxel_size, use_offset=True)
-
-        pad = tuple(1 if x == 1 else 0 for x in _volume.shape)
-        if any(pad):
-            full_pad = tuple((0, x) for x in pad)
-            _volume = np.pad(_volume, full_pad)
-        _volume = _volume.astype(np.int8)
-
-        _, filename = mkstemp()
-        write_density(_volume, filename, sampling_rate=voxel_size)
-
-        odir = TemporaryDirectory()
-        mesh_paths = mesh_volume(
-            filename,
-            simplification_factor=simplification_factor,
-            closed_dataset_edges=closed_dataset_edges,
-            num_workers=num_workers,
-            output_dir=odir.name,
-        )
-        mesh = TriangularMesh.from_file(mesh_paths[0])
-        vs = mesh.vertices + offset * voxel_size
-
-        odir.cleanup()
-        return cls(mesh=meshing.to_open3d(vs, mesh.triangles))
-
-
 class FlyingEdges(TriangularMesh):
     """
     Represent a point cloud as triangular mesh.
@@ -1440,6 +1388,9 @@ class FlyingEdges(TriangularMesh):
         cls,
         positions: np.ndarray,
         voxel_size: float = 1,
+        smoothing_strength: float = 80.0,
+        smoothing_iterations: int = 15,
+        feature_angle: float = 120.0,
         **kwargs,
     ):
         import vtk
@@ -1463,13 +1414,27 @@ class FlyingEdges(TriangularMesh):
         _volume = numpy_support.numpy_to_vtk(_volume.ravel(order="F"), deep=False)
         volume.GetPointData().SetScalars(_volume)
 
-        flying_edges = vtk.vtkFlyingEdges3D()
+        flying_edges = vtk.vtkDiscreteFlyingEdges3D()
         flying_edges.SetInputData(volume)
-        flying_edges.SetValue(0, 0.1)
+        flying_edges.SetValue(0, 1)
         flying_edges.ComputeNormalsOn()
         flying_edges.Update()
 
-        polydata = flying_edges.GetOutput()
+        # Convert 0-100 strength to VTK pass_band using log scale
+        pass_band = 2.0 * 10 ** (-np.clip(smoothing_strength, 0, 100) / 25.0)
+
+        smoother = vtk.vtkWindowedSincPolyDataFilter()
+        smoother.SetNumberOfIterations(smoothing_iterations)
+        smoother.SetPassBand(pass_band)
+        smoother.SetFeatureAngle(feature_angle)
+        smoother.BoundarySmoothingOff()
+        smoother.FeatureEdgeSmoothingOff()
+        smoother.NonManifoldSmoothingOn()
+        smoother.NormalizeCoordinatesOn()
+        smoother.SetInputConnection(flying_edges.GetOutputPort())
+        smoother.Update()
+
+        polydata = smoother.GetOutput()
         vertices_vtk = polydata.GetPoints().GetData()
         vertices = numpy_support.vtk_to_numpy(vertices_vtk)
 
@@ -1609,5 +1574,4 @@ PARAMETRIZATION_TYPE = {
     "convexhull": ConvexHull,
     "spline": SplineCurve,
     "flyingedges": FlyingEdges,
-    "marchingcubes": MarchingCubes,
 }

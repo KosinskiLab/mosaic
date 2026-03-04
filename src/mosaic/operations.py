@@ -27,6 +27,13 @@ from .utils import (
 __all__ = ["GeometryOperations"]
 
 
+def _get_meta(geometry):
+    name = geometry._meta.get("name", None)
+    if name is None:
+        return {}
+    return {"name": name}
+
+
 def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
     """
     Extract structural skeleton from point cloud.
@@ -93,7 +100,9 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
         _, indices = find_closest_points(points, hull_points)
         points = points[np.unique(indices)]
 
-    return Geometry(points, sampling_rate=geometry.sampling_rate)
+    return Geometry(
+        points, sampling_rate=geometry.sampling_rate, meta=_get_meta(geometry)
+    )
 
 
 def downsample(geometry, method: str = "radius", **kwargs):
@@ -148,7 +157,12 @@ def downsample(geometry, method: str = "radius", **kwargs):
     else:
         raise ValueError("Supported are 'radius', 'center of mass', and 'number'.")
 
-    return Geometry(points, normals=normals, sampling_rate=geometry._sampling_rate)
+    return Geometry(
+        points,
+        normals=normals,
+        sampling_rate=geometry.sampling_rate,
+        meta=_get_meta(geometry),
+    )
 
 
 def crop(geometry, distance: float, query: np.ndarray, keep_smaller: bool = True):
@@ -242,7 +256,12 @@ def sample(
         new_normals = -1 * fit.compute_normal(points)
         points = np.concatenate([points, new_points])
         normals = np.concatenate([normals, new_normals])
-    return Geometry(points, normals=normals, sampling_rate=geometry.sampling_rate)
+    return Geometry(
+        points,
+        normals=normals,
+        sampling_rate=geometry.sampling_rate,
+        meta=_get_meta(geometry),
+    )
 
 
 def cluster(
@@ -326,13 +345,14 @@ def cluster(
         raise ValueError("Found more than 10k clusters. Try coarser clustering.")
 
     # Create geometry objects for each cluster
-    result_geometries = []
+    ret = []
     for label in unique_labels:
         if label == -1 and drop_noise:
             continue
-        cluster_geometry = geometry[labels == label]
-        result_geometries.append(cluster_geometry)
-    return result_geometries
+        geometry = geometry[labels == label]
+        geometry._meta.pop("name", None)
+        ret.append(geometry)
+    return ret
 
 
 def remove_outliers(geometry, method: str = "statistical", **kwargs):
@@ -480,7 +500,11 @@ def remesh(geometry, method, **kwargs):
     else:
         raise ValueError(f"Unsupported remeshing method: {method}")
 
-    return Geometry(sampling_rate=geometry.sampling_rate, model=TriangularMesh(mesh))
+    return Geometry(
+        model=TriangularMesh(mesh),
+        sampling_rate=geometry.sampling_rate,
+        meta=_get_meta(geometry),
+    )
 
 
 def smooth(geometry, method, **kwargs):
@@ -502,7 +526,7 @@ def smooth(geometry, method, **kwargs):
     else:
         raise ValueError(f"Unsupported smoothing method: {method}")
 
-    return Geometry(sampling_rate=geometry.sampling_rate, model=TriangularMesh(mesh))
+    return Geometry(model=TriangularMesh(mesh), sampling_rate=geometry.sampling_rate)
 
 
 def fit(geometry, method, **kwargs):
@@ -515,7 +539,6 @@ def fit(geometry, method, **kwargs):
         "Poisson": "poissonmesh",
         "Cluster Ball Pivoting": "clusterballpivoting",
         "Flying Edges": "flyingedges",
-        "Marching Cubes": "marchingcubes",
     }
     method = _mapping.get(method, method)
 
@@ -553,6 +576,7 @@ def fit(geometry, method, **kwargs):
         normals=normals,
         sampling_rate=geometry.sampling_rate,
         model=fit,
+        meta=_get_meta(geometry),
     )
 
 
