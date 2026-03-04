@@ -1,4 +1,6 @@
-from typing import Dict
+from typing import Dict, List
+from os.path import splitext
+
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
     QDialog,
@@ -6,17 +8,23 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QFrame,
-    QScrollArea,
     QWidget,
     QGroupBox,
     QGridLayout,
+    QCheckBox,
+    QLineEdit,
+    QFileDialog,
 )
 import qtawesome as qta
 
-from ..widgets import DialogFooter
-from ..stylesheets import QGroupBox_style, QPushButton_style, QScrollArea_style, Colors
-from ..widgets import create_setting_widget, get_widget_value
+from ..widgets import DialogFooter, create_setting_widget, get_widget_value
+from ..stylesheets import (
+    QGroupBox_style,
+    QPushButton_style,
+    QLineEdit_style,
+    QCheckBox_style,
+    Colors,
+)
 
 
 class StyleableButton(QPushButton):
@@ -79,11 +87,20 @@ class StyleableButton(QPushButton):
 class ExportDialog(QDialog):
     export_requested = Signal(dict)
 
-    def __init__(self, parent=None, parameters={}, enabled_categories=None):
+    def __init__(
+        self,
+        parent=None,
+        parameters={},
+        enabled_categories=None,
+        names: List[str] = None,
+    ):
         super().__init__(parent)
 
         self.setWindowTitle("Export Data")
-        self.resize(700, 600)
+
+        self.names = names or []
+        self.resize(700, 460)
+        self.file_names = [f"_{i}" for i in range(len(self.names))]
 
         if enabled_categories is None:
             enabled_categories = ["pointcloud", "mesh", "volume"]
@@ -114,13 +131,6 @@ class ExportDialog(QDialog):
             "em": volume_settings,
             "h5": volume_settings,
             "xyz": {
-                "single_file": {
-                    "type": "boolean",
-                    "label": "Single File",
-                    "description": "Export all data to a single file",
-                    "default": False,
-                    "parameter": "single_file",
-                },
                 "header": {
                     "type": "boolean",
                     "label": "Include Header",
@@ -130,13 +140,6 @@ class ExportDialog(QDialog):
                 },
             },
             "star": {
-                "single_file": {
-                    "type": "boolean",
-                    "label": "Single File",
-                    "description": "Export all data to a single file",
-                    "default": False,
-                    "parameter": "single_file",
-                },
                 "relion_5_format": {
                     "type": "boolean",
                     "label": "RELION 5",
@@ -144,67 +147,19 @@ class ExportDialog(QDialog):
                     "default": False,
                     "parameter": "relion_5_format",
                 },
-                "shape_x": {
-                    "type": "number",
-                    "label": "Shape X",
-                    "description": "X voxel for coordinate transformation (RELION 5)",
-                    "default": 64,
-                    "min": 1,
-                    "parameter": "shape_x",
-                },
-                "shape_y": {
-                    "type": "number",
-                    "label": "Shape Y",
-                    "description": "Y voxel for coordinate transformation (RELION 5)",
-                    "default": 64,
-                    "min": 1,
-                    "parameter": "shape_y",
-                },
-                "shape_z": {
-                    "type": "number",
-                    "label": "Shape Z",
-                    "description": "Z voxel for coordinate transformation (RELION 5)",
-                    "default": 64,
-                    "min": 1,
-                    "parameter": "shape_z",
+                "shape": {
+                    "type": "text",
+                    "label": "Shape",
+                    "description": "Volume dimensions for coordinate transformation (RELION 5)",
+                    "default": "64, 64, 64",
+                    "parameter": "shape",
+                    "depends_on": "relion_5_format",
                 },
             },
-            "tsv": {
-                "single_file": {
-                    "type": "boolean",
-                    "label": "Single File",
-                    "description": "Export all data to a single file",
-                    "default": False,
-                    "parameter": "single_file",
-                }
-            },
-            "obj": {
-                "single_file": {
-                    "type": "boolean",
-                    "label": "Single File",
-                    "description": "Export all data to a single file",
-                    "default": False,
-                    "parameter": "single_file",
-                }
-            },
-            "stl": {
-                "single_file": {
-                    "type": "boolean",
-                    "label": "Single File",
-                    "description": "Export all data to a single file",
-                    "default": False,
-                    "parameter": "single_file",
-                }
-            },
-            "ply": {
-                "single_file": {
-                    "type": "boolean",
-                    "label": "Single File",
-                    "description": "Export all data to a single file",
-                    "default": False,
-                    "parameter": "single_file",
-                }
-            },
+            "tsv": {},
+            "obj": {},
+            "stl": {},
+            "ply": {},
         }
 
         self.selected_category = next(
@@ -219,38 +174,39 @@ class ExportDialog(QDialog):
             "formats"
         ][0]
 
-        self.selected_format = "star"
-        self.current_settings = {}
-        self.show_advanced = False
-
         # Set parameters before drawing dialog
         self.set_defaults(list(parameters.keys()), list(parameters.values()))
 
         self.setup_ui()
-        self.setStyleSheet(QGroupBox_style + QPushButton_style + QScrollArea_style)
+        self.setStyleSheet(
+            QGroupBox_style + QPushButton_style + QLineEdit_style + QCheckBox_style
+        )
 
     def set_defaults(self, keys, values):
         """Update default values for format settings"""
-        for format_name, settings_dict in self.format_settings_definitions.items():
-            for index, key in enumerate(keys):
+        params = dict(zip(keys, values))
+
+        # Merge shape_x/y/z into a single "shape" default
+        if all(k in params for k in ("shape_x", "shape_y", "shape_z")):
+            shape_str = f"{int(params['shape_x'])}, {int(params['shape_y'])}, {int(params['shape_z'])}"
+            for settings_dict in self.format_settings_definitions.values():
+                if "shape" in settings_dict:
+                    settings_dict["shape"]["default"] = shape_str
+
+        for settings_dict in self.format_settings_definitions.values():
+            for key, value in params.items():
                 if key in settings_dict:
-                    settings_dict[key]["default"] = values[index]
+                    settings_dict[key]["default"] = value
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Scroll area for content
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-
-        content_widget = QWidget()
-        scroll_area.setWidget(content_widget)
-        content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(20, 20, 20, 20)
-        content_layout.setSpacing(20)
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(20, 20, 20, 10)
+        content_layout.setSpacing(16)
 
         export_group = QGroupBox("Export Type")
         self.export_layout = QHBoxLayout(export_group)
@@ -262,18 +218,112 @@ class ExportDialog(QDialog):
         self.setup_format_buttons()
         content_layout.addWidget(format_group)
 
+        # -- Bottom row: Settings | Output side by side --
+        bottom_row = QHBoxLayout()
+        bottom_row.setSpacing(16)
+
         settings_group = QGroupBox("Settings")
-        settings_group.setMinimumHeight(200)
         self.settings_layout = QVBoxLayout(settings_group)
         self.update_advanced_settings()
-        content_layout.addWidget(settings_group)
+        bottom_row.addWidget(settings_group, 1)
 
-        main_layout.addWidget(scroll_area)
+        output_group = QGroupBox("Output")
+        output_layout = QVBoxLayout(output_group)
+        output_layout.setSpacing(6)
+
+        self.single_file_checkbox = QCheckBox("Single file")
+        self.single_file_checkbox.setChecked(True)
+        self.single_file_checkbox.setToolTip(
+            "Merge all selected geometries into a single output file"
+        )
+        self.single_file_checkbox.toggled.connect(self._on_single_file_toggled)
+        output_layout.addWidget(self.single_file_checkbox)
+
+        suffix_row = QHBoxLayout()
+        suffix_row.setSpacing(6)
+        self.suffix_label = QLabel("Suffix:")
+        suffix_row.addWidget(self.suffix_label)
+
+        self.pattern_input = QLineEdit("_{i}")
+        self.pattern_input.setPlaceholderText("_{i}")
+        self.pattern_input.setToolTip("{name} = original name, {i} = sequential number")
+        self.pattern_input.textChanged.connect(self._apply_pattern)
+        suffix_row.addWidget(self.pattern_input)
+        output_layout.addLayout(suffix_row)
+
+        self.preview_label = QLabel()
+        self.preview_label.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: 12px;"
+        )
+        output_layout.addWidget(self.preview_label)
+        self._update_preview()
+
+        output_layout.addStretch()
+        bottom_row.addWidget(output_group, 1)
+
+        content_layout.addLayout(bottom_row, 1)
+
+        self._update_output_enabled()
+
+        main_layout.addWidget(content, 1)
 
         footer = DialogFooter(dialog=self, margin=(20, 10, 20, 10))
-        footer.accept_button.setText("Export")
-        footer.accept_button.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
+        self.export_button = footer.accept_button
+        self.export_button.setText("Export")
+        self.export_button.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
         main_layout.addWidget(footer)
+
+    def _update_preview(self):
+        if not hasattr(self, "preview_label"):
+            return
+
+        is_single = self.single_file_checkbox.isChecked()
+        if is_single or not self.file_names:
+            self.preview_label.setText("")
+            self._set_export_blocked(False)
+            return
+
+        ext = self.selected_format
+        has_dupes = len(self.file_names) != len(set(self.file_names))
+        self._set_export_blocked(has_dupes)
+
+        if has_dupes:
+            self.preview_label.setText(
+                '<span style="color: #dc2626;">'
+                "Pattern produces duplicate filenames</span>"
+            )
+            return
+
+        example = f"&lt;filename&gt;{self.file_names[0]}.{ext}"
+        count = len(self.file_names)
+        if count > 1:
+            example += f"  ... ({count} file{'s' if count != 1 else ''})"
+
+        self.preview_label.setText(example)
+
+    def _set_export_blocked(self, blocked):
+        if hasattr(self, "export_button"):
+            self.export_button.setEnabled(not blocked)
+
+    def _apply_pattern(self):
+        pattern = self.pattern_input.text()
+        for i, name in enumerate(self.names):
+            try:
+                self.file_names[i] = pattern.format(name=name, i=i)
+            except (KeyError, IndexError):
+                self.file_names[i] = pattern
+        self._update_preview()
+
+    def _on_single_file_toggled(self, checked):
+        self._update_output_enabled()
+        self._update_preview()
+
+    def _update_output_enabled(self):
+        is_single = self.single_file_checkbox.isChecked()
+        enabled = not is_single
+
+        self.suffix_label.setEnabled(enabled)
+        self.pattern_input.setEnabled(enabled)
 
     def _clear_layout(self, layout):
         while layout.count():
@@ -336,20 +386,36 @@ class ExportDialog(QDialog):
         settings_widget = QWidget()
         grid_layout = QGridLayout(settings_widget)
         grid_layout.setContentsMargins(10, 10, 10, 10)
-        grid_layout.setSpacing(10)
+        grid_layout.setVerticalSpacing(10)
+        grid_layout.setHorizontalSpacing(6)
+        grid_layout.setColumnStretch(1, 1)
 
         row = 0
-        col = 0
+        dependent_widgets = {}
+        checkbox_widgets = {}
+
         for setting_key, setting_def in settings_definitions.items():
             widget = create_setting_widget(setting_def)
 
-            label = QLabel(setting_def["label"])
-            grid_layout.addWidget(label, row, col * 2)
-            grid_layout.addWidget(widget, row, col * 2 + 1)
+            if setting_def["type"] == "boolean":
+                widget.setText(setting_def["label"])
+                grid_layout.addWidget(widget, row, 0, 1, 2)
+                checkbox_widgets[setting_def["parameter"]] = widget
+            else:
+                label = QLabel(setting_def["label"])
+                grid_layout.addWidget(label, row, 0)
+                grid_layout.addWidget(widget, row, 1)
+                if "depends_on" in setting_def:
+                    dependent_widgets[setting_def["depends_on"]] = (label, widget)
+            row += 1
 
-            col = 1 - col
-            if col == 0:
-                row += 1
+        for param, (label, widget) in dependent_widgets.items():
+            if param in checkbox_widgets:
+                cb = checkbox_widgets[param]
+                label.setEnabled(cb.isChecked())
+                widget.setEnabled(cb.isChecked())
+                cb.toggled.connect(label.setEnabled)
+                cb.toggled.connect(widget.setEnabled)
 
         self.settings_layout.addWidget(settings_widget)
         self.settings_grid_layout = grid_layout
@@ -361,7 +427,6 @@ class ExportDialog(QDialog):
         if getattr(self, "settings_grid_layout", None) is None:
             return settings
 
-        # Collect values from all widgets in the grid
         for i in range(self.settings_grid_layout.count()):
             item = self.settings_grid_layout.itemAt(i)
             if item and item.widget():
@@ -370,6 +435,15 @@ class ExportDialog(QDialog):
                 if not parameter:
                     continue
                 settings[parameter] = get_widget_value(widget)
+
+        # Expand combined "shape" back to shape_x, shape_y, shape_z
+        if "shape" in settings:
+            parts = [s.strip() for s in str(settings.pop("shape")).split(",")]
+            for key, val in zip(("shape_x", "shape_y", "shape_z"), parts):
+                try:
+                    settings[key] = int(val)
+                except ValueError:
+                    settings[key] = 64
 
         return settings
 
@@ -385,10 +459,10 @@ class ExportDialog(QDialog):
 
         self.selected_category = category_id
         self.selected_format = self.format_categories[category_id]["formats"][0]
-        self.current_settings = {}
 
         self.setup_format_buttons()
         self.update_advanced_settings()
+        self._update_preview()
 
     def on_format_selected(self, format_id):
         if format_id == self.selected_format:
@@ -398,49 +472,46 @@ class ExportDialog(QDialog):
             btn.setChecked(fmt == format_id)
 
         self.selected_format = format_id
-        self.current_settings = {}
         self.update_advanced_settings()
+        self._update_preview()
 
     def accept(self):
+        ext = self.selected_format
+        file_filter = f"{ext.upper()} Files (*.{ext})"
+        path, _ = QFileDialog.getSaveFileName(self, "Export", "", file_filter)
+
+        if not path:
+            return None
+
+        base_path = splitext(path)[0]
+
         export_data = {
             "category": self.selected_category,
             "format": self.selected_format,
+            "single_file": self.single_file_checkbox.isChecked(),
+            "file_path": f"{base_path}.{ext}",
             **self.get_current_settings(),
         }
+
+        if not export_data["single_file"] and self.names:
+            export_data["file_names"] = list(self.file_names)
 
         self.export_requested.emit(export_data)
         return super().accept()
 
 
 volume_settings = {
-    "shape_x": {
-        "type": "number",
-        "label": "Shape X",
-        "description": "X dimension of the volume",
-        "default": 64,
-        "min": 1,
-        "parameter": "shape_x",
-    },
-    "shape_y": {
-        "type": "number",
-        "label": "Shape Y",
-        "description": "Y dimension of the volume",
-        "default": 64,
-        "min": 1,
-        "parameter": "shape_y",
-    },
-    "shape_z": {
-        "type": "number",
-        "label": "Shape Z",
-        "description": "Z dimension of the volume",
-        "default": 64,
-        "min": 1,
-        "parameter": "shape_z",
+    "shape": {
+        "type": "text",
+        "label": "Shape",
+        "description": "Volume dimensions as X, Y, Z",
+        "default": "64, 64, 64",
+        "parameter": "shape",
     },
     "sampling": {
         "type": "float",
-        "label": "Sampling Rate",
-        "description": "Sampling rate in Ångströms",
+        "label": "Voxel Size",
+        "description": "Voxel Size in \u00c5ngstr\u00f6ms",
         "notes": "Defaults to sampling rate of Geometry object",
         "default": -1,
         "min": -1,

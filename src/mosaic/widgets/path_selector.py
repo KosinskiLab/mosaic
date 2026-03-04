@@ -18,6 +18,8 @@ class PathSelector(QWidget):
         label_text="",
         placeholder="Path to file",
         file_mode: bool = True,
+        save_mode: bool = False,
+        file_filter: str = "",
         parent=None,
     ):
         """
@@ -29,14 +31,20 @@ class PathSelector(QWidget):
             Text to show as label above the path field
         placeholder : str
             Placeholder text for the input field
-        file_mode : str
+        file_mode : bool
             Whether integrated button triggers file or directory selection.
+        save_mode : bool
+            Whether to use a save dialog instead of an open dialog.
+        file_filter : str
+            File type filter for the dialog (e.g. "MRC Files (*.mrc)").
         parent : QWidget
             Parent widget
         """
         super().__init__(parent)
 
         self.file_mode = file_mode
+        self.save_mode = save_mode
+        self.file_filter = file_filter
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(4)
@@ -111,7 +119,11 @@ class PathSelector(QWidget):
         main_layout.addWidget(self.container_frame)
 
     def _browse_clicked(self):
-        if self.file_mode:
+        if self.save_mode:
+            path, _ = QFileDialog.getSaveFileName(
+                self, "Save File", "", self.file_filter
+            )
+        elif self.file_mode:
             path, _ = QFileDialog.getOpenFileName(self, "Select File")
         else:
             path = QFileDialog.getExistingDirectory(self, "Select Directory")

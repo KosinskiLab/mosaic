@@ -159,14 +159,13 @@ def close_holes(
     """
     out_fs = fs.copy()
     while True:
-        updated = False
-        for b in igl.all_boundary_loop(out_fs):
-            hole_edge_len = np.linalg.norm(vs[np.roll(b, -1)] - vs[b], axis=1).sum()
-            if len(b) >= 3 and (hole_edge_len <= hole_len_thr or hole_len_thr < 0):
-                out_fs = _close_hole(vs, out_fs, b, fast)
-                updated = True
-        if not updated:
+        b = igl.boundary_loop(out_fs)
+        if len(b) < 3:
             break
+        hole_edge_len = np.linalg.norm(vs[np.roll(b, -1)] - vs[b], axis=1).sum()
+        if hole_len_thr >= 0 and hole_edge_len > hole_len_thr:
+            break
+        out_fs = _close_hole(vs, out_fs, b, fast)
 
     return out_fs
 
@@ -280,8 +279,9 @@ def _fair_mesh(
         Internal mesh pressure. Default 0.0.
     """
     L, M = _robust_laplacian(vs, fs)
-    Q2 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 2)
-    Q4 = igl.harmonic_integrated_from_laplacian_and_mass(L, M, 3)
+    M_inv = scipy.sparse.diags(1.0 / M.diagonal())
+    Q2 = L.T @ M_inv @ L
+    Q4 = L.T @ M_inv @ Q2
 
     if np.isscalar(anchoring) or len(anchoring) == 1:
         anchoring = [anchoring, anchoring, anchoring]
@@ -314,7 +314,7 @@ def _fair_mesh(
         if gamma != 0:
             B += gamma * normals[:, axis]
 
-        out_vs[:, axis] = igl.spsolve(Q, B)
+        out_vs[:, axis] = scipy.sparse.linalg.spsolve(Q, B)
     return out_vs
 
 
@@ -404,7 +404,7 @@ def _robust_laplacian(
     .. [2] https://www.cs.cmu.edu/~kmcrane/Projects/NonmanifoldLaplace/NonmanifoldLaplace.pdf
     """
     lin = get_mollified_edge_length(vs, fs, mollify_factor).astype(np.float64)
-    lin, fin = igl.intrinsic_delaunay_triangulation(lin, fs)
+    lin, fin, *_ = igl.intrinsic_delaunay_triangulation(lin, fs)
     L = igl.cotmatrix_intrinsic(lin, fin)
     M = igl.massmatrix_intrinsic(lin, fin, igl.MASSMATRIX_TYPE_VORONOI)
 
@@ -521,9 +521,9 @@ def _triangulation_refine_leipa(
         all_sel_fids = np.concatenate([all_sel_fids, sel_fids], axis=0)
 
         # delaunay
-        l = get_mollified_edge_length(out_vs, out_fs[all_sel_fids])
-        _, add_fs = igl.intrinsic_delaunay_triangulation(
-            l.astype("f8"), out_fs[all_sel_fids]
+        edge_length = get_mollified_edge_length(out_vs, out_fs[all_sel_fids])
+        _, add_fs, *_ = igl.intrinsic_delaunay_triangulation(
+            edge_length.astype("f8"), out_fs[all_sel_fids]
         )
         out_fs[all_sel_fids] = add_fs
 

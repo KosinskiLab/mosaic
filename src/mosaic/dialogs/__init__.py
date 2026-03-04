@@ -11,6 +11,7 @@ from .matching import TemplateMatchingDialog
 from .update import UpdateChecker, UpdateDialog
 from .properties import GeometryPropertiesDialog
 from .equilibration import MeshEquilibrationDialog
+from .batch_rename import BatchRenameDialog
 from .property_analysis import PropertyAnalysisDialog
 from .file_dialog import (
     getExistingDirectory,

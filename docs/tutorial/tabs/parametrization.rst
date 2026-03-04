@@ -344,6 +344,20 @@ Projects point clouds onto mesh surfaces using ray casting:
 - Generates updated mesh with projection points integrated
 - Preserves original data while adding projected versions
 
+.. _fill:
+
+Fill
+----
+Fills the interior of a closed triangle mesh with regularly spaced points using ray casting:
+
+1. Select one or more mesh models
+2. Click **Fill**
+
+**Results:**
+
+- Creates a point cloud filling the mesh interior on a regular grid
+- Grid spacing matches the geometry's sampling rate
+
 
 Next Steps
 ----------

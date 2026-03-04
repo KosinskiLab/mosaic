@@ -147,7 +147,7 @@ class PropertyCache:
 
 def _populate_list(geometries):
     target_list = ContainerTreeWidget(border=False)
-    target_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+    target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
 
     for name, obj in geometries:
         item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))

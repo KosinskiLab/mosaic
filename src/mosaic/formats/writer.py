@@ -1,9 +1,22 @@
+import re
 from typing import Dict
 from os.path import splitext
 
 import numpy as np
 
 from ._utils import get_extension
+
+
+def _sanitize_filename(name):
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
+    name = re.sub(r"\s+", "_", name).strip(". ")
+    return name or "unnamed"
+
+
+def _get_output_path(file_path, index, file_format, file_names=None):
+    if file_names is not None and index < len(file_names):
+        return f"{file_path}{_sanitize_filename(file_names[index])}.{file_format}"
+    return f"{file_path}_{index}.{file_format}"
 
 
 class OrientationsWriter:
@@ -180,6 +193,7 @@ def write_geometries(geometries, file_path: str, export_parameters: dict) -> Non
 
     file_format = export_parameters.get("format")
     file_path, _ = splitext(file_path)
+    file_names = export_parameters.get("file_names", None)
 
     try:
         shape = tuple(export_parameters[x] for x in ("shape_x", "shape_y", "shape_z"))
@@ -231,11 +245,13 @@ def write_geometries(geometries, file_path: str, export_parameters: dict) -> Non
             meshes.clear()
 
         for index, mesh in enumerate(meshes):
-            mesh.to_file(f"{file_path}_{index}.{file_format}")
+            mesh.to_file(_get_output_path(file_path, index, file_format, file_names))
 
         return None
 
     if file_format in volume_formats:
+        single_file = export_parameters.get("single_file", True)
+
         # Try saving some memory on write. uint8 would be padded to 16 hence int8
         dtype = np.float32
         max_index = len(data["points"]) + 1
@@ -244,22 +260,27 @@ def write_geometries(geometries, file_path: str, export_parameters: dict) -> Non
         elif max_index < np.iinfo(np.uint16).max:
             dtype = np.uint16
 
-        volume = None
-        for index, points in enumerate(data["points"]):
+        volume, index = None, 0
+        for file_index, points in enumerate(data["points"]):
+            index += 1
             volume = points_to_volume(
                 points,
                 sampling_rate=1,
                 shape=shape,
-                weight=index + 1,
+                weight=index,
                 out=volume,
                 out_dtype=dtype,
             )
+            if not single_file:
+                fname = _get_output_path(file_path, file_index, file_format, file_names)
+                write_density(volume, filename=fname, sampling_rate=sampling)
+                volume, index = None, 0
 
-        return write_density(
-            volume,
-            filename=f"{file_path}.{file_format}",
-            sampling_rate=sampling,
-        )
+        if single_file:
+            fname = f"{file_path}.{file_format}"
+            write_density(volume, filename=fname, sampling_rate=sampling)
+
+        return None
 
     if file_format not in point_formats:
         return None
@@ -272,7 +293,7 @@ def write_geometries(geometries, file_path: str, export_parameters: dict) -> Non
 
     if file_format == "xyz":
         for index, points in enumerate(data["points"]):
-            fname = f"{file_path}_{index}.{file_format}"
+            fname = _get_output_path(file_path, index, file_format, file_names)
             if single_file:
                 fname = f"{file_path}.{file_format}"
 
@@ -285,7 +306,7 @@ def write_geometries(geometries, file_path: str, export_parameters: dict) -> Non
 
     for index in range(len(data["points"])):
         orientations = OrientationsWriter(**{k: v[index] for k, v in data.items()})
-        fname = f"{file_path}_{index}.{file_format}"
+        fname = _get_output_path(file_path, index, file_format, file_names)
         if single_file:
             fname = f"{file_path}.{file_format}"
         orientations.to_file(fname, file_format=file_format, **orientation_kwargs)

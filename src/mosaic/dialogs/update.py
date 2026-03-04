@@ -82,7 +82,7 @@ class UpdateDialog(QMessageBox):
         result = super().exec()
 
         if self.checkBox().isChecked():
-            from .settings import Settings
+            from ..settings import Settings
 
             Settings.ui.skipped_version = self.latest_version
 
