@@ -39,6 +39,13 @@ class IntelligenceTab(QWidget):
             create_button(
                 "HMFF", "ph.gear", self, self._setup_hmff, "Configure HMFF simulation"
             ),
+            # create_button(
+            #     "Screen",
+            #     "ph.grid-four",
+            #     self,
+            #     self._screen_parameters,
+            #     "DTS parameter screening",
+            # ),
             create_button(
                 "Trajectory",
                 "ph.path",
@@ -236,6 +243,15 @@ class IntelligenceTab(QWidget):
         self.cdata._models.add(trajectory)
         self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
+
+    def _screen_parameters(self):
+        from ..dialogs import DTSScreeningDialog
+
+        from qtpy.QtWidgets import QApplication
+
+        dialog = DTSScreeningDialog(self.cdata, parent=QApplication.activeWindow())
+        dialog.show()
+        self._screen_dialog = dialog
 
     def _map_fit(self):
         from ..meshing import mesh_to_cg

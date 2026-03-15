@@ -22,7 +22,13 @@ from qtpy.QtWidgets import QMessageBox
 from qtpy.QtCore import QObject, Signal, QTimer
 
 
-__all__ = ["report_progress", "submit_task", "submit_task_batch"]
+__all__ = [
+    "_init_worker",
+    "_wrap_task",
+    "report_progress",
+    "submit_task",
+    "submit_task_batch",
+]
 
 # Worker-side globals (set by initializer, used by worker functions)
 _worker_queue: Optional[multiprocessing.Queue] = None
@@ -134,6 +140,14 @@ class QueueStream(io.TextIOBase):
         return False
 
 
+def _init_worker():
+    """Limit per-worker thread usage to avoid oversubscription."""
+    import os
+
+    for var in ("OMP", "OPENBLAS", "MKL", "VECLIB_MAXIMUM", "NUMEXPR"):
+        os.environ[f"{var}_NUM_THREADS"] = "1"
+
+
 def _init_worker_with_queue(progress_queue: multiprocessing.Queue):
     """
     Initialize worker process with progress queue and stdout/stderr capture.
@@ -142,6 +156,8 @@ def _init_worker_with_queue(progress_queue: multiprocessing.Queue):
     """
     global _worker_queue, _original_stdout, _original_stderr
 
+    _init_worker()
+
     _worker_queue = progress_queue
 
     _original_stdout = sys.stdout
@@ -149,11 +165,6 @@ def _init_worker_with_queue(progress_queue: multiprocessing.Queue):
 
     sys.stdout = QueueStream(progress_queue, MessageType.STDOUT, _original_stdout)
     sys.stderr = QueueStream(progress_queue, MessageType.STDERR, _original_stderr)
-
-    import os
-
-    for var in ("OMP", "OPENBLAS", "MKL", "VECLIB_MAXIMUM", "NUMEXPR"):
-        os.environ[f"{var}_NUM_THREADS"] = "1"
 
 
 def _wrap_task(func, task_id, *args, **kwargs):

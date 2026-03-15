@@ -25,7 +25,6 @@ from qtpy.QtWidgets import (
 )
 from qtpy.QtCore import Qt, QSize
 from qtpy.QtGui import QFont
-import qtawesome as qta
 
 from .executor import generate_runs
 from ._utils import natural_sort_key, strip_filepath

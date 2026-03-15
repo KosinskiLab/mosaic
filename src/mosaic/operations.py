@@ -10,6 +10,8 @@ from typing import List, Optional
 
 import numpy as np
 
+from .registry import MethodRegistry
+
 from . import meshing
 from .utils import (
     statistical_outlier_removal,
@@ -68,7 +70,7 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
     from .utils import skeletonize as _skeletonize
     from .utils import points_to_volume, volume_to_points
 
-    method = method.lower()
+    method = MethodRegistry.resolve_method("skeletonize", method).lower()
     methods = ("core", "outer", "boundary", "outer_hull")
     if method not in methods:
         supported = ",".join([f"'{x}'" for x in methods])
@@ -107,7 +109,7 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
 
 def downsample(geometry, method: str = "radius", **kwargs):
     """
-    Reduces point density by removing points based on spatial or random criteria.
+    Downsample point cloud.
 
     Parameters
     ----------
@@ -131,9 +133,9 @@ def downsample(geometry, method: str = "radius", **kwargs):
     """
     from .geometry import Geometry
 
-    method = method.lower()
+    method = MethodRegistry.resolve_method("downsample", method).lower()
     points, normals = geometry.points, geometry.normals
-    if method.lower() == "radius":
+    if method == "radius":
         import open3d as o3d
 
         pcd = o3d.geometry.PointCloud()
@@ -143,12 +145,12 @@ def downsample(geometry, method: str = "radius", **kwargs):
         pcd = pcd.voxel_down_sample(**kwargs)
         points = np.asarray(pcd.points)
         normals = np.asarray(pcd.normals)
-    elif method.lower() == "number":
+    elif method == "number":
         size = kwargs.get("size", 1000)
         size = min(size, points.shape[0])
         keep = np.random.choice(range(points.shape[0]), replace=False, size=size)
         points, normals = points[keep], normals[keep]
-    elif method.lower() == "center of mass":
+    elif method in ("center_of_mass", "center of mass"):
         cutoff = kwargs.get("radius", None)
         if cutoff is None:
             cutoff = 4 * np.max(geometry.sampling_rate)
@@ -165,39 +167,6 @@ def downsample(geometry, method: str = "radius", **kwargs):
     )
 
 
-def crop(geometry, distance: float, query: np.ndarray, keep_smaller: bool = True):
-    """
-    Filters points based on their distance to a set of query points.
-
-    Parameters
-    ----------
-    geometry : :py:class:`mosaic.geometry.Geometry`
-        Input data.
-    distance : float
-        Distance threshold for cropping.
-    query : np.ndarray
-        Points to compute distances to.
-    keep_smaller : bool, optional
-        If True, keep points closer than distance threshold.
-        If False, keep points farther than distance threshold.
-        Default is True.
-
-    Returns
-    -------
-    :py:class:`mosaic.geometry.Geometry`
-        Cropped geometry.
-    """
-    from mosaic.utils import find_closest_points
-
-    dist, _ = find_closest_points(query, geometry.points, k=1)
-    if keep_smaller:
-        mask = dist < distance
-    else:
-        mask = dist >= distance
-
-    return geometry[mask]
-
-
 def sample(
     geometry,
     sampling: float,
@@ -207,7 +176,7 @@ def sample(
     **kwargs,
 ):
     """
-    Generates new points by sampling from a fitted parametric model.
+    Sample points from a fitted model.
 
     Parameters
     ----------
@@ -273,7 +242,7 @@ def cluster(
     **kwargs,
 ) -> List:
     """
-    Partitions points into clusters using the specified clustering algorithm.
+    Partition points into clusters.
 
     Parameters
     ----------
@@ -309,22 +278,23 @@ def cluster(
     ValueError
         If unsupported clustering method is specified or too many clusters found.
     """
-    _mapping = {
-        "DBSCAN": dbscan_clustering,
-        "Birch": birch_clustering,
-        "K-Means": kmeans_clustering,
-        "Connected Components": connected_components,
-        "Envelope": envelope_components,
-        "Leiden": leiden_clustering,
+    _func_mapping = {
+        "connected_components": connected_components,
+        "envelope": envelope_components,
+        "leiden": leiden_clustering,
+        "dbscan": dbscan_clustering,
+        "kmeans": kmeans_clustering,
+        "birch": birch_clustering,
     }
-    func = _mapping.get(method)
+    method = MethodRegistry.resolve_method("cluster", method)
+    func = _func_mapping.get(method)
     if func is None:
         raise ValueError(
-            f"Method must be one of {list(_mapping.keys())}, got '{method}'."
+            f"Method must be one of {list(_func_mapping.keys())}, got '{method}'."
         )
 
     distance = geometry.sampling_rate
-    if method in ("Connected Components", "Envelope", "Leiden"):
+    if method in ("connected_components", "envelope", "leiden"):
         distance = kwargs.pop("distance", -1)
         if np.any(np.array(distance) < 0):
             distance = geometry.sampling_rate
@@ -349,15 +319,15 @@ def cluster(
     for label in unique_labels:
         if label == -1 and drop_noise:
             continue
-        geometry = geometry[labels == label]
-        geometry._meta.pop("name", None)
-        ret.append(geometry)
+        cluster_geom = geometry[labels == label]
+        cluster_geom._meta.pop("name", None)
+        ret.append(cluster_geom)
     return ret
 
 
 def remove_outliers(geometry, method: str = "statistical", **kwargs):
     """
-    Filters out points that are statistical outliers based on local neighborhoods.
+    Remove statistical outliers from point cloud.
 
     Parameters
     ----------
@@ -377,14 +347,14 @@ def remove_outliers(geometry, method: str = "statistical", **kwargs):
         Filtered point cloud geometry with outliers removed.
         Returns None if no points remain after filtering.
     """
+    method = MethodRegistry.resolve_method("remove_outliers", method).lower()
     func = statistical_outlier_removal
     if method == "eigenvalue":
         func = eigenvalue_outlier_removal
-    else:
-        if method != "statistical":
-            raise ValueError(
-                f"Unsupported method '{method}'. Use 'statistical' or 'eigenvalue'."
-            )
+    elif method != "statistical":
+        raise ValueError(
+            f"Unsupported method '{method}'. Use 'statistical' or 'eigenvalue'."
+        )
 
     mask = func(geometry.points, **kwargs)
     if mask.sum() == 0:
@@ -397,12 +367,12 @@ def compute_normals(
     geometry, method: str = "Compute", k: int = 15, **kwargs
 ) -> Optional:
     """
-    Calculates normals for points or flips existing normals.
+    Compute or flip point normals.
 
     Parameters
     ----------
     geometry : :py:class:`mosaic.geometry.Geometry`
-        Input data. This geometry object is modified in-place.
+        Input data.
     method : str, optional
         Normal computation method. Options are:
         - 'Compute' : Calculate new normals from point neighborhoods
@@ -413,15 +383,21 @@ def compute_normals(
         Only used when method='Compute'. Default is 15.
     **kwargs
         Additional parameters for normal computation.
+
+    Returns
+    -------
+    Geometry
+        A duplicate of the input geometry with updated normals.
     """
     from .utils import compute_normals
 
-    if method == "Flip":
+    method = MethodRegistry.resolve_method("compute_normals", method).lower()
+    if method == "flip":
         geometry.normals = geometry.normals * -1
-    elif method == "Compute":
+    elif method == "compute":
         geometry.normals = compute_normals(geometry.points, k=k, **kwargs)
     else:
-        raise ValueError(f"Unsupported method '{method}'. Use 'Compute' or 'Flip'.")
+        raise ValueError(f"Unsupported method '{method}'. Use 'compute' or 'flip'.")
     return duplicate(geometry)
 
 
@@ -444,30 +420,62 @@ def duplicate(geometry, **kwargs):
 
 def visibility(geometry, visible: bool = True, **kwargs):
     """
-    Change the visibility of a geometry object
+    Change geometry visibility.
 
     Parameters
     ----------
     geometry : :py:class:`mosaic.geometry.Geometry`
-        Geometry to duplicate.
-    visible: bool, optional
-        Whether the Geometry instance should be visible or not.
+        Target geometry.
+    visible : bool, optional
+        Whether the geometry should be visible. Default is True.
     """
     geometry.set_visibility(visible)
 
 
-def remesh(geometry, method, **kwargs):
+def remesh(geometry, method: str, **kwargs):
+    """
+    Remesh by edge length, vertex count, or subdivision.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input geometry with a TriangularMesh model.
+    method : str
+        Remeshing strategy. Options are:
+        - 'Edge Length' : Isotropic remeshing to target edge length
+        - 'Vertex Clustering' : Simplify by merging nearby vertices
+        - 'Subdivide' : Increase resolution via midpoint or Loop subdivision
+        - 'Decimation' : Reduce triangle count via quadric or fast decimation
+    target_edge_length : float, optional
+        Target edge length for 'Edge Length' method.
+    voxel_size : float, optional
+        Voxel size for 'Vertex Clustering' method.
+    number_of_iterations : int, optional
+        Iteration count for 'Subdivide' method.
+    sampling : int, optional
+        Target triangle count for 'Decimation' method.
+    decimation_method : str, optional
+        Either 'Triangle Count' or 'Reduction Factor'. Default is 'Triangle Count'.
+    smooth : bool, optional
+        For 'Subdivide': use Loop subdivision instead of midpoint.
+        For 'Decimation': use quadric decimation. Default is False.
+
+    Returns
+    -------
+    :py:class:`mosaic.geometry.Geometry` or None
+        Remeshed geometry, or None if input has no mesh model.
+    """
     from .geometry import Geometry
     from .parametrization import TriangularMesh
 
     if not isinstance(mesh := geometry.model, TriangularMesh):
         return None
 
-    method = method.lower()
+    method = MethodRegistry.resolve_method("remesh", method).lower()
     mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
-    if method == "edge length":
+    if method == "edge_length" or method == "edge length":
         mesh = meshing.remesh(mesh=mesh, **kwargs)
-    elif method == "vertex clustering":
+    elif method == "vertex_clustering" or method == "vertex clustering":
         mesh = mesh.simplify_vertex_clustering(**kwargs)
     elif method == "subdivide":
         func = mesh.subdivide_midpoint
@@ -476,9 +484,9 @@ def remesh(geometry, method, **kwargs):
         kwargs = {k: v for k, v in kwargs.items() if k != "smooth"}
         mesh = func(**kwargs)
     elif method == "decimation":
-        method = kwargs.get("decimation_method", "Triangle Count").lower()
+        dec_method = kwargs.get("decimation_method", "Triangle Count").lower()
         sampling = kwargs.get("sampling")
-        if method == "reduction factor":
+        if dec_method == "reduction factor":
             sampling = np.asarray(mesh.triangles).shape[0] // sampling
 
         if kwargs.get("smooth", False):
@@ -507,16 +515,36 @@ def remesh(geometry, method, **kwargs):
     )
 
 
-def smooth(geometry, method, **kwargs):
+def smooth(geometry, method: str, **kwargs):
+    """
+    Smooth a triangle mesh.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input geometry with a TriangularMesh model.
+    method : str
+        Smoothing algorithm. Options are:
+        - 'Taubin' : Taubin smoothing (volume-preserving)
+        - 'Laplacian' : Laplacian smoothing
+        - 'Average' : Simple neighbor averaging
+    n_iterations : int, optional
+        Number of smoothing iterations. Default is 10.
+
+    Returns
+    -------
+    :py:class:`mosaic.geometry.Geometry` or None
+        Smoothed geometry, or None if input has no mesh model.
+    """
     from .geometry import Geometry
     from .parametrization import TriangularMesh
 
     if not isinstance(mesh := geometry.model, TriangularMesh):
         return None
 
-    method = method.lower()
+    method = MethodRegistry.resolve_method("smooth", method).lower()
     mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
-    n_iterations = int(kwargs.get("n_iterations", 10))
+    n_iterations = int(kwargs.get("number_of_iterations", 10))
     if method == "taubin":
         mesh = mesh.filter_smooth_taubin(n_iterations)
     elif method == "laplacian":
@@ -529,18 +557,41 @@ def smooth(geometry, method, **kwargs):
     return Geometry(model=TriangularMesh(mesh), sampling_rate=geometry.sampling_rate)
 
 
-def fit(geometry, method, **kwargs):
+def fit(geometry, method: str, **kwargs):
+    """
+    Fit a model to a point cloud.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input point cloud geometry.
+    method : str
+        Fitting method. Options are:
+        - 'sphere' : Sphere fit
+        - 'ellipsoid' : Ellipsoid fit
+        - 'cylinder' : Cylinder fit
+        - 'rbf' : Radial basis function interpolation
+        - 'spline' : Spline curve fit
+        - 'convexhull' : Convex hull (Alpha Shape)
+        - 'mesh' : Ball pivoting surface reconstruction
+        - 'poissonmesh' : Poisson surface reconstruction
+        - 'clusterballpivoting' : Cluster-based ball pivoting
+        - 'flyingedges' : Flying edges isosurface extraction
+
+    Returns
+    -------
+    :py:class:`mosaic.geometry.Geometry`
+        Geometry with fitted model attached.
+
+    Raises
+    ------
+    ValueError
+        If method is unsupported or point count is insufficient (<50).
+    """
     from .geometry import Geometry
     from .parametrization import PARAMETRIZATION_TYPE
 
-    _mapping = {
-        "Alpha Shape": "convexhull",
-        "Ball Pivoting": "mesh",
-        "Poisson": "poissonmesh",
-        "Cluster Ball Pivoting": "clusterballpivoting",
-        "Flying Edges": "flyingedges",
-    }
-    method = _mapping.get(method, method)
+    method = MethodRegistry.resolve_method("fit", method)
 
     if method == "mesh":
         radii = kwargs.get("radii", None)
@@ -594,7 +645,6 @@ class GeometryOperations:
 for operation_name, operation_func in [
     ("skeletonize", skeletonize),
     ("downsample", downsample),
-    ("crop", crop),
     ("sample", sample),
     ("cluster", cluster),
     ("remove_outliers", remove_outliers),

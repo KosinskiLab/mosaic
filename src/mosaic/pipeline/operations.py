@@ -6,18 +6,18 @@ Copyright (c) 2025 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from mosaic.registry import MethodRegistry
 from mosaic.stylesheets import Colors
-from mosaic.tabs.segmentation import (
-    CLUSTER_SETTINGS,
-    DOWNSAMPLE_SETTINGS,
-    SKELETONIZE_SETTINGS,
-)
-from mosaic.tabs.model import (
-    MESH_SETTINGS,
-    REMESH_SETTINGS,
-    SMOOTH_SETTINGS,
-    SAMPLE_SETTINGS,
-)
+from mosaic.tabs.model import SAMPLE_SETTINGS
+
+CLUSTER_SETTINGS = MethodRegistry.settings_dict("cluster")
+DOWNSAMPLE_SETTINGS = MethodRegistry.settings_dict("downsample")
+SKELETONIZE_SETTINGS = MethodRegistry.settings_dict("skeletonize")
+MESH_SETTINGS = MethodRegistry.settings_dict("fit")
+REMESH_SETTINGS = MethodRegistry.settings_dict("remesh")
+SMOOTH_SETTINGS = MethodRegistry.settings_dict("smooth")
+
+MESH_ANALYSIS_SETTINGS = MethodRegistry.settings_dict("mesh_analysis")
 
 
 OPERATION_CATEGORIES = {
@@ -134,6 +134,21 @@ OPERATION_CATEGORIES = {
                 "settings": SAMPLE_SETTINGS,
                 "input_type": "model",
                 "output_type": "point",
+            },
+        },
+    },
+    "analysis": {
+        "title": "Analysis",
+        "color": Colors.CATEGORY["analysis"],
+        "operations": {
+            "Mesh Analysis": {
+                "id": "mesh_analysis",
+                "description": "Compute mesh properties",
+                "icon": "ph.chart-line",
+                "has_output": False,
+                "input_type": "model",
+                "output_type": "model",
+                "settings": MESH_ANALYSIS_SETTINGS,
             },
         },
     },

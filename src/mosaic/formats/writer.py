@@ -181,7 +181,47 @@ def write_topology_file(file_path: str, data: Dict, tsi_format: bool = False) ->
         ofile.write(inclusion_string)
 
 
-def write_geometries(geometries, file_path: str, export_parameters: dict) -> None:
+def write_geometries(
+    geometries,
+    file_path: str,
+    *,
+    format: str = "star",
+    single_file: bool = None,
+    file_names=None,
+    shape_x: int = None,
+    shape_y: int = None,
+    shape_z: int = None,
+    sampling: float = None,
+    relion_5_format: bool = False,
+    **kwargs,
+) -> None:
+    """Export geometries to file.
+
+    Parameters
+    ----------
+    geometries : list of Geometry
+        Geometries to export.
+    file_path : str
+        Output file path (extension may be appended based on format).
+    format : str
+        Output format: star, tsv, xyz (point clouds),
+        obj, stl, ply (meshes), mrc, em, h5 (volumes).
+    single_file : bool, optional
+        Merge all geometries into one file. Default is True for
+        point/volume formats, False for meshes.
+    file_names : list of str, optional
+        Custom per-geometry file names (when not single_file).
+    shape_x : int, optional
+        Volume X dimension (inferred from data if not set).
+    shape_y : int, optional
+        Volume Y dimension.
+    shape_z : int, optional
+        Volume Z dimension.
+    sampling : float, optional
+        Override sampling rate for coordinate scaling.
+    relion_5_format : bool, optional
+        Apply RELION 5 coordinate transform.
+    """
     from ..utils import points_to_volume, normals_to_rot, NORMAL_REFERENCE
 
     if not len(geometries):
@@ -191,13 +231,12 @@ def write_geometries(geometries, file_path: str, export_parameters: dict) -> Non
     volume_formats = ("mrc", "em", "h5")
     point_formats = ("tsv", "star", "xyz")
 
-    file_format = export_parameters.get("format")
+    file_format = format
     file_path, _ = splitext(file_path)
-    file_names = export_parameters.get("file_names", None)
 
-    try:
-        shape = tuple(export_parameters[x] for x in ("shape_x", "shape_y", "shape_z"))
-    except Exception:
+    if shape_x is not None and shape_y is not None and shape_z is not None:
+        shape = (shape_x, shape_y, shape_z)
+    else:
         shape = np.max(
             [np.divide(x.points.max(axis=0), x.sampling_rate) for x in geometries],
             axis=0,
@@ -225,19 +264,20 @@ def write_geometries(geometries, file_path: str, export_parameters: dict) -> Non
                 normals = np.full_like(points, fill_value=NORMAL_REFERENCE)
             quaternions = normals_to_rot(normals, scalar_first=True)
 
-        sampling = export_parameters.get("sampling", geometry.sampling_rate)
-        if export_parameters.get("relion_5_format", False):
+        geom_sampling = sampling if sampling is not None else geometry.sampling_rate
+        if relion_5_format:
             center = np.divide(shape, 2).astype(int) if shape is not None else 0
-            center = np.multiply(center, sampling)
+            center = np.multiply(center, geom_sampling)
             orientation_kwargs["version"] = "# version 50001"
-            sampling = 1
+            geom_sampling = 1
 
-        points = np.subtract(np.divide(points, sampling), center)
+        points = np.subtract(np.divide(points, geom_sampling), center)
         data["points"].append(points)
         data["quaternions"].append(quaternions)
 
     if file_format in mesh_formats:
-        if single_file := export_parameters.get("single_file", False):
+        is_single = single_file if single_file is not None else False
+        if is_single:
             from ..parametrization import merge
 
             mesh = merge(meshes)
@@ -250,7 +290,7 @@ def write_geometries(geometries, file_path: str, export_parameters: dict) -> Non
         return None
 
     if file_format in volume_formats:
-        single_file = export_parameters.get("single_file", True)
+        is_single = single_file if single_file is not None else True
 
         # Try saving some memory on write. uint8 would be padded to 16 hence int8
         dtype = np.float32
@@ -271,14 +311,14 @@ def write_geometries(geometries, file_path: str, export_parameters: dict) -> Non
                 out=volume,
                 out_dtype=dtype,
             )
-            if not single_file:
+            if not is_single:
                 fname = _get_output_path(file_path, file_index, file_format, file_names)
-                write_density(volume, filename=fname, sampling_rate=sampling)
+                write_density(volume, filename=fname, sampling_rate=geom_sampling)
                 volume, index = None, 0
 
-        if single_file:
+        if is_single:
             fname = f"{file_path}.{file_format}"
-            write_density(volume, filename=fname, sampling_rate=sampling)
+            write_density(volume, filename=fname, sampling_rate=geom_sampling)
 
         return None
 
@@ -288,25 +328,24 @@ def write_geometries(geometries, file_path: str, export_parameters: dict) -> Non
     data["entities"] = [
         np.full(x.shape[0], fill_value=i) for i, x in enumerate(data["points"])
     ]
-    if single_file := export_parameters.get("single_file", True):
+    is_single = single_file if single_file is not None else True
+    if is_single:
         data = {k: [np.concatenate(v)] for k, v in data.items()}
 
     if file_format == "xyz":
         for index, points in enumerate(data["points"]):
             fname = _get_output_path(file_path, index, file_format, file_names)
-            if single_file:
+            if is_single:
                 fname = f"{file_path}.{file_format}"
 
-            header = ""
-            if export_parameters.get("header", True):
-                header = ",".join(["x", "y", "z"])
+            csv_header = ",".join(["x", "y", "z"])
 
-            np.savetxt(fname, points, delimiter=",", header=header, comments="")
+            np.savetxt(fname, points, delimiter=",", header=csv_header, comments="")
         return 1
 
     for index in range(len(data["points"])):
         orientations = OrientationsWriter(**{k: v[index] for k, v in data.items()})
         fname = _get_output_path(file_path, index, file_format, file_names)
-        if single_file:
+        if is_single:
             fname = f"{file_path}.{file_format}"
         orientations.to_file(fname, file_format=file_format, **orientation_kwargs)

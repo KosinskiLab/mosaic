@@ -70,3 +70,5 @@ Dockerfile
 tests
 Makefile
 pytest.ini
+src/mosaic/mcp
+src/mosaic/scripts/mcp_server.py

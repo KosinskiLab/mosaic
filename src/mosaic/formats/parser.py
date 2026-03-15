@@ -256,6 +256,31 @@ class VertexPropertyContainer:
     def remove_property(self, name: str) -> None:
         _ = self._properties.pop(name, None)
 
+    def set_property(self, name: str, data: np.ndarray) -> None:
+        """Insert or replace a vertex property.
+
+        Parameters
+        ----------
+        name : str
+            Property name.
+        data : np.ndarray
+            Array of per-vertex values.
+
+        Raises
+        ------
+        ValueError
+            If *data* length does not match the existing vertex count.
+        """
+        data = np.asarray(data)
+        if self._properties and len(data) != self._n_vertices:
+            raise ValueError(
+                f"Property '{name}' has {len(data)} values, "
+                f"but expected {self._n_vertices} to match vertex count"
+            )
+        if not self._properties:
+            self._n_vertices = len(data)
+        self._properties[name] = data
+
     def copy(self) -> "VertexPropertyContainer":
         """Create a deep copy of the container."""
         return self[...]

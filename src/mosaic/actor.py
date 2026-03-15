@@ -33,13 +33,9 @@ class ActorFactory:
 
     def is_synced(self) -> bool:
         """Check whether ActorFactory settings are synced with appsettings"""
-
         quality_kwargs = Settings.vtk.get_settings()
         quality = quality_kwargs.pop("quality", None)
-
-        ret = self.quality == quality
-        ret = ret and self.quality_kwargs == quality_kwargs
-        return ret
+        return self.quality == quality and self.quality_kwargs == quality_kwargs
 
     def create_actor(self) -> vtk.vtkActor:
         """Create an actor based on current quality settings.
@@ -63,22 +59,6 @@ class ActorFactory:
 
         actor.SetNumberOfCloudPoints(lod_points)
         actor.GetProperty().SetPointSize(lod_points_size)
-
-        # actor = vtk.vtkLODActor()
-        # actor.SetNumberOfCloudPoints(int(lod_points))
-        # actor.GetProperty().SetPointSize(lod_points_size)
-
-        # medium_filter = vtk.vtkMaskPoints()
-        # medium_filter.SetInputData(self._data)
-        # medium_filter.RandomModeOff()
-        # medium_filter.SetOnRatio(10)
-        # medium_filter.SetMaximumNumberOfPoints(5 * lod_points)
-        # medium_filter.SetSingleVertexPerCell(True)
-        # actor.SetMediumResFilter(medium_filter)
-
-        # low_filter = vtk.vtkOutlineFilter()
-        # low_filter.SetInputData(self._data)
-        # actor.SetLowResFilter(low_filter)
 
         return actor
 

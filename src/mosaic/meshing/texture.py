@@ -182,8 +182,21 @@ def _load_tomogram_cached(file_path: str):
     """Load and cache tomogram data."""
     from ..formats.parser import load_density
 
-    density = load_density(file_path)
-    return density.data.astype(np.float32), np.mean(density.sampling_rate)
+    density = load_density(file_path, use_memmap=True)
+
+    maxval = density.metadata.get("max", None)
+    if maxval is None:
+        maxval = density.data.max()
+
+    minval = density.metadata.get("min", None)
+    if minval is None:
+        minval = density.data.min()
+
+    return (
+        density.data.astype(np.float32),
+        np.mean(density.sampling_rate),
+        (float(minval), float(maxval)),
+    )
 
 
 class TextureSampler:
@@ -212,7 +225,9 @@ class TextureSampler:
 
         self.geometry = geometry
         self.texture_size = texture_size
-        self.tomogram, sampling = _load_tomogram_cached(tomogram_path)
+        self.tomogram, sampling, self.scalar_range = _load_tomogram_cached(
+            tomogram_path
+        )
 
         # xatlas adds new vertices for seams, so we need to update the structure
         vertices = fit.vertices / sampling
@@ -277,6 +292,7 @@ class TextureSampler:
         normal_offset: float = 0.0,
         colormap: Optional[str] = "gray",
         scalar_range: Optional[Tuple[float, float]] = None,
+        gamma: float = 1.0,
     ) -> NDArray:
         """
         Resample tomogram at new normal offset.
@@ -289,6 +305,9 @@ class TextureSampler:
             Colormap name. Uses instance colormap if not specified.
         scalar_range : tuple, optional
             (vmin, vmax) for color scaling. Auto-computed if not specified.
+        gamma : float, optional
+            Gamma correction factor, by default 1.0. Values < 1 brighten
+            dark regions, > 1 darken bright regions.
 
         Returns
         -------
@@ -307,7 +326,7 @@ class TextureSampler:
             order=1,
             mode="constant",
             cval=np.nan,
-        )
+        ).astype(np.float32)
 
         texture = np.full(
             (self.texture_size, self.texture_size), np.nan, dtype=np.float32
@@ -326,6 +345,8 @@ class TextureSampler:
         normalized[valid_mask] = np.clip(
             (texture[valid_mask] - vmin) / (vmax - vmin + 1e-10), 0, 1
         )
+        if gamma != 1.0:
+            normalized[valid_mask] = np.power(normalized[valid_mask], 1.0 / gamma)
 
         cmap = utils.get_cmap(colormap)
         colored = (cmap(normalized)[:, :, :3] * 255).astype(np.uint8)

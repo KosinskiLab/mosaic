@@ -113,6 +113,7 @@ class Colors:
         "input": "#7c3aed",  # Violet 600
         "preprocessing": "#2563eb",  # Blue 600
         "parametrization": "#059669",  # Emerald 600
+        "analysis": "#0891b2",  # Cyan 600
         "export": "#ea580c",  # Orange 600
         # Animation types
         "trajectory": "#3b82f6",  # Blue 500

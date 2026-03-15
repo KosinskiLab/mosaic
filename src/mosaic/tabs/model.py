@@ -4,6 +4,7 @@ import numpy as np
 from qtpy.QtWidgets import QWidget, QVBoxLayout
 
 from .. import meshing
+from ..registry import MethodRegistry
 from ..widgets.ribbon import create_button
 from ..parallel import submit_task, submit_task_batch
 
@@ -162,7 +163,7 @@ class ModelTab(QWidget):
                 self,
                 func,
                 "Fit to selected clusters",
-                MESH_SETTINGS,
+                MethodRegistry.settings_dict("fit"),
             ),
             create_button(
                 "Curve",
@@ -202,7 +203,7 @@ class ModelTab(QWidget):
                 self,
                 self._remesh_parallel,
                 "Adjust resolution and quality",
-                REMESH_SETTINGS,
+                MethodRegistry.settings_dict("remesh"),
             ),
             create_button(
                 "Smooth",
@@ -210,13 +211,13 @@ class ModelTab(QWidget):
                 self,
                 self._smooth_parallel,
                 "Reduce surface noise",
-                SMOOTH_SETTINGS,
+                MethodRegistry.settings_dict("smooth"),
             ),
             create_button(
                 "Project",
                 "ph.arrow-line-down",
                 self,
-                self._project_on_mesh,
+                self._project_parallel,
                 "Project points onto mesh",
                 PROJECTION_SETTINGS,
             ),
@@ -224,7 +225,7 @@ class ModelTab(QWidget):
                 "Fill",
                 "ph.cube",
                 self,
-                self._fill_volumetric,
+                self._fill_parallel,
                 "Fill the interior of a closed mesh with points",
             ),
         ]
@@ -354,7 +355,7 @@ class ModelTab(QWidget):
                 **kwargs,
             )
 
-    def _fill_volumetric(self, **kwargs):
+    def _fill_parallel(self, **kwargs):
         tasks = []
         for geometry in self._get_selected_meshes():
             tasks.append(
@@ -367,7 +368,7 @@ class ModelTab(QWidget):
             )
         submit_task_batch(tasks)
 
-    def _project_on_mesh(
+    def _project_parallel(
         self,
         use_normals: bool = False,
         invert_normals: bool = False,
@@ -404,44 +405,7 @@ class ModelTab(QWidget):
         )
 
 
-SAMPLE_SETTINGS = {
-    "title": "Settings",
-    "settings": [
-        {
-            "label": "Sampling Method",
-            "parameter": "method",
-            "type": "select",
-            "options": ["Points", "Distance"],
-            "default": "Distance",
-            "notes": "Number of points or average distance between points.",
-        },
-        {
-            "label": "Sampling",
-            "parameter": "sampling",
-            "type": "float",
-            "min": 1,
-            "default": 40,
-            "notes": "Numerical value for sampling method.",
-        },
-        {
-            "label": "Offset",
-            "parameter": "normal_offset",
-            "type": "float",
-            "default": 0,
-            "min": -1e32,
-            "notes": "Points are shifted by n times normal vector for particle picking.",
-        },
-        {
-            "label": "Bidirectional",
-            "parameter": "bidirectional",
-            "type": "boolean",
-            "default": False,
-            "notes": "Draw inward and outward facing points at the same time. This "
-            "doubles the total number of points compared to running sample without "
-            "this option set.",
-        },
-    ],
-}
+SAMPLE_SETTINGS = MethodRegistry.settings_dict("sample")
 
 RBF_SETTINGS = {
     "title": "Settings",
@@ -533,389 +497,6 @@ REPAIR_SETTINGS = {
             "description": "Reverse normal direction of the mesh.",
         },
     ],
-}
-
-
-REMESH_SETTINGS = {
-    "title": "Settings",
-    "settings": [
-        {
-            "label": "Method",
-            "parameter": "method",
-            "type": "select",
-            "options": [
-                "Decimation",
-                "Edge Length",
-                "Subdivide",
-                "Vertex Clustering",
-            ],
-            "default": "Decimation",
-        },
-    ],
-    "method_settings": {
-        "Edge Length": [
-            {
-                "label": "Edge Length",
-                "parameter": "target_edge_length",
-                "type": "float",
-                "default": 40.0,
-                "min": 1e-6,
-                "description": "Average edge length to remesh to.",
-            },
-            {
-                "label": "Iterations",
-                "parameter": "n_iter",
-                "type": "number",
-                "default": 100,
-                "min": 1,
-                "description": "Number of remeshing operations to repeat on the mesh.",
-            },
-            {
-                "label": "Mesh Angle",
-                "parameter": "featuredeg",
-                "type": "float",
-                "default": 30.0,
-                "min": 0.0,
-                "description": "Minimum angle between faces to preserve the edge feature.",
-            },
-        ],
-        "Vertex Clustering": [
-            {
-                "label": "Radius",
-                "parameter": "voxel_size",
-                "type": "float",
-                "default": 40.0,
-                "min": 1e-6,
-                "description": "Radius within which vertices are clustered.",
-            },
-        ],
-        "Decimation": [
-            {
-                "label": "Method",
-                "parameter": "decimation_method",
-                "type": "select",
-                "options": ["Triangle Count", "Reduction Factor"],
-                "default": "Reduction Factor",
-                "description": "Choose how to specify the decimation target.",
-            },
-            {
-                "label": "Sampling",
-                "parameter": "sampling",
-                "type": "float",
-                "default": 10,
-                "min": 0,
-                "description": "Numerical value for reduction method.",
-            },
-            {
-                "label": "Smooth",
-                "parameter": "smooth",
-                "type": "boolean",
-                "default": True,
-                "description": "Use quadratic decimation instead of pyfqmr.",
-            },
-        ],
-        "Subdivide": [
-            {
-                "label": "Iterations",
-                "parameter": "number_of_iterations",
-                "type": "number",
-                "default": 1,
-                "min": 1,
-                "description": "Number of iterations.",
-                "notes": "A single iteration splits each triangle into four triangles.",
-            },
-            {
-                "label": "Smooth",
-                "parameter": "smooth",
-                "type": "boolean",
-                "default": True,
-                "description": "Perform smooth midpoint division.",
-            },
-        ],
-    },
-}
-
-
-SMOOTH_SETTINGS = {
-    "title": "Settings",
-    "settings": [
-        {
-            "label": "Method",
-            "parameter": "method",
-            "type": "select",
-            "options": [
-                "Taubin",
-                "Laplacian",
-                "Average",
-            ],
-            "default": "Taubin",
-        },
-    ],
-    "method_settings": {
-        "Taubin": [
-            {
-                "label": "Iterations",
-                "parameter": "number_of_iterations",
-                "type": "number",
-                "default": 10,
-                "min": 1,
-                "description": "Number of smoothing iterations.",
-                "notes": "Taubin filter prevents mesh shrinkage by applying two Laplacian filters with different parameters.",
-            },
-        ],
-        "Laplacian": [
-            {
-                "label": "Iterations",
-                "parameter": "number_of_iterations",
-                "type": "number",
-                "default": 10,
-                "min": 1,
-                "description": "Number of smoothing iterations.",
-                "notes": "May lead to mesh shrinkage with high iteration counts.",
-            },
-        ],
-        "Average": [
-            {
-                "label": "Iterations",
-                "parameter": "number_of_iterations",
-                "type": "number",
-                "default": 5,
-                "min": 1,
-                "description": "Number of smoothing iterations.",
-                "notes": "Simplest filter - vertices are replaced by the average of adjacent vertices.",
-            },
-        ],
-    },
-}
-
-MESH_SETTINGS = {
-    "title": "Settings",
-    "settings": [
-        {
-            "label": "Method",
-            "parameter": "method",
-            "type": "select",
-            "options": [
-                "Alpha Shape",
-                "Ball Pivoting",
-                "Cluster Ball Pivoting",
-                "Poisson",
-                "Flying Edges",
-            ],
-            "default": "Alpha Shape",
-        },
-    ],
-    "method_settings": {
-        "Alpha Shape": [
-            {
-                "label": "Alpha",
-                "parameter": "alpha",
-                "type": "float",
-                "default": 1.0,
-                "description": "Alpha-shape parameter.",
-                "notes": "Large values yield coarser features.",
-            },
-            {
-                "label": "Scaling Factor",
-                "parameter": "resampling_factor",
-                "type": "float",
-                "default": 12.0,
-                "description": "Resample mesh to scaling factor times sampling rate.",
-                "notes": "Decrease for creating smoother pressurized meshes.",
-            },
-            {
-                "label": "Distance",
-                "parameter": "distance_cutoff",
-                "type": "float",
-                "default": 2.0,
-                "description": "Vertices further than distance time sampling rate are "
-                "labled as inferred for subsequent optimization.",
-            },
-            *REPAIR_SETTINGS["settings"][:5],
-        ],
-        "Ball Pivoting": [
-            {
-                "label": "Radii",
-                "parameter": "radii",
-                "type": "text",
-                "default": "50",
-                "description": "Ball radii used for surface reconstruction.",
-                "notes": "Use commas to specify multiple radii, e.g. '50,30.5,10.0'.",
-            },
-            REPAIR_SETTINGS["settings"][5],  # Hole Size
-            {
-                "label": "Downsample",
-                "parameter": "downsample_input",
-                "type": "boolean",
-                "default": True,
-                "description": "Thin input point cloud to core.",
-            },
-            {
-                "label": "Smoothing Steps",
-                "parameter": "n_smoothing",
-                "type": "number",
-                "default": 5,
-                "description": "Pre-smoothing steps before fairing.",
-                "notes": "Improves repair but less impactful for topolgoy than weights.",
-            },
-            {
-                "label": "Neighbors",
-                "parameter": "k_neighbors",
-                "type": "number",
-                "min": 1,
-                "default": 15,
-                "description": "Number of neighbors for normal estimations.",
-                "notes": "Consider decreasing this value for small point clouds.",
-            },
-            *REPAIR_SETTINGS["settings"][:5],
-        ],
-        "Cluster Ball Pivoting": [
-            {
-                "label": "Radius",
-                "parameter": "radius",
-                "type": "float",
-                "default": 0.0,
-                "max": 100,
-                "min": 0.0,
-                "description": "Ball radius compared to point cloud box size.",
-                "notes": "Default 0 corresponds to an automatically determined radius.",
-            },
-            {
-                "label": "Mesh Angle",
-                "parameter": "creasethr",
-                "type": "float",
-                "min": 0,
-                "default": 90.0,
-                "description": "Maximum crease angle before stoping ball pivoting.",
-            },
-            {
-                "label": "Smooth Iter",
-                "parameter": "smooth_iter",
-                "type": "number",
-                "min": 1,
-                "default": 1,
-                "description": "Number of smoothing iterations for normal estimation.",
-            },
-            {
-                "label": "Distance",
-                "parameter": "deldist",
-                "type": "float",
-                "min": -1.0,
-                "default": -1.0,
-                "description": "Drop vertices distant from input sample points.",
-                "notes": "This is post-normalization by the sampling rate.",
-            },
-            {
-                "label": "Neighbors",
-                "parameter": "k_neighbors",
-                "type": "number",
-                "min": 1,
-                "default": 15,
-                "description": "Number of neighbors for normal estimations.",
-                "notes": "Consider decreasing this value for small point clouds.",
-            },
-        ],
-        "Poisson": [
-            {
-                "label": "Depth",
-                "parameter": "depth",
-                "type": "number",
-                "min": 1,
-                "default": 9,
-                "description": "Depth of the Octree for surface reconstruction.",
-            },
-            {
-                "label": "Samples",
-                "parameter": "samplespernode",
-                "type": "float",
-                "min": 0,
-                "default": 5.0,
-                "description": "Minimum number of points per octree node.",
-            },
-            {
-                "label": "Smooth Iter",
-                "parameter": "smooth_iter",
-                "type": "number",
-                "min": 1,
-                "default": 1,
-                "description": "Number of smoothing iterations for normal estimation.",
-            },
-            {
-                "label": "Pointweight",
-                "parameter": "pointweight",
-                "type": "float",
-                "min": 0,
-                "default": 0.1,
-                "description": "Interpolation weight of point samples.",
-            },
-            {
-                "label": "Scale",
-                "parameter": "scale",
-                "type": "float",
-                "min": 0,
-                "default": 1.2,
-                "description": "Ratio between reconstruction and sample cube.",
-            },
-            {
-                "label": "Distance",
-                "parameter": "deldist",
-                "type": "float",
-                "min": -1.0,
-                "default": -1.0,
-                "description": "Drop vertices further than distance from input.",
-            },
-            {
-                "label": "Neighbors",
-                "parameter": "k_neighbors",
-                "type": "number",
-                "min": 1,
-                "default": 15,
-                "description": "Number of neighbors for normal estimations.",
-                "notes": "Consider decreasing this value for small point clouds.",
-            },
-        ],
-        "Flying Edges": [
-            {
-                "label": "Distance",
-                "parameter": "distance",
-                "type": "float",
-                "description": "Distance between points to be considered connected.",
-                "default": -1.0,
-                "min": -1.0,
-                "max": 1e32,
-                "notes": "Defaults to the sampling rate of the object.",
-            },
-            {
-                "label": "Smoothing Iterations",
-                "parameter": "smoothing_iterations",
-                "type": "number",
-                "default": 15,
-                "min": 0,
-                "description": "Number of windowed sinc smoothing iterations.",
-            },
-            {
-                "label": "Smoothing Strength",
-                "parameter": "smoothing_strength",
-                "type": "float",
-                "default": 80.0,
-                "min": 0.0,
-                "max": 100.0,
-                "description": "Smoothing intensity (0 = none, 100 = maximum).",
-            },
-            {
-                "label": "Feature Angle",
-                "parameter": "feature_angle",
-                "type": "float",
-                "default": 120.0,
-                "min": 0.0,
-                "max": 180.0,
-                "description": "Edges sharper than this angle are preserved during "
-                "smoothing.",
-                "notes": "Angle between adjacent triangle normals. 180 smooths "
-                "everything, lower values protect more edges.",
-            },
-        ],
-    },
 }
 
 
