@@ -23,6 +23,7 @@ from qtpy.QtWidgets import (
     QTextEdit,
     QProgressBar,
     QMessageBox,
+    QApplication,
 )
 from qtpy.QtGui import QFont, QTextCursor
 import qtawesome as qta
@@ -542,6 +543,8 @@ class TaskMonitorDialog(QDialog):
 
 
 class StatusIndicator:
+    _instance = None
+
     def __init__(self, main_window):
         self.main_window = main_window
         self.visible = True
@@ -550,6 +553,11 @@ class StatusIndicator:
         self.task_monitor = TaskMonitorDialog(self.main_window)
         self._setup_status_bar()
         self.update_status()
+        StatusIndicator._instance = self
+
+    @classmethod
+    def instance(cls):
+        return cls._instance
 
     def connect_signals(self):
         """Connect all BackgroundTaskManager signals to StatusIndicator and TaskMonitorDialog."""
@@ -613,7 +621,7 @@ class StatusIndicator:
         status_bar = self.main_window.statusBar()
         status_bar.setStyleSheet(
             f"""
-            QStatusBar {{ border-top: 1px solid {Colors.BORDER_DARK}; }}
+            QStatusBar {{ border-top: 1px solid {Colors.BORDER_DARK}; font-size: 11px; }}
             QStatusBar::item {{ border: none; }}
         """
         )
@@ -625,6 +633,42 @@ class StatusIndicator:
             )
             return lbl
 
+        # Left: task message label (replaces showMessage)
+        self.task_label = QLabel()
+        self.task_label.setFixedWidth(150)
+        self._task_timer = QTimer()
+        self._task_timer.setSingleShot(True)
+        self._task_timer.timeout.connect(lambda: self.task_label.clear())
+
+        # Center: progress bar for foreground operations
+        self.progress_label = QLabel()
+        self.progress_label.setFixedWidth(120)
+        self.progress_label.setVisible(False)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setFixedWidth(250)
+        self.progress_bar.setMaximumHeight(6)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setVisible(False)
+        self.progress_bar.setStyleSheet(
+            f"""
+            QProgressBar {{
+                border: none;
+                background-color: {Colors.NEUTRAL_BG};
+                border-radius: 3px;
+            }}
+            QProgressBar::chunk {{
+                background-color: {Colors.PRIMARY};
+                border-radius: 3px;
+            }}
+        """
+        )
+
+        self.progress_count = QLabel()
+        self.progress_count.setFixedWidth(35)
+        self.progress_count.setVisible(False)
+
+        # Right: mode, target, spinner, task button
         self.mode_label = QLabel("Mode: Viewing")
         self.mode_label.setMinimumWidth(50)
 
@@ -656,6 +700,14 @@ class StatusIndicator:
         )
         self.task_button.clicked.connect(self._show_task_monitor)
 
+        left_spacer = QWidget()
+        right_spacer = QWidget()
+        status_bar.addWidget(self.task_label)
+        status_bar.addWidget(left_spacer, 1)
+        status_bar.addWidget(self.progress_label)
+        status_bar.addWidget(self.progress_bar)
+        status_bar.addWidget(self.progress_count)
+        status_bar.addWidget(right_spacer, 1)
         status_bar.addPermanentWidget(self.mode_label)
         status_bar.addPermanentWidget(separator())
         status_bar.addPermanentWidget(self.target_label)
@@ -687,7 +739,8 @@ class StatusIndicator:
             self._update_task_styling(busy)
 
         if task is not None:
-            self.main_window.statusBar().showMessage(task, 3000)
+            self.task_label.setText(task)
+            self._task_timer.start(3000)
 
     def _update_task_styling(self, busy: bool = False):
         self.task_button.setText("Busy" if busy else "Idle")
@@ -695,6 +748,30 @@ class StatusIndicator:
         if not busy:
             return self.spinner.stop()
         return self.spinner.start()
+
+    def show_progress(self, title: str, total: int):
+        """Show the center progress bar for a foreground operation."""
+        self.progress_label.setText(title)
+        self.progress_bar.setMaximum(total)
+        self.progress_bar.setValue(0)
+        self.progress_count.setText("0%")
+        self.progress_label.setVisible(True)
+        self.progress_bar.setVisible(True)
+        self.progress_count.setVisible(True)
+        QApplication.processEvents()
+
+    def update_progress(self, current: int, total: int):
+        """Update the center progress bar."""
+        self.progress_bar.setValue(current)
+        pct = int(current / total * 100) if total > 0 else 0
+        self.progress_count.setText(f"{pct}%")
+        QApplication.processEvents()
+
+    def hide_progress(self):
+        """Hide the center progress bar."""
+        self.progress_label.setVisible(False)
+        self.progress_bar.setVisible(False)
+        self.progress_count.setVisible(False)
 
     def _show_task_monitor(self):
         self.task_monitor.show()

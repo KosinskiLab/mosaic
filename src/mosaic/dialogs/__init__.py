@@ -13,6 +13,7 @@ from .properties import GeometryPropertiesDialog
 from .equilibration import MeshEquilibrationDialog
 from .batch_rename import BatchRenameDialog
 from .property_analysis import PropertyAnalysisDialog
+from ..dts import DTSScreeningDialog
 from .file_dialog import (
     getExistingDirectory,
     getOpenFileName,

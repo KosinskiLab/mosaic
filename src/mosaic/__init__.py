@@ -5,6 +5,7 @@ _module_map = {
     ".data": ["MosaicData"],
     ".container": ["DataContainer"],
     ".__version__": ["__version__"],
+    ".commands": ["Session"],
 }
 
 _lazy_imports = {}

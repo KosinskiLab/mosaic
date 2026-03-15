@@ -967,7 +967,9 @@ class App(QMainWindow):
     def open_batch_pipeline(self):
         """Open the PipelineBuilderDialog dialog."""
         from .parallel import submit_task_batch
-        from .pipeline.executor import execute_run
+
+        # from .pipeline.executor import execute_run
+        from .pipeline.executor_repl import execute_run
         from .pipeline.dialog import PipelineBuilderDialog
 
         dialog = PipelineBuilderDialog(self)

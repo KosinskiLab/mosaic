@@ -197,6 +197,80 @@ def _create_session(filepath: str, parameters: dict):
     }
 
 
+def _execute_analysis(current_data, settings, session, run_id):
+    """Compute a geometric property, store as vertex property, and optionally export.
+
+    Parameters
+    ----------
+    current_data : list
+        List of Geometry objects to compute properties for.
+    settings : dict
+        Operation settings including 'method' and method-specific parameters.
+    session : dict
+        Session data containing '_data' and '_models' containers.
+    run_id : str
+        Run identifier used for naming exported files.
+    """
+    from ..properties import GeometryProperties
+    from ..formats.parser import VertexPropertyContainer
+    from ..registry import MethodRegistry
+
+    method = settings.get("method", "")
+    op = MethodRegistry.get("mesh_analysis")
+    m = op.get_method(method) if op else None
+    if m is None:
+        return
+    property_name = m.internal_name
+
+    output_name = method.lower().replace(" ", "_")
+    output_dir = settings.get("output_dir", "").strip()
+
+    # Build kwargs, filtering pipeline-only keys
+    _pipeline_keys = ("method", "output_dir", "group_name")
+    kwargs = {k: v for k, v in settings.items() if k not in _pipeline_keys}
+
+    # Thickness needs cluster queries: use session point cloud data
+    if property_name == "thickness":
+        kwargs["queries"] = list(session["_data"].data)
+
+    # Distance to self needs the only_self flag
+    if property_name == "distance":
+        kwargs["only_self"] = True
+
+    results = []
+    for geometry in current_data:
+        try:
+            value = GeometryProperties.compute(
+                property_name=property_name, geometry=geometry, **kwargs
+            )
+        except Exception:
+            continue
+
+        if value is None:
+            continue
+
+        results.append((geometry, value))
+
+        # Store as vertex property if array-valued
+        if isinstance(value, np.ndarray) and value.ndim >= 1:
+            props = {}
+            if geometry.vertex_properties is not None:
+                for name in geometry.vertex_properties.properties:
+                    props[name] = geometry.vertex_properties.get_property(name)
+            props[output_name] = value
+            geometry.vertex_properties = VertexPropertyContainer(props)
+        else:
+            geometry._meta[output_name] = value
+
+    if output_dir and results:
+        from ..properties import export_property_csv
+
+        makedirs(output_dir, exist_ok=True)
+        output_path = join(output_dir, f"{run_id}_{output_name}.csv")
+        geometries, values = zip(*results)
+        export_property_csv(output_path, output_name, geometries, values)
+
+
 def execute_run(run_config: dict, skip_complete: bool = False) -> None:
     """
     Execute a single run configuration.
@@ -326,6 +400,11 @@ def execute_run(run_config: dict, skip_complete: bool = False) -> None:
             # We still need to update available data for next pipeline step though
             current_data = [x for x in current_data if x.uuid not in drop]
             continue
+
+        elif op_id == "mesh_analysis":
+            _execute_analysis(current_data, settings, session, run_config["run_id"])
+            continue
+
         elif op_id == "save_session":
             output_dir = settings.get("output_dir", ".")
             makedirs(output_dir, exist_ok=True)
@@ -355,12 +434,8 @@ def execute_run(run_config: dict, skip_complete: bool = False) -> None:
                         export_parameters[key] = val
 
             # file path will be adapted to carry the correct extension
-            write_geometries(
-                geometries=current_data,
-                file_path=output_path,
-                export_parameters=export_parameters
-                | {"single_file": True, "include_header": True},
-            )
+            export_parameters["single_file"] = True
+            write_geometries(current_data, output_path, **export_parameters)
 
             # Do not add current_data to session again
             continue
@@ -368,15 +443,19 @@ def execute_run(run_config: dict, skip_complete: bool = False) -> None:
         # Some methods return lists of geometry objects
         current_data = flatten(current_data)
 
+        # Ensure model geometries use surface representation so that
+        # geometry.points matches model vertices for downstream operations
+        input_type, output_type = _get_op_spec(op_id)
+        if output_type == "model":
+            _ = [x.change_representation("surface") for x in current_data]
+
         if not op.get("save_output", True):
             continue
 
         # Keep session data in sync
-        input_type, output_type = _get_op_spec(op_id)
         container, tree = session["_data"], session["_data_tree"]
         if output_type == "model":
             container, tree = session["_models"], session["_models_tree"]
-            _ = [x.change_representation("surface") for x in current_data]
 
         if not op.get("visible_output", True):
             _ = [x.set_visibility(False) for x in current_data]

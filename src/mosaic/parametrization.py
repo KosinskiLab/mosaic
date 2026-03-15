@@ -164,6 +164,18 @@ class Sphere(Parametrization):
 
     @classmethod
     def fit(cls, positions: np.ndarray, **kwargs) -> "Sphere":
+        """Fit a sphere to a point cloud using least-squares.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Point coordinates with shape (n, 3).
+
+        Returns
+        -------
+        Sphere
+            Fitted sphere with estimated radius and center.
+        """
         positions = np.asarray(positions, dtype=np.float64)
         A = np.column_stack((2 * positions, np.ones(len(positions))))
         b = (positions**2).sum(axis=1)
@@ -244,6 +256,21 @@ class Ellipsoid(Parametrization):
 
     @classmethod
     def fit(cls, positions, **kwargs) -> "Ellipsoid":
+        """Fit an ellipsoid to a point cloud.
+
+        Uses eigenvalue decomposition to solve for the three semi-axis
+        radii, center, and orientation matrix.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Point coordinates with shape (n, 3).
+
+        Returns
+        -------
+        Ellipsoid
+            Fitted ellipsoid with estimated radii, center, and orientation.
+        """
         # Adapted from https://de.mathworks.com/matlabcentral/fileexchange/24693-ellipsoid-fit
         positions = np.asarray(positions, dtype=np.float64)
         if positions.shape[1] != 3 or len(positions.shape) != 2:
@@ -425,20 +452,21 @@ class Cylinder(Parametrization):
 
     @classmethod
     def fit(cls, positions: np.ndarray, **kwargs) -> "Cylinder":
-        """
-        Fit a cylinder to point cloud data with improved stability.
+        """Fit a cylinder to a point cloud.
+
+        Uses PCA for the initial axis estimate, then refines center,
+        direction, and radius via constrained optimization (SLSQP).
 
         Parameters
         ----------
         positions : np.ndarray
-            Input point cloud positions (N x 3).
-        **kwargs : dict
-            Additional keyword arguments.
+            Point coordinates with shape (n, 3).
 
         Returns
         -------
-        cylinder : Cylinder
-            Fitted cylinder instance.
+        Cylinder
+            Fitted cylinder with estimated center, orientation, radius,
+            and height.
         """
         positions = np.asarray(positions, dtype=np.float64)
         if positions.shape[1] != 3 or len(positions.shape) != 2:
@@ -602,29 +630,34 @@ class RBF(Parametrization):
     def fit(
         cls,
         positions: np.ndarray,
+        *,
         direction: str = "xz",
-        function="linear",
-        smooth=5,
+        function: str = "linear",
+        smooth: int = 5,
         **kwargs,
     ) -> "RBF":
-        """
-        Fit a RBF to a set of 3D points.
+        """Fit a radial basis function interpolant to a point cloud.
+
+        The input is downsampled before fitting. The RBF maps two
+        coordinate axes to the third, controlled by ``direction``.
 
         Parameters
         ----------
         positions : np.ndarray
-            Point coordinates with shape (n x 3)
+            Point coordinates with shape (n, 3).
         direction : str
-            Direction of interpolation relative to positions.
+            Plane of the independent axes. ``'xz'`` maps (x, z) -> y,
+            ``'yz'`` maps (y, z) -> x, ``'xy'`` maps (x, y) -> z.
         function : str
-            Function type to use.
+            Radial basis function type (e.g. ``'linear'``, ``'thin_plate'``,
+            ``'multiquadric'``, ``'cubic'``).
         smooth : int
-            Smoothing factor.
+            Smoothing factor passed to the RBF interpolator.
 
         Returns
         -------
         RBF
-            Parametrization instance.
+            Fitted RBF parametrization.
         """
         n_positions = positions.shape[0] // 50
         positions = positions[::n_positions]
@@ -781,7 +814,48 @@ class TriangularMesh(Parametrization):
         n_smoothing: int = 5,
         k_neighbors=50,
         **kwargs,
-    ):
+    ) -> "TriangularMesh":
+        """Reconstruct a surface mesh using ball pivoting.
+
+        Estimates normals, runs ball pivoting, removes small clusters,
+        repairs the mesh, and optionally triangulates holes with fairing.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Point coordinates with shape (n, 3).
+        radii : tuple of float
+            Ball radii for surface reconstruction. Use commas to
+            specify multiple radii, e.g. ``(50, 30.5, 10)``.
+        voxel_size : float
+            Sampling rate of the input point cloud.
+        max_hole_size : float
+            Maximum surface area of holes to triangulate.
+            ``-1`` fills all holes, ``0`` skips hole filling.
+        downsample_input : bool
+            Thin input point cloud to its core before meshing.
+        elastic_weight : float
+            Control mesh smoothness during hole fairing.
+            0 = strong anchoring, 1 = no anchoring, >1 = repulsion.
+        curvature_weight : float
+            Controls propagation of mesh curvature during fairing.
+        volume_weight : float
+            Controls internal pressure of the mesh during fairing.
+        anchoring : float
+            Flexibility of inferred vertices (0 to 1, 1 = maximum).
+        boundary_ring : int
+            Also optimize n-ring vertices for ill-defined boundaries.
+        n_smoothing : int
+            Taubin smoothing steps before and after fairing.
+        k_neighbors : int
+            Number of neighbors for normal estimation. Decrease for
+            small point clouds.
+
+        Returns
+        -------
+        TriangularMesh
+            Reconstructed surface mesh.
+        """
         radii = np.asarray(radii).reshape(-1)
         radii = radii[radii > 0]
 
@@ -1221,8 +1295,43 @@ class PoissonMesh(TriangularMesh):
         scale=1.2,
         samplespernode=5.0,
         **kwargs,
-    ):
+    ) -> "PoissonMesh":
+        """Reconstruct a surface mesh using Poisson surface reconstruction.
 
+        Normalizes positions by the voxel size, runs screened Poisson
+        reconstruction, and scales the result back.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Point coordinates with shape (n, 3).
+        voxel_size : float
+            Sampling rate of the input point cloud.
+        depth : int
+            Depth of the octree used for reconstruction. Higher values
+            capture finer detail but are slower.
+        k_neighbors : int
+            Number of neighbors for normal estimation. Decrease for
+            small point clouds.
+        smooth_iter : int
+            Number of smoothing iterations for normal estimation.
+        pointweight : float
+            Interpolation weight of point samples. Lower values
+            produce smoother surfaces.
+        deldist : float
+            Drop vertices further than this distance from the input
+            point cloud (post-normalization by voxel size).
+        scale : float
+            Ratio between the reconstruction cube and the sample
+            bounding cube.
+        samplespernode : float
+            Minimum number of sample points per octree node.
+
+        Returns
+        -------
+        PoissonMesh
+            Reconstructed surface mesh.
+        """
         positions = np.asarray(positions, dtype=np.float64)
         positions = np.divide(positions, voxel_size)
         deldist = deldist / voxel_size
@@ -1252,7 +1361,37 @@ class ClusteredBallPivotingMesh(TriangularMesh):
         deldist=-1.0,
         creasethr=90,
         **kwargs,
-    ):
+    ) -> "ClusteredBallPivotingMesh":
+        """Reconstruct a surface mesh using cluster-based ball pivoting.
+
+        Uses PyMeshLab's ball pivoting with optional distance-based
+        cleanup of vertices far from the input sample.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Point coordinates with shape (n, 3).
+        voxel_size : float
+            Sampling rate of the input point cloud.
+        radius : int
+            Ball radius as percentage of point cloud bounding box.
+            0 = automatically determined radius.
+        k_neighbors : int
+            Number of neighbors for normal estimation. Decrease for
+            small point clouds.
+        smooth_iter : int
+            Number of smoothing iterations for normal estimation.
+        deldist : float
+            Drop vertices further than this distance from the input
+            point cloud. ``-1`` disables distance-based cleanup.
+        creasethr : float
+            Maximum crease angle (degrees) before stopping ball pivoting.
+
+        Returns
+        -------
+        ClusteredBallPivotingMesh
+            Reconstructed surface mesh.
+        """
         from pymeshlab import MeshSet, Mesh, PercentageValue
 
         positions = np.divide(np.asarray(positions, dtype=np.float64), voxel_size)
@@ -1308,7 +1447,46 @@ class ConvexHull(TriangularMesh):
         resampling_factor: float = 12.0,
         distance_cutoff: float = 2.0,
         **kwargs,
-    ):
+    ) -> "ConvexHull":
+        """Reconstruct a surface mesh using alpha shapes.
+
+        Computes an alpha shape from the point cloud. Falls back to a
+        convex hull if the alpha shape fails. Optionally resamples the
+        mesh and applies fairing to vertices distant from the input.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Point coordinates with shape (n, 3).
+        voxel_size : float
+            Sampling rate of the input point cloud.
+        alpha : float
+            Alpha-shape parameter. Larger values yield coarser
+            features. ``1`` produces a convex hull.
+        elastic_weight : float
+            Control mesh smoothness during fairing.
+            0 = strong anchoring, 1 = no anchoring, >1 = repulsion.
+        curvature_weight : float
+            Controls propagation of mesh curvature during fairing.
+        volume_weight : float
+            Controls internal pressure of the mesh during fairing.
+        anchoring : float
+            Flexibility of inferred vertices (0 to 1, 1 = maximum).
+        boundary_ring : int
+            Also optimize n-ring vertices for ill-defined boundaries.
+        resampling_factor : float
+            Resample mesh to this factor times the sampling rate.
+            Decrease for smoother meshes.
+        distance_cutoff : float
+            Vertices further than ``resampling_factor / distance_cutoff
+            * voxel_size`` from the input are labeled as inferred and
+            subject to fairing.
+
+        Returns
+        -------
+        ConvexHull
+            Reconstructed surface mesh.
+        """
         voxel_size = np.max(voxel_size)
         positions = np.asarray(positions, dtype=np.float64)
 
@@ -1392,7 +1570,34 @@ class FlyingEdges(TriangularMesh):
         smoothing_iterations: int = 15,
         feature_angle: float = 120.0,
         **kwargs,
-    ):
+    ) -> "FlyingEdges":
+        """Reconstruct a surface mesh using flying edges isosurface extraction.
+
+        Voxelizes the point cloud, runs VTK's discrete flying edges
+        algorithm, and applies windowed sinc smoothing with feature
+        angle preservation.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Point coordinates with shape (n, 3).
+        voxel_size : float
+            Sampling rate of the input point cloud. Controls the
+            distance between points considered connected.
+        smoothing_strength : float
+            Smoothing intensity from 0 (none) to 100 (maximum).
+        smoothing_iterations : int
+            Number of windowed sinc smoothing iterations.
+        feature_angle : float
+            Edges sharper than this angle (degrees) between adjacent
+            triangle normals are preserved during smoothing. 180 smooths
+            everything; lower values protect more edges.
+
+        Returns
+        -------
+        FlyingEdges
+            Reconstructed surface mesh.
+        """
         import vtk
         from vtk.util import numpy_support
 
@@ -1479,8 +1684,23 @@ class SplineCurve(Parametrization):
         return cumulative / cumulative[-1]
 
     @classmethod
-    def fit(cls, positions: np.ndarray, **kwargs) -> "SplineCurve":
-        return cls(positions=np.asarray(positions, dtype=np.float64), **kwargs)
+    def fit(cls, positions: np.ndarray, *, order: int = 1, **kwargs) -> "SplineCurve":
+        """Fit a spline curve through a point cloud.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Control points with shape (n, 3). Order along the
+            curve is inferred from cumulative chord lengths.
+        order : int
+            Spline degree. ``1`` = linear, ``3`` = cubic spline.
+
+        Returns
+        -------
+        SplineCurve
+            Fitted spline curve.
+        """
+        return cls(positions=np.asarray(positions, dtype=np.float64), order=order)
 
     def sample(
         self, n_samples: int, normal_offset: float = 0.0, **kwargs

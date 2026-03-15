@@ -5,7 +5,7 @@ from typing import Callable, List, Union
 import numpy as np
 from .geometry import Geometry
 
-__all__ = ["GeometryProperties"]
+__all__ = ["GeometryProperties", "export_property_csv"]
 
 
 def get_mesh(func):
@@ -53,6 +53,23 @@ def _aggregate(data, mode: str):
 
 @get_mesh
 def mesh_curvature(fit, curvature: str, radius: int, **kwargs):
+    """
+    Compute mesh curvature values per vertex.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input geometry with a fitted mesh model.
+    curvature : str
+        Curvature type, e.g. 'Mean', 'Gaussian'.
+    radius : int
+        Neighborhood radius for curvature estimation.
+
+    Returns
+    -------
+    np.ndarray or None
+        Per-vertex curvature values, or None if no mesh model.
+    """
     return fit.compute_curvature(curvature=curvature, radius=radius, **kwargs)
 
 
@@ -143,6 +160,32 @@ def distance(
     *args,
     **kwargs,
 ):
+    """
+    Compute nearest-neighbor distances between geometry and query point sets.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input geometry whose points are measured.
+    queries : list of np.ndarray or Geometry
+        Reference point sets to measure distance to.
+    k : int, optional
+        Number of nearest neighbors. Default is 1.
+    k_start : int, optional
+        Starting neighbor index (1-based). Default is 1.
+    aggregation : str, optional
+        How to aggregate multi-neighbor distances: 'mean', 'min', 'max',
+        'median', or 'std'. Default is 'mean'.
+    include_self : bool, optional
+        Include self-distances when geometry appears in queries. Default is False.
+    only_self : bool, optional
+        Measure distances only to self. Default is False.
+
+    Returns
+    -------
+    np.ndarray or None
+        Per-point distance values, or None if no queries match.
+    """
     from mosaic.utils import find_closest_points
 
     if k_start > k:
@@ -186,6 +229,22 @@ def distance(
 
 
 def box_size(geometry, axis: int = None):
+    """
+    Compute bounding box dimensions of a geometry.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input geometry.
+    axis : int, optional
+        If given, return size along a single axis (0=x, 1=y, 2=z).
+        If None, return all three dimensions.
+
+    Returns
+    -------
+    np.ndarray or float
+        Bounding box.
+    """
     shape = geometry.points.max(axis=0) - geometry.points.min(axis=0)
     if axis is None:
         return shape
@@ -193,22 +252,89 @@ def box_size(geometry, axis: int = None):
 
 
 def width(geometry, *args, **kwargs):
+    """
+    Return X coordinates of all points.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input geometry.
+
+    Returns
+    -------
+    np.ndarray
+        Coordinate per point.
+    """
     return geometry.points[:, 0]
 
 
 def depth(geometry, *args, **kwargs):
+    """
+    Return Y coordinates of all points.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input geometry.
+
+    Returns
+    -------
+    np.ndarray
+        Coordinate per point.
+    """
     return geometry.points[:, 1]
 
 
 def height(geometry, *args, **kwargs):
+    """
+    Return Z coordinates of all points.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input geometry.
+
+    Returns
+    -------
+    np.ndarray
+        Coordinate per point.
+    """
     return geometry.points[:, 2]
 
 
 def n_points(geometry, *args, **kwargs):
+    """
+    Return the number of points in a geometry.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input geometry.
+
+    Returns
+    -------
+    int
+        Point count.
+    """
     return geometry.points.shape[0]
 
 
 def projected_angle(geometry: Geometry, queries: List[Geometry], **kwargs):
+    """
+    Compute the angle between point normals and the nearest mesh surface normal.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input point cloud with normals.
+    queries : list of Geometry
+        Reference mesh geometries. Uses the first with a TriangularMesh model.
+
+    Returns
+    -------
+    np.ndarray or None
+        Per-point angle in degrees, or None if no valid query mesh.
+    """
     from .parametrization import TriangularMesh
 
     queries = [x for x in queries if isinstance(x.model, TriangularMesh)]
@@ -231,6 +357,25 @@ def projected_angle(geometry: Geometry, queries: List[Geometry], **kwargs):
 def projected_curvature(
     geometry: Geometry, queries: List[Geometry], curvature: str, radius: int, **kwargs
 ):
+    """
+    Project mesh curvature values onto a point cloud via nearest-vertex lookup.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input point cloud whose points are projected onto the query mesh.
+    queries : list of Geometry
+        Reference mesh geometries. Uses the first with a fitted model.
+    curvature : str
+        Curvature type, e.g. 'Mean', 'Gaussian', 'Maximum', 'Minimum'.
+    radius : int
+        Neighborhood radius for curvature estimation on the mesh.
+
+    Returns
+    -------
+    np.ndarray or None
+        Per-point curvature values, or None if no valid query mesh.
+    """
     if len(queries) == 0:
         return None
     elif len(queries) > 1:
@@ -251,6 +396,28 @@ def geodesic_distance(
     k_start=1,
     aggregation: str = "mean",
 ):
+    """
+    Compute geodesic distances along a mesh surface between projected points.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input point cloud projected onto the query mesh.
+    queries : list of Geometry
+        Reference mesh geometries. Uses the first with a fitted model.
+    k : int, optional
+        Number of nearest geodesic neighbors. Default is 1.
+    k_start : int, optional
+        Starting neighbor index (1-based). Default is 1.
+    aggregation : str, optional
+        How to aggregate multi-neighbor distances: 'mean', 'min', 'max',
+        'median', or 'std'. Default is 'mean'.
+
+    Returns
+    -------
+    np.ndarray or None
+        Per-point geodesic distance values, or None if no valid query mesh.
+    """
     if len(queries) == 0:
         return None
     elif len(queries) > 1:
@@ -276,6 +443,21 @@ def geodesic_distance(
 
 
 def vertex_property(geometry, name: str, *args, **kwargs):
+    """
+    Retrieve a named vertex property from a geometry.
+
+    Parameters
+    ----------
+    geometry : :py:class:`mosaic.geometry.Geometry`
+        Input geometry with vertex properties.
+    name : str
+        Name of the vertex property to retrieve.
+
+    Returns
+    -------
+    np.ndarray or None
+        Property values per vertex, or None if not available.
+    """
     if geometry.vertex_properties is None:
         return None
 
@@ -382,12 +564,50 @@ def thickness(
         n_vertices = model.vertices.shape[0]
         weights = weights + csr_matrix(np.eye(n_vertices))
 
-        # Weighted average: (W @ thickness) / row_sums
+        # Weighted average (W @ thickness) / row_sums
         weighted_sum = weights @ vertex_thickness
         row_sums = np.asarray(weights.sum(axis=1)).ravel()
         vertex_thickness = (weighted_sum / row_sums).astype(np.float32)
 
     return vertex_thickness
+
+
+def export_property_csv(file_path, property_name, geometries, values, sources=None):
+    """Write property analysis results to CSV.
+
+    Parameters
+    ----------
+    file_path : str
+        Output CSV file path.
+    property_name : str
+        Property name used as column header.
+    geometries : list of Geometry
+        Geometry objects the values correspond to.
+    values : list of np.ndarray or scalar
+        Computed values, one per geometry.
+    sources : list of str, optional
+        Display names for each geometry. Defaults to integer indices.
+    """
+    if sources is None:
+        sources = [str(i) for i in range(len(geometries))]
+
+    per_point = all(
+        isinstance(v, np.ndarray) and v.size == g.get_number_of_points()
+        for g, v in zip(geometries, values)
+    )
+
+    with open(file_path, "w", encoding="utf-8") as ofile:
+        if per_point:
+            ofile.write(f"source,point_id,x,y,z,{property_name}\n")
+            for source, geom, vals in zip(sources, geometries, values):
+                vals = np.asarray(vals).reshape(-1)
+                for pid, (p, v) in enumerate(zip(geom.points, vals)):
+                    ofile.write(f"{source},{pid},{p[0]},{p[1]},{p[2]},{v}\n")
+        else:
+            ofile.write(f"source,{property_name}\n")
+            for source, vals in zip(sources, values):
+                for v in np.asarray(vals).reshape(-1):
+                    ofile.write(f"{source},{v}\n")
 
 
 class GeometryProperties:

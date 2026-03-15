@@ -106,6 +106,10 @@ class Geometry:
         self._representation = "pointcloud"
 
         self._actor = self._create_actor(vtk_actor)
+        if vertex_properties is None:
+            from .formats.parser import VertexPropertyContainer
+
+            vertex_properties = VertexPropertyContainer()
         self._vertex_properties = vertex_properties
         self._appearance = {
             "size": 8,
@@ -121,6 +125,15 @@ class Geometry:
     @property
     def model(self):
         return self._model
+
+    @property
+    def geometry_type(self) -> str:
+        """Descriptive type: ``cluster``, ``mesh``, ``parametric``, or ``trajectory``."""
+        if self._model is None:
+            return "cluster"
+        if hasattr(self._model, "mesh"):
+            return "trajectory" if hasattr(self, "_trajectory") else "mesh"
+        return "parametric"
 
     @property
     def vertex_properties(self):
@@ -1249,7 +1262,9 @@ class SegmentationGeometry(Geometry):
         self._meta = {} if meta is None else meta
         self._model = None
         self._representation = "segmentation"
-        self._vertex_properties = None
+        from .formats.parser import VertexPropertyContainer
+
+        self._vertex_properties = VertexPropertyContainer()
 
         self.sampling_rate = sampling_rate
 

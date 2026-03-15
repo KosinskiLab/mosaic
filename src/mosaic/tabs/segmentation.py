@@ -9,6 +9,7 @@ from qtpy.QtWidgets import (
     QMessageBox,
 )
 
+from ..registry import MethodRegistry
 from ..utils import Throttle
 from ..widgets.ribbon import create_button
 
@@ -95,7 +96,7 @@ class SegmentationTab(QWidget):
                 self,
                 self.cdata.data.cluster,
                 "Extract distinct components",
-                CLUSTER_SETTINGS,
+                MethodRegistry.settings_dict("cluster"),
             ),
             create_button(
                 "Outlier",
@@ -103,7 +104,7 @@ class SegmentationTab(QWidget):
                 self,
                 self.cdata.data.remove_outliers,
                 "Remove isolated points",
-                OUTLIER_SETTINGS,
+                MethodRegistry.settings_dict("remove_outliers"),
             ),
             create_button(
                 "Normals",
@@ -111,7 +112,7 @@ class SegmentationTab(QWidget):
                 self,
                 self.cdata.data.compute_normals,
                 "Assign normals",
-                NORMAL_SETTINGS,
+                MethodRegistry.settings_dict("compute_normals"),
             ),
             create_button(
                 "Trim",
@@ -126,7 +127,7 @@ class SegmentationTab(QWidget):
                 self,
                 self.cdata.data.skeletonize,
                 "Extract boundary or core points",
-                SKELETONIZE_SETTINGS,
+                MethodRegistry.settings_dict("skeletonize"),
             ),
             create_button(
                 "Downsample",
@@ -134,7 +135,7 @@ class SegmentationTab(QWidget):
                 self,
                 self.cdata.data.downsample,
                 "Reduce point density",
-                DOWNSAMPLE_SETTINGS,
+                MethodRegistry.settings_dict("downsample"),
             ),
         ]
         self.ribbon.add_section("Point Operations", point_actions)
@@ -488,317 +489,3 @@ class PlaneTrimmer:
 
             self.data.point_selection[geometry.uuid] = ids
         self.data.highlight_selected_points(color=None)
-
-
-SKELETONIZE_SETTINGS = {
-    "title": "Settings",
-    "settings": [
-        {
-            "label": "Method",
-            "type": "select",
-            "options": ["core", "boundary", "outer", "outer_hull"],
-            "default": "core",
-            "description": "Structural feature to extract.",
-            "notes": (
-                "Core: Extracts medial axis/centerline through the middle of structures. "
-                "Boundary: Extracts both inner and outer boundaries for hollow structures. "
-                "Outer: Extracts outer boundary via skeletonization + convex hull for smoothness. "
-                "Outer Hull: Fast convex hull approximation (legacy method, no skeletonization)."
-            ),
-        },
-    ],
-    "method_settings": {
-        "core": [
-            {
-                "label": "Sigma",
-                "parameter": "sigma",
-                "type": "float",
-                "description": "Gaussian smoothing for Hessian computation.",
-                "default": 1.0,
-                "min": 0.1,
-                "max": 10.0,
-                "notes": "Higher sigma produces smoother skeletons.",
-            },
-        ],
-        "boundary": [
-            {
-                "label": "Sigma",
-                "parameter": "sigma",
-                "type": "float",
-                "description": "Gaussian smoothing for Hessian computation.",
-                "default": 1.0,
-                "min": 0.1,
-                "max": 10.0,
-                "notes": "Higher sigma produces smoother boundaries.",
-            },
-        ],
-        "outer": [
-            {
-                "label": "Sigma",
-                "parameter": "sigma",
-                "type": "float",
-                "description": "Gaussian smoothing for Hessian computation.",
-                "default": 1.0,
-                "min": 0.1,
-                "max": 10.0,
-                "notes": "Higher sigma produces smoother results before convex hull fitting.",
-            },
-        ],
-        "outer_hull": [
-            {
-                "label": "Sample fraction",
-                "parameter": "sample_fraction",
-                "type": "float",
-                "description": "Fraction of points to sample from convex hull.",
-                "default": 0.5,
-                "min": 0.1,
-                "max": 1.0,
-                "notes": "Controls density of output points on the convex hull surface.",
-            },
-        ],
-    },
-}
-
-NORMAL_SETTINGS = {
-    "title": "Settings",
-    "settings": [
-        {
-            "label": "Method",
-            "type": "select",
-            "options": ["Compute", "Flip"],
-            "default": "Compute",
-            "description": "Compute new or flip direction of existing normals.",
-        },
-    ],
-    "method_settings": {
-        "Compute": [
-            {
-                "label": "Neighbors",
-                "parameter": "k",
-                "type": "number",
-                "description": "Number of neighboring points to consider for normal estimation",
-                "min": 3,
-                "max": 100,
-                "default": 15,
-            },
-        ],
-        "Flip": [],
-    },
-}
-
-DOWNSAMPLE_SETTINGS = {
-    "title": "Settings",
-    "settings": [
-        {
-            "label": "Method",
-            "type": "select",
-            "options": ["Radius", "Number", "Center of Mass"],
-            "default": "Radius",
-            "notes": (
-                "Radius: Uniform voxel grid downsampling. "
-                "Number: Random subsampling to target count. "
-                "Center of Mass: Replace nearby points by their centroid."
-            ),
-        },
-    ],
-    "method_settings": {
-        "Radius": [
-            {
-                "label": "Radius",
-                "parameter": "voxel_size",
-                "type": "float",
-                "default": 40.0,
-                "notes": "Points within this radius are merged into one point per "
-                "voxel. Larger values produce coarser results.",
-            },
-        ],
-        "Number": [
-            {
-                "label": "Number",
-                "parameter": "size",
-                "type": "number",
-                "min": 1,
-                "default": 1000,
-                "notes": "Randomly selects this many points from the input.",
-            },
-        ],
-        "Center of Mass": [
-            {
-                "label": "Radius",
-                "parameter": "radius",
-                "type": "float",
-                "default": 40.0,
-                "notes": "Points within this radius are clustered and replaced by "
-                " their centroid. Larger values produce coarser results.",
-            },
-        ],
-    },
-}
-
-CLUSTER_SETTINGS = {
-    "title": "Settings",
-    "settings": [
-        {
-            "label": "Method",
-            "type": "select",
-            "options": [
-                "Connected Components",
-                "Envelope",
-                "Leiden",
-                "DBSCAN",
-                "K-Means",
-                "Birch",
-            ],
-            "default": "Connected Components",
-        },
-        {
-            "label": "Use Points",
-            "parameter": "use_points",
-            "type": "boolean",
-            "description": "Use spatial coordinates for clustering",
-            "default": True,
-        },
-        {
-            "label": "Use Normals",
-            "parameter": "use_normals",
-            "type": "boolean",
-            "description": "Use normal vectors for clustering",
-            "default": False,
-        },
-        {
-            "label": "Drop Noise",
-            "parameter": "drop_noise",
-            "type": "boolean",
-            "description": "Drop noise cluster if available.",
-            "default": True,
-        },
-    ],
-    "method_settings": {
-        "Connected Components": [
-            {
-                "label": "Distance",
-                "parameter": "distance",
-                "type": "float",
-                "description": "Distance between points to be considered connected.",
-                "default": -1.0,
-                "min": -1.0,
-                "max": 1e32,
-                "notes": "Defaults to the associated sampling rate of the cluster.",
-            },
-        ],
-        "Envelope": [
-            {
-                "label": "Distance",
-                "parameter": "distance",
-                "type": "float",
-                "description": "Distance between points to be considered connected.",
-                "default": -1.0,
-                "min": -1.0,
-                "max": 1e32,
-                "notes": "Defaults to the associated sampling rate of the cluster.",
-            },
-        ],
-        "Leiden": [
-            {
-                "label": "Distance",
-                "parameter": "distance",
-                "type": "float",
-                "description": "Distance between points to be considered connected.",
-                "default": -1.0,
-                "min": -1.0,
-                "max": 1e32,
-                "notes": "Defaults to the associated sampling rate of the cluster.",
-            },
-            {
-                "label": "Resolution (log10)",
-                "parameter": "resolution_parameter",
-                "type": "float",
-                "description": "Log10 of resolution parameter for graph clustering.",
-                "default": -7.3,
-                "min": -1e32,
-                "max": 1e32,
-                "decimals": 8,
-                "notes": "Smaller values yield larger clusters. Range: -8 to -2 for membranes.",
-            },
-        ],
-        "DBSCAN": [
-            {
-                "label": "Distance",
-                "parameter": "distance",
-                "type": "float",
-                "description": "Expected distance between neighbors in a cluster.",
-                "default": 100.0,
-            },
-            {
-                "label": "Min Points",
-                "parameter": "min_points",
-                "type": "number",
-                "description": "Minimum cluster size.",
-                "min": 1,
-                "default": 500,
-            },
-        ],
-        "K-Means": [
-            {
-                "label": "Clusters",
-                "parameter": "k",
-                "type": "number",
-                "min": 1,
-                "default": 2,
-            },
-        ],
-        "Birch": [
-            {
-                "label": "Clusters",
-                "parameter": "n_clusters",
-                "type": "number",
-                "description": "Number of clusters to form.",
-                "min": 1,
-                "default": 3,
-            },
-            {
-                "label": "Threshold",
-                "parameter": "threshold",
-                "type": "float",
-                "description": "Radius for merging subclusters. Lower values create more clusters.",
-                "default": 50.0,
-            },
-            {
-                "label": "Branching Factor",
-                "parameter": "branching_factor",
-                "type": "number",
-                "description": "Max subclusters per node. Higher values use more memory.",
-                "min": 1,
-                "default": 50,
-            },
-        ],
-    },
-}
-
-OUTLIER_SETTINGS = {
-    "title": "Settings",
-    "settings": [
-        {
-            "label": "Method",
-            "type": "select",
-            "options": ["statistical", "eigenvalue"],
-            "default": "statistical",
-            "description": "Statistical - General outliers. Eigenvalue - Noisy Edges",
-        },
-        {
-            "label": "Neighbors",
-            "parameter": "k_neighbors",
-            "type": "number",
-            "min": 1,
-            "default": 10,
-            "description": "k-neigbors for estimating local densities.",
-        },
-        {
-            "label": "Threshold",
-            "parameter": "thresh",
-            "type": "float",
-            "default": 0.02,
-            "description": "Threshold is sdev for statistical, eigenvalue ratio otherwise.",
-        },
-    ],
-}

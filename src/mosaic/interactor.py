@@ -528,9 +528,9 @@ class DataContainerInteractor(QObject):
 
         try:
             write_geometries(
-                geometries=self.get_selected_geometries(),
-                file_path=file_path,
-                export_parameters=export_data,
+                self.get_selected_geometries(),
+                file_path,
+                **export_data,
             )
         except Exception as e:
             QMessageBox.warning(None, "Error", str(e))
@@ -604,13 +604,11 @@ class DataContainerInteractor(QObject):
             if name is None:
                 name = f"{self.prefix} {i}"
 
-            item_type = "cluster"
-            if geometry.model is not None:
-                item_type = "mesh" if hasattr(geometry.model, "mesh") else "parametric"
-                if item_type == "mesh" and hasattr(geometry, "_trajectory"):
-                    item_type = "trajectory"
-
-            info = {"item_type": item_type, "name": name, "uuid": geometry.uuid}
+            info = {
+                "item_type": geometry.geometry_type,
+                "name": name,
+                "uuid": geometry.uuid,
+            }
 
             geometry._meta["name"] = name
             geometry._meta["info"] = info

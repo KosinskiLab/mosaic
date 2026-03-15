@@ -1,5 +1,5 @@
 """
-Implements ColabsegData, which is reponsible for tracking overall
+Implements MosaicData, which is reponsible for tracking overall
 application state and mediating interaction between segmentations
 and parametrizations.
 
@@ -8,14 +8,10 @@ Copyright (c) 2024 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import pickle
-
-from qtpy.QtCore import QObject
-
 __all__ = ["MosaicData"]
 
 
-class MosaicData(QObject):
+class MosaicData:
     """
     Initialize MosaicData instance for managing application state.
 
@@ -49,6 +45,8 @@ class MosaicData(QObject):
         filename : str
             Path to save the application state.
         """
+        import pickle
+
         state = {
             "shape": self.shape,
             "_data": self._data,

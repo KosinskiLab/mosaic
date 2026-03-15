@@ -130,15 +130,7 @@ class ExportDialog(QDialog):
             "mrc": volume_settings,
             "em": volume_settings,
             "h5": volume_settings,
-            "xyz": {
-                "header": {
-                    "type": "boolean",
-                    "label": "Include Header",
-                    "description": "Include column headers in the exported file",
-                    "default": True,
-                    "parameter": "header",
-                },
-            },
+            "xyz": {},
             "star": {
                 "relion_5_format": {
                     "type": "boolean",

@@ -33,6 +33,7 @@ matplotlib = "*"
 Pillow = "*"
 zmesh = ">=1.8.0"
 tqdm = ">=4.67.1"
+rich = ">=13.0"
 pyfqmr = ">=0.3.0"
 leidenalg = ">=0.9"
 packaging = "*"
@@ -58,6 +59,7 @@ pytest-xvfb = ">=3.0.0"
 [tool.poetry.scripts]
 mosaic = "mosaic.scripts.app:main"
 mosaic-pipeline = "mosaic.scripts.pipeline:main"
+mosaic-shell = "mosaic.scripts.shell:main"
 
 [tool.poetry.urls]
 "Homepage" = "https://github.com/KosinskiLab/mosaic"

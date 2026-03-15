@@ -294,6 +294,15 @@ def _build_tomogram_options(dlg):
         "Positive = outward, negative = inward."
     )
 
+    global_contrast = QCheckBox("Global Contrast")
+    global_contrast.setToolTip(
+        "Use the tomogram's full scalar range for normalization instead of "
+        "per-slice auto-scaling. Preserves magnitude differences across offsets."
+    )
+    global_contrast.checkStateChanged.connect(dlg._preview)
+    dlg.property_options_layout.addRow(global_contrast)
+    dlg.option_widgets["global_contrast"] = global_contrast
+
     offset_slider.valueChanged.connect(dlg._preview)
     dlg.property_options_layout.addRow(offset_slider)
     dlg.option_widgets["normal_offset"] = offset_slider
@@ -835,7 +844,28 @@ class PropertyAnalysisDialog(QDialog):
         self.invert_checkbox.checkStateChanged.connect(self._preview)
         checkbox_layout.addWidget(self.invert_checkbox)
 
+        from ..widgets import SliderRow
+
+        self.gamma_row = SliderRow(
+            label="Gamma",
+            min_val=0.01,
+            max_val=3.0,
+            default=1.0,
+            decimals=2,
+            steps=100,
+        )
+        self.gamma_row.setToolTip(
+            format_tooltip(
+                label="Gamma",
+                description="Non-linear contrast adjustment. "
+                "Values < 1 brighten dark regions, > 1 darken bright regions.",
+            )
+        )
+        self.gamma_row.valueChanged.connect(self._preview)
+        self.gamma_row.setContentsMargins(0, 0, 0, 0)
+
         options_layout.addLayout(colormap_layout)
+        options_layout.addWidget(self.gamma_row)
         options_layout.addLayout(checkbox_layout)
         options_group.setFixedHeight(150)
 
@@ -1089,7 +1119,7 @@ class PropertyAnalysisDialog(QDialog):
             self._texture_samplers = {}
 
         no_texture = geometry.actor.GetTexture() is None
-        cache_key = (geometry.uuid, file_path, texture_size)
+        cache_key = (geometry.uuid, file_path)
         if cache_key not in self._texture_samplers or no_texture:
             try:
                 sampler = meshing.TextureSampler(
@@ -1114,6 +1144,10 @@ class PropertyAnalysisDialog(QDialog):
             return None
 
         colormap = self._get_colormap()
+        gamma = self.gamma_row.value()
+        global_contrast = get_widget_value(
+            self.option_widgets.get("global_contrast", False)
+        )
 
         for geometry in geometries:
             fit = geometry.model
@@ -1126,7 +1160,13 @@ class PropertyAnalysisDialog(QDialog):
             if sampler is None:
                 continue
 
-            sampler.update(normal_offset=normal_offset, colormap=colormap)
+            scalar_range = sampler.scalar_range if global_contrast else None
+            sampler.update(
+                normal_offset=normal_offset,
+                colormap=colormap,
+                scalar_range=scalar_range,
+                gamma=gamma,
+            )
 
         self.render()
 
@@ -1226,6 +1266,15 @@ class PropertyAnalysisDialog(QDialog):
                 get_widget_value(self.option_widgets.get("normal_offset", 0.0))
             )
 
+        # Clean up potential textures. TODO: Maybe move the mechanism to set_scalars
+        texture_samplers = getattr(self, "_texture_samplers", {})
+        for k in list(texture_samplers.keys()):
+            for geometry in geometries:
+                if k[0] != geometry.uuid:
+                    continue
+                v = texture_samplers.pop(k)
+                v.cleanup()
+
         self._compute_properties()
         colormap = self._get_colormap()
 
@@ -1261,7 +1310,10 @@ class PropertyAnalysisDialog(QDialog):
 
         max_value = np.max([np.max(x) for x in values])
         min_value = np.min([np.min(x) for x in values])
-        lut, lut_range = cmap_to_vtkctf(colormap, max_value, min_value=min_value)
+        gamma = self.gamma_row.value()
+        lut, lut_range = cmap_to_vtkctf(
+            colormap, max_value, min_value=min_value, gamma=gamma
+        )
         for geometry in geometries:
             metric = properties.get(geometry.uuid)
             if metric is None:
@@ -1678,32 +1730,18 @@ class PropertyAnalysisDialog(QDialog):
             return
 
         def write_data(file_path):
+            from ..properties import export_property_csv
+
             property_name = self.property_combo.currentText()
-            with open(file_path, mode="w", encoding="utf-8") as ofile:
-                per_point = all(
-                    self._cache.get_value(geom.uuid).size == geom.get_number_of_points()
-                    for name, geom in selected_items
-                    if self._cache.get_value(geom.uuid) is not None
-                )
+            geometries, values, sources = [], [], []
+            for name, geom in selected_items:
+                cached = self._cache.get_value(geom.uuid)
+                if cached is not None:
+                    geometries.append(geom)
+                    values.append(cached)
+                    sources.append(name)
 
-                header = f"source,{property_name}\n"
-                if per_point:
-                    header = f"source,point_id,x,y,z,{property_name}\n"
-                ofile.write(header)
-
-                for name, geom in selected_items:
-                    if (values := self._cache.get_value(geom.uuid)) is None:
-                        continue
-
-                    values = np.asarray(values).reshape(-1)
-                    if per_point:
-                        lines = "\n".join(
-                            f"{name},{pid},{p[0]},{p[1]},{p[2]},{v}"
-                            for pid, (p, v) in enumerate(zip(geom.points, values))
-                        )
-                    else:
-                        lines = "\n".join(f"{name},{v}" for v in values)
-                    ofile.write(lines + "\n")
+            export_property_csv(file_path, property_name, geometries, values, sources)
 
         self._run_export(
             "Export Data", "CSV Files (*.csv);;All Files (*.*)", write_data
