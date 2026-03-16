@@ -35,7 +35,6 @@ __all__ = [
     "RBF",
     "TriangularMesh",
     "PoissonMesh",
-    "ClusteredBallPivotingMesh",
     "ConvexHull",
     "FlyingEdges",
     "SplineCurve",
@@ -1349,80 +1348,6 @@ class PoissonMesh(TriangularMesh):
         return cls(mesh=meshing.to_open3d(vs * voxel_size, fs))
 
 
-class ClusteredBallPivotingMesh(TriangularMesh):
-    @classmethod
-    def fit(
-        cls,
-        positions: np.ndarray,
-        voxel_size: float = 1,
-        radius: int = 0,
-        k_neighbors=50,
-        smooth_iter=1,
-        deldist=-1.0,
-        creasethr=90,
-        **kwargs,
-    ) -> "ClusteredBallPivotingMesh":
-        """Reconstruct a surface mesh using cluster-based ball pivoting.
-
-        Uses PyMeshLab's ball pivoting with optional distance-based
-        cleanup of vertices far from the input sample.
-
-        Parameters
-        ----------
-        positions : np.ndarray
-            Point coordinates with shape (n, 3).
-        voxel_size : float
-            Sampling rate of the input point cloud.
-        radius : int
-            Ball radius as percentage of point cloud bounding box.
-            0 = automatically determined radius.
-        k_neighbors : int
-            Number of neighbors for normal estimation. Decrease for
-            small point clouds.
-        smooth_iter : int
-            Number of smoothing iterations for normal estimation.
-        deldist : float
-            Drop vertices further than this distance from the input
-            point cloud. ``-1`` disables distance-based cleanup.
-        creasethr : float
-            Maximum crease angle (degrees) before stopping ball pivoting.
-
-        Returns
-        -------
-        ClusteredBallPivotingMesh
-            Reconstructed surface mesh.
-        """
-        from pymeshlab import MeshSet, Mesh, PercentageValue
-
-        positions = np.divide(np.asarray(positions, dtype=np.float64), voxel_size)
-
-        ms = MeshSet()
-        ms.add_mesh(Mesh(positions))
-        ms.compute_normal_for_point_clouds(k=k_neighbors, smoothiter=smooth_iter)
-        ms.generate_surface_reconstruction_ball_pivoting(
-            ballradius=PercentageValue(radius),
-            creasethr=creasethr,
-        )
-        if deldist > 0:
-            ms.compute_scalar_by_distance_from_another_mesh_per_vertex(
-                measuremesh=1,
-                refmesh=0,
-                signeddist=False,
-            )
-            ms.compute_selection_by_condition_per_vertex(condselect=f"(q>{deldist})")
-            ms.compute_selection_by_condition_per_face(
-                condselect=f"(q0>{deldist} || q1>{deldist} || q2>{deldist})"
-            )
-            ms.meshing_remove_selected_vertices_and_faces()
-
-        mesh = ms.current_mesh()
-        return cls(
-            mesh=meshing.to_open3d(
-                mesh.vertex_matrix() * voxel_size, mesh.face_matrix()
-            )
-        )
-
-
 class ConvexHull(TriangularMesh):
     """
     Represent a point cloud as triangular mesh.
@@ -1787,11 +1712,10 @@ PARAMETRIZATION_TYPE = {
     "sphere": Sphere,
     "ellipsoid": Ellipsoid,
     "cylinder": Cylinder,
-    "mesh": TriangularMesh,
-    "clusterballpivoting": ClusteredBallPivotingMesh,
-    "poissonmesh": PoissonMesh,
+    "ball_pivoting": TriangularMesh,
+    "poisson": PoissonMesh,
     "rbf": RBF,
-    "convexhull": ConvexHull,
+    "alpha_shape": ConvexHull,
     "spline": SplineCurve,
-    "flyingedges": FlyingEdges,
+    "flying_edges": FlyingEdges,
 }

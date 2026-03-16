@@ -11,10 +11,18 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from typing import Any, Dict, Optional, Tuple
 
-__all__ = ["Param", "Method", "Operation", "MethodRegistry"]
+__all__ = [
+    "Param",
+    "Method",
+    "Operation",
+    "MethodRegistry",
+    "operation",
+    "_DECORATED_OPERATIONS",
+]
 
 
 # Maps Python type names to GUI widget types used by create_setting_widget.
@@ -127,7 +135,7 @@ class Method:
     display_name : str
         GUI label (e.g. ``"Alpha Shape"``).
     internal_name : str
-        Value used in code / REPL (e.g. ``"convexhull"``).
+        Value used in code / REPL (e.g. ``"alpha_shape"``).
     params : tuple of Param
         Method-specific parameters.
     description : str
@@ -278,6 +286,71 @@ class MethodRegistry:
         return dict(cls._operations)
 
 
+_DECORATED_OPERATIONS = []
+
+
+def operation(
+    methods=(),
+    common_params=(),
+    method_param_name="method",
+    title="Settings",
+    targets=True,
+    decorator=None,
+):
+    """Register an :class:`Operation` from a decorated function.
+
+    The function's ``__name__`` becomes the operation name and the first
+    non-empty docstring line becomes the description.  An optional
+    *decorator* (e.g. ``use_point_data``) wraps the function after
+    registration.
+    """
+
+    def wrapper(func):
+        desc = ""
+        method_descs = {}
+        if func.__doc__:
+            for line in func.__doc__.strip().splitlines():
+                stripped = line.strip()
+                if not desc:
+                    if stripped:
+                        desc = stripped.rstrip(".")
+                    continue
+                m = re.match(r"^-\s*'([^']+)'\s*:\s*(.+)$", stripped)
+                if m:
+                    method_descs[m.group(1).lower()] = m.group(2).strip()
+
+        final_methods = methods
+        if method_descs and methods:
+            updated = []
+            for meth in methods:
+                if not meth.description:
+                    key = meth.display_name.lower()
+                    d = method_descs.get(key) or method_descs.get(
+                        meth.internal_name.lower()
+                    )
+                    if d:
+                        meth = replace(meth, description=d)
+                updated.append(meth)
+            final_methods = tuple(updated)
+
+        op = Operation(
+            name=func.__name__,
+            description=desc,
+            methods=final_methods,
+            common_params=common_params,
+            method_param_name=method_param_name,
+            title=title,
+            targets=targets,
+        )
+        MethodRegistry.register(op)
+        if decorator is not None:
+            func = decorator(func)
+        _DECORATED_OPERATIONS.append((func.__name__, func))
+        return func
+
+    return wrapper
+
+
 _K_NEIGHBORS = Param(
     "k_neighbors",
     "int",
@@ -363,795 +436,23 @@ _SMOOTH_ITER = Param(
     description="Number of smoothing iterations for normal estimation.",
 )
 
-
-MethodRegistry.register(
-    Operation(
-        name="fit",
-        description="Fit a model to a point cloud",
-        methods=(
-            Method(
-                "Alpha Shape",
-                "convexhull",
-                description="Alpha-shape based surface reconstruction.",
-                params=(
-                    Param(
-                        "alpha",
-                        "float",
-                        default=1.0,
-                        label="Alpha",
-                        description="Alpha-shape parameter.",
-                        notes="Large values yield coarser features.",
-                    ),
-                    Param(
-                        "resampling_factor",
-                        "float",
-                        default=12.0,
-                        label="Scaling Factor",
-                        description="Resample mesh to factor times sampling rate.",
-                        notes="Decrease for creating smoother repaired meshes.",
-                    ),
-                    Param(
-                        "distance_cutoff",
-                        "float",
-                        default=2.0,
-                        label="Distance",
-                        description="Vertices further than distance time sampling rate are "
-                        "labled as inferred for subsequent optimization.",
-                    ),
-                    *_REPAIR_PARAMS,
-                ),
-            ),
-            Method(
-                "Ball Pivoting",
-                "mesh",
-                description="Ball pivoting surface reconstruction.",
-                params=(
-                    Param(
-                        "radii",
-                        "str",
-                        default="50",
-                        label="Radii",
-                        description="Ball radii used for surface reconstruction.",
-                        notes="Use commas to specify multiple radii, e.g. '50,30.5,10.0'.",
-                    ),
-                    _HOLE_SIZE,
-                    Param(
-                        "downsample_input",
-                        "bool",
-                        default=True,
-                        label="Downsample",
-                        description="Thin input point cloud to core.",
-                    ),
-                    Param(
-                        "n_smoothing",
-                        "int",
-                        default=5,
-                        label="Smoothing Steps",
-                        description="Pre-smoothing steps before fairing.",
-                        notes="Improves repair but less impactful for topolgoy than weights.",
-                    ),
-                    _K_NEIGHBORS,
-                    *_REPAIR_PARAMS,
-                ),
-            ),
-            Method(
-                "Cluster Ball Pivoting",
-                "clusterballpivoting",
-                description="Cluster-based ball pivoting reconstruction.",
-                params=(
-                    Param(
-                        "radius",
-                        "float",
-                        default=0.0,
-                        min=0.0,
-                        max=100,
-                        label="Radius",
-                        description="Ball radius compared to point cloud box size.",
-                        notes="Default 0 corresponds to an automatically determined radius.",
-                    ),
-                    Param(
-                        "creasethr",
-                        "float",
-                        default=90.0,
-                        min=0,
-                        label="Mesh Angle",
-                        description="Maximum crease angle before stoping ball pivoting.",
-                    ),
-                    _SMOOTH_ITER,
-                    Param(
-                        "deldist",
-                        "float",
-                        default=-1.0,
-                        min=-1.0,
-                        label="Distance",
-                        description="Drop vertices distant from input sample points.",
-                        notes="This is post-normalization by the sampling rate.",
-                    ),
-                    _K_NEIGHBORS,
-                ),
-            ),
-            Method(
-                "Poisson",
-                "poissonmesh",
-                description="Poisson surface reconstruction.",
-                params=(
-                    Param(
-                        "depth",
-                        "int",
-                        default=9,
-                        min=1,
-                        label="Depth",
-                        description="Depth of the Octree for surface reconstruction.",
-                    ),
-                    Param(
-                        "samplespernode",
-                        "float",
-                        default=5.0,
-                        min=0,
-                        label="Samples",
-                        description="Minimum number of points per octree node.",
-                    ),
-                    _SMOOTH_ITER,
-                    Param(
-                        "pointweight",
-                        "float",
-                        default=0.1,
-                        min=0,
-                        label="Pointweight",
-                        description="Interpolation weight of point samples.",
-                    ),
-                    Param(
-                        "scale",
-                        "float",
-                        default=1.2,
-                        min=0,
-                        label="Scale",
-                        description="Ratio between reconstruction and sample cube.",
-                    ),
-                    Param(
-                        "deldist",
-                        "float",
-                        default=-1.0,
-                        min=-1.0,
-                        label="Distance",
-                        description="Drop vertices further than distance from input.",
-                    ),
-                    _K_NEIGHBORS,
-                ),
-            ),
-            Method(
-                "Flying Edges",
-                "flyingedges",
-                description="Flying edges isosurface extraction.",
-                params=(
-                    Param(
-                        "distance",
-                        "float",
-                        default=-1.0,
-                        min=-1.0,
-                        max=1e32,
-                        label="Distance",
-                        description="Distance between points to be considered connected.",
-                        notes="Defaults to the sampling rate of the object.",
-                    ),
-                    Param(
-                        "smoothing_iterations",
-                        "int",
-                        default=15,
-                        min=0,
-                        label="Smoothing Iterations",
-                        description="Number of windowed sinc smoothing iterations.",
-                    ),
-                    Param(
-                        "smoothing_strength",
-                        "float",
-                        default=80.0,
-                        min=0.0,
-                        max=100.0,
-                        label="Smoothing Strength",
-                        description="Smoothing intensity (0 = none, 100 = maximum).",
-                    ),
-                    Param(
-                        "feature_angle",
-                        "float",
-                        default=120.0,
-                        min=0.0,
-                        max=180.0,
-                        label="Feature Angle",
-                        description="Edges sharper than this angle are preserved during "
-                        "smoothing.",
-                        notes="Angle between adjacent triangle normals. 180 smooths "
-                        "everything, lower values protect more edges.",
-                    ),
-                ),
-            ),
-            Method(
-                "Sphere",
-                "sphere",
-                gui=False,
-                description="Fit a sphere using least-squares.",
-            ),
-            Method(
-                "Ellipsoid",
-                "ellipsoid",
-                gui=False,
-                description="Fit an ellipsoid via eigenvalue decomposition.",
-            ),
-            Method(
-                "Cylinder",
-                "cylinder",
-                gui=False,
-                description="Fit a cylinder via PCA and constrained optimization.",
-            ),
-            Method(
-                "RBF",
-                "rbf",
-                gui=False,
-                description="Radial basis function interpolation.",
-                params=(
-                    Param(
-                        "direction",
-                        "str",
-                        default="xz",
-                        label="Direction",
-                        options=("xy", "xz", "yz"),
-                        description="Plane of the independent axes.",
-                        notes="'xz' maps (x,z)->y, 'yz' maps (y,z)->x, "
-                        "'xy' maps (x,y)->z.",
-                    ),
-                    Param(
-                        "function",
-                        "str",
-                        default="linear",
-                        label="Function",
-                        description="Radial basis function type.",
-                        notes="E.g. 'linear', 'thin_plate', 'multiquadric', 'cubic'.",
-                    ),
-                    Param(
-                        "smooth",
-                        "int",
-                        default=5,
-                        label="Smooth",
-                        description="Smoothing factor for the RBF interpolator.",
-                    ),
-                ),
-            ),
-            Method(
-                "Spline",
-                "spline",
-                gui=False,
-                description="Fit a spline curve through control points.",
-                params=(
-                    Param(
-                        "order",
-                        "int",
-                        default=1,
-                        min=1,
-                        max=5,
-                        label="Order",
-                        description="Spline degree. 1 = linear, 3 = cubic.",
-                    ),
-                ),
-            ),
-        ),
-    )
+_NORMAL_OFFSET = Param(
+    "normal_offset",
+    "float",
+    default=0,
+    min=-1e32,
+    label="Offset",
+    description="Points are shifted by n times normal vector for particle picking.",
 )
 
-MethodRegistry.register(
-    Operation(
-        name="cluster",
-        description="Cluster points into groups",
-        common_params=(
-            Param(
-                "use_points",
-                "bool",
-                default=True,
-                label="Use Points",
-                description="Use spatial coordinates for clustering",
-            ),
-            Param(
-                "use_normals",
-                "bool",
-                default=False,
-                label="Use Normals",
-                description="Use normal vectors for clustering",
-            ),
-            Param(
-                "drop_noise",
-                "bool",
-                default=True,
-                label="Drop Noise",
-                description="Drop noise cluster if available.",
-            ),
-        ),
-        methods=(
-            Method(
-                "Connected Components",
-                "connected_components",
-                description="Connected components by spatial proximity.",
-                params=(
-                    Param(
-                        "distance",
-                        "float",
-                        default=-1.0,
-                        min=-1.0,
-                        max=1e32,
-                        label="Distance",
-                        description="Distance between points to be considered connected.",
-                        notes="Defaults to the associated sampling rate of the cluster.",
-                    ),
-                ),
-            ),
-            Method(
-                "Envelope",
-                "envelope",
-                description="Envelope-based connected components.",
-                params=(
-                    Param(
-                        "distance",
-                        "float",
-                        default=-1.0,
-                        min=-1.0,
-                        max=1e32,
-                        label="Distance",
-                        description="Distance between points to be considered connected.",
-                        notes="Defaults to the associated sampling rate of the cluster.",
-                    ),
-                ),
-            ),
-            Method(
-                "Leiden",
-                "leiden",
-                description="Leiden graph-based clustering.",
-                params=(
-                    Param(
-                        "distance",
-                        "float",
-                        default=-1.0,
-                        min=-1.0,
-                        max=1e32,
-                        label="Distance",
-                        description="Distance between points to be considered connected.",
-                        notes="Defaults to the associated sampling rate of the cluster.",
-                    ),
-                    Param(
-                        "resolution_parameter",
-                        "float",
-                        default=-7.3,
-                        min=-1e32,
-                        max=1e32,
-                        decimals=8,
-                        label="Resolution (log10)",
-                        description="Log10 of resolution parameter for graph clustering.",
-                        notes="Smaller values yield larger clusters. Range: -8 to -2 for membranes.",
-                    ),
-                ),
-            ),
-            Method(
-                "DBSCAN",
-                "dbscan",
-                description="DBSCAN density-based clustering.",
-                params=(
-                    Param(
-                        "distance",
-                        "float",
-                        default=100.0,
-                        label="Distance",
-                        description="Expected distance between neighbors in a cluster.",
-                    ),
-                    Param(
-                        "min_points",
-                        "int",
-                        default=500,
-                        min=1,
-                        label="Min Points",
-                        description="Minimum cluster size.",
-                    ),
-                ),
-            ),
-            Method(
-                "K-Means",
-                "kmeans",
-                description="K-Means partitioning.",
-                params=(Param("k", "int", default=2, min=1, label="Clusters"),),
-            ),
-            Method(
-                "Birch",
-                "birch",
-                description="Birch hierarchical clustering.",
-                params=(
-                    Param(
-                        "n_clusters",
-                        "int",
-                        default=3,
-                        min=1,
-                        label="Clusters",
-                        description="Number of clusters to form.",
-                    ),
-                    Param(
-                        "threshold",
-                        "float",
-                        default=50.0,
-                        label="Threshold",
-                        description="Radius for merging subclusters. Lower values create more clusters.",
-                    ),
-                    Param(
-                        "branching_factor",
-                        "int",
-                        default=50,
-                        min=1,
-                        label="Branching Factor",
-                        description="Max subclusters per node. Higher values use more memory.",
-                    ),
-                ),
-            ),
-        ),
-    )
-)
-
-MethodRegistry.register(
-    Operation(
-        name="downsample",
-        description="Downsample point cloud",
-        methods=(
-            Method(
-                "Radius",
-                "radius",
-                description="Uniform voxel grid downsampling.",
-                params=(
-                    Param(
-                        "voxel_size",
-                        "float",
-                        default=40.0,
-                        label="Radius",
-                        notes="Points within this radius are merged into one point per "
-                        "voxel. Larger values produce coarser results.",
-                    ),
-                ),
-            ),
-            Method(
-                "Number",
-                "number",
-                description="Random subsampling to target count.",
-                params=(
-                    Param(
-                        "size",
-                        "int",
-                        default=1000,
-                        min=1,
-                        label="Number",
-                        notes="Randomly selects this many points from the input.",
-                    ),
-                ),
-            ),
-            Method(
-                "Center of Mass",
-                "center_of_mass",
-                description="Replace nearby points by their centroid.",
-                params=(
-                    Param(
-                        "radius",
-                        "float",
-                        default=40.0,
-                        label="Radius",
-                        notes="Points within this radius are clustered and replaced by "
-                        " their centroid. Larger values produce coarser results.",
-                    ),
-                ),
-            ),
-        ),
-    )
-)
-
-MethodRegistry.register(
-    Operation(
-        name="skeletonize",
-        description="Extract structural skeleton from point cloud",
-        methods=(
-            Method(
-                "core",
-                "core",
-                description="Extract medial axis/centerline through the middle of structures.",
-                params=(
-                    Param(
-                        "sigma",
-                        "float",
-                        default=1.0,
-                        min=0.1,
-                        max=10.0,
-                        label="Sigma",
-                        description="Gaussian smoothing for Hessian computation.",
-                        notes="Higher sigma produces smoother skeletons.",
-                    ),
-                ),
-            ),
-            Method(
-                "boundary",
-                "boundary",
-                description="Extract both inner and outer boundaries for hollow structures.",
-                params=(
-                    Param(
-                        "sigma",
-                        "float",
-                        default=1.0,
-                        min=0.1,
-                        max=10.0,
-                        label="Sigma",
-                        description="Gaussian smoothing for Hessian computation.",
-                        notes="Higher sigma produces smoother boundaries.",
-                    ),
-                ),
-            ),
-            Method(
-                "outer",
-                "outer",
-                description="Extract outer boundary via skeletonization + convex hull.",
-                params=(
-                    Param(
-                        "sigma",
-                        "float",
-                        default=1.0,
-                        min=0.1,
-                        max=10.0,
-                        label="Sigma",
-                        description="Gaussian smoothing for Hessian computation.",
-                        notes="Higher sigma produces smoother results before convex hull fitting.",
-                    ),
-                ),
-            ),
-            Method(
-                "outer_hull",
-                "outer_hull",
-                description="Fast convex hull approximation (legacy, no skeletonization).",
-                params=(
-                    Param(
-                        "sample_fraction",
-                        "float",
-                        default=0.5,
-                        min=0.1,
-                        max=1.0,
-                        label="Sample fraction",
-                        description="Fraction of points to sample from convex hull.",
-                        notes="Controls density of output points on the convex hull surface.",
-                    ),
-                ),
-            ),
-        ),
-    )
-)
-
-MethodRegistry.register(
-    Operation(
-        name="smooth",
-        description="Smooth a triangle mesh",
-        methods=(
-            Method(
-                "Taubin",
-                "taubin",
-                description="Volume-preserving Taubin smoothing.",
-                params=(
-                    Param(
-                        "number_of_iterations",
-                        "int",
-                        default=10,
-                        min=1,
-                        label="Iterations",
-                        description="Number of smoothing iterations.",
-                        notes="Taubin filter prevents mesh shrinkage by applying two "
-                        "Laplacian filters with different parameters.",
-                    ),
-                ),
-            ),
-            Method(
-                "Laplacian",
-                "laplacian",
-                description="Laplacian mesh smoothing.",
-                params=(
-                    Param(
-                        "number_of_iterations",
-                        "int",
-                        default=10,
-                        min=1,
-                        label="Iterations",
-                        description="Number of smoothing iterations.",
-                        notes="May lead to mesh shrinkage with high iteration counts.",
-                    ),
-                ),
-            ),
-            Method(
-                "Average",
-                "average",
-                description="Simple neighbor averaging.",
-                params=(
-                    Param(
-                        "number_of_iterations",
-                        "int",
-                        default=5,
-                        min=1,
-                        label="Iterations",
-                        description="Number of smoothing iterations.",
-                        notes="Simplest filter - vertices are replaced by the average "
-                        "of adjacent vertices.",
-                    ),
-                ),
-            ),
-        ),
-    )
-)
-
-MethodRegistry.register(
-    Operation(
-        name="remesh",
-        description="Remesh a triangle mesh",
-        methods=(
-            Method(
-                "Decimation",
-                "decimation",
-                description="Reduce triangle count via decimation.",
-                params=(
-                    Param(
-                        "decimation_method",
-                        "str",
-                        label="Method",
-                        options=("Triangle Count", "Reduction Factor"),
-                        default="Reduction Factor",
-                        description="Choose how to specify the decimation target.",
-                    ),
-                    Param(
-                        "sampling",
-                        "float",
-                        default=10,
-                        min=0,
-                        label="Sampling",
-                        description="Numerical value for reduction method.",
-                    ),
-                    Param(
-                        "smooth",
-                        "bool",
-                        default=True,
-                        label="Smooth",
-                        description="Use quadratic decimation instead of pyfqmr.",
-                    ),
-                ),
-            ),
-            Method(
-                "Edge Length",
-                "edge_length",
-                description="Remesh to target edge length.",
-                params=(
-                    Param(
-                        "target_edge_length",
-                        "float",
-                        default=40.0,
-                        min=1e-6,
-                        label="Edge Length",
-                        description="Average edge length to remesh to.",
-                    ),
-                    Param(
-                        "n_iter",
-                        "int",
-                        default=100,
-                        min=1,
-                        label="Iterations",
-                        description="Number of remeshing operations to repeat on the mesh.",
-                    ),
-                    Param(
-                        "featuredeg",
-                        "float",
-                        default=30.0,
-                        min=0.0,
-                        label="Mesh Angle",
-                        description="Minimum angle between faces to preserve the edge feature.",
-                    ),
-                ),
-            ),
-            Method(
-                "Subdivide",
-                "subdivide",
-                description="Subdivide mesh triangles.",
-                params=(
-                    Param(
-                        "number_of_iterations",
-                        "int",
-                        default=1,
-                        min=1,
-                        label="Iterations",
-                        description="Number of iterations.",
-                        notes="A single iteration splits each triangle into four triangles.",
-                    ),
-                    Param(
-                        "smooth",
-                        "bool",
-                        default=True,
-                        label="Smooth",
-                        description="Perform smooth midpoint division.",
-                    ),
-                ),
-            ),
-            Method(
-                "Vertex Clustering",
-                "vertex_clustering",
-                description="Simplify via vertex clustering.",
-                params=(
-                    Param(
-                        "voxel_size",
-                        "float",
-                        default=40.0,
-                        min=1e-6,
-                        label="Radius",
-                        description="Radius within which vertices are clustered.",
-                    ),
-                ),
-            ),
-        ),
-    )
-)
-
-MethodRegistry.register(
-    Operation(
-        name="compute_normals",
-        description="Compute or flip point normals.",
-        methods=(
-            Method(
-                "Compute",
-                "compute",
-                description="Calculate new normals from point neighborhoods.",
-                params=(
-                    Param(
-                        "k",
-                        "int",
-                        default=15,
-                        min=3,
-                        max=100,
-                        label="Neighbors",
-                        description="Number of neighboring points to consider for normal estimation",
-                    ),
-                ),
-            ),
-            Method(
-                "Flip",
-                "flip",
-                description="Reverse existing normal directions.",
-                params=(),
-            ),
-        ),
-    )
-)
-
-MethodRegistry.register(
-    Operation(
-        name="remove_outliers",
-        description="Remove statistical outliers from point cloud.",
-        common_params=(
-            Param(
-                "k_neighbors",
-                "int",
-                default=10,
-                min=1,
-                label="Neighbors",
-                description="k-neigbors for estimating local densities.",
-            ),
-            Param(
-                "thresh",
-                "float",
-                default=0.02,
-                label="Threshold",
-                description="Threshold is sdev for statistical, eigenvalue ratio otherwise.",
-            ),
-        ),
-        methods=(
-            Method(
-                "statistical",
-                "statistical",
-                description="General statistical outlier removal.",
-            ),
-            Method(
-                "eigenvalue",
-                "eigenvalue",
-                description="Eigenvalue-based edge noise removal.",
-            ),
-        ),
-    )
+_BIDIRECTIONAL = Param(
+    "bidirectional",
+    "bool",
+    default=False,
+    label="Bidirectional",
+    description="Draw inward and outward facing points at the same time.",
+    notes="This doubles the total number of points compared to running "
+    "sample without this option set.",
 )
 
 
@@ -1384,6 +685,7 @@ _OUTPUT_DIR = Param(
     description="If set, write per-geometry CSV files with the computed values.",
 )
 
+
 MethodRegistry.register(
     Operation(
         name="measure",
@@ -1427,57 +729,7 @@ MethodRegistry.register(
         name="mesh_analysis",
         title="Mesh Analysis",
         common_params=(_OUTPUT_DIR,),
-        methods=(_MESH_CURVATURE, _MESH_AREA, _MESH_VOLUME, _MESH_STATISTICS),
-    )
-)
-
-_NORMAL_OFFSET = Param(
-    "normal_offset",
-    "float",
-    default=0,
-    min=-1e32,
-    label="Offset",
-    description="Points are shifted by n times normal vector for particle picking.",
-)
-
-_BIDIRECTIONAL = Param(
-    "bidirectional",
-    "bool",
-    default=False,
-    label="Bidirectional",
-    description="Draw inward and outward facing points at the same time.",
-    notes="This doubles the total number of points compared to running "
-    "sample without this option set.",
-)
-
-MethodRegistry.register(
-    Operation(
-        name="sample",
-        description="Sample points from a fitted model.",
-        methods=(
-            Method(
-                "Distance",
-                "Distance",
-                description="Sampling rate as average distance between points.",
-            ),
-            Method(
-                "Points",
-                "Points",
-                description="Sampling rate as number of points.",
-            ),
-        ),
-        common_params=(
-            Param(
-                "sampling",
-                "float",
-                default=40,
-                min=1,
-                label="Sampling",
-                description="Numerical value for sampling method.",
-            ),
-            _NORMAL_OFFSET,
-            _BIDIRECTIONAL,
-        ),
+        methods=(_MESH_CURVATURE, _MESH_AREA, _MESH_VOLUME),
     )
 )
 
@@ -1590,28 +842,6 @@ MethodRegistry.register(
                 "str",
                 default=None,
                 description="Name for the output geometry.",
-            ),
-        ),
-    )
-)
-
-MethodRegistry.register(
-    Operation(
-        name="duplicate",
-        description="Duplicate a geometry.",
-    )
-)
-
-MethodRegistry.register(
-    Operation(
-        name="visibility",
-        description="Change geometry visibility.",
-        common_params=(
-            Param(
-                "visible",
-                "bool",
-                default=True,
-                description="Whether the geometry should be visible.",
             ),
         ),
     )

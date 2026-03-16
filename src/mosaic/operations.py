@@ -10,7 +10,19 @@ from typing import List, Optional
 
 import numpy as np
 
-from .registry import MethodRegistry
+from .registry import (
+    Param,
+    Method,
+    MethodRegistry,
+    operation,
+    _DECORATED_OPERATIONS,
+    _K_NEIGHBORS,
+    _REPAIR_PARAMS,
+    _HOLE_SIZE,
+    _SMOOTH_ITER,
+    _NORMAL_OFFSET,
+    _BIDIRECTIONAL,
+)
 
 from . import meshing
 from .utils import (
@@ -36,6 +48,66 @@ def _get_meta(geometry):
     return {"name": name}
 
 
+@operation(
+    methods=(
+        Method(
+            "core",
+            "core",
+            params=(
+                Param(
+                    "sigma",
+                    "float",
+                    default=1.0,
+                    min=0.1,
+                    max=10.0,
+                    description="Gaussian smoothing for Hessian computation.",
+                ),
+            ),
+        ),
+        Method(
+            "boundary",
+            "boundary",
+            params=(
+                Param(
+                    "sigma",
+                    "float",
+                    default=1.0,
+                    min=0.1,
+                    max=10.0,
+                    description="Gaussian smoothing for Hessian computation.",
+                ),
+            ),
+        ),
+        Method(
+            "outer",
+            "outer",
+            params=(
+                Param(
+                    "sigma",
+                    "float",
+                    default=1.0,
+                    min=0.1,
+                    max=10.0,
+                    description="Gaussian smoothing for Hessian computation.",
+                ),
+            ),
+        ),
+        Method(
+            "outer_hull",
+            "outer_hull",
+            params=(
+                Param(
+                    "sample_fraction",
+                    "float",
+                    default=0.5,
+                    min=0.1,
+                    max=1.0,
+                    description="Fraction of points to sample from convex hull.",
+                ),
+            ),
+        ),
+    ),
+)
 def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
     """
     Extract structural skeleton from point cloud.
@@ -46,10 +118,10 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
         Input data.
     method : {'outer', 'core', 'boundary'}, optional
         Structural feature to extract:
-        - 'outer': Outer boundaries
-        - 'core': Medial axis/centerline
-        - 'boundary': Inner/outer boundaries
-        - 'outer_hull': Outer boundaries using a convex hull
+        - 'core' : Extract medial axis/centerline through the middle of structures
+        - 'boundary' : Extract both inner and outer boundaries for hollow structures
+        - 'outer' : Extract outer boundary via skeletonization + convex hull
+        - 'outer_hull' : Fast convex hull approximation (no skeletonization)
     sigma : float, optional
         Gaussian smoothing for Hessian computation.
     **kwargs
@@ -107,6 +179,49 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
     )
 
 
+@operation(
+    methods=(
+        Method(
+            "Radius",
+            "radius",
+            params=(
+                Param(
+                    "voxel_size",
+                    "float",
+                    default=40.0,
+                    label="Radius",
+                    description="Points within this radius are merged into one.",
+                ),
+            ),
+        ),
+        Method(
+            "Number",
+            "number",
+            params=(
+                Param(
+                    "size",
+                    "int",
+                    default=1000,
+                    min=1,
+                    label="Number",
+                    description="Randomly selects this many points from the input.",
+                ),
+            ),
+        ),
+        Method(
+            "Center of Mass",
+            "center_of_mass",
+            params=(
+                Param(
+                    "radius",
+                    "float",
+                    default=40.0,
+                    description="Points within this radius are replaced by their centroid.",
+                ),
+            ),
+        ),
+    ),
+)
 def downsample(geometry, method: str = "radius", **kwargs):
     """
     Downsample point cloud.
@@ -117,9 +232,9 @@ def downsample(geometry, method: str = "radius", **kwargs):
         Input data.
     method : str, optional
         Method to use. Options are:
-        - 'radius' : Remove points that fall within radius of each other using voxel downsampling
-        - 'core' : Replace points that fall within radius of each other by theor centroid.
-        - 'number' : Randomly subsample points to target number
+        - 'radius' : Uniform voxel grid downsampling
+        - 'center_of_mass' : Replace nearby points by their centroid
+        - 'number' : Random subsampling to target count
         Default is 'radius'.
     **kwargs
         Additional arguments passed to the chosen method:
@@ -167,6 +282,23 @@ def downsample(geometry, method: str = "radius", **kwargs):
     )
 
 
+@operation(
+    methods=(
+        Method("Distance", "distance"),
+        Method("Points", "points"),
+    ),
+    common_params=(
+        Param(
+            "sampling",
+            "float",
+            default=40,
+            min=1,
+            description="Numerical value for sampling method.",
+        ),
+        _NORMAL_OFFSET,
+        _BIDIRECTIONAL,
+    ),
+)
 def sample(
     geometry,
     sampling: float,
@@ -185,8 +317,9 @@ def sample(
     sampling : float
         Sampling rate or number of points to generate.
     method : str
-        Sampling method to use. If not "N points", sampling is interpreted
-        as a rate and converted to number of points.
+        Sampling method to use:
+        - 'distance' : Sample by average inter-point distance
+        - 'points' : Sample by total point count
     normal_offset : float, optional
         Point offset along normal vector, defaults to 0.0.
     bidirectional : bool, optional
@@ -233,6 +366,137 @@ def sample(
     )
 
 
+@operation(
+    common_params=(
+        Param(
+            "use_points",
+            "bool",
+            default=True,
+            description="Use spatial coordinates for clustering.",
+        ),
+        Param(
+            "use_normals",
+            "bool",
+            default=False,
+            description="Use normal vectors for clustering.",
+        ),
+        Param(
+            "drop_noise",
+            "bool",
+            default=True,
+            description="Drop noise cluster if available.",
+        ),
+    ),
+    methods=(
+        Method(
+            "Connected Components",
+            "connected_components",
+            params=(
+                Param(
+                    "distance",
+                    "float",
+                    default=-1.0,
+                    min=-1.0,
+                    max=1e32,
+                    description="Distance between points to be considered connected.",
+                    notes="Defaults to the associated sampling rate.",
+                ),
+            ),
+        ),
+        Method(
+            "Envelope",
+            "envelope",
+            params=(
+                Param(
+                    "distance",
+                    "float",
+                    default=-1.0,
+                    min=-1.0,
+                    max=1e32,
+                    description="Distance between points to be considered connected.",
+                    notes="Defaults to the associated sampling rate.",
+                ),
+            ),
+        ),
+        Method(
+            "Leiden",
+            "leiden",
+            params=(
+                Param(
+                    "distance",
+                    "float",
+                    default=-1.0,
+                    min=-1.0,
+                    max=1e32,
+                    description="Distance between points to be considered connected.",
+                    notes="Defaults to the associated sampling rate.",
+                ),
+                Param(
+                    "resolution_parameter",
+                    "float",
+                    default=-7.3,
+                    min=-1e32,
+                    max=1e32,
+                    decimals=8,
+                    label="Resolution (log10)",
+                    description="Log10 of resolution parameter for graph clustering.",
+                    notes="Smaller values yield larger clusters.",
+                ),
+            ),
+        ),
+        Method(
+            "DBSCAN",
+            "dbscan",
+            params=(
+                Param(
+                    "distance",
+                    "float",
+                    default=100.0,
+                    description="Expected distance between neighbors in a cluster.",
+                ),
+                Param(
+                    "min_points",
+                    "int",
+                    default=500,
+                    min=1,
+                    description="Minimum cluster size.",
+                ),
+            ),
+        ),
+        Method(
+            "K-Means",
+            "kmeans",
+            params=(Param("k", "int", default=2, min=1, label="Clusters"),),
+        ),
+        Method(
+            "Birch",
+            "birch",
+            params=(
+                Param(
+                    "n_clusters",
+                    "int",
+                    default=3,
+                    min=1,
+                    label="Clusters",
+                    description="Number of clusters to form.",
+                ),
+                Param(
+                    "threshold",
+                    "float",
+                    default=50.0,
+                    description="Radius for merging subclusters.",
+                ),
+                Param(
+                    "branching_factor",
+                    "int",
+                    default=50,
+                    min=1,
+                    description="Max subclusters per node.",
+                ),
+            ),
+        ),
+    ),
+)
 def cluster(
     geometry,
     method: str,
@@ -250,12 +514,12 @@ def cluster(
         Input data.
     method : str
         Clustering method to use. Options are:
-        - 'DBSCAN' : Density-based clustering
-        - 'Birch' : Balanced iterative reducing clustering hierarchy
-        - 'K-Means' : K-means clustering
-        - 'Connected Components' : Connected component analysis
-        - 'Envelope' : Envelope-based clustering
-        - 'Leiden' : Leiden community detection
+        - 'Connected Components' : Connected components by spatial proximity
+        - 'Envelope' : Envelope-based connected components
+        - 'Leiden' : Leiden graph-based clustering
+        - 'DBSCAN' : DBSCAN density-based clustering
+        - 'K-Means' : K-Means partitioning
+        - 'Birch' : Birch hierarchical clustering
     drop_noise : bool, optional
         If True, drop noise points (label -1) from results.
         Default is False.
@@ -325,6 +589,29 @@ def cluster(
     return ret
 
 
+@operation(
+    common_params=(
+        Param(
+            "k_neighbors",
+            "int",
+            default=10,
+            min=1,
+            label="Neighbors",
+            description="k-neighbors for estimating local densities.",
+        ),
+        Param(
+            "thresh",
+            "float",
+            default=0.02,
+            label="Threshold",
+            description="Standard deviation for statistical, eigenvalue ratio for eigenvalue.",
+        ),
+    ),
+    methods=(
+        Method("statistical", "statistical"),
+        Method("eigenvalue", "eigenvalue"),
+    ),
+)
 def remove_outliers(geometry, method: str = "statistical", **kwargs):
     """
     Remove statistical outliers from point cloud.
@@ -335,8 +622,8 @@ def remove_outliers(geometry, method: str = "statistical", **kwargs):
         Input data.
     method : str, optional
         Outlier detection method. Options are:
-        - 'statistical' : Statistical outlier removal based on neighbor distances
-        - 'eigenvalue' : Eigenvalue-based outlier removal
+        - 'statistical' : General statistical outlier removal
+        - 'eigenvalue' : Eigenvalue-based edge noise removal
         Default is 'statistical'.
     **kwargs
         Additional parameters for outlier removal method.
@@ -363,6 +650,26 @@ def remove_outliers(geometry, method: str = "statistical", **kwargs):
     return geometry[mask]
 
 
+@operation(
+    methods=(
+        Method(
+            "Compute",
+            "compute",
+            params=(
+                Param(
+                    "k",
+                    "int",
+                    default=15,
+                    min=3,
+                    max=100,
+                    label="Neighbors",
+                    description="Number of neighboring points for normal estimation.",
+                ),
+            ),
+        ),
+        Method("Flip", "flip"),
+    ),
+)
 def compute_normals(
     geometry, method: str = "Compute", k: int = 15, **kwargs
 ) -> Optional:
@@ -376,7 +683,7 @@ def compute_normals(
     method : str, optional
         Normal computation method. Options are:
         - 'Compute' : Calculate new normals from point neighborhoods
-        - 'Flip' : Flip existing normals (multiply by -1)
+        - 'Flip' : Reverse existing normal directions
         Default is 'Compute'.
     k : int, optional
         Number of neighbors to consider for normal computation.
@@ -401,6 +708,7 @@ def compute_normals(
     return duplicate(geometry)
 
 
+@operation()
 def duplicate(geometry, **kwargs):
     """
     Duplicate a geometry.
@@ -418,6 +726,9 @@ def duplicate(geometry, **kwargs):
     return geometry[...]
 
 
+@operation(
+    common_params=(Param("visible", "bool", default=True),),
+)
 def visibility(geometry, visible: bool = True, **kwargs):
     """
     Change geometry visibility.
@@ -432,6 +743,102 @@ def visibility(geometry, visible: bool = True, **kwargs):
     geometry.set_visibility(visible)
 
 
+@operation(
+    methods=(
+        Method(
+            "Decimation",
+            "decimation",
+            params=(
+                Param(
+                    "decimation_method",
+                    "str",
+                    label="Method",
+                    options=("Triangle Count", "Reduction Factor"),
+                    default="Reduction Factor",
+                    description="How to specify the decimation target.",
+                ),
+                Param(
+                    "sampling",
+                    "float",
+                    default=10,
+                    min=0,
+                    description="Numerical value for reduction method.",
+                ),
+                Param(
+                    "smooth",
+                    "bool",
+                    default=True,
+                    description="Use quadratic decimation instead of pyfqmr.",
+                ),
+            ),
+        ),
+        Method(
+            "Edge Length",
+            "edge_length",
+            params=(
+                Param(
+                    "target_edge_length",
+                    "float",
+                    default=40.0,
+                    min=1e-6,
+                    label="Edge Length",
+                    description="Average edge length to remesh to.",
+                ),
+                Param(
+                    "n_iter",
+                    "int",
+                    default=100,
+                    min=1,
+                    label="Iterations",
+                    description="Number of remeshing iterations.",
+                ),
+                Param(
+                    "featuredeg",
+                    "float",
+                    default=30.0,
+                    min=0.0,
+                    label="Mesh Angle",
+                    description="Minimum angle between faces to preserve edges.",
+                ),
+            ),
+        ),
+        Method(
+            "Subdivide",
+            "subdivide",
+            params=(
+                Param(
+                    "number_of_iterations",
+                    "int",
+                    default=1,
+                    min=1,
+                    label="Iterations",
+                    description="Number of iterations.",
+                    notes="Each iteration splits each triangle into four.",
+                ),
+                Param(
+                    "smooth",
+                    "bool",
+                    default=True,
+                    description="Perform smooth midpoint division.",
+                ),
+            ),
+        ),
+        Method(
+            "Vertex Clustering",
+            "vertex_clustering",
+            params=(
+                Param(
+                    "voxel_size",
+                    "float",
+                    default=40.0,
+                    min=1e-6,
+                    label="Radius",
+                    description="Radius within which vertices are clustered.",
+                ),
+            ),
+        ),
+    ),
+)
 def remesh(geometry, method: str, **kwargs):
     """
     Remesh by edge length, vertex count, or subdivision.
@@ -442,23 +849,10 @@ def remesh(geometry, method: str, **kwargs):
         Input geometry with a TriangularMesh model.
     method : str
         Remeshing strategy. Options are:
-        - 'Edge Length' : Isotropic remeshing to target edge length
-        - 'Vertex Clustering' : Simplify by merging nearby vertices
-        - 'Subdivide' : Increase resolution via midpoint or Loop subdivision
-        - 'Decimation' : Reduce triangle count via quadric or fast decimation
-    target_edge_length : float, optional
-        Target edge length for 'Edge Length' method.
-    voxel_size : float, optional
-        Voxel size for 'Vertex Clustering' method.
-    number_of_iterations : int, optional
-        Iteration count for 'Subdivide' method.
-    sampling : int, optional
-        Target triangle count for 'Decimation' method.
-    decimation_method : str, optional
-        Either 'Triangle Count' or 'Reduction Factor'. Default is 'Triangle Count'.
-    smooth : bool, optional
-        For 'Subdivide': use Loop subdivision instead of midpoint.
-        For 'Decimation': use quadric decimation. Default is False.
+        - 'Decimation' : Reduce triangle count via decimation
+        - 'Edge Length' : Remesh to target edge length
+        - 'Subdivide' : Subdivide mesh triangles
+        - 'Vertex Clustering' : Simplify via vertex clustering
 
     Returns
     -------
@@ -515,6 +909,54 @@ def remesh(geometry, method: str, **kwargs):
     )
 
 
+@operation(
+    methods=(
+        Method(
+            "Taubin",
+            "taubin",
+            params=(
+                Param(
+                    "number_of_iterations",
+                    "int",
+                    default=10,
+                    min=1,
+                    label="Iterations",
+                    description="Number of smoothing iterations.",
+                    notes="Taubin filter prevents mesh shrinkage.",
+                ),
+            ),
+        ),
+        Method(
+            "Laplacian",
+            "laplacian",
+            params=(
+                Param(
+                    "number_of_iterations",
+                    "int",
+                    default=10,
+                    min=1,
+                    label="Iterations",
+                    description="Number of smoothing iterations.",
+                    notes="May lead to mesh shrinkage with high counts.",
+                ),
+            ),
+        ),
+        Method(
+            "Average",
+            "average",
+            params=(
+                Param(
+                    "number_of_iterations",
+                    "int",
+                    default=5,
+                    min=1,
+                    label="Iterations",
+                    description="Number of smoothing iterations.",
+                ),
+            ),
+        ),
+    ),
+)
 def smooth(geometry, method: str, **kwargs):
     """
     Smooth a triangle mesh.
@@ -525,11 +967,9 @@ def smooth(geometry, method: str, **kwargs):
         Input geometry with a TriangularMesh model.
     method : str
         Smoothing algorithm. Options are:
-        - 'Taubin' : Taubin smoothing (volume-preserving)
-        - 'Laplacian' : Laplacian smoothing
+        - 'Taubin' : Volume-preserving Taubin smoothing
+        - 'Laplacian' : Laplacian mesh smoothing
         - 'Average' : Simple neighbor averaging
-    n_iterations : int, optional
-        Number of smoothing iterations. Default is 10.
 
     Returns
     -------
@@ -557,6 +997,196 @@ def smooth(geometry, method: str, **kwargs):
     return Geometry(model=TriangularMesh(mesh), sampling_rate=geometry.sampling_rate)
 
 
+@operation(
+    methods=(
+        Method(
+            "Alpha Shape",
+            "alpha_shape",
+            params=(
+                Param(
+                    "alpha",
+                    "float",
+                    default=1.0,
+                    description="Alpha-shape parameter.",
+                    notes="Large values yield coarser features.",
+                ),
+                Param(
+                    "resampling_factor",
+                    "float",
+                    default=12.0,
+                    label="Scaling Factor",
+                    description="Resample mesh to factor times sampling rate.",
+                ),
+                Param(
+                    "distance_cutoff",
+                    "float",
+                    default=2.0,
+                    label="Distance",
+                    description="Vertices further than this are labelled as inferred.",
+                ),
+                *_REPAIR_PARAMS,
+            ),
+        ),
+        Method(
+            "Ball Pivoting",
+            "ball_pivoting",
+            params=(
+                Param(
+                    "radii",
+                    "str",
+                    default="50",
+                    description="Ball radii used for surface reconstruction.",
+                    notes="Use commas to specify multiple radii, e.g. '50,30.5,10.0'.",
+                ),
+                _HOLE_SIZE,
+                Param(
+                    "downsample_input",
+                    "bool",
+                    default=True,
+                    label="Downsample",
+                    description="Thin input point cloud to core.",
+                ),
+                Param(
+                    "n_smoothing",
+                    "int",
+                    default=5,
+                    label="Smoothing Steps",
+                    description="Pre-smoothing steps before fairing.",
+                ),
+                _K_NEIGHBORS,
+                *_REPAIR_PARAMS,
+            ),
+        ),
+        Method(
+            "Poisson",
+            "poisson",
+            params=(
+                Param(
+                    "depth",
+                    "int",
+                    default=9,
+                    min=1,
+                    description="Depth of the Octree for surface reconstruction.",
+                ),
+                Param(
+                    "samplespernode",
+                    "float",
+                    default=5.0,
+                    min=0,
+                    label="Samples",
+                    description="Minimum number of points per octree node.",
+                ),
+                _SMOOTH_ITER,
+                Param(
+                    "pointweight",
+                    "float",
+                    default=0.1,
+                    min=0,
+                    description="Interpolation weight of point samples.",
+                ),
+                Param(
+                    "scale",
+                    "float",
+                    default=1.2,
+                    min=0,
+                    description="Ratio between reconstruction and sample cube.",
+                ),
+                Param(
+                    "deldist",
+                    "float",
+                    default=-1.0,
+                    min=-1.0,
+                    label="Distance",
+                    description="Drop vertices further than distance from input.",
+                ),
+                _K_NEIGHBORS,
+            ),
+        ),
+        Method(
+            "Flying Edges",
+            "flying_edges",
+            params=(
+                Param(
+                    "distance",
+                    "float",
+                    default=-1.0,
+                    min=-1.0,
+                    max=1e32,
+                    description="Distance between points to be considered connected.",
+                    notes="Defaults to the sampling rate of the object.",
+                ),
+                Param(
+                    "smoothing_iterations",
+                    "int",
+                    default=15,
+                    min=0,
+                    description="Number of windowed sinc smoothing iterations.",
+                ),
+                Param(
+                    "smoothing_strength",
+                    "float",
+                    default=80.0,
+                    min=0.0,
+                    max=100.0,
+                    description="Smoothing intensity (0 = none, 100 = maximum).",
+                ),
+                Param(
+                    "feature_angle",
+                    "float",
+                    default=120.0,
+                    min=0.0,
+                    max=180.0,
+                    description="Edges sharper than this angle are preserved.",
+                    notes="180 smooths everything, lower values protect more edges.",
+                ),
+            ),
+        ),
+        Method("Sphere", "sphere", gui=False),
+        Method("Ellipsoid", "ellipsoid", gui=False),
+        Method("Cylinder", "cylinder", gui=False),
+        Method(
+            "RBF",
+            "rbf",
+            gui=False,
+            params=(
+                Param(
+                    "direction",
+                    "str",
+                    default="xz",
+                    options=("xy", "xz", "yz"),
+                    description="Plane of the independent axes.",
+                ),
+                Param(
+                    "function",
+                    "str",
+                    default="linear",
+                    description="Radial basis function type.",
+                ),
+                Param(
+                    "smooth",
+                    "int",
+                    default=5,
+                    description="Smoothing factor for the RBF interpolator.",
+                ),
+            ),
+        ),
+        Method(
+            "Spline",
+            "spline",
+            gui=False,
+            params=(
+                Param(
+                    "order",
+                    "int",
+                    default=1,
+                    min=1,
+                    max=5,
+                    description="Spline degree. 1 = linear, 3 = cubic.",
+                ),
+            ),
+        ),
+    ),
+)
 def fit(geometry, method: str, **kwargs):
     """
     Fit a model to a point cloud.
@@ -567,16 +1197,15 @@ def fit(geometry, method: str, **kwargs):
         Input point cloud geometry.
     method : str
         Fitting method. Options are:
-        - 'sphere' : Sphere fit
-        - 'ellipsoid' : Ellipsoid fit
-        - 'cylinder' : Cylinder fit
+        - 'alpha_shape' : Alpha-shape based surface reconstruction
+        - 'ball_pivoting' : Ball pivoting surface reconstruction
+        - 'poisson' : Poisson surface reconstruction
+        - 'flying_edges' : Flying edges isosurface extraction
+        - 'sphere' : Least-squares sphere
+        - 'ellipsoid' : Ellipsoid via eigenvalue decomposition
+        - 'cylinder' : Cylinder via PCA and constrained optimization
         - 'rbf' : Radial basis function interpolation
-        - 'spline' : Spline curve fit
-        - 'convexhull' : Convex hull (Alpha Shape)
-        - 'mesh' : Ball pivoting surface reconstruction
-        - 'poissonmesh' : Poisson surface reconstruction
-        - 'clusterballpivoting' : Cluster-based ball pivoting
-        - 'flyingedges' : Flying edges isosurface extraction
+        - 'spline' : Spline curve through control points
 
     Returns
     -------
@@ -593,7 +1222,7 @@ def fit(geometry, method: str, **kwargs):
 
     method = MethodRegistry.resolve_method("fit", method)
 
-    if method == "mesh":
+    if method == "ball_pivoting":
         radii = kwargs.get("radii", None)
         try:
             kwargs["radii"] = [float(x) for x in radii.split(",")]
@@ -601,20 +1230,18 @@ def fit(geometry, method: str, **kwargs):
             raise ValueError(f"Incorrect radius specification {radii}.") from e
 
     kwargs["voxel_size"] = np.max(geometry.sampling_rate)
-    if method == "flyingedges" and kwargs.get("distance", -1) != -1:
+    if method == "flying_edges" and kwargs.get("distance", -1) != -1:
         kwargs["voxel_size"] = kwargs.get("distance")
 
     fit_object = PARAMETRIZATION_TYPE.get(method)
     if fit_object is None:
         raise ValueError(f"{method} is not supported ({PARAMETRIZATION_TYPE.keys()}).")
 
-    points = geometry.points
-
-    n = points.shape[0]
-    if n < 50 and method not in ["convexhull", "spline"]:
+    n = geometry.get_number_of_points()
+    if n < 50 and method not in ["alpha_shape", "spline"]:
         raise ValueError(f"Insufficient points for fit ({n}<50).")
 
-    fit = fit_object.fit(points, **kwargs)
+    fit = fit_object.fit(geometry.points, **kwargs)
     if hasattr(fit, "mesh"):
         new_points = fit.vertices
         normals = fit.compute_vertex_normals()
@@ -642,17 +1269,5 @@ class GeometryOperations:
         setattr(cls, operation_name, staticmethod(func))
 
 
-for operation_name, operation_func in [
-    ("skeletonize", skeletonize),
-    ("downsample", downsample),
-    ("sample", sample),
-    ("cluster", cluster),
-    ("remove_outliers", remove_outliers),
-    ("compute_normals", compute_normals),
-    ("duplicate", duplicate),
-    ("visibility", visibility),
-    ("remesh", remesh),
-    ("smooth", smooth),
-    ("fit", fit),
-]:
-    GeometryOperations.register(operation_name, operation_func)
+for _name, _func in _DECORATED_OPERATIONS:
+    GeometryOperations.register(_name, _func)
