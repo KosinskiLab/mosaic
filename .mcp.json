@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "mosaic-mcp": {
+      "type": "stdio",
+      "command": "mosaic-mcp",
+      "args": [],
+      "env": {}
+    }
+  }
+}

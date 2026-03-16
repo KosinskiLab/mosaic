@@ -8,6 +8,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from mosaic.registry import MethodRegistry
 from mosaic.stylesheets import Colors
+import mosaic.operations  # noqa: F401  # registers geometry operations
 from mosaic.tabs.model import SAMPLE_SETTINGS
 
 CLUSTER_SETTINGS = MethodRegistry.settings_dict("cluster")

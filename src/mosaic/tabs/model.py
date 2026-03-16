@@ -4,6 +4,7 @@ import numpy as np
 from qtpy.QtWidgets import QWidget, QVBoxLayout
 
 from .. import meshing
+from .. import operations as _operations  # noqa: F401  # registers geometry operations
 from ..registry import MethodRegistry
 from ..widgets.ribbon import create_button
 from ..parallel import submit_task, submit_task_batch
