@@ -467,15 +467,17 @@ def sample(
                 Param(
                     "distance",
                     "float",
-                    default=100.0,
-                    description="Expected distance between neighbors in a cluster.",
+                    default=-1.0,
+                    min=-1.0,
+                    description="Neighborhood radius for density estimation.",
+                    notes="Defaults to the associated sampling rate.",
                 ),
                 Param(
                     "min_points",
                     "int",
-                    default=500,
+                    default=10,
                     min=1,
-                    description="Minimum cluster size.",
+                    description="Minimum number of points to form a cluster.",
                 ),
             ),
         ),
@@ -497,17 +499,12 @@ def sample(
                     description="Number of clusters to form.",
                 ),
                 Param(
-                    "threshold",
+                    "distance",
                     "float",
-                    default=50.0,
+                    default=-1.0,
+                    min=-1.0,
                     description="Radius for merging subclusters.",
-                ),
-                Param(
-                    "branching_factor",
-                    "int",
-                    default=50,
-                    min=1,
-                    description="Max subclusters per node.",
+                    notes="Defaults to the associated sampling rate.",
                 ),
             ),
         ),
@@ -573,14 +570,21 @@ def cluster(
             f"Method must be one of {list(_func_mapping.keys())}, got '{method}'."
         )
 
-    distance = geometry.sampling_rate
-    if method in ("connected_components", "envelope", "leiden"):
-        distance = kwargs.pop("distance", -1)
-        if np.any(np.array(distance) < 0):
-            distance = geometry.sampling_rate
-        kwargs["distance"] = distance
+    distance = kwargs.pop("distance", -1)
+    if np.any(np.array(distance) < 0):
+        distance = np.max(geometry.sampling_rate)
 
-    points = np.divide(geometry.points, distance)
+    if method in ("connected_components", "envelope", "leiden"):
+        kwargs["distance"] = distance
+        points = np.divide(geometry.points, distance)
+    elif method == "dbscan":
+        kwargs["distance"] = distance
+        points = geometry.points
+    elif method == "birch":
+        kwargs["threshold"] = distance
+        points = geometry.points
+    else:
+        points = geometry.points
 
     # Prepare feature data for clustering
     data = points
@@ -610,22 +614,44 @@ def cluster(
         Param(
             "k_neighbors",
             "int",
-            default=10,
+            default=20,
             min=1,
             label="Neighbors",
             description="k-neighbors for estimating local densities.",
         ),
-        Param(
-            "thresh",
-            "float",
-            default=0.02,
-            label="Threshold",
-            description="Standard deviation for statistical, eigenvalue ratio for eigenvalue.",
-        ),
     ),
     methods=(
-        Method("statistical", "statistical"),
-        Method("eigenvalue", "eigenvalue"),
+        Method(
+            "statistical",
+            "statistical",
+            params=(
+                Param(
+                    "thresh",
+                    "float",
+                    default=2.0,
+                    min=0.01,
+                    label="Std. Ratio",
+                    description="Points further than this many standard deviations "
+                    "from the mean neighbor distance are removed.",
+                ),
+            ),
+        ),
+        Method(
+            "eigenvalue",
+            "eigenvalue",
+            params=(
+                Param(
+                    "thresh",
+                    "float",
+                    default=0.05,
+                    min=0.0,
+                    max=1.0,
+                    label="Eigenvalue Ratio",
+                    description="Minimum ratio of the largest eigenvalue to the sum. "
+                    "Points below this threshold are removed.",
+                ),
+            ),
+        ),
     ),
 )
 def remove_outliers(geometry, method: str = "statistical", **kwargs):

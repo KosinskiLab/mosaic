@@ -178,8 +178,8 @@ def _normalize_uvs(uvs: NDArray) -> NDArray:
 
 
 @lru_cache(maxsize=4)
-def _load_tomogram_cached(file_path: str):
-    """Load and cache tomogram data."""
+def _load_tomogram_cached(file_path: str, interpolation_order: int = 3):
+    """Load and cache tomogram data with precomputed spline coefficients."""
     from ..formats.parser import load_density
 
     density = load_density(file_path, use_memmap=True)
@@ -192,8 +192,15 @@ def _load_tomogram_cached(file_path: str):
     if minval is None:
         minval = density.data.min()
 
+    tomogram = density.data.astype(np.float32)
+
+    if interpolation_order > 1:
+        from scipy.ndimage import spline_filter
+
+        tomogram = spline_filter(tomogram, order=interpolation_order)
+
     return (
-        density.data.astype(np.float32),
+        tomogram,
         np.mean(density.sampling_rate),
         (float(minval), float(maxval)),
     )
@@ -218,6 +225,7 @@ class TextureSampler:
         geometry,
         tomogram_path: str,
         texture_size: int = 1024,
+        interpolation_order: int = 3,
     ):
         fit = geometry.model
         if not hasattr(fit, "mesh"):
@@ -225,9 +233,13 @@ class TextureSampler:
 
         self.geometry = geometry
         self.texture_size = texture_size
+        self.interpolation_order = interpolation_order
         self.tomogram, sampling, self.scalar_range = _load_tomogram_cached(
-            tomogram_path
+            tomogram_path, interpolation_order=interpolation_order
         )
+
+        self._cached_offset = None
+        self._cached_texture = None
 
         # xatlas adds new vertices for seams, so we need to update the structure
         vertices = fit.vertices / sampling
@@ -317,25 +329,32 @@ class TextureSampler:
         NDArray
             The sampled texture values.
         """
-        from scipy.ndimage import map_coordinates
+        # Defer update if this is just a visualization change
+        if normal_offset != self._cached_offset or self._cached_texture is None:
+            from scipy.ndimage import map_coordinates
 
-        positions = self._tpositions.copy()
-        if normal_offset != 0.0:
-            positions += normal_offset * self._tnormals
+            positions = self._tpositions.copy()
+            if normal_offset != 0.0:
+                positions += normal_offset * self._tnormals
 
-        values = map_coordinates(
-            self.tomogram,
-            positions.T,
-            order=1,
-            mode="constant",
-            cval=np.nan,
-        ).astype(np.float32)
+            values = map_coordinates(
+                self.tomogram,
+                positions.T,
+                order=self.interpolation_order,
+                mode="constant",
+                cval=np.nan,
+                prefilter=False,
+            ).astype(np.float32)
 
-        texture = np.full(
-            (self.texture_size, self.texture_size), np.nan, dtype=np.float32
-        )
-        texture[self._valid_indices] = values
-        texture = _dilate_texture(texture)
+            texture = np.full(
+                (self.texture_size, self.texture_size), np.nan, dtype=np.float32
+            )
+            texture[self._valid_indices] = values
+            texture = _dilate_texture(texture)
+            self._cached_offset = normal_offset
+            self._cached_texture = texture
+        else:
+            texture = self._cached_texture.copy()
 
         valid_mask = ~np.isnan(texture)
 
@@ -391,3 +410,4 @@ class TextureSampler:
         self.geometry.normals = self._model.compute_vertex_normals()
 
         self.tomogram = None
+        self._cached_texture = None

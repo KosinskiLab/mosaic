@@ -1158,7 +1158,7 @@ class PropertyAnalysisDialog(QDialog):
             self._texture_samplers = {}
 
         no_texture = geometry.actor.GetTexture() is None
-        cache_key = (geometry.uuid, file_path)
+        cache_key = (geometry.uuid, texture_size, file_path)
         if cache_key not in self._texture_samplers or no_texture:
             try:
                 sampler = meshing.TextureSampler(
