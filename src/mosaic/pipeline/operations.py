@@ -391,7 +391,8 @@ PIPELINE_PRESETS = {
             "name": "Export Data",
             "category": "export",
             "settings": {
-                "method": "star",
+                "method": "Point Cloud",
+                "format": "star",
                 "output_dir": "mosaic_seedpoints",
             },
         },

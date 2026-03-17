@@ -255,7 +255,7 @@ class Session:
         filepath : str
             Output file path.
         **kwargs
-            Additional export parameters (``format``, ``single_file``, etc.).
+            Additional export parameters (``format``, ``sampling``, etc.).
         """
         from ..formats.writer import write_geometries
 
@@ -265,13 +265,13 @@ class Session:
             export_parameters["format"] = suffix
 
         # Infer shape from metadata when not explicitly provided
-        shape = self._data.metadata.get("shape")
-        if shape is not None:
-            sampling = self._data.metadata.get("sampling_rate", 1)
-            shape_rint = np.rint(np.divide(shape, sampling)).astype(int)
-            for key, val in zip(("shape_x", "shape_y", "shape_z"), shape_rint):
-                if key not in export_parameters:
-                    export_parameters[key] = val
+        if "shape" not in export_parameters:
+            shape = self._data.metadata.get("shape")
+            if shape is not None:
+                sampling = self._data.metadata.get("sampling_rate", 1)
+                export_parameters["shape"] = tuple(
+                    np.rint(np.divide(shape, sampling)).astype(int)
+                )
 
         write_geometries(geometries, filepath, **export_parameters)
 

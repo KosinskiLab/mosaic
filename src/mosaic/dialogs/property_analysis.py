@@ -294,15 +294,6 @@ def _build_tomogram_options(dlg):
         "Positive = outward, negative = inward."
     )
 
-    global_contrast = QCheckBox("Global Contrast")
-    global_contrast.setToolTip(
-        "Use the tomogram's full scalar range for normalization instead of "
-        "per-slice auto-scaling. Preserves magnitude differences across offsets."
-    )
-    global_contrast.checkStateChanged.connect(dlg._preview)
-    dlg.property_options_layout.addRow(global_contrast)
-    dlg.option_widgets["global_contrast"] = global_contrast
-
     offset_slider.valueChanged.connect(dlg._preview)
     dlg.property_options_layout.addRow(offset_slider)
     dlg.option_widgets["normal_offset"] = offset_slider
@@ -1145,9 +1136,8 @@ class PropertyAnalysisDialog(QDialog):
 
         colormap = self._get_colormap()
         gamma = self.gamma_row.value()
-        global_contrast = get_widget_value(
-            self.option_widgets.get("global_contrast", False)
-        )
+        normalize = self.normalize_checkbox.isChecked()
+        quantiles = self.quantile_checkbox.isChecked()
 
         for geometry in geometries:
             fit = geometry.model
@@ -1160,12 +1150,13 @@ class PropertyAnalysisDialog(QDialog):
             if sampler is None:
                 continue
 
-            scalar_range = sampler.scalar_range if global_contrast else None
+            scalar_range = None if normalize else sampler.scalar_range
             sampler.update(
                 normal_offset=normal_offset,
                 colormap=colormap,
                 scalar_range=scalar_range,
                 gamma=gamma,
+                quantiles=quantiles,
             )
 
         self.render()

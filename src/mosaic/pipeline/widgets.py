@@ -64,7 +64,6 @@ class OperationCardWidget(QFrame):
         self._settings_widgets = {}
 
         self.group_name = operation_name
-        self.remove_previous_output = False
 
         # Avoid cutting of widgets after expansion
         self.setMinimumHeight(135)
@@ -415,6 +414,7 @@ class OperationCardWidget(QFrame):
             "category": self.category_name,
             "settings": settings,
             "inputs": self.input_nodes,
+            "group_name": self.group_name,
             "save_output": self.save_output,
             "visible_output": self.visible_output,
         }
@@ -425,6 +425,11 @@ class OperationCardWidget(QFrame):
         # Restore graph metadata
         self.node_id = settings.get("id", self.node_id)
         self.input_nodes = settings.get("inputs", [])
+
+        if "group_name" in settings:
+            self.group_name = settings["group_name"]
+            if hasattr(self, "group_input"):
+                self.group_input.setText(self.group_name)
 
         try:
             set_widget_value(

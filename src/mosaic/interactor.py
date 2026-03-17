@@ -502,9 +502,7 @@ class DataContainerInteractor(QObject):
             parent=None,
             enabled_categories=enabled_categories,
             parameters={
-                "shape_x": shape[0],
-                "shape_y": shape[1],
-                "shape_z": shape[2],
+                "shape": shape,
                 "sampling": sampling,
             },
             names=names,
@@ -518,13 +516,14 @@ class DataContainerInteractor(QObject):
         if not file_path:
             return -1
 
-        if (shape := self.container.metadata.get("shape")) is not None:
-            sampling = self.container.metadata.get("sampling_rate", 1)
-            shape = np.rint(np.divide(shape, sampling)).astype(int)
+        export_data.pop("category", None)
 
-            for key, val in zip(("shape_x", "shape_y", "shape_z"), shape):
-                if key not in export_data:
-                    export_data[key] = val
+        if "shape" not in export_data:
+            if (shape := self.container.metadata.get("shape")) is not None:
+                sampling = self.container.metadata.get("sampling_rate", 1)
+                export_data["shape"] = tuple(
+                    np.rint(np.divide(shape, sampling)).astype(int)
+                )
 
         try:
             write_geometries(
