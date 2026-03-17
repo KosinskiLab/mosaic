@@ -422,19 +422,15 @@ QTable_style = f"""
         background-color: rgba(99, 102, 241, 0.3);
     }}
     QTableWidget QHeaderView::section {{
-        background-color: {Colors.BG_SECONDARY};
+        background: transparent;
         border: none;
-        border-right: 1px solid {Colors.BORDER_DARK};
         border-bottom: 1px solid {Colors.BORDER_DARK};
-        padding: 2px 4px;
-    }}
-    QTableWidget QHeaderView::section:hover {{
-        background-color: {Colors.BG_TERTIARY};
+        padding: 4px 4px;
+        color: {Colors.TEXT_SECONDARY};
     }}
     QTableWidget QTableCornerButton::section {{
-        background-color: {Colors.BG_SECONDARY};
+        background: transparent;
         border: none;
-        border-right: 1px solid {Colors.BORDER_DARK};
         border-bottom: 1px solid {Colors.BORDER_DARK};
     }}
 """

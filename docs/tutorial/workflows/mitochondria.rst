@@ -39,7 +39,7 @@ This will download the mitochondria segmentation volume at full resolution (4nm,
 2.1. Convert Segmentation to Mesh
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert the volumetric segmentations to initial meshes using marching cubes:
+Convert the volumetric segmentations to initial meshes:
 
 .. code-block:: python
 

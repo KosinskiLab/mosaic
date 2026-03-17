@@ -20,9 +20,6 @@ Prerequisites
   - Standard consumer laptops (8GB RAM recommended)
   - NVIDIA GPU with CUDA support required for: membrane segmentation, template matching and molecular dynamics simulations (oldest model tested: RTX 3090)
 
-.. note::
-   macOS Users: Due to compatibility issues, some functions (edge length-based remeshing and certain parametrizations) have reduced performance compared to Linux systems, but yield the same output.
-
 
 Installation
 ------------
@@ -61,15 +58,9 @@ After setting up your environment, Mosaic can be installed from PyPI
 
 .. note::
 
-   Installing pymeshlab from PyPi has proven troublesome on some Linux distributions. If the Mosaic installation fails with pymeshlab-related issues, you can either build pymeshlab from GitHub
-
-   .. code-block:: bash
-
-      python3 -m pip install git+https://github.com/cnr-isti-vclab/PyMeshLab.git@main
-
-   or follow their `Tutorial <https://github.com/cnr-isti-vclab/PyMeshLab/wiki/How-to-install-the-last-nightly-version>`_ for installing the lastest binaries for your system.
-
-   The last tested version is `2025.4.17.dev0 <https://github.com/cnr-isti-vclab/PyMeshLab/actions/runs/16443660017>`_. After installing pymeshlab you have to install Mosaic again.
+   Mosaic versions prior to 1.3.0 required pymeshlab, which could be troublesome on some Linux
+   distributions. This dependency has been replaced by gpytoolbox and open3d. If you are using
+   an older version, refer to the `pymeshlab installation guide <https://github.com/cnr-isti-vclab/PyMeshLab/wiki/How-to-install-the-last-nightly-version>`_.
 
 
 Optional Dependencies

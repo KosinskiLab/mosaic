@@ -307,9 +307,7 @@ class CameraAnimation(BaseAnimation):
                 "direction": "forward",
             }
         )
-        self._initial_position = None
-        self._initial_focal = None
-        self._initial_view_up = None
+        self._last_progress = 0.0
         self.stop_frame = 180
 
     def get_settings(self) -> List[Dict[str, Any]]:
@@ -341,44 +339,57 @@ class CameraAnimation(BaseAnimation):
     def _update(self, frame: int) -> None:
         camera, renderer = self._get_rendering_context(return_renderer=True)
 
-        # Capture initial state on first frame
-        if self._initial_position is None or frame == self.start_frame:
-            self._initial_position = camera.GetPosition()
-            self._initial_focal = camera.GetFocalPoint()
-            self._initial_view_up = camera.GetViewUp()
-
         progress = self._get_progress(frame)
         if progress is None:
             return
 
-        # Calculate total rotation angle at this point
         total_degrees = self.parameters["degrees"]
         if self.parameters.get("direction") == "reverse":
             total_degrees = -total_degrees
 
-        angle = total_degrees * progress
+        # Incremental angle since last update
+        delta_angle = total_degrees * (progress - self._last_progress)
+        self._last_progress = progress
 
-        # Apply rotation from initial position
-        transform = vtkTransform()
-        transform.Identity()
-        transform.Translate(*self._initial_focal)
+        if abs(delta_angle) < 1e-10:
+            return
+
+        # Compute rotation axis from the current camera orientation
+        pos = list(camera.GetPosition())
+        focal = list(camera.GetFocalPoint())
+        view_up = list(camera.GetViewUp())
+
+        view_dir = [focal[i] - pos[i] for i in range(3)]
+        vd_len = sum(d * d for d in view_dir) ** 0.5
+        if vd_len > 0:
+            view_dir = [d / vd_len for d in view_dir]
+
+        right = [
+            view_dir[1] * view_up[2] - view_dir[2] * view_up[1],
+            view_dir[2] * view_up[0] - view_dir[0] * view_up[2],
+            view_dir[0] * view_up[1] - view_dir[1] * view_up[0],
+        ]
+        r_len = sum(d * d for d in right) ** 0.5
+        if r_len > 0:
+            right = [d / r_len for d in right]
 
         axis = self.parameters["axis"]
         if axis == "x":
-            transform.RotateWXYZ(angle, 1, 0, 0)
+            rot_axis = right
         elif axis == "y":
-            transform.RotateWXYZ(angle, 0, 1, 0)
-        elif axis == "z":
-            transform.RotateWXYZ(angle, 0, 0, 1)
+            rot_axis = view_up
+        else:  # z
+            rot_axis = view_dir
 
-        transform.Translate(
-            -self._initial_focal[0],
-            -self._initial_focal[1],
-            -self._initial_focal[2],
-        )
+        # Apply incremental rotation around focal point
+        transform = vtkTransform()
+        transform.Identity()
+        transform.Translate(*focal)
+        transform.RotateWXYZ(delta_angle, *rot_axis)
+        transform.Translate(-focal[0], -focal[1], -focal[2])
 
-        new_pos = transform.TransformPoint(self._initial_position)
-        new_view_up = transform.TransformVector(self._initial_view_up)
+        new_pos = transform.TransformPoint(pos)
+        new_view_up = transform.TransformVector(view_up)
 
         camera.SetPosition(*new_pos)
         camera.SetViewUp(*new_view_up)

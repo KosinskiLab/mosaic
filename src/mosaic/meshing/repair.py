@@ -11,7 +11,7 @@ Copyright (c) 2024 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Tuple, Union
+from typing import Tuple
 
 import igl
 import numpy as np
@@ -252,13 +252,20 @@ def _fair_mesh(
     vs: np.ndarray,
     fs: np.ndarray,
     vids: np.ndarray,
-    alpha=0.0,
-    anchoring: Union[float, tuple[float, ...]] = 1.0,
-    beta=0.0,
-    gamma=0.0,
+    smoothness: float = 1.0,
+    curvature_weight: float = 0.0,
 ):
     """
-    Minimizes vertex displacement and polyharmonic energy of a mesh at vids.
+    Minimizes polyharmonic energy of a mesh at vids.
+
+    Smoothness controls the biharmonic term (k=2, ``Q2 = L^T M^{-1} L``),
+    which minimizes total mean curvature squared ``∫(2H)² dA`` and
+    produces C1-continuous surfaces.
+
+    Curvature weight adds the triharmonic term (k=3,
+    ``Q3 = L^T M^{-1} Q2``), which minimizes the gradient of mean
+    curvature ``∫|∇H|² dA``. This propagates curvature from the
+    boundary into the free region, producing C2-continuous surfaces.
 
     Parameters
     ----------
@@ -266,55 +273,42 @@ def _fair_mesh(
         Vertex coordinates.
     fs : ndarray, shape (M, 3)
         Face indices.
-    vids: ndarray (k)
-        Vertices to optimize
-    alpha : float, optional
-        k2 polyharmonic (smoothing) weighting factor. Default 0.0.
-    anchoring : float or tuple of float
-        Position anchoring strength. 0.0 = strong anchoring, 1.0 = no anchoring.
-        Can be defined for all axes or per-axis.
-    beta : float, optional
-        k3 polyharmonic weighting factor. Default 0.0.
-    gamma : float, optional
-        Internal mesh pressure. Default 0.0.
+    vids : ndarray (k)
+        Vertices to optimize.
+    smoothness : float, optional
+        Weight for the biharmonic energy (k=2). Controls the balance
+        between position anchoring and curvature minimization.
+        0 = vertices stay in place, 1 = full smoothing. Default 1.0.
+    curvature_weight : float, optional
+        Weight for the triharmonic energy (k=3). Propagates curvature
+        from the boundary into the free region. Acts independently
+        of smoothness. Default 0.0.
     """
     L, M = _robust_laplacian(vs, fs)
-    M_inv = scipy.sparse.diags(1.0 / M.diagonal())
+    m_diag = M.diagonal()
+    m_diag = np.where(m_diag > _epsilon, m_diag, _epsilon)
+    M_inv = scipy.sparse.diags(1.0 / m_diag)
     Q2 = L.T @ M_inv @ L
-    Q4 = L.T @ M_inv @ Q2
 
-    if np.isscalar(anchoring) or len(anchoring) == 1:
-        anchoring = [anchoring, anchoring, anchoring]
+    n = len(vs)
+    smoothness = np.clip(smoothness, _epsilon, 1.0 - _epsilon)
 
-    anchoring = np.asarray(anchoring)
-    if anchoring.size != 3:
-        raise ValueError(
-            f"Expected anchoring weights to have len 3, got {anchoring.size}"
-        )
+    free = np.zeros(n)
+    free[vids] = 1.0
 
-    if gamma != 0:
-        normals = igl.per_vertex_normals(vs, fs)
+    W_smooth = scipy.sparse.diags(free * smoothness)
+    W_anchor = scipy.sparse.diags(free * (1.0 - smoothness) + 1.0 - free)
+    Q = W_smooth @ Q2 + W_anchor @ M + _epsilon * scipy.sparse.eye(n)
 
-    # Solve each axis separately with its own anchoring
-    axis_range = range(3)
-    if np.unique(anchoring).size == 1:
-        anchoring = (anchoring[0],)
-        axis_range = ((0, 1, 2),)
+    if curvature_weight != 0:
+        Q3 = L.T @ M_inv @ Q2
+        W_curv = scipy.sparse.diags(free * curvature_weight)
+        Q = Q + W_curv @ Q3
 
     out_vs = np.zeros_like(vs)
-    for axis, anch in zip(axis_range, anchoring):
-        s = _create_weights(len(vs), vids, alpha * anch)
-        a = _create_weights(len(vs), vids, anch)
-        b = _create_weights(len(vs), vids, beta * anch)
-
-        displacement = M - a * M
-        Q = s * Q2 + b * Q4 + displacement
-        B = displacement @ vs[:, axis]
-
-        if gamma != 0:
-            B += gamma * normals[:, axis]
-
-        out_vs[:, axis] = scipy.sparse.linalg.spsolve(Q, B)
+    B = (W_anchor @ M + _epsilon * scipy.sparse.eye(n)) @ vs
+    for axis in range(3):
+        out_vs[:, axis] = scipy.sparse.linalg.spsolve(Q, B[:, axis])
     return out_vs
 
 
@@ -322,11 +316,15 @@ def fair_mesh(
     vs: np.ndarray,
     fs: np.ndarray,
     vids: np.ndarray,
-    alpha=0.0,
-    anchoring=1.0,
-    beta=0.0,
-    gamma=0.0,
-    n_ring=0,
+    smoothness: float = 1.0,
+    curvature_weight: float = 0.0,
+    pressure: float = 0.0,
+    n_ring: int = 1,
+    # Legacy parameters — mapped to new interface for backwards compatibility
+    alpha=None,
+    anchoring=None,
+    beta=None,
+    gamma=None,
 ):
     """
     Minimizes vertex displacement and polyharmonic energy of a mesh at vids.
@@ -337,21 +335,45 @@ def fair_mesh(
         Vertex coordinates.
     fs : ndarray, shape (M, 3)
         Face indices.
-    vids: ndarray (k)
-        Vertices to optimize
-    alpha : float, optional
-        k2 polyharmonic (smoothing) weighting factor. Default 0.0.
-    anchoring : float, optional
-        Position anchoring strength. 0.0 = strong anchoring, 1.0 = no anchoring. Default 1.0.
-    beta : float, optional
-        k3 polyharmonic weighting factor. Default 0.0.
-    gamma : float, optional
-        Internal mesh pressure. Default 0.0.
+    vids : ndarray (k)
+        Vertices to optimize.
+    smoothness : float, optional
+        Controls the balance between position anchoring and curvature
+        minimization. 0 = vertices stay in place, 1 = full curvature
+        minimization. Default 1.0.
+    curvature_weight : float, optional
+        Weight for triharmonic (higher-order smoothing) energy. Acts
+        independently of smoothness. Default 0.0.
+    pressure : float, optional
+        Normal displacement applied to free vertices before fairing.
+        Positive values expand outward, negative values contract.
+        Units match the input coordinate system. Default 0.0.
     n_ring : int, optional
-        n_ring vertices around vids to consider for fairing. Default 0.
+        n_ring vertices around vids to consider for fairing. Default 1.
+    alpha : float, optional
+        Deprecated. Use smoothness instead.
+    anchoring : float, optional
+        Deprecated. Controlled by smoothness.
+    beta : float, optional
+        Deprecated. Use curvature_weight instead.
+    gamma : float, optional
+        Deprecated. Use pressure instead.
     """
-    if alpha == beta == gamma == 0.0:
+    # Legacy parameter mapping
+    if alpha is not None:
+        smoothness = alpha
+    if beta is not None:
+        curvature_weight = beta
+    if gamma is not None:
+        pressure = gamma
+
+    if smoothness == 0 and curvature_weight == 0 and pressure == 0:
         return vs
+
+    vs = np.asarray(vs, dtype=np.float64).copy()
+    vids = np.asarray(vids)
+    if n_ring > 0:
+        vids = np.asarray(list(get_ring_vertices(vs, fs, vids, n=n_ring)))
 
     vs_center = np.mean(vs, axis=0)
     vs = vs - vs_center
@@ -360,21 +382,16 @@ def fair_mesh(
     vs_scale = np.where(np.abs(vs_scale) <= 1e-6, 1, vs_scale)
     vs = vs / vs_scale
 
-    vids = np.asarray(vids)
-    if n_ring > 0:
-        vids = np.asarray(list(get_ring_vertices(vs, fs, vids, n=n_ring)))
+    fair_kwargs = {"smoothness": smoothness, "curvature_weight": curvature_weight}
+    out_vs = _fair_mesh(vs, fs, vids, **fair_kwargs)
 
-    kwargs = {
-        "fs": fs,
-        "vids": vids,
-        "alpha": alpha,
-        "beta": beta,
-        "anchoring": anchoring,
-    }
-    out_vs = _fair_mesh(vs, **kwargs)
-    if gamma != 0:
-        # Two step produced more stable results
-        out_vs = _fair_mesh(out_vs, gamma=gamma, **kwargs)
+    # Two step to avoid degenerate normal vectors of inferred vertices
+    if pressure != 0:
+        out_vs_world = out_vs * vs_scale + vs_center
+        normals = igl.per_vertex_normals(out_vs_world, fs)
+        out_vs[vids] += (pressure / vs_scale) * normals[vids]
+        out_vs = _fair_mesh(out_vs, fs, vids, **fair_kwargs)
+
     return out_vs * vs_scale + vs_center
 
 
@@ -541,15 +558,22 @@ def triangulate_refine_fair(
     fs,
     hole_len_thr=-1,
     close_hole_fast=True,
-    density_factor=np.sqrt(2),
-    alpha=0.05,
-    beta=0.0,
-    gamma=0,
-    n_ring: int = 0,
-    anchoring: float = 1.0,
+    target_edge_length: float = -1,
+    smoothness: float = 1.0,
+    curvature_weight: float = 0.0,
+    pressure: float = 0.0,
+    n_ring: int = 1,
+    # Legacy parameters
+    alpha=None,
+    beta=None,
+    gamma=None,
+    **kwargs,
 ):
-    """
-    Fill and fair holes in triangular meshes.
+    """Fill holes, remesh to uniform edge length, and fair inferred vertices.
+
+    Closes holes in the mesh, remeshes to a uniform target edge length,
+    identifies vertices in the former hole regions by distance from the
+    original mesh, and fairs them.
 
     Parameters
     ----------
@@ -561,42 +585,72 @@ def triangulate_refine_fair(
         Maximum hole perimeter to fill. Default is -1 (no limit).
     close_hole_fast : bool, optional
         Use fast hole filling. Default is True.
-    density_factor : float, optional
-        Controls subdivision density. Default is sqrt(2).
-    alpha : float, optional
-        Weight for membrane energy. Default is 0.05.
-    beta : float, optional
-        Weight for curvature energy. Default is 0.
-    gamma : float, optional
-        Volume pressure. Default is 0.
+    target_edge_length : float, optional
+        Target edge length for isotropic remeshing after hole filling.
+        -1 uses the median edge length of the input mesh.
+    smoothness : float, optional
+        Controls the balance between position anchoring and curvature
+        minimization. 0 = vertices stay in place, 1 = full curvature
+        minimization. Default 1.0.
+    curvature_weight : float, optional
+        Weight for triharmonic (higher-order smoothing) energy. Default 0.0.
+    pressure : float, optional
+        Normal displacement applied to free vertices after fairing.
+        Positive values expand outward, negative values contract.
+        Units match the input coordinate system. Default 0.0.
     n_ring : int, optional
-        Also refine n_ring vertices for filled in vertices. Default is 0.
+        Also refine n_ring vertices around inferred vertices. Default 1.
 
     Returns
     -------
-    out_vs : ndarray, shape (N+P, 3)
-        Output vertices after filling and fairing.
-    out_fs : ndarray, shape (M+Q, 3)
-        Output faces after filling and fairing.
+    out_vs : ndarray, shape (P, 3)
+        Output vertices after filling, remeshing, and fairing.
+    out_fs : ndarray, shape (Q, 3)
+        Output faces after filling, remeshing, and fairing.
     """
-    vs = np.asarray(vs).copy()
+    import warnings
+    from ..utils import find_closest_points
+    from .utils import remesh, to_open3d, compute_edge_lengths
+
+    if alpha is not None:
+        smoothness = alpha
+    if beta is not None:
+        curvature_weight = beta
+    if gamma is not None:
+        pressure = gamma
+
+    vs = np.asarray(vs, dtype=np.float64).copy()
     fs = np.asarray(fs).copy()
+    original_vs = vs.copy()
+
     out_fs = close_holes(vs, fs, hole_len_thr, close_hole_fast)
-    add_fids = np.arange(len(fs), len(out_fs))
 
-    nv = len(vs)
-    vs, fs, FI = _triangulation_refine_leipa(vs, out_fs, add_fids, density_factor)
-    vids = np.arange(nv, len(vs))
+    if target_edge_length <= 0:
+        target_edge_length = float(np.median(compute_edge_lengths(to_open3d(vs, fs))))
 
-    # Fair selected parts of the mesh
+    try:
+        mesh = remesh(to_open3d(vs, out_fs), target_edge_length)
+        vs = np.asarray(mesh.vertices, dtype=np.float64)
+        fs = np.asarray(mesh.triangles)
+    except (ValueError, RuntimeError):
+        warnings.warn(
+            "Remeshing failed (non-manifold mesh). Continuing without remeshing."
+        )
+        fs = out_fs
+
+    distances, _ = find_closest_points(original_vs, vs)
+    vids = np.where(distances > target_edge_length * 0.5)[0]
+
+    if len(vids) == 0:
+        return vs, fs
+
     vs = fair_mesh(
         vs,
         fs,
         vids,
-        alpha=alpha,
-        beta=beta,
-        gamma=gamma,
+        smoothness=smoothness,
+        curvature_weight=curvature_weight,
+        pressure=pressure,
         n_ring=n_ring,
-        anchoring=anchoring,
     )
     return vs, fs

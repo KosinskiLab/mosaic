@@ -376,7 +376,7 @@ class DataContainerInteractor(QObject):
         selected_items = self.data_list.selected_items()
         rename_action = QAction("Rename", self.data_list)
         rename_action.triggered.connect(self._show_batch_rename_dialog)
-        rename_action.setEnabled(len(selected_items) >= 2)
+        rename_action.setEnabled(len(selected_items) >= 1)
         context_menu.addAction(rename_action)
 
         formats = [
@@ -572,7 +572,7 @@ class DataContainerInteractor(QObject):
         from .dialogs import BatchRenameDialog
 
         items = self.data_list.selected_items()
-        if len(items) < 2:
+        if len(items) < 1:
             return -1
 
         uuids = [item.metadata.get("uuid") for item in items]
