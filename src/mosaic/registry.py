@@ -410,12 +410,31 @@ _ANCHORING = Param(
     ),
 )
 
+_SMOOTHNESS = Param(
+    "smoothness",
+    "float",
+    default=1.0,
+    min=0.0,
+    max=1.0,
+    label="Smoothness",
+    description=(
+        "Balance between position anchoring and curvature minimization. "
+        "0 = vertices stay in place, 1 = full smoothing."
+    ),
+)
+
+_PRESSURE = Param(
+    "pressure",
+    "float",
+    default=0.0,
+    label="Pressure",
+    description="Internal mesh pressure along vertex normals.",
+)
+
 _REPAIR_PARAMS = (
-    _ELASTIC_WEIGHT,
+    _SMOOTHNESS,
     _CURVATURE_WEIGHT,
-    _VOLUME_WEIGHT,
-    _BOUNDARY_RING,
-    _ANCHORING,
+    _PRESSURE,
 )
 
 _HOLE_SIZE = Param(

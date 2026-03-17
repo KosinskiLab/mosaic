@@ -19,7 +19,6 @@ from .registry import (
     _K_NEIGHBORS,
     _REPAIR_PARAMS,
     _HOLE_SIZE,
-    _SMOOTH_ITER,
     _NORMAL_OFFSET,
     _BIDIRECTIONAL,
 )
@@ -138,7 +137,7 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
         If unsupported method is specified.
     """
     from .geometry import Geometry
-    from .parametrization import ConvexHull
+    from .parametrization import AlphaShape
     from .utils import skeletonize as _skeletonize
     from .utils import points_to_volume, volume_to_points
 
@@ -162,7 +161,7 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
         points = np.add(points, offset * geometry.sampling_rate)
 
     if method in ("outer", "outer_hull"):
-        hull = ConvexHull.fit(
+        hull = AlphaShape.fit(
             points,
             elastic_weight=0,
             curvature_weight=0,
@@ -284,17 +283,34 @@ def downsample(geometry, method: str = "radius", **kwargs):
 
 @operation(
     methods=(
-        Method("Distance", "distance"),
-        Method("Points", "points"),
+        Method(
+            "Distance",
+            "distance",
+            params=(
+                Param(
+                    "sampling",
+                    "float",
+                    default=40.0,
+                    min=1e-6,
+                    description="Average distance between points.",
+                ),
+            ),
+        ),
+        Method(
+            "Points",
+            "points",
+            params=(
+                Param(
+                    "sampling",
+                    "int",
+                    default=5000,
+                    min=1,
+                    description="Number of points.",
+                ),
+            ),
+        ),
     ),
     common_params=(
-        Param(
-            "sampling",
-            "float",
-            default=40,
-            min=1,
-            description="Numerical value for sampling method.",
-        ),
         _NORMAL_OFFSET,
         _BIDIRECTIONAL,
     ),
@@ -1011,18 +1027,12 @@ def smooth(geometry, method: str, **kwargs):
                     notes="Large values yield coarser features.",
                 ),
                 Param(
-                    "resampling_factor",
+                    "target_edge_length",
                     "float",
-                    default=12.0,
-                    label="Scaling Factor",
-                    description="Resample mesh to factor times sampling rate.",
-                ),
-                Param(
-                    "distance_cutoff",
-                    "float",
-                    default=2.0,
-                    label="Distance",
-                    description="Vertices further than this are labelled as inferred.",
+                    default=-1.0,
+                    min=-1.0,
+                    label="Edge Length",
+                    description="Target edge length for remeshing. -1 uses median.",
                 ),
                 *_REPAIR_PARAMS,
             ),
@@ -1040,20 +1050,13 @@ def smooth(geometry, method: str, **kwargs):
                 ),
                 _HOLE_SIZE,
                 Param(
-                    "downsample_input",
-                    "bool",
-                    default=True,
-                    label="Downsample",
-                    description="Thin input point cloud to core.",
+                    "target_edge_length",
+                    "float",
+                    default=-1.0,
+                    min=-1.0,
+                    label="Edge Length",
+                    description="Target edge length for remeshing. -1 uses median.",
                 ),
-                Param(
-                    "n_smoothing",
-                    "int",
-                    default=5,
-                    label="Smoothing Steps",
-                    description="Pre-smoothing steps before fairing.",
-                ),
-                _K_NEIGHBORS,
                 *_REPAIR_PARAMS,
             ),
         ),
@@ -1068,29 +1071,7 @@ def smooth(geometry, method: str, **kwargs):
                     min=1,
                     description="Depth of the Octree for surface reconstruction.",
                 ),
-                Param(
-                    "samplespernode",
-                    "float",
-                    default=5.0,
-                    min=0,
-                    label="Samples",
-                    description="Minimum number of points per octree node.",
-                ),
-                _SMOOTH_ITER,
-                Param(
-                    "pointweight",
-                    "float",
-                    default=0.1,
-                    min=0,
-                    description="Interpolation weight of point samples.",
-                ),
-                Param(
-                    "scale",
-                    "float",
-                    default=1.2,
-                    min=0,
-                    description="Ratio between reconstruction and sample cube.",
-                ),
+                _K_NEIGHBORS,
                 Param(
                     "deldist",
                     "float",
@@ -1099,7 +1080,15 @@ def smooth(geometry, method: str, **kwargs):
                     label="Distance",
                     description="Drop vertices further than distance from input.",
                 ),
-                _K_NEIGHBORS,
+                Param(
+                    "density_quantile",
+                    "float",
+                    default=0.0,
+                    min=0.0,
+                    max=1.0,
+                    label="Density Quantile",
+                    description="Remove low-confidence vertices below this quantile.",
+                ),
             ),
         ),
         Method(
@@ -1238,8 +1227,8 @@ def fit(geometry, method: str, **kwargs):
         raise ValueError(f"{method} is not supported ({PARAMETRIZATION_TYPE.keys()}).")
 
     n = geometry.get_number_of_points()
-    if n < 50 and method not in ["alpha_shape", "spline"]:
-        raise ValueError(f"Insufficient points for fit ({n}<50).")
+    if n < 15 and method in ("sphere", "ellipsoid", "cylinder"):
+        raise ValueError(f"Insufficient points for {method} ({n} < 15).")
 
     fit = fit_object.fit(geometry.points, **kwargs)
     if hasattr(fit, "mesh"):

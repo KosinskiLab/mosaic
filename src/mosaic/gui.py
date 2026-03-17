@@ -365,6 +365,7 @@ class App(QMainWindow):
             self.vtk_widget.GetRenderWindow().Render()
         elif key in ["\x7f", "\x08"]:
             self.cdata.data.remove()
+            self.cdata.models.remove()
         elif key == "m":
             self.cdata.data.merge()
         elif key == "e":

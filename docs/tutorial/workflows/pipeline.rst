@@ -85,7 +85,7 @@ Meshing converts the point cloud into a triangular surface, enabling computation
 
 - Method: *Flying Edges* is fast and works well for initial mesh generation on dense volumes.
 
-Meshes created with Flying Edges (and Marching Cubes) extract the contour of the segmentation, producing a closed surface that encloses the segmented region. This means seed points will be generated on both sides of the membrane, with normals pointing away from the enclosed volume on each side.
+Meshes created with Flying Edges extract the contour of the segmentation, producing a closed surface that encloses the segmented region. This means seed points will be generated on both sides of the membrane, with normals pointing away from the enclosed volume on each side.
 
 Alternative meshing methods (demonstrated in the Meshing pipeline preset) can fit a surface through the center of the segmentation rather than along its contour. These methods produce normals that all point in the same direction, which can be advantageous for template matching as it provides more precise spatial constraints, i.e., you search only on the biologically relevant side of the membrane rather than both sides.
 
@@ -253,7 +253,7 @@ Parametrization
 **Mesh**
    Generates triangular surface meshes from point clouds.
 
-   - *Flying Edges*: Fast marching cubes variant for isosurface extraction.
+   - *Flying Edges*: Fast isosurface extraction from volumetric data.
    - *Poisson*: Solves a Poisson equation to produce smooth, watertight surfaces. Requires consistent normal orientation.
    - *Ball Pivoting*: Reconstructs surfaces by rolling a ball of specified radius over the point cloud. Suitable for partial surfaces.
    - *Alpha Shape*: Computes the alpha complex, a generalization of the convex hull. Alpha parameter controls surface detail.

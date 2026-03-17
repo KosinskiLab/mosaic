@@ -213,3 +213,20 @@ class MosaicData:
 
             ret.append((geometry._meta.get("name", ""), geometry))
         return ret
+
+    def get_tree_state(self, type="data"):
+        """Get the tree state (group structure) for a container.
+
+        Parameters
+        ----------
+        type : str, optional
+            Type of container ('data' or 'models'), by default 'data'
+
+        Returns
+        -------
+        TreeStateData
+            The current tree structure including groups.
+        """
+        if type == "models":
+            return self.models.data_list.to_state()
+        return self.data.data_list.to_state()

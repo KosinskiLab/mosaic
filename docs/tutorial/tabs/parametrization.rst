@@ -158,40 +158,37 @@ Mesh
 2. Click **Mesh**
 3. Choose reconstruction method:
 
-   - **Alpha Shape**: Convex hull with alpha parameter control
+   - **Alpha Shape**: Surface reconstruction using alpha shapes
    - **Ball Pivoting**: Robust surface reconstruction for structured data
-   - **Cluster Ball Pivoting**: Ball pivoting with automatic parameter determination
    - **Poisson**: Watertight surface reconstruction
-   - **Marching Cubes**: Meshing of dense segmentations
-   - **Flying Edges**: Like marching cubes but faster
+   - **Flying Edges**: Fast isosurface extraction for dense segmentations
 
 4. Configure method-specific parameters:
 
    :Alpha Shape Parameters:
       - **Alpha**: Controls shape complexity (higher = coarser features)
-      - **Scaling Factor**: Mesh resampling resolution
-      - **Distance**: Threshold for inferred vs. measured vertices
+      - **Edge Length**: Target edge length for remeshing (-1 = auto)
 
    :Ball Pivoting Parameters:
       - **Radii**: Ball radii for reconstruction (comma-separated, e.g., "5,3.5,1.0")
       - **Downsample**: Thin input point cloud to core points
-      - **Smoothing Steps**: Pre-smoothing iterations
+      - **Edge Length**: Target edge length for remeshing (-1 = auto)
 
    :Poisson Parameters:
       - **Depth**: Octree depth (higher = more detail)
-      - **Samples**: Minimum points per octree node
-      - **Pointweight**: Interpolation weight of input points
+      - **Neighbors**: Number of neighbors for normal estimation
+      - **Distance**: Drop vertices further than this from input
+      - **Density Quantile**: Remove low-confidence vertices
 
-5. Set repair parameters:
+5. Set fairing parameters (Alpha Shape and Ball Pivoting):
 
-   - **Elastic Weight**: Controls mesh elasticity (0 = strong anchoring)
-   - **Curvature Weight**: Controls curvature propagation
-   - **Volume Weight**: Controls internal mesh pressure
-   - **Hole Size**: Maximum hole area for automatic filling
+   - **Smoothness**: Balance between position anchoring and curvature minimization (0 = stay in place, 1 = full smoothing)
+   - **Curvature Weight**: Higher-order smoothing for curvature continuity
+   - **Pressure**: Normal displacement of inferred vertices (positive = expand, negative = contract)
 
 6. Click **OK** to generate the mesh
 
-**Note**: Mesh quality depends on point cloud density and noise levels. For noisy data, increase smoothing steps. For sparse data, reduce the number of neighbors.
+**Note**: Mesh quality depends on point cloud density and noise levels. For sparse data, try larger ball pivoting radii or lower Poisson depth.
 
 .. _curve:
 
@@ -242,17 +239,16 @@ Mesh Operations
 
 Repair
 ------
-Fixes mesh topology issues and fills holes using Leipa triangulation and fairing:
+Fixes mesh topology issues and fills holes. Holes are closed, the mesh is remeshed to uniform edge length, and inferred vertices are faired:
 
 1. Select mesh models to repair
 2. Click **Repair**
 3. Configure repair parameters:
 
-   :Optimization Weights:
-      - **Elastic Weight**: Mesh smoothness (0=anchor to original, 1=free movement)
-      - **Curvature Weight**: Preserve or modify curvature
-      - **Volume Weight**: Internal pressure (positive=inflation, negative=shrinkage)
-      - **Boundary Ring**: Optimize n-ring vertices around boundaries
+   :Fairing:
+      - **Smoothness**: Balance between anchoring and curvature minimization (0 = stay in place, 1 = full smoothing)
+      - **Curvature Weight**: Higher-order smoothing for curvature continuity
+      - **Pressure**: Normal displacement of inferred vertices
 
    :Hole Filling:
       - **Hole Size**: Maximum hole area to fill (-1=fill all holes)
@@ -273,7 +269,6 @@ Improves mesh quality and adjusts triangle density:
    :Edge Length:
       - **Edge Length**: Target average edge length
       - **Iterations**: Number of optimization passes
-      - **Mesh Angle**: Preserve edges above this angle threshold
 
    :Vertex Clustering:
       - **Radius**: Clustering radius for vertex merging

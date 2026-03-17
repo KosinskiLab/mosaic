@@ -295,21 +295,15 @@ class ModelTab(QWidget):
     def _fit_parallel(self, method: str, *args, **kwargs):
         from ..operations import GeometryOperations
 
-        # These methods are parallelize and would mess with the worker pool
-        tasks, max_concurrent = [], None
-        if method in ("Poisson",):
-            max_concurrent = 1
-
         for geometry in self.cdata.data.get_selected_geometries():
-            tasks.append(
-                {
-                    "name": "Parametrization",
-                    "func": GeometryOperations.fit,
-                    "callback": self._default_callback,
-                    "kwargs": {"geometry": geometry, "method": method} | kwargs,
-                }
+            submit_task(
+                "Parametrization",
+                GeometryOperations.fit,
+                self._default_callback,
+                geometry,
+                method,
+                **kwargs,
             )
-        submit_task_batch(tasks, max_concurrent=max_concurrent)
 
     def _smooth_parallel(self, method, **kwargs):
         from ..operations import GeometryOperations
@@ -441,46 +435,28 @@ REPAIR_SETTINGS = {
     "title": "Settings",
     "settings": [
         {
-            "label": "Elastic Weight",
-            "parameter": "elastic_weight",
+            "label": "Smoothness",
+            "parameter": "smoothness",
             "type": "float",
-            "default": 0.0,
-            "min": -(2**28),
-            "description": "Control mesh smoothness and elasticity.",
-            "notes": "0 - strong anchoring, 1 - no anchoring, > 1 repulsion.",
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "description": "Balance between position anchoring and curvature "
+            "minimization. 0 = stay in place, 1 = full smoothing.",
         },
         {
             "label": "Curvature Weight",
             "parameter": "curvature_weight",
             "type": "float",
             "default": 0.0,
-            "min": -(2**28),
-            "description": "Controls propagation of mesh curvature.",
+            "description": "Higher-order smoothing for curvature continuity.",
         },
         {
-            "label": "Volume Weight",
-            "parameter": "volume_weight",
+            "label": "Pressure",
+            "parameter": "pressure",
             "type": "float",
             "default": 0.0,
-            "min": -(2**28),
-            "description": "Controls internal pressure of mesh.",
-        },
-        {
-            "label": "Boundary Ring",
-            "parameter": "boundary_ring",
-            "type": "number",
-            "default": 0,
-            "description": "Also optimize n-ring vertices for ill-defined boundaries.",
-        },
-        {
-            "label": "Flexibility",
-            "parameter": "anchoring",
-            "type": "float_list",
-            "default": "1",
-            "min": "0",
-            "max": "1",
-            "description": "Flexibility of inferred vertices. 1 is maximum. Can be "
-            "specified for all axes, e.g., 1, or per-axis, e.g., 1;1;0.5.",
+            "description": "Internal mesh pressure along vertex normals.",
         },
         {
             "label": "Hole Size",

@@ -38,6 +38,7 @@ from typing import Any, Dict, Optional
 
 from ..widgets import (
     ContainerTreeWidget,
+    GroupTreeWidgetItem,
     StyledListWidgetItem,
     ColorMapSelector,
     HistogramRangeSlider,
@@ -145,14 +146,47 @@ class PropertyCache:
             return False
 
 
-def _populate_list(geometries):
+def _populate_list(geometries, tree_state=None):
     target_list = ContainerTreeWidget(border=False)
     target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
 
-    for name, obj in geometries:
+    def _make_item(name, obj):
         item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
         item.setData(Qt.ItemDataRole.UserRole, obj)
-        target_list.addItem(item)
+        return item
+
+    if tree_state is None:
+        for name, obj in geometries:
+            target_list.addItem(_make_item(name, obj))
+        return target_list
+
+    uuid_map = {obj.uuid: (name, obj) for name, obj in geometries}
+    added = set()
+
+    for root_uuid in tree_state.root_items:
+        if root_uuid in tree_state.group_names:
+            group_name = tree_state.group_names[root_uuid]
+            member_uuids = [
+                u for u in tree_state.groups.get(root_uuid, []) if u in uuid_map
+            ]
+            if not member_uuids:
+                continue
+
+            group_item = target_list.create_group(group_name)
+            for uuid in member_uuids:
+                name, obj = uuid_map[uuid]
+                group_item.addChild(_make_item(name, obj))
+                added.add(uuid)
+        elif root_uuid in uuid_map:
+            name, obj = uuid_map[root_uuid]
+            target_list.addItem(_make_item(name, obj))
+            added.add(root_uuid)
+
+    # Add any remaining geometries not present in the tree state
+    for name, obj in geometries:
+        if obj.uuid not in added:
+            target_list.addItem(_make_item(name, obj))
+
     return target_list
 
 
@@ -542,15 +576,26 @@ class PropertyAnalysisDialog(QDialog):
             QTabBar_style + QTable_style + QPushButton_style + QScrollArea_style
         )
 
+        self._known_tree_states = self._snapshot_tree_states()
         self.cdata.data.vtk_pre_render.connect(self._on_render_update)
         self.cdata.models.vtk_pre_render.connect(self._on_render_update)
+
+    def _snapshot_tree_states(self):
+        """Snapshot both container tree states for change detection."""
+        return (
+            self.cdata.get_tree_state("data"),
+            self.cdata.get_tree_state("models"),
+        )
 
     def _on_render_update(self):
         """Re-apply properties when models are re-rendered."""
         self.cdata.data.blockSignals(True)
         self.cdata.models.blockSignals(True)
         try:
-            self._update_property_list()
+            current = self._snapshot_tree_states()
+            if current != self._known_tree_states:
+                self._known_tree_states = current
+                self._update_property_list()
             if self.live_update_checkbox.isChecked():
                 self._preview(render=False)
                 self._update_plot()
@@ -639,7 +684,10 @@ class PropertyAnalysisDialog(QDialog):
         group = QGroupBox(title)
         layout = QVBoxLayout(group)
 
-        target_list = _populate_list(self.cdata.format_datalist(data_source, **kwargs))
+        tree_state = self.cdata.get_tree_state(data_source)
+        target_list = _populate_list(
+            self.cdata.format_datalist(data_source, **kwargs), tree_state
+        )
         layout.addWidget(target_list)
 
         compare_all = None
@@ -1172,10 +1220,12 @@ class PropertyAnalysisDialog(QDialog):
         parameters = {"property_name": property_name}
         for k, widget in self.option_widgets.items():
             if isinstance(widget, (QListWidget, ContainerTreeWidget)):
-                parameters[k] = [
-                    item.data(Qt.ItemDataRole.UserRole)
-                    for item in widget.selectedItems()
-                ]
+                items = (
+                    widget.selected_items()
+                    if isinstance(widget, ContainerTreeWidget)
+                    else widget.selectedItems()
+                )
+                parameters[k] = [item.data(Qt.ItemDataRole.UserRole) for item in items]
             else:
                 parameters[k] = get_widget_value(widget)
 

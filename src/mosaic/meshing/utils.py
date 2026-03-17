@@ -12,7 +12,7 @@ import warnings
 import textwrap
 
 from subprocess import run
-from typing import List, Dict, Tuple
+from typing import List, Dict
 from tempfile import NamedTemporaryFile
 
 import numpy as np
@@ -23,7 +23,6 @@ __all__ = [
     "compute_edge_lengths",
     "scale",
     "remesh",
-    "poisson_mesh",
     "merge_meshes",
     "equilibrate_edges",
     "compute_scale_factor",
@@ -71,82 +70,19 @@ def scale(mesh, scaling):
     return to_open3d(vertices, triangles)
 
 
-def poisson_mesh(
-    positions: np.ndarray,
-    voxel_size: float = None,
-    depth: int = 9,
-    k_neighbors=50,
-    smooth_iter=1,
-    pointweight=0.1,
-    deldist=1.5,
-    scale=1.2,
-    samplespernode=5.0,
-    **kwargs,
-) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Triangulate positions using Poisson reconstruction.
-
-    Notes
-    -----
-    On Darwin platforms this used to spawn a new process to
-    avoid instabilities from mosaic's Qt6 and pymeshlab's Qt5 for
-    mosaic version <=1.0.4
-    """
-    from pymeshlab import MeshSet, Mesh
-
-    ms = MeshSet()
-    ms.add_mesh(Mesh(positions))
-    ms.compute_normal_for_point_clouds(k=k_neighbors, smoothiter=smooth_iter)
-    ms.generate_surface_reconstruction_screened_poisson(
-        depth=depth,
-        pointweight=pointweight,
-        samplespernode=samplespernode,
-        iters=10,
-        scale=scale,
-    )
-    if deldist > 0:
-        ms.compute_scalar_by_distance_from_another_mesh_per_vertex(
-            measuremesh=1,
-            refmesh=0,
-            signeddist=False,
-        )
-        ms.compute_selection_by_condition_per_vertex(condselect=f"(q>{deldist})")
-        ms.compute_selection_by_condition_per_face(
-            condselect=f"(q0>{deldist} || q1>{deldist} || q2>{deldist})"
-        )
-        ms.meshing_remove_selected_vertices_and_faces()
-
-    mesh = ms.current_mesh()
-    return mesh.vertex_matrix(), mesh.face_matrix()
-
-
-def remesh(mesh, target_edge_length, n_iter=100, featuredeg=30, **kwargs):
-    """
-    Remesh to target edge length
-
-    Notes
-    -----
-    On Darwin platforms this used to spawn a new process to
-    avoid instabilities from mosaic's Qt6 and pymeshlab's Qt5 for
-    mosaic version <=1.0.4
-    """
-    from pymeshlab import MeshSet, Mesh, PureValue
+def remesh(mesh, target_edge_length, n_iter=100, **kwargs):
+    """Remesh to target edge length using Botsch-Kobbelt isotropic remeshing."""
+    from gpytoolbox import remesh_botsch
 
     mesh = mesh.remove_duplicated_vertices()
     mesh = mesh.remove_unreferenced_vertices()
     mesh = mesh.remove_degenerate_triangles()
 
-    ms = MeshSet()
-    ms.add_mesh(Mesh(np.asarray(mesh.vertices), np.asarray(mesh.triangles)))
-    ms.meshing_isotropic_explicit_remeshing(
-        targetlen=PureValue(target_edge_length),
-        iterations=n_iter,
-        featuredeg=featuredeg,
-        **kwargs,
-    )
-    ms.meshing_merge_close_vertices(threshold=PureValue(target_edge_length / 3))
-    remeshed = ms.current_mesh()
-    return to_open3d(remeshed.vertex_matrix(), remeshed.face_matrix())
+    v = np.asarray(mesh.vertices, dtype=np.float64)
+    f = np.asarray(mesh.triangles, dtype=np.int32)
+
+    v_new, f_new = remesh_botsch(v, f, h=target_edge_length, i=n_iter)
+    return to_open3d(v_new, f_new)
 
 
 def merge_meshes(

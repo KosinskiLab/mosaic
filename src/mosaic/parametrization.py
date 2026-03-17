@@ -20,13 +20,7 @@ import numpy as np
 import open3d as o3d
 from scipy import optimize, interpolate
 
-from .utils import (
-    find_closest_points,
-    com_cluster_points,
-    compute_normals,
-    points_to_volume,
-)
-from . import meshing
+from . import meshing, utils
 
 __all__ = [
     "Sphere",
@@ -35,7 +29,7 @@ __all__ = [
     "RBF",
     "TriangularMesh",
     "PoissonMesh",
-    "ConvexHull",
+    "AlphaShape",
     "FlyingEdges",
     "SplineCurve",
 ]
@@ -141,7 +135,7 @@ class Parametrization(ABC):
             Distances between points and the parametrization.
         """
         samples = self.sample(n_samples=points.shape[0] * 4)
-        distances, _ = find_closest_points(samples, points, k=1)
+        distances, _ = utils.find_closest_points(samples, points, k=1)
         return distances
 
 
@@ -715,7 +709,7 @@ class RBF(Parametrization):
         return positions_xyz
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        normals = compute_normals(points, k=15)
+        normals = utils.compute_normals(points, k=15)
         return _normalize(normals)
 
     def points_per_sampling(self, sampling_density: float, normal_offset=None) -> int:
@@ -798,122 +792,8 @@ class TriangularMesh(Parametrization):
         return np.asarray(self.mesh.triangles)
 
     @classmethod
-    def fit(
-        cls,
-        positions: np.ndarray,
-        radii: Tuple[float] = (5.0,),
-        voxel_size: float = 10,
-        max_hole_size: float = -1,
-        downsample_input: bool = False,
-        elastic_weight: float = 1.0,
-        curvature_weight: float = 0.0,
-        volume_weight: float = 0.0,
-        anchoring: float = 1.0,
-        boundary_ring: int = 0,
-        n_smoothing: int = 5,
-        k_neighbors=50,
-        **kwargs,
-    ) -> "TriangularMesh":
-        """Reconstruct a surface mesh using ball pivoting.
-
-        Estimates normals, runs ball pivoting, removes small clusters,
-        repairs the mesh, and optionally triangulates holes with fairing.
-
-        Parameters
-        ----------
-        positions : np.ndarray
-            Point coordinates with shape (n, 3).
-        radii : tuple of float
-            Ball radii for surface reconstruction. Use commas to
-            specify multiple radii, e.g. ``(50, 30.5, 10)``.
-        voxel_size : float
-            Sampling rate of the input point cloud.
-        max_hole_size : float
-            Maximum surface area of holes to triangulate.
-            ``-1`` fills all holes, ``0`` skips hole filling.
-        downsample_input : bool
-            Thin input point cloud to its core before meshing.
-        elastic_weight : float
-            Control mesh smoothness during hole fairing.
-            0 = strong anchoring, 1 = no anchoring, >1 = repulsion.
-        curvature_weight : float
-            Controls propagation of mesh curvature during fairing.
-        volume_weight : float
-            Controls internal pressure of the mesh during fairing.
-        anchoring : float
-            Flexibility of inferred vertices (0 to 1, 1 = maximum).
-        boundary_ring : int
-            Also optimize n-ring vertices for ill-defined boundaries.
-        n_smoothing : int
-            Taubin smoothing steps before and after fairing.
-        k_neighbors : int
-            Number of neighbors for normal estimation. Decrease for
-            small point clouds.
-
-        Returns
-        -------
-        TriangularMesh
-            Reconstructed surface mesh.
-        """
-        radii = np.asarray(radii).reshape(-1)
-        radii = radii[radii > 0]
-
-        # Surface reconstruction normal estimation
-        positions = np.asarray(positions, dtype=np.float64)
-
-        # Reduce membrane thickness
-        voxel_size = np.max(voxel_size)
-        if downsample_input:
-            positions = com_cluster_points(positions, cutoff=4 * voxel_size)
-
-        pcd = compute_normals(positions, k=k_neighbors, return_pcd=True)
-        mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
-            pcd, o3d.utility.DoubleVector(radii)
-        )
-
-        # Remove noisy small meshes
-        clusters, cluster_n, _ = mesh.cluster_connected_triangles()
-        clusters = np.asarray(clusters)
-        cluster_n = np.asarray(cluster_n)
-        cutoff = 0.02 * cluster_n.sum()
-        triangles_to_remove = cluster_n[clusters] < cutoff
-        mesh.remove_triangles_by_mask(triangles_to_remove)
-
-        # Repair and smooth
-        mesh = mesh.remove_non_manifold_edges()
-        mesh = mesh.remove_degenerate_triangles()
-        mesh = mesh.remove_duplicated_triangles()
-        mesh = mesh.remove_unreferenced_vertices()
-        mesh = mesh.remove_duplicated_vertices()
-        if n_smoothing > 0:
-            mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
-
-        if np.asarray(mesh.vertices).shape[0] == 0:
-            raise ValueError(
-                "No vertices for mesh creation. Try increasing ball pivoting radii."
-            )
-
-        if max_hole_size == 0:
-            return cls(mesh=mesh)
-
-        # Hole triangulation and fairing
-        new_vs, new_fs = meshing.triangulate_refine_fair(
-            vs=np.asarray(mesh.vertices),
-            fs=np.asarray(mesh.triangles),
-            hole_len_thr=max_hole_size,
-            alpha=elastic_weight,
-            beta=curvature_weight,
-            gamma=volume_weight,
-            anchoring=anchoring,
-            n_ring=boundary_ring,
-        )
-        mesh = meshing.to_open3d(new_vs, new_fs)
-        mesh = mesh.remove_degenerate_triangles()
-        if n_smoothing > 0:
-            mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
-
-        mesh = mesh.compute_vertex_normals()
-        return cls(mesh=mesh)
+    def fit(cls, positions, **kwargs):
+        raise NotImplementedError("Use a subclass (BallPivoting, PoissonMesh, etc.).")
 
     def sample(
         self,
@@ -1084,7 +964,9 @@ class TriangularMesh(Parametrization):
             triangle_indices = hits["primitive_ids"].numpy()
             dist = hit_distance * np.sign(dist) if signed else hit_distance
 
-        _, vertex_indices = find_closest_points(self.vertices, projected_points, k=1)
+        _, vertex_indices = utils.find_closest_points(
+            self.vertices, projected_points, k=1
+        )
 
         ret = [dist]
         if return_projection:
@@ -1280,6 +1162,110 @@ class TriangularMesh(Parametrization):
         return k_distances
 
 
+class BallPivoting(TriangularMesh):
+    @classmethod
+    def fit(
+        cls,
+        positions: np.ndarray,
+        radii: Tuple[float] = (5.0,),
+        max_hole_size: float = -1,
+        target_edge_length: float = -1,
+        smoothness: float = 1.0,
+        curvature_weight: float = 0.0,
+        pressure: float = 0.0,
+        n_smoothing: int = 5,
+        k_neighbors=50,
+        **kwargs,
+    ) -> "BallPivoting":
+        """Reconstruct a surface mesh using ball pivoting.
+
+        Estimates normals, runs ball pivoting, removes small clusters,
+        repairs the mesh, and optionally triangulates holes with fairing.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Point coordinates with shape (n, 3).
+        radii : tuple of float
+            Ball radii for surface reconstruction. Use commas to
+            specify multiple radii, e.g. ``(50, 30.5, 10)``.
+        max_hole_size : float
+            Maximum surface area of holes to triangulate.
+            ``-1`` fills all holes, ``0`` skips hole filling.
+        target_edge_length : float
+            Target edge length for remeshing after hole filling.
+            -1 uses the median edge length of the mesh.
+        smoothness : float
+            Controls the balance between position anchoring and curvature
+            minimization. 0 = vertices stay in place, 1 = full curvature
+            minimization.
+        curvature_weight : float
+            Weight for triharmonic (higher-order smoothing) energy.
+        pressure : float
+            Internal mesh pressure along vertex normals.
+        n_smoothing : int
+            Taubin smoothing steps before and after fairing.
+        k_neighbors : int
+            Number of neighbors for normal estimation. Decrease for
+            small point clouds.
+
+        Returns
+        -------
+        BallPivoting
+            Reconstructed surface mesh.
+        """
+        radii = np.asarray(radii).reshape(-1)
+        radii = radii[radii > 0]
+
+        positions = np.asarray(positions, dtype=np.float64)
+        pcd = utils.compute_normals(positions, k=k_neighbors, return_pcd=True)
+        mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
+            pcd, o3d.utility.DoubleVector(radii)
+        )
+
+        # Remove noisy small meshes
+        clusters, cluster_n, _ = mesh.cluster_connected_triangles()
+        clusters = np.asarray(clusters)
+        cluster_n = np.asarray(cluster_n)
+        cutoff = 0.02 * cluster_n.sum()
+        triangles_to_remove = cluster_n[clusters] < cutoff
+        mesh.remove_triangles_by_mask(triangles_to_remove)
+
+        # Repair and smooth
+        mesh = mesh.remove_non_manifold_edges()
+        mesh = mesh.remove_degenerate_triangles()
+        mesh = mesh.remove_duplicated_triangles()
+        mesh = mesh.remove_unreferenced_vertices()
+        mesh = mesh.remove_duplicated_vertices()
+        if n_smoothing > 0:
+            mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
+
+        if np.asarray(mesh.vertices).shape[0] == 0:
+            raise ValueError(
+                "No vertices for mesh creation. Try increasing ball pivoting radii."
+            )
+
+        if max_hole_size == 0:
+            return cls(mesh=mesh)
+
+        new_vs, new_fs = meshing.triangulate_refine_fair(
+            vs=np.asarray(mesh.vertices),
+            fs=np.asarray(mesh.triangles),
+            hole_len_thr=max_hole_size,
+            target_edge_length=target_edge_length,
+            smoothness=smoothness,
+            curvature_weight=curvature_weight,
+            pressure=pressure,
+        )
+        mesh = meshing.to_open3d(new_vs, new_fs)
+        mesh = mesh.remove_degenerate_triangles()
+        if n_smoothing > 0:
+            mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
+
+        mesh = mesh.compute_vertex_normals()
+        return cls(mesh=mesh)
+
+
 class PoissonMesh(TriangularMesh):
     @classmethod
     def fit(
@@ -1287,18 +1273,14 @@ class PoissonMesh(TriangularMesh):
         positions: np.ndarray,
         voxel_size: float = 1,
         depth: int = 9,
-        k_neighbors=50,
-        smooth_iter=1,
-        pointweight=0.1,
-        deldist=1.5,
-        scale=1.2,
-        samplespernode=5.0,
+        k_neighbors: int = 50,
+        deldist: float = 1.5,
+        density_quantile: float = 0.0,
+        n_threads: int = 1,
         **kwargs,
     ) -> "PoissonMesh":
-        """Reconstruct a surface mesh using Poisson surface reconstruction.
-
-        Normalizes positions by the voxel size, runs screened Poisson
-        reconstruction, and scales the result back.
+        """
+        Reconstruct a surface mesh using Poisson reconstruction.
 
         Parameters
         ----------
@@ -1310,45 +1292,70 @@ class PoissonMesh(TriangularMesh):
             Depth of the octree used for reconstruction. Higher values
             capture finer detail but are slower.
         k_neighbors : int
-            Number of neighbors for normal estimation. Decrease for
-            small point clouds.
-        smooth_iter : int
-            Number of smoothing iterations for normal estimation.
-        pointweight : float
-            Interpolation weight of point samples. Lower values
-            produce smoother surfaces.
+            Number of neighbors for normal estimation.
         deldist : float
-            Drop vertices further than this distance from the input
-            point cloud (post-normalization by voxel size).
-        scale : float
-            Ratio between the reconstruction cube and the sample
-            bounding cube.
-        samplespernode : float
-            Minimum number of sample points per octree node.
+            Drop mesh vertices further than this distance from the
+            input point cloud (in original coordinates).
+        density_quantile : float
+            Remove vertices with density below this quantile (0-1).
+            Helps clean low-confidence regions. Set to 0 to disable.
+        n_threads : int
+            Number of threads for Poisson reconstruction. Set to -1
+            to use all available cores.
 
         Returns
         -------
         PoissonMesh
             Reconstructed surface mesh.
         """
+        import open3d as o3d
+
         positions = np.asarray(positions, dtype=np.float64)
-        positions = np.divide(positions, voxel_size)
-        deldist = deldist / voxel_size
 
-        vs, fs = meshing.poisson_mesh(
-            positions=positions,
-            depth=depth,
-            k_neighbors=k_neighbors,
-            smooth_iter=smooth_iter,
-            pointweight=pointweight,
-            deldist=deldist,
-            scale=scale,
-            samplespernode=samplespernode,
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(positions / voxel_size)
+        pcd.estimate_normals(
+            search_param=o3d.geometry.KDTreeSearchParamKNN(knn=k_neighbors)
         )
-        return cls(mesh=meshing.to_open3d(vs * voxel_size, fs))
+        pcd.orient_normals_consistent_tangent_plane(k=k_neighbors)
+
+        mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
+            pcd,
+            depth=depth,
+            width=0,
+            scale=1.2,
+            linear_fit=False,
+            n_threads=n_threads,
+        )
+
+        # Remove low-density vertices
+        if density_quantile > 0:
+            densities = np.asarray(densities)
+            threshold = np.quantile(densities, density_quantile)
+            vertices_to_remove = densities < threshold
+            mesh.remove_vertices_by_mask(vertices_to_remove)
+
+        # Remove vertices far from the original point cloud
+        if deldist > 0:
+            deldist_norm = deldist / voxel_size
+            mesh_vertices = np.asarray(mesh.vertices)
+            pcd_tree = o3d.geometry.KDTreeFlann(pcd)
+            distances = np.empty(len(mesh_vertices))
+            for i, v in enumerate(mesh_vertices):
+                _, _, dist_sq = pcd_tree.search_knn_vector_3d(v, 1)
+                distances[i] = dist_sq[0]
+            vertices_to_remove = distances > deldist_norm**2
+            mesh.remove_vertices_by_mask(vertices_to_remove)
+
+        # Scale back to original coordinates
+        mesh.vertices = o3d.utility.Vector3dVector(
+            np.asarray(mesh.vertices) * voxel_size
+        )
+
+        return cls(mesh=mesh)
 
 
-class ConvexHull(TriangularMesh):
+class AlphaShape(TriangularMesh):
     """
     Represent a point cloud as triangular mesh.
 
@@ -1364,20 +1371,18 @@ class ConvexHull(TriangularMesh):
         positions: np.ndarray,
         voxel_size: float = 1,
         alpha: float = 1,
-        elastic_weight: float = 0,
-        curvature_weight: float = 0,
-        volume_weight: float = 0,
-        anchoring: float = 1.0,
-        boundary_ring: int = 0,
-        resampling_factor: float = 12.0,
-        distance_cutoff: float = 2.0,
+        target_edge_length: float = -1,
+        smoothness: float = 1.0,
+        curvature_weight: float = 0.0,
+        pressure: float = 0.0,
         **kwargs,
-    ) -> "ConvexHull":
-        """Reconstruct a surface mesh using alpha shapes.
+    ) -> "AlphaShape":
+        """
+        Reconstruct a surface mesh using alpha shapes.
 
         Computes an alpha shape from the point cloud. Falls back to a
-        convex hull if the alpha shape fails. Optionally resamples the
-        mesh and applies fairing to vertices distant from the input.
+        convex hull if the alpha shape fails. Optionally remeshes and
+        fairs vertices distant from the input.
 
         Parameters
         ----------
@@ -1388,28 +1393,21 @@ class ConvexHull(TriangularMesh):
         alpha : float
             Alpha-shape parameter. Larger values yield coarser
             features. ``1`` produces a convex hull.
-        elastic_weight : float
-            Control mesh smoothness during fairing.
-            0 = strong anchoring, 1 = no anchoring, >1 = repulsion.
+        target_edge_length : float
+            Target edge length for remeshing before fairing.
+            -1 uses the median edge length of the mesh.
+        smoothness : float
+            Controls the balance between position anchoring and curvature
+            minimization. 0 = vertices stay in place, 1 = full curvature
+            minimization.
         curvature_weight : float
-            Controls propagation of mesh curvature during fairing.
-        volume_weight : float
-            Controls internal pressure of the mesh during fairing.
-        anchoring : float
-            Flexibility of inferred vertices (0 to 1, 1 = maximum).
-        boundary_ring : int
-            Also optimize n-ring vertices for ill-defined boundaries.
-        resampling_factor : float
-            Resample mesh to this factor times the sampling rate.
-            Decrease for smoother meshes.
-        distance_cutoff : float
-            Vertices further than ``resampling_factor / distance_cutoff
-            * voxel_size`` from the input are labeled as inferred and
-            subject to fairing.
+            Weight for triharmonic (higher-order smoothing) energy.
+        pressure : float
+            Internal mesh pressure along vertex normals.
 
         Returns
         -------
-        ConvexHull
+        AlphaShape
             Reconstructed surface mesh.
         """
         voxel_size = np.max(voxel_size)
@@ -1445,35 +1443,19 @@ class ConvexHull(TriangularMesh):
             mesh = mesh.compute_convex_hull()
             mesh = mesh.to_legacy()
 
-        if elastic_weight == curvature_weight == volume_weight == 0:
+        if smoothness == 0 and curvature_weight == 0 and pressure == 0:
             return cls(mesh=mesh)
 
-        # Fair vertices that are distant to input points
-        mesh = meshing.remesh(mesh, resampling_factor * voxel_size)
-        vs, fs = np.asarray(mesh.vertices), np.asarray(mesh.triangles)
-        distances, _ = find_closest_points(positions, vs)
-
-        vids = np.where(distances > (resampling_factor / distance_cutoff * voxel_size))[
-            0
-        ]
-        if len(vids) == 0:
-            return cls(mesh=meshing.to_open3d(vs, fs))
-
-        out_vs = meshing.fair_mesh(
-            vs,
-            fs,
-            vids=vids,
-            alpha=elastic_weight,
-            beta=curvature_weight,
-            gamma=volume_weight,
-            anchoring=anchoring,
-            n_ring=boundary_ring,
+        vs, fs = meshing.triangulate_refine_fair(
+            vs=np.asarray(mesh.vertices),
+            fs=np.asarray(mesh.triangles),
+            hole_len_thr=0,
+            target_edge_length=target_edge_length,
+            smoothness=smoothness,
+            curvature_weight=curvature_weight,
+            pressure=pressure,
         )
-        return cls(mesh=meshing.to_open3d(out_vs, fs))
-
-
-class FairHull(ConvexHull):
-    pass
+        return cls(mesh=meshing.to_open3d(vs, fs))
 
 
 class FlyingEdges(TriangularMesh):
@@ -1496,7 +1478,8 @@ class FlyingEdges(TriangularMesh):
         feature_angle: float = 120.0,
         **kwargs,
     ) -> "FlyingEdges":
-        """Reconstruct a surface mesh using flying edges isosurface extraction.
+        """
+        Reconstruct a surface mesh using flying edges isosurface extraction.
 
         Voxelizes the point cloud, runs VTK's discrete flying edges
         algorithm, and applies windowed sinc smoothing with feature
@@ -1528,7 +1511,7 @@ class FlyingEdges(TriangularMesh):
 
         voxel_size = tuple(voxel_size for _ in range(positions.shape[1]))
 
-        _volume, offset = points_to_volume(
+        _volume, offset = utils.points_to_volume(
             positions, voxel_size, use_offset=True, out_dtype=np.uint8
         )
 
@@ -1674,7 +1657,7 @@ def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.
 def _sample_from_chull(
     positions_xyz: np.ndarray, n_samples: int, mesh_init_factor: int = None
 ) -> np.ndarray:
-    chull = ConvexHull.fit(positions_xyz)
+    chull = AlphaShape.fit(positions_xyz)
     return _sample_from_mesh(chull.mesh, n_samples, mesh_init_factor)
 
 
@@ -1708,14 +1691,21 @@ def merge(models: Tuple[Parametrization]) -> Parametrization:
     return models[0]
 
 
+# Aliases for unpickling old sessions
+ConvexHull = AlphaShape
+FairHull = AlphaShape
+ClusteredBallPivotingMesh = BallPivoting
+MarchingCubes = FlyingEdges
+
+
 PARAMETRIZATION_TYPE = {
     "sphere": Sphere,
     "ellipsoid": Ellipsoid,
     "cylinder": Cylinder,
-    "ball_pivoting": TriangularMesh,
+    "ball_pivoting": BallPivoting,
     "poisson": PoissonMesh,
     "rbf": RBF,
-    "alpha_shape": ConvexHull,
+    "alpha_shape": AlphaShape,
     "spline": SplineCurve,
     "flying_edges": FlyingEdges,
 }

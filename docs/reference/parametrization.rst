@@ -40,21 +40,10 @@ Surface representations using triangular mesh topology.
    :toctree: rst
 
    TriangularMesh
+   BallPivoting
    PoissonMesh
-   ClusteredBallPivotingMesh
-   ConvexHull
-
-
-Isosurface Methods
-~~~~~~~~~~~~~~~~~~
-
-Mesh generation from volumetric data using isosurface extraction algorithms.
-
-.. autosummary::
-   :toctree: rst
-
+   AlphaShape
    FlyingEdges
-   MarchingCubes
 
 
 Utilities
@@ -78,8 +67,8 @@ The module provides a ``PARAMETRIZATION_TYPE`` dictionary that maps string ident
     from mosaic.parametrization import PARAMETRIZATION_TYPE
 
     # Available keys:
-    # "sphere", "ellipsoid", "cylinder", "mesh", "clusterballpivoting",
-    # "poissonmesh", "rbf", "convexhull", "spline", "flyingedges", "marchingcubes"
+    # "sphere", "ellipsoid", "cylinder", "ball_pivoting",
+    # "poisson", "rbf", "alpha_shape", "spline", "flying_edges"
 
-    mesh_class = PARAMETRIZATION_TYPE["poissonmesh"]
+    mesh_class = PARAMETRIZATION_TYPE["poisson"]
     mesh = mesh_class.fit(points, depth=8)

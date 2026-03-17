@@ -6,7 +6,6 @@ _module_map = {
         "compute_edge_lengths",
         "scale",
         "remesh",
-        "poisson_mesh",
         "merge_meshes",
         "equilibrate_edges",
         "compute_scale_factor",
