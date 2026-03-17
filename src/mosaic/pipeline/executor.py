@@ -1,27 +1,22 @@
 """
-Pipeline execution engine for generating and running batch operations.
+REPL-based pipeline execution engine.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import pickle
-from uuid import uuid4
-from os import makedirs
-from os.path import join, exists
+import os
+import shlex
+from typing import List, Tuple
 
-
-import numpy as np
-
+from ..commands.parser import format_value, format_kwargs
+from ..registry import MethodRegistry
 from ..parallel import report_progress
-from ..container import DataContainer
-from ..formats.writer import write_geometries
-from ._utils import strip_filepath, topological_sort, flatten
-from ..widgets.container_list import TreeStateData, TreeState
+from ._utils import topological_sort, strip_filepath
 
 
-__all__ = ["generate_runs", "execute_run"]
+__all__ = ["compile_run", "execute_run", "generate_runs"]
 
 
 def generate_runs(pipeline_config):
@@ -88,7 +83,10 @@ def generate_runs(pipeline_config):
                 "operation_id": node["operation_id"],
                 "name": node["name"],
                 "settings": node["settings"].copy(),
-                "group_name": node["settings"].get("group_name", f"{node['name']}_out"),
+                "group_name": node.get(
+                    "group_name",
+                    node["settings"].get("group_name", f"{node['name']}_out"),
+                ),
                 "inputs": node.get("inputs", []),
                 "save_output": node.get("save_output", True),
                 "visible_output": node.get("visible_output", True),
@@ -119,178 +117,142 @@ def generate_runs(pipeline_config):
     return runs
 
 
-def _get_op_spec(operation_id):
-    from .operations import OPERATION_CATEGORIES
-
-    for category_data in OPERATION_CATEGORIES.values():
-        for op_data in category_data["operations"].values():
-            if op_data["id"] == operation_id:
-                return op_data.get("input_type"), op_data.get("output_type")
-    return None, None
-
-
-def _load_session(filepath: str):
-    from ..formats import open_session
-
-    session = open_session(filepath)
-    keys = ("_data_tree", "_models_tree")
-    for key in keys:
-        tree = session.get(key)
-        if tree is None:
-            session[key] = TreeStateData()
-        elif isinstance(tree, TreeState):
-            session[key] = tree.to_tree_state_data()
-
-    return session
-
-
-def _create_session(filepath: str, parameters: dict):
-    from ..formats import open_file
-
-    offset = parameters.get("offset", 0)
-    scale = parameters.get("scale", 1)
-    sampling = parameters.get("sampling_rate", 1)
-
-    shape = None
-
-    model_container = DataContainer(highlight_color=(0.2, 0.4, 0.8))
-    cluster_container = DataContainer()
-    for data in open_file(filepath):
-        scale_new = np.divide(scale, data.sampling)
-
-        data.vertices = np.subtract(data.vertices, offset, out=data.vertices)
-        data.vertices = np.multiply(data.vertices, scale_new, out=data.vertices)
-        if data.faces is None:
-            cluster_container.add(
-                points=data.vertices, normals=data.normals, sampling_rate=sampling
-            )
-        else:
-            from ..meshing import to_open3d
-            from ..parametrization import TriangularMesh
-
-            model_container.add(
-                model=TriangularMesh(to_open3d(data.vertices, data.faces)),
-                sampling_rate=sampling,
-            )
-
-        data_shape = np.divide(data.shape, data.sampling)
-
-        if shape is None:
-            shape = data_shape
-        shape = np.maximum(shape, data_shape)
-
-    metadata = {"shape": shape, "sampling_rate": sampling}
-    cluster_container.metadata = metadata.copy()
-
-    data_tree = TreeStateData()
-    data_tree.root_items = [x.uuid for x in cluster_container.data]
-
-    model_tree = TreeStateData()
-    model_tree.root_items = [x.uuid for x in model_container.data]
-
-    return {
-        "shape": shape,
-        "_data": cluster_container,
-        "_models": model_container,
-        "_data_tree": data_tree,
-        "_models_tree": model_tree,
-    }
-
-
-def _execute_analysis(current_data, settings, session, run_id):
-    """Compute a geometric property, store as vertex property, and optionally export.
-
-    Parameters
-    ----------
-    current_data : list
-        List of Geometry objects to compute properties for.
-    settings : dict
-        Operation settings including 'method' and method-specific parameters.
-    session : dict
-        Session data containing '_data' and '_models' containers.
-    run_id : str
-        Run identifier used for naming exported files.
-    """
-    from ..properties import GeometryProperties
-    from ..formats.parser import VertexPropertyContainer
-    from ..registry import MethodRegistry
-
-    method = settings.get("method", "")
-    op = MethodRegistry.get("mesh_analysis")
-    m = op.get_method(method) if op else None
-    if m is None:
-        return
-    property_name = m.internal_name
-
-    output_name = method.lower().replace(" ", "_")
-    output_dir = settings.get("output_dir", "").strip()
-
-    # Build kwargs, filtering pipeline-only keys
-    _pipeline_keys = ("method", "output_dir", "group_name")
-    kwargs = {k: v for k, v in settings.items() if k not in _pipeline_keys}
-
-    # Thickness needs cluster queries: use session point cloud data
-    if property_name == "thickness":
-        kwargs["queries"] = list(session["_data"].data)
-
-    # Distance to self needs the only_self flag
-    if property_name == "distance":
-        kwargs["only_self"] = True
-
-    results = []
-    for geometry in current_data:
-        try:
-            value = GeometryProperties.compute(
-                property_name=property_name, geometry=geometry, **kwargs
-            )
-        except Exception:
-            continue
-
-        if value is None:
-            continue
-
-        results.append((geometry, value))
-
-        # Store as vertex property if array-valued
-        if isinstance(value, np.ndarray) and value.ndim >= 1:
-            props = {}
-            if geometry.vertex_properties is not None:
-                for name in geometry.vertex_properties.properties:
-                    props[name] = geometry.vertex_properties.get_property(name)
-            props[output_name] = value
-            geometry.vertex_properties = VertexPropertyContainer(props)
-        else:
-            geometry._meta[output_name] = value
-
-    if output_dir and results:
-        from ..properties import export_property_csv
-
-        makedirs(output_dir, exist_ok=True)
-        output_path = join(output_dir, f"{run_id}_{output_name}.csv")
-        geometries, values = zip(*results)
-        export_property_csv(output_path, output_name, geometries, values)
-
-
-def execute_run(run_config: dict, skip_complete: bool = False) -> None:
-    """
-    Execute a single run configuration.
+def compile_run(run_config: dict) -> List[Tuple[str, str]]:
+    """Translate a pipeline run config into ``(op_id, script_line)`` pairs.
 
     Parameters
     ----------
     run_config : dict
-        Run configuration generated by :py:meth:`generate_runs`.
-    skip_complete : bool, optional
-        If True (default), skip execution if all output files already exist.
-
+        Single run configuration from :func:`generate_runs`.
 
     Returns
     -------
-    str
-        Path to the output session file
+    list of (str, str)
+        Each element is ``(operation_id, script_line)`` where
+        *script_line* is a valid Mosaic REPL command.
     """
-    from ..operations import GeometryOperations
+    steps: List[Tuple[str, str]] = []
 
-    current_data = ()
+    for op in run_config["operations"]:
+        op_id = op["operation_id"]
+        settings = op["settings"]
+        save_output = op.get("save_output", True)
+        visible_output = op.get("visible_output", True)
+        group_name = op.get("group_name", "")
+
+        if op_id == "import_batch":
+            input_file = settings.get("input_file", run_config["input_file"])
+            params = run_config.get("input_params", {})
+            if input_file.endswith(".pickle"):
+                steps.append((op_id, f"load_session {shlex.quote(input_file)}"))
+            else:
+                parts = [f"open {shlex.quote(input_file)}"]
+                for key in ("offset", "scale", "sampling_rate"):
+                    if key in params and params[key] not in (0, 1, None):
+                        parts.append(f"{key}={format_value(params[key])}")
+                if not save_output:
+                    parts.append("persist=false")
+                steps.append((op_id, " ".join(parts)))
+            continue
+
+        if op_id == "save_session":
+            output_dir = settings.get("output_dir", ".")
+            os.makedirs(output_dir, exist_ok=True)
+            output_path = os.path.join(output_dir, f"{run_config['run_id']}.pickle")
+            steps.append((op_id, f"save_session {shlex.quote(output_path)}"))
+            continue
+
+        if op_id == "export_data":
+            output_dir = settings.get("output_dir", ".")
+            os.makedirs(output_dir, exist_ok=True)
+            output_path = os.path.join(output_dir, run_config["run_id"])
+
+            fmt = settings.get("format", "star")
+            save_kwargs = {
+                k: v
+                for k, v in settings.items()
+                if k not in ("output_dir", "method", "format")
+            }
+            line = f"save @last {shlex.quote(output_path)} format={fmt}"
+            if save_kwargs:
+                line += f" {format_kwargs(save_kwargs)}"
+            steps.append((op_id, line))
+            continue
+
+        if op_id == "mesh_analysis":
+            method = settings.get("method", "")
+            reg_op = MethodRegistry.get("mesh_analysis")
+            m = reg_op.get_method(method) if reg_op else None
+            if m is None:
+                continue
+            property_name = m.internal_name
+
+            measure_kwargs = {
+                k: v for k, v in settings.items() if k not in ("method", "output_dir")
+            }
+            output_dir = settings.get("output_dir", "").strip()
+            output_part = ""
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+                output_name = method.lower().replace(" ", "_")
+                output_path = os.path.join(
+                    output_dir, f"{run_config['run_id']}_{output_name}.csv"
+                )
+                output_part = f" output={shlex.quote(output_path)}"
+
+            line = f"measure {property_name} @last{output_part}"
+            if measure_kwargs:
+                line += f" {format_kwargs(measure_kwargs)}"
+            steps.append((op_id, line))
+            continue
+
+        if op_id == "cluster_select":
+            parts = ["filter @last property=n_points"]
+            lower = settings.get("lower_threshold", 0)
+            upper = settings.get("upper_threshold", 0)
+            if lower and lower > 0:
+                parts.append(f"lower={lower}")
+            if upper and upper > 0:
+                parts.append(f"upper={upper}")
+            steps.append((op_id, " ".join(parts)))
+            continue
+
+        method = settings.get("method")
+        if method:
+            method = MethodRegistry.resolve_method(op_id, method)
+        filtered = {
+            k: v for k, v in settings.items() if k not in ("group_name", "method")
+        }
+        kwargs = format_kwargs(filtered)
+
+        parts = [op_id]
+        if method:
+            parts.append(method)
+        parts.append("@last")
+        if kwargs:
+            parts.append(kwargs)
+        if not save_output:
+            parts.append("persist=false")
+        steps.append((op_id, " ".join(parts)))
+
+        if not visible_output:
+            steps.append((op_id, "visibility @last visible=false"))
+        if save_output and group_name:
+            steps.append((op_id, f"group @last {shlex.quote(group_name)}"))
+
+    return steps
+
+
+def execute_run(run_config: dict, skip_complete: bool = False) -> None:
+    """Execute a pipeline run by compiling to script lines and running via REPL.
+
+    Parameters
+    ----------
+    run_config : dict
+        Run configuration generated by :func:`generate_runs`.
+    skip_complete : bool, optional
+        If True, skip execution when all output files already exist.
+    """
     if skip_complete:
         all_exist, found_export = True, False
         for op in run_config["operations"]:
@@ -300,169 +262,31 @@ def execute_run(run_config: dict, skip_complete: bool = False) -> None:
 
             settings = op["settings"]
             output_dir = settings.get("output_dir", ".")
+            output_path = None
 
             if op["operation_id"] == "save_session":
-                output_path = join(output_dir, f"{run_config['run_id']}.pickle")
+                output_path = os.path.join(output_dir, f"{run_config['run_id']}.pickle")
             elif op["operation_id"] == "export_data":
-                output_base = join(output_dir, f"{run_config['run_id']}")
-                output_path = f"{output_base}.{settings.get('format')}"
+                output_base = os.path.join(output_dir, run_config["run_id"])
+                output_path = f"{output_base}.{settings.get('format', 'star')}"
 
-            if not exists(output_path):
+            if output_path is None or not os.path.exists(output_path):
                 all_exist = False
                 break
 
         if all_exist and found_export:
             print(
-                f"Skipping run {run_config['run_id']}: all output files already exist"
+                f"Skipping run {run_config['run_id']}: "
+                "all output files already exist"
             )
             return None
 
-    for idx, op in enumerate(run_config["operations"]):
-        op_id = op["operation_id"]
-        settings = op["settings"]
-        group_name = op["group_name"]
+    from ..commands.repl import MosaicREPL
 
-        report_progress(message=op_id, current=idx, total=len(run_config["operations"]))
+    from ..commands.session import Session
 
-        # This function gets too much special treatmet
-        if op_id == "import_batch":
-            input_file = run_config["input_file"]
-            try:
-                session = _load_session(input_file)
-            except Exception:
-                session = _create_session(input_file, run_config["input_params"])
-
-            relevant_data = "_data"
-            try:
-                next_op = run_config["operations"][1]
-                input_type, _ = _get_op_spec(next_op["operation_id"])
-
-                if input_type == "model":
-                    relevant_data = "_models"
-
-                is_export = next_op["operation_id"] == "export_data"
-                if input_type == "any" and is_export:
-                    if next_op["settings"]["method"] == "Mesh":
-                        relevant_data = "_models"
-
-            except Exception:
-                pass
-
-            current_data = session[relevant_data].data
-
-            # i.e. clear the session we just created
-            if not op.get("save_output", True):
-                current_data = [
-                    session[relevant_data].data.pop()
-                    for _ in range(len(session[relevant_data].data))
-                ]
-
-                for dtype in ("_data", "_models"):
-                    metadata = session[dtype].metadata.copy()
-                    session[dtype].clear()
-                    session[dtype].metadata = metadata
-
-                for dtype in ("_data_tree", "_models_tree"):
-                    uuids = session[dtype].get_all_uuids()
-                    _ = [session[dtype].remove_uuid(x) for x in uuids]
-
-            # Nothing more to do here
-            continue
-
-        if len(current_data) == 0:
-            break
-
-        if (func := getattr(GeometryOperations, op_id, None)) is not None:
-            # Save some memory over the speedup from the list comprehension
-            for i in range(len(current_data)):
-                current_data[i] = func(current_data[i], **settings)
-
-        elif op_id == "cluster_select":
-            lower_threshold = settings.get("lower_threshold", -1)
-            upper_threshold = settings.get("upper_threshold", -1)
-
-            drop = set()
-            container, tree = session["_data"], session["_data_tree"]
-            for x in current_data:
-                keep = True
-                n_points = x.get_number_of_points()
-                if lower_threshold > 0:
-                    keep = keep and n_points > lower_threshold
-                if upper_threshold > 0:
-                    keep = keep and n_points < upper_threshold
-
-                if not keep:
-                    drop.add(x.uuid)
-                    tree.remove_uuid(x.uuid)
-                    container.remove(x)
-
-            # Data is already in session we just filtered it
-            # We still need to update available data for next pipeline step though
-            current_data = [x for x in current_data if x.uuid not in drop]
-            continue
-
-        elif op_id == "mesh_analysis":
-            _execute_analysis(current_data, settings, session, run_config["run_id"])
-            continue
-
-        elif op_id == "save_session":
-            output_dir = settings.get("output_dir", ".")
-            makedirs(output_dir, exist_ok=True)
-            output_path = join(output_dir, f"{run_config['run_id']}.pickle")
-
-            with open(output_path, "wb") as ofile:
-                pickle.dump(session, ofile, protocol=pickle.HIGHEST_PROTOCOL)
-
-            # Do not add current_data to session again
-            continue
-
-        elif op_id == "export_data":
-            output_dir = settings.get("output_dir", ".")
-            makedirs(output_dir, exist_ok=True)
-
-            export_parameters = settings.copy()
-            output_path = join(output_dir, f"{run_config['run_id']}")
-
-            # Best guess for the correct shape
-            container = session["_data"]
-            if (shape := container.metadata.get("shape")) is not None:
-                sampling = container.metadata.get("sampling_rate", 1)
-                shape = np.rint(np.divide(shape, sampling)).astype(int)
-
-                for key, val in zip(("shape_x", "shape_y", "shape_z"), shape):
-                    if key not in export_parameters:
-                        export_parameters[key] = val
-
-            # file path will be adapted to carry the correct extension
-            export_parameters["single_file"] = True
-            write_geometries(current_data, output_path, **export_parameters)
-
-            # Do not add current_data to session again
-            continue
-
-        # Some methods return lists of geometry objects
-        current_data = flatten(current_data)
-
-        # Ensure model geometries use surface representation so that
-        # geometry.points matches model vertices for downstream operations
-        input_type, output_type = _get_op_spec(op_id)
-        if output_type == "model":
-            _ = [x.change_representation("surface") for x in current_data]
-
-        if not op.get("save_output", True):
-            continue
-
-        # Keep session data in sync
-        container, tree = session["_data"], session["_data_tree"]
-        if output_type == "model":
-            container, tree = session["_models"], session["_models_tree"]
-
-        if not op.get("visible_output", True):
-            _ = [x.set_visibility(False) for x in current_data]
-
-        _ = [container.add(x) for x in current_data]
-
-        group_id = str(uuid4())
-        tree.root_items.append(group_id)
-        tree.group_names[group_id] = group_name
-        tree.groups[group_id] = [x.uuid for x in current_data]
+    steps = compile_run(run_config)
+    repl = MosaicREPL(session=Session(quiet=True))
+    for idx, (op_id, line) in enumerate(steps):
+        report_progress(message=op_id, current=idx, total=len(steps))
+        repl.execute(line)

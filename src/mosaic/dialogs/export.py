@@ -178,9 +178,9 @@ class ExportDialog(QDialog):
         """Update default values for format settings"""
         params = dict(zip(keys, values))
 
-        # Merge shape_x/y/z into a single "shape" default
-        if all(k in params for k in ("shape_x", "shape_y", "shape_z")):
-            shape_str = f"{int(params['shape_x'])}, {int(params['shape_y'])}, {int(params['shape_z'])}"
+        if "shape" in params:
+            shape = params["shape"]
+            shape_str = ", ".join(str(int(x)) for x in shape)
             for settings_dict in self.format_settings_definitions.values():
                 if "shape" in settings_dict:
                     settings_dict["shape"]["default"] = shape_str
@@ -428,14 +428,12 @@ class ExportDialog(QDialog):
                     continue
                 settings[parameter] = get_widget_value(widget)
 
-        # Expand combined "shape" back to shape_x, shape_y, shape_z
         if "shape" in settings:
             parts = [s.strip() for s in str(settings.pop("shape")).split(",")]
-            for key, val in zip(("shape_x", "shape_y", "shape_z"), parts):
-                try:
-                    settings[key] = int(val)
-                except ValueError:
-                    settings[key] = 64
+            try:
+                settings["shape"] = tuple(int(v) for v in parts)
+            except ValueError:
+                settings["shape"] = (64, 64, 64)
 
         return settings
 
@@ -476,17 +474,19 @@ class ExportDialog(QDialog):
             return None
 
         base_path = splitext(path)[0]
+        is_single = self.single_file_checkbox.isChecked()
+
+        if is_single or not self.names:
+            file_path = f"{base_path}.{ext}"
+        else:
+            file_path = [f"{base_path}{name}.{ext}" for name in self.file_names]
 
         export_data = {
             "category": self.selected_category,
             "format": self.selected_format,
-            "single_file": self.single_file_checkbox.isChecked(),
-            "file_path": f"{base_path}.{ext}",
+            "file_path": file_path,
             **self.get_current_settings(),
         }
-
-        if not export_data["single_file"] and self.names:
-            export_data["file_names"] = list(self.file_names)
 
         self.export_requested.emit(export_data)
         return super().accept()

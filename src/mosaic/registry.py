@@ -776,31 +776,23 @@ MethodRegistry.register(
                 description="Output file format.",
             ),
             Param(
-                "single_file",
-                "bool",
+                "shape",
+                "str",
                 default=None,
-                description="Write all geometries into a single file.",
-            ),
-            Param(
-                "shape_x", "int", default=None, description="Volume shape along X axis."
-            ),
-            Param(
-                "shape_y", "int", default=None, description="Volume shape along Y axis."
-            ),
-            Param(
-                "shape_z", "int", default=None, description="Volume shape along Z axis."
+                description="Tomogram dimensions as x,y,z. Used as output grid for "
+                "volumes and coordinate origin for RELION 5. Inferred when omitted.",
             ),
             Param(
                 "sampling",
                 "float",
                 default=None,
-                description="Voxel sampling rate for volumes.",
+                description="Override sampling rate for coordinate scaling.",
             ),
             Param(
                 "relion_5_format",
                 "bool",
                 default=False,
-                description="Apply RELION 5 format coordinate transformation.",
+                description="Write origin-centered RELION 5 coordinates.",
             ),
         ),
     )

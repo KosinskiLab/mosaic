@@ -1,7 +1,5 @@
 import re
 from typing import Dict
-from os.path import splitext
-
 import numpy as np
 
 from ._utils import get_extension
@@ -11,12 +9,6 @@ def _sanitize_filename(name):
     name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
     name = re.sub(r"\s+", "_", name).strip(". ")
     return name or "unnamed"
-
-
-def _get_output_path(file_path, index, file_format, file_names=None):
-    if file_names is not None and index < len(file_names):
-        return f"{file_path}{_sanitize_filename(file_names[index])}.{file_format}"
-    return f"{file_path}_{index}.{file_format}"
 
 
 class OrientationsWriter:
@@ -183,17 +175,12 @@ def write_topology_file(file_path: str, data: Dict, tsi_format: bool = False) ->
 
 def write_geometries(
     geometries,
-    file_path: str,
+    file_path,
     *,
     format: str = "star",
-    single_file: bool = None,
-    file_names=None,
-    shape_x: int = None,
-    shape_y: int = None,
-    shape_z: int = None,
+    shape=None,
     sampling: float = None,
     relion_5_format: bool = False,
-    **kwargs,
 ) -> None:
     """Export geometries to file.
 
@@ -201,47 +188,50 @@ def write_geometries(
     ----------
     geometries : list of Geometry
         Geometries to export.
-    file_path : str
-        Output file path (extension may be appended based on format).
+    file_path : str or list of str
+        Output file path. A single string merges all geometries into one
+        file. A list of strings writes one file per geometry and must have
+        the same length as *geometries*.
     format : str
         Output format: star, tsv, xyz (point clouds),
         obj, stl, ply (meshes), mrc, em, h5 (volumes).
-    single_file : bool, optional
-        Merge all geometries into one file. Default is True for
-        point/volume formats, False for meshes.
-    file_names : list of str, optional
-        Custom per-geometry file names (when not single_file).
-    shape_x : int, optional
-        Volume X dimension (inferred from data if not set).
-    shape_y : int, optional
-        Volume Y dimension.
-    shape_z : int, optional
-        Volume Z dimension.
+    shape : tuple of (int, int, int), optional
+        Tomogram dimensions in voxels. Sets the output grid for volume
+        formats and the coordinate origin (shape / 2) when
+        ``relion_5_format`` is True. Inferred from geometry bounds
+        when not provided.
     sampling : float, optional
         Override sampling rate for coordinate scaling.
     relion_5_format : bool, optional
-        Apply RELION 5 coordinate transform.
+        Write origin-centered RELION 5 coordinates. Shifts points by
+        half the tomogram shape so the origin sits at the volume center.
     """
     from ..utils import points_to_volume, normals_to_rot, NORMAL_REFERENCE
 
     if not len(geometries):
         return None
 
+    is_single = isinstance(file_path, str)
+    if not is_single and len(file_path) != len(geometries):
+        raise ValueError(
+            f"file_path list length ({len(file_path)}) must match "
+            f"geometries length ({len(geometries)})"
+        )
+
     mesh_formats = ("obj", "stl", "ply")
     volume_formats = ("mrc", "em", "h5")
     point_formats = ("tsv", "star", "xyz")
 
     file_format = format
-    file_path, _ = splitext(file_path)
 
-    if shape_x is not None and shape_y is not None and shape_z is not None:
-        shape = (shape_x, shape_y, shape_z)
-    else:
+    if shape is None:
         shape = np.max(
             [np.divide(x.points.max(axis=0), x.sampling_rate) for x in geometries],
             axis=0,
         )
         shape = tuple(int(x + 1) for x in shape.astype(int))
+    else:
+        shape = tuple(int(x) for x in shape)
 
     meshes = []
     center, orientation_kwargs = 0, {}
@@ -276,22 +266,18 @@ def write_geometries(
         data["quaternions"].append(quaternions)
 
     if file_format in mesh_formats:
-        is_single = single_file if single_file is not None else False
         if is_single:
             from ..parametrization import merge
 
             mesh = merge(meshes)
-            mesh.to_file(f"{file_path}.{file_format}")
-            meshes.clear()
-
-        for index, mesh in enumerate(meshes):
-            mesh.to_file(_get_output_path(file_path, index, file_format, file_names))
+            mesh.to_file(file_path)
+        else:
+            for index, mesh in enumerate(meshes):
+                mesh.to_file(file_path[index])
 
         return None
 
     if file_format in volume_formats:
-        is_single = single_file if single_file is not None else True
-
         # Try saving some memory on write. uint8 would be padded to 16 hence int8
         dtype = np.float32
         max_index = len(data["points"]) + 1
@@ -312,13 +298,15 @@ def write_geometries(
                 out_dtype=dtype,
             )
             if not is_single:
-                fname = _get_output_path(file_path, file_index, file_format, file_names)
-                write_density(volume, filename=fname, sampling_rate=geom_sampling)
+                write_density(
+                    volume,
+                    filename=file_path[file_index],
+                    sampling_rate=geom_sampling,
+                )
                 volume, index = None, 0
 
         if is_single:
-            fname = f"{file_path}.{file_format}"
-            write_density(volume, filename=fname, sampling_rate=geom_sampling)
+            write_density(volume, filename=file_path, sampling_rate=geom_sampling)
 
         return None
 
@@ -328,24 +316,17 @@ def write_geometries(
     data["entities"] = [
         np.full(x.shape[0], fill_value=i) for i, x in enumerate(data["points"])
     ]
-    is_single = single_file if single_file is not None else True
     if is_single:
         data = {k: [np.concatenate(v)] for k, v in data.items()}
 
     if file_format == "xyz":
         for index, points in enumerate(data["points"]):
-            fname = _get_output_path(file_path, index, file_format, file_names)
-            if is_single:
-                fname = f"{file_path}.{file_format}"
-
+            fname = file_path if is_single else file_path[index]
             csv_header = ",".join(["x", "y", "z"])
-
             np.savetxt(fname, points, delimiter=",", header=csv_header, comments="")
         return 1
 
     for index in range(len(data["points"])):
         orientations = OrientationsWriter(**{k: v[index] for k, v in data.items()})
-        fname = _get_output_path(file_path, index, file_format, file_names)
-        if is_single:
-            fname = f"{file_path}.{file_format}"
+        fname = file_path if is_single else file_path[index]
         orientations.to_file(fname, file_format=file_format, **orientation_kwargs)

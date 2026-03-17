@@ -24,7 +24,7 @@ _HISTORY_PATH = Path.home() / ".mosaic_history"
 
 
 class _Completer:
-    """Tab-completion for command names and target references."""
+    """Tab-completion for commands, methods, targets, parameters and values."""
 
     def __init__(self, session: Session):
         self._session = session
@@ -52,7 +52,122 @@ class _Completer:
         if text.startswith("@"):
             return ["@last "] if "@last".startswith(text) else []
 
+        if "=" in text:
+            return self._complete_value(text, line)
+
+        verb = line.split()[0].lower()
+        op = self._get_operation(verb)
+        if op is None:
+            return []
+
+        tokens = line.split()
+        has_method = self._has_method_token(tokens, op)
+
+        if op.methods and not has_method:
+            candidates = []
+            for m in op.methods:
+                name = m.internal_name
+                if name.startswith(text):
+                    candidates.append(name + " ")
+            return sorted(candidates)
+        return self._complete_param_names(text, line, op, tokens)
+
+    def _get_operation(self, verb: str):
+        """Look up the Operation for a command verb."""
+        from ..registry import MethodRegistry
+
+        return MethodRegistry.get(verb)
+
+    def _has_method_token(self, tokens: list, op) -> bool:
+        """Check whether any token matches a known method of *op*."""
+        for tok in tokens[1:]:
+            if "=" in tok:
+                continue
+            if op.get_method(tok) is not None:
+                return True
+        return False
+
+    def _active_method(self, tokens: list, op):
+        """Return the Method for the first matching token, or None."""
+        for tok in tokens[1:]:
+            if "=" in tok:
+                continue
+            m = op.get_method(tok)
+            if m is not None:
+                return m
+        return None
+
+    def _complete_param_names(self, text: str, line: str, op, tokens: list) -> list:
+        """Complete parameter names, filtering out those already used."""
+        already_used = set()
+        for tok in tokens[1:]:
+            if "=" in tok:
+                key, _, _ = tok.partition("=")
+                already_used.add(key)
+
+        params = list(op.common_params)
+        method = self._active_method(tokens, op)
+        if method is not None:
+            params = list(method.params) + params
+
+        candidates = []
+        for p in params:
+            if p.name in already_used:
+                continue
+            key = p.name + "="
+            if key.startswith(text):
+                candidates.append(key)
+        return sorted(candidates)
+
+    def _complete_value(self, text: str, line: str) -> list:
+        """Complete the value side of a key=value token."""
+        key, _, partial = text.partition("=")
+
+        verb = line.split()[0].lower()
+        op = self._get_operation(verb)
+        if op is None:
+            return []
+
+        tokens = line.split()
+        param = self._find_param(key, op, tokens)
+        if param is None:
+            return []
+
+        # Boolean parameters
+        if param.type == "bool":
+            options = ["true", "false"]
+            return [f"{key}={o} " for o in options if o.startswith(partial.lower())]
+
+        # Select / options parameters
+        if param.options is not None:
+            candidates = []
+            for opt in param.options:
+                val = str(opt)
+                if val.lower().startswith(partial.lower()):
+                    suffix = f"{key}={val} "
+                    candidates.append(suffix)
+            return candidates
+
+        # Format parameter (common enough to special-case)
+        if param.name == "format":
+            formats = ("star", "tsv", "xyz", "obj", "stl", "ply", "mrc", "em", "h5")
+            return [f"{key}={f} " for f in formats if f.startswith(partial.lower())]
+
         return []
+
+    def _find_param(self, key: str, op, tokens: list):
+        """Find the Param matching *key* in the operation + active method."""
+        for p in op.common_params:
+            if p.name == key:
+                return p
+
+        method = self._active_method(tokens, op)
+        if method is not None:
+            for p in method.params:
+                if p.name == key:
+                    return p
+
+        return None
 
 
 class MosaicREPL:

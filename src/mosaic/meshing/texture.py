@@ -293,6 +293,7 @@ class TextureSampler:
         colormap: Optional[str] = "gray",
         scalar_range: Optional[Tuple[float, float]] = None,
         gamma: float = 1.0,
+        quantiles: bool = False,
     ) -> NDArray:
         """
         Resample tomogram at new normal offset.
@@ -308,6 +309,8 @@ class TextureSampler:
         gamma : float, optional
             Gamma correction factor, by default 1.0. Values < 1 brighten
             dark regions, > 1 darken bright regions.
+        quantiles : bool, optional
+            If True, map values to quantile bins before colormapping.
 
         Returns
         -------
@@ -335,6 +338,15 @@ class TextureSampler:
         texture = _dilate_texture(texture)
 
         valid_mask = ~np.isnan(texture)
+
+        if quantiles and valid_mask.any():
+            valid_vals = texture[valid_mask]
+            n_bins = min(valid_vals.size // 10, 100)
+            if n_bins > 1:
+                bins = np.percentile(valid_vals, np.linspace(0, 100, n_bins + 1))
+                texture[valid_mask] = np.digitize(valid_vals, bins) - 1
+                scalar_range = (0, n_bins - 1)
+
         if scalar_range is None:
             vmin = texture[valid_mask].min() if valid_mask.any() else 0
             vmax = texture[valid_mask].max() if valid_mask.any() else 1
