@@ -123,6 +123,9 @@ class SliderRow(QWidget):
         """Set the value range."""
         self.min_val = min_val
         self.max_val = max_val
+        if self.decimals == 0:
+            self.steps = max(1, int(max_val - min_val))
+            self.slider.setMaximum(self.steps)
         self._update_value_label(self.value())
 
     def setEnabled(self, enabled: bool):

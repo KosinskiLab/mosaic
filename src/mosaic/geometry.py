@@ -18,7 +18,13 @@ from .actor import create_actor
 from .utils import normals_to_rot, apply_quat, NORMAL_REFERENCE
 
 
-__all__ = ["Geometry", "VolumeGeometry", "SegmentationGeometry", "GeometryTrajectory"]
+__all__ = [
+    "BASE_COLOR",
+    "Geometry",
+    "VolumeGeometry",
+    "SegmentationGeometry",
+    "GeometryTrajectory",
+]
 
 
 BASE_COLOR = (0.7, 0.7, 0.7)
@@ -530,7 +536,7 @@ class Geometry:
         ambient: float = None,
         diffuse: float = None,
         specular: float = None,
-        color: Tuple[float] = None,
+        base_color: Tuple[float] = None,
         **kwargs,
     ):
         """
@@ -550,7 +556,7 @@ class Geometry:
             Diffuse lighting coefficient.
         specular : float, optional
             Specular lighting coefficient.
-        color : tuple of float, optional
+        base_color : tuple of float, optional
             RGB color values.
         **kwargs
             Additional appearance parameters.
@@ -567,9 +573,10 @@ class Geometry:
         self._appearance.update({k: v for k, v in params.items() if v is not None})
         self._set_appearance()
 
-        if color is None:
-            color = self._appearance.get("base_color", (0.7, 0.7, 0.7))
-        self.set_color(color)
+        if base_color is None:
+            base_color = self._appearance.get("base_color", BASE_COLOR)
+        self._appearance["base_color"] = base_color
+        self.set_color(base_color)
 
     def _set_appearance(self):
         """Propagate appearance settings to VTK actor properties."""
@@ -1646,7 +1653,7 @@ class SegmentationGeometry(Geometry):
         ambient=None,
         diffuse=None,
         specular=None,
-        color=None,
+        base_color=None,
         **kwargs,
     ):
         """Set visual appearance, ignoring point-specific parameters.
@@ -1659,9 +1666,9 @@ class SegmentationGeometry(Geometry):
         ambient : float, optional
         diffuse : float, optional
         specular : float, optional
-        color : tuple of float, optional
+        base_color : tuple of float, optional
         **kwargs
-            Additional parameters (e.g. base_color, highlight_color)
+            Additional parameters (e.g. highlight_color)
             stored in appearance dict for compatibility with base class.
         """
         params = {
@@ -1674,10 +1681,10 @@ class SegmentationGeometry(Geometry):
         self._appearance.update({k: v for k, v in params.items() if v is not None})
         self._set_appearance()
 
-        if color is None:
-            color = self._appearance.get("base_color", BASE_COLOR)
-        self._appearance["base_color"] = color
-        self.set_color(color)
+        if base_color is None:
+            base_color = self._appearance.get("base_color", BASE_COLOR)
+        self._appearance["base_color"] = base_color
+        self.set_color(base_color)
 
     def _set_appearance(self):
         """Propagate appearance settings to vtkVolumeProperty."""

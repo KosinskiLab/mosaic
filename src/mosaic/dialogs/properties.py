@@ -9,6 +9,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from os.path import exists
 
 from qtpy.QtCore import Signal, Qt
+
+from mosaic.geometry import BASE_COLOR
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -48,7 +50,7 @@ class GeometryPropertiesDialog(QDialog):
         self.setFixedWidth(400)
         self.parameters = {}
 
-        self.base_color = initial_properties.get("base_color", (0.7, 0.7, 0.7))
+        self.base_color = initial_properties.get("base_color", BASE_COLOR)
         self.highlight_color = initial_properties.get(
             "highlight_color", (0.8, 0.2, 0.2)
         )
@@ -348,7 +350,7 @@ class GeometryPropertiesDialog(QDialog):
         self.specular_slider.setValue(self.initial_properties.get("specular", 0.3))
 
         self.base_color_picker.set_color(
-            self.initial_properties.get("base_color", (0.7, 0.7, 0.7))
+            self.initial_properties.get("base_color", BASE_COLOR)
         )
         self.highlight_color_picker.set_color(
             self.initial_properties.get("highlight_color", (0.8, 0.2, 0.2))

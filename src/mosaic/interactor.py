@@ -179,7 +179,8 @@ class DataContainerInteractor(QObject):
 
     def add(self, *args, **kwargs):
         if kwargs.get("color", None) is None:
-            kwargs["color"] = self.next_color()
+            if hasattr(self, "colors") and len(self.colors) > 1:
+                kwargs["color"] = self.next_color()
         ret = self.container.add(*args, **kwargs)
         self.data_changed.emit()
         return ret

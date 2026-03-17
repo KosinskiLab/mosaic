@@ -8,6 +8,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from typing import List, Tuple, Union, Dict
 
+from .geometry import BASE_COLOR
+
 __all__ = ["DataContainer"]
 
 
@@ -25,7 +27,7 @@ class DataContainer:
         Default is (0.8, 0.2, 0.2).
     """
 
-    def __init__(self, base_color=(0.7, 0.7, 0.7), highlight_color=(0.8, 0.2, 0.2)):
+    def __init__(self, base_color=BASE_COLOR, highlight_color=(0.8, 0.2, 0.2)):
         self.data = []
         self.metadata = {}
         self.base_color = base_color
@@ -61,17 +63,16 @@ class DataContainer:
         """
         from .geometry import Geometry
 
-        if color is None:
-            color = self.base_color
-
         geometry = points
         if not isinstance(geometry, Geometry):
+            if color is None:
+                color = self.base_color
             geometry = Geometry(points=points, **kwargs)
             geometry.set_appearance(
                 base_color=color, highlight_color=self.highlight_color
             )
-        else:
-            geometry._appearance["base_color"] = color
+        elif color is not None:
+            geometry.set_appearance(base_color=color)
 
         self.data.append(geometry)
         return len(self.data) - 1

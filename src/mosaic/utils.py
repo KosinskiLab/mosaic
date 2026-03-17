@@ -310,7 +310,7 @@ def leiden_clustering(data, resolution_parameter: float = -7.3, **kwargs):
     return labels
 
 
-def dbscan_clustering(data, distance=100.0, min_points=500):
+def dbscan_clustering(data, distance=1.0, min_points=10):
     """
     Perform DBSCAN clustering on the input points.
 
@@ -389,7 +389,7 @@ def kmeans_clustering(data, k=2, **kwargs):
     return KMeans(n_clusters=k, n_init="auto").fit_predict(data)
 
 
-def eigenvalue_outlier_removal(points, k_neighbors=300, thresh=0.05):
+def eigenvalue_outlier_removal(points, k_neighbors=20, thresh=0.05):
     """
     Remove outliers using covariance-based edge detection.
 
@@ -429,7 +429,7 @@ def eigenvalue_outlier_removal(points, k_neighbors=300, thresh=0.05):
     return mask
 
 
-def statistical_outlier_removal(points, k_neighbors=100, thresh=0.2):
+def statistical_outlier_removal(points, k_neighbors=20, thresh=2.0):
     """
     Remove statistical outliers from the point cloud.
 
