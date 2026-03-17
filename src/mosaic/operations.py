@@ -163,9 +163,7 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
     if method in ("outer", "outer_hull"):
         hull = AlphaShape.fit(
             points,
-            elastic_weight=0,
-            curvature_weight=0,
-            volume_weight=0,
+            smoothness=0,
             voxel_size=geometry.sampling_rate,
         )
         sample_frac = kwargs.get("sample_fraction", 0.5)

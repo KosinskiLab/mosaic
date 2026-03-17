@@ -49,27 +49,6 @@ def natural_sort_key(path):
     return [int(part) if part.isdigit() else part.lower() for part in parts]
 
 
-def flatten(nested_list):
-    """
-    Flatten a nested list of arbitrary depth.
-
-    Parameters
-    -----------
-    nested_list: list
-        A list that may contain nested lists at any level
-
-    Returns:
-        A flat list containing all non-list elements
-    """
-    result = []
-    for item in nested_list:
-        if isinstance(item, list):
-            result.extend(flatten(item))
-        else:
-            result.append(item)
-    return result
-
-
 def topological_sort(nodes, node_map, start_node_id):
     """
     Perform topological sort starting from a given node.

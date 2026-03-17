@@ -361,15 +361,6 @@ _K_NEIGHBORS = Param(
     notes="Consider decreasing this value for small point clouds.",
 )
 
-_ELASTIC_WEIGHT = Param(
-    "elastic_weight",
-    "float",
-    default=0.0,
-    min=-(2**28),
-    label="Elastic Weight",
-    description="Control mesh smoothness and elasticity.",
-    notes="0 - strong anchoring, 1 - no anchoring, > 1 repulsion.",
-)
 
 _CURVATURE_WEIGHT = Param(
     "curvature_weight",
@@ -380,14 +371,6 @@ _CURVATURE_WEIGHT = Param(
     description="Controls propagation of mesh curvature.",
 )
 
-_VOLUME_WEIGHT = Param(
-    "volume_weight",
-    "float",
-    default=0.0,
-    min=-(2**28),
-    label="Volume Weight",
-    description="Controls internal pressure of mesh.",
-)
 
 _BOUNDARY_RING = Param(
     "boundary_ring",
@@ -397,23 +380,10 @@ _BOUNDARY_RING = Param(
     description="Also optimize n-ring vertices for ill-defined boundaries.",
 )
 
-_ANCHORING = Param(
-    "anchoring",
-    "float_list",
-    default="1",
-    min="0",
-    max="1",
-    label="Flexibility",
-    description=(
-        "Flexibility of inferred vertices. 1 is maximum. Can be "
-        "specified for all axes, e.g., 1, or per-axis, e.g., 1;1;0.5."
-    ),
-)
-
 _SMOOTHNESS = Param(
     "smoothness",
     "float",
-    default=1.0,
+    default=0.0,
     min=0.0,
     max=1.0,
     label="Smoothness",
@@ -435,6 +405,7 @@ _REPAIR_PARAMS = (
     _SMOOTHNESS,
     _CURVATURE_WEIGHT,
     _PRESSURE,
+    _BOUNDARY_RING,
 )
 
 _HOLE_SIZE = Param(

@@ -1,10 +1,9 @@
 """
 Utilities for repair of triangular meshes.
 
-Hole filling and Leipa triangulation were adapted from
-https://github.com/kentechx/hole-filling and are distributed under
-MIT license. This origin is indicated as reference for the
-respective functions.
+Hole filling were adapted from https://github.com/kentechx/hole-filling
+and are distributed under MIT license. This origin is indicated as
+reference for the respective functions.
 
 Copyright (c) 2024 European Molecular Biology Laboratory
 
@@ -19,14 +18,7 @@ import scipy.sparse
 
 _epsilon = 1e-16
 
-__all__ = [
-    "triangulate_refine_fair",
-    "fair_mesh",
-    "get_ring_vertices",
-    "close_holes",
-    "get_mollified_edge_length",
-    "harmonic_deformation",
-]
+__all__ = ["fair_mesh", "get_ring_vertices", "close_holes"]
 
 
 def _close_hole(vs: np.ndarray, fs: np.ndarray, hole_vids, fast=True) -> np.ndarray:
@@ -205,12 +197,6 @@ def get_mollified_edge_length(
     return lin
 
 
-def _create_weights(size, indices, weight):
-    ret = np.full(size, fill_value=0.0)
-    ret[indices] = weight
-    return scipy.sparse.diags(ret)
-
-
 def get_ring_vertices(V, F, query_vertices, n=1):
     """
     Find n-ring vertices for given vertices in a mesh.
@@ -236,16 +222,6 @@ def get_ring_vertices(V, F, query_vertices, n=1):
         current_ring = next_ring
 
     return vertex_set
-
-
-def harmonic_deformation(vs, fs, vids, k=2):
-    vs = vs.astype(np.float32)
-    fs = fs.astype(np.int32)
-
-    fixed_vertices = np.setdiff1d(np.arange(len(vs)), vids).astype(np.int32)
-    target_positions = vs[fixed_vertices]
-    out_vs = igl.harmonic(vs, fs, fixed_vertices, target_positions, k)
-    return np.ascontiguousarray(out_vs)
 
 
 def _fair_mesh(
@@ -319,12 +295,8 @@ def fair_mesh(
     smoothness: float = 1.0,
     curvature_weight: float = 0.0,
     pressure: float = 0.0,
-    n_ring: int = 1,
-    # Legacy parameters — mapped to new interface for backwards compatibility
-    alpha=None,
-    anchoring=None,
-    beta=None,
-    gamma=None,
+    n_ring: int = 0,
+    **kwargs
 ):
     """
     Minimizes vertex displacement and polyharmonic energy of a mesh at vids.
@@ -349,24 +321,8 @@ def fair_mesh(
         Positive values expand outward, negative values contract.
         Units match the input coordinate system. Default 0.0.
     n_ring : int, optional
-        n_ring vertices around vids to consider for fairing. Default 1.
-    alpha : float, optional
-        Deprecated. Use smoothness instead.
-    anchoring : float, optional
-        Deprecated. Controlled by smoothness.
-    beta : float, optional
-        Deprecated. Use curvature_weight instead.
-    gamma : float, optional
-        Deprecated. Use pressure instead.
+        n_ring vertices around vids to consider for fairing. Default 0.
     """
-    # Legacy parameter mapping
-    if alpha is not None:
-        smoothness = alpha
-    if beta is not None:
-        curvature_weight = beta
-    if gamma is not None:
-        pressure = gamma
-
     if smoothness == 0 and curvature_weight == 0 and pressure == 0:
         return vs
 
@@ -396,7 +352,7 @@ def fair_mesh(
 
 
 def _robust_laplacian(
-    vs, fs, mollify_factor=1e-5, weighting_method=None
+    vs, fs, mollify_factor=1e-5
 ) -> Tuple[scipy.sparse.csc_matrix, scipy.sparse.csc_matrix]:
     """
     Get a laplacian with intrinsic Delaunay triangulation and intrinsic mollification.
@@ -424,233 +380,4 @@ def _robust_laplacian(
     lin, fin, *_ = igl.intrinsic_delaunay_triangulation(lin, fs)
     L = igl.cotmatrix_intrinsic(lin, fin)
     M = igl.massmatrix_intrinsic(lin, fin, igl.MASSMATRIX_TYPE_VORONOI)
-
-    if weighting_method == "MEAN_CURVATURE":
-        M_inv = scipy.sparse.diags(1.0 / M.diagonal())
-        Hn = -M_inv @ (L @ vs)
-
-        # Mean curvature magnitude
-        W = scipy.sparse.diags(1.0 + np.linalg.norm(Hn, axis=1))
-        M = M @ W
-    elif weighting_method == "GAUSSIAN_CURVATURE":
-        K = igl.gaussian_curvature(vs, fs)
-        W = scipy.sparse.diags(1.0 + np.abs(K))
-        M = M @ W
-
     return L, M
-
-
-def _triangulation_refine_leipa(
-    vs: np.ndarray, fs: np.ndarray, fids: np.ndarray, density_factor: float = np.sqrt(2)
-):
-    """
-    Refine triangles using barycentric subdivision and Delaunay triangulation
-    using Liepa's hole filling algorithm [1].
-
-
-    Parameters
-    ----------
-    vs : ndarray, shape (N, 3)
-        Vertex coordinates.
-    fs : ndarray, shape (M, 3)
-        Face indices.
-    fids : ndarray, shape (K,)
-        Indices of faces to refine.
-    density_factor : float, optional
-        Controls subdivision density. Default is sqrt(2).
-
-    Returns
-    -------
-    out_vs : ndarray, shape (N+P, 3)
-        Output vertices, with new vertices appended.
-    out_fs : ndarray, shape (M+Q, 3)
-        Output faces, with new faces appended.
-    FI : ndarray, shape (M,)
-        Maps original face indices to refined face indices.
-        FI[i] = -1 indicates face i was deleted.
-
-    References
-    ----------
-    .. [1] Code adapted from https://github.com/kentechx/hole-filling.
-    .. [2] Liepa, P. "Filling holes in meshes." (2003)
-    """
-    out_vs = np.copy(vs)
-    out_fs = np.copy(fs)
-
-    if fids is None or len(fids) == 0:
-        return out_vs, out_fs, np.arange(len(fs))
-
-    # initialize sigma
-    edges = igl.edges(
-        np.delete(out_fs, fids, axis=0)
-    )  # calculate the edge length without faces to be refined
-    edges = np.concatenate([edges, edges[:, [1, 0]]], axis=0)
-    edge_lengths = np.linalg.norm(out_vs[edges[:, 0]] - out_vs[edges[:, 1]], axis=-1)
-    edge_length_vids = edges[:, 0]
-    v_degrees = np.bincount(edge_length_vids, minlength=len(out_vs))
-    v_sigma = np.zeros(len(out_vs))
-    v_sigma[v_degrees > 0] = (
-        np.bincount(edge_length_vids, weights=edge_lengths, minlength=len(out_vs))[
-            v_degrees > 0
-        ]
-        / v_degrees[v_degrees > 0]
-    )
-    if np.any(v_sigma == 0):
-        v_sigma[v_sigma == 0] = np.median(v_sigma[v_sigma != 0])
-        # print("Warning: some vertices have no adjacent faces, the refinement may be incorrect.")
-
-    all_sel_fids = np.copy(fids)
-    for _ in range(100):
-        # calculate sigma of face centers
-        vc_sigma = v_sigma[out_fs].mean(axis=1)  # nf
-
-        # check edge length
-        s = density_factor * np.linalg.norm(
-            out_vs[out_fs[all_sel_fids]].mean(1, keepdims=True)
-            - out_vs[out_fs[all_sel_fids]],
-            axis=-1,
-        )
-        cond = np.all(
-            np.logical_and(
-                s > vc_sigma[all_sel_fids, None], s > v_sigma[out_fs[all_sel_fids]]
-            ),
-            axis=1,
-        )
-        sel_fids = all_sel_fids[cond]  # need to subdivide
-
-        if len(sel_fids) == 0:
-            break
-
-        # subdivide
-        out_vs, added_fs = igl.false_barycentric_subdivision(out_vs, out_fs[sel_fids])
-
-        # update v_sigma after subdivision
-        v_sigma = np.concatenate([v_sigma, vc_sigma[sel_fids]], axis=0)
-        assert len(v_sigma) == len(out_vs)
-
-        # delete old faces from out_fs and all_sel_fids
-        out_fs[sel_fids] = -1
-        all_sel_fids = np.setdiff1d(all_sel_fids, sel_fids)
-
-        # add new vertices, faces & update selection
-        out_fs = np.concatenate([out_fs, added_fs], axis=0)
-        sel_fids = np.arange(len(out_fs) - len(added_fs), len(out_fs))
-        all_sel_fids = np.concatenate([all_sel_fids, sel_fids], axis=0)
-
-        # delaunay
-        edge_length = get_mollified_edge_length(out_vs, out_fs[all_sel_fids])
-        _, add_fs, *_ = igl.intrinsic_delaunay_triangulation(
-            edge_length.astype("f8"), out_fs[all_sel_fids]
-        )
-        out_fs[all_sel_fids] = add_fs
-
-    # update FI, remove deleted faces
-    FI = np.arange(len(fs))
-    FI[out_fs[: len(fs), 0] < 0] = -1
-    idx = np.where(FI >= 0)[0]
-    FI[idx] = np.arange(len(idx))
-    out_fs = out_fs[out_fs[:, 0] >= 0]
-    return out_vs, out_fs, FI
-
-
-def triangulate_refine_fair(
-    vs,
-    fs,
-    hole_len_thr=-1,
-    close_hole_fast=True,
-    target_edge_length: float = -1,
-    smoothness: float = 1.0,
-    curvature_weight: float = 0.0,
-    pressure: float = 0.0,
-    n_ring: int = 1,
-    # Legacy parameters
-    alpha=None,
-    beta=None,
-    gamma=None,
-    **kwargs,
-):
-    """Fill holes, remesh to uniform edge length, and fair inferred vertices.
-
-    Closes holes in the mesh, remeshes to a uniform target edge length,
-    identifies vertices in the former hole regions by distance from the
-    original mesh, and fairs them.
-
-    Parameters
-    ----------
-    vs : ndarray, shape (N, 3)
-        Vertex coordinates.
-    fs : ndarray, shape (M, 3)
-        Face indices.
-    hole_len_thr : float, optional
-        Maximum hole perimeter to fill. Default is -1 (no limit).
-    close_hole_fast : bool, optional
-        Use fast hole filling. Default is True.
-    target_edge_length : float, optional
-        Target edge length for isotropic remeshing after hole filling.
-        -1 uses the median edge length of the input mesh.
-    smoothness : float, optional
-        Controls the balance between position anchoring and curvature
-        minimization. 0 = vertices stay in place, 1 = full curvature
-        minimization. Default 1.0.
-    curvature_weight : float, optional
-        Weight for triharmonic (higher-order smoothing) energy. Default 0.0.
-    pressure : float, optional
-        Normal displacement applied to free vertices after fairing.
-        Positive values expand outward, negative values contract.
-        Units match the input coordinate system. Default 0.0.
-    n_ring : int, optional
-        Also refine n_ring vertices around inferred vertices. Default 1.
-
-    Returns
-    -------
-    out_vs : ndarray, shape (P, 3)
-        Output vertices after filling, remeshing, and fairing.
-    out_fs : ndarray, shape (Q, 3)
-        Output faces after filling, remeshing, and fairing.
-    """
-    import warnings
-    from ..utils import find_closest_points
-    from .utils import remesh, to_open3d, compute_edge_lengths
-
-    if alpha is not None:
-        smoothness = alpha
-    if beta is not None:
-        curvature_weight = beta
-    if gamma is not None:
-        pressure = gamma
-
-    vs = np.asarray(vs, dtype=np.float64).copy()
-    fs = np.asarray(fs).copy()
-    original_vs = vs.copy()
-
-    out_fs = close_holes(vs, fs, hole_len_thr, close_hole_fast)
-
-    if target_edge_length <= 0:
-        target_edge_length = float(np.median(compute_edge_lengths(to_open3d(vs, fs))))
-
-    try:
-        mesh = remesh(to_open3d(vs, out_fs), target_edge_length)
-        vs = np.asarray(mesh.vertices, dtype=np.float64)
-        fs = np.asarray(mesh.triangles)
-    except (ValueError, RuntimeError):
-        warnings.warn(
-            "Remeshing failed (non-manifold mesh). Continuing without remeshing."
-        )
-        fs = out_fs
-
-    distances, _ = find_closest_points(original_vs, vs)
-    vids = np.where(distances > target_edge_length * 0.5)[0]
-
-    if len(vids) == 0:
-        return vs, fs
-
-    vs = fair_mesh(
-        vs,
-        fs,
-        vids,
-        smoothness=smoothness,
-        curvature_weight=curvature_weight,
-        pressure=pressure,
-        n_ring=n_ring,
-    )
-    return vs, fs
