@@ -2,22 +2,19 @@
 Working with :emphasis:`in situ` data
 =====================================
 
-This guide outlines general strategies for analyzing *in situ* membrane segmentations using Mosaic. For demonstration purposes, we will use a *Giardia lamblia* dataset, but these approaches extend to other organisms and cellular systems.
+This guide outlines strategies for analyzing *in situ* membrane segmentations using Mosaic, demonstrated on a *Giardia lamblia* dataset.
 
 
 Segmentation
 ------------
 
-If you have a membrane segmentation available, launch Mosaic and load the segmentation using **File > Load Session**. If you do not have a segmentation, create one by following the :ref:`membrane segmentation guide <membrane-segmentation>`.
+Load your segmentation via **File > Load Session**. If you don't have one, follow the :ref:`membrane segmentation guide <membrane-segmentation>`.
 
 .. tip::
 
-	Using **Load Session** instead of **Open File** sets default values that optimize downstream processing and data export.
+	**Load Session** sets default values that optimize downstream processing and export.
 
-For large datasets with millions of labeled voxels, rendering performance may be limited depending on your hardware. You can modify point rendering settings in **Preferences > Appearance**:
-
-- Linux: Change preset from Ultra to High
-- macOS: Use Ultra or Adaptive presets (only supported options)
+For large datasets, adjust point rendering in **Preferences > Appearance** (Linux: High preset; macOS: Ultra or Adaptive).
 
 .. figure:: ../../_static/tutorial/giardia/data.png
    :width: 100 %
@@ -29,10 +26,10 @@ For large datasets with millions of labeled voxels, rendering performance may be
 Connected Components
 --------------------
 
-Apply connected component labeling to separate the dataset into disjoint membrane partitions.
+Separate the dataset into disjoint membrane partitions:
 
 1. Select the segmentation in the *Object Browser*
-2. Navigate to the **Segmentation** tab and click on the arrow next to the **Cluster** button to set
+2. In the **Segmentation** tab, configure **Cluster**:
 
    - Method: Connected Components
    - Use Points: Check
@@ -41,7 +38,7 @@ Apply connected component labeling to separate the dataset into disjoint membran
 
 3. Click *Apply*
 
-Connected component labeling identified 55 components. To make them easier to distinguish, you can color them by entity using View > Coloring > By Entity.
+Color by entity (View > Coloring > By Entity) to distinguish components.
 
 .. figure:: ../../_static/tutorial/giardia/components.png
    :width: 100 %
@@ -51,18 +48,17 @@ Connected component labeling identified 55 components. To make them easier to di
 
 .. tip::
 
-	The distance parameter determines connectivity. Setting it to -1 uses the sampling rate (i.e., single voxel separation in the segmentation). Increase this value to merge components separated by multiple voxels in the original segmentation.
+	Distance -1 uses single-voxel connectivity. Increase to merge components separated by multiple voxels.
+
 
 Refinement
 ----------
 
-Remove erroneous segmentations using size-based filtering
+Remove small erroneous clusters using size-based filtering:
 
 1. Click **Select** in the **Segmentation** tab
-2. Adjust cutoff values to identify suitable size ranges
-3. Remove selected clusters using **Remove**
-
-In this dataset, removing all clusters with less than 25,000 voxels appears reasonable. The selected clusters can be removed by pressing the **Remove** button in the same tab.
+2. Adjust cutoffs to identify suitable size ranges (here, <25,000 voxels)
+3. Click **Remove**
 
 .. figure:: ../../_static/tutorial/giardia/filtering.png
    :width: 100 %
@@ -72,31 +68,26 @@ In this dataset, removing all clusters with less than 25,000 voxels appears reas
 
 .. tip::
 
-	You can pick objects manually by Actions > Pick Objects and points by selection using Actions > Point Selection or their respective keyboard shortcuts. Lamella editing can be done using **Trim**.
+	Manual editing is available via Actions > Pick Objects and Actions > Point Selection (or keyboard shortcuts). Use **Trim** for lamella editing.
 
 
 Clustering
 ----------
 
-This dataset contains multiple double membrane systems that are merged in the segmentation. We can separate these using graph-based clustering methods.
+Some membrane systems (e.g. double membranes) remain merged after connected components. Graph-based clustering can separate them.
 
 Envelope Extraction
 ^^^^^^^^^^^^^^^^^^^
 
-Taking Cluster 3 as an example, we typically start by thinning the membranes to their envelope (conceptually to their inner and outer leaflets). This reduces the number of computations required for clustering and may lead to better distinction, however, it is not strictly required.
+Optionally thin membranes to their envelope first, reducing computation and improving separation:
 
-1. Select the target in the *Object Browser*
-2. In the **Segmentation** tab, configure **Cluster**
-
-   - Method: Envelope
-   - Use Points: Check
-   - Distance: -1.0
-
+1. Select the target cluster
+2. Configure **Cluster**: Method: *Envelope*, Use Points: Check, Distance: -1.0
 3. Click *Apply*
 
 .. note::
 
-	If you check Drop Noise the inner part of the membrane will be added as second cluster.
+	Check Drop Noise to add the inner membrane part as a second cluster.
 
 .. list-table::
    :widths: 50 50
@@ -115,9 +106,9 @@ Taking Cluster 3 as an example, we typically start by thinning the membranes to 
 Leiden Clustering
 ^^^^^^^^^^^^^^^^^
 
-We can use Leiden clustering to separate membrane systems. Conceptually, this approach uses graph representations to cluster regions with high connectivity. The resolution parameter modulates the clustering fineness. It is typically sufficient to explore the resolution starting with the default value of -7.3 and moving up to -2.3 in increments of 1.0.
+Leiden clustering uses graph connectivity to separate membrane systems. The resolution parameter controls fineness — start at -7.3 and increase in steps of 1.0.
 
-Here, we use a resolution of -7.3, which resulted in two distinct clusters. We repeat clustering with a resolution of -6.3 for both clusters, which yields the results shown below. The individual clusters can be merged into distinct membrane systems by simple selection.
+Here, resolution -7.3 yielded two clusters. Repeating at -6.3 for each produces the results below. Merge the resulting clusters into distinct membrane systems by selection.
 
 .. list-table::
    :widths: 50 50
@@ -133,7 +124,7 @@ Here, we use a resolution of -7.3, which resulted in two distinct clusters. We r
 
           Merged membrane segmentation
 
-This procedure can be repeated analogously for the remainder of the dataset.
+Repeat for the remainder of the dataset.
 
 .. figure:: ../../_static/tutorial/giardia/clustered.png
    :width: 100 %
@@ -143,29 +134,23 @@ This procedure can be repeated analogously for the remainder of the dataset.
 
 .. tip::
 
-	Connectivity differences might not always be sufficient to yield meaningful clusters. In such cases, purely distance-based methods such as K-Means clustering should be preferred. DBSCAN or Birch clustering can also yield good results, but their parameters can be more difficult to tune.
+	When connectivity alone is insufficient, use distance-based methods like K-Means. DBSCAN and Birch can also work but are harder to tune.
 
 
 Meshing
 -------
 
-We fit triangular meshes to the individual clusters to analyze their geometric properties.
+Fit triangular meshes to analyze geometric properties:
 
 1. Select membrane clusters in the **Object Browser**
-2. Navigate to the **Parametrization** tab
-3. Click on the arrow next to the **Mesh** button and configure
+2. In **Parametrization**, configure **Mesh**:
 
    - Method: Alpha Shape
-   - Elastic Weight: 1.0
-   - Curvature Weight: 10.0
-   - Volume Weight: 0.0
-   - Boundary Ring: 1
-   - Neighbors: 15
-   - Alpha: 1.0
-   - Scaling Factor: 6.0
-   - Distance: 2.0
+   - Elastic Weight: 1.0, Curvature Weight: 10.0, Volume Weight: 0.0
+   - Boundary Ring: 1, Neighbors: 15, Alpha: 1.0
+   - Scaling Factor: 6.0, Distance: 2.0
 
-4. Click *Apply*
+3. Click *Apply*
 
 .. list-table::
    :widths: 50 50
@@ -181,19 +166,15 @@ We fit triangular meshes to the individual clusters to analyze their geometric p
 
           Membrane meshes
 
-Alpha shapes are generalizations of convex hulls and well-suited for convex membrane morphologies, potentially with disconnected components. Reducing alpha allows the mesh to deviate from the convexity constraint, but typically at a cost of mesh quality and completeness.
+Alpha shapes work well for convex membrane morphologies. For non-convex membranes, use Ball Pivoting (e.g. with core-thinning via **Segmentation > Thin** at radius 40, then Ball Pivoting at radius 50). Poisson reconstruction also produces complete meshes using a different completion strategy.
 
-To mesh non-convex membrane segmentations, other methods like Ball Pivoting should be preferred. For the example shown in the Clustering section, we applied core-thinning using **Segmentation > Thin** with a radius of 40 and meshed the generated cluster using Ball Pivoting with a radius of 50. Poisson reconstruction also generates complete meshes, but with a different algorithm for mesh completion.
-
-Once meshes are generated, we can analyze their geometric properties using **Segmentation > Properties**
+Analyze geometric properties via **Segmentation > Properties**:
 
 .. figure:: ../../_static/tutorial/giardia/systems_analysis.png
    :width: 100 %
    :align: center
 
    Analyzing mesh properties.
-
-The analysis provides quantitative measurements for comparative studies
 
 .. list-table::
    :widths: 33 33 33

@@ -1,3 +1,34 @@
+# Release Notes v1.2.1
+
+Version 1.2.1 introduces an interactive shell for scriptable control, along with mesh processing improvements and dependency cleanup.
+
+## Features
+
+- **Interactive Shell:** A REPL-based command interface (`mosaic-shell`) with auto-complete for scripting geometry operations, file I/O, and session management.
+- **Batch Rename Dialog:** Rename multiple geometries at once.
+- **Improved Texture Resolution:** Higher quality tomogram-on-mesh projections.
+
+## Improvements
+
+- Removed `pymeshlab` dependency; mesh repair now uses `libigl` exclusively.
+- Migrated to `libigl==2.6.1`.
+- Replaced MarchingCubes with FlyingEdges and windowed sinc smoothing.
+- Unified pipeline executor into a single REPL-based module.
+- Centralized method annotations in the operations registry.
+
+## Bug Fixes
+
+- Fixed trajectory animation updates during live view.
+- Minor bug fixes in export dialog and property analysis.
+
+## Installation
+
+```bash
+pip install -U mosaic-gui==1.2.1
+```
+
+---
+
 # Release Notes v1.2.0
 
 Version 1.2.0 introduces segmentation geometries, medial meshes, and interactive animation waypoints, alongside improvements to property analysis and rendering.

@@ -2,9 +2,11 @@
 Batch Processing
 ==================
 
-Cryo-electron tomography datasets frequently comprise tens to hundreds of tomograms, each requiring consistent processing. Manually applying the same operations to each tomogram is tedious and error-prone. This tutorial demonstrates how to construct reproducible workflows that process entire datasets automatically. Pipelines are useful for datasets of 10 or more tomograms, though the reproducibility benefits apply to smaller datasets as well. For individual samples, the GUI provides the same (or more) functionality with immediate visual feedback.
+This tutorial demonstrates how to build reproducible pipelines that process entire cryo-ET datasets automatically. Starting from membrane segmentations, we generate seed points for constrained template matching.
 
-We use a *Chlamydomonas reinhardtii* dataset as our working example. Starting from membrane segmentations, we will generate seed points for constrained template matching of membrane-associated proteins.
+.. note::
+
+   Batch processing is available from version 1.1.0.
 
 
 Requirements
@@ -22,9 +24,6 @@ This tutorial assumes voxel-level membrane segmentations are available, with one
    ├── ...
    └── tomo_100_seg.mrc
 
-.. note::
-
-   The batch processing functionality is available with version 1.1.0 of Mosaic.
 
 Creating a Processing Pipeline
 ------------------------------
@@ -37,13 +36,18 @@ Open the Pipeline Builder via **File > Batch Processing** (or **Ctrl+Shift+P**).
 
    Pipeline Builder interface showing the operation library (left) and workflow panel (right).
 
-For seed point generation, click the **Particle Picking** preset in the bottom panel. This loads a standard workflow that we will customize for our data.
+Click the **Particle Picking** preset in the bottom panel to load a standard workflow. The preset performs:
+
+1. **Clustering** — separates the segmentation into distinct membrane compartments
+2. **Filtering** — removes small fragments (segmentation artifacts)
+3. **Meshing + Smoothing** — creates a smooth triangular surface
+4. **Sampling** — places evenly-spaced points with surface normals along the membrane
 
 
 Configuring Input Files
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-Expand the **Import Files** card by clicking on it, then click **Select Files** to choose your segmentation files. If your segmentations have incorrect file header information, click **Configure Import Parameters** to adapt them.
+Expand **Import Files**, click **Select Files** to choose your segmentations. Use **Configure Import Parameters** if file headers need correction.
 
 .. figure:: ../../_static/tutorial/pipeline/batch_import.png
    :width: 60 %
@@ -52,110 +56,83 @@ Expand the **Import Files** card by clicking on it, then click **Select Files** 
    Import Files configuration.
 
 
-Understanding the Processing Steps
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Each operation card can be expanded to configure its parameters. The preset workflow performs the following transformations:
-
-1. **Clustering**: Separates the segmentation into distinct membrane compartments
-2. **Filtering**: Removes small fragments that are likely segmentation artifacts
-3. **Meshing + Smoothing**: Creates a smooth triangular surface representation
-4. **Sampling**: Places evenly-spaced points with surface normals along the membrane
-
-Here we explain how to choose appropriate parameter values.
+Choosing Parameters
+^^^^^^^^^^^^^^^^^^^
 
 **Clustering**
 
-Clustering separates your segmentation into distinct membrane compartments. A single segmentation file often contains multiple membranes (plasma membrane, ER, mitochondria, etc.) that should be processed independently.
+Separates membranes (plasma membrane, ER, mitochondria, etc.) that should be processed independently.
 
-- Method: *Connected Components* identifies spatially separated regions
-- Distance: *-1.0* uses single-voxel connectivity
+- Method: *Connected Components* — identifies spatially separated regions
+- Distance: *-1.0* — single-voxel connectivity
 
 **Cluster Selection**
 
-Small clusters are typically segmentation artifacts rather than real membranes. This step removes them based on point count.
-
-- Lower Threshold: Minimum number of points to keep a cluster
-
-The appropriate threshold depends on your tomogram's pixel size and specimen. At 7Å/pixel, a threshold of 2000-8000 points is reasonable. At 14Å/pixel, the same physical membrane contains fewer voxels, so use a lower threshold (500-1000). Examine a few segmentations manually to determine what size range corresponds to real membranes versus noise.
+Removes small clusters based on point count. The threshold depends on pixel size: at 7 Å/px use 2000–8000; at 14 Å/px use 500–1000. Inspect a few segmentations to calibrate.
 
 **Mesh**
 
-Meshing converts the point cloud into a triangular surface, enabling computation of surface normals.
+Converts the point cloud into a triangular surface.
 
-- Method: *Flying Edges* is fast and works well for initial mesh generation on dense volumes.
+- Method: *Flying Edges* — fast, works well for dense volumes
 
-Meshes created with Flying Edges extract the contour of the segmentation, producing a closed surface that encloses the segmented region. This means seed points will be generated on both sides of the membrane, with normals pointing away from the enclosed volume on each side.
-
-Alternative meshing methods (demonstrated in the Meshing pipeline preset) can fit a surface through the center of the segmentation rather than along its contour. These methods produce normals that all point in the same direction, which can be advantageous for template matching as it provides more precise spatial constraints, i.e., you search only on the biologically relevant side of the membrane rather than both sides.
-
+Flying Edges extracts the segmentation contour, producing a closed surface with seed points on both sides of the membrane. Alternative methods (see the *Meshing* preset) fit a surface through the segmentation center, producing single-sided normals — useful when you want to restrict template matching to one side.
 
 **Remesh and Smoothing**
 
-These steps create a cleaner surface representation. The original segmentation contains voxel-level noise that would result in inaccurate surface normals. Smoothing produces normals that better represent the true membrane orientation.
+Reduces voxel-level noise in the mesh. Without smoothing, surface normals are noisy and do not represent the true membrane orientation.
 
-- Smoothing Method: *Taubin* preserves surface shape while reducing noise
-- Iterations: *10* is typically sufficient
+- Method: *Taubin* — preserves shape while reducing noise
+- Iterations: *10*
 
 **Sample**
 
-Sampling places seed points along the smoothed surface at regular intervals. These points, along with their surface normals, constrain downstream template matching to search only near the membrane surface.
+Places seed points at regular intervals along the surface. Together with surface normals, these constrain template matching to search near the membrane.
 
-- Method: *Distance* ensures uniform spacing between points
-- Sampling: Distance between seed points in Angstroms. Choose a value smaller than the expected protein spacing, typically one-half to one-third the inter-protein distance. 30Å works well for most applications.
-- Offset: Distance from the surface toward the protein center. Set this to approximately half the height of your target protein.
+- Method: *Distance* — uniform spacing
+- Sampling: distance in Å between points (30 Å works for most cases)
+- Offset: distance from the surface toward the protein center (~half the target protein height)
 
 **Export Data**
 
-- Format: *STAR* for compatibility with PyTME
-- Output Directory: Where to save the seed point files
+- Format: *STAR* for PyTME compatibility
+- Output Directory: where to save seed point files
 
 **Save Session**
 
-Saving sessions allows you to review results in Mosaic and make manual corrections if needed.
-
-- Output Directory: Where to save Mosaic session files
+Saves sessions for review and manual correction in Mosaic.
 
 
 Execution Settings
 ^^^^^^^^^^^^^^^^^^
 
-At the bottom of the Pipeline Builder:
-
-- **Parallel Workers**: Number of files to process simultaneously. Each worker requires approximately 8GB of memory.
-- **Skip Complete**: Skip files that already have output. Enable this to resume interrupted processing or re-run after adjusting parameters.
+- **Parallel Workers**: files processed simultaneously (~8 GB memory per worker)
+- **Skip Complete**: resume interrupted runs by skipping files with existing output
 
 
 Running the Pipeline
 --------------------
 
-Click **Run Pipeline** to start processing. The status indicator in the bottom-right corner shows progress. For a typical workflow, expect 2-4 minutes per tomogram, scaling linearly with file count.
-
-Upon completion, the Batch Navigator opens automatically.
+Click **Run Pipeline**. Progress is shown in the bottom-right corner. The Batch Navigator opens on completion.
 
 
 Cluster Execution
 ^^^^^^^^^^^^^^^^^
 
-For large datasets or limited local resources, run pipelines on an HPC cluster:
-
-1. Click **Export Pipeline** and save as ``pipeline.json``
-2. Transfer the configuration and data to your cluster
-
-The ``mosaic-pipeline`` command executes pipelines from the command line:
+Export the pipeline as ``pipeline.json`` via **Export Pipeline**, then run on an HPC cluster:
 
 .. code-block:: bash
 
-   # Process all files with 8 parallel workers
+   # Process all files
    mosaic-pipeline pipeline.json --workers 8
 
-   # Resume processing, skipping completed files
+   # Resume, skipping completed files
    mosaic-pipeline pipeline.json --workers 8 --skip-complete
 
-   # Preview runs without executing
+   # Preview without executing
    mosaic-pipeline pipeline.json --dry-run
 
-For job array submission on SLURM, save this script and run it as ``sbatch run_pipeline.sh``:
+SLURM job array example (``sbatch run_pipeline.sh``):
 
 .. code-block:: bash
 
@@ -178,51 +155,37 @@ For job array submission on SLURM, save this script and run it as ``sbatch run_p
 
    mosaic-pipeline "$CONFIG" --index $SLURM_ARRAY_TASK_ID
 
-The script automatically determines the number of input files and submits itself as a job array.
-
 
 Reviewing Results
 -----------------
 
-The Batch Navigator enables efficient inspection of processed sessions. You can open it via **File > Batch Navigator** (or **Ctrl+Shift+N**)
+Open the Batch Navigator via **File > Batch Navigator** (or **Ctrl+Shift+N**).
 
 .. figure:: ../../_static/tutorial/pipeline/batch_navigator.png
    :width: 100 %
    :align: center
 
-   Mosaic interface with batch Navigator on the right showing the session list.
+   Batch Navigator showing the session list.
 
-Click any session to load it. The navigator auto-saves modifications when switching sessions.
-
-For quality control, verify:
-
-- Distinct membranes are properly separated
-- Small artifacts were filtered out
-- The mesh surface follows the membrane smoothly
-- Seed points are evenly distributed with consistent orientations
-
-If a session needs correction, use Mosaic's selection and editing tools to adjust. Changes are saved automatically when you switch to another session. The remaining buttons can be used to discard changes to the current session or to directly save it to disk.
+Click a session to load it. Modifications are auto-saved when switching sessions. Verify that membranes are properly separated, artifacts filtered, meshes smooth, and seed points evenly distributed.
 
 
 Using Seed Points for Template Matching
 ---------------------------------------
 
-The exported STAR files contain seed point coordinates and surface normals for constrained template matching. In PyTME, configure via **Intelligence > Template Matching > Setup**, specifying your seed points file and search constraints (rotational uncertainty typically 15-20 degrees, translational uncertainty 5-10Å).
+The exported STAR files contain coordinates and surface normals for constrained template matching. In PyTME, configure via **Intelligence > Template Matching > Setup** with your seed points file and search constraints (rotational uncertainty 15–20°, translational uncertainty 5–10 Å).
 
-This provides an example configuration on how to setup constrained template matching. Have a look at the `PyTME documentation <https://kosinskilab.github.io/pyTME/quickstart/matching/cluster.html>`_ on how to scale to the entire dataset.
+See the `PyTME documentation <https://kosinskilab.github.io/pyTME/quickstart/matching/cluster.html>`_ for scaling to full datasets.
 
 
 Pipeline Operations Reference
------------------------------
-
-This section details all available operations for constructing custom pipelines.
+------------------------------
 
 Input
 ^^^^^
 
 **Import Files**
-   Loads files for batch processing. Supported formats: Mosaic sessions (.pickle), point clouds (STAR, XYZ, TSV), meshes (OBJ, STL, PLY), and volumes (MRC, EM).
-
+   Loads files for batch processing. Supported: sessions (.pickle), point clouds (STAR, XYZ, TSV), meshes (OBJ, STL, PLY), volumes (MRC, EM).
 
 Preprocessing
 ^^^^^^^^^^^^^
@@ -230,69 +193,59 @@ Preprocessing
 **Clustering**
    Partitions point clouds into spatially coherent groups.
 
-   - *Connected Components*: Labels disjoint regions based on spatial connectivity. Distance parameter controls the connectivity threshold.
-   - *Leiden*: Graph-based community detection using modularity optimization. Resolution parameter controls cluster granularity.
-   - *K-Means*: Partitions into k clusters by minimizing within-cluster variance.
-   - *DBSCAN*: Density-based clustering that identifies regions of high point density separated by low-density regions.
+   - *Connected Components*: disjoint regions by spatial connectivity
+   - *Leiden*: graph-based community detection
+   - *K-Means*: k clusters by within-cluster variance minimization
+   - *DBSCAN*: density-based clustering
 
 **Downsampling**
-   Reduces point cloud density.
+   Reduces point density.
 
-   - *Radius*: Removes points within a specified radius of each other while preserving original point positions.
+   - *Radius*: removes points within a specified radius of each other
 
 **Skeletonization**
    Extracts the medial axis of tubular structures.
 
 **Cluster Selection**
-   Filters clusters by point count. Lower threshold removes clusters with fewer points; upper threshold removes clusters exceeding the specified count.
-
+   Filters clusters by point count (lower/upper threshold).
 
 Parametrization
 ^^^^^^^^^^^^^^^
 
 **Mesh**
-   Generates triangular surface meshes from point clouds.
+   Generates triangular surfaces from point clouds.
 
-   - *Flying Edges*: Fast isosurface extraction from volumetric data.
-   - *Poisson*: Solves a Poisson equation to produce smooth, watertight surfaces. Requires consistent normal orientation.
-   - *Ball Pivoting*: Reconstructs surfaces by rolling a ball of specified radius over the point cloud. Suitable for partial surfaces.
-   - *Alpha Shape*: Computes the alpha complex, a generalization of the convex hull. Alpha parameter controls surface detail.
+   - *Flying Edges*: fast isosurface extraction from volumetric data
+   - *Poisson*: smooth, watertight surfaces (requires consistent normals)
+   - *Ball Pivoting*: surface reconstruction for partial surfaces
+   - *Alpha Shape*: generalized convex hull with adjustable detail
 
 **Remesh**
-   Modifies mesh topology.
-
-   - *Decimation*: Reduces triangle count while preserving surface geometry. Reduction factor specifies the target reduction ratio.
-   - *Subdivision*: Increases mesh resolution by subdividing triangles.
+   - *Decimation*: reduces triangle count while preserving geometry
+   - *Subdivision*: increases mesh resolution
 
 **Smoothing**
-   Applies surface smoothing filters.
-
-   - *Taubin*: Two-step filter that smooths iteratively without net shrinkage.
-   - *Laplacian*: Iteratively moves vertices toward neighbor centroids. May cause mesh shrinkage.
+   - *Taubin*: iterative smoothing without shrinkage
+   - *Laplacian*: moves vertices toward neighbor centroids (may shrink)
 
 **Sample**
    Generates point samples from mesh surfaces.
 
-   - *Distance*: Places points at uniform spacing along the surface. Returns points with associated surface normals.
-   - *Points*: Generates a specified number of uniformly distributed random samples.
-
+   - *Distance*: uniform spacing with surface normals
+   - *Points*: random uniform samples
 
 Export
 ^^^^^^
 
 **Export Data**
-   Writes data to specified format.
-
-   - Point clouds: STAR, XYZ, TSV
-   - Meshes: OBJ, STL, PLY
-   - Volumes: MRC, EM, H5
+   Point clouds (STAR, XYZ, TSV), meshes (OBJ, STL, PLY), volumes (MRC, EM, H5).
 
 **Save Session**
-   Serializes the complete Mosaic session state.
+   Serializes the complete session state.
 
 
 Troubleshooting
 ---------------
 
 **Memory errors during parallel execution**
-   Reduce worker count. Each worker requires approximately 8GB RAM depending on segmentation size and number of intermediate outputs stored.
+   Reduce worker count. Each worker needs ~8 GB RAM depending on segmentation size.

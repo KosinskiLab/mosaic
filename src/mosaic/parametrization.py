@@ -720,6 +720,87 @@ class RBF(Parametrization):
         return int(n_points)
 
 
+class SplineCurve(Parametrization):
+    """
+    Parametrize a point cloud as a spline curve.
+
+    Parameters
+    ----------
+    positions : np.ndarray
+        Control points defining the spline curve
+    """
+
+    def __init__(self, positions: np.ndarray, order: int = 1, **kwargs):
+        self.positions = np.asarray(positions)
+
+        params = self._compute_params()
+        if order == 3:
+            self._splines = [
+                interpolate.CubicSpline(params, self.positions[:, i])
+                for i in range(self.positions.shape[1])
+            ]
+        else:
+            self._splines = [
+                interpolate.UnivariateSpline(params, self.positions[:, i], k=order)
+                for i in range(self.positions.shape[1])
+            ]
+
+    def _compute_params(self) -> np.ndarray:
+        diff = np.diff(self.positions, axis=0)
+        chord_lengths = np.linalg.norm(diff, axis=1)
+        cumulative = np.concatenate(([0], np.cumsum(chord_lengths)))
+        return cumulative / cumulative[-1]
+
+    @classmethod
+    def fit(cls, positions: np.ndarray, *, order: int = 1, **kwargs) -> "SplineCurve":
+        """Fit a spline curve through a point cloud.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Control points with shape (n, 3). Order along the
+            curve is inferred from cumulative chord lengths.
+        order : int
+            Spline degree. ``1`` = linear, ``3`` = cubic spline.
+
+        Returns
+        -------
+        SplineCurve
+            Fitted spline curve.
+        """
+        return cls(positions=np.asarray(positions, dtype=np.float64), order=order)
+
+    def sample(
+        self, n_samples: int, normal_offset: float = 0.0, **kwargs
+    ) -> np.ndarray:
+        t = np.linspace(0, 1, n_samples)
+        positions_xyz = np.column_stack([spline(t) for spline in self._splines])
+
+        if normal_offset != 0:
+            normals = self.compute_normal(positions_xyz)
+            positions_xyz = np.add(positions_xyz, np.multiply(normals, normal_offset))
+
+        return positions_xyz
+
+    def compute_normal(self, points: np.ndarray) -> np.ndarray:
+        params = np.linspace(0, 1, len(points))
+        tangents = np.column_stack(
+            [spline.derivative()(params) for spline in self._splines]
+        )
+        tangents /= np.linalg.norm(tangents, axis=1)[:, np.newaxis]
+        normals = np.zeros_like(tangents)
+        normals[:, 0] = -tangents[:, 1]
+        normals[:, 1] = tangents[:, 0]
+        return _normalize(normals)
+
+    def points_per_sampling(self, sampling_density: float, normal_offset=None) -> int:
+        curve_points = self.sample(1000)
+        segments = curve_points[1:] - curve_points[:-1]
+        length = np.sum(np.linalg.norm(segments, axis=1))
+        n_points = int(np.ceil(length / sampling_density))
+        return n_points
+
+
 class TriangularMesh(Parametrization):
     """
     Represent a point cloud as triangular mesh.
@@ -1170,17 +1251,16 @@ class BallPivoting(TriangularMesh):
         radii: Tuple[float] = (5.0,),
         max_hole_size: float = -1,
         target_edge_length: float = -1,
-        smoothness: float = 1.0,
+        smoothness: float = 0.0,
         curvature_weight: float = 0.0,
         pressure: float = 0.0,
         n_smoothing: int = 5,
         k_neighbors=50,
+        boundary_ring: int = 0,
         **kwargs,
     ) -> "BallPivoting":
-        """Reconstruct a surface mesh using ball pivoting.
-
-        Estimates normals, runs ball pivoting, removes small clusters,
-        repairs the mesh, and optionally triangulates holes with fairing.
+        """
+        Ball pivoting surface reconstruction.
 
         Parameters
         ----------
@@ -1194,7 +1274,7 @@ class BallPivoting(TriangularMesh):
             ``-1`` fills all holes, ``0`` skips hole filling.
         target_edge_length : float
             Target edge length for remeshing after hole filling.
-            -1 uses the median edge length of the mesh.
+            ``-1`` uses the average edge length of the mesh.
         smoothness : float
             Controls the balance between position anchoring and curvature
             minimization. 0 = vertices stay in place, 1 = full curvature
@@ -1204,10 +1284,13 @@ class BallPivoting(TriangularMesh):
         pressure : float
             Internal mesh pressure along vertex normals.
         n_smoothing : int
-            Taubin smoothing steps before and after fairing.
+            Taubin smoothing iterations applied after mesh creation.
         k_neighbors : int
             Number of neighbors for normal estimation. Decrease for
             small point clouds.
+        boundary_ring : int
+            Number of vertex rings around inferred hole vertices to
+            include in fairing.
 
         Returns
         -------
@@ -1248,22 +1331,36 @@ class BallPivoting(TriangularMesh):
         if max_hole_size == 0:
             return cls(mesh=mesh)
 
-        new_vs, new_fs = meshing.triangulate_refine_fair(
-            vs=np.asarray(mesh.vertices),
-            fs=np.asarray(mesh.triangles),
-            hole_len_thr=max_hole_size,
-            target_edge_length=target_edge_length,
-            smoothness=smoothness,
-            curvature_weight=curvature_weight,
-            pressure=pressure,
-        )
-        mesh = meshing.to_open3d(new_vs, new_fs)
-        mesh = mesh.remove_degenerate_triangles()
-        if n_smoothing > 0:
-            mesh = mesh.filter_smooth_taubin(number_of_iterations=n_smoothing)
+        vs = np.asarray(mesh.vertices, dtype=np.float64)
+        fs = np.asarray(mesh.triangles)
 
-        mesh = mesh.compute_vertex_normals()
-        return cls(mesh=mesh)
+        out_fs = meshing.close_holes(vs, fs, max_hole_size)
+        n_original_faces = len(fs)
+        hole_fids = np.arange(n_original_faces, len(out_fs))
+
+        try:
+            mesh = meshing.remesh(meshing.to_open3d(vs, out_fs), target_edge_length)
+            new_vs = np.asarray(mesh.vertices, dtype=np.float64)
+            new_fs = np.asarray(mesh.triangles)
+        except (ValueError, RuntimeError):
+            new_vs, new_fs = vs, out_fs
+
+        _, face_ids, _ = igl.point_mesh_squared_distance(
+            new_vs, vs, out_fs.astype(np.int64)
+        )
+        vids = np.where(np.isin(face_ids, hole_fids))[0]
+
+        if len(vids) > 0:
+            new_vs = meshing.fair_mesh(
+                new_vs,
+                new_fs,
+                vids,
+                smoothness=smoothness,
+                curvature_weight=curvature_weight,
+                pressure=pressure,
+                n_ring=boundary_ring,
+            )
+        return cls(mesh=meshing.to_open3d(new_vs, new_fs))
 
 
 class PoissonMesh(TriangularMesh):
@@ -1280,7 +1377,7 @@ class PoissonMesh(TriangularMesh):
         **kwargs,
     ) -> "PoissonMesh":
         """
-        Reconstruct a surface mesh using Poisson reconstruction.
+        Poisson surface reconstruction.
 
         Parameters
         ----------
@@ -1308,8 +1405,6 @@ class PoissonMesh(TriangularMesh):
         PoissonMesh
             Reconstructed surface mesh.
         """
-        import open3d as o3d
-
         positions = np.asarray(positions, dtype=np.float64)
 
         pcd = o3d.geometry.PointCloud()
@@ -1372,17 +1467,14 @@ class AlphaShape(TriangularMesh):
         voxel_size: float = 1,
         alpha: float = 1,
         target_edge_length: float = -1,
-        smoothness: float = 1.0,
+        smoothness: float = 0.0,
         curvature_weight: float = 0.0,
         pressure: float = 0.0,
+        boundary_ring: int = 0,
         **kwargs,
     ) -> "AlphaShape":
         """
-        Reconstruct a surface mesh using alpha shapes.
-
-        Computes an alpha shape from the point cloud. Falls back to a
-        convex hull if the alpha shape fails. Optionally remeshes and
-        fairs vertices distant from the input.
+        Alpha shape surface reconstruction.
 
         Parameters
         ----------
@@ -1395,7 +1487,7 @@ class AlphaShape(TriangularMesh):
             features. ``1`` produces a convex hull.
         target_edge_length : float
             Target edge length for remeshing before fairing.
-            -1 uses the median edge length of the mesh.
+            ``-1`` uses the average edge length of the mesh.
         smoothness : float
             Controls the balance between position anchoring and curvature
             minimization. 0 = vertices stay in place, 1 = full curvature
@@ -1404,17 +1496,18 @@ class AlphaShape(TriangularMesh):
             Weight for triharmonic (higher-order smoothing) energy.
         pressure : float
             Internal mesh pressure along vertex normals.
+        boundary_ring : int
+            Number of vertex rings around inferred vertices to
+            include in fairing.
 
         Returns
         -------
         AlphaShape
             Reconstructed surface mesh.
         """
-        voxel_size = np.max(voxel_size)
         positions = np.asarray(positions, dtype=np.float64)
 
-        scale = positions.max(axis=0)
-
+        scale = positions.max()
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(positions.copy() / scale)
         try:
@@ -1431,6 +1524,7 @@ class AlphaShape(TriangularMesh):
         mesh.vertices = o3d.utility.Vector3dVector(
             np.multiply(np.asarray(mesh.vertices), scale)
         )
+
         mesh = mesh.remove_non_manifold_edges()
         mesh = mesh.remove_degenerate_triangles()
         mesh = mesh.remove_duplicated_triangles()
@@ -1446,14 +1540,29 @@ class AlphaShape(TriangularMesh):
         if smoothness == 0 and curvature_weight == 0 and pressure == 0:
             return cls(mesh=mesh)
 
-        vs, fs = meshing.triangulate_refine_fair(
-            vs=np.asarray(mesh.vertices),
-            fs=np.asarray(mesh.triangles),
-            hole_len_thr=0,
-            target_edge_length=target_edge_length,
+        mesh = meshing.remesh(mesh, target_edge_length)
+        vs = np.asarray(mesh.vertices, dtype=np.float64)
+        fs = np.asarray(mesh.triangles)
+
+        distances, _ = utils.find_closest_points(positions, vs)
+        edge_length = (
+            target_edge_length
+            if target_edge_length > 0
+            else float(np.median(meshing.compute_edge_lengths(mesh)))
+        )
+        vids = np.where(distances > edge_length / 2.0)[0]
+
+        if len(vids) == 0:
+            return cls(mesh=meshing.to_open3d(vs, fs))
+
+        vs = meshing.fair_mesh(
+            vs,
+            fs,
+            vids,
             smoothness=smoothness,
             curvature_weight=curvature_weight,
             pressure=pressure,
+            n_ring=boundary_ring,
         )
         return cls(mesh=meshing.to_open3d(vs, fs))
 
@@ -1479,11 +1588,7 @@ class FlyingEdges(TriangularMesh):
         **kwargs,
     ) -> "FlyingEdges":
         """
-        Reconstruct a surface mesh using flying edges isosurface extraction.
-
-        Voxelizes the point cloud, runs VTK's discrete flying edges
-        algorithm, and applies windowed sinc smoothing with feature
-        angle preservation.
+        Flying edges isosurface reconstruction.
 
         Parameters
         ----------
@@ -1560,87 +1665,6 @@ class FlyingEdges(TriangularMesh):
         return cls(mesh=meshing.to_open3d(vertices, faces), repair=False)
 
 
-class SplineCurve(Parametrization):
-    """
-    Parametrize a point cloud as a spline curve.
-
-    Parameters
-    ----------
-    positions : np.ndarray
-        Control points defining the spline curve
-    """
-
-    def __init__(self, positions: np.ndarray, order: int = 1, **kwargs):
-        self.positions = np.asarray(positions)
-
-        params = self._compute_params()
-        if order == 3:
-            self._splines = [
-                interpolate.CubicSpline(params, self.positions[:, i])
-                for i in range(self.positions.shape[1])
-            ]
-        else:
-            self._splines = [
-                interpolate.UnivariateSpline(params, self.positions[:, i], k=order)
-                for i in range(self.positions.shape[1])
-            ]
-
-    def _compute_params(self) -> np.ndarray:
-        diff = np.diff(self.positions, axis=0)
-        chord_lengths = np.linalg.norm(diff, axis=1)
-        cumulative = np.concatenate(([0], np.cumsum(chord_lengths)))
-        return cumulative / cumulative[-1]
-
-    @classmethod
-    def fit(cls, positions: np.ndarray, *, order: int = 1, **kwargs) -> "SplineCurve":
-        """Fit a spline curve through a point cloud.
-
-        Parameters
-        ----------
-        positions : np.ndarray
-            Control points with shape (n, 3). Order along the
-            curve is inferred from cumulative chord lengths.
-        order : int
-            Spline degree. ``1`` = linear, ``3`` = cubic spline.
-
-        Returns
-        -------
-        SplineCurve
-            Fitted spline curve.
-        """
-        return cls(positions=np.asarray(positions, dtype=np.float64), order=order)
-
-    def sample(
-        self, n_samples: int, normal_offset: float = 0.0, **kwargs
-    ) -> np.ndarray:
-        t = np.linspace(0, 1, n_samples)
-        positions_xyz = np.column_stack([spline(t) for spline in self._splines])
-
-        if normal_offset != 0:
-            normals = self.compute_normal(positions_xyz)
-            positions_xyz = np.add(positions_xyz, np.multiply(normals, normal_offset))
-
-        return positions_xyz
-
-    def compute_normal(self, points: np.ndarray) -> np.ndarray:
-        params = np.linspace(0, 1, len(points))
-        tangents = np.column_stack(
-            [spline.derivative()(params) for spline in self._splines]
-        )
-        tangents /= np.linalg.norm(tangents, axis=1)[:, np.newaxis]
-        normals = np.zeros_like(tangents)
-        normals[:, 0] = -tangents[:, 1]
-        normals[:, 1] = tangents[:, 0]
-        return _normalize(normals)
-
-    def points_per_sampling(self, sampling_density: float, normal_offset=None) -> int:
-        curve_points = self.sample(1000)
-        segments = curve_points[1:] - curve_points[:-1]
-        length = np.sum(np.linalg.norm(segments, axis=1))
-        n_points = int(np.ceil(length / sampling_density))
-        return n_points
-
-
 def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.ndarray:
     if mesh_init_factor is None:
         point_cloud = mesh.sample_points_uniformly(
@@ -1657,7 +1681,7 @@ def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.
 def _sample_from_chull(
     positions_xyz: np.ndarray, n_samples: int, mesh_init_factor: int = None
 ) -> np.ndarray:
-    chull = AlphaShape.fit(positions_xyz)
+    chull = AlphaShape.fit(positions_xyz, smoothness=0.0, alpha=1)
     return _sample_from_mesh(chull.mesh, n_samples, mesh_init_factor)
 
 

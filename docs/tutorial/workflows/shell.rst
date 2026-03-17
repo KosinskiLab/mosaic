@@ -10,7 +10,7 @@ The Mosaic Shell provides headless access to most GUI operations and allows comp
 
 .. note::
 
-   The scripting interface is available from version 1.3.0 of Mosaic.
+   The scripting interface is available from version 1.2.1 of Mosaic.
 
 
 Getting Started

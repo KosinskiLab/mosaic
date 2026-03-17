@@ -15,12 +15,9 @@ _module_map = {
         "fill_mesh",
     ],
     ".repair": [
-        "triangulate_refine_fair",
         "fair_mesh",
         "get_ring_vertices",
         "close_holes",
-        "get_mollified_edge_length",
-        "harmonic_deformation",
     ],
     ".volume": [
         "mesh_volume",

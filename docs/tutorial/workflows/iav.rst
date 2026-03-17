@@ -2,7 +2,7 @@
 Influenza A Virus
 =================
 
-This tutorial guides you through analyzing Influenza A Virus (IAV) virus-like particles (VLPs) using Mosaic, taking you from initial segmentation to creating coarse-grained Martini models.
+This tutorial walks through analyzing Influenza A Virus (IAV) virus-like particles (VLPs) — from membrane segmentation to coarse-grained Martini models.
 
 .. figure:: ../../_static/tutorial/iav_workflow/mosaic_workflow.png
    :width: 100 %
@@ -13,26 +13,24 @@ This tutorial guides you through analyzing Influenza A Virus (IAV) virus-like pa
 Requirements
 ------------
 
-First, install Mosaic according to the :doc:`installation instructions <../installation>`. For HMFF functionality, install the additional requirements listed in :ref:`DTS Simulations <installation-dts>`. If you plan to backmap DTS models to coarse-grained representations, install the tools listed in the :ref:`DTS Backmapping <installation-backmapping>` section.
+Install Mosaic per the :doc:`installation instructions <../installation>`. For HMFF, install the :ref:`DTS Simulations <installation-dts>` dependencies. For backmapping, install the :ref:`DTS Backmapping <installation-backmapping>` tools.
 
 .. note::
 
-   Membrane segmentation, template-matching and the equilibration of coarse-grained model equilibration require a GPU to complete in reasonable time. You can download intermediate results of compute-intensive task and additional material from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_.
+   Segmentation, template matching, and CG equilibration require a GPU. Pre-computed intermediates are available from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_.
 
-We'll use publicly available cryo-ET data of an IAV VLP [1]_, which you can download from `EMDB-11075 <https://www.ebi.ac.uk/emdb/EMD-11075>`_ or via command line
+Download the IAV VLP tomogram [1]_ from `EMDB-11075 <https://www.ebi.ac.uk/emdb/EMD-11075>`_:
 
 .. code-block:: bash
 
    wget https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-11075/map/emd_11075.map.gz
    gunzip emd_11075.map.gz && mv emd_11075.map emd_11075.mrc
 
-For membrane segmentation, download the MemBrain_seg_v10_alpha weights [2]_ from `Google Drive <https://drive.google.com/file/d/1tSQIz_UCsQZNfyHg0RxD-4meFgolszo8/view>`_.
+For segmentation, download the MemBrain_seg_v10_alpha weights [2]_ from `Google Drive <https://drive.google.com/file/d/1tSQIz_UCsQZNfyHg0RxD-4meFgolszo8/view>`_.
 
 
 Visual Demonstration
 --------------------
-
-The video below demonstrates the workflow from raw cryo-ET data to initial meshes, covering membrane segmentation, mesh generation, and refinement steps detailed in the following sections.
 
 ..  youtube:: -XyxZpJQoXA
    :width: 100%
@@ -42,65 +40,47 @@ The video below demonstrates the workflow from raw cryo-ET data to initial meshe
 Membrane Segmentation
 ---------------------
 
-1. Launch Mosaic and navigate to the **Intelligence** tab.
-2. Click on the arrow next to the **Membrane** button and configure:
+1. In the **Intelligence** tab, click the arrow next to **Membrane** and configure:
 
-   - Click the *Browse* button to select the downloaded model ckpt file.
+   - Model: select the downloaded checkpoint file
    - Window Size: 160
    - Clustering: Enabled
    - Augmentation: Enabled
    - Output Sampling: 12.0
-5. Click *Apply* and select the downloaded IAV VLP tomogram.
 
-The status indicator will change from "Ready" to "Membrane Segmentation." The results will automatically load into Mosaic when complete.
+2. Click *Apply* and select the IAV VLP tomogram.
 
 .. note::
 
-   Membrane segmentation requires a GPU. If unavailable, download the pre-computed segmentation `emd_11075_MemBrain_seg_v10_alpha.ckpt_segmented.mrc.gz <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_ and load it using File > Open.
+   Without a GPU, download the pre-computed segmentation from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_ and load via File > Open.
 
 
 Mesh Creation
 -------------
 
-
 Clean the Segmentation
 ^^^^^^^^^^^^^^^^^^^^^^
 
-1. Switch to the **Segmentation** tab
-2. Remove clusters corresponding to small artifacts
+1. In the **Segmentation** tab, select the *Cluster* section in the **Object Browser**
+2. Click **Select** from **Base operations** and use the threshold slider to isolate the central IAV VLP
+3. Close the selection window and press **delete** to remove small artifact clusters
+4. Press **r** to activate the crosshair selector, then click-drag to select incorrectly segmented voxels near the tomogram edge. Press **delete** to remove them.
+5. Thin the segmentation:
 
-   1. In the **Object browser**, select the *Cluster* section.
-   2. Click the **Select** button from the **Base operations** menu, a window should open.
-   3. Use the slider at the bottom of the window to adjust the threshold for cluster selection. To remove small artifacts, drag the right slider to the left until only the central IAV VLP remains unselected.
-   4. Close the window, the selected clusters should now be highlighted in the **Object browser** as well in the viewer.
-   5. Press **delete** key or use **Remove** menu button to remove the selected clusters.
-3. Click the **Select** button from the **Base operations** menu, a window should open.
-4. Use the slider at the bottom of the window to adjust the threshold for cluster selection. To remove the small artifacts, drag the right slider to the left until only the central IAV VLP remains unselected.  
-5. Close the window, the selected clusters should now be highlighted in the **Object browser** as well in the viewer.  
-6. Press **delete** key or use **Remove** menu button to remove the selected clusters
-7. Eliminate incorrectly segmented voxels using manual selection
-
-   1. Press **r** key - the mouse cursor should change to a crosshair  
-   2. Click and drag to select the incorrectly segmented voxels at one end of the IAV VLP near the VLP end at the edge of the tomogram.
-   3. Press **delete** key or use **Remove** menu button to remove the selected voxels  
-8. Thin the segmentation.
-
-   1. Select the central IAV VLP in the Object Browser.
-   2. In the **Segmentation** tab, click the arrow next to the **Thin** button.
-   3. Choose the *outer* option to extract the outer segmentation layer.
-   4. Click **Apply** to apply the operation. A new object will appear in the *Model* section of the *Object Browser*.
-   5. Righ click on the previous object and click hide to clearly see the result of the thinning operation.
+   - Select the VLP in the Object Browser
+   - In the **Segmentation** tab, click the arrow next to **Thin** and choose *outer*
+   - Click *Apply*
 
 .. raw:: html
 
    <div class="before-after-container" style="display: flex; gap: 10px;">
      <div style="flex: 1;">
        <img src="../../_static/tutorial/iav_workflow/segmentation_raw.png" style="width: 100%;">
-      <p style="color: #707070">Before segmentation cleanup</p>
+      <p style="color: #707070">Before cleanup</p>
      </div>
      <div style="flex: 1;">
        <img src="../../_static/tutorial/iav_workflow/segmentation_clean.png" style="width: 100%;">
-         <p style="color: #707070">After segmentation cleanup</p>
+         <p style="color: #707070">After cleanup</p>
      </div>
    </div>
 
@@ -108,22 +88,15 @@ Clean the Segmentation
 Generate Initial Mesh
 ^^^^^^^^^^^^^^^^^^^^^
 
-1. Switch to the **Parametrization** tab.
-2. Select the cleaned segmentation in the *Cluster* section of the *Object Browser*.
-3. Click on the arrow next to the **Mesh** buton and configure:
+1. In the **Parametrization** tab, select the cleaned segmentation
+2. Click the arrow next to **Mesh** and configure:
 
    - Method: Ball Pivoting
-   - Elastic Weight: 1.0
-   - Curvature Weight: 10.0
-   - Volume Weight: 0.0
-   - Boundary Ring: 0
-   - Neighbors: 15
-   - Radii: 60.0
-   - Hole Size: -1.0
-   - Downsample: True
-   - Smoothing Steps: 5
-4. Click *Apply* to fit the mesh, creating a new object in the *Model* section of the *Object Browser*.
-5. Right-click the new mesh object and select **Representation** to change its visualization to **Mesh** for better clarity.
+   - Elastic Weight: 1.0, Curvature Weight: 10.0, Volume Weight: 0.0
+   - Boundary Ring: 0, Neighbors: 15, Radii: 60.0, Hole Size: -1.0
+   - Downsample: True, Smoothing Steps: 5
+
+3. Click *Apply*. Right-click the new mesh and set **Representation** to **Mesh**.
 
 .. figure:: ../../_static/tutorial/iav_workflow/initial_mesh_5550.png
    :width: 100 %
@@ -135,39 +108,16 @@ Generate Initial Mesh
 Refine the Mesh
 ^^^^^^^^^^^^^^^
 
-Since one cap of the IAV VLP falls outside the tomogram, and we'll fill the mesh in that region to mitigate boundary effects in subsequent simulations:
+One cap of the VLP falls outside the tomogram. We resample and re-mesh to fill it:
 
-1. Sample points from the created mesh.
-
-   - Select the mesh in the *Object Browser*.
-   - Click on the arrow next to the **Sample** button and set:
-
-     - Sampling Method: Points
-     - Sampling: 30000
-
-   - Click *Apply*.
-
-3. Create a new mesh from the cleaned samples.
-
-   - Select the cleaned samples in the *Object Browser*.
-   - Click the arrow next to **Mesh** again and configure:
-
-     - Method: Ball Pivoting
-     - Elastic Weight: 1.0
-     - Curvature Weight: 10.0
-     - Volume Weight: 0.005
-     - Boundary Ring: 0
-     - Neighbors: 15
-     - Radii: 60.0
-     - Hole Size: -1.0
-     - Downsample: True
-     - Smoothing Steps: 5
-4. Click *Apply* to fit the mesh.
-5. Right-click the new mesh object and select **Representation** to change its visualization to **Mesh** for better clarity. Hide the segmentation object to see the mesh clearly and compare it with the original mesh.
+1. Select the mesh, click **Sample** (Method: *Points*, Sampling: 30000), click *Apply*
+2. Select the sampled points, click **Mesh** with the same settings as above but Volume Weight: 0.005
+3. Click *Apply*
 
 .. note::
 
-   Observe the filled cap of the IAV VLP, which extends beyond the original segmentation.
+   The filled cap extends beyond the original segmentation.
+
 .. raw:: html
 
    <div class="before-after-container" style="display: flex; gap: 10px;">
@@ -185,21 +135,10 @@ Since one cap of the IAV VLP falls outside the tomogram, and we'll fill the mesh
 Equilibrate the Mesh
 ^^^^^^^^^^^^^^^^^^^^
 
-Before DTS simulation, meshes require equilibration to ensure stability and physical validity:
+1. Select the refined mesh, go to **Intelligence** tab, click **Equilibrate**
+2. Set Average Edge Length: 100, Steps: 5000
 
-1. Select the refined mesh model from the *Object Browser*
-2. Navigate to the **Intelligence** tab and click **Equilibrate**
-3. Configure:
-
-   - Average Edge Length: 100
-   - Steps: 5000
-   - Other parameters at default values
-
-Once complete, Mosaic will create three meshes in the target directory:
-
-- mesh_base: the input mesh
-- mesh_remeshed: input mesh with desired edge length
-- mesh_equilibrated: the fully equilibrated mesh using Trimem [3]_
+This produces three meshes: mesh_base (input), mesh_remeshed (target edge length), and mesh_equilibrated (equilibrated via Trimem [3]_).
 
 .. figure:: ../../_static/tutorial/iav_workflow/edge_lengths.png
    :scale: 40 %
@@ -207,41 +146,35 @@ Once complete, Mosaic will create three meshes in the target directory:
 
    Comparison of edge lengths
 
-To assess edge-length distribution, import the meshes into Mosaic and use the **Properties** button in the **Segmentation** tab. We typically choose the equilibrated mesh for DTS simulation due to its smoother surface and more predictable behavior.
-
+Inspect edge-length distributions using **Properties** in the **Segmentation** tab. Use the equilibrated mesh for DTS simulation.
 
 .. note::
 
-   Pre-computed equilibrated meshes are available from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_.
+   Pre-computed meshes are available from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_.
 
 
 HMFF Simulation
 ---------------
 
-Navigate to the **Intelligence** tab and click **Setup** in the **DTS Simulation** section. Configure:
+In the **Intelligence** tab, click **Setup** in the **DTS Simulation** section:
 
 .. figure:: ../../_static/tutorial/iav_workflow/hmff_setup.png
    :scale: 40 %
    :align: right
 
-   HMFF simulation setup dialog
+   HMFF simulation setup
 
-- Mesh: Select mesh_equilibrated.q
-- Volume: Select the downloaded EMD-11075.
+- Mesh: mesh_equilibrated.q
+- Volume: EMD-11075
 - Invert Contrast: Enabled
-- HMFF weight (ξ): 5.0
-- Rigidity (κ): 25.0
-- Steps: 150000
-- Threads: 8 (or 1 for Mac unless FreeDTS is properly configured)
-- Lowpass cutoff: 50Å
-- Highpass cutoff: 900Å
+- HMFF weight (ξ): 5.0, Rigidity (κ): 25.0
+- Steps: 150000, Threads: 8
+- Lowpass: 50Å, Highpass: 900Å
 
-This will create a filtered density map and setup files for DTS simulation [4]_ with HMFF. Open input.dts and set:
+This creates setup files for DTS simulation [4]_ with HMFF. In input.dts, set:
 
 - AlexanderMove   = MetropolisAlgorithmOpenMP 0
 - VolumeCoupling  = SecondOrder 0.6 1000 1.1
-
-Run the simulation (takes less than five minutes with 8 threads):
 
 .. code-block:: bash
 
@@ -251,33 +184,29 @@ Run the simulation (takes less than five minutes with 8 threads):
 
    Simulation outputs are available on `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_ in hmff/TrajTSI_Done.
 
-To analyze the refined mesh in Mosaic:
+To load results, click the arrow next to **Trajectory** in the **Intelligence** tab:
 
-1. Click the arrow next to the **Trajectory** button in the **Intelligence** tab
-2. Configure the settings to match the input.dts file:
+- Scale: 0.012202743213335199
+- Offset: 21.0,6.0,16.0
 
-   - Scale: 0.012202743213335199
-   - Offset: 21.0,6.0,16.0
-
-Mosaic will load all trajectory time points. Use View > Trajectory player to navigate through them. To assess the results, open the density file in View > Volume Viewer and adjust contrast as needed. Compare the mesh at step 0 (left) and step 150,000 (right) to see how HMFF has refined the mesh to better match the viral membrane.
+Use View > Trajectory player to navigate time points and View > Volume Viewer to overlay the density.
 
 .. raw:: html
 
    <div class="before-after-container" style="display: flex; gap: 10px;">
      <div style="flex: 1;">
        <img src="../../_static/tutorial/iav_workflow/hmff_t0.png" style="width: 100%;">
-      <p style="color: #707070">Initial mesh.</p>
+      <p style="color: #707070">Initial mesh</p>
      </div>
      <div style="flex: 1;">
        <img src="../../_static/tutorial/iav_workflow/hmff_t150.png" style="width: 100%;">
-         <p style="color: #707070">HMFF-refined mesh.</p>
+         <p style="color: #707070">HMFF-refined mesh</p>
      </div>
    </div>
 
-
 .. note::
 
-   If you notice vertices frozen in place throughout the simulation, this indicates the simulation is unable to develop them. Try increasing Min_Max_Lenghts or choose a lower edge length for equilibration to increase mesh resolution.
+   Frozen vertices indicate the simulation cannot develop them. Try increasing Min_Max_Lenghts or lowering the equilibration edge length.
 
 
 Constrained Template Matching
@@ -286,112 +215,57 @@ Constrained Template Matching
 Generate Seed Points
 ^^^^^^^^^^^^^^^^^^^^
 
-To create seed points from the HMFF-refined mesh:
+1. Select your desired trajectory time-point, right-click and **Duplicate**
+2. In **Parametrization**, configure **Sample**: Method: *Distance*, Sampling: 40, Offset: 100
 
-1. Select your desired time-point in the trajectory
-2. Right-click the trajectory object in the *Object Browser* and select **Duplicate**
-3. Move to the **Parametrization** tab and configure **Sample**:
-
-   - Sampling Method: Distance
-   - Sampling: 40
-   - Offset: 100
-
-This generates seed points approximately 40Å apart with a 100Å offset from the surface, which should position them near the centers of HA and NA proteins. Both can be validated using the **Properties** button in the **Analysis** section of the **Segmentation** tab. The offset should roughly correspond to the center of the protein-of-interest, in our case Hemagglutinin (HA) and Neuraminidase (NA).
-
-Export the cluster object as a STAR file by right-clicking on it.
+This places seed points ~40Å apart with a 100Å offset (roughly the center height of HA/NA). Export as STAR via right-click.
 
 
 Template Matching
 ^^^^^^^^^^^^^^^^^
 
-The following outlines how to perform constrained template matching using PyTME [5]_.
+In the **Intelligence** tab, click **Setup** under Template Matching and configure PyTME [5]_:
 
-1. **Launch the PyTME Template Matching Dialog**:
+- **Data**: set working directory, paths to EMD-11075 and HA/NA structures
+- **Preprocess**: Lowpass: 15, Align Template Axis: z, Flip Template: checked
+- **Matching**: Angular Step: 7, Score: FLC, seed points STAR file, Rotational Uncertainty: 15, Translational Uncertainty: (6,6,10) for HA / (6,6,12) for NA, Tilt Range: 60,60, Wedge Axes: 2,0, Defocus: 30000, No Centering: checked
+- **Peak Calling**: PeakCallerMaximumFilter, 10000 peaks, Min Distance: 7 (HA) / 10 (NA)
+- **Compute**: set cores, memory, backend: cupy
 
-   - Navigate to the **Intelligence** tab
-   - Click on **Setup** in the Template Matching directive.
-
-2. **Prepare Data**:
-   - In the "Data" tab, specify your working directory
-   - Set paths to the EMD-11075 tomogram and the HA/NA structures
-
-3. **Prepare Templates**:
-
-   - Switch to the "Preprocess" tab to configure template preparation
-   - Set Lowpass to 15
-   - Set Align Template Axis to z
-   - Set Flip Template to checked
-
-4. **Configure Template Matching**:
-
-   - In the "Matching" tab configure template matching parameters.
-   - Set Angular Step to 7
-   - Set Score Function to FLC
-   - Set the path to the STAR file with seed points
-   - Set Rotational Uncertainty to 15
-   - Set Translational Uncertainty to (6,6,10) for HA and (6,6,12) for NA due to the longer stalk.
-   - Set Tilt Range to 60,60 to create a wedge mask from -60 to 60 degrees.
-   - Set Wedge Axes to 2, 0
-   - Set Defocus to 30000
-   - Set No Centering to checked
-
-5. **Set Peak Calling Parameters**:
-
-   - Switch to the "Peak Calling" tab
-   - Set Peak Caller PeakCallerMaximumFilter
-   - Set Number of Peaks 10000
-   - Set Minimum Distance 7 for HA and 10 for NA
-
-6. **Configure Compute Resources**:
-
-   - In the "Compute" tab, allocate CPU cores and memory
-   - Set backend cupy.
-
-7. **Execute the Workflow**:
-
-   - Click "OK" to generate the template matching scripts
-   - Mosaic will create and organize all necessary files in your working directory
-   - Run the generated scripts to perform template matching
+Click OK to generate and run the matching scripts.
 
 .. note::
 
-   Template matching results are available from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_.
+   Results are available from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_.
 
 
 Refine Protein Picks
 ^^^^^^^^^^^^^^^^^^^^
 
-The template matching process generates coordinate files for HA and NA that need filtering:
+1. Keep the top 97% of NA picks by score
+2. Visualize and manually refine picks in Mosaic using the selection tool
+3. Remove HA picks within 7 voxels of NA picks to resolve clashes
 
-1. Keep the top 97% of NA picks by score.
-2. Visualize and manually refine the picks in Mosaic using the selection tool (or the GUI provided with PyTME).
-3. Remove HA picks that are within 7 voxels of NA picks to avoid clashes.
-
-Example filtering scripts are available from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_, namely pytme/filter.py and pytme/resolve_clash.py.
+Filtering scripts: pytme/filter.py and pytme/resolve_clash.py on `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_.
 
 
 Coarse-Grained Martini Models
 -----------------------------
 
-
 Backmapping
 ^^^^^^^^^^^
 
-We can now combined HMFF-refined membrane models with experimentally determined protein positions to create coarse-grained Martini model representations of IAV VLP
-
-1. In the **Intelligence** tab, click **Backmapping** and select an output directory
-2. Set target edge length to 20 (corresponds to 20Å in this case) and add both NA and HA inclusions
-3. Navigate to the specified directory
+1. In **Intelligence**, click **Backmapping**, select an output directory
+2. Set target edge length to 20, add HA and NA inclusions
 
 .. tip::
 
-   The output directory will also contain a file *mesh.tsi*, which can be used for equilibrium DTS simulations with protein inclusions.
-
+   The output also contains *mesh.tsi* for equilibrium DTS simulations with protein inclusions.
 
 Coarse Graining
 ^^^^^^^^^^^^^^^
 
-Open the file *martinize.sh* and add paths to PDB files for *NA_STRUCTURE* and *HA_STRUCTURE*. Save the file and run
+Edit *martinize.sh* to add PDB paths for *NA_STRUCTURE* and *HA_STRUCTURE*, then:
 
 .. code-block:: bash
 
@@ -399,37 +273,28 @@ Open the file *martinize.sh* and add paths to PDB files for *NA_STRUCTURE* and *
 
 .. note::
 
-   The principal axis of both proteins is required to align with the z-axis. This can be achieved with different tools. An example script using PyTME is available from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_, namely pytme/templates/rot_structures.py.
+   Protein principal axes must align with z. An example rotation script is available on `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_ (pytme/templates/rot_structures.py).
 
-Once the command above is completed, we can create a coarse-grained representation of the entire system using TS2CG [6]_
+Create the coarse-grained system using TS2CG [6]_:
 
 .. code-block:: bash
 
-   # Use PLM utility to create a bilayer
-   bash plm.sh
+   bash plm.sh   # Create bilayer
+   bash pcg.sh   # Populate with lipids
 
-   # Use PCG utility to populate with lipids
-   bash pcg.sh
-
-This creates system.gro, which can be used for molecular dynamics simulation or visualization using e.g. Mosaic/VMD.
-
+This produces system.gro for MD simulation or visualization.
 
 Equilibration
 ^^^^^^^^^^^^^
 
-Gromacs [7]_ settings for Martini [8]_ model equilibration are available from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_ in the ts2cg folder:
+Gromacs [7]_ settings for Martini [8]_ equilibration are on `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_ (ts2cg folder):
 
 .. code-block:: bash
 
    bash equilibrate.sh
 
-This performs energy minimization which can be run on a standard laptop. The final equilibration step should be run in an HPC environment (see eq/equilibrate.sbatch for an example).
+Energy minimization runs on a laptop. The final equilibration step should run on an HPC cluster (see eq/equilibrate.sbatch).
 
-
-Conclusion
-----------
-
-You've now completed the entire workflow for analyzing IAV virus-like particles—from tomogram segmentation to creating a detailed molecular model. This model can serve as a foundation for structural analysis or as a starting system for molecular simulations.
 
 References
 ----------

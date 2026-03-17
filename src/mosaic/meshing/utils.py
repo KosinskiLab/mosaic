@@ -70,8 +70,21 @@ def scale(mesh, scaling):
     return to_open3d(vertices, triangles)
 
 
-def remesh(mesh, target_edge_length, n_iter=100, **kwargs):
-    """Remesh to target edge length using Botsch-Kobbelt isotropic remeshing."""
+def remesh(mesh, target_edge_length=None, n_iter=100, feature=None):
+    """Remesh to target edge length using Botsch-Kobbelt isotropic remeshing.
+
+    Parameters
+    ----------
+    mesh : open3d.geometry.TriangleMesh
+        Input mesh.
+    target_edge_length : float, optional
+        Desired edge length. None uses the average edge length.
+    n_iter : int, optional
+        Number of remeshing iterations. Default is 100.
+    feature : ndarray, optional
+        Indices of feature vertices that are preserved and placed at the
+        beginning of the output vertex array. Default is None.
+    """
     from gpytoolbox import remesh_botsch
 
     mesh = mesh.remove_duplicated_vertices()
@@ -81,7 +94,14 @@ def remesh(mesh, target_edge_length, n_iter=100, **kwargs):
     v = np.asarray(mesh.vertices, dtype=np.float64)
     f = np.asarray(mesh.triangles, dtype=np.int32)
 
-    v_new, f_new = remesh_botsch(v, f, h=target_edge_length, i=n_iter)
+    if target_edge_length is not None and target_edge_length <= 0:
+        target_edge_length = None
+
+    kw = {"h": target_edge_length, "i": n_iter}
+    if feature is not None:
+        kw["feature"] = np.asarray(feature, dtype=np.int64)
+
+    v_new, f_new = remesh_botsch(v, f, **kw)
     return to_open3d(v_new, f_new)
 
 

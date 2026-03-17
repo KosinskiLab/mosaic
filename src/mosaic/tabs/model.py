@@ -259,13 +259,15 @@ class ModelTab(QWidget):
     def _repair_mesh(
         self,
         max_hole_size=-1,
-        elastic_weight=0,
+        smoothness=0,
         curvature_weight=0,
-        volume_weight=0,
-        boundary_ring=0,
+        pressure=0,
         flip_normals=False,
+        fair_all=False,
+        boundary_ring=0,
         **kwargs,
     ):
+        import igl
         from ..parametrization import TriangularMesh
 
         for geometry in self._get_selected_meshes():
@@ -275,15 +277,38 @@ class ModelTab(QWidget):
             fit.mesh.remove_duplicated_triangles()
             fit.mesh.remove_unreferenced_vertices()
             fit.mesh.remove_duplicated_vertices()
-            vs, fs = meshing.triangulate_refine_fair(
-                vs=fit.vertices,
-                fs=fit.triangles,
-                alpha=elastic_weight,
-                beta=curvature_weight,
-                gamma=volume_weight,
-                hole_len_thr=max_hole_size,
-                n_ring=boundary_ring,
-            )
+            vs = np.asarray(fit.vertices, dtype=np.float64)
+            fs = np.asarray(fit.triangles)
+
+            out_fs = meshing.close_holes(vs, fs, max_hole_size)
+            hole_fids = np.arange(len(fs), len(out_fs))
+
+            try:
+                mesh = meshing.remesh(meshing.to_open3d(vs, out_fs))
+                new_vs = np.asarray(mesh.vertices, dtype=np.float64)
+                fs = np.asarray(mesh.triangles)
+            except (ValueError, RuntimeError):
+                new_vs, fs = vs, out_fs
+
+            if fair_all:
+                vids = np.arange(len(new_vs))
+            else:
+                _, face_ids, _ = igl.point_mesh_squared_distance(
+                    new_vs, vs, out_fs.astype(np.int64)
+                )
+                vids = np.where(np.isin(face_ids, hole_fids))[0]
+
+            vs = new_vs
+            if len(vids) > 0:
+                vs = meshing.fair_mesh(
+                    vs,
+                    fs,
+                    vids,
+                    smoothness=smoothness,
+                    curvature_weight=curvature_weight,
+                    pressure=pressure,
+                    n_ring=boundary_ring,
+                )
             if flip_normals:
                 fs = fs[:, ::-1]
             geom = geometry[...]
@@ -472,6 +497,21 @@ REPAIR_SETTINGS = {
             "type": "boolean",
             "default": False,
             "description": "Reverse normal direction of the mesh.",
+        },
+        {
+            "label": "Fair All Vertices",
+            "parameter": "fair_all",
+            "type": "boolean",
+            "default": False,
+            "description": "Apply fairing to all vertices, not just inferred ones.",
+        },
+        {
+            "label": "Boundary Ring",
+            "parameter": "boundary_ring",
+            "type": "int",
+            "default": 0,
+            "min": 0,
+            "description": "Number of vertex rings around inferred vertices to include in fairing.",
         },
     ],
 }

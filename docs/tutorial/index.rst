@@ -26,8 +26,8 @@ User Guide
 .. toctree::
    :caption: Practical Workflows
 
-   workflows/giardia
    workflows/iav
+   workflows/giardia
    workflows/pipeline
    workflows/shell
 
