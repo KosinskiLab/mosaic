@@ -292,7 +292,8 @@ class ClusterTransformer:
         self.transform_widget.SetTranslationEnabled(True)
         self.transform_widget.SetScalingEnabled(False)
 
-        self.transform_widget.AddObserver("InteractionEvent", self.on_transform)
+        self._transform_throttle = Throttle(self.on_transform, interval_ms=50)
+        self.transform_widget.AddObserver("InteractionEvent", self._transform_throttle)
 
     def on_transform(self, widget, event):
         """Handle transformation updates."""

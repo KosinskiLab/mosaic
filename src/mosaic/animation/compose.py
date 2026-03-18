@@ -38,6 +38,7 @@ from .settings import AnimationSettings, ExportDialog
 from ._utils import FrameWriter, capture_frame
 
 from ..__version__ import __version__
+from ..utils import Throttle
 from ..stylesheets import (
     QMessageBox_style,
     QLineEdit_style,
@@ -162,9 +163,11 @@ class AnimationComposerDialog(QDialog):
         controls_layout.addWidget(self.play_btn)
         controls_layout.addWidget(forward_btn)
 
+        self._frame_throttle = Throttle(self.set_current_frame, interval_ms=50)
+
         self.frame_spin = QSpinBox()
         self.frame_spin.setRange(0, 2 << 29)
-        self.frame_spin.valueChanged.connect(self.set_current_frame)
+        self.frame_spin.valueChanged.connect(self._frame_throttle)
         controls_layout.addWidget(self.frame_spin, 1)
 
         main_layout.addWidget(controls)
@@ -172,7 +175,7 @@ class AnimationComposerDialog(QDialog):
         # Timeline
         self.timeline = TimelineWidget()
         self.timeline.content.trackSelected.connect(self._on_track_selected)
-        self.timeline.frameMoved.connect(self.set_current_frame)
+        self.timeline.frameMoved.connect(self._frame_throttle)
         self.timeline.trackMoved.connect(self._on_track_moved)
         self.timeline.trackRemoved.connect(self.delete_track)
         self.timeline.setMinimumHeight(120)

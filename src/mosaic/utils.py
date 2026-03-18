@@ -70,18 +70,29 @@ class Throttle:
         self._timer.setInterval(interval_ms)
         self._timer.timeout.connect(self._reset)
         self._can_call = True
+        self._pending_args = None
+        self._pending_kwargs = None
 
     def __call__(self, *args, **kwargs):
         """Execute the function if throttle allows."""
         if self._can_call:
             self._can_call = False
+            self._pending_args = None
+            self._pending_kwargs = None
             self._timer.start()
             return self._func(*args, **kwargs)
+        self._pending_args = args
+        self._pending_kwargs = kwargs
         return None
 
     def _reset(self):
-        """Reset throttle to allow the next call."""
+        """Reset throttle, executing any pending trailing-edge call."""
         self._can_call = True
+        if self._pending_args is not None:
+            args, kwargs = self._pending_args, self._pending_kwargs or {}
+            self._pending_args = None
+            self._pending_kwargs = None
+            self(*args, **kwargs)
 
 
 def points_to_volume(

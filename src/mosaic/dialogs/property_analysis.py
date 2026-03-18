@@ -327,7 +327,7 @@ def _build_tomogram_options(dlg):
         "Positive = outward, negative = inward."
     )
 
-    offset_slider.valueChanged.connect(dlg._preview)
+    offset_slider.valueChanged.connect(dlg._preview_throttle)
     dlg.property_options_layout.addRow(offset_slider)
     dlg.option_widgets["normal_offset"] = offset_slider
 
@@ -565,6 +565,8 @@ class PropertyAnalysisDialog(QDialog):
             "upper_value": 1.0,
         }
 
+        self._preview_throttle = Throttle(self._preview, interval_ms=150)
+        self._update_plot_throttle = Throttle(self._update_plot, interval_ms=150)
         self.setWindowTitle("Property Analysis")
 
         self.legend = legend
@@ -899,7 +901,7 @@ class PropertyAnalysisDialog(QDialog):
                 "Values < 1 brighten dark regions, > 1 darken bright regions.",
             )
         )
-        self.gamma_row.valueChanged.connect(self._preview)
+        self.gamma_row.valueChanged.connect(self._preview_throttle)
         self.gamma_row.setContentsMargins(0, 0, 0, 0)
 
         options_layout.addLayout(colormap_layout)
@@ -1004,7 +1006,7 @@ class PropertyAnalysisDialog(QDialog):
         self.alpha_slider = QSpinBox()
         self.alpha_slider.setRange(0, 255)
         self.alpha_slider.setValue(128)
-        self.alpha_slider.valueChanged.connect(self._update_plot)
+        self.alpha_slider.valueChanged.connect(self._update_plot_throttle)
         alpha_layout.addWidget(self.alpha_slider)
         options_layout.addLayout(alpha_layout)
 
