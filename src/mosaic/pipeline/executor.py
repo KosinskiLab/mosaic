@@ -182,9 +182,8 @@ def compile_run(run_config: dict) -> List[Tuple[str, str]]:
         if op_id == "export_data":
             output_dir = settings.get("output_dir", ".")
             os.makedirs(output_dir, exist_ok=True)
-            output_path = os.path.join(output_dir, run_config["run_id"])
-
             fmt = settings.get("format", "star")
+            output_path = os.path.join(output_dir, f"{run_config['run_id']}.{fmt}")
             save_kwargs = {
                 k: v
                 for k, v in settings.items()
