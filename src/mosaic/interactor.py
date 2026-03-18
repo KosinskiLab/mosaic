@@ -546,6 +546,7 @@ class DataContainerInteractor(QObject):
         geometry = self.container.get(uuids[0])
         base_parameters = geometry._appearance.copy()
         base_parameters["sampling_rate"] = geometry.sampling_rate
+        base_parameters.setdefault("highlight_color", self.container.highlight_color)
 
         dialog = GeometryPropertiesDialog(initial_properties=base_parameters)
 
