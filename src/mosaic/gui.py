@@ -986,7 +986,6 @@ class App(QMainWindow):
                     "func": execute_run,
                     "callback": None,
                     "kwargs": {"run_config": run, "skip_complete": skip_complete},
-                    "reuse_worker": False,
                 }
             )
 

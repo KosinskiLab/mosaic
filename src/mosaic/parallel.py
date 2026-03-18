@@ -294,12 +294,6 @@ class BackgroundTaskManager(QObject):
         self.executor = concurrent.futures.ProcessPoolExecutor(
             mp_context=multiprocessing.get_context("spawn"),
             max_workers=int(Settings.rendering.parallel_worker),
-            initializer=_init_worker_with_queue,
-            initargs=(self._progress_queue,),
-        )
-        self.executor_pipeline = concurrent.futures.ProcessPoolExecutor(
-            mp_context=multiprocessing.get_context("spawn"),
-            max_workers=int(Settings.rendering.pipeline_worker),
             max_tasks_per_child=1,
             initializer=_init_worker_with_queue,
             initargs=(self._progress_queue,),
@@ -319,7 +313,6 @@ class BackgroundTaskManager(QObject):
 
         try:
             self.executor.shutdown(wait=False, cancel_futures=True)
-            self.executor_pipeline.shutdown(wait=False, cancel_futures=True)
         except Exception:
             pass
 
@@ -386,7 +379,6 @@ class BackgroundTaskManager(QObject):
         batch_id: str = None,
         args: tuple = (),
         kwargs: dict = None,
-        reuse_worker: bool = True,
     ) -> str:
         """Submit a single task to the queue.
 
@@ -404,8 +396,6 @@ class BackgroundTaskManager(QObject):
             Args to pass to func.
         kwargs: dict, optional
             Kwargs to pass to func.
-        reuse_worker : bool, optional
-            Reuse worker this operation was executed on.
         """
         task_id = str(uuid.uuid4())
 
@@ -418,7 +408,6 @@ class BackgroundTaskManager(QObject):
                 "args": args,
                 "kwargs": kwargs or {},
                 "callback": callback,
-                "reuse_worker": reuse_worker,
             }
         )
 
@@ -443,7 +432,6 @@ class BackgroundTaskManager(QObject):
         tasks: list,
         max_concurrent: int = None,
         batch_id: str = None,
-        reuse_worker: bool = True,
     ) -> str:
         """
         Submit batch of tasks with optional concurrency limit.
@@ -458,8 +446,6 @@ class BackgroundTaskManager(QObject):
             If None, no limit (uses global worker limit).
         batch_id : str, optional
             Existing batch ID to add tasks to. If None, creates new batch.
-        reuse_worker : bool, optional
-            Reuse worker this operation was executed on.
 
         Returns
         -------
@@ -481,7 +467,6 @@ class BackgroundTaskManager(QObject):
                 batch_id=batch_id,
                 args=task.get("args", ()),
                 kwargs=task.get("kwargs", {}),
-                reuse_worker=reuse_worker,
             )
 
         return batch_id
@@ -527,11 +512,7 @@ class BackgroundTaskManager(QObject):
             "status": "running",
         }
 
-        executor = self.executor_pipeline
-        if task.get("reuse_worker", True):
-            executor = self.executor
-
-        future = executor.submit(
+        future = self.executor.submit(
             _wrap_task,
             task["func"],
             task_id,
@@ -676,9 +657,9 @@ def submit_task(name, func, callback=None, *args, **kwargs):
     )
 
 
-def submit_task_batch(tasks, max_concurrent=None, batch_id=None, reuse_worker=True):
+def submit_task_batch(tasks, max_concurrent=None, batch_id=None):
     return BackgroundTaskManager.instance().submit_task_batch(
-        tasks, max_concurrent, batch_id, reuse_worker
+        tasks, max_concurrent, batch_id
     )
 
 

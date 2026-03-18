@@ -445,8 +445,12 @@ class OperationCardWidget(QFrame):
         except Exception:
             pass
 
-        # Restore operation settings
+        # Restore operation settings, silently dropping unknown parameters
+        # that may come from older pipeline configs with renamed/removed params.
         operation_settings = settings.get("settings", {})
+        if not isinstance(operation_settings, dict):
+            operation_settings = {}
+
         if self.operation_id == "import_batch":
             self.input_files = operation_settings.get("input_files", [])
             self.file_parameters = operation_settings.get("file_parameters", {})
@@ -454,8 +458,12 @@ class OperationCardWidget(QFrame):
                 self._update_file_list()
         else:
             for k, v in operation_settings.items():
-                if k in self._settings_widgets:
-                    set_widget_value(self._settings_widgets[k], v)
+                widget = self._settings_widgets.get(k)
+                if widget is not None:
+                    try:
+                        set_widget_value(widget, v)
+                    except Exception:
+                        pass
         self.update_summary()
 
 

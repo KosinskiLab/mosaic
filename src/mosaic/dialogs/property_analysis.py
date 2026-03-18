@@ -38,7 +38,6 @@ from typing import Any, Dict, Optional
 
 from ..widgets import (
     ContainerTreeWidget,
-    GroupTreeWidgetItem,
     StyledListWidgetItem,
     ColorMapSelector,
     HistogramRangeSlider,

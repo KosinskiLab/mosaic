@@ -4,14 +4,15 @@ Version 1.2.1 introduces an interactive shell for scriptable control, along with
 
 ## Features
 
-- **Interactive Shell:** A REPL-based command interface (`mosaic-shell`) with auto-complete for scripting geometry operations, file I/O, and session management.
-- **Batch Rename Dialog:** Rename multiple geometries at once.
-- **Improved Texture Resolution:** Higher quality tomogram-on-mesh projections.
+- Interactive shell: A REPL-based command interface (`mosaic-shell`) with auto-complete for scripting geometry operations, file I/O, and session management.
+- Batch rename dialog: Rename multiple geometries at once.
+- Higher quality tomogram-on-mesh projections.
 
 ## Improvements
 
-- Removed `pymeshlab` dependency; mesh repair now uses `libigl` exclusively.
-- Migrated to `libigl==2.6.1`.
+- Revised fairing weights for ball pivoting and alpha shapes to be easier to tune. However, the same numerical values will have different effects compared to previous versions.
+- Removed `pymeshlab` dependency; mesh repair now uses `libigl` exclusively. Consequently, Poisson meshing no longer accepts a range of fine tuning parameters.
+- Migrated to `libigl==2.6.1` which fixes random crashes during curvature computation.
 - Replaced MarchingCubes with FlyingEdges and windowed sinc smoothing.
 - Unified pipeline executor into a single REPL-based module.
 - Centralized method annotations in the operations registry.
@@ -20,6 +21,7 @@ Version 1.2.1 introduces an interactive shell for scriptable control, along with
 
 - Fixed trajectory animation updates during live view.
 - Minor bug fixes in export dialog and property analysis.
+- Geometry base color was not propagated correctly on duplicate.
 
 ## Installation
 

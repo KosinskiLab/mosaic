@@ -376,8 +376,9 @@ _BOUNDARY_RING = Param(
     "boundary_ring",
     "int",
     default=0,
+    min=0,
     label="Boundary Ring",
-    description="Also optimize n-ring vertices for ill-defined boundaries.",
+    description="Number of vertex rings around inferred vertices to include in fairing.",
 )
 
 _SMOOTHNESS = Param(
