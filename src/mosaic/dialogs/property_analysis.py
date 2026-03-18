@@ -1263,6 +1263,39 @@ class PropertyAnalysisDialog(QDialog):
                 QMessageBox.warning(self, "Error", str(e))
                 return None
 
+    def _get_transformed_properties(self, geometries):
+        """Apply the full visualization transform pipeline to cached properties.
+
+        Applies normalization, quantization, and threshold clipping in the same
+        order as ``_preview`` so that filter operations work on consistent values.
+        """
+        properties = {
+            g.uuid: self._cache.get_value(g.uuid)
+            for g in geometries
+            if self._cache.get_value(g.uuid) is not None
+        }
+        if self.normalize_checkbox.isChecked():
+            properties = {
+                k: (
+                    (v - np.min(v)) / (np.max(v) - np.min(v))
+                    if (np.max(v) - np.min(v)) > 0
+                    else v
+                )
+                for k, v in properties.items()
+            }
+
+        if self.quantile_checkbox.isChecked():
+            all_curvatures = np.concatenate(
+                [np.asarray(v).flatten() for v in properties.values()]
+            )
+            valid_curvatures = all_curvatures[~np.isnan(all_curvatures)]
+            n_bins = min(valid_curvatures.size // 10, 100)
+            bins = np.percentile(valid_curvatures, np.linspace(0, 100, n_bins + 1))
+            properties = {k: np.digitize(v, bins) - 1 for k, v in properties.items()}
+
+        properties = self._apply_threshold_clipping(properties)
+        return properties
+
     def _apply_threshold_clipping(self, properties):
         """Apply threshold clipping to property values"""
         if (
@@ -1318,32 +1351,7 @@ class PropertyAnalysisDialog(QDialog):
         self._compute_properties()
         colormap = self._get_colormap()
 
-        # Build properties dict from cache for selected geometries
-        properties = {
-            g.uuid: self._cache.get_value(g.uuid)
-            for g in geometries
-            if self._cache.get_value(g.uuid) is not None
-        }
-        if self.normalize_checkbox.isChecked():
-            properties = {
-                k: (
-                    (v - np.min(v)) / (np.max(v) - np.min(v))
-                    if (np.max(v) - np.min(v)) > 0
-                    else v
-                )
-                for k, v in properties.items()
-            }
-
-        if self.quantile_checkbox.isChecked():
-            all_curvatures = np.concatenate(
-                [np.asarray(v).flatten() for v in properties.values()]
-            )
-            valid_curvatures = all_curvatures[~np.isnan(all_curvatures)]
-            n_bins = min(valid_curvatures.size // 10, 100)
-            bins = np.percentile(valid_curvatures, np.linspace(0, 100, n_bins + 1))
-            properties = {k: np.digitize(v, bins) - 1 for k, v in properties.items()}
-
-        properties = self._apply_threshold_clipping(properties)
+        properties = self._get_transformed_properties(geometries)
         values = [x for x in properties.values() if x is not None]
         if len(values) == 0:
             return None
@@ -1396,13 +1404,14 @@ class PropertyAnalysisDialog(QDialog):
             return
 
         colormap = self._get_colormap()
+        properties = self._get_transformed_properties(geometries)
 
         lut, lut_range = cmap_to_vtkctf(
             colormap, upper, min_value=lower, transparent_range=True
         )
         self.legend.set_lookup_table(lut, self.property_combo.currentText())
         for geometry in geometries:
-            values = self._cache.get_value(geometry.uuid)
+            values = properties.get(geometry.uuid)
             if values is None:
                 continue
 
@@ -1438,9 +1447,11 @@ class PropertyAnalysisDialog(QDialog):
             QMessageBox.warning(self, "No Selection", "Please select geometry first.")
             return
 
+        properties = self._get_transformed_properties(geometries)
+
         extracted_any = False
         for geometry in geometries:
-            values = self._cache.get_value(geometry.uuid)
+            values = properties.get(geometry.uuid)
             if values is None:
                 continue
 
