@@ -25,6 +25,7 @@ from vtkmodules.util import numpy_support
 
 from .sliders import SliderRow, DualHandleSlider
 from ..stylesheets import QPushButton_style, Colors
+from ..utils import Throttle
 
 _colormaps = [
     "gray",
@@ -74,7 +75,8 @@ class VolumeViewer(QWidget):
             label_position="right",
         )
         self.slice_row.setEnabled(False)
-        self.slice_row.valueChanged.connect(self._on_slice_changed)
+        self._slice_throttle = Throttle(self._on_slice_changed, interval_ms=50)
+        self.slice_row.valueChanged.connect(self._slice_throttle)
 
         self.orientation_selector = QComboBox()
         self.orientation_selector.addItems(["X", "Y", "Z"])
@@ -94,7 +96,10 @@ class VolumeViewer(QWidget):
         self.contrast_slider = DualHandleSlider()
         self.contrast_slider.setRange(0, 100)
         self.contrast_slider.setValues(0, 100)
-        self.contrast_slider.rangeChanged.connect(self.update_contrast_and_gamma)
+        self._contrast_throttle = Throttle(
+            self.update_contrast_and_gamma, interval_ms=50
+        )
+        self.contrast_slider.rangeChanged.connect(self._contrast_throttle)
         self.contrast_slider.setEnabled(False)
         self.contrast_value_label = QLabel("0.00 - 1.00")
         self.contrast_value_label.setEnabled(False)
@@ -108,7 +113,7 @@ class VolumeViewer(QWidget):
             label_position="right",
         )
         self.gamma_row.setEnabled(False)
-        self.gamma_row.valueChanged.connect(self.update_contrast_and_gamma)
+        self.gamma_row.valueChanged.connect(self._contrast_throttle)
 
         # Project 3D geometries on 2D slice
         self.project_selector = QComboBox()
@@ -253,6 +258,16 @@ class VolumeViewer(QWidget):
     def _on_slice_changed(self, value: float):
         """Handle slice row value change (converts float to int)."""
         self.update_slice(int(value))
+
+    def set_slice(self, slice_number: int):
+        """Set slice programmatically, updating the slider and rendering directly.
+
+        Bypasses the slider throttle so animations run at full frame rate.
+        """
+        self.slice_row.slider.blockSignals(True)
+        self.slice_row.setValue(slice_number)
+        self.slice_row.slider.blockSignals(False)
+        self.update_slice(slice_number)
 
     def update_slice(self, slice_number):
         self.slice_mapper.SetSliceNumber(slice_number)

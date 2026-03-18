@@ -11,6 +11,7 @@ from os.path import exists
 from qtpy.QtCore import Signal, Qt
 
 from mosaic.geometry import BASE_COLOR
+from mosaic.utils import Throttle
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -316,12 +317,15 @@ class GeometryPropertiesDialog(QDialog):
 
     def connect_signals(self):
         """Connect all widget signals to update parameters."""
-        self.size_spin.valueChanged.connect(self.emit_parameters)
-        self.opacity_slider.valueChanged.connect(self.emit_parameters)
-        self.ambient_slider.valueChanged.connect(self.emit_parameters)
-        self.diffuse_slider.valueChanged.connect(self.emit_parameters)
-        self.specular_slider.valueChanged.connect(self.emit_parameters)
-        self.isovalue_slider.valueChanged.connect(self.emit_parameters)
+        self._emit_throttle = Throttle(
+            lambda *args: self.emit_parameters(), interval_ms=150
+        )
+        self.size_spin.valueChanged.connect(self._emit_throttle)
+        self.opacity_slider.valueChanged.connect(self._emit_throttle)
+        self.ambient_slider.valueChanged.connect(self._emit_throttle)
+        self.diffuse_slider.valueChanged.connect(self._emit_throttle)
+        self.specular_slider.valueChanged.connect(self._emit_throttle)
+        self.isovalue_slider.valueChanged.connect(self._emit_throttle)
         self.scale_positive.toggled.connect(self.emit_parameters)
         self.scale_negative.toggled.connect(self.emit_parameters)
         self.sampling_x.textChanged.connect(self.emit_parameters)

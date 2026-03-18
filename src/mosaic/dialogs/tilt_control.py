@@ -17,6 +17,7 @@ from qtpy.QtWidgets import (
 )
 import qtawesome as qta
 from ..stylesheets import QPushButton_style, QGroupBox_style, QSlider_style, Colors
+from ..utils import Throttle
 
 
 class TiltControlDialog(QDialog):
@@ -64,6 +65,8 @@ class TiltControlDialog(QDialog):
 
             return frame
 
+        self._camera_throttle = Throttle(self._update_camera, interval_ms=50)
+
         self.elevation_value_label = QLabel("0°")
         self.elevation_slider = QSlider()
         self.elevation_slider.valueChanged.connect(self.on_elevation_slider_changed)
@@ -99,30 +102,17 @@ class TiltControlDialog(QDialog):
 
     def on_elevation_slider_changed(self, value):
         self.elevation_value_label.setText(f"{value}°")
-        if not hasattr(self.main_window, "_camera_view"):
-            return -1
-        self.main_window.set_camera_view(
-            self.main_window._camera_view,
-            self.main_window._camera_direction,
-            value,
-            self.azimuth_slider.value(),
-            self.pitch_slider.value(),
-        )
+        self._camera_throttle()
 
     def on_azimuth_slider_changed(self, value):
         self.azimuth_value_label.setText(f"{value}°")
-        if not hasattr(self.main_window, "_camera_view"):
-            return -1
-        self.main_window.set_camera_view(
-            self.main_window._camera_view,
-            self.main_window._camera_direction,
-            self.elevation_slider.value(),
-            value,
-            self.pitch_slider.value(),
-        )
+        self._camera_throttle()
 
     def on_pitch_slider_changed(self, value):
         self.pitch_value_label.setText(f"{value}°")
+        self._camera_throttle()
+
+    def _update_camera(self):
         if not hasattr(self.main_window, "_camera_view"):
             return -1
         self.main_window.set_camera_view(
@@ -130,7 +120,7 @@ class TiltControlDialog(QDialog):
             self.main_window._camera_direction,
             self.elevation_slider.value(),
             self.azimuth_slider.value(),
-            value,
+            self.pitch_slider.value(),
         )
 
     def show(self):

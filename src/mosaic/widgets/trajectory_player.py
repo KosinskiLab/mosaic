@@ -13,6 +13,7 @@ from qtpy.QtWidgets import (
 import qtawesome as qta
 
 from ..stylesheets import QSlider_style, Colors
+from ..utils import Throttle
 
 
 class TimelineBar(QWidget):
@@ -102,7 +103,8 @@ class TrajectoryRow(QFrame):
         # Center: Timeline with integrated slider
         self.timeline = TimelineBar()
         self.timeline.setRange(0, self.trajectory.frames - 1)
-        self.timeline.valueChanged.connect(self._update_frame)
+        self._frame_throttle = Throttle(self._update_frame, interval_ms=50)
+        self.timeline.valueChanged.connect(self._frame_throttle)
         self.set_maxframes(self.max_frames)
         layout.addWidget(self.timeline, 1)
 
@@ -118,6 +120,13 @@ class TrajectoryRow(QFrame):
         """Update timeline when widget becomes visible."""
         super().showEvent(event)
         self.timeline.setRelativeWidth(self.trajectory.frames, self.max_frames)
+
+    def set_frame(self, frame_idx):
+        """Set frame programmatically, bypassing the slider throttle."""
+        self.timeline.slider.blockSignals(True)
+        self.timeline.setValue(frame_idx)
+        self.timeline.slider.blockSignals(False)
+        self._update_frame(frame_idx)
 
     def _update_frame(self, frame_idx):
         """Update the displayed frame using the trajectory's display_frame method."""
@@ -324,9 +333,8 @@ class TrajectoryPlayer(QWidget):
         self.current_frame = frame_idx
         self.current_frame_label.setText(f"{frame_idx}/{self.max_frame() - 1}")
 
-        # Changing the timeline value will trigger the frame update
         for trajectory in self.trajectories:
-            trajectory.timeline.setValue(frame_idx)
+            trajectory.set_frame(frame_idx)
 
     def toggle_play(self):
         """Toggle playback state."""

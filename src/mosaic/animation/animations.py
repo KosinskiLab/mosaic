@@ -292,7 +292,7 @@ class VolumeAnimation(BaseAnimation):
         if current_state != self.parameters["projection"]:
             viewer.project_selector.setCurrentText(self.parameters["projection"])
 
-        viewer.slice_row.setValue(frame)
+        viewer.set_slice(frame)
 
 
 class CameraAnimation(BaseAnimation):
