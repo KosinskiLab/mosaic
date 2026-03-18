@@ -243,11 +243,7 @@ def write_geometries(
             meshes.append(geometry.model)
             continue
 
-        points, normals, quaternions = (
-            geometry.points,
-            geometry.normals,
-            geometry.quaternions,
-        )
+        points, normals, quaternions = geometry.get_point_data()
         if file_format in point_formats and quaternions is None:
             # At this point make up the normals
             if normals is None:

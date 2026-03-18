@@ -762,7 +762,7 @@ MethodRegistry.register(
             Param(
                 "format",
                 "str",
-                default="star",
+                default=None,
                 options=("star", "tsv", "xyz", "obj", "stl", "ply", "mrc", "em", "h5"),
                 description="Output file format.",
             ),
