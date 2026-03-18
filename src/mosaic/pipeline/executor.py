@@ -19,6 +19,23 @@ from ._utils import topological_sort, strip_filepath
 __all__ = ["compile_run", "execute_run", "generate_runs"]
 
 
+def _known_params(op_name: str) -> set:
+    """Return the set of known parameter names for *op_name*.
+
+    Collects names from common params and every registered method so that
+    settings from older configs with renamed/removed params are silently
+    dropped instead of causing a crash at execution time.
+    """
+    op = MethodRegistry.get(op_name)
+    if op is None:
+        return set()
+    names = {p.name for p in op.common_params}
+    for m in op.methods:
+        for p in m.params:
+            names.add(p.name)
+    return names
+
+
 def generate_runs(pipeline_config):
     """
     Generate individual run configurations from a pipeline graph.
@@ -220,8 +237,11 @@ def compile_run(run_config: dict) -> List[Tuple[str, str]]:
         method = settings.get("method")
         if method:
             method = MethodRegistry.resolve_method(op_id, method)
+        known = _known_params(op_id)
         filtered = {
-            k: v for k, v in settings.items() if k not in ("group_name", "method")
+            k: v
+            for k, v in settings.items()
+            if k not in ("group_name", "method") and (not known or k in known)
         }
         kwargs = format_kwargs(filtered)
 

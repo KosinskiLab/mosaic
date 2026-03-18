@@ -10,7 +10,7 @@ from os.path import splitext
 
 import numpy as np
 from PIL import Image
-from qtpy.QtGui import QImage, QPixmap, QGuiApplication
+from qtpy.QtGui import QImage, QGuiApplication
 from qtpy.QtWidgets import QFileDialog
 from vtkmodules.util import numpy_support
 from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter

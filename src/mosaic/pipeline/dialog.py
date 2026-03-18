@@ -158,9 +158,9 @@ class PipelineBuilderDialog(QDialog):
         workers_label.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_MUTED};")
         self.workers_spin = QSpinBox()
         self.workers_spin.setMinimum(1)
-        self.workers_spin.setMaximum(Settings.rendering.pipeline_worker)
+        self.workers_spin.setMaximum(Settings.rendering.parallel_worker)
         self.workers_spin.setValue(
-            int(getattr(Settings.rendering, "pipeline_worker", 4))
+            int(getattr(Settings.rendering, "parallel_worker", 4))
         )
         self.workers_spin.setFixedWidth(80)
         self.workers_spin.setFixedHeight(32)

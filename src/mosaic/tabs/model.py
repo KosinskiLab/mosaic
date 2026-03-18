@@ -508,7 +508,7 @@ REPAIR_SETTINGS = {
         {
             "label": "Boundary Ring",
             "parameter": "boundary_ring",
-            "type": "int",
+            "type": "number",
             "default": 0,
             "min": 0,
             "description": "Number of vertex rings around inferred vertices to include in fairing.",

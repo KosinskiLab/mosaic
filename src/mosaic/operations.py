@@ -832,14 +832,6 @@ def visibility(geometry, visible: bool = True, **kwargs):
                     label="Iterations",
                     description="Number of remeshing iterations.",
                 ),
-                Param(
-                    "featuredeg",
-                    "float",
-                    default=30.0,
-                    min=0.0,
-                    label="Mesh Angle",
-                    description="Minimum angle between faces to preserve edges.",
-                ),
             ),
         ),
         Method(

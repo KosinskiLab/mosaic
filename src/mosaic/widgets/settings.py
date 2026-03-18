@@ -1,6 +1,6 @@
 from typing import Dict
 
-from qtpy.QtCore import Qt, QLocale
+from qtpy.QtCore import QLocale
 from qtpy.QtGui import QDoubleValidator
 from qtpy.QtWidgets import (
     QSpinBox,
