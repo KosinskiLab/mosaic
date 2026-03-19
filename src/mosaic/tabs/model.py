@@ -270,47 +270,53 @@ class ModelTab(QWidget):
         import igl
         from ..parametrization import TriangularMesh
 
+        fair_mesh = not (smoothness == 0 and curvature_weight == 0 and pressure == 0)
+
         for geometry in self._get_selected_meshes():
-            fit = geometry.model
-            fit.mesh.remove_non_manifold_edges()
-            fit.mesh.remove_degenerate_triangles()
-            fit.mesh.remove_duplicated_triangles()
-            fit.mesh.remove_unreferenced_vertices()
-            fit.mesh.remove_duplicated_vertices()
-            vs = np.asarray(fit.vertices, dtype=np.float64)
-            fs = np.asarray(fit.triangles)
+            model = geometry.model
+            model.mesh.remove_non_manifold_edges()
+            model.mesh.remove_degenerate_triangles()
+            model.mesh.remove_duplicated_triangles()
+            model.mesh.remove_unreferenced_vertices()
+            model.mesh.remove_duplicated_vertices()
+
+            vs = model.vertices
+            fs = model.triangles
 
             out_fs = meshing.close_holes(vs, fs, max_hole_size)
-            hole_fids = np.arange(len(fs), len(out_fs))
+            if fair_mesh:
+                hole_fids = np.arange(len(fs), len(out_fs))
 
-            try:
-                mesh = meshing.remesh(meshing.to_open3d(vs, out_fs))
-                new_vs = np.asarray(mesh.vertices, dtype=np.float64)
-                fs = np.asarray(mesh.triangles)
-            except (ValueError, RuntimeError):
-                new_vs, fs = vs, out_fs
+                try:
+                    mesh = meshing.remesh(meshing.to_open3d(vs, out_fs))
+                    new_vs = np.asarray(mesh.vertices, dtype=np.float64)
+                    fs = np.asarray(mesh.triangles)
+                except (ValueError, RuntimeError):
+                    new_vs, fs = vs, out_fs
 
-            if fair_all:
-                vids = np.arange(len(new_vs))
-            else:
-                _, face_ids, _ = igl.point_mesh_squared_distance(
-                    new_vs, vs, out_fs.astype(np.int64)
-                )
-                vids = np.where(np.isin(face_ids, hole_fids))[0]
+                if fair_all:
+                    vids = np.arange(len(new_vs))
+                else:
+                    _, face_ids, _ = igl.point_mesh_squared_distance(
+                        new_vs, vs, out_fs.astype(np.int64)
+                    )
+                    vids = np.where(np.isin(face_ids, hole_fids))[0]
 
-            vs = new_vs
-            if len(vids) > 0:
-                vs = meshing.fair_mesh(
-                    vs,
-                    fs,
-                    vids,
-                    smoothness=smoothness,
-                    curvature_weight=curvature_weight,
-                    pressure=pressure,
-                    n_ring=boundary_ring,
-                )
+                vs = new_vs
+                if len(vids) > 0:
+                    vs = meshing.fair_mesh(
+                        vs,
+                        fs,
+                        vids,
+                        smoothness=smoothness,
+                        curvature_weight=curvature_weight,
+                        pressure=pressure,
+                        n_ring=boundary_ring,
+                    )
+
             if flip_normals:
                 fs = fs[:, ::-1]
+
             geom = geometry[...]
             geom._model = TriangularMesh(meshing.to_open3d(vs, fs))
             geom.change_representation("surface")
@@ -463,7 +469,7 @@ REPAIR_SETTINGS = {
             "label": "Smoothness",
             "parameter": "smoothness",
             "type": "float",
-            "default": 1.0,
+            "default": 0.0,
             "min": 0.0,
             "max": 1.0,
             "description": "Balance between position anchoring and curvature "

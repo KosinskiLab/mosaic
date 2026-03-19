@@ -985,7 +985,11 @@ class App(QMainWindow):
                     "name": f"pipeline_{run['run_id']}",
                     "func": execute_run,
                     "callback": None,
-                    "kwargs": {"run_config": run, "skip_complete": skip_complete},
+                    "kwargs": {
+                        "run_config": run,
+                        "skip_complete": skip_complete,
+                        "verbose": True,
+                    },
                 }
             )
 
