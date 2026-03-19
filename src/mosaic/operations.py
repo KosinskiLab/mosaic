@@ -192,7 +192,7 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
             ),
         ),
         Method(
-            "Number",
+            "Num Points",
             "number",
             params=(
                 Param(
@@ -200,7 +200,7 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
                     "int",
                     default=1000,
                     min=1,
-                    label="Number",
+                    label="Num Points",
                     description="Randomly selects this many points from the input.",
                 ),
             ),
@@ -288,6 +288,7 @@ def downsample(geometry, method: str = "radius", **kwargs):
                 Param(
                     "sampling",
                     "float",
+                    label="Distance",
                     default=40.0,
                     min=1e-6,
                     description="Average distance between points.",
@@ -295,15 +296,16 @@ def downsample(geometry, method: str = "radius", **kwargs):
             ),
         ),
         Method(
-            "Points",
+            "Num Points",
             "points",
             params=(
                 Param(
                     "sampling",
                     "int",
+                    label="Number",
                     default=5000,
                     min=1,
-                    description="Number of points.",
+                    description="Number of points to sample.",
                 ),
             ),
         ),

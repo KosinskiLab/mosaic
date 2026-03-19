@@ -224,11 +224,11 @@ def compile_run(run_config: dict) -> List[Tuple[str, str]]:
 
         if op_id == "cluster_select":
             parts = ["filter @last property=n_points"]
-            lower = settings.get("lower_threshold", 0)
-            upper = settings.get("upper_threshold", 0)
-            if lower and lower > 0:
+            lower = settings.get("lower_threshold", -1)
+            upper = settings.get("upper_threshold", -1)
+            if lower >= 0:
                 parts.append(f"lower={lower}")
-            if upper and upper > 0:
+            if upper >= 0 and upper > lower:
                 parts.append(f"upper={upper}")
             steps.append((op_id, " ".join(parts)))
             continue
@@ -262,7 +262,9 @@ def compile_run(run_config: dict) -> List[Tuple[str, str]]:
     return steps
 
 
-def execute_run(run_config: dict, skip_complete: bool = False) -> None:
+def execute_run(
+    run_config: dict, skip_complete: bool = False, verbose: bool = False
+) -> None:
     """Execute a pipeline run by compiling to script lines and running via REPL.
 
     Parameters
@@ -301,11 +303,12 @@ def execute_run(run_config: dict, skip_complete: bool = False) -> None:
             return None
 
     from ..commands.repl import MosaicREPL
-
     from ..commands.session import Session
 
     steps = compile_run(run_config)
     repl = MosaicREPL(session=Session(quiet=True))
     for idx, (op_id, line) in enumerate(steps):
-        report_progress(message=op_id, current=idx, total=len(steps))
+        if verbose:
+            report_progress(message=op_id, current=idx, total=len(steps))
+            print(f"[{idx + 1}/{len(steps)}] {line}")
         repl.execute(line)

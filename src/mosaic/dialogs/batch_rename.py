@@ -9,33 +9,23 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import re
 from typing import List
 
-from qtpy.QtCore import Qt
-from qtpy.QtGui import QColor
 from qtpy.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QGroupBox,
     QGridLayout,
-    QTreeWidget,
-    QTreeWidgetItem,
-    QHeaderView,
-    QComboBox,
     QCheckBox,
     QStackedWidget,
     QWidget,
+    QPushButton,
 )
 
 from ..stylesheets import (
-    QGroupBox_style,
     QPushButton_style,
     QLineEdit_style,
-    QTable_style,
-    QComboBox_style,
     QCheckBox_style,
-    QScrollArea_style,
     Colors,
 )
 from ..widgets import DialogFooter
@@ -61,73 +51,93 @@ class BatchRenameDialog(QDialog):
         Parent widget.
     """
 
-    MODES = ["Replace Text", "Format"]
+    MODES = ["Replace", "Format"]
 
     def __init__(self, names: List[str], parent=None):
         super().__init__(parent)
         self.names = names
         self.result_names = list(names)
 
-        self.setWindowTitle("Batch Rename")
+        self.setWindowTitle("Rename")
         self.setMinimumWidth(480)
 
         self._setup_ui()
         self._connect_signals()
-        self._update_preview()
+        self._update_result()
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 16, 20, 10)
-        main_layout.setSpacing(16)
+        main_layout.setContentsMargins(20, 20, 20, 10)
+        main_layout.setSpacing(0)
 
-        mode_layout = QHBoxLayout()
-        mode_layout.addWidget(QLabel("Method:"))
-        self.mode_combo = QComboBox()
-        self.mode_combo.addItems(self.MODES)
-        self.mode_combo.setStyleSheet(QComboBox_style)
-        self.mode_combo.setMinimumWidth(160)
-        mode_layout.addWidget(self.mode_combo)
-        mode_layout.addStretch()
-        main_layout.addLayout(mode_layout)
+        # Mode tabs as segmented control
+        tab_row = QHBoxLayout()
+        tab_row.setSpacing(0)
+        self.mode_buttons = []
+        tab_container = QWidget()
+        tab_layout = QHBoxLayout(tab_container)
+        tab_layout.setContentsMargins(0, 0, 0, 0)
+        tab_layout.setSpacing(0)
+        for i, mode in enumerate(self.MODES):
+            btn = QPushButton(mode)
+            btn.setCheckable(True)
+            btn.setChecked(i == 0)
+            radius_l = "4px" if i == 0 else "0px"
+            radius_r = "4px" if i == len(self.MODES) - 1 else "0px"
+            margin_l = "0px" if i == 0 else "-1px"
+            btn.setStyleSheet(
+                f"""
+                QPushButton {{
+                    border: 1px solid {Colors.BORDER_DARK};
+                    border-radius: 0px;
+                    border-top-left-radius: {radius_l};
+                    border-bottom-left-radius: {radius_l};
+                    border-top-right-radius: {radius_r};
+                    border-bottom-right-radius: {radius_r};
+                    padding: 5px 18px;
+                    font-size: 12px;
+                    color: {Colors.TEXT_SECONDARY};
+                    background: transparent;
+                    margin-left: {margin_l};
+                }}
+                QPushButton:checked {{
+                    background: {Colors.BG_TERTIARY};
+                    color: {Colors.TEXT_PRIMARY};
+                    font-weight: 500;
+                }}
+                QPushButton:hover:!checked {{
+                    background: {Colors.BG_HOVER};
+                }}
+            """
+            )
+            btn.clicked.connect(lambda checked, idx=i: self._on_mode_clicked(idx))
+            tab_layout.addWidget(btn)
+            self.mode_buttons.append(btn)
 
-        self.options_group = QGroupBox("Options")
-        options_layout = QVBoxLayout(self.options_group)
-        options_layout.setContentsMargins(10, 14, 10, 10)
+        tab_row.addWidget(tab_container)
+        tab_row.addStretch()
+        main_layout.addLayout(tab_row)
+        main_layout.addSpacing(14)
 
+        # Stacked options (no group box)
         self.stack = QStackedWidget()
         self._build_replace_page()
         self._build_format_page()
-        options_layout.addWidget(self.stack)
+        main_layout.addWidget(self.stack)
+        main_layout.addSpacing(10)
 
-        main_layout.addWidget(self.options_group)
-
-        preview_group = QGroupBox(f"Preview ({len(self.names)} items)")
-        preview_layout = QVBoxLayout(preview_group)
-        preview_layout.setContentsMargins(10, 14, 10, 10)
-
-        self.preview_tree = QTreeWidget()
-        self.preview_tree.setHeaderLabels(["Current", "New"])
-        self.preview_tree.setRootIsDecorated(False)
-        self.preview_tree.setSelectionMode(QTreeWidget.SelectionMode.NoSelection)
-        self.preview_tree.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.preview_tree.header().setStretchLastSection(True)
-        self.preview_tree.header().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Stretch
+        self.preview_label = QLabel()
+        self.preview_label.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: 11px;"
         )
-        _tree_style = QTable_style.replace("QTableWidget", "QTreeWidget")
-        _scrollbar_style = QScrollArea_style.replace("QScrollArea", "QTreeWidget")
-        _no_hover = "QTreeWidget::item:hover { background: transparent; }"
-        self.preview_tree.setStyleSheet(_tree_style + _scrollbar_style + _no_hover)
-        self.preview_tree.setMinimumHeight(180)
-        preview_layout.addWidget(self.preview_tree)
-
-        main_layout.addWidget(preview_group)
+        main_layout.addWidget(self.preview_label)
+        main_layout.addSpacing(8)
 
         footer = DialogFooter(dialog=self, margin=(0, 4, 0, 0))
         footer.accept_button.setText("Rename")
         main_layout.addWidget(footer)
 
-        self.setStyleSheet(QGroupBox_style + QPushButton_style)
+        self.setStyleSheet(QPushButton_style)
 
     def _build_replace_page(self):
         page = QWidget()
@@ -135,13 +145,17 @@ class BatchRenameDialog(QDialog):
         grid.setSpacing(10)
         grid.setContentsMargins(0, 0, 0, 0)
 
-        grid.addWidget(QLabel("Find:"), 0, 0)
+        find_label = QLabel("Find")
+        find_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 12px;")
+        grid.addWidget(find_label, 0, 0)
         self.find_input = QLineEdit()
         self.find_input.setPlaceholderText("Text to find")
         self.find_input.setStyleSheet(QLineEdit_style)
         grid.addWidget(self.find_input, 0, 1)
 
-        grid.addWidget(QLabel("Replace:"), 1, 0)
+        replace_label = QLabel("Replace")
+        replace_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 12px;")
+        grid.addWidget(replace_label, 1, 0)
         self.replace_input = QLineEdit()
         self.replace_input.setPlaceholderText("Replacement (leave empty to delete)")
         self.replace_input.setStyleSheet(QLineEdit_style)
@@ -175,7 +189,11 @@ class BatchRenameDialog(QDialog):
         grid.setSpacing(10)
         grid.setContentsMargins(0, 0, 0, 0)
 
-        grid.addWidget(QLabel("Template:"), 0, 0)
+        template_label = QLabel("Template")
+        template_label.setStyleSheet(
+            f"color: {Colors.TEXT_SECONDARY}; font-size: 12px;"
+        )
+        grid.addWidget(template_label, 0, 0)
         self.pattern_input = QLineEdit()
         self.pattern_input.setPlaceholderText("e.g. Mitochondrion {i}")
         self.pattern_input.setText("{name}")
@@ -183,30 +201,27 @@ class BatchRenameDialog(QDialog):
         self.pattern_input.selectAll()
         grid.addWidget(self.pattern_input, 0, 1)
 
-        token_help = QLabel(
-            "{name} = original name, {i} = number, {i:03} = zero-padded"
-        )
-        token_help.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 10px;")
+        token_help = QLabel("{name} = original · {i} = number · {i:03} = zero-padded")
+        token_help.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 10px;")
         grid.addWidget(token_help, 1, 1)
 
         self.stack.addWidget(page)
 
     def _connect_signals(self):
-        self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+        self.find_input.textChanged.connect(self._update_result)
+        self.replace_input.textChanged.connect(self._update_result)
+        self.case_sensitive_check.stateChanged.connect(self._update_result)
+        self.regex_check.stateChanged.connect(self._update_result)
+        self.pattern_input.textChanged.connect(self._update_result)
 
-        self.find_input.textChanged.connect(self._update_preview)
-        self.replace_input.textChanged.connect(self._update_preview)
-        self.case_sensitive_check.stateChanged.connect(self._update_preview)
-        self.regex_check.stateChanged.connect(self._update_preview)
-
-        self.pattern_input.textChanged.connect(self._update_preview)
-
-    def _on_mode_changed(self, index):
+    def _on_mode_clicked(self, index):
+        for i, btn in enumerate(self.mode_buttons):
+            btn.setChecked(i == index)
         self.stack.setCurrentIndex(index)
-        self._update_preview()
+        self._update_result()
 
     def _compute_names(self):
-        if self.mode_combo.currentIndex() == 0:
+        if self.stack.currentIndex() == 0:
             return self._apply_replace()
         return self._apply_format()
 
@@ -251,12 +266,11 @@ class BatchRenameDialog(QDialog):
             result.append(text)
         return result
 
-    def _update_preview(self):
+    def _update_result(self):
         self.result_names = self._compute_names()
-        self.preview_tree.clear()
-
-        muted = QColor(Colors.TEXT_SECONDARY)
-        for old_name, new_name in zip(self.names, self.result_names):
-            item = QTreeWidgetItem([old_name, new_name])
-            item.setForeground(0, muted)
-            self.preview_tree.addTopLevelItem(item)
+        if self.names[0] != self.result_names[0]:
+            self.preview_label.setText(
+                f"Example: {self.names[0]}  →  {self.result_names[0]}"
+            )
+        else:
+            self.preview_label.setText("")

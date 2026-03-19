@@ -187,8 +187,9 @@ class ExportDialog(QDialog):
 
         for settings_dict in self.format_settings_definitions.values():
             for key, value in params.items():
-                if key in settings_dict:
-                    settings_dict[key]["default"] = value
+                if key == "shape" or key not in settings_dict:
+                    continue
+                settings_dict[key]["default"] = value
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
