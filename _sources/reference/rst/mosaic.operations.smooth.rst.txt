@@ -1,0 +1,6 @@
+﻿mosaic.operations.smooth
+========================
+
+.. currentmodule:: mosaic.operations
+
+.. autofunction:: smooth

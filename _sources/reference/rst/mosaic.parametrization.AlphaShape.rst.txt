@@ -1,0 +1,41 @@
+﻿mosaic.parametrization.AlphaShape
+=================================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: AlphaShape
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~AlphaShape.__init__
+      ~AlphaShape.add_projections
+      ~AlphaShape.compute_curvature
+      ~AlphaShape.compute_distance
+      ~AlphaShape.compute_normal
+      ~AlphaShape.compute_vertex_normals
+      ~AlphaShape.fit
+      ~AlphaShape.from_file
+      ~AlphaShape.geodesic_distance
+      ~AlphaShape.points_per_sampling
+      ~AlphaShape.sample
+      ~AlphaShape.subset
+      ~AlphaShape.to_file
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~AlphaShape.triangles
+      ~AlphaShape.vertices
+   
+   

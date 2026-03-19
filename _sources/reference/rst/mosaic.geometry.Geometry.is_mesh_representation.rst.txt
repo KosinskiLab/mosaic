@@ -1,0 +1,6 @@
+﻿mosaic.geometry.Geometry.is\_mesh\_representation
+=================================================
+
+.. currentmodule:: mosaic.geometry
+
+.. automethod:: Geometry.is_mesh_representation

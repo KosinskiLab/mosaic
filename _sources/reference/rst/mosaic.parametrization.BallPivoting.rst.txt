@@ -1,0 +1,41 @@
+﻿mosaic.parametrization.BallPivoting
+===================================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: BallPivoting
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BallPivoting.__init__
+      ~BallPivoting.add_projections
+      ~BallPivoting.compute_curvature
+      ~BallPivoting.compute_distance
+      ~BallPivoting.compute_normal
+      ~BallPivoting.compute_vertex_normals
+      ~BallPivoting.fit
+      ~BallPivoting.from_file
+      ~BallPivoting.geodesic_distance
+      ~BallPivoting.points_per_sampling
+      ~BallPivoting.sample
+      ~BallPivoting.subset
+      ~BallPivoting.to_file
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BallPivoting.triangles
+      ~BallPivoting.vertices
+   
+   
