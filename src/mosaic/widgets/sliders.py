@@ -39,14 +39,21 @@ class SliderRow(QWidget):
         label_position: str = "left",
         steps: int = 100,
         exponent: float = 1.0,
+        values: list = None,
         parent=None,
     ):
         super().__init__(parent)
-        self.min_val = min_val
-        self.max_val = max_val
-        self.decimals = decimals
+        self._values = values
+        if values:
+            self.min_val, self.max_val = 0, len(values) - 1
+            self.steps = len(values) - 1
+            self.decimals = 0
+        else:
+            self.min_val = min_val
+            self.max_val = max_val
+            self.steps = steps
+        self.decimals = 0 if values else decimals
         self.suffix = suffix
-        self.steps = steps
         self.exponent = exponent
         self._setup_ui(label, default, label_position)
 
@@ -82,17 +89,22 @@ class SliderRow(QWidget):
 
     def _value_to_slider(self, value: float) -> int:
         """Convert actual value to slider position (0-steps)."""
+        if self._values:
+            try:
+                return self._values.index(value)
+            except ValueError:
+                return 0
         ratio = (value - self.min_val) / (self.max_val - self.min_val)
         if self.exponent != 1.0:
-            # Inverse of the non-linear scaling: more precision at high end
             ratio = 1.0 - (1.0 - ratio) ** (1.0 / self.exponent)
         return int(ratio * self.steps)
 
     def _slider_to_value(self, pos: int) -> float:
         """Convert slider position to actual value."""
+        if self._values:
+            return self._values[min(pos, len(self._values) - 1)]
         ratio = pos / self.steps
         if self.exponent != 1.0:
-            # Non-linear scaling: more precision at high end when exponent > 1
             ratio = 1.0 - (1.0 - ratio) ** self.exponent
         return self.min_val + ratio * (self.max_val - self.min_val)
 

@@ -200,17 +200,19 @@ def volume_to_points(
             "Make sure you are opening a segmentation."
         )
 
-    points = np.array(np.unravel_index(points, volume.shape)).T
+    points = np.array(np.unravel_index(points, volume.shape), dtype=np.float32).T
 
     ret = []
     for index in range(len(clusters)):
         cl_points = points[cluster_indices == index]
 
         if reverse_order:
-            indices = np.ravel_multi_index(cl_points[:, ::-1].T, volume.shape[::-1])
+            indices = np.ravel_multi_index(
+                cl_points[:, ::-1].T.astype(np.intp), volume.shape[::-1]
+            )
             cl_points = cl_points[np.argsort(indices)]
 
-        cl_points = np.multiply(cl_points, sampling_rate)
+        cl_points = np.multiply(cl_points, sampling_rate, out=cl_points)
         ret.append(cl_points)
     return ret
 

@@ -17,7 +17,7 @@ FORMAT_MAPPING = {
     read_star: ["star"],
     read_tsv: ["tsv"],
     read_txt: ["txt", "xyz", "csv"],
-    read_mesh: ["obj", "ply", "stl", "off", "gltf", "glb," "fbx"],
+    read_mesh: ["obj", "ply", "stl", "off", "gltf", "glb", "fbx"],
     read_volume: [
         "mrc",
         "em",

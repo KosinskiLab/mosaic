@@ -234,13 +234,8 @@ class Session:
             opened_geoms.append(geom)
             self._counter += 1
 
-        # Store shape metadata
         if persist and shape is not None:
-            effective = (
-                sampling_rate if sampling_rate is not None else effective_sampling
-            )
             self._data.metadata["shape"] = shape
-            self._data.metadata["sampling_rate"] = effective
 
         self._last_results = opened_geoms
         return indices
@@ -260,18 +255,12 @@ class Session:
         from ..formats.writer import write_geometries
 
         export_parameters = kwargs.copy()
-        if "format" not in export_parameters:
+        if export_parameters.get("format") is None:
             suffix = filepath.rsplit(".", 1)[-1].lower()
             export_parameters["format"] = suffix
 
-        # Infer shape from metadata when not explicitly provided
-        if "shape" not in export_parameters:
-            shape = self._data.metadata.get("shape")
-            if shape is not None:
-                sampling = self._data.metadata.get("sampling_rate", 1)
-                export_parameters["shape"] = tuple(
-                    np.rint(np.divide(shape, sampling)).astype(int)
-                )
+        if export_parameters.get("shape") is None:
+            export_parameters["shape"] = self._data.metadata.get("shape")
 
         write_geometries(geometries, filepath, **export_parameters)
 
@@ -287,17 +276,32 @@ class Session:
         with open(filepath, "wb") as fh:
             pickle.dump(state, fh, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def load_session(self, filepath: str) -> None:
-        """Restore session state from a pickle file."""
+    def load_session(self, filepath: str, persist: bool = True) -> None:
+        """Restore session state from a pickle file.
+
+        Parameters
+        ----------
+        filepath : str
+            Path to the pickle file.
+        persist : bool, optional
+            When ``True`` (default), replace the current session state.
+            When ``False``, geometries are only available via ``@last``.
+        """
         with open(filepath, "rb") as fh:
             state = pickle.load(fh)
 
-        # Support both old ("data"/"models") and new key layout
-        self._data = state.get("_data", state.get("data", DataContainer()))
-        self._models = state.get(
+        loaded_data = state.get("_data", state.get("data", DataContainer()))
+        loaded_models = state.get(
             "_models",
             state.get("models", DataContainer(highlight_color=(0.2, 0.4, 0.8))),
         )
+
+        if not persist:
+            self._last_results = list(loaded_data.data) + list(loaded_models.data)
+            return
+
+        self._data = loaded_data
+        self._models = loaded_models
 
         for attr in ("_data_tree", "_models_tree"):
             tree = state.get(attr)

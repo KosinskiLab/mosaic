@@ -7,7 +7,10 @@ Copyright (c) 2024-2025 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from contextlib import contextmanager
+
 import vtk
+import numpy as np
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -24,17 +27,9 @@ from qtpy.QtCore import Signal
 from vtkmodules.util import numpy_support
 
 from .sliders import SliderRow, DualHandleSlider
+from .colors import ColorMapSelector
 from ..stylesheets import QPushButton_style, Colors
 from ..utils import Throttle
-
-_colormaps = [
-    "gray",
-    "gray_r",
-    "viridis",
-    "magma",
-    "twilight_shifted",
-    "coolwarm",
-]
 
 
 class VolumeViewer(QWidget):
@@ -42,6 +37,7 @@ class VolumeViewer(QWidget):
 
     def __init__(self, vtk_widget, legend=None, parent=None):
         super().__init__(parent)
+        self._rendering_suspended = False
         self.vtk_widget = vtk_widget
         self.legend = legend
 
@@ -51,6 +47,7 @@ class VolumeViewer(QWidget):
 
         self.slice_mapper = vtk.vtkImageSliceMapper()
         self.slice = vtk.vtkImageSlice()
+        self._source_path = None
         self.volume = None
 
         self.open_button = QPushButton("Load")
@@ -65,6 +62,13 @@ class VolumeViewer(QWidget):
         self.visibility_button.setToolTip("Toggle volume visibility")
         self.visibility_button.clicked.connect(self.toggle_visibility)
         self.visibility_button.setEnabled(False)
+
+        self.auto_contrast_button = QPushButton()
+        self.auto_contrast_button.setIcon(qta.icon("ph.magic-wand", color=Colors.ICON))
+        self.auto_contrast_button.setFixedWidth(30)
+        self.auto_contrast_button.setToolTip("Auto contrast (percentile-based)")
+        self.auto_contrast_button.clicked.connect(self.auto_contrast)
+        self.auto_contrast_button.setEnabled(False)
 
         self.slice_row = SliderRow(
             label="Slice",
@@ -87,9 +91,9 @@ class VolumeViewer(QWidget):
         self.orientation_selector.currentTextChanged.connect(self.change_orientation)
         self.orientation_selector.setEnabled(False)
 
-        self.color_selector = QComboBox()
-        self.color_selector.addItems(_colormaps)
-        self.color_selector.currentTextChanged.connect(self.change_color_palette)
+        self.color_selector = ColorMapSelector(default="gray")
+        self.color_selector.setMinimumWidth(120)
+        self.color_selector.colormapChanged.connect(self.change_color_palette)
         self.color_selector.setEnabled(False)
 
         self.contrast_label = QLabel("Contrast:")
@@ -102,6 +106,7 @@ class VolumeViewer(QWidget):
         self.contrast_slider.rangeChanged.connect(self._contrast_throttle)
         self.contrast_slider.setEnabled(False)
         self.contrast_value_label = QLabel("0.00 - 1.00")
+        self.contrast_value_label.setFixedWidth(80)
         self.contrast_value_label.setEnabled(False)
 
         self.gamma_row = SliderRow(
@@ -115,7 +120,6 @@ class VolumeViewer(QWidget):
         self.gamma_row.setEnabled(False)
         self.gamma_row.valueChanged.connect(self._contrast_throttle)
 
-        # Project 3D geometries on 2D slice
         self.project_selector = QComboBox()
         self.project_selector.addItems(["Off", "Project +", "Project -"])
         self.project_selector.setEnabled(False)
@@ -123,13 +127,13 @@ class VolumeViewer(QWidget):
         self.clipping_plane = vtk.vtkPlane()
         self.clipping_direction = 1
 
-        # Create layout
         self.controls_layout = QHBoxLayout()
         self.controls_layout.addWidget(self.open_button)
         self.controls_layout.addWidget(self.close_button)
         self.controls_layout.addWidget(self.orientation_selector)
         self.controls_layout.addWidget(self.color_selector)
         self.controls_layout.addWidget(self.visibility_button)
+        self.controls_layout.addWidget(self.auto_contrast_button)
         self.controls_layout.addWidget(self.slice_row, 1)
         self.controls_layout.addWidget(self.contrast_slider, 1)
         self.controls_layout.addWidget(self.contrast_label)
@@ -147,6 +151,7 @@ class VolumeViewer(QWidget):
             self.gamma_row,
             self.close_button,
             self.visibility_button,
+            self.auto_contrast_button,
             self.project_selector,
         ]
         self.change_widget_state(False)
@@ -169,7 +174,7 @@ class VolumeViewer(QWidget):
             self.visibility_button.setIcon(qta.icon("ph.eye", color=Colors.ICON))
             self.visibility_button.setToolTip("Hide volume")
 
-        self.vtk_widget.GetRenderWindow().Render()
+        self._render()
 
     @property
     def volume(self):
@@ -206,8 +211,10 @@ class VolumeViewer(QWidget):
 
         self.project_selector.setCurrentText("Off")
 
+        self._source_path = None
         self.volume = None
         self.renderer.RemoveViewProp(self.slice)
+        self.slice.SetMapper(None)
         self.slice_mapper = vtk.vtkImageSliceMapper()
         self.slice = vtk.vtkImageSlice()
 
@@ -215,55 +222,66 @@ class VolumeViewer(QWidget):
         self.set_visibility(True)
         self.change_widget_state(is_enabled=False)
 
-        self.vtk_widget.GetRenderWindow().Render()
+        self._render()
 
     def change_widget_state(self, is_enabled: bool = False):
         for widget in self.editable_widgets:
             widget.setEnabled(is_enabled)
 
+    def _render(self):
+        if not self._rendering_suspended:
+            self.vtk_widget.GetRenderWindow().Render()
+
+    @contextmanager
+    def _suspend_rendering(self):
+        self._rendering_suspended = True
+        try:
+            yield
+        finally:
+            self._rendering_suspended = False
+            self._render()
+
+    @property
+    def source_path(self):
+        """Path to the currently loaded volume file, or None."""
+        return self._source_path
+
     def load_volume(self, file_path):
         from ..formats.parser import load_density
 
-        volume = load_density(file_path)
+        self._source_path = file_path
+        volume = load_density(file_path, use_memmap=True)
         self.volume = vtk.vtkImageData()
         self.volume.SetDimensions(volume.shape)
         self.volume.SetSpacing(volume.sampling_rate)
-        self.volume.AllocateScalars(vtk.VTK_FLOAT, 1)
 
         volume = numpy_support.numpy_to_vtk(
-            volume.data.ravel(order="F"), deep=True, array_type=vtk.VTK_FLOAT
+            volume.data.ravel(order="F"), deep=False, array_type=vtk.VTK_FLOAT
         )
         self.volume.GetPointData().SetScalars(volume)
         self.swap_volume(self.volume)
 
     def swap_volume(self, new_volume):
-        self.volume = new_volume
-        self.slice_mapper.SetInputData(self.volume)
+        with self._suspend_rendering():
+            self.volume = new_volume
+            self.slice_mapper.SetInputData(self.volume)
 
-        self.change_orientation(self.orientation_selector.currentText())
+            self.change_orientation(self.orientation_selector.currentText())
 
-        self.slice.SetMapper(self.slice_mapper)
-        self.renderer.AddViewProp(self.slice)
+            self.slice.SetMapper(self.slice_mapper)
+            self.renderer.AddViewProp(self.slice)
 
-        self.change_color_palette("gray")
-        self.update_contrast_and_gamma()
+            self.change_color_palette("gray")
+            self.change_widget_state(is_enabled=True)
 
-        dimensions = self.get_dimensions()
-        self.slice_row.setValue(0)
-
-        self.change_widget_state(is_enabled=True)
-
-        self.vtk_widget.GetRenderWindow().Render()
+            self.renderer.ResetCamera()
 
     def _on_slice_changed(self, value: float):
         """Handle slice row value change (converts float to int)."""
         self.update_slice(int(value))
 
     def set_slice(self, slice_number: int):
-        """Set slice programmatically, updating the slider and rendering directly.
-
-        Bypasses the slider throttle so animations run at full frame rate.
-        """
+        """Set slice update slider avoid throttling."""
         self.slice_row.slider.blockSignals(True)
         self.slice_row.setValue(slice_number)
         self.slice_row.slider.blockSignals(False)
@@ -272,7 +290,7 @@ class VolumeViewer(QWidget):
     def update_slice(self, slice_number):
         self.slice_mapper.SetSliceNumber(slice_number)
         self.update_clipping_plane()
-        self.vtk_widget.GetRenderWindow().Render()
+        self._render()
 
     def change_orientation(self, orientation):
         dimensions = self.get_dimensions()
@@ -288,12 +306,12 @@ class VolumeViewer(QWidget):
         dim = self._orientation_mapping.get(orientation, 0)
         self.slice_row.setRange(0, dimensions[dim] - 1)
 
-        self.slice_row.setValue(0)
-        self.slice_mapper.SetSliceNumber(0)
+        mid = dimensions[dim] // 2
+        self.slice_row.setValue(mid)
+        self.slice_mapper.SetSliceNumber(mid)
         self.update_clipping_plane()
 
-        self.renderer.ResetCamera()
-        self.vtk_widget.GetRenderWindow().Render()
+        self._render()
 
     def get_slice(self):
         return int(self.slice_row.value())
@@ -310,7 +328,52 @@ class VolumeViewer(QWidget):
     def change_color_palette(self, palette_name):
         self.current_palette = palette_name
         self.update_contrast_and_gamma()
-        self.vtk_widget.GetRenderWindow().Render()
+        self._render()
+
+    def auto_contrast(self, low_pct: float = 0.1, high_pct: float = 99.9):
+        """Set contrast from percentile thresholds of the current slice.
+
+        Parameters
+        ----------
+        low_pct : float
+            Lower percentile for clipping (default 0.1).
+        high_pct : float
+            Upper percentile for clipping (default 99.9).
+        """
+        if self.volume is None:
+            return
+
+        dims = self.volume.GetDimensions()
+        dim = self._orientation_mapping[self.orientation_selector.currentText()]
+        slice_idx = self.slice_mapper.GetSliceNumber()
+
+        voi = [0, dims[0] - 1, 0, dims[1] - 1, 0, dims[2] - 1]
+        voi[2 * dim] = slice_idx
+        voi[2 * dim + 1] = slice_idx
+
+        extractor = vtk.vtkExtractVOI()
+        extractor.SetInputData(self.volume)
+        extractor.SetVOI(*voi)
+        extractor.Update()
+
+        slice_arr = numpy_support.vtk_to_numpy(
+            extractor.GetOutput().GetPointData().GetScalars()
+        )
+
+        low_val, high_val = np.percentile(slice_arr, [low_pct, high_pct])
+        min_value, max_value = self.volume.GetScalarRange()
+        value_range = max_value - min_value
+
+        if value_range <= 0:
+            return
+
+        low_pos = 100.0 * (low_val - min_value) / value_range
+        high_pos = 100.0 * (high_val - min_value) / value_range
+
+        self.contrast_slider.setValues(
+            max(0, min(100, low_pos)), max(0, min(100, high_pos))
+        )
+        self.update_contrast_and_gamma()
 
     def update_contrast_and_gamma(self, *args):
         from ..utils import cmap_to_vtkctf
@@ -342,7 +405,7 @@ class VolumeViewer(QWidget):
         self.slice.GetProperty().SetColorWindow(value_range)
         self.slice.GetProperty().SetColorLevel(min_value + value_range / 2)
 
-        self.vtk_widget.GetRenderWindow().Render()
+        self._render()
 
     def update_clipping_plane(self):
         if self.volume is None or self.project_selector.currentText() == "Off":
@@ -388,7 +451,7 @@ class VolumeViewer(QWidget):
             self.update_clipping_plane()
             mapper.AddClippingPlane(self.clipping_plane)
 
-        self.vtk_widget.GetRenderWindow().Render()
+        self._render()
 
 
 class MultiVolumeViewer(QWidget):
@@ -492,6 +555,7 @@ class MultiVolumeViewer(QWidget):
         new_primary = viewers[0]
 
         # Copy all state from the viewer being promoted
+        self.primary._source_path = new_primary._source_path
         self.primary.swap_volume(new_primary.volume)
         self.primary.change_orientation(new_primary.get_orientation())
         self.primary.update_slice(new_primary.get_slice())

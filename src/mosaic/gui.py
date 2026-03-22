@@ -127,7 +127,12 @@ class App(QMainWindow):
             (IntelligenceTab(**data), "Intelligence"),
         ]
         if os.environ.get("MOSAIC_DEV"):
-            self.tabs.append((DevelopmentTab(**data), "Development"))
+            self.tabs.append(
+                (
+                    DevelopmentTab(**data, volume_viewer=self.volume_viewer),
+                    "Development",
+                )
+            )
 
         for index, (tab, name) in enumerate(self.tabs):
             btn = QPushButton(name)
@@ -146,7 +151,6 @@ class App(QMainWindow):
                     min-width: 90px;
                 }}
                 QPushButton:checked {{
-                    font-weight: 500;
                     color: {Colors.PRIMARY};
                 }}
                 QPushButton:focus {{
@@ -1194,15 +1198,13 @@ class App(QMainWindow):
                 return None
 
         for index, data in enumerate(container):
-            # data.sampling is typically 1 apart from parser.read_volume
+            # data.sampling is typically 1
             scale_new = np.divide(scale, data.sampling)
             data.vertices = np.multiply(np.subtract(data.vertices, offset), scale_new)
 
             if data.vertices.shape[0] > 1e7:
                 if not show_large_file_warning():
                     continue
-
-            data_shape = np.divide(data.shape, data.sampling)
 
             container, interactor = self.cdata._data, self.cdata.data
             geom_data = {
@@ -1213,6 +1215,7 @@ class App(QMainWindow):
                 "vertex_properties": data.vertex_properties,
                 "meta": {"name": base if not use_index else f"{index}_{base}"},
             }
+
             if data.faces is not None:
                 from .meshing import to_open3d
                 from .parametrization import TriangularMesh
@@ -1236,6 +1239,7 @@ class App(QMainWindow):
                 )
                 container.update(geometry.uuid, seg)
 
+            data_shape = np.divide(data.shape, data.sampling)
             if container.metadata.get("shape") is None:
                 container.metadata["shape"] = data_shape
             container.metadata["shape"] = np.maximum(

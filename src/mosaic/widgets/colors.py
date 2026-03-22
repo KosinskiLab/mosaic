@@ -235,10 +235,12 @@ class ColorMapSelector(QPushButton):
         padding = 8
         spacing = 12
 
-        # Measure text width to allocate appropriate space
+        # Use fixed text area based on widest colormap name for consistent gradient position
         font_metrics = painter.fontMetrics()
-        text_width = font_metrics.horizontalAdvance(self._current_cmap)
-        text_area_width = text_width + padding
+        all_names = [n for names in self._categories.values() for n in names]
+        text_area_width = (
+            max(font_metrics.horizontalAdvance(n) for n in all_names) + padding
+        )
 
         # Draw colormap name with proper left padding
         text_rect = QRect(padding, 0, text_area_width, rect.height())

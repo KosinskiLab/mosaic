@@ -66,12 +66,8 @@ Examples:
         print(f"Error: {args.config} not found", file=sys.stderr)
         return 1
 
-    try:
-        with open(args.config, mode="r") as ifile:
-            pipeline_config = json.load(ifile)
-    except json.JSONDecodeError:
-        print("Invalid json file.", file=sys.stderr)
-        return 1
+    with open(args.config, mode="r") as ifile:
+        pipeline_config = json.load(ifile)
 
     try:
         runs = generate_runs(pipeline_config)
@@ -102,6 +98,7 @@ Examples:
     total = len(runs)
 
     completed = 0
+    failed = 0
     with ProcessPoolExecutor(max_workers=args.workers, max_tasks_per_child=1) as pool:
         futures = {
             pool.submit(run_wrapper, run, args.skip_complete): run for run in runs
@@ -113,6 +110,7 @@ Examples:
             try:
                 run_id, error = future.result()
                 if error:
+                    failed += 1
                     print(
                         f"[{completed}/{total}] {run_id}: Error - {error}",
                         file=sys.stderr,
@@ -120,13 +118,16 @@ Examples:
                 else:
                     print(f"[{completed}/{total}] {run_id}: Done")
             except Exception as e:
+                failed += 1
                 print(
                     f"[{completed}/{total}] {run['run_id']}: "
                     f"Unexpected error - {e}",
                     file=sys.stderr,
                 )
 
-    return 0
+    if failed:
+        print(f"{failed}/{total} runs failed", file=sys.stderr)
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

@@ -13,6 +13,29 @@ from ..stylesheets import QPushButton_style
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
 
 
+def _load_density_header(filename: str):
+
+    import numpy as np
+    from ..formats.parser import load_density
+
+    try:
+        import mrcfile
+
+        with mrcfile.open(filename, header_only=True, permissive=True) as mrc:
+            data_shape = mrc.header.nz, mrc.header.ny, mrc.header.nx
+            sampling_rate = mrc.voxel_size.astype(
+                [("x", "<f4"), ("y", "<f4"), ("z", "<f4")]
+            ).view(("<f4", 3))
+            sampling_rate = np.array(sampling_rate)[::1]
+        return data_shape[::1], sampling_rate[::1]
+
+    # Fallback for cases supported by Density.from_file and not mrcfile
+    except Exception as e:
+        print(e)
+        density = load_density(filename)
+        return density.data.shape, density.sampling_rat
+
+
 class ImportDataDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -238,7 +261,7 @@ class ImportDataDialog(QDialog):
     def set_files(self, filenames):
         from ..formats._utils import get_extension
         from ..formats.reader import FORMAT_MAPPING
-        from ..formats.parser import read_volume, _load_density_header
+        from ..formats.parser import read_volume
 
         self.filenames = filenames
         self.current_file_index = 0
