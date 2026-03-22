@@ -75,6 +75,8 @@ class Colors:
     ICON = "#64748b"  # Slate 500 - primary icon color
     ICON_MUTED = "#9ca3af"  # Gray 400 - muted icons, chevrons
 
+    WIDGET_HEIGHT = 30  # Standard height for input widgets (px)
+
     # =========================================================================
     # Entity Colors (for "By Entity" coloring mode)
     # =========================================================================
@@ -104,6 +106,9 @@ class Colors:
         (0.48, 0.38, 0.55),  # Grape
         (0.90, 0.25, 0.20),  # Vermillion red
     ]
+
+    # Annotation colors — ENTITY palette brightened for visibility on dark backgrounds
+    ANNOTATION = [tuple(min(1.0, c + 0.25) for c in color) for color in ENTITY]
 
     # =========================================================================
     # Category Colors (for pipelines, animations, etc.)

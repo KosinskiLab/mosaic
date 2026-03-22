@@ -277,12 +277,28 @@ def _applied_text(op_name: str, created: list, session) -> Text:
     return t
 
 
+def _is_session_file(filepath: str) -> bool:
+    """Return True if *filepath* has a session file extension."""
+    import os
+
+    return os.path.splitext(filepath)[1].lower() == ".pickle"
+
+
 def _cmd_open(session, parsed: ParsedCommand):
     import glob as _glob
 
     filepath = parsed.kwargs.pop("filepath", None)
     if filepath is None:
         return _usage_line(_usage_for("open"))
+
+    if _is_session_file(filepath):
+        persist = parsed.kwargs.pop("persist", True)
+        session.load_session(filepath, persist=persist)
+        if persist:
+            n = len(session._all_geometries())
+            return _success_text(f"Session loaded ({n} geometries)  ", filepath)
+        n = len(session._last_results)
+        return _success_text(f"Loaded {n} geometry(s)  ", "(available via @last)")
 
     persist = parsed.kwargs.get("persist", True)
 
@@ -320,24 +336,14 @@ def _cmd_save(session, parsed: ParsedCommand):
     filepath = parsed.kwargs.pop("filepath", None)
     if filepath is None:
         return _usage_line(_usage_for("save"))
+
+    if _is_session_file(filepath):
+        session.save_session(filepath)
+        return _success_text("Session saved  ", filepath)
+
     geometries = _resolve_targets(session, parsed)
     session.save(geometries, filepath, **parsed.kwargs)
     return _success_text(f"Saved {len(geometries)} geometry(s)  ", filepath)
-
-
-def _cmd_save_session(session, parsed: ParsedCommand):
-    if not parsed.args:
-        return _usage_line("save_session <filepath>")
-    session.save_session(parsed.args[0])
-    return _success_text("Session saved  ", parsed.args[0])
-
-
-def _cmd_load_session(session, parsed: ParsedCommand):
-    if not parsed.args:
-        return _usage_line("load_session <filepath>")
-    session.load_session(parsed.args[0])
-    n = len(session._all_geometries())
-    return _success_text(f"Session loaded ({n} geometries)  ", parsed.args[0])
 
 
 def _build_geometry_table(session, entries) -> Table:
@@ -362,7 +368,8 @@ def _build_geometry_table(session, entries) -> Table:
         gtype = geom.geometry_type
         ggroup = session._geometry_group(geom)
         name = session._geometry_name(geom, i)
-        table.add_row(str(i), f"{n_pts:,}", gtype, ggroup, name)
+        style = "dim" if not geom.visible else ""
+        table.add_row(str(i), f"{n_pts:,}", gtype, ggroup, name, style=style)
 
     return table
 
@@ -376,8 +383,8 @@ def _cmd_list(session, parsed: ParsedCommand):
     kwargs = {k.lower(): v for k, v in parsed.kwargs.items()}
     output_fmt = kwargs.pop("format", "table")
 
-    # Handle visible: default to True (hide invisible), "all" disables filter
-    vis = kwargs.pop("visible", True)
+    # Handle visible: default to showing all geometries regardless of visibility
+    vis = kwargs.pop("visible", None)
     if isinstance(vis, str) and vis.lower() == "all":
         vis = None
     kwargs["visible"] = vis
@@ -874,8 +881,8 @@ def _register_builtins():
     from ..registry import MethodRegistry
 
     for name, handler, desc, group in [
-        ("open", _cmd_open, "Load geometries from file", "I/O"),
-        ("save", _cmd_save, "Export geometries to file", "I/O"),
+        ("open", _cmd_open, "Load geometries or session from file", "I/O"),
+        ("save", _cmd_save, "Save geometries or session to file", "I/O"),
         ("list", _cmd_list, "List all loaded geometries", "Session"),
         ("measure", _cmd_measure, "Compute a geometry property", "Analysis"),
         ("merge", _cmd_merge, "Merge geometries into one", "Session"),
@@ -891,20 +898,6 @@ def _register_builtins():
         CommandRegistry.register(name, handler, desc, usage, group=group)
 
     for name, handler, desc, usage, group in [
-        (
-            "save_session",
-            _cmd_save_session,
-            "Save session state",
-            "save_session <filepath>",
-            "I/O",
-        ),
-        (
-            "load_session",
-            _cmd_load_session,
-            "Load session state",
-            "load_session <filepath>",
-            "I/O",
-        ),
         ("info", _cmd_info, "Show geometry details", "info [targets]", "Session"),
         ("remove", _cmd_remove, "Remove geometries", "remove [targets]", "Session"),
         (

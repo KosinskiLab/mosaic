@@ -105,6 +105,12 @@ Generate Initial Mesh
    Initial mesh
 
 
+.. note::
+
+   Elastic weight has been renamed Smoothness in version 1.2.2. The scaling has also adapted, so that from 1.2.2 version Smoothness: 1.0, Curvature Weight: 1.0 gives more sensible results.
+
+
+
 Refine the Mesh
 ^^^^^^^^^^^^^^^
 

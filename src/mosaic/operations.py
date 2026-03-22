@@ -17,7 +17,7 @@ from .registry import (
     operation,
     _DECORATED_OPERATIONS,
     _K_NEIGHBORS,
-    _REPAIR_PARAMS,
+    _FAIRING_PARAMS,
     _HOLE_SIZE,
     _NORMAL_OFFSET,
     _BIDIRECTIONAL,
@@ -575,6 +575,8 @@ def cluster(
         distance = np.max(geometry.sampling_rate)
 
     if method in ("connected_components", "envelope", "leiden"):
+        if distance == 0:
+            raise ValueError("Clustering distance must be non-zero.")
         kwargs["distance"] = distance
         points = np.divide(geometry.points, distance)
     elif method == "dbscan":
@@ -989,6 +991,11 @@ def remesh(geometry, method: str, **kwargs):
                 ),
             ),
         ),
+        Method(
+            "Fair",
+            "fair",
+            params=_FAIRING_PARAMS,
+        ),
     ),
 )
 def smooth(geometry, method: str, **kwargs):
@@ -1017,16 +1024,26 @@ def smooth(geometry, method: str, **kwargs):
         return None
 
     method = MethodRegistry.resolve_method("smooth", method).lower()
-    mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
-    n_iterations = int(kwargs.get("number_of_iterations", 10))
-    if method == "taubin":
-        mesh = mesh.filter_smooth_taubin(n_iterations)
-    elif method == "laplacian":
-        mesh = mesh.filter_smooth_laplacian(n_iterations)
-    elif method == "average":
-        mesh = mesh.filter_smooth_simple(n_iterations)
+
+    if method == "fair":
+        import numpy as np
+
+        vs = mesh.vertices.copy()
+        fs = mesh.triangles.copy()
+        vids = kwargs.pop("vids", np.arange(len(vs)))
+        vs = meshing.fair_mesh(vs, fs, vids, **kwargs)
+        mesh = meshing.to_open3d(vs, fs)
     else:
-        raise ValueError(f"Unsupported smoothing method: {method}")
+        mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
+        n_iterations = int(kwargs.get("number_of_iterations", 10))
+        if method == "taubin":
+            mesh = mesh.filter_smooth_taubin(n_iterations)
+        elif method == "laplacian":
+            mesh = mesh.filter_smooth_laplacian(n_iterations)
+        elif method == "average":
+            mesh = mesh.filter_smooth_simple(n_iterations)
+        else:
+            raise ValueError(f"Unsupported smoothing method: {method}")
 
     return Geometry(model=TriangularMesh(mesh), sampling_rate=geometry.sampling_rate)
 
@@ -1052,7 +1069,7 @@ def smooth(geometry, method: str, **kwargs):
                     label="Edge Length",
                     description="Target edge length for remeshing. -1 uses median.",
                 ),
-                *_REPAIR_PARAMS,
+                *_FAIRING_PARAMS,
             ),
         ),
         Method(
@@ -1075,7 +1092,7 @@ def smooth(geometry, method: str, **kwargs):
                     label="Edge Length",
                     description="Target edge length for remeshing. -1 uses median.",
                 ),
-                *_REPAIR_PARAMS,
+                *_FAIRING_PARAMS,
             ),
         ),
         Method(

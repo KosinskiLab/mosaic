@@ -702,7 +702,7 @@ class DataContainerInteractor(QObject):
                 geometry = self.container.get(geometry.uuid)
 
             # Its less of a headache to handle this here, because normals and basis
-            # representation rely on similar glyph rendering mechanisms than the volume
+            # representation rely on similar glyph rendering mechanisms as the volume
             elif isinstance(geometry, VolumeGeometry) and representation != "volume":
                 new_geom = Geometry(
                     points=geometry.points,

@@ -161,22 +161,23 @@ def compile_run(run_config: dict) -> List[Tuple[str, str]]:
             input_file = settings.get("input_file", run_config["input_file"])
             params = run_config.get("input_params", {})
             if input_file.endswith(".pickle"):
-                steps.append((op_id, f"load_session {shlex.quote(input_file)}"))
+                parts = [f"open {shlex.quote(input_file)}"]
             else:
                 parts = [f"open {shlex.quote(input_file)}"]
                 for key in ("offset", "scale", "sampling_rate"):
                     if key in params and params[key] not in (0, 1, None):
                         parts.append(f"{key}={format_value(params[key])}")
-                if not save_output:
-                    parts.append("persist=false")
-                steps.append((op_id, " ".join(parts)))
+
+            if not save_output:
+                parts.append("persist=false")
+            steps.append((op_id, " ".join(parts)))
             continue
 
         if op_id == "save_session":
             output_dir = settings.get("output_dir", ".")
             os.makedirs(output_dir, exist_ok=True)
             output_path = os.path.join(output_dir, f"{run_config['run_id']}.pickle")
-            steps.append((op_id, f"save_session {shlex.quote(output_path)}"))
+            steps.append((op_id, f"save {shlex.quote(output_path)}"))
             continue
 
         if op_id == "export_data":
@@ -254,7 +255,7 @@ def compile_run(run_config: dict) -> List[Tuple[str, str]]:
             parts.append("persist=false")
         steps.append((op_id, " ".join(parts)))
 
-        if not visible_output:
+        if save_output and not visible_output:
             steps.append((op_id, "visibility @last visible=false"))
         if save_output and group_name:
             steps.append((op_id, f"group @last {shlex.quote(group_name)}"))

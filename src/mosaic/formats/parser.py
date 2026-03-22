@@ -612,7 +612,7 @@ def read_volume(filename: str):
 
     shape = np.multiply(volume.shape, volume.sampling_rate)
     ret = volume_to_points(
-        volume.data, volume.sampling_rate, reverse_order=True, max_cluster=10000
+        volume.data, volume.sampling_rate, reverse_order=False, max_cluster=10000
     )
     return GeometryDataContainer(
         vertices=ret, shape=shape, sampling=volume.sampling_rate
@@ -723,47 +723,15 @@ def _read_vtu_file(file_path: str) -> Dict:
             )
 
     if (points_array := piece.find(".//Points/DataArray")) is not None:
-        data_type = _parse_dtype(array)
+        data_type = _parse_dtype(points_array)
         result["points"] = _parse_data_array(points_array, data_type)
 
     if (cells := piece.find("Cells")) is not None:
         for array in cells.findall("DataArray"):
             data_type = _parse_dtype(array)
-            result[array.get("Name")] = _parse_data_array(array, float)
+            result[array.get("Name")] = _parse_data_array(array, data_type)
 
     return result
-
-
-def _load_density_header(filename: str):
-
-    try:
-        import mrcfile
-
-        with mrcfile.open(filename, header_only=True, permissive=True) as mrc:
-            data_shape = mrc.header.nz, mrc.header.ny, mrc.header.nx
-
-            # mapc := column; mapr := row; maps := section;
-            crs_index = tuple(int(mrc.header[x]) - 1 for x in ("mapc", "mapr", "maps"))
-            if not (0 in crs_index and 1 in crs_index and 2 in crs_index):
-                raise ValueError(f"Malformatted CRS array in {filename}")
-
-            sampling_rate = mrc.voxel_size.astype(
-                [("x", "<f4"), ("y", "<f4"), ("z", "<f4")]
-            ).view(("<f4", 3))
-            sampling_rate = np.array(sampling_rate)[::-1]
-
-        non_standard_crs = not np.all(crs_index == (0, 1, 2))
-        if non_standard_crs:
-            data_shape = np.take(data_shape, crs_index)
-            sampling_rate = np.take(sampling_rate, crs_index)
-
-        return data_shape[::-1], sampling_rate[::-1]
-
-    # Fallback for cases supported by Density.from_file and not mrcfile
-    except Exception as e:
-        print(e)
-        density = load_density(filename)
-        return density.data.shape, density.sampling_rate
 
 
 def load_density(filename: str, **kwargs):

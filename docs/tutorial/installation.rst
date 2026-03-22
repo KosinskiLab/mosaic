@@ -58,9 +58,7 @@ After setting up your environment, Mosaic can be installed from PyPI
 
 .. note::
 
-   Mosaic versions prior to 1.2.1 required pymeshlab, which could be troublesome on some Linux
-   distributions. This dependency has been replaced by gpytoolbox and open3d. If you are using
-   an older version, refer to the `pymeshlab installation guide <https://github.com/cnr-isti-vclab/PyMeshLab/wiki/How-to-install-the-last-nightly-version>`_.
+   Mosaic versions prior to 1.2.1 required pymeshlab, which could be troublesome on some Linux distributions. This dependency has been replaced by gpytoolbox and open3d. If you are using an older version, refer to the `pymeshlab installation guide <https://github.com/cnr-isti-vclab/PyMeshLab/wiki/How-to-install-the-last-nightly-version>`_.
 
 
 Optional Dependencies

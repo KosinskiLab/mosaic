@@ -10,6 +10,72 @@ from ..widgets.ribbon import create_button
 from ..parallel import submit_task, submit_task_batch
 
 
+def _repair_mesh(
+    geometry,
+    max_hole_size=-1,
+    smoothness=0,
+    curvature_weight=0,
+    pressure=0,
+    flip_normals=False,
+    fair_all=False,
+    boundary_ring=0,
+):
+    import igl
+    from .. import meshing
+    from ..parametrization import TriangularMesh
+
+    fair = not (smoothness == 0 and curvature_weight == 0 and pressure == 0)
+
+    model = geometry.model
+    model.mesh.remove_non_manifold_edges()
+    model.mesh.remove_degenerate_triangles()
+    model.mesh.remove_duplicated_triangles()
+    model.mesh.remove_unreferenced_vertices()
+    model.mesh.remove_duplicated_vertices()
+
+    vs = model.vertices
+    fs = model.triangles
+
+    out_fs = meshing.close_holes(vs, fs, max_hole_size)
+    if fair:
+        hole_fids = np.arange(len(fs), len(out_fs))
+
+        try:
+            mesh = meshing.remesh(meshing.to_open3d(vs, out_fs))
+            new_vs = np.asarray(mesh.vertices, dtype=np.float64)
+            fs = np.asarray(mesh.triangles)
+        except (ValueError, RuntimeError):
+            new_vs, fs = vs, out_fs
+
+        if fair_all:
+            vids = np.arange(len(new_vs))
+        else:
+            _, face_ids, _ = igl.point_mesh_squared_distance(
+                new_vs, vs, out_fs.astype(np.int64)
+            )
+            vids = np.where(np.isin(face_ids, hole_fids))[0]
+
+        vs = new_vs
+        if len(vids) > 0:
+            vs = meshing.fair_mesh(
+                vs,
+                fs,
+                vids,
+                smoothness=smoothness,
+                curvature_weight=curvature_weight,
+                pressure=pressure,
+                n_ring=boundary_ring,
+            )
+
+    if flip_normals:
+        fs = fs[:, ::-1]
+
+    geom = geometry[...]
+    geom._model = TriangularMesh(meshing.to_open3d(vs, fs))
+    geom.change_representation("surface")
+    return geom
+
+
 def _fill_mesh(mesh_geometry):
     from ..geometry import Geometry
 
@@ -194,7 +260,7 @@ class ModelTab(QWidget):
                 "Repair",
                 "ph.wrench",
                 self,
-                self._repair_mesh,
+                self._repair_mesh_parallel,
                 "Fix holes and topology issues",
                 REPAIR_SETTINGS,
             ),
@@ -256,72 +322,15 @@ class ModelTab(QWidget):
             ret.append(geometry)
         return ret
 
-    def _repair_mesh(
-        self,
-        max_hole_size=-1,
-        smoothness=0,
-        curvature_weight=0,
-        pressure=0,
-        flip_normals=False,
-        fair_all=False,
-        boundary_ring=0,
-        **kwargs,
-    ):
-        import igl
-        from ..parametrization import TriangularMesh
-
-        fair_mesh = not (smoothness == 0 and curvature_weight == 0 and pressure == 0)
-
+    def _repair_mesh_parallel(self, **kwargs):
         for geometry in self._get_selected_meshes():
-            model = geometry.model
-            model.mesh.remove_non_manifold_edges()
-            model.mesh.remove_degenerate_triangles()
-            model.mesh.remove_duplicated_triangles()
-            model.mesh.remove_unreferenced_vertices()
-            model.mesh.remove_duplicated_vertices()
-
-            vs = model.vertices
-            fs = model.triangles
-
-            out_fs = meshing.close_holes(vs, fs, max_hole_size)
-            if fair_mesh:
-                hole_fids = np.arange(len(fs), len(out_fs))
-
-                try:
-                    mesh = meshing.remesh(meshing.to_open3d(vs, out_fs))
-                    new_vs = np.asarray(mesh.vertices, dtype=np.float64)
-                    fs = np.asarray(mesh.triangles)
-                except (ValueError, RuntimeError):
-                    new_vs, fs = vs, out_fs
-
-                if fair_all:
-                    vids = np.arange(len(new_vs))
-                else:
-                    _, face_ids, _ = igl.point_mesh_squared_distance(
-                        new_vs, vs, out_fs.astype(np.int64)
-                    )
-                    vids = np.where(np.isin(face_ids, hole_fids))[0]
-
-                vs = new_vs
-                if len(vids) > 0:
-                    vs = meshing.fair_mesh(
-                        vs,
-                        fs,
-                        vids,
-                        smoothness=smoothness,
-                        curvature_weight=curvature_weight,
-                        pressure=pressure,
-                        n_ring=boundary_ring,
-                    )
-
-            if flip_normals:
-                fs = fs[:, ::-1]
-
-            geom = geometry[...]
-            geom._model = TriangularMesh(meshing.to_open3d(vs, fs))
-            geom.change_representation("surface")
-            self.cdata.models.add(geom)
-        return self.cdata.models.render()
+            submit_task(
+                "Repair Mesh",
+                _repair_mesh,
+                self._default_callback,
+                geometry,
+                **kwargs,
+            )
 
     def _fit_parallel(self, method: str, *args, **kwargs):
         from ..operations import GeometryOperations

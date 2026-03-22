@@ -337,7 +337,7 @@ class MosaicREPL:
         self._console.print()
         t = Text()
         t.append("Mosaic Shell", style="mosaic.banner.title")
-        t.append(f"  v{version}", style="mosaic.banner.version")
+        t.append(f"  v{version}", style="mosaic.muted")
         self._console.print(t)
         self._console.print(
             "Type 'help' for commands, 'exit' to quit.",
