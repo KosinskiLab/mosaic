@@ -17,7 +17,6 @@ from tempfile import TemporaryDirectory
 
 import numpy as np
 import open3d as o3d
-from tqdm.contrib.concurrent import process_map
 
 from .utils import merge_meshes, to_open3d
 
@@ -274,6 +273,8 @@ def mesh_volume(
     max_simplification_error: float = 40,
     simplification_factor: int = 100,
 ):
+    from tqdm.contrib.concurrent import process_map
+
     from ..formats.parser import load_density
 
     if output_dir is None:

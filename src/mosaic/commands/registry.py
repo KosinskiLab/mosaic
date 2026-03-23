@@ -430,7 +430,7 @@ def _cmd_info(session, parsed: ParsedCommand):
             ("Type", geom.geometry_type),
             ("Points", f"{geom.get_number_of_points():,}"),
             ("Normals", "yes" if geom.normals is not None else "no"),
-            ("Model", "yes" if geom._model is not None else "no"),
+            ("Model", "yes" if geom.model is not None else "no"),
             ("Visible", "yes" if geom.visible else "no"),
             ("Sampling", str(geom.sampling_rate)),
         ]

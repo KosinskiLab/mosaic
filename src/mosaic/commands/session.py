@@ -422,7 +422,7 @@ class Session:
         list of Geometry
             Newly created geometries.
         """
-        from ..geometry import Geometry
+        from ..geometry import Geometry, GeometryData
         from ..operations import GeometryOperations
 
         persist = kwargs.pop("persist", True)
@@ -438,18 +438,19 @@ class Session:
             if result is None:
                 continue
 
-            if isinstance(result, Geometry):
+            if isinstance(result, (Geometry, GeometryData)):
                 result = (result,)
             elif isinstance(result, list):
                 result = self._flatten(result)
 
             for new_geom in result:
+                if isinstance(new_geom, GeometryData):
+                    new_geom = Geometry(**new_geom.to_dict())
                 if new_geom.model is not None:
                     new_geom.change_representation("surface")
                 if persist:
-                    container = (
-                        self._models if new_geom.model is not None else self._data
-                    )
+                    container = self._data if new_geom.model is None else self._models
+
                     container.add(new_geom)
                     self._order.append(new_geom)
                 created.append(new_geom)

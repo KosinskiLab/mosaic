@@ -319,7 +319,7 @@ class DataContainerInteractor(QObject):
             if not mask.any():
                 continue
 
-            ids = np.where(mask)[0]
+            ids = np.flatnonzero(mask)
             ids = ids[_points_in_frustum(points[ids], plane_norm, plane_orig)]
             if len(ids) == 0:
                 continue
@@ -849,7 +849,7 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
     def create_method(op_name, remove_orig, render_flag, bg_task, batch_flag):
         def method(self, **kwargs):
             f"""Apply {op_name} operation to selected geometries."""
-            from .geometry import Geometry
+            from .geometry import Geometry, GeometryData
             from .operations import GeometryOperations
 
             def _render_callback(*args, **kwargs):
@@ -869,10 +869,12 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
                     if ret is None:
                         return None
 
-                    if isinstance(ret, Geometry):
+                    if isinstance(ret, (Geometry, GeometryData)):
                         ret = (ret,)
 
                     for new_geom in ret:
+                        if isinstance(new_geom, GeometryData):
+                            new_geom = Geometry(**new_geom.to_dict())
                         self.add(new_geom)
 
                     if remove_orig:
@@ -884,7 +886,13 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
                 func = getattr(GeometryOperations, op_name)
 
                 if bg_task:
-                    submit_task(op_name.title(), func, _callback, geometry, **kwargs)
+                    submit_task(
+                        op_name.title(),
+                        func,
+                        _callback,
+                        geometry._geometry_data,
+                        **kwargs,
+                    )
                     continue
                 _callback(func(geometry, **kwargs))
 
@@ -925,11 +933,9 @@ def _compute_frustum_bound(plane_normals, plane_origins, tol=1e-6):
 
 
 def _points_in_frustum(points, plane_normals, plane_origins):
-    mask = np.ones(len(points), dtype=bool)
-    for normal, origin in zip(plane_normals, plane_origins):
-        distances = (points - origin) @ normal
-        mask &= distances <= 0
-    return mask
+    offsets = (plane_origins * plane_normals).sum(axis=1)
+    distances = points @ plane_normals.T - offsets
+    return np.all(distances <= 0, axis=1)
 
 
 def _bounds_in_frustum(bounds, plane_normals, plane_origins):
