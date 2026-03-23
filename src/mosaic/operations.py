@@ -113,7 +113,7 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
 
     Parameters
     ----------
-    geometry : :py:class:`mosaic.geometry.Geometry`
+    geometry : Geometry or GeometryData
         Input data.
     method : {'outer', 'core', 'boundary'}, optional
         Structural feature to extract:
@@ -128,20 +128,20 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
 
     Returns
     -------
-    :py:class:`mosaic.geometry.Geometry`
-        Decimated geometry.
+    :py:class:`mosaic.geometry.GeometryData`
+        Skeletonized point cloud.
 
     Raises
     ------
     ValueError
         If unsupported method is specified.
     """
-    from .geometry import Geometry
+    from .geometry import GeometryData
     from .parametrization import AlphaShape
     from .utils import skeletonize as _skeletonize
     from .utils import points_to_volume, volume_to_points
 
-    method = MethodRegistry.resolve_method("skeletonize", method).lower()
+    method = MethodRegistry.resolve_method("skeletonize", method)
     methods = ("core", "outer", "boundary", "outer_hull")
     if method not in methods:
         supported = ",".join([f"'{x}'" for x in methods])
@@ -171,8 +171,10 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
         _, indices = find_closest_points(points, hull_points)
         points = points[np.unique(indices)]
 
-    return Geometry(
-        points, sampling_rate=geometry.sampling_rate, meta=_get_meta(geometry)
+    return GeometryData(
+        points=points,
+        sampling_rate=geometry.sampling_rate.copy(),
+        meta=_get_meta(geometry),
     )
 
 
@@ -225,7 +227,7 @@ def downsample(geometry, method: str = "radius", **kwargs):
 
     Parameters
     ----------
-    geometry : :py:class:`mosaic.geometry.Geometry`
+    geometry : Geometry or GeometryData
         Input data.
     method : str, optional
         Method to use. Options are:
@@ -240,12 +242,12 @@ def downsample(geometry, method: str = "radius", **kwargs):
 
     Returns
     -------
-    :py:class:`mosaic.geometry.Geometry`
+    :py:class:`mosaic.geometry.GeometryData`
         Downsampled geometry.
     """
-    from .geometry import Geometry
+    from .geometry import GeometryData
 
-    method = MethodRegistry.resolve_method("downsample", method).lower()
+    method = MethodRegistry.resolve_method("downsample", method)
     points, normals = geometry.points, geometry.normals
     if method == "radius":
         import open3d as o3d
@@ -271,10 +273,10 @@ def downsample(geometry, method: str = "radius", **kwargs):
     else:
         raise ValueError("Supported are 'radius', 'center of mass', and 'number'.")
 
-    return Geometry(
-        points,
+    return GeometryData(
+        points=points,
         normals=normals,
-        sampling_rate=geometry.sampling_rate,
+        sampling_rate=geometry.sampling_rate.copy(),
         meta=_get_meta(geometry),
     )
 
@@ -296,7 +298,7 @@ def downsample(geometry, method: str = "radius", **kwargs):
             ),
         ),
         Method(
-            "Num Points",
+            "Points",
             "points",
             params=(
                 Param(
@@ -328,7 +330,7 @@ def sample(
 
     Parameters
     ----------
-    geometry : :py:class:`mosaic.geometry.Geometry`
+    geometry : Geometry or GeometryData
         Input data.
     sampling : float
         Sampling rate or number of points to generate.
@@ -344,7 +346,7 @@ def sample(
 
     Returns
     -------
-    :py:class:`mosaic.geometry.Geometry`
+    :py:class:`mosaic.geometry.GeometryData`
         Sampled geometry.
 
     Raises
@@ -352,12 +354,13 @@ def sample(
     ValueError
         If geometry has no fitted model.
     """
-    from .geometry import Geometry
+    from .geometry import GeometryData
 
     if (fit := geometry.model) is None:
         return None
 
-    method = method.lower()
+    method = MethodRegistry.resolve_method("sample", method)
+
     n_samples, extra_kwargs = sampling, {}
     if method != "points":
         n_samples = fit.points_per_sampling(sampling, normal_offset)
@@ -374,10 +377,11 @@ def sample(
         new_normals = -1 * fit.compute_normal(points)
         points = np.concatenate([points, new_points])
         normals = np.concatenate([normals, new_normals])
-    return Geometry(
-        points,
+
+    return GeometryData(
+        points=points,
         normals=normals,
-        sampling_rate=geometry.sampling_rate,
+        sampling_rate=geometry.sampling_rate.copy(),
         meta=_get_meta(geometry),
     )
 
@@ -523,7 +527,7 @@ def cluster(
 
     Parameters
     ----------
-    geometry : :py:class:`mosaic.geometry.Geometry`
+    geometry : Geometry or GeometryData
         Input data.
     method : str
         Clustering method to use. Options are:
@@ -547,7 +551,7 @@ def cluster(
 
     Returns
     -------
-    List[:py:class:`mosaic.geometry.Geometry`]
+    List[:py:class:`mosaic.geometry.GeometryData`]
         List of geometries, one per cluster.
 
     Raises
@@ -662,7 +666,7 @@ def remove_outliers(geometry, method: str = "statistical", **kwargs):
 
     Parameters
     ----------
-    geometry : :py:class:`mosaic.geometry.Geometry`
+    geometry : Geometry or GeometryData
         Input data.
     method : str, optional
         Outlier detection method. Options are:
@@ -674,11 +678,11 @@ def remove_outliers(geometry, method: str = "statistical", **kwargs):
 
     Returns
     -------
-    :py:class:`mosaic.geometry.Geometry` or None
+    :py:class:`mosaic.geometry.GeometryData` or None
         Filtered point cloud geometry with outliers removed.
         Returns None if no points remain after filtering.
     """
-    method = MethodRegistry.resolve_method("remove_outliers", method).lower()
+    method = MethodRegistry.resolve_method("remove_outliers", method)
     func = statistical_outlier_removal
     if method == "eigenvalue":
         func = eigenvalue_outlier_removal
@@ -722,7 +726,7 @@ def compute_normals(
 
     Parameters
     ----------
-    geometry : :py:class:`mosaic.geometry.Geometry`
+    geometry : Geometry or GeometryData
         Input data.
     method : str, optional
         Normal computation method. Options are:
@@ -742,7 +746,7 @@ def compute_normals(
     """
     from .utils import compute_normals
 
-    method = MethodRegistry.resolve_method("compute_normals", method).lower()
+    method = MethodRegistry.resolve_method("compute_normals", method)
     if method == "flip":
         geometry.normals = geometry.normals * -1
     elif method == "compute":
@@ -759,12 +763,12 @@ def duplicate(geometry, **kwargs):
 
     Parameters
     ----------
-    geometry : :py:class:`mosaic.geometry.Geometry`
+    geometry : Geometry or GeometryData
         Geometry to duplicate.
 
     Returns
     -------
-    :py:class:`mosaic.geometry.Geometry`
+    :py:class:`mosaic.geometry.GeometryData`
         Duplicated geometry.
     """
     return geometry[...]
@@ -779,7 +783,7 @@ def visibility(geometry, visible: bool = True, **kwargs):
 
     Parameters
     ----------
-    geometry : :py:class:`mosaic.geometry.Geometry`
+    geometry : Geometry or GeometryData
         Target geometry.
     visible : bool, optional
         Whether the geometry should be visible. Default is True.
@@ -881,7 +885,7 @@ def remesh(geometry, method: str, **kwargs):
 
     Parameters
     ----------
-    geometry : :py:class:`mosaic.geometry.Geometry`
+    geometry : Geometry or GeometryData
         Input geometry with a TriangularMesh model.
     method : str
         Remeshing strategy. Options are:
@@ -892,16 +896,16 @@ def remesh(geometry, method: str, **kwargs):
 
     Returns
     -------
-    :py:class:`mosaic.geometry.Geometry` or None
+    :py:class:`mosaic.geometry.GeometryData` or None
         Remeshed geometry, or None if input has no mesh model.
     """
-    from .geometry import Geometry
+    from .geometry import GeometryData
     from .parametrization import TriangularMesh
 
     if not isinstance(mesh := geometry.model, TriangularMesh):
         return None
 
-    method = MethodRegistry.resolve_method("remesh", method).lower()
+    method = MethodRegistry.resolve_method("remesh", method)
     mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
     if method == "edge_length" or method == "edge length":
         mesh = meshing.remesh(mesh=mesh, **kwargs)
@@ -938,9 +942,9 @@ def remesh(geometry, method: str, **kwargs):
     else:
         raise ValueError(f"Unsupported remeshing method: {method}")
 
-    return Geometry(
+    return GeometryData(
         model=TriangularMesh(mesh),
-        sampling_rate=geometry.sampling_rate,
+        sampling_rate=geometry.sampling_rate.copy(),
         meta=_get_meta(geometry),
     )
 
@@ -1004,7 +1008,7 @@ def smooth(geometry, method: str, **kwargs):
 
     Parameters
     ----------
-    geometry : :py:class:`mosaic.geometry.Geometry`
+    geometry : Geometry or GeometryData
         Input geometry with a TriangularMesh model.
     method : str
         Smoothing algorithm. Options are:
@@ -1014,16 +1018,16 @@ def smooth(geometry, method: str, **kwargs):
 
     Returns
     -------
-    :py:class:`mosaic.geometry.Geometry` or None
+    :py:class:`mosaic.geometry.GeometryData` or None
         Smoothed geometry, or None if input has no mesh model.
     """
-    from .geometry import Geometry
+    from .geometry import GeometryData
     from .parametrization import TriangularMesh
 
     if not isinstance(mesh := geometry.model, TriangularMesh):
         return None
 
-    method = MethodRegistry.resolve_method("smooth", method).lower()
+    method = MethodRegistry.resolve_method("smooth", method)
 
     if method == "fair":
         import numpy as np
@@ -1045,7 +1049,9 @@ def smooth(geometry, method: str, **kwargs):
         else:
             raise ValueError(f"Unsupported smoothing method: {method}")
 
-    return Geometry(model=TriangularMesh(mesh), sampling_rate=geometry.sampling_rate)
+    return GeometryData(
+        model=TriangularMesh(mesh), sampling_rate=geometry.sampling_rate.copy()
+    )
 
 
 @operation(
@@ -1217,7 +1223,7 @@ def fit(geometry, method: str, **kwargs):
 
     Parameters
     ----------
-    geometry : :py:class:`mosaic.geometry.Geometry`
+    geometry : Geometry or GeometryData
         Input point cloud geometry.
     method : str
         Fitting method. Options are:
@@ -1233,7 +1239,7 @@ def fit(geometry, method: str, **kwargs):
 
     Returns
     -------
-    :py:class:`mosaic.geometry.Geometry`
+    :py:class:`mosaic.geometry.GeometryData`
         Geometry with fitted model attached.
 
     Raises
@@ -1241,7 +1247,7 @@ def fit(geometry, method: str, **kwargs):
     ValueError
         If method is unsupported or point count is insufficient (<50).
     """
-    from .geometry import Geometry
+    from .geometry import GeometryData
     from .parametrization import PARAMETRIZATION_TYPE
 
     method = MethodRegistry.resolve_method("fit", method)
@@ -1273,10 +1279,10 @@ def fit(geometry, method: str, **kwargs):
         new_points = fit.sample(n_samples=1000)
         normals = fit.compute_normal(new_points)
 
-    return Geometry(
+    return GeometryData(
         points=new_points,
         normals=normals,
-        sampling_rate=geometry.sampling_rate,
+        sampling_rate=geometry.sampling_rate.copy(),
         model=fit,
         meta=_get_meta(geometry),
     )

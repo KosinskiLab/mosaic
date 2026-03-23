@@ -70,19 +70,22 @@ def _repair_mesh(
     if flip_normals:
         fs = fs[:, ::-1]
 
-    geom = geometry[...]
-    geom._model = TriangularMesh(meshing.to_open3d(vs, fs))
-    geom.change_representation("surface")
-    return geom
+    from ..geometry import GeometryData
+
+    return GeometryData(
+        model=TriangularMesh(meshing.to_open3d(vs, fs)),
+        sampling_rate=geometry.sampling_rate.copy(),
+        meta=geometry._meta.copy(),
+    )
 
 
 def _fill_mesh(mesh_geometry):
-    from ..geometry import Geometry
+    from ..geometry import GeometryData
 
     model = mesh_geometry.model
     voxel_size = max(mesh_geometry.sampling_rate)
     points = meshing.fill_mesh(model.vertices, model.triangles, voxel_size=voxel_size)
-    return Geometry(points=points, sampling_rate=mesh_geometry.sampling_rate)
+    return GeometryData(points=points, sampling_rate=mesh_geometry.sampling_rate.copy())
 
 
 def _project(
@@ -93,7 +96,7 @@ def _project(
     update_normals: bool = False,
     partition: bool = False,
 ):
-    from ..geometry import Geometry
+    from ..geometry import Geometry, GeometryData
 
     meshes = [mg.model for mg in mesh_geometries]
     n_meshes = len(meshes)
@@ -145,10 +148,10 @@ def _project(
                     if mask.any():
                         geo_normals[mask] = meshes[m].compute_normal(proj_sel[mask])
             data_out.append(
-                Geometry(
+                GeometryData(
                     points=proj_sel,
                     normals=geo_normals,
-                    sampling_rate=geometry.sampling_rate,
+                    sampling_rate=geometry.sampling_rate.copy(),
                 )
             )
 
@@ -169,13 +172,13 @@ def _project(
                 return_indices=False,
             )
             meshes_out.append(
-                Geometry(
+                GeometryData(
                     model=new_model,
-                    sampling_rate=mesh_geometries[m].sampling_rate,
+                    sampling_rate=mesh_geometries[m].sampling_rate.copy(),
                 )
             )
 
-    return data_out, meshes_out
+    return data_out + meshes_out
 
 
 class ModelTab(QWidget):
@@ -299,17 +302,33 @@ class ModelTab(QWidget):
         self.ribbon.add_section("Mesh Operations", mesh_actions)
 
     def _default_callback(self, geom):
+        from ..geometry import Geometry, GeometryData
         from ..parametrization import TriangularMesh
 
-        if isinstance(geom.model, TriangularMesh):
-            geom.change_representation("surface")
+        if isinstance(geom, (Geometry, GeometryData)):
+            geom = (geom,)
 
-        if geom.model is None:
-            self.cdata.data.add(geom)
-            return self.cdata.data.render()
+        new_model, new_cluster = False, False
+        for new_geom in geom:
 
-        self.cdata.models.add(geom)
-        self.cdata.models.render()
+            if isinstance(new_geom, GeometryData):
+                new_geom = Geometry(**new_geom.to_dict())
+
+            if isinstance(new_geom.model, TriangularMesh):
+                new_geom.change_representation("surface")
+
+            if new_geom.model is None:
+                new_cluster = True
+                self.cdata.data.add(new_geom)
+                continue
+
+            new_model = True
+            self.cdata.models.add(new_geom)
+
+        if new_model:
+            self.cdata.models.render()
+        if new_cluster:
+            self.cdata.data.render()
 
     def _get_selected_meshes(self):
         from ..parametrization import TriangularMesh
@@ -328,7 +347,7 @@ class ModelTab(QWidget):
                 "Repair Mesh",
                 _repair_mesh,
                 self._default_callback,
-                geometry,
+                geometry._geometry_data,
                 **kwargs,
             )
 
@@ -340,7 +359,7 @@ class ModelTab(QWidget):
                 "Parametrization",
                 GeometryOperations.fit,
                 self._default_callback,
-                geometry,
+                geometry._geometry_data,
                 method,
                 **kwargs,
             )
@@ -353,7 +372,7 @@ class ModelTab(QWidget):
                 "Smooth",
                 GeometryOperations.smooth,
                 self._default_callback,
-                geometry,
+                geometry._geometry_data,
                 method,
                 **kwargs,
             )
@@ -361,16 +380,12 @@ class ModelTab(QWidget):
     def _sample_parallel(self, sampling, method, normal_offset=0.0, **kwargs):
         from ..operations import GeometryOperations
 
-        def _callback(*args, **kwargs):
-            self.cdata.data.add(*args, **kwargs)
-            self.cdata.data.render()
-
         for geometry in self.cdata.models.get_selected_geometries():
             submit_task(
                 "Sample Fit",
                 GeometryOperations.sample,
-                _callback,
-                geometry,
+                self._default_callback,
+                geometry._geometry_data,
                 method=method,
                 sampling=sampling,
                 normal_offset=normal_offset,
@@ -385,23 +400,16 @@ class ModelTab(QWidget):
                 "Remesh",
                 GeometryOperations.remesh,
                 self._default_callback,
-                geometry,
+                geometry._geometry_data,
                 method,
                 **kwargs,
             )
 
     def _fill_parallel(self, **kwargs):
-        tasks = []
         for geometry in self._get_selected_meshes():
-            tasks.append(
-                {
-                    "name": "Fill Mesh",
-                    "func": _fill_mesh,
-                    "callback": self._default_callback,
-                    "kwargs": {"mesh_geometry": geometry},
-                }
+            submit_task(
+                "Fill Mesh", _fill_mesh, self._default_callback, geometry._geometry_data
             )
-        submit_task_batch(tasks)
 
     def _project_parallel(
         self,
@@ -415,22 +423,10 @@ class ModelTab(QWidget):
         if not selected_meshes:
             raise ValueError("Please select at least one mesh for projection.")
 
-        def _callback(ret):
-            data_geoms, mesh_geoms = ret
-            for geom in data_geoms:
-                self.cdata.data.add(geom)
-            for geom in mesh_geoms:
-                geom.change_representation("surface")
-                self.cdata.models.add(geom)
-            if data_geoms:
-                self.cdata.data.render()
-            if mesh_geoms:
-                self.cdata.models.render()
-
         submit_task(
             "Project",
             _project,
-            _callback,
+            self._default_callback,
             selected_meshes,
             self.cdata.data.get_selected_geometries(),
             use_normals,

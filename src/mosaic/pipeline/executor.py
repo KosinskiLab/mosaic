@@ -311,5 +311,4 @@ def execute_run(
     for idx, (op_id, line) in enumerate(steps):
         if verbose:
             report_progress(message=op_id, current=idx, total=len(steps))
-            print(f"[{idx + 1}/{len(steps)}] {line}")
         repl.execute(line)
