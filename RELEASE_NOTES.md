@@ -1,6 +1,6 @@
-# Release Notes v1.2.1
+# Release Notes v1.2.2
 
-Version 1.2.1 introduces an interactive shell for scriptable control, along with mesh processing improvements and dependency cleanup.
+Version 1.2.2 introduces an interactive shell for scriptable control, along with mesh processing improvements and dependency cleanup.
 
 ## Features
 
@@ -11,11 +11,14 @@ Version 1.2.1 introduces an interactive shell for scriptable control, along with
 ## Improvements
 
 - Revised fairing weights for ball pivoting and alpha shapes to be easier to tune. However, the same numerical values will have different effects compared to previous versions.
+- Touched up volume viewer to include auto contrast button and speed up loading.
 - Removed `pymeshlab` dependency; mesh repair now uses `libigl` exclusively. Consequently, Poisson meshing no longer accepts a range of fine tuning parameters.
 - Migrated to `libigl==2.6.1` which fixes random crashes during curvature computation.
 - Replaced MarchingCubes with FlyingEdges and windowed sinc smoothing.
 - Unified pipeline executor into a single REPL-based module.
 - Centralized method annotations in the operations registry.
+- Subsetting on segmentation representations is faster.
+- Point selection got slightly faster overall.
 
 ## Bug Fixes
 
@@ -26,7 +29,7 @@ Version 1.2.1 introduces an interactive shell for scriptable control, along with
 ## Installation
 
 ```bash
-pip install -U mosaic-gui==1.2.1
+pip install -U mosaic-gui==1.2.2
 ```
 
 ---
