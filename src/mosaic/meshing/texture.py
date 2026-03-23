@@ -197,7 +197,7 @@ def _load_tomogram_cached(file_path: str, interpolation_order: int = 3):
     if interpolation_order > 1:
         from scipy.ndimage import spline_filter
 
-        tomogram = spline_filter(tomogram, order=interpolation_order)
+        tomogram = spline_filter(tomogram, order=interpolation_order, mode="constant")
 
     return (
         tomogram,
@@ -290,13 +290,13 @@ class TextureSampler:
         self._vtk_image.SetDimensions(w, h, 1)
         self._vtk_image.AllocateScalars(vtk.VTK_UNSIGNED_CHAR, 3)
 
-        vtk_texture = vtk.vtkTexture()
-        vtk_texture.SetInputDataObject(self._vtk_image)
-        vtk_texture.InterpolateOn()
-        vtk_texture.RepeatOff()
-        vtk_texture.EdgeClampOn()
+        self._vtk_texture = vtk.vtkTexture()
+        self._vtk_texture.SetInputDataObject(self._vtk_image)
+        self._vtk_texture.InterpolateOn()
+        self._vtk_texture.RepeatOff()
+        self._vtk_texture.EdgeClampOn()
 
-        self.geometry.actor.SetTexture(vtk_texture)
+        self.geometry.actor.SetTexture(self._vtk_texture)
         self.geometry.actor.GetMapper().ScalarVisibilityOff()
 
     def update(
@@ -393,6 +393,7 @@ class TextureSampler:
         self.geometry.actor.GetMapper().ScalarVisibilityOff()
         self._vtk_image.GetPointData().SetScalars(vtk_array)
         self._vtk_image.Modified()
+        self._vtk_texture.Modified()
 
         return texture
 
