@@ -313,6 +313,16 @@ def _build_tomogram_options(dlg):
     dlg.property_options_layout.addRow("Texture Size:", texture_size)
     dlg.option_widgets["texture_size"] = texture_size
 
+    spline_order = QSpinBox()
+    spline_order.setRange(1, 5)
+    spline_order.setValue(3)
+    spline_order.setToolTip(
+        "Spline interpolation order for tomogram sampling. "
+        "1 = linear (fast), 3 = cubic (smooth, default), 5 = quintic."
+    )
+    dlg.property_options_layout.addRow("Spline Order:", spline_order)
+    dlg.option_widgets["interpolation_order"] = spline_order
+
     offset_slider = SliderRow(
         label="Normal Offset",
         min_val=-20.0,
@@ -1150,22 +1160,45 @@ class PropertyAnalysisDialog(QDialog):
         ]
 
     def _get_or_create_texture_sampler(
-        self, geometry, file_path: str, texture_size: int
+        self, geometry, file_path: str, texture_size: int, interpolation_order: int
     ):
         """Get cached TextureSampler or create a new one."""
+        import vtk as _vtk
         from .. import meshing
+
+        if isinstance(geometry.actor, (_vtk.vtkLODActor, _vtk.vtkQuadricLODActor)):
+            QMessageBox.warning(
+                self,
+                "Texture Error",
+                "Texture mapping requires the 'Ultra' rendering quality preset. "
+                "LOD actors (used by other presets) do not support VTK textures.\n\n"
+                "Change the preset under Preferences > Appearance > Preset.",
+            )
+            return None
 
         if not hasattr(self, "_texture_samplers"):
             self._texture_samplers = {}
 
         no_texture = geometry.actor.GetTexture() is None
         cache_key = (geometry.uuid, texture_size, file_path)
-        if cache_key not in self._texture_samplers or no_texture:
+        cached = self._texture_samplers.get(cache_key)
+
+        # interpolation_order is intentionally not part of the cache key
+        # because the sampler owns the VTK texture and mesh data on the
+        # geometry. Recreating it is the only safe way to change the order,
+        # since the old texture state would otherwise be left dangling on the actor.
+        order_changed = (
+            cached is not None and cached.interpolation_order != interpolation_order
+        )
+        if cached is None or no_texture or order_changed:
+            if order_changed:
+                cached.cleanup()
             try:
                 sampler = meshing.TextureSampler(
                     geometry=geometry,
                     tomogram_path=file_path,
                     texture_size=texture_size,
+                    interpolation_order=interpolation_order,
                 )
                 self._texture_samplers[cache_key] = sampler
             except Exception as e:
@@ -1179,6 +1212,9 @@ class PropertyAnalysisDialog(QDialog):
         geometries = self._get_selected_geometries()
         file_path = get_widget_value(self.option_widgets.get("file_path"))
         texture_size = get_widget_value(self.option_widgets.get("texture_size", 512))
+        interpolation_order = get_widget_value(
+            self.option_widgets.get("interpolation_order", 3)
+        )
 
         if not geometries or not len(file_path):
             return None
@@ -1194,7 +1230,7 @@ class PropertyAnalysisDialog(QDialog):
                 continue
 
             sampler = self._get_or_create_texture_sampler(
-                geometry, file_path, texture_size
+                geometry, file_path, texture_size, interpolation_order
             )
             if sampler is None:
                 continue

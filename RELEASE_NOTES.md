@@ -17,6 +17,7 @@ Version 1.2.2 introduces an interactive shell for scriptable control, along with
 - Replaced MarchingCubes with FlyingEdges and windowed sinc smoothing.
 - Unified pipeline executor into a single REPL-based module.
 - Centralized method annotations in the operations registry.
+- Background operations should execute faster, as workers can now be reused across jobs, eliminating overhead from imports and env setup.
 - Subsetting on segmentation representations is faster.
 - Point selection got slightly faster overall.
 

@@ -1285,7 +1285,6 @@ class App(QMainWindow):
         if not file_path:
             return -1
 
-        # setDefaultSuffix seems appears across platforms
         if not file_path.lower().endswith(".pickle"):
             file_path += ".pickle"
         self.cdata.to_file(file_path)
