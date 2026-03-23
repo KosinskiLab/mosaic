@@ -1222,15 +1222,15 @@ class TriangularMesh(Parametrization):
         k_distances, k_indices = [], []
         for i, tgt_idx in enumerate(target_vertices):
             kwargs = {
-                "vt": source_vertices[source_vertices != tgt_idx],
-                "vs": np.array([tgt_idx], dtype=np.int32),
+                "VT": source_vertices[source_vertices != tgt_idx],
+                "VS": np.array([tgt_idx], dtype=np.int32),
             }
 
             # Faster, we only need to find the closest non-trivial neighbor
             if k == 1:
-                kwargs = {"vt": kwargs["vs"], "vs": kwargs["vt"]}
+                kwargs = {"VT": kwargs["VS"], "VS": kwargs["VT"]}
 
-            distances = igl.exact_geodesic(v=self.vertices, f=self.triangles, **kwargs)
+            distances = igl.exact_geodesic(V=self.vertices, F=self.triangles, **kwargs)
             distances = np.atleast_1d(distances)
 
             sorted_indices = np.argsort(distances)[:k]
