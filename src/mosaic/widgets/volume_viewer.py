@@ -67,7 +67,7 @@ class VolumeViewer(QWidget):
         self.auto_contrast_button.setIcon(qta.icon("ph.magic-wand", color=Colors.ICON))
         self.auto_contrast_button.setFixedWidth(30)
         self.auto_contrast_button.setToolTip("Auto contrast (percentile-based)")
-        self.auto_contrast_button.clicked.connect(self.auto_contrast)
+        self.auto_contrast_button.clicked.connect(lambda: self.auto_contrast())
         self.auto_contrast_button.setEnabled(False)
 
         self.slice_row = SliderRow(
@@ -91,7 +91,8 @@ class VolumeViewer(QWidget):
         self.orientation_selector.currentTextChanged.connect(self.change_orientation)
         self.orientation_selector.setEnabled(False)
 
-        self.color_selector = ColorMapSelector(default="gray")
+        self.current_palette = "gray"
+        self.color_selector = ColorMapSelector(default=self.current_palette)
         self.color_selector.setMinimumWidth(120)
         self.color_selector.colormapChanged.connect(self.change_color_palette)
         self.color_selector.setEnabled(False)
@@ -271,9 +272,8 @@ class VolumeViewer(QWidget):
             self.slice.SetMapper(self.slice_mapper)
             self.renderer.AddViewProp(self.slice)
 
-            self.change_color_palette("gray")
             self.change_widget_state(is_enabled=True)
-
+            self.auto_contrast()
             self.renderer.ResetCamera()
 
     def _on_slice_changed(self, value: float):
@@ -330,13 +330,13 @@ class VolumeViewer(QWidget):
         self.update_contrast_and_gamma()
         self._render()
 
-    def auto_contrast(self, low_pct: float = 0.1, high_pct: float = 99.9):
+    def auto_contrast(self, low_pct: float = 0.01, high_pct: float = 99.9):
         """Set contrast from percentile thresholds of the current slice.
 
         Parameters
         ----------
         low_pct : float
-            Lower percentile for clipping (default 0.1).
+            Lower percentile for clipping (default 0.01).
         high_pct : float
             Upper percentile for clipping (default 99.9).
         """

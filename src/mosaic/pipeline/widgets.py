@@ -11,10 +11,10 @@ from qtpy.QtWidgets import (
     QFrame,
     QVBoxLayout,
     QHBoxLayout,
+    QGridLayout,
     QLabel,
     QPushButton,
     QWidget,
-    QFormLayout,
     QLineEdit,
     QFileDialog,
     QTreeWidget,
@@ -37,6 +37,79 @@ from ..widgets.container_list import ContainerListWidget, StyledTreeWidgetItem
 
 from ._utils import strip_filepath, natural_sort_key
 from ..stylesheets import Colors
+
+_COLS = 3  # logical parameter columns (actual grid columns = _COLS * 2)
+
+
+def _make_grid():
+    """Create a 6-column grid: label, widget, label, widget, label, widget."""
+    grid = QGridLayout()
+    grid.setHorizontalSpacing(6)
+    grid.setVerticalSpacing(6)
+    for i in range(_COLS):
+        grid.setColumnStretch(i * 2, 0)  # label: natural width
+        grid.setColumnStretch(i * 2 + 1, 1)  # widget: stretch to fill
+    return grid
+
+
+def _add_to_grid(grid, label_text, widget, row, col, wide=False):
+    """Add a label: widget pair to the grid at the given logical column."""
+    label = QLabel(f"{label_text}:")
+    label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+
+    widget.setFixedHeight(Colors.WIDGET_HEIGHT)
+
+    if wide:
+        grid.addWidget(label, row, 0)
+        grid.addWidget(widget, row, 1, 1, _COLS * 2 - 1)
+    else:
+        gcol = col * 2
+        grid.addWidget(label, row, gcol)
+        grid.addWidget(widget, row, gcol + 1)
+
+
+def _pack_settings_into_grid(grid, settings_list, start_row=0):
+    """Pack settings into the grid. Returns {param_name: widget}."""
+    widgets = {}
+    row, col = start_row, 0
+
+    for setting in settings_list:
+        wide = setting.get("type") == "PathSelector"
+        widget = create_setting_widget(setting)
+
+        if wide:
+            if col != 0:
+                row += 1
+                col = 0
+            _add_to_grid(grid, setting["label"], widget, row, 0, wide=True)
+            row += 1
+            col = 0
+        else:
+            _add_to_grid(grid, setting["label"], widget, row, col)
+            col += 1
+            if col >= _COLS:
+                col = 0
+                row += 1
+
+        param_name = setting.get("parameter")
+        if param_name:
+            widgets[param_name] = widget
+
+    return widgets, row if col == 0 else row + 1
+
+
+def _clear_grid_from_row(grid, start_row):
+    """Remove all items at row >= start_row from a QGridLayout."""
+    to_remove = []
+    for i in range(grid.count()):
+        item = grid.itemAt(i)
+        r, _c, _rs, _cs = grid.getItemPosition(i)
+        if r >= start_row:
+            to_remove.append(item)
+    for item in to_remove:
+        grid.removeItem(item)
+        if item.widget():
+            item.widget().deleteLater()
 
 
 class OperationCardWidget(QFrame):
@@ -65,10 +138,10 @@ class OperationCardWidget(QFrame):
 
         self.group_name = operation_name
 
-        # Avoid cutting of widgets after expansion
-        self.setMinimumHeight(135)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self._collapsed_height = 96
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setup_ui()
+        self.setFixedHeight(self._collapsed_height)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -81,7 +154,7 @@ class OperationCardWidget(QFrame):
         self.setStyleSheet(
             f"""
             OperationCardWidget {{
-                border: 1px solid {Colors.NEUTRAL_BG};
+                border: 1px solid {Colors.BORDER_DARK};
                 border-left: 4px solid {self.category_color};
                 border-radius: 6px;
                 background-color: transparent;
@@ -133,10 +206,10 @@ class OperationCardWidget(QFrame):
 
         layout.addLayout(header_layout)
 
-        desc = QLabel(self.operation_info["description"])
-        desc.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
-        desc.setWordWrap(True)
-        layout.addWidget(desc)
+        self.desc = QLabel(self.operation_info["description"])
+        self.desc.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+        self.desc.setWordWrap(True)
+        layout.addWidget(self.desc)
 
         self.params_summary = QLabel("No parameters set")
         self.params_summary.setStyleSheet(
@@ -144,28 +217,33 @@ class OperationCardWidget(QFrame):
         )
         self.params_summary.setWordWrap(True)
         layout.addWidget(self.params_summary)
-        layout.addStretch()
 
         self.settings_container = QWidget()
         self.settings_container.setVisible(False)
 
-        settings_layout = QFormLayout(self.settings_container)
-        settings_layout.setSpacing(12)
-        settings_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
-        settings_layout.setContentsMargins(0, 12, 0, 12)
+        settings_outer = QVBoxLayout(self.settings_container)
+        settings_outer.setSpacing(8)
+        settings_outer.setContentsMargins(0, 0, 0, 4)
 
-        group_layout = QHBoxLayout()
-        group_layout.setSpacing(8)
+        self.settings_grid = _make_grid()
+        self._grid_row = 0
+        settings_outer.addLayout(self.settings_grid)
 
         self.save_output, self.visible_output = True, True
         if self.operation_info.get("has_output", False):
             self.group_input = QLineEdit(self.group_name)
-            self.group_input.setMinimumWidth(150)
             self.group_input.textChanged.connect(
                 lambda t: setattr(self, "group_name", t)
             )
+            _add_to_grid(
+                self.settings_grid,
+                "Group Name",
+                self.group_input,
+                self._grid_row,
+                0,
+            )
 
-            self.save_output_checkbox = QCheckBox("Save output")
+            self.save_output_checkbox = QCheckBox()
             self.save_output_checkbox.setChecked(True)
             self.save_output_checkbox.setToolTip(
                 format_tooltip(
@@ -179,8 +257,15 @@ class OperationCardWidget(QFrame):
                     self, "save_output", state == Qt.CheckState.Checked
                 )
             )
+            _add_to_grid(
+                self.settings_grid,
+                "Save output",
+                self.save_output_checkbox,
+                self._grid_row,
+                1,
+            )
 
-            self.visible_output_checkbox = QCheckBox("Visible")
+            self.visible_output_checkbox = QCheckBox()
             self.visible_output_checkbox.setChecked(True)
             self.visible_output_checkbox.setToolTip(
                 format_tooltip(
@@ -193,21 +278,23 @@ class OperationCardWidget(QFrame):
                     self, "visible_output", state == Qt.CheckState.Checked
                 )
             )
-
-            group_layout.addWidget(self.group_input)
-            group_layout.addWidget(self.save_output_checkbox)
-            group_layout.addWidget(self.visible_output_checkbox)
-
-            group_layout.addStretch()
-            settings_layout.addRow("Group Name:", group_layout)
+            _add_to_grid(
+                self.settings_grid,
+                "Visible",
+                self.visible_output_checkbox,
+                self._grid_row,
+                2,
+            )
+            self._grid_row += 1
 
         settings = self.operation_info.get("settings", {})
-        self._add_operation_settings(settings_layout, settings)
+        self._add_operation_settings(settings)
         self.update_summary()
         layout.addWidget(self.settings_container)
 
-    def _add_operation_settings(self, form_layout, settings):
+    def _add_operation_settings(self, settings):
         """Add operation-specific settings widgets."""
+        settings_outer = self.settings_container.layout()
 
         if self.operation_id == "import_batch":
             self.input_files = []
@@ -236,92 +323,95 @@ class OperationCardWidget(QFrame):
             select_btn.clicked.connect(self._select_input_files)
             file_layout.addWidget(select_btn)
 
-            form_layout.addRow(file_section)
+            settings_outer.addWidget(file_section)
             self._settings_widgets["input_files"] = self.file_list
 
             params_btn = QPushButton("Configure Import Parameters")
             params_btn.clicked.connect(self._configure_parameters)
             params_btn.setEnabled(False)
             self.params_btn = params_btn
-            form_layout.addRow(params_btn)
+            settings_outer.addWidget(params_btn)
         else:
             if len(settings) == 0:
                 return None
 
-            self._add_base_settings(form_layout, settings)
+            self._add_base_settings(settings)
             if hasattr(self, "method_settings_config") and self.method_settings_config:
-                self._add_method_settings_section(form_layout)
+                self._add_method_settings_section()
 
-    def _add_base_settings(self, form_layout, settings):
-        """Add base operation settings including method selector."""
-        offset = 0
+    def _add_base_settings(self, settings):
+        """Add base operation settings to the grid layout."""
         self.method_combo = None
         base_settings = settings["settings"][0] if settings["settings"] else None
 
         if base_settings and "options" in base_settings:
-            offset = 1
             self.method_combo = create_setting_widget(base_settings)
             self.method_combo.currentTextChanged.connect(self._update_method_settings)
             param_name = base_settings.get("parameter", "method")
             self.method_combo.setProperty("parameter", param_name)
-            form_layout.addRow(f"{base_settings['label']}:", self.method_combo)
+            _add_to_grid(
+                self.settings_grid,
+                base_settings["label"],
+                self.method_combo,
+                self._grid_row,
+                0,
+                wide=True,
+            )
             self._settings_widgets[param_name] = self.method_combo
+            self._grid_row += 1
 
-        # Add remaining base settings
-        for setting in settings["settings"][offset:]:
-            widget = create_setting_widget(setting)
-            widget_param = setting.get("parameter")
-            if widget_param:
-                self._settings_widgets[widget_param] = widget
-            form_layout.addRow(f"{setting['label']}:", widget)
+        remaining = settings["settings"][1 if self.method_combo else 0 :]
+        if remaining:
+            new_widgets, self._grid_row = _pack_settings_into_grid(
+                self.settings_grid, remaining, start_row=self._grid_row
+            )
+            self._settings_widgets.update(new_widgets)
 
         self.method_settings_config = settings.get("method_settings", {})
 
-    def _add_method_settings_section(self, form_layout):
-        """Add separator and initial method-specific settings."""
-        # Store where method rows start for dynamic updates
-        self.method_row_start = form_layout.rowCount()
-
-        separator = QFrame()
-        separator.setFixedHeight(2)
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setFrameShadow(QFrame.Shadow.Sunken)
-        separator.setStyleSheet(f"background-color: {Colors.NEUTRAL_BG};")
-        form_layout.addRow(separator)
-
+    def _add_method_settings_section(self):
+        """Mark where method-specific settings start and populate them."""
+        self._method_start_row = self._grid_row
         if self.method_combo:
             self._update_method_settings(self.method_combo.currentText())
 
     def _update_method_settings(self, method):
         """Update method-specific settings based on selected method."""
-        if not hasattr(self, "method_row_start"):
+        if not hasattr(self, "_method_start_row"):
             return
 
-        form_layout = self.settings_container.layout()
-
-        # Remove existing method-specific widgets
+        # Remove old method parameter widgets from tracking
         if hasattr(self, "_last_method_params"):
             for param in self._last_method_params:
                 self._settings_widgets.pop(param, None)
 
-        # Remove rows from form layout
-        while form_layout.rowCount() > self.method_row_start + 1:
-            form_layout.removeRow(self.method_row_start + 1)
+        _clear_grid_from_row(self.settings_grid, self._method_start_row)
 
-        # Track current method parameters for next update
         method = self.method_combo.currentText() if self.method_combo else None
         method_settings = self.method_settings_config.get(method, [])
         self._last_method_params = [
             s.get("parameter") for s in method_settings if s.get("parameter")
         ]
 
-        # Add new method-specific widgets
-        method_settings = self.method_settings_config.get(method, [])
-        for setting in method_settings:
-            widget = create_setting_widget(setting)
-            if param_name := setting.get("parameter"):
-                self._settings_widgets[param_name] = widget
-            form_layout.addRow(f"{setting['label']}:", widget)
+        if method_settings:
+            # Separator with method name
+            separator = QLabel(f"  {method} Settings")
+            separator.setFixedHeight(Colors.WIDGET_HEIGHT)
+            separator.setStyleSheet(
+                f"color: {Colors.TEXT_SECONDARY}; font-size: 11px;"
+                f"border-top: 1px solid {Colors.BORDER_DARK};"
+                f"padding-top: 6px;"
+            )
+            self.settings_grid.addWidget(
+                separator, self._method_start_row, 0, 1, _COLS * 2
+            )
+
+            new_widgets, _ = _pack_settings_into_grid(
+                self.settings_grid,
+                method_settings,
+                start_row=self._method_start_row + 1,
+            )
+            self._settings_widgets.update(new_widgets)
 
         self.settings_changed.emit()
 
@@ -394,7 +484,15 @@ class OperationCardWidget(QFrame):
         self.expand_btn.setIcon(qta.icon(icon, color=Colors.TEXT_MUTED))
 
         self.update_summary()
+        self.desc.setVisible(not self.expanded)
         self.params_summary.setVisible(not self.expanded)
+
+        if self.expanded:
+            self.setMinimumHeight(self._collapsed_height)
+            self.setMaximumHeight(16777215)
+        else:
+            self.setFixedHeight(self._collapsed_height)
+
         self.settings_changed.emit()
 
     def get_settings(self):

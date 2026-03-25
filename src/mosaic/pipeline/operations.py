@@ -195,7 +195,7 @@ OPERATION_CATEGORIES = {
                                 "default": "star",
                             },
                             {
-                                "label": "RELION 5 Transform",
+                                "label": "Relion 5",
                                 "parameter": "relion_5_format",
                                 "type": "boolean",
                                 "description": "Apply RELION 5 format coordinate transformation",

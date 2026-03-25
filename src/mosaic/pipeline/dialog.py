@@ -163,7 +163,7 @@ class PipelineBuilderDialog(QDialog):
             int(getattr(Settings.rendering, "parallel_worker", 4))
         )
         self.workers_spin.setFixedWidth(80)
-        self.workers_spin.setFixedHeight(32)
+        self.workers_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
         workers_vbox.addWidget(workers_label)
         workers_vbox.addWidget(self.workers_spin)
 
@@ -180,7 +180,7 @@ class PipelineBuilderDialog(QDialog):
             f"font-size: 11px; color: {Colors.TEXT_MUTED};"
         )
         self.skip_complete = QCheckBox()
-        self.skip_complete.setFixedHeight(32)
+        self.skip_complete.setFixedHeight(Colors.WIDGET_HEIGHT)
         skip_vbox.addWidget(skip_complete_label)
         skip_vbox.addWidget(self.skip_complete)
 
@@ -618,13 +618,13 @@ class BatchNavigatorDialog(QWidget):
         self.add_btn.setIcon(qta.icon("ph.file-arrow-up", color=Colors.ICON))
         self.add_btn.setToolTip("Add session files to the list")
         self.add_btn.clicked.connect(self._add_sessions)
-        self.add_btn.setFixedSize(32, 32)
+        self.add_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
 
         self.clear_btn = QPushButton()
         self.clear_btn.setIcon(qta.icon("ph.x", color=Colors.ICON))
         self.clear_btn.setToolTip("Remove all sessions from the list")
         self.clear_btn.clicked.connect(self._clear_sessions)
-        self.clear_btn.setFixedSize(32, 32)
+        self.clear_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
 
         top_bar.addWidget(self.add_btn)
         top_bar.addWidget(self.clear_btn)
