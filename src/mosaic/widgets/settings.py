@@ -11,6 +11,8 @@ from qtpy.QtWidgets import (
     QLineEdit,
 )
 
+from ..stylesheets import Colors
+
 
 def format_tooltip(label=None, description="", default=None, notes=None, **kwargs):
     if label is None:
@@ -72,7 +74,7 @@ def create_setting_widget(setting: Dict):
     elif setting["type"] == "boolean":
         widget = QCheckBox()
         set_widget_value(widget, setting.get("default", False))
-        widget.setMinimumHeight(25)
+        widget.setMinimumHeight(Colors.WIDGET_HEIGHT)
     elif setting["type"] in ("text", "float_list"):
         widget = QLineEdit()
         default_value = setting.get("default", None)

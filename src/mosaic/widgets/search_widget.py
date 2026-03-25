@@ -23,16 +23,17 @@ class SearchWidget(QWidget):
         layout.setSpacing(0)
 
         container = QFrame()
+        container.setFixedHeight(Colors.WIDGET_HEIGHT)
         container.setStyleSheet(
-            """
-            QFrame {
-                border: 1px solid #d1d5db;
+            f"""
+            QFrame {{
+                border: 1px solid {Colors.BORDER_DARK};
                 border-radius: 4px;
                 background-color: transparent;
-            }
-            QFrame:focus-within {
-                border: 1px solid #4f46e5;
-            }
+            }}
+            QFrame:focus-within {{
+                border: 1px solid {Colors.PRIMARY};
+            }}
         """
         )
         container_layout = QHBoxLayout(container)
@@ -54,7 +55,7 @@ class SearchWidget(QWidget):
             """
             QLineEdit {
                 border: none;
-                padding: 6px 4px;
+                padding: 4px 4px;
                 background-color: transparent;
             }
         """

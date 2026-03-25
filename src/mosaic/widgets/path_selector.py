@@ -157,7 +157,7 @@ class PathSelector(QWidget):
             QLineEdit {{
                 border: none;
                 background-color: transparent;
-                padding: 6px 6px;
+                padding: 4px 6px;
                 color: {Colors.TEXT_PRIMARY};
                 selection-color: white;
             }}
@@ -179,7 +179,7 @@ class PathSelector(QWidget):
                 background-color: transparent;
                 border: none;
                 border-left: 1px solid {Colors.BORDER_DARK};
-                padding: 6px 10px;
+                padding: 4px 10px;
                 min-width: 32px;
             }}
             QPushButton:hover {{
@@ -196,6 +196,7 @@ class PathSelector(QWidget):
         container_layout.addWidget(self.path_input, 1)
         container_layout.addWidget(self.browse_button)
 
+        self.container_frame.setFixedHeight(Colors.WIDGET_HEIGHT)
         main_layout.addWidget(self.container_frame)
 
     def _update_completions(self, text):

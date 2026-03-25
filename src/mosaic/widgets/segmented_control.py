@@ -54,7 +54,6 @@ class SegmentedControl(QWidget):
                     border-top-right-radius: {rr};
                     border-bottom-right-radius: {rr};
                     padding: 6px 12px;
-                    font-size: 12px;
                     color: {Colors.TEXT_SECONDARY};
                     background: transparent;
                     margin-left: {ml};
