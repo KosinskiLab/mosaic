@@ -380,7 +380,7 @@ class ColorPickerRow(QWidget):
         self.custom_btn = QPushButton("Custom")
         self.custom_btn.setIcon(qta.icon("ph.eyedropper", color=Colors.ICON))
         self.custom_btn.setStyleSheet(QPushButton_style)
-        self.custom_btn.setFixedHeight(28)
+        self.custom_btn.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.custom_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.custom_btn.clicked.connect(self._open_color_dialog)
         swatches_layout.addWidget(self.custom_btn)

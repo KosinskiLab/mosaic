@@ -195,7 +195,7 @@ QLineEdit_style = f"""
     QLineEdit {{
         border: 1px solid {Colors.BORDER_DARK};
         border-radius: 4px;
-        padding: 4px 8px;
+        padding: 6px 8px;
         selection-background-color: rgba(99, 102, 241, 0.6);
         background: transparent;
     }}
@@ -216,7 +216,7 @@ QSpinBox_style = f"""
     QSpinBox {{
         border: 1px solid {Colors.BORDER_DARK};
         border-radius: 4px;
-        padding: 4px 8px;
+        padding: 6px 8px;
         background-color: transparent;
         selection-background-color: rgba(99, 102, 241, 0.6);
     }}
@@ -257,7 +257,7 @@ QDoubleSpinBox_style = f"""
     QDoubleSpinBox {{
         border: 1px solid {Colors.BORDER_DARK};
         border-radius: 4px;
-        padding: 4px 8px;
+        padding: 6px 8px;
         background-color: transparent;
         selection-background-color: rgba(99, 102, 241, 0.6);
     }}
@@ -298,7 +298,7 @@ QComboBox_style = f"""
     QComboBox {{
         border: 1px solid {Colors.BORDER_DARK};
         border-radius: 4px;
-        min-height: 27px;
+        min-height: {Colors.WIDGET_HEIGHT - 2}px;
         padding: 0px 8px;
         background: transparent;
         selection-background-color: rgba(99, 102, 241, 0.6);
