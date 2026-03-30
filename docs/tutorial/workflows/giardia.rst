@@ -82,8 +82,7 @@ Envelope Extraction
 Optionally thin membranes to their envelope first, reducing computation and improving separation:
 
 1. Select the target cluster
-2. Configure **Cluster**: Method: *Envelope*, Use Points: Check, Distance: -1.0
-3. Click *Apply*
+2. Configure **Cluster**: Method: *Envelope*, Use Points: Check, Distance: -1.0, click *Apply*
 
 .. note::
 
@@ -146,9 +145,12 @@ Fit triangular meshes to analyze geometric properties:
 2. In **Parametrization**, configure **Mesh**:
 
    - Method: Alpha Shape
-   - Elastic Weight: 1.0, Curvature Weight: 10.0, Volume Weight: 0.0
-   - Boundary Ring: 1, Neighbors: 15, Alpha: 1.0
-   - Scaling Factor: 6.0, Distance: 2.0
+   - Smoothness: 1.0, Curvature Weight: 1.0
+   - Pressure: 0.0
+   - Boundary Ring: 1, Alpha: 1.0
+
+   .. versionchanged:: v1.2.1
+      Elastic Weight renamed to Smoothness (rescaled). Volume Weight renamed to Pressure. Neighbors, Scaling Factor, and Distance were removed. Curvature Weight: 10.0  is sensible pre 1.2.1.
 
 3. Click *Apply*
 
@@ -166,7 +168,10 @@ Fit triangular meshes to analyze geometric properties:
 
           Membrane meshes
 
-Alpha shapes work well for convex membrane morphologies. For non-convex membranes, use Ball Pivoting (e.g. with core-thinning via **Segmentation > Thin** at radius 40, then Ball Pivoting at radius 50). Poisson reconstruction also produces complete meshes using a different completion strategy.
+Alpha shapes work well for convex membrane morphologies. For non-convex membranes, use Ball Pivoting (e.g. with core-thinning via **Segmentation > Skeletonize** at radius 40, then Ball Pivoting at radius 50). Poisson reconstruction also produces complete meshes using a different completion strategy.
+
+.. versionchanged:: v1.1.0
+   **Thin** was renamed to **Skeletonize**.
 
 Analyze geometric properties via **Segmentation > Properties**:
 

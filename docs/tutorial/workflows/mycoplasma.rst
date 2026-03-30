@@ -53,8 +53,11 @@ The segmentation will be loaded into Mosaic automatically when complete.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. In the **Segmentation** tab, select the segmented cluster.
-2. Click on **Thin** and choose "outer" to extract the outer cloud.
+2. Click on **Skeletonize** and choose *outer_hull* to extract the outer cloud.
 3. Remove any erroneous segments using the **Remove** function.
+
+.. versionchanged:: v1.1.0
+   **Thin** was renamed to **Skeletonize**. The *outer* method was replaced by *outer_hull*.
 
 3.2. Generate Initial Mesh
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -64,8 +67,10 @@ The segmentation will be loaded into Mosaic automatically when complete.
 3. Click on **Mesh** and choose "Alpha Shape" with the following parameters:
 
    - Alpha: 1.0
-   - Elastic Weight: 1.0
-   - Curvature Weight: 10.0
+   - Smoothness: 1.0, Curvature Weight: 1.0
+
+   .. versionchanged:: v1.2.1
+      Elastic Weight renamed to Smoothness (rescaled). Volume Weight renamed to Pressure.
 
 3.3. Refine the Mesh
 ^^^^^^^^^^^^^^^^^^^^
@@ -88,8 +93,7 @@ The segmentation will be loaded into Mosaic automatically when complete.
    - Click on **Mesh** again, using Alpha Shape with:
 
      - Alpha: 1.0
-     - Elastic Weight: 0.1
-     - Pressure Weight: 0.1
+     - Smoothness: 0.1, Pressure: 0.1
 
 4. Remesh to target edge length:
 

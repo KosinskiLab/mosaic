@@ -171,7 +171,7 @@ Mesh
 
    :Ball Pivoting Parameters:
       - **Radii**: Ball radii for reconstruction (comma-separated, e.g., "5,3.5,1.0")
-      - **Downsample**: Thin input point cloud to core points
+      - **Hole Size**: Maximum hole area to fill (-1 = fill all)
       - **Edge Length**: Target edge length for remeshing (-1 = auto)
 
    :Poisson Parameters:

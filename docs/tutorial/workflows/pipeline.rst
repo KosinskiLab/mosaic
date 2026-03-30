@@ -6,7 +6,7 @@ This tutorial demonstrates how to build reproducible pipelines that process enti
 
 .. note::
 
-   Batch processing is available from version 1.1.0.
+   Batch processing is available from version 1.1.0 of Mosaic.
 
 
 Requirements
@@ -64,7 +64,7 @@ Choosing Parameters
 Separates membranes (plasma membrane, ER, mitochondria, etc.) that should be processed independently.
 
 - Method: *Connected Components* — identifies spatially separated regions
-- Distance: *-1.0* — single-voxel connectivity
+- Distance: *-1.0*, single-voxel connectivity
 
 **Cluster Selection**
 
@@ -74,22 +74,22 @@ Removes small clusters based on point count. The threshold depends on pixel size
 
 Converts the point cloud into a triangular surface.
 
-- Method: *Flying Edges* — fast, works well for dense volumes
+- Method: *Flying Edges*, fast, works well for dense volumes
 
-Flying Edges extracts the segmentation contour, producing a closed surface with seed points on both sides of the membrane. Alternative methods (see the *Meshing* preset) fit a surface through the segmentation center, producing single-sided normals — useful when you want to restrict template matching to one side.
+Flying Edges extracts the segmentation contour, producing a closed surface with seed points on both sides of the membrane. Alternative methods (see the *Meshing* preset) fit a surface through the segmentation center, producing single-sided normals; useful when you want to restrict template matching to one side.
 
 **Remesh and Smoothing**
 
 Reduces voxel-level noise in the mesh. Without smoothing, surface normals are noisy and do not represent the true membrane orientation.
 
-- Method: *Taubin* — preserves shape while reducing noise
+- Method: *Taubin*, preserves shape while reducing noise
 - Iterations: *10*
 
 **Sample**
 
 Places seed points at regular intervals along the surface. Together with surface normals, these constrain template matching to search near the membrane.
 
-- Method: *Distance* — uniform spacing
+- Method: *Distance*, uniform spacing
 - Sampling: distance in Å between points (30 Å works for most cases)
 - Offset: distance from the surface toward the protein center (~half the target protein height)
 
