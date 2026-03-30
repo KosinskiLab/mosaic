@@ -2,7 +2,7 @@
 Influenza A Virus
 =================
 
-This tutorial walks through analyzing Influenza A Virus (IAV) virus-like particles (VLPs) — from membrane segmentation to coarse-grained Martini models.
+This tutorial walks through analyzing Influenza A Virus (IAV) virus-like particles (VLPs), from membrane segmentation to coarse-grained Martini models.
 
 .. figure:: ../../_static/tutorial/iav_workflow/mosaic_workflow.png
    :width: 100 %
@@ -43,16 +43,14 @@ Membrane Segmentation
 1. In the **Intelligence** tab, click the arrow next to **Membrane** and configure:
 
    - Model: select the downloaded checkpoint file
-   - Window Size: 160
-   - Clustering: Enabled
-   - Augmentation: Enabled
-   - Output Sampling: 12.0
+   - Window Size: 160, Output Sampling: 12.0
+   - Clustering: Enabled, Augmentation: Enabled
 
-2. Click *Apply* and select the IAV VLP tomogram.
+2. Click *Apply* and select the IAV VLP tomogram upon completion.
 
 .. note::
 
-   Without a GPU, download the pre-computed segmentation from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_ and load via File > Open.
+   Without a GPU, use the segmentation from `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_ and load via File > Open.
 
 
 Mesh Creation
@@ -65,11 +63,13 @@ Clean the Segmentation
 2. Click **Select** from **Base operations** and use the threshold slider to isolate the central IAV VLP
 3. Close the selection window and press **delete** to remove small artifact clusters
 4. Press **r** to activate the crosshair selector, then click-drag to select incorrectly segmented voxels near the tomogram edge. Press **delete** to remove them.
-5. Thin the segmentation:
+5. Select the VLP in the Object Browser:
 
-   - Select the VLP in the Object Browser
-   - In the **Segmentation** tab, click the arrow next to **Thin** and choose *outer*
-   - Click *Apply*
+   - In the **Segmentation** tab, click the arrow next to **Skeletonize** and choose *outer_hull*, click *Apply*
+   - Select the result, click **Downsample**, choose *Center of Mass* with Radius: 48, click *Apply*
+
+   .. versionchanged:: v1.1.0
+      **Thin** was renamed to **Skeletonize**. The *outer* method was replaced by *outer_hull*.
 
 .. raw:: html
 
@@ -92,11 +92,15 @@ Generate Initial Mesh
 2. Click the arrow next to **Mesh** and configure:
 
    - Method: Ball Pivoting
-   - Elastic Weight: 1.0, Curvature Weight: 10.0, Volume Weight: 0.0
-   - Boundary Ring: 0, Neighbors: 15, Radii: 60.0, Hole Size: -1.0
-   - Downsample: True, Smoothing Steps: 5
+   - Smoothness: 1.0, Curvature Weight: 1.0, Pressure: 0.0
+   - Boundary Ring: 0, Radii: 60.0, Hole Size: Auto, Edge Length: 36
 
-3. Click *Apply*. Right-click the new mesh and set **Representation** to **Mesh**.
+   **Edge Length** controls the resolution of the output mesh. A value of -1 (Auto) defaults to the input point spacing, in this case 48 Å from the previous downsampling step. Lowering the value produces smoother meshes at the cost of longer computation times.
+
+   .. versionchanged:: v1.2.1
+      Elastic Weight renamed to Smoothness. Volume Weight renamed to Pressure. Neighbors, Downsample, and Smoothing Steps were removed. Edge Length did not exist. Sensible parameters are Elastic Weight: 1.0, Curvature Weight: 10.0
+
+3. Click *Apply*. Right-click the new mesh in the Object Browser and set **Representation** to **Mesh**.
 
 .. figure:: ../../_static/tutorial/iav_workflow/initial_mesh_5550.png
    :width: 100 %
@@ -105,24 +109,19 @@ Generate Initial Mesh
    Initial mesh
 
 
-.. note::
-
-   Elastic weight has been renamed Smoothness in version 1.2.2. The scaling has also adapted, so that from 1.2.2 version Smoothness: 1.0, Curvature Weight: 1.0 gives more sensible results.
-
-
 
 Refine the Mesh
 ^^^^^^^^^^^^^^^
 
 One cap of the VLP falls outside the tomogram. We resample and re-mesh to fill it:
 
-1. Select the mesh, click **Sample** (Method: *Points*, Sampling: 30000), click *Apply*
-2. Select the sampled points, click **Mesh** with the same settings as above but Volume Weight: 0.005
-3. Click *Apply*
+1. Select the mesh, click **Sample** (Method: *Points*, 30000), click *Apply*
+2. Select the sampled points, **Mesh** with the same settings as above, but Pressure 50, click *Apply*.
 
-.. note::
+   .. versionchanged:: v1.2.1
+      Volume Weight was renamed to Pressure. Use Volume Weight: 0.005 pre 1.2.1.
 
-   The filled cap extends beyond the original segmentation.
+The filled cap should now extend beyond the original segmentation.
 
 .. raw:: html
 
@@ -144,7 +143,7 @@ Equilibrate the Mesh
 1. Select the refined mesh, go to **Intelligence** tab, click **Equilibrate**
 2. Set Average Edge Length: 100, Steps: 5000
 
-This produces three meshes: mesh_base (input), mesh_remeshed (target edge length), and mesh_equilibrated (equilibrated via Trimem [3]_).
+This produces three meshes: mesh_base (input), mesh_remeshed (target edge length), and mesh_equilibrated (equilibrated via Trimem [3]_). If you want to inspect them, load the output meshes via File > Open.
 
 .. figure:: ../../_static/tutorial/iav_workflow/edge_lengths.png
    :scale: 40 %
