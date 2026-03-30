@@ -2,7 +2,7 @@
 Scripting Interface
 ===================
 
-The Mosaic Shell provides headless access to most GUI operations and allows composing them into reproducible scripting workflows. It runs without Qt or VTK, making it suitable for remote servers and automated pipelines.
+The Mosaic Shell provides headless access to most GUI operations and allows composing them into reproducible scripting workflows for remote servers and automated pipelines.
 
 .. code-block:: bash
 
