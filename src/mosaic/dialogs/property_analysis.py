@@ -1,7 +1,7 @@
 """
 Dialog to analyze and interactively visualize properties of Geometry objects.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -145,46 +145,24 @@ class PropertyCache:
             return False
 
 
+def _make_uuid_to_items(geometries):
+    """Build a uuid-to-StyledTreeWidgetItem map from geometry pairs."""
+    return {
+        obj.uuid: StyledListWidgetItem(geometry=obj, visible=obj.visible)
+        for _, obj in geometries
+    }
+
+
 def _populate_list(geometries, tree_state=None):
     target_list = ContainerTreeWidget(border=False)
     target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
 
-    def _make_item(name, obj):
-        item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
-        item.setData(Qt.ItemDataRole.UserRole, obj)
-        return item
+    uuid_to_items = _make_uuid_to_items(geometries)
 
-    if tree_state is None:
-        for name, obj in geometries:
-            target_list.addItem(_make_item(name, obj))
-        return target_list
-
-    uuid_map = {obj.uuid: (name, obj) for name, obj in geometries}
-    added = set()
-
-    for root_uuid in tree_state.root_items:
-        if root_uuid in tree_state.group_names:
-            group_name = tree_state.group_names[root_uuid]
-            member_uuids = [
-                u for u in tree_state.groups.get(root_uuid, []) if u in uuid_map
-            ]
-            if not member_uuids:
-                continue
-
-            group_item = target_list.create_group(group_name)
-            for uuid in member_uuids:
-                name, obj = uuid_map[uuid]
-                group_item.addChild(_make_item(name, obj))
-                added.add(uuid)
-        elif root_uuid in uuid_map:
-            name, obj = uuid_map[root_uuid]
-            target_list.addItem(_make_item(name, obj))
-            added.add(root_uuid)
-
-    # Add any remaining geometries not present in the tree state
-    for name, obj in geometries:
-        if obj.uuid not in added:
-            target_list.addItem(_make_item(name, obj))
+    if tree_state is not None:
+        target_list.apply_state(tree_state, uuid_to_items)
+    else:
+        target_list.update(uuid_to_items)
 
     return target_list
 
@@ -296,7 +274,6 @@ def _build_tomogram_options(dlg):
 
     path_selector = PathSelector(
         placeholder="Path to tomogram (MRC, EM, MAP, ...)",
-        file_mode=True,
     )
     dlg.property_options_layout.addRow("Tomogram:", path_selector)
     dlg.option_widgets["file_path"] = path_selector
@@ -423,7 +400,6 @@ class ColorScaleSettingsDialog(QDialog):
         self._dialog_margin = dialog_margin
         self._footer_margin = footer_margin
 
-        # Default threshold values
         self.lower_enabled = False
         self.upper_enabled = False
         self.lower_value = 0.0
@@ -439,11 +415,9 @@ class ColorScaleSettingsDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*self._dialog_margin)
 
-        # Threshold settings group
         threshold_group = QGroupBox("Threshold Settings")
         threshold_layout = QVBoxLayout(threshold_group)
 
-        # Lower threshold
         self.lower_checkbox = QCheckBox("Enable Lower Threshold")
         self.lower_checkbox.stateChanged.connect(self._update_spinbox_states)
         threshold_layout.addWidget(self.lower_checkbox)
@@ -458,7 +432,6 @@ class ColorScaleSettingsDialog(QDialog):
         lower_value_layout.addRow("Minimum Value:", self.lower_spinbox)
         threshold_layout.addLayout(lower_value_layout)
 
-        # Upper threshold
         self.upper_checkbox = QCheckBox("Enable Upper Threshold")
         self.upper_checkbox.stateChanged.connect(self._update_spinbox_states)
         threshold_layout.addWidget(self.upper_checkbox)
@@ -475,7 +448,6 @@ class ColorScaleSettingsDialog(QDialog):
 
         layout.addWidget(threshold_group)
 
-        # Buttons
         button_layout = QHBoxLayout()
         button_layout.setContentsMargins(*self._footer_margin)
 
@@ -587,26 +559,16 @@ class PropertyAnalysisDialog(QDialog):
             QTabBar_style + QTable_style + QPushButton_style + QScrollArea_style
         )
 
-        self._known_tree_states = self._snapshot_tree_states()
         self.cdata.data.vtk_pre_render.connect(self._on_render_update)
         self.cdata.models.vtk_pre_render.connect(self._on_render_update)
-
-    def _snapshot_tree_states(self):
-        """Snapshot both container tree states for change detection."""
-        return (
-            self.cdata.get_tree_state("data"),
-            self.cdata.get_tree_state("models"),
-        )
+        self.cdata.data.data_changed.connect(self._refresh_target_lists)
+        self.cdata.models.data_changed.connect(self._refresh_target_lists)
 
     def _on_render_update(self):
         """Re-apply properties when models are re-rendered."""
         self.cdata.data.blockSignals(True)
         self.cdata.models.blockSignals(True)
         try:
-            current = self._snapshot_tree_states()
-            if current != self._known_tree_states:
-                self._known_tree_states = current
-                self._update_property_list()
             if self.live_update_checkbox.isChecked():
                 self._preview(render=False)
                 self._update_plot()
@@ -617,11 +579,26 @@ class PropertyAnalysisDialog(QDialog):
             self.cdata.data.blockSignals(False)
             self.cdata.models.blockSignals(False)
 
+    def _refresh_target_lists(self):
+        """Incrementally update any active target list with current geometries."""
+        target_list = self.option_widgets.get("queries")
+        if target_list is None:
+            return
+        data_source = getattr(target_list, "_data_source", None)
+        if data_source is None:
+            return
+        kwargs = getattr(target_list, "_data_kwargs", {})
+        geometries = self.cdata.format_datalist(data_source, **kwargs)
+        uuid_to_items = _make_uuid_to_items(geometries)
+        target_list.update(uuid_to_items)
+
     def closeEvent(self, event):
         """Disconnect when dialog closes"""
         try:
             self.cdata.data.vtk_pre_render.disconnect(self._on_render_update)
             self.cdata.models.vtk_pre_render.disconnect(self._on_render_update)
+            self.cdata.data.data_changed.disconnect(self._refresh_target_lists)
+            self.cdata.models.data_changed.disconnect(self._refresh_target_lists)
         except Exception:
             pass
         super().closeEvent(event)
@@ -699,6 +676,8 @@ class PropertyAnalysisDialog(QDialog):
         target_list = _populate_list(
             self.cdata.format_datalist(data_source, **kwargs), tree_state
         )
+        target_list._data_source = data_source
+        target_list._data_kwargs = kwargs
         layout.addWidget(target_list)
 
         compare_all = None
@@ -776,7 +755,6 @@ class PropertyAnalysisDialog(QDialog):
         layout = QVBoxLayout(self.visualization_tab)
         layout.setSpacing(6)
 
-        # Property group
         property_group = QGroupBox("Property")
         property_layout = QVBoxLayout()
         property_layout.setSpacing(4)
@@ -811,14 +789,12 @@ class PropertyAnalysisDialog(QDialog):
         filter_main_layout.setContentsMargins(8, 4, 8, 4)
         filter_main_layout.setSpacing(8)
 
-        # Left column: histogram and slider
         self.filter_slider = HistogramRangeSlider()
         self.filter_slider.rangeReleased.connect(self._on_filter_changed)
         self._filter_throttle = Throttle(self._on_filter_changed, interval_ms=100)
         self.filter_slider.rangeChanged.connect(self._on_filter_dragging)
         filter_main_layout.addWidget(self.filter_slider, 1)
 
-        # Right column: buttons at bottom
         filter_btn_layout = QVBoxLayout()
         filter_btn_layout.setContentsMargins(0, 0, 0, 0)
         filter_btn_layout.setSpacing(4)
@@ -848,7 +824,6 @@ class PropertyAnalysisDialog(QDialog):
         filter_group.setFixedHeight(150)
         layout.addWidget(filter_group)
 
-        # Options group
         options_group = QGroupBox("Visualization")
         options_layout = QVBoxLayout(options_group)
         options_layout.setSpacing(4)
@@ -921,7 +896,6 @@ class PropertyAnalysisDialog(QDialog):
 
         layout.addWidget(options_group)
 
-        # Dialog Control Buttons
         button_layout = QHBoxLayout()
         refresh_btn = QPushButton("Refresh")
         refresh_btn.setIcon(qta.icon("ph.arrow-clockwise", color=Colors.PRIMARY))
@@ -956,7 +930,6 @@ class PropertyAnalysisDialog(QDialog):
 
         layout = QVBoxLayout(self.analysis_tab)
 
-        # Plot type buttons
         header_layout = QHBoxLayout()
         header_layout.addStretch()
 
@@ -993,7 +966,6 @@ class PropertyAnalysisDialog(QDialog):
         header_layout.addLayout(plot_type_layout)
         layout.addLayout(header_layout)
 
-        # Plot widget
         self.plot_widget = pg.GraphicsLayoutWidget(self)
         self.plot_widget.setBackground(None)
         self.plot_widget.ci.setContentsMargins(0, 0, 0, 0)
@@ -1034,7 +1006,6 @@ class PropertyAnalysisDialog(QDialog):
         layout.addWidget(self.plot_widget)
         layout.addWidget(options_group)
 
-        # Dialog Control Buttons
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
@@ -1103,17 +1074,6 @@ class PropertyAnalysisDialog(QDialog):
         if property_name is None:
             property_name = self.property_combo.currentText()
 
-        self._previous_parameters = {}
-        if hasattr(self, "option_widgets"):
-            self._previous_parameters = {
-                k: (
-                    get_widget_value(w)
-                    if not isinstance(w, (QListWidget, ContainerTreeWidget))
-                    else [x.metadata.get("uuid") for x in w.selected_items()]
-                )
-                for k, w in self.option_widgets.items()
-            }
-
         while self.property_options_layout.rowCount() > 0:
             self.property_options_layout.removeRow(0)
 
@@ -1121,20 +1081,6 @@ class PropertyAnalysisDialog(QDialog):
         builder = _OPTION_BUILDERS.get(property_name)
         if builder is not None:
             builder(self)
-
-        # Restore previous parameter values
-        for k, widget in self.option_widgets.items():
-            if k in self._previous_parameters:
-                value = self._previous_parameters[k]
-
-                widget.blockSignals(True)
-                if isinstance(widget, (QListWidget, ContainerTreeWidget)):
-                    widget.set_selection(value)
-                    continue
-                set_widget_value(widget, value)
-                widget.blockSignals(False)
-
-        self._previous_parameters = {}
 
     def toggle_all_targets(self, state, target_list):
         target_list.setEnabled(not bool(state))
@@ -1499,7 +1445,6 @@ class PropertyAnalysisDialog(QDialog):
             if not mask.any():
                 continue
 
-            # Create subset geometry
             subset = geometry[mask]
             if subset.get_number_of_points() > 0:
                 self.cdata.data.add(subset)

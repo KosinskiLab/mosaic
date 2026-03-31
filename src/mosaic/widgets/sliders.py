@@ -1,7 +1,7 @@
 """
 Slider widgets for the GUI.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -163,7 +163,6 @@ class DualHandleSlider(QWidget):
         self.setMinimumHeight(40)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-        # Track which handle is being dragged
         self.dragging_handle = None
         self.handle_size = 16
 
@@ -230,7 +229,6 @@ class DualHandleSlider(QWidget):
             handle = self.handle_color
             border = self.border_color
 
-        # Draw track/groove
         track_y = self.height() // 2
         margin = self.handle_size
         track_width = self.width() - margin * 2
@@ -239,7 +237,6 @@ class DualHandleSlider(QWidget):
         painter.setBrush(QBrush(groove))
         painter.drawRoundedRect(margin, track_y - 2, track_width, 4, 2, 2)
 
-        # Draw active range
         lower_x = self._value_to_pixel(self.lower_pos)
         upper_x = self._value_to_pixel(self.upper_pos)
         range_width = upper_x - lower_x
@@ -266,7 +263,6 @@ class DualHandleSlider(QWidget):
         lower_x = self._value_to_pixel(self.lower_pos)
         upper_x = self._value_to_pixel(self.upper_pos)
 
-        # Check which handle is closer
         dist_to_lower = abs(x - lower_x)
         dist_to_upper = abs(x - upper_x)
 
@@ -371,7 +367,6 @@ class MiniHistogram(QWidget):
         draw_width = width - 2 * self.margin
 
         if self._hist is None or len(self._hist) == 0:
-            # Draw placeholder
             painter.setPen(Qt.NoPen)
             painter.setBrush(QBrush(self.placeholder_color))
             painter.drawRect(self.margin, 0, draw_width, height)

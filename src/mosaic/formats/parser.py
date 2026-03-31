@@ -1,22 +1,27 @@
 """
 IO methods to parse a variety of file formats.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import struct
 import warnings
+from io import BytesIO
 from string import ascii_lowercase
 from dataclasses import dataclass
 import xml.etree.ElementTree as ET
 from typing import List, Dict, Any, Optional
 
 import numpy as np
-from scipy.spatial.transform import Rotation
+from gzip import open as gzip_open
 
-from .. import meshing
-from ..utils import volume_to_points, compute_bounding_box, NORMAL_REFERENCE
+
+def is_gzipped(filename: str) -> bool:
+    """Check if a file is a gzip file by reading its magic number."""
+    with open(filename, "rb") as f:
+        return f.read(2) == b"\x1f\x8b"
 
 
 def _parse_data_array(data_array: ET.Element, dtype: type = float) -> np.ndarray:
@@ -122,6 +127,8 @@ class GeometryDataContainer:
     sampling: List[float] = (1, 1, 1)
 
     def __post_init__(self):
+        from ..utils import compute_bounding_box, NORMAL_REFERENCE
+
         dtype_map = {
             "vertices": np.float32,
             "normals": np.float32,
@@ -348,6 +355,8 @@ def _read_orientations(filename: str):
         Dictionary containing vertices, normals, and quaternions.
     """
     from tme import Orientations
+    from scipy.spatial.transform import Rotation
+    from ..utils import NORMAL_REFERENCE
 
     data = Orientations.from_file(filename)
 
@@ -493,6 +502,8 @@ def read_tsi(filename: str) -> GeometryDataContainer:
     GeometryDataContainer
         Parsed geometry data container.
     """
+    from .. import meshing
+
     data = _read_tsi_file(filename)
     mesh = meshing.utils.to_open3d(data["vertices"][:, 1:4], data["faces"][:, 1:4])
     vertex_properties = {}
@@ -523,6 +534,8 @@ def read_vtu(filename: str) -> GeometryDataContainer:
     GeometryDataContainer
         Parsed geometry data container.
     """
+    from .. import meshing
+
     data = _read_vtu_file(filename)
     mesh = meshing.utils.to_open3d(data["points"], data["connectivity"])
     return _return_mesh(mesh, vertex_properties=data.get("point_data", {}))
@@ -596,7 +609,7 @@ def read_structure(filename: str) -> GeometryDataContainer:
 
 def read_volume(filename: str):
     """
-    Read 3D volume data and convert to point cloud.
+    Read 3D volume data and convert to point clouds.
 
     Parameters
     ----------
@@ -608,15 +621,148 @@ def read_volume(filename: str):
     GeometryDataContainer
         Parsed geometry data container.
     """
-    volume = load_density(filename)
+    data, dims, spacing, axis_order = read_mrc_flat(filename)
+    if data is not None:
+        ret = points_from_flat_array(data, dims, spacing)
 
-    shape = np.multiply(volume.shape, volume.sampling_rate)
-    ret = volume_to_points(
-        volume.data, volume.sampling_rate, reverse_order=False, max_cluster=10000
-    )
-    return GeometryDataContainer(
-        vertices=ret, shape=shape, sampling=volume.sampling_rate
-    )
+        if axis_order != (0, 1, 2):
+            perm = np.argsort(axis_order)
+            ret = [pts[:, perm] for pts in ret]
+
+        shape = np.multiply(dims, spacing)
+    else:
+        volume = load_density(filename, use_memmap=False)
+        spacing = np.asarray(volume.sampling_rate, dtype=np.float32)
+        ret = points_from_flat_array(volume.data.ravel(), volume.shape, spacing)
+        shape = np.multiply(volume.shape, spacing)
+    return GeometryDataContainer(vertices=ret, shape=shape, sampling=spacing)
+
+
+def read_mrc_flat(filepath):
+    """Read an MRC file via bulk read with endianness and axis handling.
+
+    Returns
+    -------
+    tuple
+        ``(array, dims, spacing, axis_order)`` or
+        ``(None, None, None, None)``.
+    """
+    _MRC_DTYPES = {
+        0: np.int8,
+        1: np.int16,
+        2: np.float32,
+        4: np.complex64,
+        6: np.uint16,
+        12: np.float16,
+    }
+
+    opener = gzip_open if is_gzipped(filepath) else open
+    with opener(filepath, "rb") as fh:
+        if is_gzipped(filepath):
+            fh = BytesIO(fh.read())
+
+        header = fh.read(1024)
+        if len(header) < 1024 or header[208:212] != b"MAP ":
+            return (None, None, None, None)
+
+        nc_le = struct.unpack_from("<i", header, 0)[0]
+        endian = "<" if 0 < nc_le < 65536 else ">"
+
+        grid = struct.unpack_from(f"{endian}3i", header, 0)
+        mode = struct.unpack_from(f"{endian}i", header, 12)[0]
+        cell = struct.unpack_from(f"{endian}3f", header, 40)
+        mapc, mapr, maps = struct.unpack_from(f"{endian}3i", header, 64)
+        nsymbt = struct.unpack_from(f"{endian}i", header, 92)[0]
+
+        if (dtype := _MRC_DTYPES.get(mode)) is None:
+            return (None, None, None, None)
+
+        if not (1 <= mapc <= 3 and 1 <= mapr <= 3 and 1 <= maps <= 3):
+            mapc, mapr, maps = 1, 2, 3
+
+        axis_order = (mapc - 1, mapr - 1, maps - 1)
+        spacing = np.array(
+            [cell[a] / max(grid[i], 1) for i, a in enumerate(axis_order)],
+            dtype=np.float32,
+        )
+
+        fh.seek(1024 + nsymbt)
+        data = np.frombuffer(fh.read(), dtype=dtype)
+        if endian == ">":
+            data = data.byteswap().newbyteorder("=")
+
+        return data, grid, spacing, axis_order
+
+
+def load_volume_data(filepath, max_cluster=10000):
+    """Load a volume with sanity checks rejecting density volumes.
+
+    Returns
+    -------
+    tuple
+        ``(data, spacing)``.
+
+    Raises
+    ------
+    ValueError
+        If the data looks like a density rather than a segmentation.
+    """
+    density = load_density(filepath, use_memmap=False)
+    data = density.data
+    spacing = np.asarray(density.sampling_rate, dtype=np.float32)
+
+    rng = np.random.default_rng()
+    sample = data.flat[rng.integers(0, data.size, size=min(125_000, data.size))]
+    if len(np.unique(sample)) > max_cluster:
+        raise ValueError(
+            f"Found {len(np.unique(sample))} unique values (max: {max_cluster}). "
+            "Make sure you are opening a segmentation."
+        )
+    return data, spacing
+
+
+def points_from_flat_array(arr, dims, spacing, max_cluster=10000):
+    """Extract per-label point clouds from a flat voxel array.
+
+    Parameters
+    ----------
+    arr : ndarray
+        Flat 1D array of voxel labels.
+    dims : tuple
+        Volume dimensions ``(nx, ny, nz)``.
+    spacing : ndarray
+        Voxel spacing along each axis.
+    max_cluster : int
+        Reject if more unique sampled values than this.
+
+    Returns
+    -------
+    list of ndarray
+        One ``(N, 3)`` float32 point array per label.
+    """
+    rng = np.random.default_rng()
+    sample = arr[rng.integers(0, arr.size, size=min(125_000, arr.size))]
+    if len(np.unique(sample)) > max_cluster:
+        return []
+
+    flat = np.where(arr != 0)[0]
+    if flat.size == 0:
+        return []
+
+    labels = arr[flat]
+    order = labels.argsort(kind="stable")
+    sorted_labels = labels[order]
+
+    coords = np.array(
+        np.unravel_index(flat[order], dims, order="F"),
+        dtype=np.float32,
+    ).T
+    coords = np.multiply(coords, spacing, out=coords)
+
+    splits = np.flatnonzero(np.diff(sorted_labels)) + 1
+    bounds = np.concatenate([[0], splits, [len(order)]])
+
+    return [coords[bounds[i] : bounds[i + 1]] for i in range(len(bounds) - 1)]
 
 
 def _read_tsi_file(file_path: str) -> Dict:

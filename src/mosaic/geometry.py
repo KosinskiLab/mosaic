@@ -1,15 +1,14 @@
 """
 Atomic geometries displayed by the vtk viewer.
 
-Copyright (c) 2024-2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import warnings
 from uuid import uuid4
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import vtk
 import numpy as np
@@ -31,33 +30,158 @@ __all__ = [
 BASE_COLOR = (0.7, 0.7, 0.7)
 
 
-@dataclass
 class GeometryData:
-    """Canonical store for geometry data."""
+    """Canonical store for geometry data.
 
-    points: Optional[np.ndarray] = None
-    normals: Optional[np.ndarray] = None
-    quaternions: Optional[np.ndarray] = None
-    sampling_rate: Optional[np.ndarray] = None
-    model: Any = None
-    meta: Dict = None
-    vertex_properties: Any = None
+    Parameters
+    ----------
+    polydata : vtk.vtkPolyData, optional
+        Existing polydata to wrap.  When *None* an empty one is created.
+    sampling_rate : array-like, optional
+        Voxel spacing along each axis.
+    model : object, optional
+        Fitted parametrisation model.
+    meta : dict, optional
+        Metadata dictionary.
+    vertex_properties : VertexPropertyContainer, optional
+        Additional per-vertex properties.
+    """
 
-    def __post_init__(self):
-        if self.points is not None:
-            self.points = np.asarray(self.points, dtype=np.float32)
-        if self.normals is not None:
-            self.normals = np.asarray(self.normals, dtype=np.float32)
-        if self.quaternions is not None:
-            self.quaternions = np.asarray(self.quaternions, dtype=np.float32)
+    def __init__(
+        self,
+        polydata=None,
+        sampling_rate=None,
+        model=None,
+        meta=None,
+        vertex_properties=None,
+        points=None,
+        normals=None,
+        quaternions=None,
+    ):
+        if polydata is None and points is not None:
+            # Legacy construction from numpy arrays
+            polydata = vtk.vtkPolyData()
 
-        self.set_sampling_rate(self.sampling_rate)
-        self.meta = {} if self.meta is None else self.meta
+        self.polydata = polydata if polydata is not None else vtk.vtkPolyData()
+        self.set_sampling_rate(sampling_rate)
+        self.model = model
+        self.meta = {} if meta is None else meta
 
-        if self.vertex_properties is None:
+        if vertex_properties is None:
             from .formats.parser import VertexPropertyContainer
 
-            self.vertex_properties = VertexPropertyContainer()
+            vertex_properties = VertexPropertyContainer()
+        self.vertex_properties = vertex_properties
+
+        # Push numpy arrays if provided directly
+        if points is not None:
+            self.points = points
+        if normals is not None:
+            self.normals = normals
+        if quaternions is not None:
+            self.quaternions = quaternions
+
+    @classmethod
+    def from_arrays(
+        cls,
+        points=None,
+        normals=None,
+        quaternions=None,
+        sampling_rate=None,
+        model=None,
+        meta=None,
+        vertex_properties=None,
+    ):
+        """Create a GeometryData from numpy arrays."""
+        pd = vtk.vtkPolyData()
+        gd = cls(
+            polydata=pd,
+            sampling_rate=sampling_rate,
+            model=model,
+            meta=meta,
+            vertex_properties=vertex_properties,
+        )
+        if points is not None:
+            gd.points = points
+        if normals is not None:
+            gd.normals = normals
+        if quaternions is not None:
+            gd.quaternions = quaternions
+        return gd
+
+    @property
+    def points(self) -> np.ndarray:
+        pts = self.polydata.GetPoints()
+        if pts is None or pts.GetNumberOfPoints() == 0:
+            return np.empty((0, 3), dtype=np.float32)
+        return numpy_support.vtk_to_numpy(pts.GetData())
+
+    @points.setter
+    def points(self, value):
+        if value is None:
+            self.polydata.SetPoints(None)
+            return
+        value = np.asarray(value, dtype=np.float32)
+        vtk_pts = vtk.vtkPoints()
+        vtk_pts.SetDataTypeToFloat()
+        vtk_pts.SetData(numpy_support.numpy_to_vtk(value, deep=False))
+        self.polydata.SetPoints(vtk_pts)
+        self._rebuild_vertex_cells()
+        self.polydata.Modified()
+
+    @property
+    def normals(self) -> Optional[np.ndarray]:
+        n = self.polydata.GetPointData().GetNormals()
+        if n is None or n.GetNumberOfTuples() == 0:
+            return None
+        return numpy_support.vtk_to_numpy(n)
+
+    @normals.setter
+    def normals(self, value):
+        if value is None:
+            self.polydata.GetPointData().SetNormals(None)
+            return
+        value = np.asarray(value, dtype=np.float32)
+        vtk_arr = numpy_support.numpy_to_vtk(value, deep=False)
+        vtk_arr.SetName("Normals")
+        self.polydata.GetPointData().SetNormals(vtk_arr)
+        self.polydata.Modified()
+
+    @property
+    def quaternions(self) -> Optional[np.ndarray]:
+        arr = self.polydata.GetPointData().GetArray("OrientationQuaternion")
+        if arr is None or arr.GetNumberOfTuples() == 0:
+            return None
+        return numpy_support.vtk_to_numpy(arr)
+
+    @quaternions.setter
+    def quaternions(self, value):
+        if value is None:
+            self.polydata.GetPointData().RemoveArray("OrientationQuaternion")
+            return
+        value = np.asarray(value, dtype=np.float32)
+        vtk_arr = numpy_support.numpy_to_vtk(value, deep=False)
+        vtk_arr.SetName("OrientationQuaternion")
+        self.polydata.GetPointData().AddArray(vtk_arr)
+        self.polydata.Modified()
+
+    def set_faces(self, faces):
+        """Set triangular face connectivity on the polydata."""
+        faces = np.asarray(faces, dtype=int)
+        if faces.ndim == 2 and faces.shape[1] == 3:
+            faces = np.concatenate(
+                (np.full((faces.shape[0], 1), fill_value=3), faces),
+                axis=1,
+                dtype=int,
+            )
+        poly_cells = vtk.vtkCellArray()
+        poly_cells.SetCells(
+            faces.shape[0],
+            numpy_support.numpy_to_vtkIdTypeArray(faces.ravel()),
+        )
+        self.polydata.SetPolys(poly_cells)
+        self.polydata.SetVerts(None)
+        self.polydata.Modified()
 
     def set_sampling_rate(self, sampling_rate):
         if sampling_rate is None:
@@ -69,8 +193,36 @@ class GeometryData:
     def _meta(self):
         return self.meta
 
+    def get_number_of_points(self):
+        return self.polydata.GetNumberOfPoints()
+
+    def get_point_data(self):
+        return self.points, self.normals, self.quaternions
+
+    def to_dict(self):
+        """Return fields as a dict suitable for ``Geometry(**gd.to_dict())``."""
+        return {
+            "points": self.points,
+            "normals": self.normals,
+            "quaternions": self.quaternions,
+            "sampling_rate": self.sampling_rate,
+            "model": self.model,
+            "meta": self.meta,
+            "vertex_properties": self.vertex_properties,
+        }
+
+    def to_geometry(self):
+        """Create a :class:`Geometry` that wraps this data's polydata directly."""
+        return Geometry(
+            polydata=self.polydata,
+            sampling_rate=self.sampling_rate,
+            model=self.model,
+            meta=self.meta,
+            vertex_properties=self.vertex_properties,
+        )
+
     def __getitem__(self, idx):
-        """Subset all arrays, return new GeometryData."""
+        """Subset points via VTK extraction, return new GeometryData."""
         n_points = self.get_number_of_points()
         if isinstance(idx, (int, np.integer)):
             idx = [idx]
@@ -82,38 +234,53 @@ class GeometryData:
             idx = np.where(idx)[0]
         idx = idx[idx < n_points]
 
+        sel_node = vtk.vtkSelectionNode()
+        sel_node.SetFieldType(vtk.vtkSelectionNode.POINT)
+        sel_node.SetContentType(vtk.vtkSelectionNode.INDICES)
+        sel_node.SetSelectionList(
+            numpy_support.numpy_to_vtkIdTypeArray(idx.astype(np.int64))
+        )
+
+        sel = vtk.vtkSelection()
+        sel.AddNode(sel_node)
+
+        extract = vtk.vtkExtractSelection()
+        extract.SetInputData(0, self.polydata)
+        extract.SetInputData(1, sel)
+        extract.Update()
+
+        geom_filter = vtk.vtkGeometryFilter()
+        geom_filter.SetInputData(extract.GetOutput())
+        geom_filter.Update()
+
+        vprops = self.vertex_properties
+        if vprops is not None:
+            vprops = vprops[idx]
+
         return GeometryData(
-            points=self._subset_data(self.points, idx),
-            normals=self._subset_data(self.normals, idx),
-            quaternions=self._subset_data(self.quaternions, idx),
+            polydata=geom_filter.GetOutput(),
             sampling_rate=self.sampling_rate.copy(),
             model=self.model,
             meta=self.meta.copy(),
-            vertex_properties=self._subset_data(self.vertex_properties, idx),
+            vertex_properties=vprops,
         )
 
-    def _subset_data(self, arr, idx):
-        return arr[idx] if arr is not None else None
+    def _rebuild_vertex_cells(self):
+        """Rebuild vertex cells as a single polyvertex for point cloud rendering.
 
-    def get_number_of_points(self):
-        if self.points is None:
-            return 0
-        return self.points.shape[0]
-
-    def get_point_data(self):
-        return self.points, self.normals, self.quaternions
-
-    def to_dict(self):
-        """Return fields as a dict suitable for Geometry(**gd.to_dict())."""
-        return {
-            "points": self.points,
-            "normals": self.normals,
-            "quaternions": self.quaternions,
-            "sampling_rate": self.sampling_rate,
-            "model": self.model,
-            "meta": self.meta,
-            "vertex_properties": self.vertex_properties,
-        }
+        Skipped when the polydata already has polygon cells (mesh).
+        """
+        if self.polydata.GetNumberOfPolys() > 0:
+            return
+        n = self.polydata.GetNumberOfPoints()
+        if n == 0:
+            return
+        cell_arr = np.empty(n + 1, dtype=np.int64)
+        cell_arr[0] = n
+        cell_arr[1:] = np.arange(n, dtype=np.int64)
+        vertex_cells = vtk.vtkCellArray()
+        vertex_cells.SetCells(1, numpy_support.numpy_to_vtkIdTypeArray(cell_arr))
+        self.polydata.SetVerts(vertex_cells)
 
 
 class Geometry:
@@ -155,47 +322,40 @@ class Geometry:
         vtk_actor=None,
         vertex_properties=None,
         model=None,
+        polydata=None,
         **kwargs,
     ):
         self.uuid = str(uuid4())
 
-        self._points = vtk.vtkPoints()
-        self._points.SetDataTypeToFloat()
+        if polydata is not None:
+            self._geometry_data = GeometryData(
+                polydata=polydata,
+                sampling_rate=sampling_rate,
+                model=model,
+                meta=meta,
+                vertex_properties=vertex_properties,
+            )
+        else:
+            if quaternions is not None:
+                _normals = apply_quat(quaternions)
+                if normals is not None:
+                    if not np.allclose(_normals, normals, atol=1e-3):
+                        warnings.warn(
+                            "Orientation given by quaternions does not match "
+                            "the supplied normal vectors. Overwriting normals "
+                            "with quaternions for now."
+                        )
+                normals = _normals
 
-        self._cells = vtk.vtkCellArray()
-        self._normals = vtk.vtkFloatArray()
-        self._normals.SetNumberOfComponents(3)
-        self._normals.SetName("Normals")
-
-        self._data = vtk.vtkPolyData()
-        self._data.SetPoints(self._points)
-        self._data.SetVerts(self._cells)
-
-        if quaternions is not None:
-            _normals = apply_quat(quaternions)
-            if normals is not None:
-                if not np.allclose(_normals, normals, atol=1e-3):
-                    warnings.warn(
-                        "Orientation given by quaternions does not match the "
-                        "supplied normal vectors. Overwriting normals with "
-                        "quaternions for now."
-                    )
-            normals = _normals
-
-        # GeometryData owns all data
-        self._geometry_data = GeometryData(
-            points=points,
-            normals=normals,
-            quaternions=quaternions,
-            sampling_rate=sampling_rate,
-            model=model,
-            meta=meta,
-            vertex_properties=vertex_properties,
-        )
-
-        # Sync VTK from GeometryData (shallow references, no copy)
-        if points is not None:
-            self._sync_vtk()
+            self._geometry_data = GeometryData.from_arrays(
+                points=points,
+                normals=normals,
+                quaternions=quaternions,
+                sampling_rate=sampling_rate,
+                model=model,
+                meta=meta,
+                vertex_properties=vertex_properties,
+            )
 
         self._representation = "pointcloud"
 
@@ -210,6 +370,11 @@ class Geometry:
             "base_color": color,
         }
         self.set_appearance(**self._appearance)
+
+    @property
+    def _data(self):
+        """The underlying vtkPolyData (owned by GeometryData)."""
+        return self._geometry_data.polydata
 
     @property
     def _meta(self):
@@ -465,7 +630,6 @@ class Geometry:
             return -1
 
         self._geometry_data.points = points
-        self._sync_vtk_points()
 
     @property
     def normals(self):
@@ -477,12 +641,7 @@ class Geometry:
         np.ndarray or None
             Normal vectors with shape (n_points, 3), or None if not set.
         """
-        normals = self._geometry_data.normals
-        if normals is None and self._geometry_data.points is not None:
-            normals = np.full_like(
-                self._geometry_data.points, fill_value=NORMAL_REFERENCE
-            )
-        return normals
+        return self._geometry_data.normals
 
     @normals.setter
     def normals(self, normals: np.ndarray):
@@ -500,12 +659,10 @@ class Geometry:
             return -1
 
         self._geometry_data.normals = normals
-        self._sync_vtk_normals()
 
         # Update associated quaternions if available
         if self._geometry_data.quaternions is not None:
             self.quaternions = normals_to_rot(self.normals, scalar_first=True)
-        self._data.Modified()
 
     @property
     def quaternions(self):
@@ -545,62 +702,10 @@ class Geometry:
             return -1
 
         self._geometry_data.quaternions = quaternions
-        self._sync_vtk_quaternions()
-
-    def _sync_vtk(self):
-        """Push all GeometryData arrays to VTK objects with deep=False."""
-        if self._geometry_data.points is not None:
-            self._sync_vtk_points()
-        if self._geometry_data.normals is not None:
-            self._sync_vtk_normals()
-        if self._geometry_data.quaternions is not None:
-            self._sync_vtk_quaternions()
-
-    def _sync_vtk_points(self):
-        """Sync points from GeometryData to VTK."""
-        points = self._geometry_data.points
-        vertex_cells = vtk.vtkCellArray()
-        idx = np.arange(points.shape[0], dtype=int)
-        cells = np.column_stack((np.ones(idx.size, dtype=int), idx)).flatten()
-        vertex_cells.SetCells(idx.size, numpy_support.numpy_to_vtkIdTypeArray(cells))
-
-        self._points.SetData(numpy_support.numpy_to_vtk(points, deep=False))
-        if getattr(self, "_representation", None) in ("surface", "wireframe"):
-            vertex_cells = None
-        self._data.SetVerts(vertex_cells)
-        self._data.Modified()
-
-    def _sync_vtk_normals(self):
-        """Sync normals from GeometryData to VTK."""
-        normals = self._geometry_data.normals
-        normals_vtk = numpy_support.numpy_to_vtk(normals, deep=False)
-        normals_vtk.SetName("Normals")
-        self._data.GetPointData().SetNormals(normals_vtk)
-        self._data.Modified()
-
-    def _sync_vtk_quaternions(self):
-        """Sync quaternions from GeometryData to VTK."""
-        quaternions = self._geometry_data.quaternions
-        quat_vtk = numpy_support.numpy_to_vtk(quaternions, deep=False)
-        quat_vtk.SetName("OrientationQuaternion")
-        self._data.GetPointData().AddArray(quat_vtk)
-        self._data.Modified()
 
     def _set_faces(self, faces):
-        faces = np.asarray(faces, dtype=int)
-        if faces.shape[1] != 3:
-            warnings.warn("Only triangular faces are supported.")
-            return -1
-
-        faces = np.concatenate(
-            (np.full((faces.shape[0], 1), fill_value=3), faces), axis=1, dtype=int
-        )
-        poly_cells = vtk.vtkCellArray()
-        poly_cells.SetCells(
-            faces.shape[0], numpy_support.numpy_to_vtkIdTypeArray(faces.ravel())
-        )
-        self._data.SetPolys(poly_cells)
-        self._data.Modified()
+        """Set triangular face connectivity. Delegates to GeometryData."""
+        self._geometry_data.set_faces(faces)
 
     def set_color(self, color: Tuple[int] = None):
         """
@@ -903,10 +1008,6 @@ class Geometry:
         int
             Result of representation change.
         """
-        self._points.Reset()
-        self._cells.Reset()
-        self._normals.Reset()
-
         # Check whether we have to synchronize quaternion representation
         if (
             quaternions is None
@@ -1107,9 +1208,6 @@ class Geometry:
             self._actor.SetMapper(mapper)
 
         elif to_mesh:
-            self._cells.Reset()
-            self._points.Reset()
-
             self.points = mesh.vertices
             self._set_faces(mesh.triangles)
             self.normals = mesh.compute_vertex_normals()
@@ -1137,6 +1235,26 @@ class Geometry:
     def get_point_data(self):
         d = self._geometry_data
         return d.points, d.normals, d.quaternions
+
+
+def _geometry_from_polydata(
+    polydata,
+    sampling_rate=None,
+    color=BASE_COLOR,
+    representation="surface",
+    meta=None,
+):
+    """Create a :class:`Geometry` from an existing ``vtkPolyData``."""
+    g = Geometry(
+        polydata=polydata,
+        sampling_rate=sampling_rate,
+        meta=meta,
+    )
+    if representation == "surface":
+        g.change_representation("surface")
+    elif representation == "wireframe":
+        g.change_representation("wireframe")
+    return g
 
 
 # For backwards compatibility
@@ -1357,10 +1475,10 @@ class SegmentationGeometry(Geometry):
         sampling_rate=None,
         color=BASE_COLOR,
         meta=None,
+        volume=None,
+        volume_origin=None,
         **kwargs,
     ):
-        from .utils import points_to_volume
-
         self.uuid = str(uuid4())
         self._geometry_data = GeometryData(
             points=points,
@@ -1380,19 +1498,29 @@ class SegmentationGeometry(Geometry):
         }
 
         if self._geometry_data.points is not None:
+            from .utils import points_to_volume
+
+            # Use a coarser grid for meshing to limit vertex count
+            n_points = self._geometry_data.get_number_of_points()
+            mesh_sampling = np.max(self.sampling_rate)
+            if n_points > 500_000:
+                mesh_sampling *= max(1, int(np.cbrt(n_points / 500_000)))
+
             vol, offset = points_to_volume(
                 self._geometry_data.points,
-                sampling_rate=np.max(self.sampling_rate),
+                sampling_rate=mesh_sampling,
                 use_offset=True,
                 out_dtype=np.uint8,
             )
             self._volume_shape = vol.shape
-            self._origin = (offset * self.sampling_rate).astype(np.float32)
+            self._origin = (offset * mesh_sampling).astype(np.float32)
+            self._mesh_sampling = mesh_sampling
         else:
             self._geometry_data.points = np.empty((0, 3), dtype=np.float32)
             self._volume_shape = (1, 1, 1)
             vol = None
             self._origin = np.zeros(3, dtype=np.float32)
+            self._mesh_sampling = np.max(self.sampling_rate)
 
         self._build_surface(vol)
         self._set_appearance()
@@ -1428,7 +1556,8 @@ class SegmentationGeometry(Geometry):
         volume_data : np.ndarray, optional
             Binary 3D numpy array. If None, creates an empty mesh.
         """
-        spacing = self.sampling_rate.astype(np.float64)
+        mesh_sr = getattr(self, "_mesh_sampling", np.max(self.sampling_rate))
+        spacing = np.full(3, mesh_sr, dtype=np.float64)
         origin = self._origin.astype(np.float64)
 
         if volume_data is None:
@@ -1454,14 +1583,13 @@ class SegmentationGeometry(Geometry):
         vtk_arr = numpy_support.numpy_to_vtk(vol_padded.ravel(order="F"), deep=True)
         padded_volume.GetPointData().SetScalars(vtk_arr)
 
-        flying_edges = vtk.vtkDiscreteFlyingEdges3D()
+        flying_edges = vtk.vtkFlyingEdges3D()
         flying_edges.SetInputData(padded_volume)
-        flying_edges.SetValue(0, 1)
+        flying_edges.SetValue(0, 0.5)
         flying_edges.ComputeNormalsOn()
         flying_edges.Update()
 
-        self._mesh_polydata = vtk.vtkPolyData()
-        self._mesh_polydata.DeepCopy(flying_edges.GetOutput())
+        self._mesh_polydata = flying_edges.GetOutput()
 
         self._ensure_vertex_mapping(spacing)
 
@@ -1475,7 +1603,7 @@ class SegmentationGeometry(Geometry):
             Voxel spacing (float64).
         """
         n_vertices = self._mesh_polydata.GetNumberOfPoints()
-        n_points = self._geometry_data.points.shape[0]
+        n_points = self._geometry_data.get_number_of_points()
 
         if n_vertices > 0 and n_points > 0:
             vertices = numpy_support.vtk_to_numpy(
@@ -1496,6 +1624,7 @@ class SegmentationGeometry(Geometry):
             order = np.argsort(flat_pts, kind="stable")
             sorted_flat = flat_pts[order]
             sorted_point = valid_idx[order]
+
             # Keep last occurrence per voxel
             unique_mask = np.empty(len(sorted_flat), dtype=bool)
             unique_mask[-1] = True
@@ -1589,7 +1718,8 @@ class SegmentationGeometry(Geometry):
         np.ndarray
             Integer voxel indices.
         """
-        ret = np.rint((np.asarray(coords) - self._origin) / self.sampling_rate)
+        sr = getattr(self, "_mesh_sampling", np.max(self.sampling_rate))
+        ret = np.rint((np.asarray(coords) - self._origin) / sr)
         return ret.astype(int)
 
     @property
@@ -1599,13 +1729,7 @@ class SegmentationGeometry(Geometry):
 
     @property
     def points(self):
-        """Original input point coordinates.
-
-        Returns
-        -------
-        np.ndarray
-            Point coordinates with shape (n_points, 3).
-        """
+        """Original input point coordinates."""
         return self._geometry_data.points
 
     @points.setter
@@ -1856,7 +1980,6 @@ class SegmentationGeometry(Geometry):
             self._vertex_to_point_idx = np.where(visible, new_mapped, 0)
             self._highlighted_point_ids = None
             self.set_color()
-
         return self
 
     def _should_rebuild(self, current_points):

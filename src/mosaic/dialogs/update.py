@@ -1,14 +1,14 @@
 """
 Update checker
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from sys import executable, argv
 
-from qtpy.QtCore import QThread, Signal
+from qtpy.QtCore import Qt, QThread, Signal
 from qtpy.QtWidgets import QMessageBox, QCheckBox, QApplication
 
 from ..__version__ import __version__
@@ -55,6 +55,7 @@ class UpdateDialog(QMessageBox):
 
         self.setIcon(QMessageBox.Icon.Information)
         self.setWindowTitle("Update")
+        self.setTextFormat(Qt.TextFormat.MarkdownText)
 
         self.setText(
             f"Mosaic {latest_version} available\n\n"

@@ -1,7 +1,7 @@
 """
 Implements DataContainer as handler of Geometry object collections.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -71,8 +71,10 @@ class DataContainer:
             geometry.set_appearance(
                 base_color=color, highlight_color=self.highlight_color
             )
-        elif color is not None:
-            geometry.set_appearance(base_color=color)
+        else:
+            if color is not None:
+                geometry.set_appearance(base_color=color)
+            geometry._appearance.setdefault("highlight_color", self.highlight_color)
 
         self.data.append(geometry)
         return len(self.data) - 1

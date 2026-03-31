@@ -1,7 +1,7 @@
 """
 VTK-based widgets for 3D visualization.
 
-Copyright (c) 2024-2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -362,7 +362,6 @@ class AxesWidget:
             text_actor.SetTextScaleModeToNone()
             text_actor.GetTextProperty().SetFontSize(12)
 
-        # Create orientation marker widget
         self.orientation_marker = vtkOrientationMarkerWidget()
         self.orientation_marker.SetOrientationMarker(self.axes_actor)
         self.orientation_marker.SetInteractor(interactor)

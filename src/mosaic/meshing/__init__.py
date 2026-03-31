@@ -18,6 +18,7 @@ _module_map = {
         "fair_mesh",
         "get_ring_vertices",
         "close_holes",
+        "triangulation_refine_leipa",
     ],
     ".volume": [
         "mesh_volume",

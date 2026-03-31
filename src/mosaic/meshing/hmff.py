@@ -97,7 +97,6 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
         ofile.write(f"{fname}\t{scale_factor}\t{offset}\n")
         dist_base = compute_edge_lengths(mesh_scale)
 
-        # Remeshed
         mesh = remesh(mesh_base, edge_length, n_iter=500)
         scale_factor = compute_scale_factor_lower(mesh, lower_bound=etarget)
         mesh_scale = scale(mesh, scale_factor)
@@ -111,7 +110,6 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
         ofile.write(f"{fname}\t{scale_factor}\t{offset}\n")
         dist_remesh = compute_edge_lengths(mesh_scale)
 
-        # Equilibrated
         ret = equilibrate_edges(
             mesh, lower_bound=lower_bound, upper_bound=upper_bound, **parameters
         )

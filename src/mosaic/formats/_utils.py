@@ -1,7 +1,10 @@
+import struct
 import pickle
 
 from typing import Any
 from os.path import splitext, basename
+
+_HEADER_STRUCT = struct.Struct(">I")
 
 
 class CompatibilityUnpickler(pickle.Unpickler):

@@ -1,7 +1,7 @@
 """
 DTS screening analysis: time series parsing, trajectory comparison, fluctuations.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -153,7 +153,6 @@ def parse_run_time_series(run_dir: str) -> List[Dict]:
     series = []
     run_path = Path(run_dir)
 
-    # Native DTS energy file
     dts_en = run_path / "dts-en.xvg"
     if dts_en.exists():
         result = _parse_xvg(str(dts_en))
@@ -168,7 +167,6 @@ def parse_run_time_series(run_dir: str) -> List[Dict]:
                 }
             )
 
-    # Computed mosaic results
     mosaic_dir = run_path / "mosaic"
     if mosaic_dir.is_dir():
         for xvg_file in sorted(mosaic_dir.iterdir()):
@@ -216,14 +214,12 @@ def load_screen_results(screen_dir: str) -> Dict:
     for run_info in summary["runs"]:
         run_dir = screen_path / run_info["run_id"]
 
-        # Load params
         params = run_info.get("parameters", {})
         params_file = run_dir / "params.json"
         if params_file.exists():
             with open(params_file, "r") as f:
                 params = json.load(f)
 
-        # Parse all time series
         time_series = parse_run_time_series(str(run_dir))
 
         status = run_status(run_dir)
@@ -362,7 +358,6 @@ def compute_trajectory_distance(
 
     scalar_arr = np.array(scalar_values)
 
-    # Write cached files
     if output_dir:
         mosaic_dir = Path(output_dir) / "mosaic"
 

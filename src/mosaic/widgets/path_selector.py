@@ -1,6 +1,7 @@
 import os
 from sys import platform
 from pathlib import Path
+from typing import List, Union
 
 from qtpy.QtCore import Qt, QEvent, QObject, QStringListModel
 from qtpy.QtWidgets import (
@@ -20,7 +21,7 @@ from ..stylesheets import Colors
 
 
 class _TabCompleteFilter(QObject):
-    """Accept inline completion on Tab instead of moving focus."""
+    """Accept inline completion on Tab and scroll to show completed text."""
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Tab:
@@ -32,6 +33,14 @@ class _TabCompleteFilter(QObject):
                 obj.setText(path)
                 obj.setCursorPosition(len(path))
             return True
+
+        if event.type() == QEvent.Type.KeyRelease and obj.hasSelectedText():
+            start = obj.selectionStart()
+            length = len(obj.selectedText())
+            end = start + length
+            obj.setCursorPosition(end)
+            obj.setSelection(start, length)
+
         return super().eventFilter(obj, event)
 
 
@@ -51,42 +60,45 @@ def _list_dir_safe(directory: str, dirs_only: bool = False) -> list:
     return sorted(entries)
 
 
+_ICON_MAP = {
+    "file": "ph.file",
+    "files": "ph.files",
+    "directory": "ph.folder-open",
+    "save": "ph.floppy-disk",
+}
+
+
 class PathSelector(QWidget):
-    """Reusable component for file path selection with browse button"""
+    """Reusable component for file path selection with browse button.
+
+    Parameters
+    ----------
+    label_text : str
+        Text to show as label above the path field.
+    placeholder : str
+        Placeholder text for the input field.
+    mode : str
+        Selection mode: ``"file"`` (single file), ``"files"`` (multiple
+        files), ``"directory"``, or ``"save"``.
+    file_filter : str
+        File type filter for the dialog (e.g. ``"MRC Files (*.mrc)"``).
+    parent : QWidget, optional
+        Parent widget.
+    """
 
     def __init__(
         self,
         label_text="",
         placeholder="Path to file",
-        file_mode: bool = True,
-        save_mode: bool = False,
+        mode: str = "file",
         file_filter: str = "",
         parent=None,
     ):
-        """
-        Initialize the file path selector widget.
-
-        Parameters:
-        -----------
-        label_text : str
-            Text to show as label above the path field
-        placeholder : str
-            Placeholder text for the input field
-        file_mode : bool
-            Whether integrated button triggers file or directory selection.
-        save_mode : bool
-            Whether to use a save dialog instead of an open dialog.
-        file_filter : str
-            File type filter for the dialog (e.g. "MRC Files (*.mrc)").
-        parent : QWidget
-            Parent widget
-        """
         super().__init__(parent)
 
-        self.file_mode = file_mode
-        self.save_mode = save_mode
+        self.mode = mode
         self.file_filter = file_filter
-        self._dirs_only = not file_mode and not save_mode
+        self._paths: List[str] = []
         self._cached_dir = None
 
         main_layout = QVBoxLayout(self)
@@ -126,12 +138,7 @@ class PathSelector(QWidget):
         container_layout.setContentsMargins(8, 0, 0, 0)
         container_layout.setSpacing(4)
 
-        if save_mode:
-            icon_name = "ph.floppy-disk"
-        elif file_mode:
-            icon_name = "ph.file"
-        else:
-            icon_name = "ph.folder-open"
+        icon_name = _ICON_MAP.get(mode, "ph.file")
 
         icon_label = QLabel()
         icon_label.setPixmap(
@@ -144,13 +151,18 @@ class PathSelector(QWidget):
         self.path_input.setPlaceholderText(placeholder)
 
         self._completer_model = QStringListModel(self)
-        completer = QCompleter(self._completer_model, self)
-        completer.setCompletionMode(QCompleter.CompletionMode.InlineCompletion)
+        self._completer = QCompleter(self._completer_model, self)
+        self._completer.setCompletionMode(QCompleter.CompletionMode.InlineCompletion)
         if platform == "darwin":
-            completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self.path_input.setCompleter(completer)
+            self._completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self._tab_filter = _TabCompleteFilter(self.path_input)
         self.path_input.textChanged.connect(self._update_completions)
-        self.path_input.installEventFilter(_TabCompleteFilter(self.path_input))
+
+        if mode != "files":
+            self.path_input.setCompleter(self._completer)
+            self.path_input.installEventFilter(self._tab_filter)
+        else:
+            self.path_input.setReadOnly(True)
 
         self.path_input.setStyleSheet(
             f"""
@@ -199,37 +211,95 @@ class PathSelector(QWidget):
         self.container_frame.setFixedHeight(Colors.WIDGET_HEIGHT)
         main_layout.addWidget(self.container_frame)
 
+    def set_mode(self, mode: str):
+        """Switch the selection mode at runtime."""
+        old_mode = self.mode
+        self.mode = mode
+        if mode == "files":
+            self.path_input.setReadOnly(True)
+            self.path_input.setCompleter(None)
+            self.path_input.removeEventFilter(self._tab_filter)
+        elif old_mode == "files":
+            self.path_input.setReadOnly(False)
+            self.path_input.setCompleter(self._completer)
+            self.path_input.installEventFilter(self._tab_filter)
+
+            # Collapse multi-paths to the first one when switching back
+            if self._paths:
+                self.path_input.setText(self._paths[0])
+            self._paths.clear()
+
     def _update_completions(self, text):
+        if self.mode == "files":
+            return
         parent_dir = str(Path(text).parent) if text else ""
         if not parent_dir or parent_dir == "." or parent_dir == self._cached_dir:
             return
         self._cached_dir = parent_dir
-        entries = _list_dir_safe(parent_dir, dirs_only=self._dirs_only)
+        entries = _list_dir_safe(parent_dir, dirs_only=(self.mode == "directory"))
         self._completer_model.setStringList(entries)
 
     def _browse_clicked(self):
-        dlg = QFileDialog(self)
-        dlg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        start_dir = ""
+        current = self.path_input.text().strip()
+        if current:
+            p = Path(current)
+            if p.is_dir():
+                start_dir = current
+            elif p.parent.is_dir():
+                start_dir = str(p.parent)
 
-        if self.save_mode:
-            dlg.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
-            if self.file_filter:
-                dlg.setNameFilter(self.file_filter)
-        elif self.file_mode:
-            dlg.setFileMode(QFileDialog.FileMode.ExistingFile)
-            if self.file_filter:
-                dlg.setNameFilter(self.file_filter)
+        dialog = QFileDialog(self.window() or self)
+        dialog.setDirectory(start_dir)
+
+        if self.mode == "files":
+            dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
+            dialog.setNameFilter(self.file_filter)
+        elif self.mode == "save":
+            dialog.setFileMode(QFileDialog.FileMode.AnyFile)
+            dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+            dialog.setNameFilter(self.file_filter)
+        elif self.mode == "directory":
+            dialog.setFileMode(QFileDialog.FileMode.Directory)
         else:
-            dlg.setFileMode(QFileDialog.FileMode.Directory)
-            dlg.setOption(QFileDialog.Option.ShowDirsOnly, True)
+            dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+            dialog.setNameFilter(self.file_filter)
 
-        dlg.fileSelected.connect(self.set_path)
-        dlg.open()
+        mode = self.mode
 
-    def get_path(self):
-        """Get the currently entered path"""
+        def on_accepted():
+            files = dialog.selectedFiles()
+            if files:
+                self.set_path(files if mode == "files" else files[0])
+
+        dialog.accepted.connect(on_accepted)
+        dialog.open()
+
+    def get_path(self) -> Union[str, List[str]]:
+        """Return the selected path(s).
+
+        Returns a single string for ``"file"``, ``"directory"``, and
+        ``"save"`` modes.  Returns a list of strings for ``"files"`` mode.
+        """
+        if self.mode == "files":
+            return list(self._paths)
         return self.path_input.text()
 
-    def set_path(self, path):
-        """Set the path in the input field"""
-        self.path_input.setText(path)
+    def set_path(self, path: Union[str, List[str]]):
+        """Set the path(s) in the input field."""
+        if self.mode == "files":
+            if isinstance(path, str):
+                self._paths = [path] if path else []
+            else:
+                self._paths = list(path)
+            n = len(self._paths)
+            if n == 0:
+                self.path_input.setText("")
+            elif n == 1:
+                self.path_input.setText(self._paths[0])
+            else:
+                self.path_input.setText(f"{n} files selected")
+        else:
+            if isinstance(path, list):
+                path = path[0] if path else ""
+            self.path_input.setText(path)

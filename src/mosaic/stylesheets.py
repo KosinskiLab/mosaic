@@ -329,6 +329,9 @@ QCheckBox_style = f"""
         spacing: 5px;
         background-color: transparent;
     }}
+    QCheckBox:focus {{
+        outline: none;
+    }}
     QCheckBox::indicator {{
         width: 18px;
         height: 18px;

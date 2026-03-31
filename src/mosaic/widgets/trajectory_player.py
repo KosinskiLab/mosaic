@@ -27,7 +27,6 @@ class TimelineBar(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Container for the slider to control its width
         self.slider_container = QWidget()
         container_layout = QHBoxLayout(self.slider_container)
         container_layout.setContentsMargins(0, 0, 0, 0)
@@ -100,7 +99,6 @@ class TrajectoryRow(QFrame):
         self.set_name_from_trajectory(self.trajectory)
         layout.addWidget(self.name_label)
 
-        # Center: Timeline with integrated slider
         self.timeline = TimelineBar()
         self.timeline.setRange(0, self.trajectory.frames - 1)
         self._frame_throttle = Throttle(self._update_frame, interval_ms=50)
@@ -108,7 +106,6 @@ class TrajectoryRow(QFrame):
         self.set_maxframes(self.max_frames)
         layout.addWidget(self.timeline, 1)
 
-        # Right side: Frame counter
         self.frame_label = QLabel(f"0/{self.trajectory.frames-1}")
         self.frame_label.setMinimumWidth(70)
         self.frame_label.setAlignment(
@@ -189,12 +186,10 @@ class TrajectoryPlayer(QWidget):
 
         main_layout.addWidget(group)
 
-        # Controls section with frame counter on right
         controls_container = QWidget()
         controls_layout = QHBoxLayout(controls_container)
         controls_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Center-aligned play controls
         play_controls = QWidget()
         play_layout = QHBoxLayout(play_controls)
         play_layout.setContentsMargins(0, 0, 0, 8)
@@ -276,7 +271,6 @@ class TrajectoryPlayer(QWidget):
         self.trajectory_area.layout().setContentsMargins(0, 0, 0, 0)
         self.trajectory_area.layout().setSpacing(0)
 
-        # Trajectories container
         self.rows_widget = QWidget()
         self.rows_layout = QVBoxLayout(self.rows_widget)
         self.rows_layout.setContentsMargins(0, 0, 0, 0)
@@ -305,7 +299,6 @@ class TrajectoryPlayer(QWidget):
         if len(geometry_trajectories):
             max_frames = max(t.frames for t in geometry_trajectories)
 
-        # Remove trajectories that no longer exist
         for i in reversed(range(self.rows_layout.count())):
             widget = self.rows_layout.itemAt(i).widget()
             try:
@@ -321,7 +314,6 @@ class TrajectoryPlayer(QWidget):
             self.current_frame_label.setText("0/0")
             return None
 
-        # Add new trajectories
         for model in geometry_trajectories:
             row = TrajectoryRow(model, max_frames)
             row.frameChanged.connect(lambda: self.cdata.models.render_vtk())

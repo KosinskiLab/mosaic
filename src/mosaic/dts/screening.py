@@ -1,7 +1,7 @@
 """
 DTS parameter screening: template generation, screen management, status.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -14,7 +14,7 @@ from pathlib import Path
 from os import makedirs
 from datetime import datetime
 from itertools import product
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 
@@ -36,39 +36,33 @@ def run_status(run_dir: Path) -> str:
     return "done" if list(run_dir.glob("*.res")) else "pending"
 
 
-def _prepare_volume(
+def _filter_single_volume(
     volume_path: str,
-    output_dir: str,
-    use_filters: bool = False,
-    lowpass_cutoff: Optional[float] = None,
-    highpass_cutoff: Optional[float] = None,
-    plane_norm: Optional[str] = None,
+    output_path: str,
+    lowpass_cutoff: Optional[float],
+    highpass_cutoff: Optional[float],
+    plane_norm: Optional[str],
 ) -> str:
-    """Apply bandpass filtering to volume if requested.
+    """Apply bandpass filtering to a single volume.
 
     Parameters
     ----------
     volume_path : str
         Path to input volume.
-    output_dir : str
-        Directory for filtered output.
-    use_filters : bool
-        Whether to apply filtering.
-    lowpass_cutoff : float
+    output_path : str
+        Path for filtered output file.
+    lowpass_cutoff : float, optional
         Lowpass filter cutoff.
-    highpass_cutoff : float
+    highpass_cutoff : float, optional
         Highpass filter cutoff.
-    plane_norm : str
+    plane_norm : str, optional
         Axis to normalize along (x/y/z or None).
 
     Returns
     -------
     str
-        Path to (possibly filtered) volume.
+        Path to filtered volume.
     """
-    if not use_filters:
-        return volume_path
-
     from tme import Density
 
     try:
@@ -96,10 +90,102 @@ def _prepare_volume(
         axis = tuple(i for i in range(filtered.ndim) if i != axis)
         filtered = filtered / filtered.max(axis=axis, keepdims=True)
 
-    volume_path = str(Path(output_dir) / "density.mrc")
     filtered = filtered.astype(np.float32)
-    Density(filtered, origin=origin, sampling_rate=sampling).to_file(volume_path)
-    return volume_path
+    Density(filtered, origin=origin, sampling_rate=sampling).to_file(output_path)
+    return output_path
+
+
+def _prepare_volume(
+    volume_path: Union[str, List[str]],
+    output_dir: str,
+    use_filters: bool = False,
+    lowpass_cutoff: Optional[float] = None,
+    highpass_cutoff: Optional[float] = None,
+    plane_norm: Optional[str] = None,
+) -> Union[str, List[str]]:
+    """Apply bandpass filtering to volume(s) if requested.
+
+    Parameters
+    ----------
+    volume_path : str or list of str
+        Path(s) to input volume(s).
+    output_dir : str
+        Directory for filtered output.
+    use_filters : bool
+        Whether to apply filtering.
+    lowpass_cutoff : float, optional
+        Lowpass filter cutoff.
+    highpass_cutoff : float, optional
+        Highpass filter cutoff.
+    plane_norm : str, optional
+        Axis to normalize along (x/y/z or None).
+
+    Returns
+    -------
+    str or list of str
+        Path(s) to (possibly filtered) volume(s).  Returns the same
+        type as the input *volume_path*.
+    """
+    if not use_filters:
+        return volume_path
+
+    if isinstance(volume_path, str):
+        out = str(Path(output_dir) / "density.mrc")
+        return _filter_single_volume(
+            volume_path, out, lowpass_cutoff, highpass_cutoff, plane_norm
+        )
+
+    results = []
+    for i, vpath in enumerate(volume_path):
+        out = str(Path(output_dir) / f"density_{i}.mrc")
+        results.append(
+            _filter_single_volume(
+                vpath, out, lowpass_cutoff, highpass_cutoff, plane_norm
+            )
+        )
+    return results
+
+
+def _parse_filter_directives(content: str) -> Dict:
+    """Extract ``;@filter`` directives from DTS content.
+
+    Parameters
+    ----------
+    content : str
+        DTS config content that may contain ``;@filter key=val ...`` lines.
+
+    Returns
+    -------
+    dict
+        Parsed filter parameters (lowpass, highpass, plane_norm).
+    """
+    result = {}
+    _KEY_MAP = {
+        "lowpass": "lowpass_cutoff",
+        "highpass": "highpass_cutoff",
+        "plane_norm": "plane_norm",
+    }
+    for line in content.splitlines():
+        line = line.strip()
+        if not line.startswith(";@filter"):
+            continue
+        for token in line[len(";@filter") :].split():
+            if "=" not in token:
+                continue
+            key, _, val = token.partition("=")
+            mapped = _KEY_MAP.get(key.strip(), key.strip())
+            try:
+                result[mapped] = float(val)
+            except ValueError:
+                result[mapped] = val.strip()
+    return result
+
+
+def _strip_filter_directives(content: str) -> str:
+    """Remove ``;@filter`` comment lines from DTS content."""
+    return "\n".join(
+        line for line in content.splitlines() if not line.strip().startswith(";@filter")
+    )
 
 
 def _build_dts_template(
@@ -298,20 +384,23 @@ def _write_summary(
     dict
         The written summary.
     """
+    param_ranges = {}
+    for name, values in parameters.items():
+        entry = {"values": values, "count": len(values)}
+        try:
+            entry["min"] = min(values)
+            entry["max"] = max(values)
+        except TypeError:
+            entry["min"] = None
+            entry["max"] = None
+        param_ranges[name] = entry
+
     summary = {
         "template_file": template_file,
         "generated_at": datetime.now().isoformat(),
         "total_runs": len(runs),
         "parameters": sorted(parameters.keys()),
-        "parameter_ranges": {
-            name: {
-                "values": values,
-                "min": min(values),
-                "max": max(values),
-                "count": len(values),
-            }
-            for name, values in parameters.items()
-        },
+        "parameter_ranges": param_ranges,
         "runs": [{"run_id": r["run_id"], "parameters": r["parameters"]} for r in runs],
     }
     with open(screen_dir / "screen_summary.json", "w") as f:
@@ -319,41 +408,37 @@ def _write_summary(
     return summary
 
 
-def _write_run_script(run_dir: Path, params: Dict) -> None:
+def _write_run_script(run_dir: Path, params: Dict, mesh_name: str = "") -> None:
     """Write a run.sh script for a single screen run.
 
     Parameters
     ----------
     run_dir : Path
-        Directory for this run (must contain input.dts and topol.top).
+        Directory for this run (must contain input.dts).
     params : dict
         Run parameters (may contain 'steps' and 'threads' overrides).
+    mesh_name : str
+        Filename of the mesh in the screen root directory.
     """
-    cmd = "DTS"
-    if shutil.which("dts"):
-        cmd = "dts"
-
-    topol = run_dir / "topol.top"
-    mesh = ""
-    if topol.exists():
-        mesh = topol.read_text().split()[0]
-
-    input_file = run_dir / "input.dts"
-    steps = int(float(params.get("steps", 50000)))
     threads = int(float(params.get("threads", 1)))
+    default_cmd = "dts" if shutil.which("dts") else "DTS"
+
+    symlink_line = ""
+    if mesh_name:
+        symlink_line = f'ln -sf "$(pwd)/../{mesh_name}" TrajTSI/dts0.tsi'
 
     script = textwrap.dedent(
         f"""\
         #!/bin/bash
 
-        cd {run_dir}
+        cd "$(dirname "$0")"
         rm -rf VTU_F TrajTSI
         mkdir -p TrajTSI
-        ln -sf {mesh} TrajTSI/dts0.tsi
+        {symlink_line}
 
-        {cmd} -in {input_file} \\
-            -top {topol} \\
-            -e {steps} \\
+        DTS_CMD="${{DTS_CMD:-{default_cmd}}}"
+        $DTS_CMD -in input.dts \\
+            -top ../topol.top \\
             -nt {threads} \\
             -seed 76532
         """
@@ -365,9 +450,9 @@ def _write_run_script(run_dir: Path, params: Dict) -> None:
 def _finalize_runs(
     screen_dir: Path,
     summary: Dict,
-    topol_path: Optional[Path] = None,
+    mesh_name: str = "",
 ) -> None:
-    """Ensure every run has topol.top and run.sh, then write launcher scripts.
+    """Write run.sh for every run, then write launcher scripts.
 
     Parameters
     ----------
@@ -375,71 +460,49 @@ def _finalize_runs(
         Screen output directory.
     summary : dict
         Screen summary (as returned by :func:`_write_summary`).
-    topol_path : Path, optional
-        Source topology file to copy into runs that lack one.
-        When *None*, falls back to ``<screen_dir>/topol.top``.
+    mesh_name : str
+        Filename of the mesh in the screen root directory.  When empty,
+        the name is inferred from ``<screen_dir>/topol.top`` if present.
     """
-    if topol_path is None:
+    if not mesh_name:
         topol_path = screen_dir / "topol.top"
+        if topol_path.exists():
+            first_word = topol_path.read_text().split()[0]
+            if (screen_dir / first_word).is_file():
+                mesh_name = first_word
 
     for run_info in summary["runs"]:
         run_dir = screen_dir / run_info["run_id"]
-        topol_copy = run_dir / "topol.top"
-        if not topol_copy.exists() and topol_path.exists():
-            shutil.copy2(topol_path, topol_copy)
-        _write_run_script(run_dir, run_info["parameters"])
+        _write_run_script(run_dir, run_info["parameters"], mesh_name=mesh_name)
 
     write_launcher_scripts(screen_dir, summary)
 
 
 def generate_screen(
-    mesh_conf: Optional[Dict],
     output_dir: str,
     mesh: str,
-    volume_path: Optional[str] = None,
-    hmff_params: Optional[Dict] = None,
-    sim_params: Optional[Dict] = None,
-    extra_config: str = "",
-    coupling_params: Optional[Dict] = None,
-    use_filters: bool = False,
-    lowpass_cutoff: Optional[float] = None,
-    highpass_cutoff: Optional[float] = None,
-    plane_norm: Optional[str] = None,
+    dts_content: str,
+    volume_path: Optional[Union[str, List[str]]] = None,
 ) -> Dict:
-    """Generate a DTS parameter screen.
+    """Generate a DTS parameter screen from a DTS config template.
+
+    The *dts_content* is the canonical input: a DTS config string that
+    may contain ``{{name:range}}`` screening placeholders and
+    ``;@filter`` directives for volume filtering.
 
     Parameters
     ----------
-    mesh_conf : dict or None
-        Mesh configuration with 'file', 'scale_factor', 'offset' keys.
-        When *None*, ``mesh`` is treated as a direct file path and
-        scale/offset default to ``1`` / ``0,0,0``.
     output_dir : str
         Base directory for screen output.
     mesh : str
-        Selected mesh file from mesh_conf, or a direct path to a
-        mesh file when *mesh_conf* is *None*.
-    volume_path : str, optional
-        Path to density volume.  When *None* a standard Helfrich
-        energy method is used instead of HMFF.
-    hmff_params : dict, optional
-        Physical parameters (kappa, kappa0 and optionally xi,
-        invert_contrast).  Screened values should already be
-        ``{{name:range}}`` strings.
-    sim_params : dict, optional
-        Simulation parameters (steps, threads, temperature).
-    extra_config : str
-        Raw DTS config lines appended verbatim.
-    coupling_params : dict, optional
-        Coupling configurations keyed by coupling name.
-    use_filters : bool
-        Whether to apply bandpass filtering.
-    lowpass_cutoff : float
-        Lowpass filter cutoff.
-    highpass_cutoff : float
-        Highpass filter cutoff.
-    plane_norm : str
-        Axis normalization.
+        Path to the mesh file.
+    dts_content : str
+        DTS config template content.  May contain ``{{name:range}}``
+        screening placeholders and ``;@filter`` comment directives.
+    volume_path : str, list of str, or None
+        Path(s) to density volume(s).  When *None* a standard Helfrich
+        energy method is used.  When a list with more than one entry,
+        each volume becomes a screening dimension.
 
     Returns
     -------
@@ -448,55 +511,55 @@ def generate_screen(
     """
     from pyfreedts.screen import ParameterParser
 
-    hmff_params = hmff_params or {}
-    sim_params = sim_params or {}
-
     warnings.warn(
         "Setup FreeDTS Screen - Citation: "
         "[1] Pezeshkian, W. et al. (2024) Nat. Commun., "
         "doi.org/10.1038/s41467-024-44819-w."
     )
 
-    screen_dir = Path(output_dir)
+    screen_dir = Path(output_dir).resolve()
     makedirs(screen_dir, exist_ok=True)
     report_progress(message="Preparing inputs", current=1, total=4)
 
-    if mesh_conf is not None:
-        mesh_index = mesh_conf["file"].index(mesh)
-        mesh_offset = mesh_conf["offset"][mesh_index]
-        mesh_scale = mesh_conf["scale_factor"][mesh_index]
-    else:
-        mesh_offset = "0,0,0"
-        mesh_scale = "1"
+    # Copy mesh into screen directory for portability
+    mesh_src = Path(mesh).resolve()
+    if not mesh_src.exists():
+        raise FileNotFoundError(f"Mesh file not found: {mesh_src}")
+    mesh_name = mesh_src.name
+    screen_mesh = screen_dir / mesh_name
+    if not screen_mesh.exists():
+        shutil.copy2(mesh_src, screen_mesh)
 
-    if volume_path is not None:
+    multi_volume = isinstance(volume_path, list) and len(volume_path) > 1
+
+    # Apply volume filtering from ;@filter directives
+    filter_params = _parse_filter_directives(dts_content)
+    if volume_path is not None and filter_params:
         volume_path = _prepare_volume(
             volume_path=volume_path,
             output_dir=output_dir,
-            use_filters=use_filters,
-            lowpass_cutoff=lowpass_cutoff,
-            highpass_cutoff=highpass_cutoff,
-            plane_norm=plane_norm,
+            use_filters=True,
+            lowpass_cutoff=filter_params.get("lowpass_cutoff"),
+            highpass_cutoff=filter_params.get("highpass_cutoff"),
+            plane_norm=filter_params.get("plane_norm"),
         )
 
     report_progress(message="Building template", current=2, total=4)
 
-    raw_template = _build_dts_template(
-        volume_path=volume_path,
-        mesh_scale=mesh_scale,
-        mesh_offset=mesh_offset,
-        hmff_params=hmff_params,
-        sim_params=sim_params,
-        extra_config=extra_config,
-        coupling_params=coupling_params,
-    )
+    raw_template = _strip_filter_directives(dts_content)
     template_content, parameters = ParameterParser.parse_template(raw_template)
+
+    # If volumes were filtered, override with the filtered paths
+    if multi_volume and filter_params and "volume_path" in parameters:
+        parameters["volume_path"] = list(volume_path)
+
+    (screen_dir / "screen.dts").write_text(dts_content, encoding="utf-8")
 
     template_path = screen_dir / "template.dts"
     template_path.write_text(template_content, encoding="utf-8")
 
     topol_path = screen_dir / "topol.top"
-    topol_path.write_text(f"{mesh} 1\n", encoding="utf-8")
+    topol_path.write_text(f"{screen_mesh} 1\n", encoding="utf-8")
 
     report_progress(message="Generating runs", current=3, total=4)
 
@@ -514,10 +577,8 @@ def generate_screen(
 
     new_runs = _expand_screen(screen_dir, template_content, parameters, existing_runs)
     all_runs = existing_runs + new_runs
-    summary = _write_summary(
-        screen_dir, str(template_path), merged_parameters, all_runs
-    )
-    _finalize_runs(screen_dir, summary, topol_path)
+    summary = _write_summary(screen_dir, "template.dts", merged_parameters, all_runs)
+    _finalize_runs(screen_dir, summary, mesh_name=mesh_name)
 
     report_progress(message="Done", current=4, total=4)
 
@@ -535,8 +596,9 @@ def write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
 
     Generates ``run_all.sh`` for local execution (sequential, or via
     GNU parallel when available) and ``submit_slurm.sh`` for HPC
-    submission as a SLURM array job.  Run scripts are discovered at
-    runtime via ``run_*/run.sh`` globs so the launchers stay compact.
+    submission as a SLURM array job.  When the number of runs exceeds
+    1000, per-chunk scripts are generated and a master
+    ``submit_slurm.sh`` chains them via ``--dependency``.
 
     Parameters
     ----------
@@ -550,7 +612,7 @@ def write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
         #!/bin/bash
         set -euo pipefail
 
-        SCREEN_DIR="$(cd "$(dirname "$0")" && pwd)"
+        SCREEN_DIR="${SCREEN_DIR:-$(cd "$(dirname "$0")" && pwd)}"
         mapfile -t RUNS < <(find "$SCREEN_DIR" -path '*/run_*/run.sh' | sort)
 
         if command -v parallel &>/dev/null; then
@@ -570,19 +632,45 @@ def write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
     n_runs = len(summary["runs"])
     if n_runs == 0:
         return
+
     slurm_script = textwrap.dedent(
         f"""\
         #!/bin/bash
-        #SBATCH --job-name=dts_screen
-        #SBATCH --array=0-{n_runs - 1}
         #SBATCH --ntasks=1
         #SBATCH --cpus-per-task=1
+        #SBATCH --mem=6G
+        #SBATCH --time=24:00:00
         #SBATCH --output=slurm_%A_%a.log
+        #
+        # DTS screen launcher — {n_runs} runs.
+        # Edit MAX_ARRAY below to change the chunk size.
+        #
 
-        SCREEN_DIR="$(cd "$(dirname "$0")" && pwd)"
+        MAX_ARRAY=1000
+
+        SCREEN_DIR="{output_dir}"
         mapfile -t RUNS < <(find "$SCREEN_DIR" -path '*/run_*/run.sh' | sort)
+        N=${{#RUNS[@]}}
 
-        bash "${{RUNS[$SLURM_ARRAY_TASK_ID]}}"
+        # When run by SLURM, execute the assigned task
+        if [[ -n "${{SLURM_ARRAY_TASK_ID:-}}" ]]; then
+            OFFSET=${{SLURM_OFFSET:-0}}
+            exec bash "${{RUNS[$((SLURM_ARRAY_TASK_ID + OFFSET))]}}"
+        fi
+
+        # Otherwise, submit self in chunks
+        for (( START=0; START<N; START+=MAX_ARRAY )); do
+            END=$(( START + MAX_ARRAY - 1 ))
+            if (( END >= N )); then END=$(( N - 1 )); fi
+
+            ARGS=(--parsable --job-name=dts_$((START / MAX_ARRAY))
+                  --array=0-$((END - START))
+                  --export=ALL,SLURM_OFFSET=$START)
+            [[ -n "${{JOB:-}}" ]] && ARGS+=(--dependency=afterany:$JOB)
+
+            JOB=$(sbatch "${{ARGS[@]}}" "$0")
+            echo "Submitted chunk $((START / MAX_ARRAY)): $JOB (runs $START-$END)"
+        done
         """
     )
     slurm_path = output_dir / "submit_slurm.sh"

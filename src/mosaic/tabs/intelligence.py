@@ -39,13 +39,13 @@ class IntelligenceTab(QWidget):
             create_button(
                 "HMFF", "ph.gear", self, self._setup_hmff, "Configure HMFF simulation"
             ),
-            # create_button(
-            #     "Screen",
-            #     "ph.grid-four",
-            #     self,
-            #     self._screen_parameters,
-            #     "DTS parameter screening",
-            # ),
+            create_button(
+                "Screen",
+                "ph.grid-four",
+                self,
+                self._screen_parameters,
+                "DTS parameter screening",
+            ),
             create_button(
                 "Trajectory",
                 "ph.path",

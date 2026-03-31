@@ -1,7 +1,7 @@
 """
 Animation composer dialog for creating timeline-based animations.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -68,6 +68,7 @@ class AnimationComposerDialog(QDialog):
     FORMAT_SETTINGS = {
         "MP4": {"ext": ".mp4", "video": True},
         "AVI": {"ext": ".avi", "video": True},
+        "WebM": {"ext": ".webm", "video": True},
         "PNG Sequence": {"ext": ".png", "video": False},
     }
 
@@ -109,7 +110,6 @@ class AnimationComposerDialog(QDialog):
         main_layout.setContentsMargins(8, 8, 8, 8)
         main_layout.setSpacing(8)
 
-        # Icon toolbar for project actions
         toolbar = QWidget()
         toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(0, 0, 0, 0)
@@ -130,7 +130,6 @@ class AnimationComposerDialog(QDialog):
 
         toolbar_layout.addStretch()
 
-        # Loop checkbox
         self.loop_checkbox = QCheckBox("Loop")
         self.loop_checkbox.setToolTip("Loop playback (L)")
         self.loop_checkbox.stateChanged.connect(self._on_loop_changed)
@@ -138,24 +137,23 @@ class AnimationComposerDialog(QDialog):
 
         main_layout.addWidget(toolbar)
 
-        # Playback controls
         controls = QWidget()
         controls_layout = QHBoxLayout(controls)
         controls_layout.setContentsMargins(0, 0, 0, 0)
         controls_layout.setSpacing(4)
 
         back_btn = QToolButton()
-        back_btn.setIcon(qta.icon("ph.skip-back"))
+        back_btn.setIcon(qta.icon("ph.skip-back", color=Colors.ICON))
         back_btn.setToolTip("Go to start (Home)")
         back_btn.clicked.connect(lambda: self.set_current_frame(0))
 
         self.play_btn = QToolButton()
-        self.play_btn.setIcon(qta.icon("ph.play"))
+        self.play_btn.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
         self.play_btn.setToolTip("Play/Pause (Space)")
         self.play_btn.clicked.connect(self.toggle_play)
 
         forward_btn = QToolButton()
-        forward_btn.setIcon(qta.icon("ph.skip-forward"))
+        forward_btn.setIcon(qta.icon("ph.skip-forward", color=Colors.ICON))
         forward_btn.setToolTip("Go to end (End)")
         forward_btn.clicked.connect(self._go_to_end)
 
@@ -172,7 +170,6 @@ class AnimationComposerDialog(QDialog):
 
         main_layout.addWidget(controls)
 
-        # Timeline
         self.timeline = TimelineWidget()
         self.timeline.content.trackSelected.connect(self._on_track_selected)
         self.timeline.frameMoved.connect(self._frame_throttle)
@@ -184,7 +181,6 @@ class AnimationComposerDialog(QDialog):
         )
         main_layout.addWidget(self.timeline, 1)
 
-        # Presets group
         presets_group = QGroupBox("Presets")
         presets_layout = QVBoxLayout(presets_group)
         presets_layout.setContentsMargins(8, 12, 8, 8)
@@ -223,7 +219,6 @@ class AnimationComposerDialog(QDialog):
             anims_layout.addWidget(btn, i // cols, i % cols)
         main_layout.addWidget(anims_group)
 
-        # Track settings
         self.properties_panel = AnimationSettings()
         self.properties_panel.animationChanged.connect(self._on_animation_changed)
         main_layout.addWidget(self.properties_panel)
@@ -348,7 +343,6 @@ class AnimationComposerDialog(QDialog):
             backward_slice.name = "Slice Backward"
             backward_slice.update_parameters(direction="backward")
 
-        # Update timeline
         self.timeline.set_tracks(self.tracks)
 
     def add_animation(self, anim_type: AnimationType):
@@ -479,11 +473,11 @@ class AnimationComposerDialog(QDialog):
 
         if self.is_playing:
             self._set_preview_visibility(False)
-            self.play_btn.setIcon(qta.icon("ph.pause"))
+            self.play_btn.setIcon(qta.icon("ph.pause", color=Colors.ICON))
             self.timer.start(1000 // self.playback_fps)
         else:
             self._set_preview_visibility(True)
-            self.play_btn.setIcon(qta.icon("ph.play"))
+            self.play_btn.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
             self.timer.stop()
 
     def _advance_frame(self):
@@ -508,23 +502,18 @@ class AnimationComposerDialog(QDialog):
 
     def _setup_shortcuts(self):
         """Setup keyboard shortcuts."""
-        # Spacebar for play/pause
         play_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Space), self)
         play_shortcut.activated.connect(self.toggle_play)
 
-        # L for loop toggle
         loop_shortcut = QShortcut(QKeySequence(Qt.Key.Key_L), self)
         loop_shortcut.activated.connect(self._toggle_loop)
 
-        # Home for go to start
         home_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Home), self)
         home_shortcut.activated.connect(lambda: self.set_current_frame(0))
 
-        # End for go to end
         end_shortcut = QShortcut(QKeySequence(Qt.Key.Key_End), self)
         end_shortcut.activated.connect(self._go_to_end)
 
-        # Left/Right arrow for frame stepping
         left_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Left), self)
         left_shortcut.activated.connect(
             lambda: self.set_current_frame(self.current_frame - 1)
@@ -586,11 +575,9 @@ class AnimationComposerDialog(QDialog):
 
         current_size = render_window.GetSize()
 
-        # Pause playback during export
         if self.is_playing:
             self.toggle_play()
 
-        # Show export dialog
         total_frames = self._get_total_frames()
         dialog = ExportDialog(
             total_frames=total_frames,
@@ -606,6 +593,7 @@ class AnimationComposerDialog(QDialog):
         format_settings = self.FORMAT_SETTINGS.get(format_name, {})
         ext = format_settings.get("ext", ".mp4")
         is_video = format_settings.get("video", True)
+        transparent_bg = format_name in ("WebM", "PNG Sequence")
 
         filename, _ = QFileDialog.getSaveFileName(
             self, "Save Animation", "", f"Animation (*{ext})"
@@ -646,12 +634,19 @@ class AnimationComposerDialog(QDialog):
             height += height % 2
             width += width % 2
 
-        # Setup writer
         if is_video:
-            quality_val = max(min(quality / 10.0, 10), 1)
-            writer = imageio.get_writer(
-                filename, mode="I", fps=fps, quality=quality_val, macro_block_size=None
-            )
+            writer_kwargs = dict(mode="I", fps=fps, macro_block_size=None)
+            if format_name == "WebM":
+                # VP9 uses CRF for quality control (0=lossless, 63=worst)
+                crf = int(63 * (1 - quality / 100))
+                writer_kwargs.update(
+                    codec="libvpx-vp9",
+                    pixelformat="yuva420p",
+                    output_params=["-crf", str(crf), "-b:v", "0"],
+                )
+            else:
+                writer_kwargs["quality"] = max(min(quality / 10.0, 10), 1)
+            writer = imageio.get_writer(filename, **writer_kwargs)
         else:
             writer = FrameWriter(filename)
 
@@ -676,7 +671,8 @@ class AnimationComposerDialog(QDialog):
                     render_window.Render()
 
                     frame = self._capture_frame(
-                        transparent_bg=not is_video, magnification=magnification
+                        transparent_bg=transparent_bg,
+                        magnification=magnification,
                     )
                     writer.append_data(frame)
                     QApplication.processEvents()
@@ -738,6 +734,7 @@ class AnimationComposerDialog(QDialog):
                 "start_frame": anim.start_frame,
                 "stop_frame": anim.stop_frame,
                 "stride": anim.stride,
+                "rate": anim.rate,
                 "parameters": self._serialize_parameters(anim.parameters),
             }
             project_data["tracks"].append(track_data)
@@ -786,7 +783,6 @@ class AnimationComposerDialog(QDialog):
         if not filename:
             return
 
-        # Pause playback during load
         if self.is_playing:
             self.toggle_play()
 
@@ -827,13 +823,15 @@ class AnimationComposerDialog(QDialog):
                     name=track_data.get("name", anim_type.value["name"]),
                 )
 
+                # Restore parameters first so data_start/data_stop set
+                # _base_duration before we override stop_frame/rate
+                for key, value in track_data.get("parameters", {}).items():
+                    animation.update_parameters(**{key: value})
+
                 animation.start_frame = track_data.get("start_frame", 0)
                 animation.stop_frame = track_data.get("stop_frame", 100)
                 animation.stride = track_data.get("stride", 1)
-
-                # Restore parameters
-                for key, value in track_data.get("parameters", {}).items():
-                    animation.update_parameters(**{key: value})
+                animation.rate = track_data.get("rate", 1.0)
 
                 track = Track(
                     id=str(uuid4()),

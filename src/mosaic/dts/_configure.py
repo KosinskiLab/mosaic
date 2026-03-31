@@ -1,7 +1,7 @@
 """
 Configure tab widget for DTS parameter screening dialog.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -27,12 +27,13 @@ from qtpy.QtWidgets import (
     QLineEdit,
     QPlainTextEdit,
     QStackedWidget,
+    QFileDialog,
 )
 import pyqtgraph as pg
 import qtawesome as qta
 
 from ..widgets import PathSelector, generate_gradient_colors
-from ..widgets.settings import create_setting_widget, get_widget_value
+from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
 from ..stylesheets import Colors
 
 _EXTRA_CONFIG_PLACEHOLDER = (
@@ -80,6 +81,14 @@ _COUPLING_DEFS = {
 }
 
 
+def _extract_screening_placeholder(value: str):
+    """Return ``(name, range_str)`` if *value* is a ``{{name:range}}`` placeholder."""
+    match = re.fullmatch(r"\{\{(\w+):([^}]+)\}\}", value.strip())
+    if match:
+        return match.group(1), match.group(2)
+    return None
+
+
 def _parse_screening_ranges(text: str) -> Dict[str, List]:
     """Extract ``{{name:range}}`` placeholders from text and parse values."""
     result = {}
@@ -109,7 +118,6 @@ class ConfigurePanel(QScrollArea):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._mesh_conf = None
 
         self._param_widgets = {}
         self._screen_cbs = {}
@@ -142,8 +150,17 @@ class ConfigurePanel(QScrollArea):
         )
         input_form.addRow("Mesh:", self._mesh_path)
 
-        self._output_dir = PathSelector(placeholder="Output directory", file_mode=False)
+        self._output_dir = PathSelector(
+            placeholder="Output directory", mode="directory"
+        )
         input_form.addRow("Output:", self._output_dir)
+
+        self._dts_file = PathSelector(
+            placeholder="(Optional) populate from dts config",
+            file_filter="DTS Files (*.dts);;All Files (*.*)",
+        )
+        self._dts_file.path_input.textChanged.connect(self._load_dts_file)
+        input_form.addRow("DTS:", self._dts_file)
 
         layout.addWidget(input_group)
 
@@ -203,42 +220,71 @@ class ConfigurePanel(QScrollArea):
         layout.addWidget(phys_group)
 
         hmff_group = QGroupBox("HMFF Parameters")
-        hmff_form = QFormLayout(hmff_group)
-        hmff_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        self._hmff_form = QFormLayout(hmff_group)
+        self._hmff_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+        vol_row = QWidget()
+        vol_row_layout = QHBoxLayout(vol_row)
+        vol_row_layout.setContentsMargins(0, 0, 0, 0)
+        vol_row_layout.setSpacing(6)
 
         self._volume_path = PathSelector(
             placeholder="Volume file (.mrc)",
             file_filter="MRC Files (*.mrc);;All Files (*.*)",
         )
         self._volume_path.path_input.textChanged.connect(self._on_volume_changed)
-        hmff_form.addRow("Volume:", self._volume_path)
+        vol_row_layout.addWidget(self._volume_path)
+
+        self._volume_screen_cb = QCheckBox("Screen")
+        self._volume_screen_cb.setToolTip(
+            "Enable screening: select multiple volume files"
+        )
+        self._volume_screen_cb.stateChanged.connect(self._toggle_volume_screening)
+        vol_row_layout.addWidget(self._volume_screen_cb)
+
+        self._hmff_form.addRow("Volume:", vol_row)
 
         self._add_screenable_row(
-            hmff_form, key="xi", label="Coupling (\u03be)", default=5.0
+            self._hmff_form, key="xi", label="Coupling (\u03be)", default=5.0
         )
         for w in (self._screen_stacks["xi"], self._screen_cbs["xi"]):
             w.setEnabled(False)
 
-        self._hmff_volume_container = QWidget()
-        vol_form = QFormLayout(self._hmff_volume_container)
-        vol_form.setContentsMargins(0, 2, 0, 2)
-        vol_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        self._hmff_dep_widgets = []
+        self._filter_dep_widgets = []
 
         self._param_widgets["invert_contrast"] = create_setting_widget(
             {"type": "boolean", "default": True}
         )
-        vol_form.addRow("Invert contrast:", self._param_widgets["invert_contrast"])
-
-        self._scale_file = PathSelector(
-            placeholder="Scale file (mesh.txt)",
-            file_filter="Text Files (*.txt);;All Files (*.*)",
+        self._hmff_form.addRow(
+            "Invert contrast:", self._param_widgets["invert_contrast"]
         )
-        self._scale_file.path_input.textChanged.connect(self._on_scale_file_changed)
-        vol_form.addRow("Scale file:", self._scale_file)
+        self._hmff_dep_widgets.append(self._param_widgets["invert_contrast"])
 
-        self._scale_mesh_combo = QComboBox()
-        self._scale_mesh_combo.setVisible(False)
-        vol_form.addRow("Scale entry:", self._scale_mesh_combo)
+        self._param_widgets["scale_factor"] = create_setting_widget(
+            {
+                "type": "float",
+                "min": 0.0,
+                "max": 1e6,
+                "default": 1.0,
+                "step": 0.01,
+                "decimals": 6,
+            }
+        )
+        self._param_widgets["scale_factor"].setToolTip(
+            "Converts mesh coordinates to DTS units (nm)."
+        )
+        self._hmff_form.addRow("Scale factor:", self._param_widgets["scale_factor"])
+        self._hmff_dep_widgets.append(self._param_widgets["scale_factor"])
+
+        self._param_widgets["offset"] = QLineEdit("0,0,0")
+        self._param_widgets["offset"].setPlaceholderText("x,y,z")
+        self._param_widgets["offset"].setToolTip(
+            "Translation to center the scaled mesh\n"
+            "in the simulation box in DTS units (nm)."
+        )
+        self._hmff_form.addRow("Offset:", self._param_widgets["offset"])
+        self._hmff_dep_widgets.append(self._param_widgets["offset"])
 
         self._param_widgets["use_filters"] = create_setting_widget(
             {"type": "boolean", "default": False}
@@ -246,12 +292,8 @@ class ConfigurePanel(QScrollArea):
         self._param_widgets["use_filters"].stateChanged.connect(
             self._toggle_filter_inputs
         )
-        vol_form.addRow("Enable Filters:", self._param_widgets["use_filters"])
-
-        self._filter_container = QWidget()
-        filter_form = QFormLayout(self._filter_container)
-        filter_form.setContentsMargins(0, 2, 0, 2)
-        filter_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        self._hmff_form.addRow("Enable Filters:", self._param_widgets["use_filters"])
+        self._hmff_dep_widgets.append(self._param_widgets["use_filters"])
 
         for param_key, label, cfg in (
             (
@@ -283,13 +325,11 @@ class ConfigurePanel(QScrollArea):
             ),
         ):
             self._param_widgets[param_key] = create_setting_widget(cfg)
-            filter_form.addRow(label, self._param_widgets[param_key])
+            self._hmff_form.addRow(label, self._param_widgets[param_key])
+            self._hmff_dep_widgets.append(self._param_widgets[param_key])
+            self._filter_dep_widgets.append(self._param_widgets[param_key])
 
-        self._filter_container.setVisible(False)
-        vol_form.addRow(self._filter_container)
-
-        hmff_form.addRow(self._hmff_volume_container)
-        self._hmff_volume_container.setVisible(False)
+        self._set_hmff_volume_visible(False)
 
         layout.addWidget(hmff_group)
 
@@ -299,20 +339,7 @@ class ConfigurePanel(QScrollArea):
         self._extra_config_edit.setPlaceholderText(_EXTRA_CONFIG_PLACEHOLDER)
         self._extra_config_edit.setMinimumHeight(80)
         self._extra_config_edit.setMaximumHeight(140)
-        self._extra_config_edit.setStyleSheet(
-            f"""
-            QPlainTextEdit {{
-                background-color: {Colors.BG_SECONDARY};
-                border: 1px solid {Colors.BORDER_DARK};
-                border-radius: 4px;
-                padding: 6px;
-                font-size: 12px;
-            }}
-            QPlainTextEdit:focus {{
-                border: 1px solid {Colors.PRIMARY};
-            }}
-            """
-        )
+        self._extra_config_edit.setStyleSheet("QPlainTextEdit { font-size: 12px; }")
         self._extra_config_edit.textChanged.connect(self._update_combo_summary)
         extra_layout.addWidget(self._extra_config_edit)
         layout.addWidget(extra_group)
@@ -338,10 +365,22 @@ class ConfigurePanel(QScrollArea):
         info_row.addWidget(self._combo_summary)
         layout.addLayout(info_row)
 
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(6)
+
         self._generate_btn = QPushButton("Generate Screen")
         self._generate_btn.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
         self._generate_btn.clicked.connect(self._run_screen)
-        layout.addWidget(self._generate_btn)
+        btn_row.addWidget(self._generate_btn)
+
+        self._save_dts_btn = QPushButton()
+        self._save_dts_btn.setIcon(qta.icon("ph.floppy-disk", color=Colors.ICON))
+        self._save_dts_btn.setFixedSize(28, 28)
+        self._save_dts_btn.setToolTip("Save screen input.dts only")
+        self._save_dts_btn.clicked.connect(self._save_dts)
+        btn_row.addWidget(self._save_dts_btn)
+
+        layout.addLayout(btn_row)
 
         self.setWidget(content)
 
@@ -454,57 +493,260 @@ class ConfigurePanel(QScrollArea):
             "mode_param_keys": mode_param_keys,
         }
 
-    def _on_scale_file_changed(self, path: str):
-        if not path:
-            self._mesh_conf = None
-            self._scale_mesh_combo.clear()
-            self._scale_mesh_combo.setVisible(False)
+    def _set_hmff_volume_visible(self, visible):
+        """Show/hide HMFF volume-dependent form rows."""
+        for widget in self._hmff_dep_widgets:
+            widget.setVisible(visible)
+            label = self._hmff_form.labelForField(widget)
+            if label is not None:
+                label.setVisible(visible)
+        if visible:
+            self._toggle_filter_inputs(
+                self._param_widgets["use_filters"].checkState().value
+            )
+
+    def _load_dts_file(self, path: str):
+        """Parse an existing DTS file and populate dialog fields."""
+        if not path or not Path(path).exists():
             return
 
-        scale_path = Path(path)
-        if not scale_path.exists():
-            self._mesh_conf = None
-            self._scale_mesh_combo.clear()
-            self._scale_mesh_combo.setVisible(False)
-            return
+        content = Path(path).read_text(encoding="utf-8")
+        known, extra_lines = self._parse_dts_content(content)
 
-        with open(scale_path, "r", encoding="utf-8") as f:
-            data = [x.strip() for x in f.read().split("\n")]
-            data = [x.split("\t") for x in data if len(x)]
+        from .screening import _parse_filter_directives
 
-        headers = data.pop(0)
-        self._mesh_conf = {
-            header: list(column) for header, column in zip(headers, zip(*data))
+        filter_params = _parse_filter_directives(content)
+        if filter_params:
+            set_widget_value(self._param_widgets["use_filters"], True)
+            for full_key, val in filter_params.items():
+                if full_key in self._param_widgets:
+                    set_widget_value(self._param_widgets[full_key], val)
+
+        for key in ("temperature", "kappa", "kappa0", "xi"):
+            if key in known:
+                set_widget_value(self._param_widgets[key], float(known[key]))
+
+        for key in ("steps", "output_period"):
+            if key in known:
+                set_widget_value(self._param_widgets[key], int(known[key]))
+
+        if "min_edge" in known and "max_edge" in known:
+            self._param_widgets["edge_range"].setText(
+                f"{known['min_edge']} - {known['max_edge']}"
+            )
+
+        if "threads" in known:
+            set_widget_value(self._param_widgets["threads"], known["threads"])
+
+        if "volume_path" in known:
+            vol = known["volume_path"]
+            if isinstance(vol, list):
+                self._volume_screen_cb.setChecked(True)
+            self._volume_path.set_path(vol)
+        if "invert_contrast" in known:
+            set_widget_value(
+                self._param_widgets["invert_contrast"], known["invert_contrast"]
+            )
+        if "scale_factor" in known:
+            set_widget_value(
+                self._param_widgets["scale_factor"], float(known["scale_factor"])
+            )
+        if "offset" in known:
+            self._param_widgets["offset"].setText(str(known["offset"]))
+
+        for coupling_key in ("vol_coupling", "curv_coupling", "area_coupling"):
+            if coupling_key not in known:
+                continue
+            cfg = known[coupling_key]
+            widgets = self._coupling_widgets[coupling_key]
+            widgets["checkbox"].setChecked(True)
+            widgets["mode_combo"].setCurrentText(cfg["mode"])
+            mode_keys = widgets["mode_param_keys"].get(cfg["mode"], [])
+            for i, key in enumerate(mode_keys):
+                if i < len(cfg["values"]):
+                    try:
+                        set_widget_value(
+                            self._param_widgets[key], float(cfg["values"][i])
+                        )
+                    except (ValueError, KeyError):
+                        pass
+
+        if extra_lines:
+            self._extra_config_edit.setPlainText("\n".join(extra_lines))
+
+        # Restore screening checkboxes and range inputs
+        screen_info = known.get("_screen", {})
+        for key, range_str in screen_info.items():
+            if key in self._screen_cbs:
+                self._screen_cbs[key].setChecked(True)
+                self._screen_ranges[key].setText(range_str)
+
+    @staticmethod
+    def _parse_dts_content(content: str):
+        """Parse DTS config content into known parameters and extra lines.
+
+        Parameters
+        ----------
+        content : str
+            DTS file content.
+
+        Returns
+        -------
+        tuple of (dict, list)
+            Known parameter dict and list of extra config lines.
+        """
+        known = {}
+        extra_lines = []
+        tail_lines = []
+
+        if "INCLUSION" in content:
+            idx = content.index("INCLUSION")
+            tail_lines = content[idx:].strip().split("\n")
+            content = content[:idx]
+
+        _SKIP_KEYS = {
+            "Integrator_Type",
+            "VertexPositionIntegrator",
+            "AlexanderMove",
+            "InclusionPoseIntegrator",
+            "VisualizationFormat",
+            "NonbinaryTrajectory",
+            "Box_Centering_F",
         }
 
-        if not all(k in self._mesh_conf for k in ("file", "scale_factor", "offset")):
-            QMessageBox.warning(
-                self,
-                "Error",
-                "Scale file is malformed (missing required columns).",
-            )
-            self._mesh_conf = None
-            return
+        for line in content.strip().split("\n"):
+            line = line.strip()
+            if not line or line.startswith("#") or line.startswith(";"):
+                continue
 
-        self._scale_mesh_combo.clear()
-        self._scale_mesh_combo.addItems(self._mesh_conf["file"])
-        self._scale_mesh_combo.setVisible(len(self._mesh_conf["file"]) > 1)
+            if "=" not in line:
+                extra_lines.append(line)
+                continue
+
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip()
+            parts = value.split()
+
+            if not parts:
+                continue
+
+            def _parse_val(raw):
+                """Return the fixed value for *raw*, recording screening info.
+
+                If *raw* is a ``{{name:range}}`` placeholder, stores the
+                range in ``known["_screen"]`` and returns the first value.
+                """
+                placeholder = _extract_screening_placeholder(raw)
+                if placeholder:
+                    name, range_str = placeholder
+                    known.setdefault("_screen", {})[name] = range_str
+                    try:
+                        from pyfreedts.screen import ParameterParser
+
+                        _, parsed = ParameterParser.parse_template(
+                            "{{" + f"p:{range_str}" + "}}"
+                        )
+                        vals = parsed.get("p", [])
+                        return vals[0] if vals else raw
+                    except Exception:
+                        return raw
+                return raw
+
+            if key == "EnergyMethod":
+                if ("MDFF" in parts[0] or "HMFF" in parts[0]) and len(parts) >= 8:
+                    vol_raw = parts[1]
+                    placeholder = _extract_screening_placeholder(vol_raw)
+                    if placeholder:
+                        paths = placeholder[1].split(",")
+                        known["volume_path"] = paths
+                        known.setdefault("_screen", {})["volume_path"] = placeholder[1]
+                    else:
+                        known["volume_path"] = vol_raw
+                    known["xi"] = float(_parse_val(parts[2]))
+                    known["scale_factor"] = parts[4]
+                    known["offset"] = parts[5]
+                    try:
+                        known["invert_contrast"] = bool(int(parts[6]))
+                    except (ValueError, IndexError):
+                        pass
+            elif key == "Kappa":
+                known["kappa"] = float(_parse_val(parts[0]))
+                if len(parts) >= 2:
+                    known["kappa0"] = float(_parse_val(parts[1]))
+            elif key == "Temperature":
+                known["temperature"] = float(_parse_val(parts[0]))
+            elif key == "Set_Steps" and len(parts) >= 2:
+                known["steps"] = int(float(parts[1]))
+            elif key == "Min_Max_Lenghts" and len(parts) >= 2:
+                known["min_edge"] = float(parts[0])
+                known["max_edge"] = float(parts[1])
+            elif key == "TimeSeriesData_Period":
+                known["output_period"] = int(float(parts[0]))
+            elif key == "VolumeCoupling":
+                if parts[0] != "No":
+                    known["vol_coupling"] = {
+                        "mode": parts[0],
+                        "values": [_parse_val(p) for p in parts[1:]],
+                    }
+            elif key == "GlobalCurvatureCoupling":
+                if parts[0] != "No":
+                    known["curv_coupling"] = {
+                        "mode": parts[0],
+                        "values": [_parse_val(p) for p in parts[1:]],
+                    }
+            elif key == "TotalAreaCoupling":
+                if parts[0] != "No":
+                    known["area_coupling"] = {
+                        "mode": parts[0],
+                        "values": [_parse_val(p) for p in parts[1:]],
+                    }
+            elif key in _SKIP_KEYS:
+                pass
+            else:
+                extra_lines.append(line)
+
+        if "OpenMP" in content:
+            known["threads"] = 4
+
+        extra_lines.extend(tail_lines)
+        return known, extra_lines
 
     def _toggle_screen_param(self, key: str, state: int):
         screening = bool(state)
         self._screen_stacks[key].setCurrentIndex(1 if screening else 0)
         self._update_combo_summary()
 
-    def _on_volume_changed(self, path: str):
-        has_volume = bool(path) and Path(path).exists()
+    def _toggle_volume_screening(self, state: int):
+        screening = bool(state)
+        if screening:
+            self._volume_path.set_mode("files")
+            self._volume_path.path_input.setPlaceholderText("Volume files (.mrc)")
+        else:
+            self._volume_path.set_mode("file")
+            self._volume_path.path_input.setPlaceholderText("Volume file (.mrc)")
+        self._on_volume_changed("")
+
+    def _on_volume_changed(self, _text: str):
+        paths = self._volume_path.get_path()
+        if isinstance(paths, list):
+            has_volume = bool(paths) and all(Path(p).exists() for p in paths)
+        else:
+            has_volume = bool(paths) and Path(paths).exists()
         for w in (self._screen_stacks["xi"], self._screen_cbs["xi"]):
             w.setEnabled(has_volume)
-        self._hmff_volume_container.setVisible(has_volume)
+        self._set_hmff_volume_visible(has_volume)
         if not has_volume:
             self._param_widgets["use_filters"].setChecked(False)
+        self._update_combo_summary()
 
     def _toggle_filter_inputs(self, state):
-        self._filter_container.setVisible(state == Qt.CheckState.Checked.value)
+        show = state == Qt.CheckState.Checked.value
+        for widget in self._filter_dep_widgets:
+            widget.setVisible(show)
+            label = self._hmff_form.labelForField(widget)
+            if label is not None:
+                label.setVisible(show)
 
     def _get_screen_params(self) -> Dict[str, str]:
         params = {}
@@ -531,6 +773,11 @@ class ConfigurePanel(QScrollArea):
         extra_text = self._extra_config_edit.toPlainText()
         if extra_text:
             result.update(_parse_screening_ranges(extra_text))
+
+        volumes = self._volume_path.get_path()
+        if isinstance(volumes, list) and len(volumes) > 1:
+            result["volume_path"] = list(volumes)
+
         return result
 
     def _update_combo_summary(self, *_args):
@@ -548,16 +795,12 @@ class ConfigurePanel(QScrollArea):
         self.update_preview_plot()
 
     def get_mesh_transform(self):
-        """Return (scale_factor, offset) from the loaded scale file."""
-        if self._mesh_conf is None:
-            return 1.0, np.array([0.0, 0.0, 0.0])
-
+        """Return (scale_factor, offset) from the scaling parameters."""
         try:
-            idx = max(self._scale_mesh_combo.currentIndex(), 0)
-            scale_factor = float(self._mesh_conf["scale_factor"][idx])
-            offset_str = self._mesh_conf["offset"][idx]
+            scale_factor = float(get_widget_value(self._param_widgets["scale_factor"]))
+            offset_str = self._param_widgets["offset"].text().strip()
             offset = np.array([float(x) for x in offset_str.split(",")])
-        except (ValueError, IndexError, KeyError):
+        except (ValueError, IndexError):
             scale_factor = 1.0
             offset = np.array([0.0, 0.0, 0.0])
 
@@ -606,11 +849,21 @@ class ConfigurePanel(QScrollArea):
                 key = key.rsplit("__", 1)[-1]
             return _SHORT_NAMES.get(key, key)
 
+        # Build volume filename labels for preview if screening volumes
+        volumes = self._volume_path.get_path()
+        volume_labels = None
+        if isinstance(volumes, list) and len(volumes) > 1:
+            volume_labels = [Path(p).name for p in volumes]
+
         for i, name in enumerate(param_names):
-            values = [float(v) for v in screened[name]]
-            if not values:
+            raw_values = screened[name]
+            if not raw_values:
                 continue
 
+            try:
+                values = [float(v) for v in raw_values]
+            except (ValueError, TypeError):
+                values = list(range(len(raw_values)))
             vmin, vmax = min(values), max(values)
             if vmax > vmin:
                 normed = [(v - vmin) / (vmax - vmin) for v in values]
@@ -644,13 +897,22 @@ class ConfigurePanel(QScrollArea):
                     round(j * (n_vals - 1) / (max_labels - 1))
                     for j in range(max_labels)
                 ]
+
+            font = pg.QtGui.QFont()
+            font.setPixelSize(9)
+
+            use_volume_labels = name == "volume_path" and volume_labels is not None
             for idx in indices:
+                if use_volume_labels:
+                    label_text = volume_labels[idx]
+                else:
+                    label_text = f"{values[idx]:g}"
                 label = pg.TextItem(
-                    f"{values[idx]:g}",
+                    label_text,
                     color=Colors.TEXT_SECONDARY,
                     anchor=(0.5, 0),
                 )
-                label.setFont(pg.QtGui.QFont("sans-serif", 9))
+                label.setFont(font)
                 label.setPos(normed[idx], i - 0.25)
                 plot.addItem(label)
                 self._preview_items.append(label)
@@ -669,51 +931,39 @@ class ConfigurePanel(QScrollArea):
         plot.setYRange(-0.5, n_params - 0.5, padding=0)
         plot.invertY(True)
 
-    def _run_screen(self):
-        mesh = str(get_widget_value(self._mesh_path) or "")
-        if not mesh or not Path(mesh).exists():
-            return QMessageBox.warning(self, "Error", "Select a mesh file.")
+    def _build_dts_content(self) -> str:
+        """Build DTS config content from the current widget state.
 
-        output = str(get_widget_value(self._output_dir) or "")
-        if not output:
-            return QMessageBox.warning(self, "Error", "Select an output directory.")
+        Returns the raw DTS template string with ``{{name:range}}``
+        screening placeholders for screened parameters, fixed values
+        for others, and ``;@filter`` directives when filters are
+        enabled.
+        """
+        from .screening import _build_dts_template
 
         screen_params = self._get_screen_params()
-        extra_text = self._extra_config_edit.toPlainText().strip()
-
-        if not screen_params and not _parse_screening_ranges(extra_text):
-            return QMessageBox.warning(
-                self, "Error", "Enable at least one parameter for screening."
-            )
-
-        return self._generate_screen(mesh, output, screen_params, extra_text)
-
-    def _generate_screen(self, mesh, output, screen_params, extra_text):
-        from ..dts import generate_screen
-        from ..parallel import submit_task
-
-        if self._mesh_conf is not None:
-            idx = max(self._scale_mesh_combo.currentIndex(), 0)
-            mesh_conf = {
-                "file": [mesh],
-                "scale_factor": [self._mesh_conf["scale_factor"][idx]],
-                "offset": [self._mesh_conf["offset"][idx]],
-            }
-        else:
-            mesh_conf = None
-
-        volume = str(get_widget_value(self._volume_path) or "")
 
         def _screen_or_fixed(key):
             if key in screen_params:
                 return "{{" + f"{key}:{screen_params[key]}" + "}}"
             return get_widget_value(self._param_widgets[key])
 
-        use_hmff = volume and Path(volume).exists()
-        if "xi" in screen_params and not use_hmff:
-            return QMessageBox.warning(
-                self, "Error", "HMFF weight screening requires a valid volume file."
-            )
+        volume_value = get_widget_value(self._volume_path)
+        if isinstance(volume_value, list):
+            volumes = [v for v in volume_value if v and Path(v).exists()]
+            volume = volumes if len(volumes) > 1 else (volumes[0] if volumes else "")
+        else:
+            volume = str(volume_value or "")
+
+        use_hmff = bool(volume) and (isinstance(volume, list) or Path(volume).exists())
+        multi_volume = isinstance(volume, list) and len(volume) > 1
+
+        if multi_volume:
+            template_volume = "{{volume_path:" + ",".join(volume) + "}}"
+        elif isinstance(volume, list):
+            template_volume = volume[0] if volume else None
+        else:
+            template_volume = volume if use_hmff else None
 
         hmff_params = {
             "kappa": _screen_or_fixed("kappa"),
@@ -743,8 +993,6 @@ class ConfigurePanel(QScrollArea):
             "output_period": get_widget_value(self._param_widgets["output_period"]),
         }
 
-        use_filters = get_widget_value(self._param_widgets["use_filters"])
-
         coupling_params = {}
         for ckey, cwidgets in self._coupling_widgets.items():
             if not cwidgets["checkbox"].isChecked():
@@ -754,27 +1002,91 @@ class ConfigurePanel(QScrollArea):
             values = [_screen_or_fixed(pk) for pk in param_keys]
             coupling_params[ckey] = {"mode": mode, "values": values}
 
+        extra_text = self._extra_config_edit.toPlainText().strip()
+        scale_factor = str(get_widget_value(self._param_widgets["scale_factor"]))
+        offset = self._param_widgets["offset"].text().strip() or "0,0,0"
+
+        content = _build_dts_template(
+            volume_path=template_volume,
+            mesh_scale=scale_factor,
+            mesh_offset=offset,
+            hmff_params=hmff_params,
+            sim_params=sim_params,
+            extra_config=extra_text,
+            coupling_params=coupling_params,
+        )
+
+        use_filters = get_widget_value(self._param_widgets["use_filters"])
+        if use_hmff and use_filters:
+            parts = []
+            for k, short in (
+                ("lowpass_cutoff", "lowpass"),
+                ("highpass_cutoff", "highpass"),
+                ("plane_norm", "plane_norm"),
+            ):
+                val = get_widget_value(self._param_widgets[k])
+                if val is not None and str(val).strip():
+                    parts.append(f"{short}={val}")
+            if parts:
+                content = ";@filter " + " ".join(parts) + "\n" + content
+
+        return content
+
+    def _save_dts(self):
+        content = self._build_dts_content()
+        output = str(get_widget_value(self._output_dir) or "")
+
+        dialog = QFileDialog(self.window() or self)
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        dialog.setNameFilter("DTS Files (*.dts);;All Files (*.*)")
+        dialog.setDirectory(str(Path(output)) if output else "")
+        dialog.selectFile("input.dts")
+        dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+
+        def on_accepted():
+            files = dialog.selectedFiles()
+            if files:
+                Path(files[0]).write_text(content, encoding="utf-8")
+
+        dialog.accepted.connect(on_accepted)
+        dialog.open()
+
+    def _run_screen(self):
+        mesh = str(get_widget_value(self._mesh_path) or "")
+        if not mesh or not Path(mesh).exists():
+            return QMessageBox.warning(self, "Error", "Select a mesh file.")
+
+        output = str(get_widget_value(self._output_dir) or "")
+        if not output:
+            return QMessageBox.warning(self, "Error", "Select an output directory.")
+
+        return self._generate_screen(mesh, output)
+
+    def _generate_screen(self, mesh, output):
+        from ..dts import generate_screen
+        from ..parallel import submit_task
+
+        dts_content = self._build_dts_content()
+
+        volume_value = get_widget_value(self._volume_path)
+        if isinstance(volume_value, list):
+            volumes = [v for v in volume_value if v and Path(v).exists()]
+            volume = volumes if len(volumes) > 1 else (volumes[0] if volumes else "")
+        else:
+            volume = str(volume_value or "")
+
+        use_hmff = bool(volume) and (isinstance(volume, list) or Path(volume).exists())
+
         def _on_done(result):
             if isinstance(result, dict):
                 self.screenGenerated.emit(output)
-
-        filter_kwargs = {}
-        if use_filters:
-            for k in ("lowpass_cutoff", "highpass_cutoff", "plane_norm"):
-                filter_kwargs[k] = get_widget_value(self._param_widgets[k])
 
         submit_task(
             "DTS Screen",
             generate_screen,
             _on_done,
-            mesh_conf,
             output_dir=output,
             mesh=mesh,
+            dts_content=dts_content,
             volume_path=volume if use_hmff else None,
-            hmff_params=hmff_params,
-            sim_params=sim_params,
-            extra_config=extra_text,
-            coupling_params=coupling_params,
-            use_filters=use_filters if use_hmff else False,
-            **filter_kwargs,
         )

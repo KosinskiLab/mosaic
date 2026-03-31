@@ -22,9 +22,8 @@ def _repair_mesh(
 ):
     import igl
     from .. import meshing
+    from ..geometry import GeometryData
     from ..parametrization import TriangularMesh
-
-    fair = not (smoothness == 0 and curvature_weight == 0 and pressure == 0)
 
     model = geometry.model
     model.mesh.remove_non_manifold_edges()
@@ -33,47 +32,52 @@ def _repair_mesh(
     model.mesh.remove_unreferenced_vertices()
     model.mesh.remove_duplicated_vertices()
 
-    vs = model.vertices
-    fs = model.triangles
+    vs = np.asarray(model.mesh.vertices, dtype=np.float64).copy()
+    fs = np.asarray(model.mesh.triangles).copy()
 
-    out_fs = meshing.close_holes(vs, fs, max_hole_size)
-    if fair:
-        hole_fids = np.arange(len(fs), len(out_fs))
+    new_fs = meshing.close_holes(vs, fs, max_hole_size)
+    hole_fids = np.arange(len(fs), len(new_fs))
 
+    if not (smoothness == 0 and curvature_weight == 0 and pressure == 0):
         try:
-            mesh = meshing.remesh(meshing.to_open3d(vs, out_fs))
+            mesh = meshing.remesh(meshing.to_open3d(vs, new_fs))
             new_vs = np.asarray(mesh.vertices, dtype=np.float64)
-            fs = np.asarray(mesh.triangles)
-        except (ValueError, RuntimeError):
-            new_vs, fs = vs, out_fs
-
-        if fair_all:
-            vids = np.arange(len(new_vs))
-        else:
+            new_fs = np.asarray(mesh.triangles)
             _, face_ids, _ = igl.point_mesh_squared_distance(
-                new_vs, vs, out_fs.astype(np.int64)
+                new_vs, vs, new_fs.astype(np.int64)
             )
             vids = np.where(np.isin(face_ids, hole_fids))[0]
 
-        vs = new_vs
+        except (ValueError, RuntimeError) as e:
+            warnings.warn(
+                f"Remeshing failed: {e}. Falling back to Liepa triangulation."
+            )
+            new_vs, new_fs, _ = meshing.repair.triangulation_refine_leipa(
+                vs, new_fs, hole_fids, np.sqrt(2)
+            )
+            vids = np.arange(len(vs), len(new_vs))
+
+        if fair_all:
+            vids = np.arange(len(new_vs))
+
         if len(vids) > 0:
             vs = meshing.fair_mesh(
-                vs,
-                fs,
+                new_vs,
+                new_fs,
                 vids,
                 smoothness=smoothness,
                 curvature_weight=curvature_weight,
                 pressure=pressure,
                 n_ring=boundary_ring,
             )
+        else:
+            vs = new_vs
 
     if flip_normals:
-        fs = fs[:, ::-1]
-
-    from ..geometry import GeometryData
+        new_fs = new_fs[:, ::-1]
 
     return GeometryData(
-        model=TriangularMesh(meshing.to_open3d(vs, fs)),
+        model=TriangularMesh(meshing.to_open3d(vs, new_fs)),
         sampling_rate=geometry.sampling_rate.copy(),
         meta=geometry._meta.copy(),
     )
@@ -312,7 +316,7 @@ class ModelTab(QWidget):
         for new_geom in geom:
 
             if isinstance(new_geom, GeometryData):
-                new_geom = Geometry(**new_geom.to_dict())
+                new_geom = new_geom.to_geometry()
 
             if isinstance(new_geom.model, TriangularMesh):
                 new_geom.change_representation("surface")
@@ -342,74 +346,100 @@ class ModelTab(QWidget):
         return ret
 
     def _repair_mesh_parallel(self, **kwargs):
-        for geometry in self._get_selected_meshes():
-            submit_task(
-                "Repair Mesh",
-                _repair_mesh,
-                self._default_callback,
-                geometry._geometry_data,
-                **kwargs,
-            )
+        submit_task_batch(
+            [
+                {
+                    "name": "Repair Mesh",
+                    "func": _repair_mesh,
+                    "callback": self._default_callback,
+                    "args": (geometry._geometry_data,),
+                    "kwargs": kwargs,
+                }
+                for geometry in self._get_selected_meshes()
+            ]
+        )
 
     def _fit_parallel(self, method: str, *args, **kwargs):
         from ..operations import GeometryOperations
 
-        for geometry in self.cdata.data.get_selected_geometries():
-            submit_task(
-                "Parametrization",
-                GeometryOperations.fit,
-                self._default_callback,
-                geometry._geometry_data,
-                method,
-                **kwargs,
-            )
+        submit_task_batch(
+            [
+                {
+                    "name": "Parametrization",
+                    "func": GeometryOperations.fit,
+                    "callback": self._default_callback,
+                    "args": (geometry._geometry_data, method),
+                    "kwargs": kwargs,
+                }
+                for geometry in self.cdata.data.get_selected_geometries()
+            ]
+        )
 
     def _smooth_parallel(self, method, **kwargs):
         from ..operations import GeometryOperations
 
-        for geometry in self._get_selected_meshes():
-            submit_task(
-                "Smooth",
-                GeometryOperations.smooth,
-                self._default_callback,
-                geometry._geometry_data,
-                method,
-                **kwargs,
-            )
+        submit_task_batch(
+            [
+                {
+                    "name": "Smooth",
+                    "func": GeometryOperations.smooth,
+                    "callback": self._default_callback,
+                    "args": (geometry._geometry_data, method),
+                    "kwargs": kwargs,
+                }
+                for geometry in self._get_selected_meshes()
+            ]
+        )
 
     def _sample_parallel(self, sampling, method, normal_offset=0.0, **kwargs):
         from ..operations import GeometryOperations
 
-        for geometry in self.cdata.models.get_selected_geometries():
-            submit_task(
-                "Sample Fit",
-                GeometryOperations.sample,
-                self._default_callback,
-                geometry._geometry_data,
-                method=method,
-                sampling=sampling,
-                normal_offset=normal_offset,
-                **kwargs,
-            )
+        submit_task_batch(
+            [
+                {
+                    "name": "Sample Fit",
+                    "func": GeometryOperations.sample,
+                    "callback": self._default_callback,
+                    "args": (geometry._geometry_data,),
+                    "kwargs": {
+                        "method": method,
+                        "sampling": sampling,
+                        "normal_offset": normal_offset,
+                        **kwargs,
+                    },
+                }
+                for geometry in self.cdata.models.get_selected_geometries()
+            ]
+        )
 
     def _remesh_parallel(self, method, **kwargs):
         from ..operations import GeometryOperations
 
-        for geometry in self._get_selected_meshes():
-            submit_task(
-                "Remesh",
-                GeometryOperations.remesh,
-                self._default_callback,
-                geometry._geometry_data,
-                method,
-                **kwargs,
-            )
+        submit_task_batch(
+            [
+                {
+                    "name": "Remesh",
+                    "func": GeometryOperations.remesh,
+                    "callback": self._default_callback,
+                    "args": (geometry._geometry_data, method),
+                    "kwargs": kwargs,
+                }
+                for geometry in self._get_selected_meshes()
+            ]
+        )
 
     def _fill_parallel(self, **kwargs):
-        for geometry in self._get_selected_meshes():
-            submit_task(
-                "Fill Mesh", _fill_mesh, self._default_callback, geometry._geometry_data
-            )
+        submit_task_batch(
+            [
+                {
+                    "name": "Fill Mesh",
+                    "func": _fill_mesh,
+                    "callback": self._default_callback,
+                    "args": (geometry._geometry_data,),
+                }
+                for geometry in self._get_selected_meshes()
+            ]
+        )
 
     def _project_parallel(
         self,
