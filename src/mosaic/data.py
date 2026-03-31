@@ -1,9 +1,12 @@
 """
-Implements MosaicData, which is reponsible for tracking overall
+Implements MosaicData, which is responsible for tracking overall
 application state and mediating interaction between segmentations
 and parametrizations.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Wraps :class:`~mosaic.commands.session.Session` with Qt interactors
+for GUI-driven workflows.
+
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -12,106 +15,96 @@ __all__ = ["MosaicData"]
 
 
 class MosaicData:
-    """
-    Initialize MosaicData instance for managing application state.
+    """GUI application state backed by a headless :class:`Session`.
 
     Parameters
     ----------
     vtk_widget : VTKWidget
-        VTK widget instance for 3D visualization
+        VTK widget instance for 3D visualization.
     """
 
     def __init__(self, vtk_widget):
         super().__init__()
-        from .container import DataContainer
+        from .commands.session import Session
         from .interactor import DataContainerInteractor
 
-        # Data containers and GUI interaction elements
-        self.shape = None
-        self._data = DataContainer()
-        self._models = DataContainer(highlight_color=(0.2, 0.4, 0.8))
+        self._session = Session(quiet=True)
 
+        # Expose session containers directly
+        self._data = self._session._data
+        self._models = self._session._models
+
+        # GUI interaction layer on top of session containers
         self.data = DataContainerInteractor(self._data, vtk_widget)
         self.models = DataContainerInteractor(self._models, vtk_widget, prefix="Fit")
 
         self.data.attach_area_picker()
         self.active_picker = "data"
 
+    def open_file(
+        self, filename, offset=0, scale=1, sampling_rate=1, segmentation=False
+    ):
+        """Open a file and register new geometries with the GUI."""
+        n_data = len(self._data.data)
+        n_models = len(self._models.data)
+
+        self._session.open(
+            filename,
+            offset=offset,
+            scale=scale,
+            sampling_rate=sampling_rate,
+            segmentation=segmentation,
+        )
+
+        # Assign colours and highlight color to newly added geometries
+        for geom in self._data.data[n_data:]:
+            geom.set_appearance(
+                base_color=self.data.next_color(),
+                highlight_color=self._data.highlight_color,
+            )
+        for geom in self._models.data[n_models:]:
+            geom.set_appearance(
+                base_color=self.models.next_color(),
+                highlight_color=self._models.highlight_color,
+            )
+
+    @property
+    def shape(self):
+        return self._data.metadata.get("shape")
+
+    @shape.setter
+    def shape(self, value):
+        self._data.metadata["shape"] = value
+
     def to_file(self, filename: str):
-        """Save current application state to file.
-
-        Parameters
-        ----------
-        filename : str
-            Path to save the application state.
-        """
-        import pickle
-
-        state = {
-            "shape": self.shape,
-            "_data": self._data,
-            "_models": self._models,
-            "_data_tree": self.data.data_list.to_state(),
-            "_models_tree": self.models.data_list.to_state(),
-        }
-        with open(filename, "wb") as ofile:
-            pickle.dump(state, ofile)
+        """Save current application state to file."""
+        self._session._data_tree = self.data.data_list.to_state()
+        self._session._models_tree = self.models.data_list.to_state()
+        self._session.save_session(filename)
 
     def load_session(self, filename: str):
-        """
-        Load application state from file.
+        """Load application state from file."""
+        self._session.load_session(filename)
 
-        Parameters
-        ----------
-        filename : str
-            Path to the saved session file (.pickle).
-        """
-        from .container import DataContainer
-        from .formats import open_file, open_session
+        self._data = self._session._data
+        self._models = self._session._models
 
-        sampling = 1
-        cluster_tree, model_tree = None, None
-        if filename.endswith("pickle"):
-            data = open_session(filename)
-            shape = data["shape"]
-            cluster_container, model_container = data["_data"], data["_models"]
-            cluster_tree = data.get("_data_tree")
-            model_tree = data.get("_models_tree")
-
-        else:
-            container = open_file(filename)
-
-            shape = container.shape
-            sampling = container.sampling
-            cluster_container, model_container = DataContainer(), DataContainer()
-            for data in container:
-                cluster_container.add(
-                    points=data.vertices, normals=data.normals, sampling_rate=sampling
-                )
-
-        metadata = {"shape": self.shape, "sampling_rate": sampling}
-
-        cluster_container.metadata = metadata.copy()
-        model_container.metadata = metadata.copy()
-
-        self.shape = shape
-        self.data.update(cluster_container, tree_state=cluster_tree)
-        self.models.update(model_container, tree_state=model_tree)
+        self.data.update(self._data, tree_state=self._session._data_tree)
+        self.models.update(self._models, tree_state=self._session._models_tree)
 
     def reset(self):
-        """
-        Reset the state of the class instance.
-        """
+        """Reset the state of the class instance."""
         from .container import DataContainer
 
         self.shape = None
         self.data.update(DataContainer())
         self.models.update(DataContainer(highlight_color=(0.2, 0.4, 0.8)))
 
+        self._session._data = self._data = self.data.container
+        self._session._models = self._models = self.models.container
+
     def refresh_actors(self):
-        """
-        Reinitialize all vtk actors to accomodate render setting changes.
-        """
+        """Reinitialize all VTK actors to accommodate render setting changes."""
         self.data.refresh_actors()
         self.models.refresh_actors()
 
@@ -133,18 +126,11 @@ class MosaicData:
         return container.attach_area_picker()
 
     def activate_viewing_mode(self):
-        """Activate viewing mode for all contaienrs."""
+        """Activate viewing mode for all containers."""
         self.data.activate_viewing_mode()
         self.models.activate_viewing_mode()
 
     def highlight_clusters_from_selected_points(self):
-        """Highlight clusters containing currently selected points.
-
-        Returns
-        -------
-        bool
-            Success status of highlighting operation
-        """
         obj = self._get_active_container()
         return obj.highlight_clusters_from_selected_points()
 
@@ -172,22 +158,7 @@ class MosaicData:
     def format_datalist(
         self, type="data", mesh_only: bool = False, selected: bool = False
     ):
-        """Format data list for dialog display.
-
-        Parameters
-        ----------
-        type : str, optional
-            Type of data to format ('data' or 'models'), by default 'data'
-        mesh_only : bool, optional
-            Whether to return only TriangularMesh instances for type 'models'.
-        selected : bool, optional
-            Whether to return only selected objects
-
-        Returns
-        -------
-        list
-            List of tuples containing (item_text, data_object) pairs
-        """
+        """Format data list for dialog display."""
         if mesh_only and type != "models":
             mesh_only = False
 
@@ -207,26 +178,14 @@ class MosaicData:
             if mesh_only:
                 from .parametrization import TriangularMesh
 
-                is_mesh = isinstance(geometry.model, TriangularMesh)
-                if not is_mesh:
+                if not isinstance(geometry.model, TriangularMesh):
                     continue
 
             ret.append((geometry._meta.get("name", ""), geometry))
         return ret
 
     def get_tree_state(self, type="data"):
-        """Get the tree state (group structure) for a container.
-
-        Parameters
-        ----------
-        type : str, optional
-            Type of container ('data' or 'models'), by default 'data'
-
-        Returns
-        -------
-        TreeStateData
-            The current tree structure including groups.
-        """
+        """Get the tree state (group structure) for a container."""
         if type == "models":
             return self.models.data_list.to_state()
         return self.data.data_list.to_state()

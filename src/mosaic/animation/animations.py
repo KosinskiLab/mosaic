@@ -31,6 +31,9 @@ class BaseAnimation(ABC):
         self.start_frame = 0
         self.stop_frame = 100
         self.stride = 1
+        self.rate = 1.0
+        self._base_duration = None
+        self._forward_fill = False
 
         self.parameters = {}
         self._init_parameters()
@@ -74,11 +77,17 @@ class BaseAnimation(ABC):
             return None
 
         local_frame = global_frame - self.global_start_frame + self.start_frame
-        if local_frame > self.stop_frame:
+        if local_frame < self.start_frame:
             return None
 
-        if (local_frame >= self.start_frame) and (local_frame % self.stride) == 0:
+        if self._forward_fill:
+            local_frame = min(self.stop_frame, local_frame)
             self._update(local_frame)
+        else:
+            if local_frame > self.stop_frame:
+                return None
+            if (local_frame - self.start_frame) % self.stride == 0:
+                self._update(local_frame)
 
     def _get_rendering_context(self, return_renderer: bool = False):
         """Return the current camera instance"""
@@ -120,6 +129,7 @@ class TrajectoryAnimation(BaseAnimation):
     """Animation for molecular trajectories"""
 
     def _available_trajectories(self):
+        """Return (name, uuid) pairs for all trajectory objects."""
         from mosaic.geometry import GeometryTrajectory
 
         models = self.cdata.format_datalist("models")
@@ -127,18 +137,19 @@ class TrajectoryAnimation(BaseAnimation):
         trajectories = []
         for name, obj in models:
             if isinstance(obj, GeometryTrajectory):
-                trajectories.append(name)
+                trajectories.append((name, obj.uuid))
         return trajectories
 
-    def _get_trajectory(self, name: str):
+    def _get_trajectory(self, uuid: str):
+        """Resolve a trajectory object by its UUID."""
         models = self.cdata.format_datalist("models")
-        return next((x for t, x in models if t == name), None)
+        return next((x for _, x in models if x.uuid == uuid), None)
 
     def _init_parameters(self) -> None:
         trajectories = self._available_trajectories()
         if (default := self.parameters.get("trajectory")) is None:
             try:
-                default = trajectories[0]
+                _name, default = trajectories[0]
             except IndexError:
                 default = None
             self.update_parameters(trajectory=default)
@@ -147,19 +158,56 @@ class TrajectoryAnimation(BaseAnimation):
         new_trajectory = kwargs.get("trajectory")
         if new_trajectory and new_trajectory != self.parameters.get("trajectory"):
             self._trajectory = self._get_trajectory(new_trajectory)
-            self.start_frame = 0
-            self.stop_frame = self._trajectory.frames
+            if self._trajectory is None:
+                return super().update_parameters(**kwargs)
+            n_frames = self._trajectory.frames
+            kwargs.setdefault("data_start", 0)
+            kwargs.setdefault("data_stop", n_frames)
+            data_range = kwargs.get("data_stop", n_frames) - kwargs.get("data_start", 0)
+            self._base_duration = data_range
+            self.stop_frame = data_range
+
+        if "data_start" in kwargs or "data_stop" in kwargs:
+            data_start = kwargs.get("data_start", self.parameters.get("data_start", 0))
+            data_stop = kwargs.get(
+                "data_stop",
+                self.parameters.get("data_stop", self.stop_frame),
+            )
+            self._base_duration = max(1, data_stop - data_start)
+            self.stop_frame = max(1, int(self._base_duration / self.rate))
 
         return super().update_parameters(**kwargs)
 
     def get_settings(self) -> List[Dict[str, Any]]:
+        n_frames = getattr(self, "_trajectory", None)
+        n_frames = n_frames.frames if n_frames is not None else 0
+        available = self._available_trajectories()
+        names = [name for name, _ in available]
+        uuids = [uuid for _, uuid in available]
         return [
             {
                 "label": "trajectory",
                 "type": "select",
-                "options": self._available_trajectories(),
+                "options": names,
+                "option_values": uuids,
                 "default": self.parameters.get("trajectory"),
                 "description": "Select trajectories to animate.",
+            },
+            {
+                "label": "data_start",
+                "type": "number",
+                "min": 0,
+                "max": n_frames,
+                "default": self.parameters.get("data_start", 0),
+                "description": "First trajectory frame to animate.",
+            },
+            {
+                "label": "data_stop",
+                "type": "number",
+                "min": 0,
+                "max": n_frames,
+                "default": self.parameters.get("data_stop", n_frames),
+                "description": "Last trajectory frame to animate.",
             },
         ]
 
@@ -168,7 +216,16 @@ class TrajectoryAnimation(BaseAnimation):
             print("No trajectory associated with object")
             return None
 
-        self._trajectory.display_frame(frame)
+        progress = self._get_progress(frame)
+        if progress is None:
+            return
+
+        data_start = self.parameters.get("data_start", 0)
+        data_stop = self.parameters.get("data_stop", self._trajectory.frames)
+        data_frame = int(data_start + progress * (data_stop - data_start))
+        data_frame = max(data_start, min(data_stop - 1, data_frame))
+
+        self._trajectory.display_frame(data_frame)
         uuids = self.cdata.models._get_selected_uuids()
         if uuids:
             self.cdata.models.set_selection_by_uuid(uuids)
@@ -178,6 +235,7 @@ class VolumeAnimation(BaseAnimation):
     """Volume slicing animation"""
 
     def _init_parameters(self) -> None:
+        self._forward_fill = True
         self.parameters.clear()
         self.parameters["direction"] = "forward"
         self.parameters["projection"] = "Off"
@@ -200,11 +258,22 @@ class VolumeAnimation(BaseAnimation):
         if self._original_visibility is not None:
             self.volume_viewer.primary.slice.SetVisibility(self._original_visibility)
 
+    def _get_axis_size(self, axis=None):
+        _mapping = {"x": 0, "y": 1, "z": 2}
+        if axis is None:
+            axis = self.parameters.get("axis", "Z")
+        try:
+            shape = self.volume_viewer.primary.get_dimensions()
+        except AttributeError:
+            return 0
+        return shape[_mapping.get(axis.lower(), 0)]
+
     def get_settings(self) -> List[Dict[str, Any]]:
         projection = [
             self.volume_viewer.primary.project_selector.itemText(i)
             for i in range(self.volume_viewer.primary.project_selector.count())
         ]
+        n_slices = self._get_axis_size()
         return [
             {
                 "label": "axis",
@@ -212,6 +281,22 @@ class VolumeAnimation(BaseAnimation):
                 "options": ["x", "y", "z"],
                 "default": "z",
                 "description": "Axis to slice over.",
+            },
+            {
+                "label": "data_start",
+                "type": "number",
+                "min": 0,
+                "max": n_slices,
+                "default": self.parameters.get("data_start", 0),
+                "description": "First slice index.",
+            },
+            {
+                "label": "data_stop",
+                "type": "number",
+                "min": 0,
+                "max": n_slices,
+                "default": self.parameters.get("data_stop", n_slices),
+                "description": "Last slice index.",
             },
             {
                 "label": "direction",
@@ -244,34 +329,37 @@ class VolumeAnimation(BaseAnimation):
 
         new_axis = kwargs.get("axis")
         if new_axis and new_axis != self.parameters.get("axis"):
-            _mapping = {"x": 0, "y": 1, "z": 2}
-            shape = self.volume_viewer.primary.get_dimensions()
-            self.start_frame = 0
-            self.stop_frame = shape[_mapping.get(new_axis, 0)]
+            n_slices = self._get_axis_size(new_axis)
+            kwargs.setdefault("data_start", 0)
+            kwargs.setdefault("data_stop", n_slices)
+            data_range = kwargs.get("data_stop", n_slices) - kwargs.get("data_start", 0)
+            self._base_duration = data_range
+            self.stop_frame = data_range
             kwargs["axis"] = new_axis.upper()
 
-        # Skip the duplicate axis handling in the parent by calling grandparent
+        if "data_start" in kwargs or "data_stop" in kwargs:
+            data_start = kwargs.get("data_start", self.parameters.get("data_start", 0))
+            data_stop = kwargs.get(
+                "data_stop",
+                self.parameters.get("data_stop", self.stop_frame),
+            )
+            self._base_duration = max(1, data_stop - data_start)
+            self.stop_frame = max(1, int(self._base_duration / self.rate))
+
         self.parameters.update(**kwargs)
 
-    def update(self, global_frame: int) -> None:
-        """Apply hide visibility with forwards-fill semantics.
-
-        Before the range the volume keeps whatever visibility was set by
-        ``reset()`` or an earlier animation. During and after the range
-        the hide state persists so that later animations can build on it.
-        """
-        if not self.enabled:
-            return
-        local_frame = global_frame - self.global_start_frame + self.start_frame
-        if local_frame < self.start_frame:
-            return
-        local_frame = min(self.stop_frame, local_frame)
-        if (local_frame >= self.start_frame) and (local_frame % self.stride) == 0:
-            self._update(local_frame)
-
     def _update(self, frame: int) -> None:
+        progress = self._get_progress(frame)
+        if progress is None:
+            return
+
         if self.parameters["direction"] == "backward":
-            frame = self.stop_frame - frame
+            progress = 1.0 - progress
+
+        data_start = self.parameters.get("data_start", 0)
+        data_stop = self.parameters.get("data_stop", self.stop_frame)
+        data_frame = int(data_start + progress * (data_stop - data_start))
+        data_frame = max(data_start, min(data_stop - 1, data_frame))
 
         viewer = self.volume_viewer.primary
 
@@ -292,7 +380,7 @@ class VolumeAnimation(BaseAnimation):
         if current_state != self.parameters["projection"]:
             viewer.project_selector.setCurrentText(self.parameters["projection"])
 
-        viewer.set_slice(frame)
+        viewer.set_slice(data_frame)
 
 
 class CameraAnimation(BaseAnimation):
@@ -347,7 +435,6 @@ class CameraAnimation(BaseAnimation):
         if self.parameters.get("direction") == "reverse":
             total_degrees = -total_degrees
 
-        # Incremental angle since last update
         delta_angle = total_degrees * (progress - self._last_progress)
         self._last_progress = progress
 
@@ -429,7 +516,6 @@ class ActorSelectionDialog(QDialog):
         layout = QVBoxLayout(self)
         current_selection = set(current_selection or [])
 
-        # Quick select buttons
         quick_group = QGroupBox("Quick Select")
         quick_layout = QHBoxLayout(quick_group)
         quick_layout.setContentsMargins(8, 8, 8, 8)
@@ -515,6 +601,7 @@ class VisibilityAnimation(BaseAnimation):
     """Visibility fade animation"""
 
     def _init_parameters(self) -> None:
+        self._forward_fill = True
         self.parameters.clear()
         self.parameters.update(
             {"start_opacity": 1.0, "target_opacity": 0.0, "easing": "instant"}
@@ -594,20 +681,6 @@ class VisibilityAnimation(BaseAnimation):
             original = self._original_opacities.get(id(actor))
             if original is not None:
                 actor.GetProperty().SetOpacity(original)
-
-    def update(self, global_frame: int) -> None:
-        """Forwards-fill: apply during and after the range, skip before.
-
-        Before the range the actor keeps whatever opacity was set by reset()
-        or an earlier animation.  After the range the end state persists.
-        """
-        if not self.enabled:
-            return
-        local_frame = global_frame - self.global_start_frame + self.start_frame
-        if local_frame < self.start_frame:
-            return
-        local_frame = min(self.stop_frame, local_frame)
-        self._update(local_frame)
 
     def _update(self, frame: int) -> None:
         progress = self._get_progress(frame)
@@ -744,7 +817,6 @@ class WaypointAnimation(BaseAnimation):
 
         _, renderer = self._get_rendering_context(return_renderer=True)
 
-        # Remove old preview actors
         self.cleanup_preview()
 
         waypoints = self.parameters.get("waypoints", [])
@@ -793,7 +865,6 @@ class WaypointAnimation(BaseAnimation):
         renderer.AddActor(path_actor)
         self._path_actors.append(path_actor)
 
-        # Add sphere markers at each waypoint
         for wp in waypoints:
             actor = self._create_waypoint_marker(wp["position"])
             renderer.AddActor(actor)

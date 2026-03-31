@@ -1,7 +1,7 @@
 """
 Modulate visual properties of Geometry objects.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -90,7 +90,6 @@ class GeometryPropertiesDialog(QDialog):
         main_layout.setContentsMargins(16, 12, 16, 8)
         main_layout.setSpacing(12)
 
-        # === APPEARANCE SECTION ===
         appearance_group = QGroupBox("Appearance")
         appearance_group.setStyleSheet(QGroupBox_style)
         appearance_layout = QVBoxLayout(appearance_group)
@@ -144,7 +143,6 @@ class GeometryPropertiesDialog(QDialog):
 
         main_layout.addWidget(appearance_group)
 
-        # === LIGHTING SECTION ===
         lighting_group = QGroupBox("Lighting")
         lighting_group.setStyleSheet(QGroupBox_style)
         lighting_layout = QVBoxLayout(lighting_group)
@@ -186,7 +184,6 @@ class GeometryPropertiesDialog(QDialog):
 
         main_layout.addWidget(lighting_group)
 
-        # === MODEL SECTION ===
         model_group = QGroupBox("Model")
         model_group.setStyleSheet(QGroupBox_style)
         model_layout = QVBoxLayout(model_group)
@@ -264,7 +261,6 @@ class GeometryPropertiesDialog(QDialog):
 
         main_layout.addWidget(model_group)
 
-        # === SAMPLING SECTION ===
         sampling_group = QGroupBox("Sampling")
         sampling_group.setStyleSheet(QGroupBox_style)
         sampling_rate = self.initial_properties.get("sampling_rate", (1.0, 1.0, 1.0))
@@ -300,7 +296,6 @@ class GeometryPropertiesDialog(QDialog):
 
         main_layout.addWidget(sampling_group)
 
-        # Footer: Reset | [stretch] | Cancel | Done
         footer = DialogFooter(dialog=self, margin=(0, 0, 0, 0))
 
         self.reset_button = QPushButton("Reset")
@@ -376,14 +371,12 @@ class GeometryPropertiesDialog(QDialog):
         if not file_name:
             return
 
-        # Auto determine scale
         self.volume_path = file_name
         volume = load_density(self.volume_path)
         non_negative = (volume.data > 0).sum()
         if non_negative < volume.data.size // 2:
             self.scale_negative.setChecked(True)
 
-        # Enable volume controls
         self.scale_positive.setEnabled(True)
         self.scale_negative.setEnabled(True)
         self.isovalue_slider.setEnabled(True)

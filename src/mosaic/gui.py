@@ -1,14 +1,14 @@
 """
 Mosaic GUI implementation
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import os
 from typing import List
-from os.path import extsep, basename, exists
+from os.path import exists
 
 import vtk
 import numpy as np
@@ -43,7 +43,6 @@ from qtpy.QtGui import (
     QGuiApplication,
     QActionGroup,
     QKeyEvent,
-    QDropEvent,
     QCursor,
     QDragEnterEvent,
 )
@@ -61,7 +60,6 @@ from .dialogs import (
     ImportDataDialog,
     ProgressDialog,
     AppSettingsDialog,
-    getOpenFileNames,
 )
 from .widgets import (
     MultiVolumeViewer,
@@ -76,6 +74,8 @@ from .widgets import (
     CursorModeHandler,
     BoundingBoxManager,
 )
+from .widgets.dock import toggle_dock
+from .widgets.drop_overlay import DropOverlay
 
 
 class App(QMainWindow):
@@ -90,7 +90,6 @@ class App(QMainWindow):
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Render Block
         self.vtk_widget = QVTKRenderWindowInteractor()
 
         self.cdata = MosaicData(self.vtk_widget)
@@ -100,7 +99,6 @@ class App(QMainWindow):
         self.render_window.AddRenderer(self.renderer)
         self.apply_render_settings()
 
-        # Setup GUI interactions
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         self.interactor.Initialize()
         self.interactor.AddObserver("RightButtonPressEvent", self.on_right_click)
@@ -161,7 +159,6 @@ class App(QMainWindow):
             tab_layout.addWidget(btn)
             self.tab_buttons[index] = btn
 
-        # Animated tab indicator
         self.tab_indicator = QWidget(self.tab_bar)
         self.tab_indicator.setFixedHeight(2)
         self.tab_indicator.setStyleSheet(f"background-color: {Colors.PRIMARY};")
@@ -212,58 +209,66 @@ class App(QMainWindow):
         QTimer.singleShot(2000, self._check_for_updates)
 
         self.setAcceptDrops(True)
-        self._drag_active = False
+
+        from .formats.reader import is_volume_file
+
+        self._import_overlay = DropOverlay("Import", self.vtk_widget)
+        self._volume_overlay = DropOverlay(
+            "Render Volume", self.volume_viewer, file_filter=is_volume_file
+        )
+        self._import_overlay.dropped.connect(self._on_import_dropped)
+        self._volume_overlay.dropped.connect(self._on_volume_dropped)
+        self._import_overlay.drag_ended.connect(self._end_drag)
+        self._volume_overlay.drag_ended.connect(self._end_drag)
+
+    def _toggle_volume_dock(self, checked: bool):
+        toggle_dock(self.volume_dock, checked)
+
+    def _end_drag(self):
+        QApplication.restoreOverrideCursor()
+        self._import_overlay.active = False
+        self._import_overlay.hide()
+        self._volume_overlay.active = False
+        self._volume_overlay.hide()
+        if getattr(self, "_drag_opened_dock", False):
+            self._toggle_volume_dock(False)
+            self.volume_action.setChecked(False)
+            self._drag_opened_dock = False
 
     def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            valid_files = False
-            for url in event.mimeData().urls():
-                if url.isLocalFile():
-                    valid_files = True
-                    break
-
-            if valid_files:
-                event.acceptProposedAction()
-                self._drag_active = True
-                if QApplication.overrideCursor() is None:
-                    QApplication.setOverrideCursor(QCursor(Qt.DragCopyCursor))
-                self.setStyleSheet(
-                    self.styleSheet()
-                    + """
-                    QMainWindow {
-                        border: 2px dashed rgba(99, 102, 241, 0.3);
-                    }
-                    """
-                )
-        return super().dragEnterEvent(event)
-
-    def dragLeaveEvent(self, event):
-        pos = self.mapFromGlobal(QCursor.pos())
-        if not self.rect().contains(pos):
-            self._drag_active = False
-            QApplication.restoreOverrideCursor()
-            self._update_style()
-        super().dragLeaveEvent(event)
-
-    def dropEvent(self, event: QDropEvent):
-        self._drag_active = False
-        QApplication.restoreOverrideCursor()
-        self._update_style()
-
         if not event.mimeData().hasUrls():
-            event.ignore()
-            return None
+            return
+        if not any(url.isLocalFile() for url in event.mimeData().urls()):
+            return
+
+        if hasattr(self, "_drag_leave_timer"):
+            self._drag_leave_timer.stop()
 
         event.acceptProposedAction()
+        if QApplication.overrideCursor() is None:
+            QApplication.setOverrideCursor(QCursor(Qt.DragCopyCursor))
 
-        file_paths = []
-        for url in event.mimeData().urls():
-            if url.isLocalFile():
-                file_paths.append(url.toLocalFile())
+        if self._import_overlay.isVisible():
+            return
 
-        if not file_paths:
-            return None
+        from .formats.reader import is_volume_file
 
+        has_volumes = any(
+            url.isLocalFile() and is_volume_file(url.toLocalFile())
+            for url in event.mimeData().urls()
+        )
+        if has_volumes and not self.volume_dock.isVisible():
+            self._toggle_volume_dock(True)
+            self.volume_action.setChecked(True)
+            self._drag_opened_dock = True
+
+        self._import_overlay.refit()
+        self._import_overlay.show()
+        if has_volumes:
+            self._volume_overlay.refit()
+            self._volume_overlay.show()
+
+    def _handle_import(self, file_paths):
         session_files = [f for f in file_paths if f.lower().endswith(".pickle")]
         data_files = [f for f in file_paths if not f.lower().endswith(".pickle")]
 
@@ -276,8 +281,11 @@ class App(QMainWindow):
                 )
             self._load_session(session_files[0])
 
-        if len(data_files):
+        if data_files:
             self._open_files(data_files)
+
+    def _on_import_dropped(self, paths):
+        self._handle_import(paths)
 
     def sizeHint(self):
         """Provide the preferred size for the main window."""
@@ -295,6 +303,90 @@ class App(QMainWindow):
         y = (screen.height() - self.height()) // 2
         self.move(x, y)
 
+    def set_lighting_mode(self, mode: str = "simple"):
+        """Apply a lighting/effects mode to the renderer.
+
+        Parameters
+        ----------
+        mode: str
+            Can be one of 'simple', 'soft', 'full', 'flat', 'shadow', 'silhouettes'
+        """
+        renderer = self.renderer
+
+        current_pass = renderer.GetPass()
+        if current_pass is not None:
+            current_pass.ReleaseGraphicsResources(self.render_window)
+        renderer.SetPass(None)
+
+        renderer.RemoveAllLights()
+        renderer.CreateLight()
+
+        actors = renderer.GetActors()
+        actors.InitTraversal()
+        for _ in range(actors.GetNumberOfItems()):
+            actors.GetNextActor().GetProperty().LightingOn()
+
+        if mode == "simple":
+            pass
+
+        elif mode == "soft":
+            passes = vtk.vtkRenderStepsPass()
+            ssao = vtk.vtkSSAOPass()
+            ssao.SetDelegatePass(passes)
+            ssao.SetRadius(200.0)
+            ssao.SetKernelSize(64)
+            ssao.BlurOn()
+            renderer.SetPass(ssao)
+
+        elif mode == "full":
+            renderer.RemoveAllLights()
+            for pos, intensity, color in [
+                ((1, 1, 1), 0.8, (1.0, 1.0, 0.95)),
+                ((-1, 0.5, -0.5), 0.4, (0.3, 0.3, 0.4)),
+                ((0, -1, 0.5), 0.3, (0.2, 0.2, 0.25)),
+            ]:
+                light = vtk.vtkLight()
+                light.SetPosition(*pos)
+                light.SetColor(*color)
+                light.SetIntensity(intensity)
+                light.SetLightTypeToSceneLight()
+                renderer.AddLight(light)
+
+        elif mode == "flat":
+            actors = renderer.GetActors()
+            actors.InitTraversal()
+            for _ in range(actors.GetNumberOfItems()):
+                actors.GetNextActor().GetProperty().LightingOff()
+
+        elif mode == "shadow":
+            passes = vtk.vtkRenderStepsPass()
+            shadows = vtk.vtkShadowMapPass()
+
+            seq = vtk.vtkSequencePass()
+            collection = vtk.vtkRenderPassCollection()
+            collection.AddItem(shadows.GetShadowMapBakerPass())
+            collection.AddItem(passes)
+            seq.SetPasses(collection)
+
+            camera_pass = vtk.vtkCameraPass()
+            camera_pass.SetDelegatePass(seq)
+            renderer.SetPass(camera_pass)
+
+            renderer.RemoveAllLights()
+            light = vtk.vtkLight()
+            light.SetPosition(1, 1, 1)
+            light.SetFocalPoint(0, 0, 0)
+            light.SetColor(1.0, 1.0, 0.95)
+            light.SetPositional(True)
+            light.SetConeAngle(60)
+            renderer.AddLight(light)
+
+        elif mode == "silhouettes":
+            passes = vtk.vtkRenderStepsPass()
+            sobel = vtk.vtkSobelGradientMagnitudePass()
+            sobel.SetDelegatePass(passes)
+            renderer.SetPass(sobel)
+
     def apply_render_settings(self):
         self.renderer.SetBackground(
             *[float(x) for x in Settings.rendering.background_color]
@@ -303,7 +395,6 @@ class App(QMainWindow):
             float(x) for x in Settings.rendering.background_color_alt
         ]
 
-        # Check how these settings perform
         self.renderer.GradientBackgroundOff()
         self.renderer.SetUseDepthPeeling(Settings.rendering.use_depth_peeling)
         self.renderer.SetOcclusionRatio(Settings.rendering.occlusion_ratio)
@@ -315,12 +406,14 @@ class App(QMainWindow):
         self.render_window.SetLineSmoothing(Settings.rendering.line_smoothing)
         self.render_window.SetPolygonSmoothing(Settings.rendering.polygon_smoothing)
         self.render_window.SetDesiredUpdateRate(Settings.rendering.target_fps)
+
+        self.set_lighting_mode(Settings.rendering.lighting_mode)
         self.render_window.Render()
 
         if not hasattr(self, "cdata"):
             return None
 
-        from .actor import ActorFactory
+        from .actor import ActorFactory  # noqa: E402
 
         if not ActorFactory().is_synced():
             ActorFactory().update_from_settings()
@@ -569,7 +662,6 @@ class App(QMainWindow):
         interact_menu = menu_bar.addMenu("Actions")
         preference_menu = menu_bar.addMenu("Preferences")
 
-        # File menu actions
         new_session_action = QAction("Load Session", self)
         new_session_action.triggered.connect(self.load_session)
         new_session_action.setShortcut("Ctrl+N")
@@ -626,7 +718,6 @@ class App(QMainWindow):
         )
         clipboard_window_action.setShortcut("Ctrl+Shift+W")
 
-        # Setup axes control menu
         axes_menu = QMenu("Axes", self)
         visible_action = QAction("Visible", self)
         visible_action.setCheckable(True)
@@ -669,7 +760,6 @@ class App(QMainWindow):
         axes_menu.addAction(colored_action)
         axes_menu.addAction(arrow_action)
 
-        # Handle different camera angles
         tilt_menu = QMenu("Camera", self)
         self.tilt_dialog = TiltControlDialog(self)
         show_tilt_control = QAction(
@@ -748,18 +838,15 @@ class App(QMainWindow):
         self.volume_action = QAction("Volume Viewer", self)
         self.volume_action.setCheckable(True)
         self.volume_action.setChecked(False)
-        self.volume_action.triggered.connect(
-            lambda checked: self.volume_dock.setVisible(checked)
-        )
+        self.volume_action.triggered.connect(self._toggle_volume_dock)
 
         self.trajectory_action = QAction("Trajectory Player", self)
         self.trajectory_action.setCheckable(True)
         self.trajectory_action.setChecked(False)
         self.trajectory_action.triggered.connect(
-            lambda checked: self.trajectory_dock.setVisible(checked)
+            lambda checked: toggle_dock(self.trajectory_dock, checked)
         )
 
-        # Add actions to menus
         file_menu.addAction(add_file_action)
         file_menu.addMenu(self.recent_menu)
 
@@ -776,8 +863,13 @@ class App(QMainWindow):
         batch_navigator_action = QAction("Batch Navigator", self)
         batch_navigator_action.triggered.connect(self.open_batch_navigator)
         batch_navigator_action.setShortcut("Ctrl+Shift+N")
+
+        czi_action = QAction("CZI Portal", self)
+        czi_action.triggered.connect(self.open_czi_dialog)
+
         file_menu.addAction(batch_process_action)
         file_menu.addAction(batch_navigator_action)
+        file_menu.addAction(czi_action)
 
         file_menu.addSeparator()
         file_menu.addAction(screenshot_action)
@@ -986,7 +1078,7 @@ class App(QMainWindow):
             skip_complete = settings.get("skip_complete", False)
             tasks.append(
                 {
-                    "name": f"pipeline_{run['run_id']}",
+                    "name": f"Pipeline {run['run_id']}",
                     "func": execute_run,
                     "callback": None,
                     "kwargs": {
@@ -1006,6 +1098,25 @@ class App(QMainWindow):
 
         dialog = BatchNavigatorDialog(self)
         create_or_toggle_dock(self, "batch_navigator", dialog)
+
+    def open_czi_dialog(self):
+        """Open the CZI CryoET Data Portal browser."""
+        try:
+            from .formats.czi.dialog import CZIPortalDialog
+
+            if getattr(self, "_czi_dialog", None) is not None:
+                self._czi_dialog.raise_()
+                self._czi_dialog.activateWindow()
+                return
+
+            self._czi_dialog = CZIPortalDialog(self)
+            self._czi_dialog.finished.connect(
+                lambda: setattr(self, "_czi_dialog", None)
+            )
+            self._czi_dialog.show()
+
+        except ImportError:
+            QMessageBox.warning(self, "Error", "Failed to import CZI dialog.")
 
     def toggle_selection_menu(self):
         """Update the menu radio buttons to reflect current selection target."""
@@ -1061,6 +1172,17 @@ class App(QMainWindow):
         )
         self.volume_dock.setVisible(False)
 
+    def _on_volume_dropped(self, paths):
+        self._drag_opened_dock = False
+        if not self.volume_dock.isVisible():
+            self.volume_dock.setVisible(True)
+            self.volume_action.setChecked(True)
+        for path in paths:
+            try:
+                self.volume_viewer.primary.load_volume(path)
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
+
     def _setup_trajectory_player(self):
         self.trajectory_dock = QDockWidget(parent=self)
         self.trajectory_dock.setFeatures(
@@ -1084,7 +1206,7 @@ class App(QMainWindow):
             return self.apply_render_settings()
 
     def _load_session(self, file_path: str):
-        self.close_session(show_warning=False, render=False)
+        self.close_session(render=False)
 
         try:
             self.cdata.load_session(file_path)
@@ -1118,31 +1240,7 @@ class App(QMainWindow):
             return -1
         return self._load_session(file_path)
 
-    def close_session(self, show_warning: bool = True, render: bool = True):
-
-        def _show_close_session_warning() -> bool:
-            msg_box = QMessageBox()
-            msg_box.setIcon(QMessageBox.Icon.Warning)
-            msg_box.setWindowTitle("Close Session")
-            msg_box.setText("Close Session Warning")
-            msg_box.setInformativeText(
-                "Are you sure you want to close the current session? "
-                "This action cannot be undone and all current work will be lost."
-            )
-            msg_box.setStandardButtons(
-                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel
-            )
-            msg_box.setDefaultButton(QMessageBox.StandardButton.Cancel)
-            msg_box.button(QMessageBox.StandardButton.Ok).setText("Close")
-            msg_box.button(QMessageBox.StandardButton.Cancel).setText("Keep")
-
-            result = msg_box.exec()
-            return result == QMessageBox.StandardButton.Ok
-
-        if show_warning:
-            if not _show_close_session_warning():
-                return None
-
+    def close_session(self, render: bool = True):
         batch_navigator = getattr(self, "batch_navigator", None)
         if batch_navigator is not None:
             batch_navigator.widget()._reset_selection()
@@ -1166,85 +1264,18 @@ class App(QMainWindow):
             self.set_camera_view("z")
 
     def _open_file(self, filename, parameters):
-        from .formats import open_file
-
-        offset = parameters.get("offset", 0)
-        scale = parameters.get("scale", 1)
-        sampling = parameters.get("sampling_rate", 1)
-
         try:
-            container = open_file(filename)
+            self.cdata.open_file(
+                filename,
+                offset=parameters.get("offset", 0),
+                scale=parameters.get("scale", 1),
+                sampling_rate=parameters.get("sampling_rate", 1),
+                segmentation=parameters.get("render_as_segmentation", False),
+            )
         except Exception as e:
             if filename.endswith(".pickle"):
                 raise ValueError("Use Load Session to open session files.")
             raise e
-
-        base, _ = basename(filename).split(extsep, 1)
-        use_index = len(container) > 1
-        if len(container) > 1000:
-            reply = QMessageBox.question(
-                self,
-                "Large number of objects detected",
-                f"File '{basename(filename)}' contains {len(container):,} objects.\n\n"
-                "This may indicate:\n"
-                "- Raw EM data instead of segmentations or meshes\n"
-                "- Incorrectly formatted file\n"
-                "- You are dealing with a large dataset\n"
-                "Processing will require considerable compute capabilities.\n\n"
-                "Do you want to continue?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-            if reply != QMessageBox.StandardButton.Yes:
-                return None
-
-        for index, data in enumerate(container):
-            # data.sampling is typically 1
-            scale_new = np.divide(scale, data.sampling)
-            data.vertices = np.multiply(np.subtract(data.vertices, offset), scale_new)
-
-            if data.vertices.shape[0] > 1e7:
-                if not show_large_file_warning():
-                    continue
-
-            container, interactor = self.cdata._data, self.cdata.data
-            geom_data = {
-                "points": data.vertices,
-                "normals": data.normals,
-                "sampling_rate": sampling,
-                "quaternions": data.quaternions,
-                "vertex_properties": data.vertex_properties,
-                "meta": {"name": base if not use_index else f"{index}_{base}"},
-            }
-
-            if data.faces is not None:
-                from .meshing import to_open3d
-                from .parametrization import TriangularMesh
-
-                container, interactor = self.cdata._models, self.cdata.models
-                geom_data["model"] = TriangularMesh(
-                    to_open3d(data.vertices, data.faces, data.normals)
-                )
-
-            geometry = container.get(interactor.add(**geom_data))
-            if data.faces is not None:
-                geometry.change_representation("surface")
-            elif parameters.get("render_as_segmentation", False):
-                from .geometry import SegmentationGeometry
-
-                seg = SegmentationGeometry(
-                    points=geometry.points,
-                    sampling_rate=geometry.sampling_rate,
-                    color=geometry._appearance.get("base_color", (0.7, 0.7, 0.7)),
-                    meta=geometry._meta,
-                )
-                container.update(geometry.uuid, seg)
-
-            data_shape = np.divide(data.shape, data.sampling)
-            if container.metadata.get("shape") is None:
-                container.metadata["shape"] = data_shape
-            container.metadata["shape"] = np.maximum(
-                container.metadata["shape"], data_shape
-            )
 
     def _open_files(self, filenames: List[str]):
         dialog = ImportDataDialog(self)
@@ -1263,11 +1294,11 @@ class App(QMainWindow):
 
         self.cdata.data.data_changed.emit()
         self.cdata.models.data_changed.emit()
-        self.cdata.data.render()
-        self.cdata.models.render()
+        self.cdata.data.render(defer_render=False)
+        self.cdata.models.render(defer_render=False)
 
         # Make sure loaded objects are visible in scene
-        return self.set_camera_view("z")
+        self.set_camera_view("z")
 
     def open_files(self):
         filenames, _ = QFileDialog.getOpenFileNames(self, "Import Files")

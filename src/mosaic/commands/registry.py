@@ -4,7 +4,7 @@ Command registry and built-in commands for the Mosaic scripting interface.
 Commands are auto-registered from :class:`mosaic.operations.GeometryOperations`
 and :class:`mosaic.properties.GeometryProperties`.
 
-Copyright (c) 2026 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -284,8 +284,38 @@ def _is_session_file(filepath: str) -> bool:
     return os.path.splitext(filepath)[1].lower() == ".pickle"
 
 
+def _expand_brace_range(pattern: str):
+    """Expand bash-style ``{start..end}`` or ``{start..end..step}``.
+
+    Returns a list of expanded strings, or *None* when no brace range
+    is present.  Zero-padding is preserved when the start or end value
+    has leading zeros (matching bash behaviour).
+    """
+    import re
+
+    m = re.search(r"\{(\d+)\.\.(\d+)(?:\.\.(\d+))?\}", pattern)
+    if m is None:
+        return None
+    prefix, suffix = pattern[: m.start()], pattern[m.end() :]
+    start_s, end_s = m.group(1), m.group(2)
+    start, end = int(start_s), int(end_s)
+    step = int(m.group(3)) if m.group(3) else 1
+    width = max(len(start_s), len(end_s))
+    pad = start_s.startswith("0") or end_s.startswith("0")
+    fmt = f"{{:0{width}d}}" if pad else "{}"
+    return [f"{prefix}{fmt.format(i)}{suffix}" for i in range(start, end + 1, step)]
+
+
+def _natsort_key(path: str):
+    """Sort key that orders embedded numbers numerically."""
+    import re
+
+    return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", path)]
+
+
 def _cmd_open(session, parsed: ParsedCommand):
     import glob as _glob
+    from pathlib import Path
 
     filepath = parsed.kwargs.pop("filepath", None)
     if filepath is None:
@@ -302,8 +332,19 @@ def _cmd_open(session, parsed: ParsedCommand):
 
     persist = parsed.kwargs.get("persist", True)
 
-    if any(c in filepath for c in ("*", "?", "[")):
-        paths = sorted(_glob.glob(filepath, recursive="**" in filepath))
+    expanded = _expand_brace_range(filepath)
+    is_multi = expanded is not None or any(c in filepath for c in ("*", "?", "["))
+
+    if is_multi:
+        candidates = expanded if expanded is not None else [filepath]
+        paths = []
+        for pat in candidates:
+            if any(c in pat for c in ("*", "?", "[")):
+                paths.extend(_glob.glob(pat, recursive="**" in pat))
+            elif Path(pat).exists():
+                paths.append(pat)
+
+        paths = sorted(paths, key=_natsort_key)
         if not paths:
             return _error_panel(f"No files matching: {filepath}")
         all_indices = []
@@ -875,6 +916,62 @@ def _cmd_merge(session, parsed: ParsedCommand):
     return _success_text(f"Merged {len(geometries)} geometries  ", f"→ #{idx}")
 
 
+def _cmd_dts_screen(session, parsed: ParsedCommand):
+    import re
+    from pathlib import Path
+
+    dts_file = parsed.kwargs.pop("dts", None) or (
+        parsed.args[0] if parsed.args else None
+    )
+    if not dts_file:
+        return _error_panel("Provide a DTS config file.")
+    dts_file = Path(dts_file).resolve()
+    if not dts_file.exists():
+        return _error_panel(f"DTS file not found: {dts_file}")
+
+    mesh = parsed.kwargs.pop("mesh", None) or (
+        parsed.args[1] if len(parsed.args) > 1 else None
+    )
+    if not mesh:
+        return _error_panel("Provide a mesh file.")
+    mesh = Path(mesh).resolve()
+    if not mesh.exists():
+        return _error_panel(f"Mesh file not found: {mesh}")
+
+    output_dir = parsed.kwargs.pop("output", None) or (
+        parsed.args[2] if len(parsed.args) > 2 else None
+    )
+    if not output_dir:
+        return _error_panel("Provide an output directory.")
+    output_dir = str(Path(output_dir).resolve())
+
+    content = dts_file.read_text(encoding="utf-8")
+
+    # Extract volume paths from the DTS content for filtering
+    volume_path = None
+    vol_match = re.search(r"\{\{volume_path:([^}]+)\}\}", content)
+    if vol_match:
+        volume_path = vol_match.group(1).split(",")
+    else:
+        em_match = re.search(r"EnergyMethod\s*=\s*\S+\s+(\S+)", content)
+        if em_match and not em_match.group(1).startswith("{{"):
+            volume_path = em_match.group(1)
+
+    from ..dts import generate_screen
+
+    result = generate_screen(
+        output_dir=output_dir,
+        mesh=str(mesh),
+        dts_content=content,
+        volume_path=volume_path,
+    )
+
+    return _success_text(
+        f"DTS screen: {result['total_runs']} run(s)  ",
+        f"({result['new_runs']} new) → {output_dir}",
+    )
+
+
 def _register_builtins():
     """Register all built-in and auto-discovered commands."""
     from ..operations import GeometryOperations
@@ -944,6 +1041,18 @@ def _register_builtins():
             usage,
             group="Operations",
         )
+
+    for name, handler, desc, group in [
+        (
+            "dts-screen",
+            _cmd_dts_screen,
+            "Generate DTS parameter screen from config file",
+            "Analysis",
+        ),
+    ]:
+        op = MethodRegistry.get(name)
+        usage = op.build_usage() if op is not None else name
+        CommandRegistry.register(name, handler, desc, usage, group=group)
 
     # Override auto-generated handlers for in-place operations
     CommandRegistry.register(

@@ -5,7 +5,7 @@ merging of submeshes and simplification using quadratic edge collapse.
 This loosely follows the approach taken in igneous (github.com/seung-lab/igneous)
 but is focused on simplifying local meshing of large volumes.
 
-Copyright (c) 2024-2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """

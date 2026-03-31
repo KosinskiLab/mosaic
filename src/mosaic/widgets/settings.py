@@ -57,15 +57,23 @@ def create_setting_widget(setting: Dict):
             widget.setSpecialValueText(setting.get("special_text", "Auto"))
     elif setting["type"] == "select":
         widget = QComboBox()
-        widget.addItems(setting["options"])
+        option_values = setting.get("option_values")
+        if option_values is not None:
+            for text, value in zip(setting["options"], option_values):
+                widget.addItem(text, userData=value)
+        else:
+            widget.addItems(setting["options"])
         if "default" in setting:
             set_widget_value(widget, setting["default"])
     elif setting["type"] == "PathSelector":
         from . import PathSelector
 
+        mode = setting.get("mode", "file")
+        if "file_mode" in setting and "mode" not in setting:
+            mode = "file" if setting["file_mode"] else "directory"
         widget = PathSelector(
             placeholder=setting.get("placeholder", None),
-            file_mode=setting.get("file_mode", True),
+            mode=mode,
         )
         if "default" in setting:
             set_widget_value(widget, setting["default"])
@@ -102,6 +110,9 @@ def get_widget_value(widget):
     if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
         return widget.value()
     elif isinstance(widget, QComboBox):
+        data = widget.currentData()
+        if data is not None:
+            return data
         return widget.currentText()
     elif isinstance(widget, QCheckBox):
         return widget.isChecked()
@@ -128,6 +139,11 @@ def set_widget_value(widget, value):
     if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
         widget.setValue(value)
     elif isinstance(widget, QComboBox):
+        # Try matching by item data first (e.g. UUID-backed combo boxes)
+        for i in range(widget.count()):
+            if widget.itemData(i) == value:
+                widget.setCurrentIndex(i)
+                return
         widget.setCurrentText(str(value))
     elif isinstance(widget, QCheckBox):
         widget.setChecked(bool(value))

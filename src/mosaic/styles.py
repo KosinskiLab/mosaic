@@ -1,7 +1,7 @@
 """
 Style classes facilitating unique interactions with the vtk viewer.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -82,18 +82,16 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             data = self.cdata._data
 
         try:
-            index = data.get_actors().index(actor)
-        except Exception:
-            index = None
-        finally:
-            return index
+            return data.get_actors().index(actor)
+        except ValueError:
+            return None
 
     def _get_geometry_from_actor(self, actor):
         if (index := self._get_actor_index(actor, "model")) is not None:
             return self.cdata._models.get(index)
         if (index := self._get_actor_index(actor, "cluster")) is not None:
             return self.cdata._data.get(index)
-        return None, None
+        return None
 
     def _highlight_selected_points(self):
         if len(self.selected_points) == 0:
@@ -108,9 +106,10 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         for geometry, point_ids in geometry_points.items():
             geometry.color_points(
-                point_ids, geometry._appearance.get("highlight_color", (0.7, 0.7, 0.7))
+                point_ids, geometry._appearance.get("highlight_color", (0.8, 0.2, 0.2))
             )
-        return None
+
+        self.parent.vtk_widget.GetRenderWindow().Render()
 
     def handle_point_selection(self):
         click_pos = self.GetInteractor().GetEventPosition()

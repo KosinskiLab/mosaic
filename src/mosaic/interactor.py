@@ -3,7 +3,7 @@ Implemenents DataContainerInteractor and LinkedDataContainerInteractor,
 which mediate interaction between the GUI and underlying DataContainers.
 This includes selection, editing and rendering.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -140,15 +140,16 @@ class DataContainerInteractor(QObject):
         return super().eventFilter(watched_obj, event)
 
     def _on_item_renamed(self, item):
-        if (uuid := item.metadata.get("uuid")) is None:
+        if item.metadata.get("uuid") is None:
             return None
 
-        if (geometry := self.container.get(uuid)) is not None:
-            # Consider adding bidrecitional uuid lookup to render instead
-            if item.text() != geometry._meta.get("name"):
-                geometry._meta["name"] = item.text()
-                self.data_changed.emit()
-                self.render()
+        # setData already wrote the new name to geometry._meta;
+        # detect whether the stored metadata name diverged (i.e. a rename)
+        current_name = item.text()
+        if current_name != item.metadata.get("name"):
+            item.metadata["name"] = current_name
+            self.data_changed.emit()
+            self.render()
 
     def next_color(self):
         if not hasattr(self, "colors"):
@@ -308,6 +309,9 @@ class DataContainerInteractor(QObject):
                 continue
 
             points = geometry.points
+            if len(points) == 0:
+                continue
+
             mask = (
                 (points[:, 0] >= frustum_min[0])
                 & (points[:, 0] <= frustum_max[0])
@@ -605,17 +609,10 @@ class DataContainerInteractor(QObject):
             if name is None:
                 name = f"{self.prefix} {i}"
 
-            info = {
-                "item_type": geometry.geometry_type,
-                "name": name,
-                "uuid": geometry.uuid,
-            }
-
             geometry._meta["name"] = name
-            geometry._meta["info"] = info
 
             item = StyledTreeWidgetItem(
-                name, geometry.visible, info, editable=True, parent=None
+                geometry=geometry, visible=geometry.visible, editable=True
             )
             uuid_to_items[geometry.uuid] = item
         return uuid_to_items
@@ -800,12 +797,12 @@ class DataContainerInteractor(QObject):
         return self.render()
 
     def update(self, container, tree_state=None):
-        """Update container with new data and optionally restore tree structure.
+        """Replace the underlying container and rebuild the tree.
 
         Parameters
         ----------
         container : :py:class:`mosaic.container.DataContainer`
-            Container with new data
+            Container with new data.
         tree_state : TreeState, optional
             Tree structure to restore. If None, items added to root.
         """
@@ -814,12 +811,13 @@ class DataContainerInteractor(QObject):
                 f"Can not update {type(self.container)} using {type(container)}."
             )
 
-        self.container.clear()
-        self.container.metadata.update(container.metadata)
-        _ = [self.add(x) for x in container.data]
+        self.rendered_actors.clear()
+        self.container = container
 
         if tree_state is not None:
             self.data_list.apply_state(tree_state, self._uuid_to_items())
+        else:
+            self.data_list.update(self._uuid_to_items())
 
         self.data_changed.emit()
 
@@ -874,7 +872,7 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
 
                     for new_geom in ret:
                         if isinstance(new_geom, GeometryData):
-                            new_geom = Geometry(**new_geom.to_dict())
+                            new_geom = new_geom.to_geometry()
                         self.add(new_geom)
 
                     if remove_orig:
@@ -934,8 +932,12 @@ def _compute_frustum_bound(plane_normals, plane_origins, tol=1e-6):
 
 def _points_in_frustum(points, plane_normals, plane_origins):
     offsets = (plane_origins * plane_normals).sum(axis=1)
-    distances = points @ plane_normals.T - offsets
-    return np.all(distances <= 0, axis=1)
+    mask = np.ones(len(points), dtype=bool)
+    for i in range(len(plane_normals)):
+        mask[mask] = points[mask] @ plane_normals[i] - offsets[i] <= 0
+        if not mask.any():
+            break
+    return mask
 
 
 def _bounds_in_frustum(bounds, plane_normals, plane_origins):

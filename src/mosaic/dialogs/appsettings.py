@@ -204,6 +204,31 @@ class AppSettingsDialog(QDialog):
         self.quality_group = quality_group
         layout.addWidget(quality_group)
 
+        # Lighting mode
+        lighting_group = QGroupBox("Lighting & Effects")
+        lighting_layout = QFormLayout()
+
+        self.lighting_combo = QComboBox()
+        for mode, label in [
+            ("simple", "Simple — Single headlight"),
+            ("soft", "Soft — Ambient occlusion (SSAO)"),
+            ("full", "Full — Multi-light"),
+            ("flat", "Flat — No shading"),
+            ("shadow", "Shadow — Shadow mapping"),
+            ("silhouettes", "Silhouettes — Edge outlines"),
+        ]:
+            self.lighting_combo.addItem(label, mode)
+
+        current = rendering.lighting_mode
+        for i in range(self.lighting_combo.count()):
+            if self.lighting_combo.itemData(i) == current:
+                self.lighting_combo.setCurrentIndex(i)
+                break
+
+        lighting_layout.addRow("Mode", self.lighting_combo)
+        lighting_group.setLayout(lighting_layout)
+        layout.addWidget(lighting_group)
+
         layout.addStretch()
         scroll_area.setWidget(scroll_widget)
 
@@ -304,7 +329,6 @@ class AppSettingsDialog(QDialog):
         layout.addStretch()
         scroll_area.setWidget(scroll_widget)
 
-        # Set up the page layout
         page_layout = QVBoxLayout(page)
         page_layout.setContentsMargins(0, 0, 0, 0)
         page_layout.addWidget(scroll_area)
@@ -357,6 +381,13 @@ class AppSettingsDialog(QDialog):
                 )
 
         self.preset_combo.currentTextChanged.connect(self.on_preset_changed)
+        self.lighting_combo.currentIndexChanged.connect(
+            lambda idx: _update_setting(
+                Settings.rendering,
+                "lighting_mode",
+                self.lighting_combo.itemData(idx),
+            )
+        )
         self.bg_color_picker.colorChanged.connect(
             lambda color: _update_setting(
                 Settings.rendering,

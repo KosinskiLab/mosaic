@@ -1,7 +1,7 @@
 """
 Utility functions.
 
-Copyright (c) 2023-2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -192,27 +192,38 @@ def volume_to_points(
                 "Make sure you are opening a segmentation."
             )
 
-    points = np.flatnonzero(mask)
-    clusters, cluster_indices = np.unique(volume.flat[points], return_inverse=True)
-    if max_cluster is not None and clusters.size > max_cluster:
+    flat_indices = np.flatnonzero(mask)
+    labels = volume.flat[flat_indices]
+
+    n_clusters = int(labels.max())
+    if max_cluster is not None and n_clusters > max_cluster:
         raise ValueError(
-            f"Found {clusters.size} clusters (max: {max_cluster}). \n"
+            f"Found {n_clusters} clusters (max: {max_cluster}). \n"
             "Make sure you are opening a segmentation."
         )
 
-    points = np.array(np.unravel_index(points, volume.shape), dtype=np.float32).T
+    # Sort by label once, then split
+    order = labels.argsort(kind="stable")
+    sorted_labels = labels[order]
+
+    coords = np.array(
+        np.unravel_index(flat_indices[order], volume.shape), dtype=np.float32
+    ).T
+    np.multiply(coords, sampling_rate, out=coords)
+
+    splits = np.flatnonzero(np.diff(sorted_labels)) + 1
+    boundaries = np.concatenate([[0], splits, [len(order)]])
 
     ret = []
-    for index in range(len(clusters)):
-        cl_points = points[cluster_indices == index]
+    for i in range(len(boundaries) - 1):
+        cl_points = coords[boundaries[i] : boundaries[i + 1]]
 
         if reverse_order:
-            indices = np.ravel_multi_index(
-                cl_points[:, ::-1].T.astype(np.intp), volume.shape[::-1]
-            )
+            inv_sr = np.divide(1.0, sampling_rate)
+            voxel_coords = np.rint(np.multiply(cl_points, inv_sr)).astype(np.intp)
+            indices = np.ravel_multi_index(voxel_coords[:, ::-1].T, volume.shape[::-1])
             cl_points = cl_points[np.argsort(indices)]
 
-        cl_points = np.multiply(cl_points, sampling_rate, out=cl_points)
         ret.append(cl_points)
     return ret
 
@@ -705,7 +716,6 @@ def _align_vectors_to_quat(vec1: np.ndarray, vec2: np.ndarray) -> np.ndarray:
         quaternions[normal, 0] = w
         quaternions[normal, 1:] = xyz
 
-    # Opposite
     if np.any(opposite):
         for i in np.where(opposite)[0]:
             v = vec1[i]

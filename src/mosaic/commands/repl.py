@@ -1,7 +1,7 @@
 """
 Interactive REPL for the Mosaic scripting interface.
 
-Copyright (c) 2026 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -352,11 +352,7 @@ class MosaicREPL:
 
     @staticmethod
     def _build_prompt() -> str:
-        """Build a readline-safe ANSI-colored prompt string.
-
-        Wraps escape sequences in ``\\x01``/``\\x02`` so readline
-        correctly computes the visible prompt width.
-        """
+        """Build a readline-safe prompt string."""
         from io import StringIO
 
         from rich.console import Console

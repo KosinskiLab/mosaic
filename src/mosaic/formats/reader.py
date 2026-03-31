@@ -1,6 +1,7 @@
+import json
 from typing import Dict
 
-from ._utils import get_extension, CompatibilityUnpickler
+from ._utils import get_extension, CompatibilityUnpickler, _HEADER_STRUCT
 from .parser import (
     read_star,
     read_tsv,
@@ -34,6 +35,12 @@ FORMAT_MAPPING = {
     read_vtu: ["vtu"],
     read_structure: ["pdb", "cif", "gro"],
 }
+
+
+def is_volume_file(filepath: str) -> bool:
+    """Return True if *filepath* has a volume format extension."""
+    ext = get_extension(filepath)[1:]
+    return any(ext in fmts for f, fmts in FORMAT_MAPPING.items() if f is read_volume)
 
 
 def open_file(filename: str, *args, **kwargs) -> GeometryDataContainer:
@@ -73,25 +80,59 @@ def open_file(filename: str, *args, **kwargs) -> GeometryDataContainer:
     return func(filename, *args, **kwargs)
 
 
-def open_session(filename: str, *args, **kwargs) -> Dict:
-    """
-    Open and deserialize a pickled session file.
+def read_session_header(filepath: str) -> Dict:
+    """Read the JSON header without deserialising the pickle payload.
+
+    Returns ``{"version": 0}`` for legacy pure-pickle session files.
 
     Parameters
     ----------
-    filename : str
-        Path to the session file to be opened.
-    *args
-        Additional positional arguments (unused).
-    **kwargs
-        Additional keyword arguments (unused).
+    filepath : str
+        Path to a session file.
 
     Returns
     -------
-    Dict
-        Deserialized session data.
+    dict
+        Parsed header dictionary.
     """
-    with open(filename, "rb") as ifile:
-        unpickler = CompatibilityUnpickler(ifile)
-        data = unpickler.load()
-    return data
+    with open(filepath, "rb") as fh:
+        first_four = fh.read(4)
+        if len(first_four) < 4:
+            return {"version": 0}
+
+        if first_four[0] == 0x80:
+            return {"version": 0}
+
+        header_len = _HEADER_STRUCT.unpack(first_four)[0]
+        header_bytes = fh.read(header_len)
+        return json.loads(header_bytes.decode("utf-8"))
+
+
+def open_session(filepath: str) -> Dict:
+    """Read a session file, handling both legacy and header+pickle formats.
+
+    Legacy pure-pickle files (first byte ``0x80``) are detected
+    automatically.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to a session file.
+
+    Returns
+    -------
+    dict
+        Deserialised session state.
+    """
+    with open(filepath, "rb") as fh:
+        first_four = fh.read(4)
+        if len(first_four) < 4:
+            raise ValueError(f"Session file too short: {filepath}")
+
+        if first_four[0] == 0x80:
+            fh.seek(0)
+            return CompatibilityUnpickler(fh).load()
+
+        header_len = _HEADER_STRUCT.unpack(first_four)[0]
+        fh.seek(4 + header_len)
+        return CompatibilityUnpickler(fh).load()

@@ -33,7 +33,6 @@ class InputDataTab(QWidget):
         super().__init__()
         self.layout = QVBoxLayout(self)
 
-        # Create a scroll area
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
@@ -44,12 +43,11 @@ class InputDataTab(QWidget):
         self.output_layout = QVBoxLayout(self.output_group)
 
         self.output_selector = PathSelector(
-            "Output Directory:", "Path to working directory", file_mode=False
+            "Output Directory:", "Path to working directory", mode="directory"
         )
         self.output_layout.addWidget(self.output_selector)
         self.scroll_layout.addWidget(self.output_group)
 
-        # Target section
         self.target_group = QGroupBox("Target")
         self.target_layout = QVBoxLayout(self.target_group)
         self.tomogram_selector = PathSelector("Tomogram:", "Path to target")
@@ -62,7 +60,6 @@ class InputDataTab(QWidget):
 
         self.scroll_layout.addWidget(self.target_group)
 
-        # Templates section
         self.template_group = QGroupBox("Template")
         self.template_layout = QVBoxLayout(self.template_group)
         self.template_selector = PathSelector("Template:", "Path to template")
@@ -113,7 +110,6 @@ class PreprocessTab(QWidget):
         self.skip_layout.addWidget(self.skip_preprocessing_check)
         self.scroll_layout.addWidget(self.skip_group)
 
-        # Filters section
         self.preproc_filters_group = QGroupBox("Filters")
         self.preproc_filters_layout = QGridLayout(self.preproc_filters_group)
 
@@ -143,7 +139,6 @@ class PreprocessTab(QWidget):
         self.preproc_filters_layout.addWidget(contrast_help, 3, 1)
         self.scroll_layout.addWidget(self.preproc_filters_group)
 
-        # Alignment section (for constrained matching)
         self.alignment_group = QGroupBox("Alignment")
         self.alignment_layout = QGridLayout(self.alignment_group)
 
@@ -214,7 +209,6 @@ class MatchingTab(QWidget):
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
 
-        # Angular Sampling section
         self.angular_group = QGroupBox("Sampling")
         self.angular_layout = QGridLayout(self.angular_group)
 
@@ -234,7 +228,6 @@ class MatchingTab(QWidget):
         self.angular_layout.addWidget(self.score_combo, 1, 1)
         self.scroll_layout.addWidget(self.angular_group)
 
-        # Constrained template matching
         self.orientation_group = QGroupBox("Constraints")
         self.orientation_layout = QGridLayout(self.orientation_group)
 
@@ -282,7 +275,6 @@ class MatchingTab(QWidget):
         self.orientation_layout.addWidget(translational_uncertainty_help, 6, 1)
         self.scroll_layout.addWidget(self.orientation_group)
 
-        # Filters section
         self.filters_group = QGroupBox("Filters")
         self.filters_layout = QGridLayout(self.filters_group)
 
@@ -389,13 +381,11 @@ class PeakCallingTab(QWidget):
             ]
         )
 
-        # Number of Peaks
         peaks_label = QLabel("Number of Peaks:")
         self.peaks_input = QSpinBox()
         self.peaks_input.setRange(1, 100000)
         self.peaks_input.setValue(1000)
 
-        # Minimum Distance
         distance_label = QLabel("Minimum Distance (voxels):")
         self.distance_input = QSpinBox()
         self.distance_input.setRange(1, 1000)
@@ -537,7 +527,6 @@ class TemplateMatchingDialog(QDialog):
         preprocess = self.preprocess_tab.get_settings()
         peak_data = self.peak_tab.get_settings()
 
-        # Setup working directory
         directory = data.get("output_directory", "")
         if len(directory) == 0:
             return QMessageBox.warning(

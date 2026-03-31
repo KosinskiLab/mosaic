@@ -1,7 +1,7 @@
 """
 Utility functions for animation export and screenshots.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -52,11 +52,9 @@ def capture_frame(
     original_size = render_window.GetSize()
     original_multisamples = render_window.GetMultiSamples()
 
-    # Apply multisamples if specified
     if multisamples is not None:
         render_window.SetMultiSamples(multisamples)
 
-    # Determine target dimensions
     target_width = width if width is not None else original_size[0]
     target_height = height if height is not None else original_size[1]
 
@@ -85,7 +83,6 @@ def capture_frame(
     # (vtk_to_numpy returns a view, [::-1] creates non-contiguous view)
     arr = np.ascontiguousarray(arr.reshape(img_height, img_width, -1)[::-1])
 
-    # Restore original settings
     render_window.SetAlphaBitPlanes(original_alpha_bit_planes)
 
     if multisamples is not None:
@@ -97,9 +94,27 @@ def capture_frame(
 
     # Downscale if magnification was applied
     if magnification > 1:
-        img = Image.fromarray(arr, "RGBA")
-        img = img.resize((target_width, target_height), Image.LANCZOS)
-        arr = np.array(img)
+        if transparent_bg:
+            # Premultiply alpha before resize to avoid light fringe at edges
+            alpha_f = arr[:, :, 3:4].astype(np.float32) / 255.0
+            premult = arr.copy()
+            premult[:, :, :3] = np.clip(
+                arr[:, :, :3].astype(np.float32) * alpha_f, 0, 255
+            ).astype(np.uint8)
+            img = Image.fromarray(premult, "RGBA")
+            img = img.resize((target_width, target_height), Image.LANCZOS)
+            arr = np.array(img)
+            # Unpremultiply alpha
+            out_alpha = arr[:, :, 3:4].astype(np.float32) / 255.0
+            safe_alpha = np.where(out_alpha > 0, out_alpha, 1.0)
+            arr[:, :, :3] = np.clip(
+                arr[:, :, :3].astype(np.float32) / safe_alpha, 0, 255
+            ).astype(np.uint8)
+        else:
+            # Strip alpha before downsampling to prevent fringe artifacts
+            img = Image.fromarray(np.ascontiguousarray(arr[:, :, :3]), "RGB")
+            img = img.resize((target_width, target_height), Image.LANCZOS)
+            arr = np.array(img)
 
     if not transparent_bg:
         # Slice and ensure contiguous for downstream consumers

@@ -1,7 +1,7 @@
 """
 Dialog functions used throughout the GUI.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -97,7 +97,6 @@ class MeshEquilibrationDialog(QDialog):
 
         main_layout.addLayout(header_layout)
 
-        # Scroll area for content
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)
@@ -108,13 +107,11 @@ class MeshEquilibrationDialog(QDialog):
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(15)
 
-        # Basic settings
         basic_settings = QGroupBox("Basic Settings")
         basic_layout = QGridLayout(basic_settings)
         basic_layout.setColumnStretch(0, 1)
         basic_layout.setColumnStretch(1, 1)
 
-        # Create edge length widget (index 0)
         basic_layout.addWidget(self._create_labeled_widget(self._settings[0]), 0, 0)
         self._widgets["average_edge_length"].valueChanged.connect(self._update_bounds)
 
@@ -144,7 +141,6 @@ class MeshEquilibrationDialog(QDialog):
 
         content_layout.addWidget(self.advanced_group)
 
-        # Constraints
         self.constraints_group = QGroupBox("Additional Constraints")
         constraints_layout = QGridLayout(self.constraints_group)
 

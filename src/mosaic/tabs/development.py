@@ -137,6 +137,21 @@ class DevelopmentTab(QWidget):
             geometry._data.Modified()
         self.cdata.data.render()
 
+    def _stream_test_zarr(self):
+        """Load a preset CZI tomogram via Zarr streaming."""
+        if self.volume_viewer is None:
+            return
+        url = (
+            "s3://cryoet-data-portal-public/10473/"
+            "210610_Lamela1_Position_35/Reconstructions/"
+            "VoxelSpacing5.003/Tomograms/100/"
+            "210610_Lamela1_Position_35.zarr"
+        )
+        try:
+            self.volume_viewer.primary.load_volume(url)
+        except Exception as e:
+            print(f"Zarr streaming error: {e}")
+
     def show_ribbon(self):
         self.ribbon.clear()
         cluster_actions = [
@@ -162,6 +177,15 @@ class DevelopmentTab(QWidget):
             "Translate all geometries by offset",
         )
         self.ribbon.add_section("Translation", [translation_widget, translate_button])
+
+        zarr_button = create_button(
+            "Stream Zarr",
+            "mdi.cloud-download",
+            self,
+            self._stream_test_zarr,
+            "Stream a CZI tomogram via OME-Zarr",
+        )
+        self.ribbon.add_section("Zarr", [zarr_button])
 
         if _HAS_ANNOTATION:
             self.ribbon.add_section(

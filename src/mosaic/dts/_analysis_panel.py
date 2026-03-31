@@ -4,7 +4,7 @@ Analysis panel widget for DTS screening dialog.
 Unified metric viewer with compute-new-metric dialog, multi-run
 plotting, and data export.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -86,6 +86,8 @@ class AnalysisPanel(QWidget):
         self._plot_widget.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
+        self._plot_item = self._plot_widget.addPlot()
+        self._style_plot(self._plot_item)
 
         self._placeholder = QLabel(
             "No time series data available.\n"
@@ -104,7 +106,6 @@ class AnalysisPanel(QWidget):
         grid.setSpacing(6)
         grid.setContentsMargins(8, 8, 8, 8)
 
-        # Row 0: Metric  [combo][+]   Normalize  [combo]
         self._metric_combo = QComboBox()
         self._metric_combo.currentTextChanged.connect(self._update_plot)
 
@@ -133,7 +134,6 @@ class AnalysisPanel(QWidget):
         grid.addWidget(lbl_norm, 0, 3)
         grid.addWidget(self._norm_combo, 0, 4)
 
-        # Row 1: Color by [combo]      Palette    [selector]
         self._color_combo = QComboBox()
         self._color_combo.addItem("(auto)")
         self._color_combo.currentTextChanged.connect(self._update_plot)
@@ -265,7 +265,6 @@ class AnalysisPanel(QWidget):
         layout.setSpacing(10)
         layout.setContentsMargins(14, 14, 14, 14)
 
-        # Property selector
         prop_group = QGroupBox("Property")
         prop_layout = QFormLayout(prop_group)
         prop_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
@@ -545,10 +544,21 @@ class AnalysisPanel(QWidget):
         return None, display_name
 
     def _plot_multi_run(self, series, ylabel, xlabel="Frame"):
-        self._plot_widget.clear()
+        plot = self._plot_item
+
+        self._plot_widget.setUpdatesEnabled(False)
+        plot.vb.disableAutoRange()
+
+        plot.clear()
+        if plot.legend is not None:
+            scene = plot.legend.scene()
+            if scene is not None:
+                scene.removeItem(plot.legend)
+            plot.legend = None
 
         if not series:
             self._stack.setCurrentIndex(0)
+            self._plot_widget.setUpdatesEnabled(True)
             return
 
         self._stack.setCurrentIndex(1)
@@ -570,8 +580,6 @@ class AnalysisPanel(QWidget):
         global_max = max(np.max(y) for _, _, y in series)
         global_range = global_max - global_min + 1e-12
 
-        plot = self._plot_widget.addPlot()
-        self._style_plot(plot)
         plot.setLabel("left", ylabel)
         plot.setLabel("bottom", xlabel)
         plot.addLegend(offset=(-10, 10))
@@ -599,10 +607,13 @@ class AnalysisPanel(QWidget):
                 name=" ".join(label_parts),
             )
 
+        plot.vb.enableAutoRange()
+        self._plot_widget.setUpdatesEnabled(True)
+
     def _update_plot(self, *_args):
         metric_display = self._metric_combo.currentText()
         if not metric_display:
-            self._plot_widget.clear()
+            self._plot_item.clear()
             self._stack.setCurrentIndex(0)
             return
 

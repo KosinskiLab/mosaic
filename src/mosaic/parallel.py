@@ -1,7 +1,7 @@
 """
 Parallel backend for offloading compute heavy tasks.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -209,19 +209,57 @@ def _wrap_task(func, task_id, *args, **kwargs):
         _worker_task_id = None
 
 
-def _default_handler(task_id, task_name, msg, is_warning=False):
-    readable_name = task_name.replace("_", " ").title()
-    icon = QMessageBox.Icon.Warning if is_warning else QMessageBox.Icon.Critical
-    title = "Operation Warning" if is_warning else "Operation Failed"
-    text = f"{readable_name} {'Completed with Warnings' if is_warning else 'Failed with Errors'}"
+_pending_messages = []
+_message_timer = None
 
-    msg_box = QMessageBox()
-    msg_box.setIcon(icon)
-    msg_box.setWindowTitle(title)
-    msg_box.setText(text)
-    msg_box.setInformativeText(str(msg))
-    msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-    msg_box.exec()
+
+def _default_handler(task_id, task_name, msg, is_warning=False):
+    global _message_timer
+
+    _pending_messages.append((task_name, str(msg), is_warning))
+
+    if _message_timer is None:
+        _message_timer = QTimer()
+        _message_timer.setSingleShot(True)
+        _message_timer.timeout.connect(_flush_messages)
+
+    _message_timer.start(300)
+
+
+def _flush_messages():
+    if not _pending_messages:
+        return
+
+    warnings = [(n, m) for n, m, w in _pending_messages if w]
+    errors = [(n, m) for n, m, w in _pending_messages if not w]
+    _pending_messages.clear()
+
+    for items, is_warning in [(errors, False), (warnings, True)]:
+        if not items:
+            continue
+
+        icon = QMessageBox.Icon.Warning if is_warning else QMessageBox.Icon.Critical
+        title = "Operation Warning" if is_warning else "Operation Failed"
+
+        if len(items) == 1:
+            name, detail = items[0]
+            text = f"{name.replace('_', ' ').title()} "
+            text += "completed with warnings" if is_warning else "failed"
+        else:
+            text = f"{len(items)} tasks "
+            text += "completed with warnings" if is_warning else "failed"
+            detail = "\n".join(f"{n}: {m}" for n, m in items[:20])
+            if len(items) > 20:
+                detail += f"\n... and {len(items) - 20} more"
+
+        msg_box = QMessageBox()
+        msg_box.setIcon(icon)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(text)
+        msg_box.setDetailedText(detail)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.setSizeGripEnabled(True)
+        msg_box.exec()
 
 
 class BackgroundTaskManager(QObject):
@@ -287,7 +325,6 @@ class BackgroundTaskManager(QObject):
 
         self._shutdown()
 
-        # Create manager for shared queue
         self._manager = multiprocessing.Manager()
         self._progress_queue = self._manager.Queue()
 
@@ -304,6 +341,8 @@ class BackgroundTaskManager(QObject):
 
     def _shutdown(self):
         """Clean shutdown of executors and queues."""
+        if hasattr(self, "timer"):
+            self.timer.stop()
         self.futures.clear()
         self.task_info.clear()
         self.task_queue.clear()

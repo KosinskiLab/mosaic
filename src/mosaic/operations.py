@@ -1,7 +1,7 @@
 """
 Processing of Geometry objects.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -254,16 +254,18 @@ def downsample(geometry, method: str = "radius", **kwargs):
 
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(points)
-        pcd.normals = o3d.utility.Vector3dVector(normals)
+        if normals is not None:
+            pcd.normals = o3d.utility.Vector3dVector(normals)
 
         pcd = pcd.voxel_down_sample(**kwargs)
         points = np.asarray(pcd.points)
-        normals = np.asarray(pcd.normals)
+        normals = np.asarray(pcd.normals) if normals is not None else None
     elif method == "number":
         size = kwargs.get("size", 1000)
         size = min(size, points.shape[0])
         keep = np.random.choice(range(points.shape[0]), replace=False, size=size)
-        points, normals = points[keep], normals[keep]
+        points = points[keep]
+        normals = normals[keep] if normals is not None else None
     elif method in ("center_of_mass", "center of mass"):
         cutoff = kwargs.get("radius", None)
         if cutoff is None:
@@ -593,18 +595,17 @@ def cluster(
         points = geometry.points
 
     # Prepare feature data for clustering
-    data = points
-    if use_points and use_normals:
-        data = np.concatenate((points, geometry.normals), axis=1)
-    elif not use_points and use_normals:
-        data = geometry.normals
+    data, normals = points, geometry.normals
+    if use_points and use_normals and normals is not None:
+        data = np.concatenate((points, normals), axis=1)
+    elif not use_points and use_normals and normals is not None:
+        data = normals
 
     labels = func(data, **kwargs)
     unique_labels = np.unique(labels)
     if len(unique_labels) > 10000:
         raise ValueError("Found more than 10k clusters. Try coarser clustering.")
 
-    # Create geometry objects for each cluster
     ret = []
     for label in unique_labels:
         if label == -1 and drop_noise:
@@ -748,12 +749,17 @@ def compute_normals(
 
     method = MethodRegistry.resolve_method("compute_normals", method)
     if method == "flip":
-        geometry.normals = geometry.normals * -1
+        if geometry.normals is None:
+            raise ValueError("Geometry has no normal vectors.")
+        normals = geometry.normals * -1
     elif method == "compute":
-        geometry.normals = compute_normals(geometry.points, k=k, **kwargs)
+        normals = compute_normals(geometry.points, k=k, **kwargs)
     else:
         raise ValueError(f"Unsupported method '{method}'. Use 'compute' or 'flip'.")
-    return duplicate(geometry)
+
+    result = geometry[...]
+    result.normals = normals
+    return result
 
 
 @operation()
@@ -962,7 +968,6 @@ def remesh(geometry, method: str, **kwargs):
                     min=1,
                     label="Iterations",
                     description="Number of smoothing iterations.",
-                    notes="Taubin filter prevents mesh shrinkage.",
                 ),
             ),
         ),
@@ -977,7 +982,6 @@ def remesh(geometry, method: str, **kwargs):
                     min=1,
                     label="Iterations",
                     description="Number of smoothing iterations.",
-                    notes="May lead to mesh shrinkage with high counts.",
                 ),
             ),
         ),
@@ -1015,6 +1019,7 @@ def smooth(geometry, method: str, **kwargs):
         - 'Taubin' : Volume-preserving Taubin smoothing
         - 'Laplacian' : Laplacian mesh smoothing
         - 'Average' : Simple neighbor averaging
+        - 'Fair' : Polyharmonic mesh deformation
 
     Returns
     -------
@@ -1073,7 +1078,7 @@ def smooth(geometry, method: str, **kwargs):
                     default=-1.0,
                     min=-1.0,
                     label="Edge Length",
-                    description="Target edge length for remeshing. -1 uses median.",
+                    description="Edge length for remeshing. -1 uses median.",
                 ),
                 *_FAIRING_PARAMS,
             ),
@@ -1096,7 +1101,7 @@ def smooth(geometry, method: str, **kwargs):
                     default=-1.0,
                     min=-1.0,
                     label="Edge Length",
-                    description="Target edge length for remeshing. -1 uses median.",
+                    description="Edge length for remeshing. -1 uses median.",
                 ),
                 *_FAIRING_PARAMS,
             ),

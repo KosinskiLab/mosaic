@@ -6,7 +6,7 @@ Children of the underlying abstract Parametrization class, also define
 means for equidistant sampling and computation of normal vectors.
 Furthermore, there are amenable to native python pickling.
 
-Copyright (c) 2023-2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -27,7 +27,7 @@ __all__ = [
     "Ellipsoid",
     "Cylinder",
     "RBF",
-    "TriangularMesh",
+    "BallPivoting",
     "PoissonMesh",
     "AlphaShape",
     "FlyingEdges",
@@ -1255,7 +1255,7 @@ class BallPivoting(TriangularMesh):
         curvature_weight: float = 0.0,
         pressure: float = 0.0,
         n_smoothing: int = 5,
-        k_neighbors=50,
+        k_neighbors=15,
         boundary_ring: int = 0,
         **kwargs,
     ) -> "BallPivoting":
@@ -1342,13 +1342,21 @@ class BallPivoting(TriangularMesh):
             mesh = meshing.remesh(meshing.to_open3d(vs, out_fs), target_edge_length)
             new_vs = np.asarray(mesh.vertices, dtype=np.float64)
             new_fs = np.asarray(mesh.triangles)
-        except (ValueError, RuntimeError):
-            new_vs, new_fs = vs, out_fs
 
-        _, face_ids, _ = igl.point_mesh_squared_distance(
-            new_vs, vs, out_fs.astype(np.int64)
-        )
-        vids = np.where(np.isin(face_ids, hole_fids))[0]
+            _, face_ids, _ = igl.point_mesh_squared_distance(
+                new_vs, vs, out_fs.astype(np.int64)
+            )
+            vids = np.where(np.isin(face_ids, hole_fids))[0]
+        except (ValueError, RuntimeError) as e:
+            warnings.warn(
+                f"Remeshing failed: {e}. Falling back to Liepa triangulation."
+            )
+            add_fids = np.arange(len(fs), len(out_fs))
+            nv = len(vs)
+            new_vs, new_fs, _ = meshing.repair.triangulation_refine_leipa(
+                vs, out_fs, add_fids, np.sqrt(2)
+            )
+            vids = np.arange(nv, len(new_vs))
 
         if len(vids) > 0:
             new_vs = meshing.fair_mesh(
@@ -1638,7 +1646,7 @@ class FlyingEdges(TriangularMesh):
         flying_edges.ComputeNormalsOn()
         flying_edges.Update()
 
-        # Convert 0-100 strength to VTK pass_band using log scale
+        # Convert 0-100 strength to VTK pass_band
         pass_band = 2.0 * 10 ** (-np.clip(smoothing_strength, 0, 100) / 25.0)
 
         smoother = vtk.vtkWindowedSincPolyDataFilter()

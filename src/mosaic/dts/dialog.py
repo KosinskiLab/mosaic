@@ -5,7 +5,7 @@ Configure tab: parameter groups (Simulation, Physical, HMFF, Extra Config)
 with screening toggle + range input. Overview tab: status table with
 search filtering + full analysis mode on the right panel.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -17,12 +17,12 @@ from pathlib import Path
 import numpy as np
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
-    QDialog,
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
     QWidget,
+    QDialog,
     QMessageBox,
     QGroupBox,
     QTabWidget,
@@ -104,13 +104,11 @@ class DTSScreeningDialog(QDialog):
             "Overview",
         )
 
-        # Right panel
         self._right_widget = QWidget()
         self._right_layout = QVBoxLayout(self._right_widget)
         self._right_layout.setContentsMargins(6, 6, 6, 6)
         self._right_layout.setSpacing(6)
 
-        # Preview plot (configure mode)
         self._preview_container = QWidget()
         preview_layout = QVBoxLayout(self._preview_container)
         preview_layout.setContentsMargins(0, 0, 0, 0)
@@ -144,7 +142,6 @@ class DTSScreeningDialog(QDialog):
             self._preview_plot, self._preview_plot_item, self._preview_placeholder
         )
 
-        # Analysis panel (overview mode)
         self._analysis_panel = AnalysisPanel(
             cdata=self.cdata,
             get_mesh_transform=self._configure_panel.get_mesh_transform,
@@ -178,7 +175,7 @@ class DTSScreeningDialog(QDialog):
 
         dir_row = QHBoxLayout()
         self._screen_dir_input = PathSelector(
-            placeholder="Screen directory", file_mode=False
+            placeholder="Screen directory", mode="directory"
         )
         self._screen_dir_input.path_input.textChanged.connect(
             self._load_screen_overview
@@ -293,6 +290,8 @@ class DTSScreeningDialog(QDialog):
 
             for col_idx, key in enumerate(param_keys, start=1):
                 val = status["parameters"].get(key, "")
+                if key == "volume_path" and isinstance(val, str) and "/" in val:
+                    val = Path(val).name
                 self._overview_table.setItem(row, col_idx, _make_item(val))
 
             status_col = len(param_keys) + 1
@@ -395,6 +394,16 @@ class DTSScreeningDialog(QDialog):
             return QMessageBox.warning(self, "Error", "No trajectory frames found.")
 
         scale, offset = self._configure_panel.get_mesh_transform()
+        dts_file = run_dir / "input.dts"
+        if dts_file.exists():
+            known, _ = ConfigurePanel._parse_dts_content(
+                dts_file.read_text(encoding="utf-8")
+            )
+            if "scale_factor" in known:
+                scale = float(known["scale_factor"])
+            if "offset" in known:
+                offset = np.array([float(x) for x in known["offset"].split(",")])
+
         ret = []
         for filepath in files:
             container = open_file(str(filepath))[0]

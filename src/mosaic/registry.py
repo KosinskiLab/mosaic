@@ -4,7 +4,7 @@ Unified method and parameter registry for Mosaic operations.
 Defines parameters once; derives GUI settings dicts, REPL help,
 and display-name resolution from a single source of truth.
 
-Copyright (c) 2026 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -854,6 +854,31 @@ MethodRegistry.register(
                 default="table",
                 options=("table", "ids"),
                 description="Output format. Use format=ids for $(list ...) substitution.",
+            ),
+        ),
+    )
+)
+
+MethodRegistry.register(
+    Operation(
+        name="dts-screen",
+        description="Generate a DTS parameter screen from a config file.",
+        targets=False,
+        common_params=(
+            Param(
+                "dts",
+                "path",
+                description="Path to DTS config file with optional.",
+            ),
+            Param(
+                "mesh",
+                "path",
+                description="Path to the input mesh file (.tsi, .q).",
+            ),
+            Param(
+                "output",
+                "path",
+                description="Output directory for the generated screen.",
             ),
         ),
     )

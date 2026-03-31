@@ -9,6 +9,19 @@ from qtpy.QtWidgets import (
 )
 
 
+def toggle_dock(dock, show):
+    """Show or hide a QDockWidget.
+
+    Parameters
+    ----------
+    dock : QDockWidget
+        The dock widget to toggle.
+    show : bool
+        *True* to show, *False* to hide.
+    """
+    dock.setVisible(show)
+
+
 class VerticalScrollArea(QScrollArea):
     def sizeHint(self):
         """Return size hint based on contained widget, with reasonable defaults."""

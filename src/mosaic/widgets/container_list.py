@@ -327,7 +327,6 @@ class ContainerTreeWidget(QFrame):
         """
         items = []
 
-        # Collect all items with their metadata
         for i in range(self.tree_widget.topLevelItemCount()):
             item = self.tree_widget.topLevelItem(i)
             items.append((item, None, i))
@@ -550,9 +549,31 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
         Whether the item is editable
     """
 
-    def __init__(self, text, visible=True, metadata=None, parent=None, editable=False):
+    def __init__(
+        self,
+        text=None,
+        visible=True,
+        metadata=None,
+        parent=None,
+        editable=False,
+        geometry=None,
+    ):
 
-        super().__init__(parent, [text])
+        self._geometry = geometry
+        if geometry is not None:
+            if text is None:
+                text = geometry._meta.get("name", "")
+            if metadata is None:
+                metadata = {
+                    "item_type": geometry.geometry_type,
+                    "name": text,
+                    "uuid": geometry.uuid,
+                }
+
+        super().__init__(parent, [text or ""])
+
+        if geometry is not None:
+            super().setData(0, Qt.ItemDataRole.UserRole, geometry)
 
         self.original_color = self.foreground(0)
         self.visible_color = QColor(99, 102, 241)
@@ -618,6 +639,12 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
             index, column, value = args
         else:
             return None
+        if (
+            index == 0
+            and column in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole)
+            and self._geometry is not None
+        ):
+            self._geometry._meta["name"] = value
         return super().setData(index, column, value)
 
     def data(self, *args):
@@ -627,6 +654,12 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
             index, column = args
         else:
             return None
+        if (
+            index == 0
+            and column == Qt.ItemDataRole.DisplayRole
+            and self._geometry is not None
+        ):
+            return self._geometry._meta.get("name", "")
         return super().data(index, column)
 
 
@@ -648,7 +681,6 @@ class MetadataItemDelegate(QStyledItemDelegate):
             option.rect.height() - 4,
         )
 
-        # Draw hover/selection background
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         if option.state & QStyle.StateFlag.State_Selected:
@@ -661,7 +693,6 @@ class MetadataItemDelegate(QStyledItemDelegate):
             painter.drawRoundedRect(content_rect, 6, 6)
         painter.restore()
 
-        # Draw icon
         icon_size = 20
         icon = index.data(Qt.ItemDataRole.DecorationRole)
         if icon and not icon.isNull():
@@ -673,7 +704,6 @@ class MetadataItemDelegate(QStyledItemDelegate):
             )
             icon.paint(painter, icon_rect)
 
-        # Draw text
         painter.save()
         text = index.data(Qt.ItemDataRole.DisplayRole)
         if isinstance(item, StyledTreeWidgetItem) and not item.visible:

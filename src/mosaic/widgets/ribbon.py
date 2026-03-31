@@ -35,7 +35,6 @@ class SettingsPanel(QFrame):
 
         self.method_widgets, self.current_method_widgets = {}, []
 
-        # Frameless popup window
         self.setWindowFlags(
             Qt.WindowType.Popup
             | Qt.WindowType.FramelessWindowHint
@@ -43,7 +42,6 @@ class SettingsPanel(QFrame):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
-        # Disable QFrame's default border drawing
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setLineWidth(0)
 
@@ -55,14 +53,12 @@ class SettingsPanel(QFrame):
         self.main_layout.setSpacing(0)
         self.main_layout.setContentsMargins(8, 0, 8, 8)
 
-        # Content container
         content = QWidget()
         content.setObjectName("settingsPanelContent")
         content_layout = QVBoxLayout(content)
         content_layout.setSpacing(10)
         content_layout.setContentsMargins(12, 12, 12, 12)
 
-        # Title
         title_text = self.config.get("title", "")
         if title_text:
             title = QLabel(title_text)
@@ -78,7 +74,6 @@ class SettingsPanel(QFrame):
         self.settings_form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
         self.settings_form.setContentsMargins(0, 0, 0, 0)
 
-        # Check for method selector
         offset, self.method_combo = 0, None
         if self.config.get("settings"):
             base_settings = self.config["settings"][0]
@@ -115,7 +110,6 @@ class SettingsPanel(QFrame):
 
         content_layout.addStretch()
 
-        # Apply button - uses platform palette colors
         apply_btn = QPushButton("Apply")
         apply_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         apply_btn.setStyleSheet(QPushButton_style)
@@ -143,7 +137,6 @@ class SettingsPanel(QFrame):
         if self.method_row_start is None:
             return
 
-        # Remove existing method-specific rows
         while self.settings_form.rowCount() > self.method_row_start:
             self.settings_form.removeRow(self.method_row_start)
 

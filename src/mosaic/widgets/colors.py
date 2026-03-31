@@ -1,7 +1,7 @@
 """
 Widgets for visualization of color maps.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -70,6 +70,9 @@ def generate_gradient_colors(cmap_name: str, n_colors: int = 10) -> List[QColor]
     """Generate a list of QColors from a matplotlib colormap."""
     from ..utils import get_cmap
 
+    # When using this function in an animated widget its a good idea to pre
+    # import get_cmap to avoid stutter
+
     cmap = get_cmap(cmap_name)
     count = min(n_colors, cmap.N)
 
@@ -131,7 +134,6 @@ class ColormapMenuItem(QWidget):
             self.cmap_name,
         )
 
-        # Draw gradient preview
         gradient_rect = QRect(rect.width() - 108, 5, 100, rect.height() - 10)
         colors = generate_gradient_colors(self.cmap_name, 10)
 
@@ -242,7 +244,6 @@ class ColorMapSelector(QPushButton):
             max(font_metrics.horizontalAdvance(n) for n in all_names) + padding
         )
 
-        # Draw colormap name with proper left padding
         text_rect = QRect(padding, 0, text_area_width, rect.height())
         painter.setPen(self.palette().text().color())
         painter.drawText(
@@ -251,7 +252,6 @@ class ColorMapSelector(QPushButton):
             self._current_cmap,
         )
 
-        # Draw gradient preview filling the remaining space
         gradient_left = text_area_width + spacing
         gradient_width = rect.width() - gradient_left - padding
         gradient_rect = QRect(
@@ -296,7 +296,6 @@ class ColorSwatch(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Draw color fill
         r, g, b = [int(c * 255) for c in self.color]
         painter.setBrush(QColor(r, g, b))
 
@@ -351,7 +350,6 @@ class ColorPickerRow(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        # Label
         label_widget = QLabel(label)
         label_widget.setStyleSheet(
             f"""
@@ -363,7 +361,6 @@ class ColorPickerRow(QWidget):
         )
         layout.addWidget(label_widget)
 
-        # Swatches row
         swatches_layout = QHBoxLayout()
         swatches_layout.setContentsMargins(0, 0, 0, 0)
         swatches_layout.setSpacing(6)
@@ -376,7 +373,6 @@ class ColorPickerRow(QWidget):
 
         swatches_layout.addStretch()
 
-        # Custom color button
         self.custom_btn = QPushButton("Custom")
         self.custom_btn.setIcon(qta.icon("ph.eyedropper", color=Colors.ICON))
         self.custom_btn.setStyleSheet(QPushButton_style)

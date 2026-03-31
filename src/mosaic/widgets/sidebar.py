@@ -76,7 +76,6 @@ class ObjectBrowserSidebar(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Header section with title and search
         self.header = QWidget()
         self.header.setObjectName("sidebarHeader")
         header_layout = QVBoxLayout(self.header)
@@ -94,7 +93,6 @@ class ObjectBrowserSidebar(QWidget):
         header_layout.addStretch()
         main_layout.addWidget(self.header)
 
-        # Content scroll area
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
@@ -103,7 +101,6 @@ class ObjectBrowserSidebar(QWidget):
         )
         self.scroll_area.setObjectName("scrollArea")
 
-        # Content widget
         self.content_widget = QWidget()
         self.content_widget.setMinimumWidth(100)
         self.content_layout = QVBoxLayout(self.content_widget)
@@ -220,7 +217,6 @@ class ObjectBrowserSidebar(QWidget):
 
     def add_widget(self, section_id: str, title: str, widget: QWidget) -> QWidget:
         """Add a widget wrapped in a section with header to the sidebar."""
-        # Add separator line if this is not the first section
         if len(self.sections) > 0:
             separator = QFrame()
             separator.setFrameShape(QFrame.Shape.HLine)
@@ -241,7 +237,6 @@ class ObjectBrowserSidebar(QWidget):
         section = ObjectBrowserSidebarSection(title)
         widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        # Remove any border styling from the container widget
         widget.setStyleSheet("QFrame { border: none; border-bottom: none; }")
 
         section.addWidget(widget)

@@ -1,7 +1,7 @@
 """
 Distance-based cropping dialog for filtering points by proximity.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -116,12 +116,10 @@ class DistanceCropDialog(QDialog):
 
         main_layout.addWidget(ref_panel, 1)
 
-        # Settings panel
         settings_group = QGroupBox("Settings")
         settings_layout = QVBoxLayout(settings_group)
         settings_layout.setSpacing(8)
 
-        # Distance input row
         distance_layout = QHBoxLayout()
         distance_label = QLabel("Max Distance:")
         distance_layout.addWidget(distance_label)
@@ -137,7 +135,6 @@ class DistanceCropDialog(QDialog):
         distance_layout.addWidget(self.distance_input)
         settings_layout.addLayout(distance_layout)
 
-        # Direction radio buttons row
         direction_layout = QHBoxLayout()
         direction_label = QLabel("Keep:")
         direction_layout.addWidget(direction_label)
@@ -164,7 +161,6 @@ class DistanceCropDialog(QDialog):
 
         main_layout.addWidget(settings_group)
 
-        # Footer with Preview, Cancel, and Crop buttons
         footer = QFrame()
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(0, 8, 0, 0)
@@ -223,12 +219,10 @@ class DistanceCropDialog(QDialog):
         """Populate the reference tree with both clusters and models (flat, no groups)."""
         self.ref_tree.tree_widget.clear()
 
-        # Add clusters
         for name, obj in self.cdata.format_datalist("data"):
             item = StyledTreeWidgetItem(name, obj.visible, {"object": obj, **obj._meta})
             self.ref_tree.tree_widget.addTopLevelItem(item)
 
-        # Add models
         for name, obj in self.cdata.format_datalist("models"):
             item = StyledTreeWidgetItem(name, obj.visible, {"object": obj, **obj._meta})
             self.ref_tree.tree_widget.addTopLevelItem(item)
@@ -242,13 +236,11 @@ class DistanceCropDialog(QDialog):
             Dictionary with sources, targets, distance, keep_smaller keys,
             or None if validation fails.
         """
-        # Get sources from tree widget
         sources = []
         for item in self.crop_tree.selected_items():
             if "object" in item.metadata:
                 sources.append(item.metadata["object"])
 
-        # Get targets from reference tree
         targets = []
         for item in self.ref_tree.selected_items():
             if "object" in item.metadata:

@@ -171,11 +171,9 @@ class TimelineContent(QWidget):
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRoundedRect(track_rect, radius, radius)
 
-            # Draw left accent border
             accent_rect = QRect(int(x), track_y, 3, self.track_height - 10)
             painter.fillRect(accent_rect, track_color)
 
-            # Draw track name with track color
             if width > 40:
                 painter.setPen(track_color)
                 text_rect = QRect(
@@ -187,7 +185,6 @@ class TimelineContent(QWidget):
                     track.animation.name,
                 )
 
-            # Draw remove button if visible
             remove_x = int(end_x - self.remove_button_size - 5)
             remove_y = track_y + (self.track_height - 10 - self.remove_button_size) // 2
             if start_x < remove_x < self.width():

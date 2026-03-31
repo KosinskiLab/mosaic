@@ -230,7 +230,6 @@ class ImportDataDialog(QDialog):
         layout.addLayout(button_layout)
         self.setLayout(layout)
 
-        # Set fixed widths for labels
         max_label_width = max(
             scale_label.sizeHint().width(),
             offset_label.sizeHint().width(),

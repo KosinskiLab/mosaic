@@ -4,7 +4,7 @@ Cross-platform file dialog wrappers.
 The native file dialog on macOS omits the window title text, which can be
 confusing for users. These wrappers ensure consistent behavior across platforms.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -29,7 +29,13 @@ def _configure_dialog(dialog, use_native: bool = True):
         dialog.setOptions(
             QFileDialog.DontUseCustomDirectoryIcons | QFileDialog.DontUseNativeDialog
         )
-    dialog.setStyleSheet(QPushButton_style)
+    _inline_edit = """
+        QTreeView QLineEdit, QListView QLineEdit {
+            background: white;
+            padding: 0px 4px;
+        }
+    """
+    dialog.setStyleSheet(QPushButton_style + _inline_edit)
 
 
 def getExistingDirectory(
