@@ -26,4 +26,5 @@ from .container_list import (
     StyledTreeWidgetItem,
 )
 from .status_indicator import StatusIndicator, CursorModeHandler, ViewerModes
+from .appsettings import AppSettingsPanel
 from .settings import *

@@ -242,24 +242,20 @@ def _flush_messages():
         title = "Operation Warning" if is_warning else "Operation Failed"
 
         if len(items) == 1:
-            name, detail = items[0]
+            name, msg = items[0]
             text = f"{name.replace('_', ' ').title()} "
             text += "completed with warnings" if is_warning else "failed"
+            text += f"\n\n{msg}" if msg else ""
         else:
-            text = f"{len(items)} tasks "
-            text += "completed with warnings" if is_warning else "failed"
-            detail = "\n".join(f"{n}: {m}" for n, m in items[:20])
+            suffix = "completed with warnings" if is_warning else "failed"
+            lines = [f"{len(items)} tasks {suffix}\n"]
+            for n, m in items[:20]:
+                lines.append(f"  {n}: {m}" if m else f"  {n}")
             if len(items) > 20:
-                detail += f"\n... and {len(items) - 20} more"
+                lines.append(f"  ... and {len(items) - 20} more")
+            text = "\n".join(lines)
 
-        msg_box = QMessageBox()
-        msg_box.setIcon(icon)
-        msg_box.setWindowTitle(title)
-        msg_box.setText(text)
-        msg_box.setDetailedText(detail)
-        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-        msg_box.setSizeGripEnabled(True)
-        msg_box.exec()
+        QMessageBox(icon, title, text, QMessageBox.StandardButton.Ok).exec()
 
 
 class BackgroundTaskManager(QObject):

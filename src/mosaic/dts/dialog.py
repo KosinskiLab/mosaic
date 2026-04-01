@@ -262,7 +262,7 @@ class DTSScreeningDialog(QDialog):
 
         if not statuses:
             self._overview_table.setRowCount(0)
-            self._status_label.setText("No screen data found.")
+            self._status_label.setText("No DTS runs found.")
             return
 
         param_keys = sorted({k for s in statuses for k in s["parameters"].keys()})
@@ -295,13 +295,13 @@ class DTSScreeningDialog(QDialog):
                 self._overview_table.setItem(row, col_idx, _make_item(val))
 
             status_col = len(param_keys) + 1
-            is_done = status["status"] == "done"
-            if is_done:
-                indicator = "\u25cf Done"
+            is_available = status["status"] == "available"
+            if is_available:
+                indicator = "\u25cf Available"
                 done_count += 1
                 style_color = Colors.SUCCESS
             else:
-                indicator = "\u25cb Pend."
+                indicator = "\u25cb Pending"
                 style_color = Colors.NEUTRAL
 
             status_item = _make_item(indicator)
@@ -326,7 +326,7 @@ class DTSScreeningDialog(QDialog):
             import_btn.setFixedSize(22, 22)
             import_btn.setToolTip("Import trajectory into viewer")
             import_btn.setFlat(True)
-            import_btn.setEnabled(is_done)
+            import_btn.setEnabled(is_available)
             import_btn.clicked.connect(
                 functools.partial(self._import_run_trajectory, run_id)
             )
@@ -355,10 +355,21 @@ class DTSScreeningDialog(QDialog):
     def _on_overview_selection_changed(self):
         self._analysis_panel._update_plot()
 
+    def _resolve_run_dir(self, run_id: str) -> Path:
+        """Resolve the filesystem path for a run ID.
+
+        Handles both screen directories (run_id is a subdirectory) and single
+        trajectory directories (the screen_dir itself is the run).
+        """
+        candidate = Path(self._screen_dir) / run_id
+        if candidate.is_dir():
+            return candidate
+        return Path(self._screen_dir)
+
     def _open_run_dir(self, run_id: str):
         if self._screen_dir is None:
             return
-        run_dir = Path(self._screen_dir) / run_id
+        run_dir = self._resolve_run_dir(run_id)
         if not run_dir.exists():
             return
         from qtpy.QtGui import QDesktopServices
@@ -369,7 +380,7 @@ class DTSScreeningDialog(QDialog):
     def _import_run_trajectory(self, run_id: str):
         if self._screen_dir is None or self.cdata is None:
             return
-        run_dir = Path(self._screen_dir) / run_id
+        run_dir = self._resolve_run_dir(run_id)
 
         traj_dir = run_dir / "VTU_F"
         if not traj_dir.exists():

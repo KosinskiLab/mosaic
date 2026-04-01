@@ -13,7 +13,6 @@ _module_map = {
         "generate_screen",
         "extend_screen",
         "get_screen_status",
-        "run_status",
     ],
     ".analysis": [
         "parse_time_series",

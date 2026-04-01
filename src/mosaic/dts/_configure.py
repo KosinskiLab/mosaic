@@ -368,7 +368,7 @@ class ConfigurePanel(QScrollArea):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(6)
 
-        self._generate_btn = QPushButton("Generate Screen")
+        self._generate_btn = QPushButton("Setup")
         self._generate_btn.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
         self._generate_btn.clicked.connect(self._run_screen)
         btn_row.addWidget(self._generate_btn)
@@ -852,10 +852,6 @@ class ConfigurePanel(QScrollArea):
             offset = np.array([0.0, 0.0, 0.0])
 
         return scale_factor, offset
-
-    def get_screen_param_keys(self) -> list:
-        """Return all registered screening parameter keys."""
-        return list(self._screen_cbs.keys())
 
     def update_preview_plot(self, *_args):
         """Redraw the parameter-space preview scatter plot."""
