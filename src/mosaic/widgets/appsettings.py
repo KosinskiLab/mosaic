@@ -430,10 +430,8 @@ class AppSettingsPanel(QFrame):
             decimals=0,
         )
         self._workers_slider.setToolTip("Maximum number of parallel background tasks")
-        self._workers_slider.valueChanged.connect(
-            lambda v: self._update_setting(
-                Settings.rendering, "parallel_worker", int(v)
-            )
+        self._connect_slider(
+            self._workers_slider, Settings.rendering, "parallel_worker", int
         )
         layout.addWidget(self._workers_slider)
 
@@ -513,9 +511,7 @@ class AppSettingsPanel(QFrame):
         self._lod_points_slider.setToolTip(
             "Number of points in the level-of-detail cloud"
         )
-        self._lod_points_slider.valueChanged.connect(
-            lambda v: self._update_setting(Settings.vtk, "lod_points", int(v))
-        )
+        self._connect_slider(self._lod_points_slider, Settings.vtk, "lod_points", int)
         lod_layout.addWidget(self._lod_points_slider)
 
         self._lod_size_slider = SliderRow(
@@ -528,8 +524,8 @@ class AppSettingsPanel(QFrame):
         self._lod_size_slider.setToolTip(
             "Pixel size of points in the level-of-detail cloud"
         )
-        self._lod_size_slider.valueChanged.connect(
-            lambda v: self._update_setting(Settings.vtk, "lod_points_size", int(v))
+        self._connect_slider(
+            self._lod_size_slider, Settings.vtk, "lod_points_size", int
         )
         lod_layout.addWidget(self._lod_size_slider)
 
@@ -538,7 +534,7 @@ class AppSettingsPanel(QFrame):
         section.addWidget(self._lod_container)
 
         self._fps_slider = SliderRow(
-            "Frame Rate",
+            "Target Frame Rate",
             min_val=1,
             max_val=144,
             default=Settings.rendering.target_fps,
@@ -546,9 +542,7 @@ class AppSettingsPanel(QFrame):
             suffix=" fps",
         )
         self._fps_slider.setToolTip("Target rendering frame rate for the VTK viewport")
-        self._fps_slider.valueChanged.connect(
-            lambda v: self._update_setting(Settings.rendering, "target_fps", float(v))
-        )
+        self._connect_slider(self._fps_slider, Settings.rendering, "target_fps", float)
         section.addWidget(self._fps_slider)
 
         self._body_layout.addWidget(section)
@@ -603,8 +597,8 @@ class AppSettingsPanel(QFrame):
         self._multisamples_slider.setToolTip(
             "Hardware multi-sample anti-aliasing (0 = disabled)"
         )
-        self._multisamples_slider.valueChanged.connect(
-            lambda v: self._update_setting(Settings.rendering, "multisamples", int(v))
+        self._connect_slider(
+            self._multisamples_slider, Settings.rendering, "multisamples", int
         )
         section.addWidget(self._multisamples_slider)
 
@@ -655,10 +649,8 @@ class AppSettingsPanel(QFrame):
         self._max_peels_slider.setToolTip(
             "Maximum number of transparency layers to resolve"
         )
-        self._max_peels_slider.valueChanged.connect(
-            lambda v: self._update_setting(
-                Settings.rendering, "max_depth_peels", int(v)
-            )
+        self._connect_slider(
+            self._max_peels_slider, Settings.rendering, "max_depth_peels", int
         )
         dp_detail_layout.addWidget(self._max_peels_slider)
 
@@ -672,10 +664,8 @@ class AppSettingsPanel(QFrame):
         self._occlusion_slider.setToolTip(
             "Allowed occlusion ratio before stopping depth peeling"
         )
-        self._occlusion_slider.valueChanged.connect(
-            lambda v: self._update_setting(
-                Settings.rendering, "occlusion_ratio", float(v)
-            )
+        self._connect_slider(
+            self._occlusion_slider, Settings.rendering, "occlusion_ratio", float
         )
         dp_detail_layout.addWidget(self._occlusion_slider)
 
@@ -690,9 +680,20 @@ class AppSettingsPanel(QFrame):
         self._dp_detail_container.setVisible(checked)
         self._update_setting(Settings.rendering, "use_depth_peeling", checked)
 
-    def _update_setting(self, category, attr, value):
+    def _set_setting(self, category, attr, value):
+        """Update a setting value without emitting settingsChanged."""
         setattr(category, attr, value)
+
+    def _update_setting(self, category, attr, value):
+        self._set_setting(category, attr, value)
         self.settingsChanged.emit()
+
+    def _connect_slider(self, slider, category, attr, cast=float):
+        """Connect a SliderRow: live updates on drag, signal on release."""
+        slider.valueChanged.connect(
+            lambda v: self._set_setting(category, attr, cast(v))
+        )
+        slider.valueCommitted.connect(lambda _: self.settingsChanged.emit())
 
     def _reset_settings(self):
         Settings.reset_to_defaults("vtk")

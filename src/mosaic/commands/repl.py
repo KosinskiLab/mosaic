@@ -237,36 +237,75 @@ class MosaicREPL:
         self._save_readline_history()
 
     def execute(self, line: str):
-        """Execute a single command line.
+        """Execute one or more semicolon-separated commands.
 
         Parameters
         ----------
         line : str
-            Raw command text.
+            Raw command text. Multiple commands can be separated by
+            semicolons (e.g. ``"open file.star; cluster @last"``).
 
         Returns
         -------
         str or rich renderable
             Command output (may be empty).
-
-        Raises
-        ------
-        ValueError
-            If the command text has a syntax error.
-        Exception
-            If the command handler raises.
         """
-        line = _SUBST_RE.sub(self._subst_inner, line)
+        outputs = []
+        for cmd in self._split_commands(line):
+            try:
+                cmd = _SUBST_RE.sub(self._subst_inner, cmd)
+                parsed = parse_command(cmd)
+                if parsed is None:
+                    continue
 
-        parsed = parse_command(line)
-        if parsed is None:
-            return ""
+                self.session.log_command(cmd)
+                self._append_log(cmd)
 
-        self.session.log_command(line)
-        self._append_log(line)
+                result = CommandRegistry.dispatch(self.session, parsed)
+                if result:
+                    if isinstance(result, str):
+                        outputs.append(result)
+                    else:
+                        outputs.append(render_to_text(result))
+            except Exception as exc:
+                outputs.append(render_to_text(_error_panel(str(exc))))
+        return "\n".join(outputs) if outputs else ""
 
-        result = CommandRegistry.dispatch(self.session, parsed)
-        return result or ""
+    @staticmethod
+    def _split_commands(line: str) -> list:
+        """Split a command line on semicolons, respecting quoted strings.
+
+        Parameters
+        ----------
+        line : str
+            Raw input potentially containing semicolons.
+
+        Returns
+        -------
+        list of str
+            Individual command strings.
+        """
+        commands = []
+        current = []
+        in_quote = None
+        for char in line:
+            if char in ('"', "'") and in_quote is None:
+                in_quote = char
+                current.append(char)
+            elif char == in_quote:
+                in_quote = None
+                current.append(char)
+            elif char == ";" and in_quote is None:
+                part = "".join(current).strip()
+                if part:
+                    commands.append(part)
+                current = []
+            else:
+                current.append(char)
+        part = "".join(current).strip()
+        if part:
+            commands.append(part)
+        return commands if commands else [line.strip()]
 
     def _subst_inner(self, match: re.Match) -> str:
         """Handle ``$(...)`` substitution, converting renderables to text."""

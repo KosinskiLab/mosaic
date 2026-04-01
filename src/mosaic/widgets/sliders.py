@@ -27,6 +27,7 @@ class SliderRow(QWidget):
     """A row with label, slider, and value display."""
 
     valueChanged = Signal(float)
+    valueCommitted = Signal(float)
 
     def __init__(
         self,
@@ -69,6 +70,7 @@ class SliderRow(QWidget):
         self.slider.setMaximum(self.steps)
         self.slider.setValue(self._value_to_slider(default))
         self.slider.valueChanged.connect(self._on_slider_changed)
+        self.slider.sliderReleased.connect(self._on_slider_released)
 
         self.value_label = QLabel()
         self.value_label.setStyleSheet("QLabel { min-width: 45px; text-align: right;}")
@@ -121,6 +123,10 @@ class SliderRow(QWidget):
         value = self._slider_to_value(pos)
         self._update_value_label(value)
         self.valueChanged.emit(value)
+
+    def _on_slider_released(self):
+        """Emit committed value when user releases the slider handle."""
+        self.valueCommitted.emit(self._slider_to_value(self.slider.value()))
 
     def value(self) -> float:
         """Get the current value."""

@@ -12,7 +12,11 @@ import argparse
 def main():
     parser = argparse.ArgumentParser(description="Mosaic interactive shell")
     parser.add_argument("script", nargs="?", help="Script file to execute")
-    parser.add_argument("-c", "--command", help="Execute a single command")
+    parser.add_argument(
+        "-c",
+        "--command",
+        help="Execute command(s), semicolon-separated",
+    )
     parser.add_argument("--log", metavar="PATH", help="Log commands to a file")
     args = parser.parse_args()
 
