@@ -7,6 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 __all__ = [
+    "AXIS_COLORS",
     "LegendWidget",
     "ScaleBarWidget",
     "AxesWidget",
@@ -22,7 +23,8 @@ from vtk import (
     vtkAxesActor,
     vtkOrientationMarkerWidget,
 )
-from qtpy.QtWidgets import QMessageBox
+
+AXIS_COLORS = ((0.8, 0.2, 0.2), (0.26, 0.65, 0.44), (0.2, 0.4, 0.8))
 
 
 class LegendWidget:
@@ -297,6 +299,8 @@ class BoundingBoxManager:
     def _create_session_bounds(self):
         """Create session bounds from cdata.shape"""
         if not hasattr(self.cdata, "shape") or self.cdata.shape is None:
+            from qtpy.QtWidgets import QMessageBox
+
             QMessageBox.warning(
                 None,
                 "Session Bound Unavailable",
@@ -381,13 +385,9 @@ class AxesWidget:
 
     def set_colored(self, colored: bool):
         self.colored = colored
-
-        colors = [(0.5, 0.5, 0.5)] * 3
-        if self.colored:
-            colors = [(0.8, 0.2, 0.2), (0.26, 0.65, 0.44), (0.2, 0.4, 0.8)]
+        colors = [(0.5, 0.5, 0.5)] * 3 if not colored else AXIS_COLORS
 
         for index, axis in enumerate(["X", "Y", "Z"]):
-            # Color both shaft and tip for a cohesive modern look
             tip_prop = getattr(self.axes_actor, f"Get{axis}AxisTipProperty")()
             tip_prop.SetColor(*colors[index])
             shaft_prop = getattr(self.axes_actor, f"Get{axis}AxisShaftProperty")()
