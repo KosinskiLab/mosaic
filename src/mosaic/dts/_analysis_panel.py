@@ -117,7 +117,7 @@ class AnalysisPanel(QWidget):
         add_metric_btn.clicked.connect(self._show_compute_dialog)
 
         self._norm_combo = QComboBox()
-        self._norm_combo.addItems(["None", "Per-run", "Global"])
+        self._norm_combo.addItems(["None", "Per-run", "Global", "Relative"])
         self._norm_combo.currentTextChanged.connect(self._update_plot)
 
         lbl_metric = QLabel("Metric:")
@@ -239,7 +239,9 @@ class AnalysisPanel(QWidget):
         if self._screen_results is None:
             return []
         return [
-            r["run_id"] for r in self._screen_results["runs"] if r["status"] == "done"
+            r["run_id"]
+            for r in self._screen_results["runs"]
+            if r["status"] == "available"
         ]
 
     def _get_run_dict(self, run_id: str) -> dict:
@@ -399,19 +401,48 @@ class AnalysisPanel(QWidget):
 
         dlg.exec()
 
-    def _submit_distance(self, ref_name: str, metric: str):
-        from ..dts import compute_trajectory_distance
+    def _submit_computation(self, task_label: str, compute_fn, **kwargs):
+        """Submit a computation across all selected runs.
+
+        Common boilerplate for distance, fluctuation, and property tasks.
+        """
         from ..parallel import submit_task
 
-        if not ref_name:
+        scale_factor, offset = self._get_mesh_transform()
+        run_ids = self._selected_run_ids()
+
+        if not run_ids:
+            return QMessageBox.warning(self, "Error", "No available runs found.")
+
+        for run_id in run_ids:
+            run = self._get_run_dict(run_id)
+            run_dir = run.get("run_dir")
+            if not run_dir:
+                continue
+
+            traj_dir = Path(run_dir) / "TrajTSI"
+            if not traj_dir.exists():
+                continue
+
+            submit_task(
+                f"{task_label} ({run_id})",
+                compute_fn,
+                lambda _result: self._reload_results(),
+                trajectory_dir=str(traj_dir),
+                scale_factor=scale_factor,
+                offset=offset,
+                output_dir=run_dir,
+                **kwargs,
+            )
+
+    def _submit_distance(self, ref_name: str, metric: str):
+        from ..dts import compute_trajectory_distance
+
+        if not ref_name or self.cdata is None:
             return QMessageBox.warning(self, "Error", "Select a reference model.")
 
-        if self.cdata is None:
-            return
-
-        refs = self.cdata.format_datalist("models", mesh_only=True)
         ref_geom = None
-        for label, geom in refs:
+        for label, geom in self.cdata.format_datalist("models", mesh_only=True):
             if label == ref_name:
                 ref_geom = geom
                 break
@@ -419,108 +450,34 @@ class AnalysisPanel(QWidget):
         if ref_geom is None:
             return QMessageBox.warning(self, "Error", "Reference geometry not found.")
 
-        scale_factor, offset = self._get_mesh_transform()
-        run_ids = self._selected_run_ids()
-
-        if not run_ids:
-            return QMessageBox.warning(self, "Error", "No completed runs found.")
-
-        for run_id in run_ids:
-            run = self._get_run_dict(run_id)
-            run_dir = run.get("run_dir")
-            if not run_dir:
-                continue
-
-            traj_dir = Path(run_dir) / "TrajTSI"
-            if not traj_dir.exists():
-                continue
-
-            def _on_done(result, _rid=run_id):
-                self._reload_results()
-
-            submit_task(
-                f"Distance ({run_id})",
-                compute_trajectory_distance,
-                _on_done,
-                trajectory_dir=str(traj_dir),
-                reference_points=ref_geom.points,
-                scale_factor=scale_factor,
-                offset=offset,
-                metric=metric,
-                reference_label=ref_name,
-                output_dir=run_dir,
-            )
+        self._submit_computation(
+            "Distance",
+            compute_trajectory_distance,
+            reference_points=ref_geom.points,
+            metric=metric,
+            reference_label=ref_name,
+        )
 
     def _submit_fluctuation(self, window=5, start_frame=None, end_frame=None):
         from ..dts import compute_vertex_fluctuation
-        from ..parallel import submit_task
 
-        scale_factor, offset = self._get_mesh_transform()
-        run_ids = self._selected_run_ids()
-
-        if not run_ids:
-            return QMessageBox.warning(self, "Error", "No completed runs found.")
-
-        for run_id in run_ids:
-            run = self._get_run_dict(run_id)
-            run_dir = run.get("run_dir")
-            if not run_dir:
-                continue
-
-            traj_dir = Path(run_dir) / "TrajTSI"
-            if not traj_dir.exists():
-                continue
-
-            def _on_done(result, _rid=run_id):
-                self._reload_results()
-
-            submit_task(
-                f"RMSF ({run_id})",
-                compute_vertex_fluctuation,
-                _on_done,
-                trajectory_dir=str(traj_dir),
-                scale_factor=scale_factor,
-                offset=offset,
-                window=window,
-                start_frame=start_frame,
-                end_frame=end_frame,
-                output_dir=run_dir,
-            )
+        self._submit_computation(
+            "RMSF",
+            compute_vertex_fluctuation,
+            window=window,
+            start_frame=start_frame,
+            end_frame=end_frame,
+        )
 
     def _submit_property(self, property_name: str, **kwargs):
         from ..dts import compute_trajectory_property
-        from ..parallel import submit_task
 
-        scale_factor, offset = self._get_mesh_transform()
-        run_ids = self._selected_run_ids()
-
-        if not run_ids:
-            return QMessageBox.warning(self, "Error", "No completed runs found.")
-
-        for run_id in run_ids:
-            run = self._get_run_dict(run_id)
-            run_dir = run.get("run_dir")
-            if not run_dir:
-                continue
-
-            traj_dir = Path(run_dir) / "TrajTSI"
-            if not traj_dir.exists():
-                continue
-
-            def _on_done(result, _rid=run_id):
-                self._reload_results()
-
-            submit_task(
-                f"{property_name} ({run_id})",
-                compute_trajectory_property,
-                _on_done,
-                trajectory_dir=str(traj_dir),
-                property_name=property_name,
-                scale_factor=scale_factor,
-                offset=offset,
-                output_dir=run_dir,
-                **kwargs,
-            )
+        self._submit_computation(
+            property_name,
+            compute_trajectory_property,
+            property_name=property_name,
+            **kwargs,
+        )
 
     def _reload_results(self):
         """Re-read results from disk and refresh the panel."""
@@ -591,6 +548,8 @@ class AnalysisPanel(QWidget):
                 y = (y - np.min(y)) / (np.max(y) - np.min(y) + 1e-12)
             elif norm_mode == "Global":
                 y = (y - global_min) / global_range
+            elif norm_mode == "Relative" and len(y) > 0 and abs(y[0]) > 1e-12:
+                y = y / y[0]
 
             color = colors[i % len(colors)]
             pen_color = pg.mkColor(color.red(), color.green(), color.blue())

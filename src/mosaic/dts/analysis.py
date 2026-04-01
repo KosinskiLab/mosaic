@@ -188,12 +188,12 @@ def parse_run_time_series(run_dir: str) -> List[Dict]:
 
 
 def load_screen_results(screen_dir: str) -> Dict:
-    """Load all results from a screen directory.
+    """Load all results from a screen, trajectory collection, or single run.
 
     Parameters
     ----------
     screen_dir : str
-        Path to screen directory.
+        Path to a screen directory, trajectory collection, or single run.
 
     Returns
     -------
@@ -201,20 +201,29 @@ def load_screen_results(screen_dir: str) -> Dict:
         Dictionary with parameter_names, runs list (each with run_id, params,
         time_series as list of series dicts, status).
     """
+    from .screening import get_screen_status
+
+    statuses = get_screen_status(screen_dir)
+    if not statuses:
+        return {"parameter_names": [], "runs": []}
+
     screen_path = Path(screen_dir)
     summary_path = screen_path / "screen_summary.json"
 
-    if not summary_path.exists():
-        return {"parameter_names": [], "runs": []}
-
-    with open(summary_path, "r") as f:
-        summary = json.load(f)
+    parameter_names = []
+    if summary_path.exists():
+        with open(summary_path, "r") as f:
+            summary = json.load(f)
+        parameter_names = summary.get("parameters", [])
 
     runs = []
-    for run_info in summary["runs"]:
-        run_dir = screen_path / run_info["run_id"]
+    for entry in statuses:
+        run_id = entry["run_id"]
+        run_dir = screen_path / run_id
+        if not run_dir.exists():
+            run_dir = screen_path
 
-        params = run_info.get("parameters", {})
+        params = entry.get("parameters", {})
         params_file = run_dir / "params.json"
         if params_file.exists():
             with open(params_file, "r") as f:
@@ -222,20 +231,18 @@ def load_screen_results(screen_dir: str) -> Dict:
 
         time_series = parse_run_time_series(str(run_dir))
 
-        status = run_status(run_dir)
-
         runs.append(
             {
-                "run_id": run_info["run_id"],
+                "run_id": run_id,
                 "params": params,
                 "time_series": time_series,
-                "status": status,
+                "status": entry["status"],
                 "run_dir": str(run_dir),
             }
         )
 
     return {
-        "parameter_names": summary.get("parameters", []),
+        "parameter_names": parameter_names,
         "runs": runs,
     }
 

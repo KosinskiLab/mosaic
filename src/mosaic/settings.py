@@ -182,6 +182,7 @@ class SettingsManager:
                 "rendering": RenderingSettings,
                 "ui": UISettings,
                 "widgets": WidgetSettings,
+                "vtk": vtkActorSettings,
             }
 
             if cat not in dataclass_map:

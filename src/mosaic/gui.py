@@ -59,7 +59,6 @@ from .dialogs import (
     TiltControlDialog,
     ImportDataDialog,
     ProgressDialog,
-    AppSettingsDialog,
 )
 from .widgets import (
     MultiVolumeViewer,
@@ -395,7 +394,13 @@ class App(QMainWindow):
             float(x) for x in Settings.rendering.background_color_alt
         ]
 
-        self.renderer.GradientBackgroundOff()
+        if Settings.rendering.use_gradient_background:
+            self.renderer.SetBackground2(
+                *[float(x) for x in Settings.rendering.background_color_alt]
+            )
+            self.renderer.GradientBackgroundOn()
+        else:
+            self.renderer.GradientBackgroundOff()
         self.renderer.SetUseDepthPeeling(Settings.rendering.use_depth_peeling)
         self.renderer.SetOcclusionRatio(Settings.rendering.occlusion_ratio)
         self.renderer.SetMaximumNumberOfPeels(Settings.rendering.max_depth_peels)
@@ -649,6 +654,9 @@ class App(QMainWindow):
         )
 
         self.status_indicator.connect_signals()
+        self.status_indicator.appearance_panel.settingsChanged.connect(
+            self.apply_render_settings
+        )
 
         self._setup_trajectory_player()
 
@@ -972,7 +980,8 @@ class App(QMainWindow):
         view_menu.addMenu(bbox_menu)
         view_menu.addSeparator()
 
-        show_settings = QAction("Appearance", self)
+        show_settings = QAction("Appearance\tCtrl+,", self)
+        show_settings.setShortcut("Ctrl+,")
         show_settings.triggered.connect(self.show_app_settings)
         preference_menu.addAction(show_settings)
 
@@ -1200,10 +1209,7 @@ class App(QMainWindow):
         self.trajectory_dock.setVisible(False)
 
     def show_app_settings(self):
-        dialog = AppSettingsDialog(self)
-        dialog.settingsChanged.connect(self.apply_render_settings)
-        if dialog.exec() == 1:
-            return self.apply_render_settings()
+        self.status_indicator.toggle_appearance_panel()
 
     def _load_session(self, file_path: str):
         self.close_session(render=False)

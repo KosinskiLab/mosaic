@@ -522,6 +522,11 @@ class StatusIndicator:
         self.current_target = "Clusters"
 
         self.task_monitor = TaskMonitorPanel(self.main_window)
+
+        from .appsettings import AppSettingsPanel
+
+        self.appearance_panel = AppSettingsPanel(self.main_window)
+
         self._setup_status_bar()
         self.update_status()
         StatusIndicator._instance = self
@@ -676,6 +681,29 @@ class StatusIndicator:
         status_bar.addPermanentWidget(self.spinner)
         status_bar.addPermanentWidget(self.task_button)
 
+        self.gear_button = QPushButton()
+        self.gear_button.setIcon(qta.icon("ph.gear", color=Colors.ICON_MUTED))
+        self.gear_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.gear_button.setFlat(True)
+        # TODO: Check how this feels
+        # self.gear_button.setFixedSize(24, 24)
+        self.gear_button.setStyleSheet(
+            f"""
+            QPushButton {{ padding: 0px; margin: 0px; border-radius: 4px; }}
+            QPushButton:hover {{
+                background: {Colors.BG_HOVER};
+                border: 1px solid rgba(0, 0, 0, 0.08);
+            }}
+            QPushButton:pressed {{
+                background: {Colors.BG_PRESSED};
+                border: 1px solid rgba(0, 0, 0, 0.12);
+            }}
+            QPushButton:focus {{ outline: none; }}
+        """
+        )
+        self.gear_button.clicked.connect(self._show_appearance_panel)
+        status_bar.addPermanentWidget(self.gear_button)
+
         self.spinner.stop()
 
     def update_status(
@@ -756,6 +784,30 @@ class StatusIndicator:
     def hide(self, *args, **kwargs):
         self.visible = False
         self.main_window.statusBar().hide()
+
+    def _show_appearance_panel(self):
+        if self.appearance_panel.isVisible():
+            self.appearance_panel.hide()
+            return
+
+        # Position flush above the status bar, right-aligned
+        status_bar = self.main_window.statusBar()
+        bar_top_right = status_bar.mapToGlobal(status_bar.rect().topRight())
+        panel = self.appearance_panel
+        x = bar_top_right.x() - panel.width()
+        y = bar_top_right.y() - panel.height()
+
+        # Clamp to screen bounds
+        x = max(0, x)
+        y = max(0, y)
+
+        panel.move(x, y)
+        panel.show()
+        panel.raise_()
+
+    def toggle_appearance_panel(self):
+        """Toggle the appearance settings panel visibility."""
+        self._show_appearance_panel()
 
 
 class CursorModeHandler:

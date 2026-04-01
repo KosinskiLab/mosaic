@@ -24,8 +24,6 @@ __all__ = [
     "generate_screen",
     "extend_screen",
     "get_screen_status",
-    "run_status",
-    "write_launcher_scripts",
 ]
 
 
@@ -33,10 +31,17 @@ _SENTINEL = ".done"
 
 
 def run_status(run_dir: Path) -> str:
-    """Return ``"done"`` if energy xvg or .res files exist, else ``"pending"``."""
+    """Return ``"available"`` if trajectory output exists, else ``"pending"``."""
+    run_dir = Path(run_dir)
     if (run_dir / "dts-en.xvg").exists():
-        return "done"
-    return "done" if list(run_dir.glob("*.res")) else "pending"
+        return "available"
+    if (run_dir / "TrajTSI").is_dir() and any((run_dir / "TrajTSI").iterdir()):
+        return "available"
+    if (run_dir / "VTU_F").is_dir() and any((run_dir / "VTU_F").iterdir()):
+        return "available"
+    if list(run_dir.glob("*.res")):
+        return "available"
+    return "pending"
 
 
 def _filter_single_volume(
@@ -759,35 +764,89 @@ def extend_screen(screen_dir: str, new_screen_params: Dict[str, str]) -> Dict:
     }
 
 
+def _is_run_directory(path: Path) -> bool:
+    """Return True if *path* looks like a DTS run directory."""
+    if not path.is_dir():
+        return False
+    return (
+        (path / "dts-en.xvg").exists()
+        or (path / "TrajTSI").is_dir()
+        or (path / "VTU_F").is_dir()
+        or bool(list(path.glob("*.res")))
+        or (path / "input.dts").exists()
+    )
+
+
 def get_screen_status(screen_dir: str) -> List[Dict]:
-    """Check status of all runs in a screen directory.
+    """Check status of all runs in a screen or trajectory directory.
+
+    Supports three modes:
+    - Screen directory (has ``screen_summary.json``): returns runs with parameters.
+    - Directory of trajectories: subdirectories that are DTS runs.
+    - Single trajectory: the directory itself is a DTS run.
 
     Parameters
     ----------
     screen_dir : str
-        Screen directory path.
+        Path to a screen directory, trajectory collection, or single run.
 
     Returns
     -------
     list of dict
         Each dict has run_id, parameters, status.
     """
-    summary_path = Path(screen_dir) / "screen_summary.json"
-    if not summary_path.exists():
-        return []
+    root = Path(screen_dir)
+    summary_path = root / "screen_summary.json"
 
-    with open(summary_path, "r") as f:
-        summary = json.load(f)
+    if summary_path.exists():
+        with open(summary_path, "r") as f:
+            summary = json.load(f)
 
-    results = []
-    for run_info in summary["runs"]:
-        run_dir = Path(screen_dir) / run_info["run_id"]
-        results.append(
+        results = []
+        for run_info in summary["runs"]:
+            run_dir = root / run_info["run_id"]
+            results.append(
+                {
+                    "run_id": run_info["run_id"],
+                    "parameters": run_info["parameters"],
+                    "status": run_status(run_dir),
+                }
+            )
+        return results
+
+    if _is_run_directory(root):
+        params = {}
+        params_file = root / "params.json"
+        if params_file.exists():
+            with open(params_file, "r") as f:
+                params = json.load(f)
+        return [
             {
-                "run_id": run_info["run_id"],
-                "parameters": run_info["parameters"],
-                "status": run_status(run_dir),
+                "run_id": root.name,
+                "parameters": params,
+                "status": run_status(root),
             }
-        )
+        ]
 
-    return results
+    subdirs = sorted(
+        [d for d in root.iterdir() if _is_run_directory(d)],
+        key=lambda d: d.name,
+    )
+    if subdirs:
+        results = []
+        for d in subdirs:
+            params = {}
+            params_file = d / "params.json"
+            if params_file.exists():
+                with open(params_file, "r") as f:
+                    params = json.load(f)
+            results.append(
+                {
+                    "run_id": d.name,
+                    "parameters": params,
+                    "status": run_status(d),
+                }
+            )
+        return results
+
+    return []
