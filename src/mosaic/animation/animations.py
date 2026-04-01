@@ -60,6 +60,14 @@ class BaseAnimation(ABC):
 
     def update_parameters(self, **kwargs) -> None:
         """Update parameter settings and handle associated depencies"""
+        if "data_start" in kwargs or "data_stop" in kwargs:
+            data_start = kwargs.get("data_start", self.parameters.get("data_start", 0))
+            data_stop = kwargs.get(
+                "data_stop",
+                self.parameters.get("data_stop", self.stop_frame),
+            )
+            self._base_duration = max(1, data_stop - data_start)
+            self.stop_frame = max(1, int(self._base_duration / self.rate))
         self.parameters.update(**kwargs)
 
     def reset(self) -> None:
@@ -167,15 +175,6 @@ class TrajectoryAnimation(BaseAnimation):
             self._base_duration = data_range
             self.stop_frame = data_range
 
-        if "data_start" in kwargs or "data_stop" in kwargs:
-            data_start = kwargs.get("data_start", self.parameters.get("data_start", 0))
-            data_stop = kwargs.get(
-                "data_stop",
-                self.parameters.get("data_stop", self.stop_frame),
-            )
-            self._base_duration = max(1, data_stop - data_start)
-            self.stop_frame = max(1, int(self._base_duration / self.rate))
-
         return super().update_parameters(**kwargs)
 
     def get_settings(self) -> List[Dict[str, Any]]:
@@ -213,7 +212,6 @@ class TrajectoryAnimation(BaseAnimation):
 
     def _update(self, frame: int) -> None:
         if not hasattr(self, "_trajectory"):
-            print("No trajectory associated with object")
             return None
 
         progress = self._get_progress(frame)
@@ -337,16 +335,7 @@ class VolumeAnimation(BaseAnimation):
             self.stop_frame = data_range
             kwargs["axis"] = new_axis.upper()
 
-        if "data_start" in kwargs or "data_stop" in kwargs:
-            data_start = kwargs.get("data_start", self.parameters.get("data_start", 0))
-            data_stop = kwargs.get(
-                "data_stop",
-                self.parameters.get("data_stop", self.stop_frame),
-            )
-            self._base_duration = max(1, data_stop - data_start)
-            self.stop_frame = max(1, int(self._base_duration / self.rate))
-
-        self.parameters.update(**kwargs)
+        super().update_parameters(**kwargs)
 
     def _update(self, frame: int) -> None:
         progress = self._get_progress(frame)
@@ -653,8 +642,8 @@ class VisibilityAnimation(BaseAnimation):
                 selected_objects = dialog.get_selected_objects()
                 self.update_parameters(selected_objects=selected_objects)
 
-        except Exception as e:
-            print(f"Error opening object selection dialog: {e}")
+        except Exception:
+            pass
 
         return False
 
@@ -670,8 +659,8 @@ class VisibilityAnimation(BaseAnimation):
 
             actors = [all_objects[x].actor for x in object_ids if x in all_objects]
 
-        except Exception as e:
-            print(f"Error getting actors for object IDs: {e}")
+        except Exception:
+            pass
 
         return actors
 

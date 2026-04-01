@@ -24,7 +24,7 @@ from qtpy.QtWidgets import (
     QMessageBox,
     QApplication,
 )
-from qtpy.QtGui import QFont, QTextCursor, QPainter, QColor
+from qtpy.QtGui import QTextCursor, QPainter, QColor
 import qtawesome as qta
 
 from ..stylesheets import Colors, QPushButton_style, QScrollArea_style

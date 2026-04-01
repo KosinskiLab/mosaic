@@ -694,33 +694,6 @@ def read_mrc_flat(filepath):
         return data, grid, spacing, axis_order
 
 
-def load_volume_data(filepath, max_cluster=10000):
-    """Load a volume with sanity checks rejecting density volumes.
-
-    Returns
-    -------
-    tuple
-        ``(data, spacing)``.
-
-    Raises
-    ------
-    ValueError
-        If the data looks like a density rather than a segmentation.
-    """
-    density = load_density(filepath, use_memmap=False)
-    data = density.data
-    spacing = np.asarray(density.sampling_rate, dtype=np.float32)
-
-    rng = np.random.default_rng()
-    sample = data.flat[rng.integers(0, data.size, size=min(125_000, data.size))]
-    if len(np.unique(sample)) > max_cluster:
-        raise ValueError(
-            f"Found {len(np.unique(sample))} unique values (max: {max_cluster}). "
-            "Make sure you are opening a segmentation."
-        )
-    return data, spacing
-
-
 def points_from_flat_array(arr, dims, spacing, max_cluster=10000):
     """Extract per-label point clouds from a flat voxel array.
 

@@ -868,7 +868,7 @@ MethodRegistry.register(
             Param(
                 "dts",
                 "path",
-                description="Path to DTS config file with optional.",
+                description="Path to DTS config file with.",
             ),
             Param(
                 "mesh",
