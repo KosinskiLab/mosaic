@@ -339,6 +339,9 @@ class BackgroundTaskManager(QObject):
 
         self.running_tasks.emit(len(self.futures))
 
+        if hasattr(self, "timer"):
+            self.timer.start(500)
+
     def _shutdown(self):
         """Clean shutdown of executors and queues."""
         if hasattr(self, "timer"):

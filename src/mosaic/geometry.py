@@ -16,6 +16,7 @@ from vtk.util import numpy_support
 
 from .actor import create_actor
 from .utils import normals_to_rot, apply_quat, NORMAL_REFERENCE
+from .widgets.vtk_widgets import AXIS_COLORS
 
 
 __all__ = [
@@ -112,15 +113,14 @@ class GeometryData:
     @property
     def points(self) -> np.ndarray:
         pts = self.polydata.GetPoints()
-        if pts is None or pts.GetNumberOfPoints() == 0:
+        if pts is None or self.get_number_of_points() == 0:
             return np.empty((0, 3), dtype=np.float32)
         return numpy_support.vtk_to_numpy(pts.GetData())
 
     @points.setter
     def points(self, value):
         if value is None:
-            self.polydata.SetPoints(None)
-            return
+            return self.polydata.SetPoints(None)
         value = np.asarray(value, dtype=np.float32)
         vtk_pts = vtk.vtkPoints()
         vtk_pts.SetDataTypeToFloat()
@@ -133,14 +133,13 @@ class GeometryData:
     def normals(self) -> Optional[np.ndarray]:
         n = self.polydata.GetPointData().GetNormals()
         if n is None or n.GetNumberOfTuples() == 0:
-            return None
+            return np.full((self.get_number_of_points(), 3), NORMAL_REFERENCE)
         return numpy_support.vtk_to_numpy(n)
 
     @normals.setter
     def normals(self, value):
         if value is None:
-            self.polydata.GetPointData().SetNormals(None)
-            return
+            return self.polydata.GetPointData().SetNormals(None)
         value = np.asarray(value, dtype=np.float32)
         vtk_arr = numpy_support.numpy_to_vtk(value, deep=False)
         vtk_arr.SetName("Normals")
@@ -157,8 +156,7 @@ class GeometryData:
     @quaternions.setter
     def quaternions(self, value):
         if value is None:
-            self.polydata.GetPointData().RemoveArray("OrientationQuaternion")
-            return
+            return self.polydata.GetPointData().RemoveArray("OrientationQuaternion")
         value = np.asarray(value, dtype=np.float32)
         vtk_arr = numpy_support.numpy_to_vtk(value, deep=False)
         vtk_arr.SetName("OrientationQuaternion")
@@ -859,7 +857,11 @@ class Geometry:
         Notes
         -----
         Data in scalars can be invalidated during this operation.
+        No-op when in basis representation to preserve per-axis coloring.
         """
+        if self._representation == "basis":
+            return None
+
         scalars = np.asarray(scalars).ravel()
         if scalars.size == 1:
             scalars = np.full(
@@ -1167,43 +1169,56 @@ class Geometry:
                 print("Quaternions are required for basis representation.")
                 return -1
 
-            arrow_x = vtk.vtkArrowSource()
-            arrow_y = vtk.vtkArrowSource()
-            arrow_z = vtk.vtkArrowSource()
-            for arrow in [arrow_x, arrow_y, arrow_z]:
-                arrow.SetTipResolution(6)
-                arrow.SetShaftResolution(6)
-                arrow.SetTipRadius(0.08)
-                arrow.SetShaftRadius(0.02)
+            arrow = vtk.vtkArrowSource()
+            arrow.SetTipResolution(6)
+            arrow.SetShaftResolution(6)
+            arrow.SetTipRadius(0.08)
+            arrow.SetShaftRadius(0.02)
 
-            transform_x = vtk.vtkTransform()
-            transform_x.RotateY(-90)
-            transform_filter_x = vtk.vtkTransformPolyDataFilter()
-            transform_filter_x.SetInputConnection(arrow_x.GetOutputPort())
-            transform_filter_x.SetTransform(transform_x)
-            transform_filter_x.Update()
+            # One arrow per axis, oriented by quaternion
+            n_pts = self.get_number_of_points()
+            directions = np.empty((n_pts * 3, 3), dtype=np.float32)
+            for i, axis in enumerate(np.eye(3)):
+                directions[i::3] = apply_quat(self.quaternions, axis)
 
-            transform_y = vtk.vtkTransform()
-            transform_y.RotateZ(90)
-            transform_filter_y = vtk.vtkTransformPolyDataFilter()
-            transform_filter_y.SetInputConnection(arrow_y.GetOutputPort())
-            transform_filter_y.SetTransform(transform_y)
-            transform_filter_y.Update()
+            basis_data = vtk.vtkPolyData()
+            vtk_pts = vtk.vtkPoints()
+            vtk_pts.SetData(
+                numpy_support.numpy_to_vtk(
+                    np.repeat(self.points, 3, axis=0).astype(np.float32),
+                    deep=True,
+                )
+            )
+            basis_data.SetPoints(vtk_pts)
 
-            append_filter = vtk.vtkAppendPolyData()
-            append_filter.AddInputConnection(transform_filter_x.GetOutputPort())
-            append_filter.AddInputConnection(transform_filter_y.GetOutputPort())
-            append_filter.AddInputConnection(arrow_z.GetOutputPort())
-            append_filter.Update()
+            vtk_dirs = numpy_support.numpy_to_vtk(directions, deep=True)
+            vtk_dirs.SetName("Directions")
+            basis_data.GetPointData().AddArray(vtk_dirs)
+
+            axis_idx = np.tile(np.arange(3, dtype=np.float32), n_pts)
+            basis_data.GetPointData().SetScalars(
+                numpy_support.numpy_to_vtk(axis_idx, deep=True)
+            )
+
+            lut = vtk.vtkLookupTable()
+            lut.SetNumberOfTableValues(3)
+            lut.SetRange(0.0, 2.0)
+            for i, color in enumerate(AXIS_COLORS):
+                lut.SetTableValue(i, *color, 1.0)
+            lut.Build()
 
             mapper = vtk.vtkGlyph3DMapper()
-            mapper.SetInputData(self._data)
-            mapper.SetSourceData(append_filter.GetOutput())
-            mapper.SetOrientationArray("OrientationQuaternion")
-            mapper.SetOrientationModeToQuaternion()
+            mapper.SetInputData(basis_data)
+            mapper.SetSourceConnection(arrow.GetOutputPort())
+            mapper.SetOrientationArray("Directions")
+            mapper.SetOrientationModeToDirection()
             mapper.SetScaleFactor(scale)
             mapper.SetScaleModeToNoDataScaling()
             mapper.OrientOn()
+            mapper.SetLookupTable(lut)
+            mapper.SetScalarRange(0.0, 2.0)
+            mapper.SetScalarVisibility(True)
+            mapper.SetColorModeToMapScalars()
 
             self._actor.SetMapper(mapper)
 
