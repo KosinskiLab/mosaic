@@ -348,10 +348,6 @@ class SettingsToolButton(QToolButton):
         super().mousePressEvent(event)
 
 
-# Keep SettingsMenu as alias for backward compatibility
-SettingsMenu = SettingsPanel
-
-
 class RibbonToolBar(QToolBar):
     def __init__(self, parent=None):
         super().__init__(parent)

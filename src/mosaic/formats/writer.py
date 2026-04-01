@@ -1,21 +1,11 @@
-import re
 import json
-import struct
 import pickle
 from typing import Dict
 from datetime import datetime, timezone
 
 import numpy as np
 
-from ._utils import get_extension
-
-_HEADER_STRUCT = struct.Struct(">I")
-
-
-def _sanitize_filename(name):
-    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
-    name = re.sub(r"\s+", "_", name).strip(". ")
-    return name or "unnamed"
+from ._utils import get_extension, _HEADER_STRUCT
 
 
 class OrientationsWriter:

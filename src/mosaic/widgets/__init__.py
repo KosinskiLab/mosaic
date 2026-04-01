@@ -9,7 +9,6 @@ from .colors import (
     ColorSwatch,
     ColorPickerRow,
     ColorMapSelector,
-    ColorMapSelector,
     generate_gradient_colors,
 )
 from .volume_viewer import MultiVolumeViewer, VolumeViewer

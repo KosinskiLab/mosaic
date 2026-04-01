@@ -29,6 +29,7 @@ class DialogFooter(QFrame):
             info.setStyleSheet(HelpLabel_style)
             info_label = QLabel(info_text)
             info_label.setStyleSheet(HelpLabel_style)
+            self.info_label = info_label
 
             layout.addWidget(info)
             layout.addWidget(info_label)

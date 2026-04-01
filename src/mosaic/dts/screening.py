@@ -29,6 +29,9 @@ __all__ = [
 ]
 
 
+_SENTINEL = ".done"
+
+
 def run_status(run_dir: Path) -> str:
     """Return ``"done"`` if energy xvg or .res files exist, else ``"pending"``."""
     if (run_dir / "dts-en.xvg").exists():
@@ -432,6 +435,7 @@ def _write_run_script(run_dir: Path, params: Dict, mesh_name: str = "") -> None:
         #!/bin/bash
 
         cd "$(dirname "$0")"
+        rm -f {_SENTINEL}
         rm -rf VTU_F TrajTSI
         mkdir -p TrajTSI
         {symlink_line}
@@ -440,7 +444,8 @@ def _write_run_script(run_dir: Path, params: Dict, mesh_name: str = "") -> None:
         $DTS_CMD -in input.dts \\
             -top ../topol.top \\
             -nt {threads} \\
-            -seed 76532
+            -seed 76532 \\
+            && touch {_SENTINEL}
         """
     )
     with open(run_dir / "run.sh", "w", encoding="utf-8") as f:
@@ -608,17 +613,26 @@ def write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
         Screen summary with ``runs`` and ``total_runs`` keys.
     """
     local_script = textwrap.dedent(
-        """\
+        f"""\
         #!/bin/bash
         set -euo pipefail
 
-        SCREEN_DIR="${SCREEN_DIR:-$(cd "$(dirname "$0")" && pwd)}"
-        mapfile -t RUNS < <(find "$SCREEN_DIR" -path '*/run_*/run.sh' | sort)
+        SCREEN_DIR="${{SCREEN_DIR:-$(cd "$(dirname "$0")" && pwd)}}"
+        mapfile -t ALL < <(find "$SCREEN_DIR" -path '*/run_*/run.sh' | sort)
+
+        RUNS=()
+        for script in "${{ALL[@]}}"; do
+            [[ -f "$(dirname "$script")/{_SENTINEL}" ]] && continue
+            RUNS+=("$script")
+        done
+
+        echo "${{#RUNS[@]}}/${{#ALL[@]}} runs pending"
+        [[ ${{#RUNS[@]}} -eq 0 ]] && exit 0
 
         if command -v parallel &>/dev/null; then
-            printf '%s\\n' "${RUNS[@]}" | parallel --bar bash {}
+            printf '%s\\n' "${{RUNS[@]}}" | parallel --bar bash {{}}
         else
-            for script in "${RUNS[@]}"; do
+            for script in "${{RUNS[@]}}"; do
                 echo "Running $script"
                 bash "$script"
             done
@@ -649,14 +663,22 @@ def write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
         MAX_ARRAY=1000
 
         SCREEN_DIR="{output_dir}"
-        mapfile -t RUNS < <(find "$SCREEN_DIR" -path '*/run_*/run.sh' | sort)
+        mapfile -t ALL < <(find "$SCREEN_DIR" -path '*/run_*/run.sh' | sort)
+
+        RUNS=()
+        for script in "${{ALL[@]}}"; do
+            [[ -f "$(dirname "$script")/{_SENTINEL}" ]] && continue
+            RUNS+=("$script")
+        done
         N=${{#RUNS[@]}}
 
-        # When run by SLURM, execute the assigned task
         if [[ -n "${{SLURM_ARRAY_TASK_ID:-}}" ]]; then
             OFFSET=${{SLURM_OFFSET:-0}}
             exec bash "${{RUNS[$((SLURM_ARRAY_TASK_ID + OFFSET))]}}"
         fi
+
+        echo "$N/${{#ALL[@]}} runs pending"
+        [[ $N -eq 0 ]] && exit 0
 
         # Otherwise, submit self in chunks
         for (( START=0; START<N; START+=MAX_ARRAY )); do

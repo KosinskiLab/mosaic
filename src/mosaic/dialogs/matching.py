@@ -510,9 +510,10 @@ class TemplateMatchingDialog(QDialog):
             margin=(0, 10, 0, 0),
         )
         self.layout.addWidget(self.footer)
+        self.tabs.currentChanged.connect(self._update_help_text)
         self.setStyleSheet(QTabBar_style + QPushButton_style + QScrollArea_style)
 
-    def update_help_text(self, index):
+    def _update_help_text(self, index):
         help_texts = [
             "Define target tomogram and template structures",
             "Create a template for template matching",
@@ -520,7 +521,7 @@ class TemplateMatchingDialog(QDialog):
             "Set up peak calling for candidate detection",
             "Configure computing resources and output",
         ]
-        self.help_text.setText(help_texts[index])
+        self.footer.info_label.setText(help_texts[index])
 
     def accept(self):
         data = self.input_tab.get_settings()

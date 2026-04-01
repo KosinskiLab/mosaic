@@ -33,7 +33,7 @@ def _load_density_header(filename: str):
     except Exception as e:
         print(e)
         density = load_density(filename)
-        return density.data.shape, density.sampling_rat
+        return density.data.shape, density.sampling_rate
 
 
 class ImportDataDialog(QDialog):

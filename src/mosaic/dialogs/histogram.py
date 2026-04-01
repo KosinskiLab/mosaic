@@ -136,7 +136,7 @@ class HistogramWidget(QWidget):
 
         if self.data.size == 0:
             try:
-                return self.plot_widget.clear()
+                return self.histogram_plot.clear()
             except Exception:
                 return None
         return self._draw_histogram()

@@ -505,10 +505,48 @@ class ConfigurePanel(QScrollArea):
                 self._param_widgets["use_filters"].checkState().value
             )
 
+    def _reset_fields(self):
+        """Reset all dialog fields to their defaults."""
+        for widget in self._param_widgets.values():
+            widget.blockSignals(True)
+            if isinstance(widget, QCheckBox):
+                widget.setChecked(False)
+            elif isinstance(widget, QLineEdit):
+                widget.clear()
+            elif isinstance(widget, QComboBox):
+                widget.setCurrentIndex(0)
+            elif hasattr(widget, "setValue"):
+                widget.setValue(widget.minimum())
+            widget.blockSignals(False)
+
+        self._volume_screen_cb.blockSignals(True)
+        self._volume_screen_cb.setChecked(False)
+        self._volume_screen_cb.blockSignals(False)
+        self._volume_path.set_path("")
+
+        for cb in self._screen_cbs.values():
+            cb.blockSignals(True)
+            cb.setChecked(False)
+            cb.blockSignals(False)
+        for rng in self._screen_ranges.values():
+            rng.blockSignals(True)
+            rng.clear()
+            rng.blockSignals(False)
+
+        for widgets in self._coupling_widgets.values():
+            widgets["checkbox"].blockSignals(True)
+            widgets["checkbox"].setChecked(False)
+            widgets["checkbox"].blockSignals(False)
+
+        self._extra_config_edit.clear()
+        self._set_hmff_volume_visible(False)
+
     def _load_dts_file(self, path: str):
         """Parse an existing DTS file and populate dialog fields."""
         if not path or not Path(path).exists():
             return
+
+        self._reset_fields()
 
         content = Path(path).read_text(encoding="utf-8")
         known, extra_lines = self._parse_dts_content(content)
@@ -540,8 +578,11 @@ class ConfigurePanel(QScrollArea):
 
         if "volume_path" in known:
             vol = known["volume_path"]
+            self._volume_screen_cb.blockSignals(True)
             if isinstance(vol, list):
                 self._volume_screen_cb.setChecked(True)
+                self._volume_path.set_mode("files")
+            self._volume_screen_cb.blockSignals(False)
             self._volume_path.set_path(vol)
         if "invert_contrast" in known:
             set_widget_value(
@@ -727,12 +768,18 @@ class ConfigurePanel(QScrollArea):
             self._volume_path.path_input.setPlaceholderText("Volume file (.mrc)")
         self._on_volume_changed("")
 
-    def _on_volume_changed(self, _text: str):
-        paths = self._volume_path.get_path()
-        if isinstance(paths, list):
-            has_volume = bool(paths) and all(Path(p).exists() for p in paths)
+    def _get_volume_state(self):
+        """Return (volume, use_hmff) from the current volume path widget."""
+        volume_value = get_widget_value(self._volume_path)
+        if isinstance(volume_value, list):
+            volumes = [v for v in volume_value if v]
+            volume = volumes if len(volumes) > 1 else (volumes[0] if volumes else "")
         else:
-            has_volume = bool(paths) and Path(paths).exists()
+            volume = str(volume_value or "")
+        return volume, bool(volume)
+
+    def _on_volume_changed(self, _text: str):
+        has_volume = bool(self._volume_path.get_path())
         for w in (self._screen_stacks["xi"], self._screen_cbs["xi"]):
             w.setEnabled(has_volume)
         self._set_hmff_volume_visible(has_volume)
@@ -948,14 +995,7 @@ class ConfigurePanel(QScrollArea):
                 return "{{" + f"{key}:{screen_params[key]}" + "}}"
             return get_widget_value(self._param_widgets[key])
 
-        volume_value = get_widget_value(self._volume_path)
-        if isinstance(volume_value, list):
-            volumes = [v for v in volume_value if v and Path(v).exists()]
-            volume = volumes if len(volumes) > 1 else (volumes[0] if volumes else "")
-        else:
-            volume = str(volume_value or "")
-
-        use_hmff = bool(volume) and (isinstance(volume, list) or Path(volume).exists())
+        volume, use_hmff = self._get_volume_state()
         multi_volume = isinstance(volume, list) and len(volume) > 1
 
         if multi_volume:
@@ -1068,14 +1108,7 @@ class ConfigurePanel(QScrollArea):
 
         dts_content = self._build_dts_content()
 
-        volume_value = get_widget_value(self._volume_path)
-        if isinstance(volume_value, list):
-            volumes = [v for v in volume_value if v and Path(v).exists()]
-            volume = volumes if len(volumes) > 1 else (volumes[0] if volumes else "")
-        else:
-            volume = str(volume_value or "")
-
-        use_hmff = bool(volume) and (isinstance(volume, list) or Path(volume).exists())
+        volume, use_hmff = self._get_volume_state()
 
         def _on_done(result):
             if isinstance(result, dict):
