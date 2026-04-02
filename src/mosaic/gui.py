@@ -220,6 +220,10 @@ class App(QMainWindow):
         self._import_overlay.drag_ended.connect(self._end_drag)
         self._volume_overlay.drag_ended.connect(self._end_drag)
 
+    def closeEvent(self, event):
+        BackgroundTaskManager.instance()._shutdown()
+        super().closeEvent(event)
+
     def _toggle_volume_dock(self, checked: bool):
         toggle_dock(self.volume_dock, checked)
 
@@ -424,7 +428,27 @@ class App(QMainWindow):
             ActorFactory().update_from_settings()
             self.cdata.refresh_actors()
 
-        BackgroundTaskManager.instance()._initialize()
+        btm = BackgroundTaskManager.instance()
+        target_workers = int(Settings.rendering.parallel_worker)
+        if btm.num_workers != target_workers:
+            if btm.futures:
+                from qtpy.QtWidgets import QMessageBox
+
+                ret = QMessageBox.question(
+                    self,
+                    "Active Tasks",
+                    f"{len(btm.futures)} task(s) still running. "
+                    "Changing worker count will cancel them. Continue?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                )
+                if ret != QMessageBox.StandardButton.Yes:
+                    Settings.rendering.parallel_worker = btm.num_workers
+                    panel = self.status_indicator.appearance_panel
+                    panel._workers_slider.blockSignals(True)
+                    panel._workers_slider.setValue(btm.num_workers)
+                    panel._workers_slider.blockSignals(False)
+                    return
+            btm._initialize()
 
     def _animate_tab_indicator(self, btn):
         """Animate the tab indicator to the given button."""

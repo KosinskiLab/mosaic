@@ -163,7 +163,7 @@ class CollapsibleSection(QWidget):
         self._header.setStyleSheet(
             f"""
             QPushButton {{
-                font-weight: 600;
+                font-weight: 500;
                 text-align: left;
                 padding: 0;
                 border: none;
@@ -219,6 +219,7 @@ def _checkbox_row(label_text: str, checked: bool, tooltip: str = ""):
     layout.setSpacing(12)
 
     label = QLabel(f"{label_text}:")
+    label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
     cb = QCheckBox()
     cb.setChecked(checked)
 
@@ -242,7 +243,7 @@ def _checkbox_row(label_text: str, checked: bool, tooltip: str = ""):
 def _section_label(text):
     """Create a section label for grouping related controls."""
     lbl = QLabel(text)
-    lbl.setStyleSheet("QLabel { font-weight: 600; }")
+    lbl.setStyleSheet("QLabel { font-weight: 500; }")
     return lbl
 
 
@@ -391,7 +392,9 @@ class AppSettingsPanel(QFrame):
         grad_layout = QHBoxLayout(grad_row)
         grad_layout.setContentsMargins(0, 0, 0, 0)
         grad_layout.setSpacing(12)
-        grad_layout.addWidget(QLabel("Gradient:"), 0, Qt.AlignmentFlag.AlignVCenter)
+        grad_label = QLabel("Gradient:")
+        grad_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
+        grad_layout.addWidget(grad_label, 0, Qt.AlignmentFlag.AlignVCenter)
         grad_layout.addStretch(1)
         self._gradient_check = QCheckBox()
         self._gradient_check.setChecked(Settings.rendering.use_gradient_background)
@@ -609,6 +612,7 @@ class AppSettingsPanel(QFrame):
         smooth_layout.setSpacing(12)
 
         smooth_label = QLabel("Smoothing:")
+        smooth_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
         smooth_layout.addWidget(smooth_label, 0, Qt.AlignmentFlag.AlignVCenter)
         smooth_layout.addStretch(1)
 
@@ -690,6 +694,7 @@ class AppSettingsPanel(QFrame):
 
     def _connect_slider(self, slider, category, attr, cast=float):
         """Connect a SliderRow: live updates on drag, signal on release."""
+        slider.label_widget.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
         slider.valueChanged.connect(
             lambda v: self._set_setting(category, attr, cast(v))
         )

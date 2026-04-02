@@ -91,7 +91,7 @@ class DistanceCropDialog(QDialog):
         crop_description.setStyleSheet(HelpLabel_style)
         crop_layout.addWidget(crop_description)
 
-        self.crop_tree = ContainerTreeWidget(border=False)
+        self.crop_tree = ContainerTreeWidget()
         self.crop_tree.tree_widget.setSelectionMode(
             QTreeWidget.SelectionMode.ExtendedSelection
         )
@@ -108,7 +108,7 @@ class DistanceCropDialog(QDialog):
         ref_description.setStyleSheet(HelpLabel_style)
         ref_layout.addWidget(ref_description)
 
-        self.ref_tree = ContainerTreeWidget(border=False)
+        self.ref_tree = ContainerTreeWidget()
         self.ref_tree.tree_widget.setSelectionMode(
             QTreeWidget.SelectionMode.ExtendedSelection
         )

@@ -154,7 +154,7 @@ def _make_uuid_to_items(geometries):
 
 
 def _populate_list(geometries, tree_state=None):
-    target_list = ContainerTreeWidget(border=False)
+    target_list = ContainerTreeWidget()
     target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
 
     uuid_to_items = _make_uuid_to_items(geometries)

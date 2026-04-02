@@ -17,7 +17,6 @@ from abc import ABC, abstractmethod
 
 import igl
 import numpy as np
-import open3d as o3d
 from scipy import optimize, interpolate
 
 from . import meshing, utils
@@ -824,6 +823,8 @@ class TriangularMesh(Parametrization):
             self.mesh.remove_duplicated_vertices()
 
     def to_file(self, file_path):
+        import open3d as o3d
+
         o3d.io.write_triangle_mesh(file_path, self.mesh)
 
     def subset(self, idx):
@@ -841,6 +842,8 @@ class TriangularMesh(Parametrization):
 
     @classmethod
     def from_file(cls, file_path):
+        import open3d as o3d
+
         return cls(mesh=o3d.io.read_triangle_mesh(file_path), repair=False)
 
     def __getstate__(self):
@@ -855,6 +858,8 @@ class TriangularMesh(Parametrization):
         return {k: v.copy() for k, v in state.items()}
 
     def __setstate__(self, state):
+        import open3d as o3d
+
         mesh = meshing.to_open3d(state["vertices"], state["triangles"])
         attrs = ("vertex_normals", "vertex_colors", "triangle_normals")
         for attr in attrs:
@@ -912,12 +917,16 @@ class TriangularMesh(Parametrization):
         return _sample_from_mesh(mesh, n_samples, mesh_init_factor)
 
     def _setup_rayscene(self):
+        import open3d as o3d
+
         mesh = o3d.t.geometry.TriangleMesh.from_legacy(self.mesh)
         scene = o3d.t.geometry.RaycastingScene()
         scene_id = scene.add_triangles(mesh)
         return scene, scene_id
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
+        import open3d as o3d
+
         self.mesh.compute_triangle_normals()
 
         scene, _ = self._setup_rayscene()
@@ -1005,6 +1014,8 @@ class TriangularMesh(Parametrization):
         triangles : np.ndarray, optional
             Triangle indices hit by projection.
         """
+        import open3d as o3d
+
         self.mesh.compute_vertex_normals()
         self.mesh.compute_triangle_normals()
 
@@ -1297,6 +1308,8 @@ class BallPivoting(TriangularMesh):
         BallPivoting
             Reconstructed surface mesh.
         """
+        import open3d as o3d
+
         radii = np.asarray(radii).reshape(-1)
         radii = radii[radii > 0]
 
@@ -1413,6 +1426,8 @@ class PoissonMesh(TriangularMesh):
         PoissonMesh
             Reconstructed surface mesh.
         """
+        import open3d as o3d
+
         positions = np.asarray(positions, dtype=np.float64)
 
         pcd = o3d.geometry.PointCloud()
@@ -1513,6 +1528,8 @@ class AlphaShape(TriangularMesh):
         AlphaShape
             Reconstructed surface mesh.
         """
+        import open3d as o3d
+
         positions = np.asarray(positions, dtype=np.float64)
 
         scale = positions.max()

@@ -16,7 +16,6 @@ from os.path import join, basename
 from tempfile import TemporaryDirectory
 
 import numpy as np
-import open3d as o3d
 
 from .utils import merge_meshes, to_open3d
 
@@ -189,6 +188,8 @@ class MeshMerger:
         self.output_dir = output_dir
 
     def execute(self):
+        import open3d as o3d
+
         meshes = [o3d.io.read_triangle_mesh(x) for x in self._get_submeshes()]
 
         has_normals = all(m.has_vertex_normals() for m in meshes)
@@ -234,6 +235,8 @@ class MeshSimplifier:
         self.lod = lod
 
     def execute(self):
+        import open3d as o3d
+
         mesh = o3d.io.read_triangle_mesh(self.mesh_path)
         mesh = simplify_mesh(
             mesh,

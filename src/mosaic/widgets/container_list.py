@@ -85,7 +85,7 @@ class TreeStateData:
 class ContainerTreeWidget(QFrame):
     """Drop-in replacement for ContainerListWidget using QTreeWidget for grouping support."""
 
-    def __init__(self, title: str = None, border: bool = True):
+    def __init__(self, title: str = None):
         super().__init__()
         self.setFrameStyle(QFrame.Shape.NoFrame)
 
@@ -94,9 +94,6 @@ class ContainerTreeWidget(QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.title = title
-        app = QApplication.instance()
-        app.paletteChanged.connect(self.update_style)
-
         self.tree_widget = QTreeWidget()
         self.tree_widget.setHeaderHidden(True)
         self.tree_widget.setHorizontalScrollBarPolicy(
@@ -153,8 +150,6 @@ class ContainerTreeWidget(QFrame):
         )
 
         layout.addWidget(self.tree_widget)
-        if border:
-            self.update_style()
 
     def selected_items(self):
         # We specifically omit GroupTreeWidgetItem
@@ -163,17 +158,6 @@ class ContainerTreeWidget(QFrame):
             for item in self.tree_widget.selectedItems()
             if isinstance(item, StyledTreeWidgetItem)
         ]
-
-    def update_style(self):
-        return self.setStyleSheet(
-            """
-            QFrame {
-                background-color: transparent;
-                border: none;
-                border-bottom: 1px solid #6b7280;
-            }
-        """
-        )
 
     def to_state(self) -> TreeStateData:
         """Extract current tree structure as TreeStateData object."""
