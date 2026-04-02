@@ -222,54 +222,45 @@ class MosaicREPL:
             if line.lower() in ("exit", "quit"):
                 break
 
-            try:
-                output = self.execute(line)
-            except Exception as exc:
-                output = _error_panel(str(exc))
-            if output:
-                from rich.table import Table
-                from rich.columns import Columns
+            for cmd in self._split_commands(line):
+                try:
+                    output = self.execute(cmd)
+                except Exception as exc:
+                    output = _error_panel(str(exc))
+                if output:
+                    from rich.table import Table
+                    from rich.columns import Columns
 
-                if isinstance(output, (Table, Columns)):
-                    self._console.print()
-                self._console.print(output)
+                    if isinstance(output, (Table, Columns)):
+                        self._console.print()
+                    self._console.print(output)
 
         self._save_readline_history()
 
     def execute(self, line: str):
-        """Execute one or more semicolon-separated commands.
+        """Execute a single command line.
 
         Parameters
         ----------
         line : str
-            Raw command text. Multiple commands can be separated by
-            semicolons (e.g. ``"open file.star; cluster @last"``).
+            Raw command text.
 
         Returns
         -------
         str or rich renderable
             Command output (may be empty).
         """
-        outputs = []
-        for cmd in self._split_commands(line):
-            try:
-                cmd = _SUBST_RE.sub(self._subst_inner, cmd)
-                parsed = parse_command(cmd)
-                if parsed is None:
-                    continue
+        line = _SUBST_RE.sub(self._subst_inner, line)
 
-                self.session.log_command(cmd)
-                self._append_log(cmd)
+        parsed = parse_command(line)
+        if parsed is None:
+            return ""
 
-                result = CommandRegistry.dispatch(self.session, parsed)
-                if result:
-                    if isinstance(result, str):
-                        outputs.append(result)
-                    else:
-                        outputs.append(render_to_text(result))
-            except Exception as exc:
-                outputs.append(render_to_text(_error_panel(str(exc))))
-        return "\n".join(outputs) if outputs else ""
+        self.session.log_command(line)
+        self._append_log(line)
+
+        result = CommandRegistry.dispatch(self.session, parsed)
+        return result or ""
 
     @staticmethod
     def _split_commands(line: str) -> list:
@@ -352,15 +343,16 @@ class MosaicREPL:
             if not line:
                 continue
 
-            try:
-                output = self.execute(line)
-            except Exception as exc:
-                output = _error_panel(str(exc))
-            if output:
-                if isinstance(output, str):
-                    outputs.append(output)
-                else:
-                    outputs.append(render_to_text(output))
+            for cmd in self._split_commands(line):
+                try:
+                    output = self.execute(cmd)
+                except Exception as exc:
+                    output = _error_panel(str(exc))
+                if output:
+                    if isinstance(output, str):
+                        outputs.append(output)
+                    else:
+                        outputs.append(render_to_text(output))
         return "\n".join(outputs)
 
     def _print_banner(self) -> None:
