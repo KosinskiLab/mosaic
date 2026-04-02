@@ -533,7 +533,7 @@ class ActorSelectionDialog(QDialog):
             header.setStyleSheet("font-weight: 500; font-size: 12px;")
             layout.addWidget(header)
 
-            tree = ContainerTreeWidget(border=False)
+            tree = ContainerTreeWidget()
             tree.tree_widget.setSelectionMode(
                 QTreeWidget.SelectionMode.ExtendedSelection
             )

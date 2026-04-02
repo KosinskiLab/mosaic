@@ -594,7 +594,7 @@ class BatchNavigatorDialog(QWidget):
         self.search_widget = SearchWidget(placeholder="Search sessions...")
         self.search_widget.searchTextChanged.connect(self._filter_sessions)
 
-        self.session_list = ContainerListWidget(border=False)
+        self.session_list = ContainerListWidget()
         self.session_list.tree_widget.setSelectionMode(
             self.session_list.tree_widget.SelectionMode.SingleSelection
         )

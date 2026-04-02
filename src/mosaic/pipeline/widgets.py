@@ -314,7 +314,7 @@ class OperationCardWidget(QFrame):
             count_layout.addStretch()
             file_layout.addLayout(count_layout)
 
-            self.file_list = ContainerListWidget(border=False)
+            self.file_list = ContainerListWidget()
             self.file_list.setMinimumHeight(150)
             self.file_list.setMaximumHeight(300)
             file_layout.addWidget(self.file_list)

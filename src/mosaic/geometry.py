@@ -1272,6 +1272,197 @@ def _geometry_from_polydata(
     return g
 
 
+class VolumeGeometry(Geometry):
+    """
+    Geometry class to replace individual points with 3D glyphs.
+
+    Parameters
+    ----------
+    volume : np.ndarray, optional
+        3D volume data array.
+    volume_sampling_rate : np.ndarray, optional
+        Sampling rates for volume data, by default ones(3).
+    target_resolution : float, optional
+        Target physical resolution for lowpass filtering. Set to 0
+        to disable filtering. By default 10.0 (Angstroms).
+    **kwargs
+        Additional keyword arguments passed to parent Geometry class.
+
+    Notes
+    -----
+    This class is primarily used for backmapping electron density maps
+    to their experimentally determined positions in tomograms.
+    """
+
+    def __init__(
+        self,
+        volume: np.ndarray = None,
+        volume_sampling_rate=np.ones(3),
+        target_resolution: float = 10.0,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self._volume = None
+        self._target_resolution = target_resolution
+        self._lower_quantile = 0.0
+        self._upper_quantile = 0.995
+
+        if volume is None:
+            return None
+
+        self._volume = vtk.vtkImageData()
+        self._volume.SetSpacing(volume_sampling_rate)
+        self._volume.SetDimensions(volume.shape)
+        self._volume.AllocateScalars(vtk.VTK_FLOAT, 1)
+
+        if self.quaternions is None:
+            self.quaternions = normals_to_rot(self.normals, scalar_first=True)
+
+        self._raw_volume = volume
+        volume_vtk = numpy_support.numpy_to_vtk(
+            volume.ravel(order="F"), deep=True, array_type=vtk.VTK_FLOAT
+        )
+        self._volume.GetPointData().SetScalars(volume_vtk)
+
+        bounds = [0.0] * 6
+        self._volume.GetBounds(bounds)
+        transform = vtk.vtkTransform()
+        transform.Translate(
+            [-(b[1] - b[0]) * 0.5 for b in zip(bounds[::2], bounds[1::2])]
+        )
+
+        self._volume_sampling_rate = volume_sampling_rate
+
+        # Gaussian smoothing to normalize volume to target physical resolution
+        # sigma_voxels = target_resolution / (2 * sampling_rate)
+        pipeline_input = None
+        self._smoother = vtk.vtkImageGaussianSmooth()
+        self._smoother.SetInputData(self._volume)
+        max_sampling_rate = np.max(volume_sampling_rate)
+        self._applies_smoothing = (
+            target_resolution > 0 and target_resolution > max_sampling_rate
+        )
+        if self._applies_smoothing:
+            sigma = target_resolution / (2.0 * max_sampling_rate)
+            self._smoother.SetStandardDeviation(sigma)
+            self._smoother.SetRadiusFactor(2.0)
+            self._smoother.Update()
+            pipeline_input = self._smoother.GetOutputPort()
+
+            smoothed_data = self._smoother.GetOutput()
+            scalars = smoothed_data.GetPointData().GetScalars()
+            volume = numpy_support.vtk_to_numpy(scalars)
+
+        isovalue = np.quantile(volume, self._upper_quantile)
+        self._surface = vtk.vtkFlyingEdges3D()
+        if pipeline_input is not None:
+            self._surface.SetInputConnection(pipeline_input)
+        else:
+            self._surface.SetInputData(self._volume)
+        self._surface.SetValue(0, isovalue)
+        self._surface.ComputeNormalsOn()
+
+        # Center the isosurface mesh (transform works on polydata output)
+        transformFilter = vtk.vtkTransformPolyDataFilter()
+        transformFilter.SetInputConnection(self._surface.GetOutputPort())
+        transformFilter.SetTransform(transform)
+
+        mapper = vtk.vtkGlyph3DMapper()
+        mapper.SetInputData(self._data)
+        mapper.SetSourceConnection(transformFilter.GetOutputPort())
+        mapper.SetOrientationModeToQuaternion()
+        mapper.SetScaleModeToNoDataScaling()
+        mapper.SetOrientationArray("OrientationQuaternion")
+        mapper.OrientOn()
+        self._actor.SetMapper(mapper)
+
+        self._representation = "volume"
+
+    def __getstate__(self):
+        state = super().__getstate__()
+        if self._volume is not None:
+            state.update(
+                {
+                    "volume": self._raw_volume,
+                    "volume_sampling_rate": self._volume_sampling_rate,
+                    "lower_quantile": self._lower_quantile,
+                    "upper_quantile": self._upper_quantile,
+                    "target_resolution": self._target_resolution,
+                }
+            )
+        return state
+
+    def update_isovalue(self, upper, lower: float = 0):
+        """
+        Update the isovalue for volume surface rendering.
+
+        Parameters
+        ----------
+        upper : float
+            Upper isovalue threshold.
+        lower : float, optional
+            Lower isovalue threshold, by default 0.
+        """
+        if self._representation == "volume":
+            return self._surface.SetValue(int(lower), upper)
+
+    def update_isovalue_quantile(
+        self, upper_quantile: float, lower_quantile: float = 0.0
+    ):
+        """
+        Update isovalue using quantile-based thresholds.
+
+        Parameters
+        ----------
+        upper_quantile : float
+            Upper quantile threshold (0.0 to 1.0).
+        lower_quantile : float, optional
+            Lower quantile threshold (0.0 to 1.0), by default 0.0.
+
+        Raises
+        ------
+        ValueError
+            If upper quantile is not greater than lower quantile.
+        """
+        lower_quantile = max(lower_quantile, 0)
+        upper_quantile = min(upper_quantile, 1)
+
+        if lower_quantile >= upper_quantile:
+            raise ValueError("Upper quantile must be greater than lower quantile")
+
+        self._lower_quantile = lower_quantile
+        self._upper_quantile = upper_quantile
+        lower_value = np.quantile(self._raw_volume, self._lower_quantile)
+        upper_value = np.quantile(self._raw_volume, self._upper_quantile)
+        return self.update_isovalue(upper=upper_value, lower=lower_value)
+
+    def set_appearance(self, **kwargs):
+        isovalue_percentile = kwargs.get("isovalue_percentile")
+        if hasattr(self, "_raw_volume") and isovalue_percentile is not None:
+            self._appearance["isovalue_percentile"] = isovalue_percentile
+            self.update_isovalue_quantile(upper_quantile=isovalue_percentile / 100)
+        super().set_appearance(**kwargs)
+
+    def update_target_resolution(self, resolution: float):
+        """
+        Update the target physical resolution for lowpass filtering.
+
+        Parameters
+        ----------
+        resolution : float
+            Target resolution in physical units (e.g., Angstroms).
+            Set to 0 to disable filtering.
+        """
+        self._target_resolution = max(0.0, resolution)
+        max_sampling_rate = np.max(self._volume_sampling_rate)
+        if resolution > 0 and resolution > max_sampling_rate:
+            sigma = resolution / (2.0 * max_sampling_rate)
+            self._smoother.SetStandardDeviation(sigma)
+        else:
+            self._smoother.SetStandardDeviation(0.0)
+        self._smoother.Modified()
+
+
 class SegmentationGeometry(Geometry):
     """
     Binary segmentation rendered as a surface mesh.
@@ -1958,9 +2149,4 @@ class GeometryTrajectory(Geometry):
 
 # For backwards compatibility
 class PointCloud(Geometry):
-    pass
-
-
-# TODO: Check whether this breaks backwards compatibility in sessions
-class VolumeGeometry(SegmentationGeometry):
     pass

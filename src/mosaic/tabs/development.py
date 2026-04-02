@@ -437,6 +437,7 @@ class DevelopmentTab(QWidget):
             self._overlay.annotation = annotation
             self._overlay.invalidate_lut()
             if self._overlay.active:
+                self._overlay._build_overlay()
                 self._overlay._refresh_overlay_slice()
 
     def _export_mask(self):
@@ -591,6 +592,7 @@ class DevelopmentTab(QWidget):
 
         from ..models.dataset import build_manifest
 
+        dense_masks = self._tool_panel is not None and self._tool_panel.dense_masks
         manifest = build_manifest(
             tomogram_path=tomogram_path,
             annotation_path=annotation_path,
@@ -599,6 +601,7 @@ class DevelopmentTab(QWidget):
             axis=axis,
             patch_size=annotation.patch_size,
             mode=mode,
+            dense_masks=dense_masks,
         )
 
         fg_names = [
@@ -696,15 +699,17 @@ class DevelopmentTab(QWidget):
         from ..parallel import submit_task
 
         def _on_complete(result):
-            import json
+            import torch, io
 
-            result["config"]["label_name"] = label_name
-            result["config"]["axis"] = axis
-            result["config"]["source_spacing"] = spacing
-            with open(save_path, "wb") as f:
-                f.write(result["model_bytes"])
-            with open(save_path.replace(".pt", ".json"), "w") as f:
-                json.dump(result["config"], f)
+            config = result["config"]
+            config["label_name"] = label_name
+            config["axis"] = axis
+            config["source_spacing"] = spacing
+            checkpoint = torch.load(
+                io.BytesIO(result["model_bytes"]), weights_only=False
+            )
+            checkpoint["config"] = config
+            torch.save(checkpoint, save_path)
             metrics = result["metrics"]
             if self._tool_panel is not None:
                 self._tool_panel.predict_status.setText(
@@ -743,17 +748,24 @@ class DevelopmentTab(QWidget):
             QMessageBox.information(self, "No Model", "Select a model file.")
             return
 
-        import json, os
+        import torch
 
-        config_path = model_path.rsplit(".", 1)[0] + ".json"
-        if not os.path.exists(config_path):
-            QMessageBox.warning(self, "Missing Config", f"Expected: {config_path}")
+        try:
+            checkpoint = torch.load(model_path, map_location="cpu", weights_only=False)
+        except Exception as e:
+            QMessageBox.warning(self, "Load Error", str(e))
             return
 
-        with open(model_path, "rb") as f:
-            model_bytes = f.read()
-        with open(config_path, "r") as f:
-            config = json.load(f)
+        if isinstance(checkpoint, dict) and "config" in checkpoint:
+            config = checkpoint["config"]
+        else:
+            QMessageBox.warning(
+                self,
+                "Invalid Model",
+                "File does not contain an embedded config. "
+                "Re-train or use a checkpoint saved by this version.",
+            )
+            return
 
         volume = self._get_volume()
         if volume is not None and "source_spacing" in config:
@@ -824,7 +836,7 @@ class DevelopmentTab(QWidget):
             run_inference,
             _on_complete,
             volume_array,
-            model_bytes,
+            model_path,
             config,
             axis=axis,
         )
