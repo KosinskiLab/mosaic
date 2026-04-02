@@ -367,16 +367,24 @@ def _read_orientations(filename: str):
     quaternions = angles.as_quat(scalar_first=True)
     indices = [np.where(data.details == x) for x in np.unique(data.details)]
 
+    # Collect extra per-particle metadata when available (pytme >= 0.3.4)
+    extra_metadata = getattr(data, "metadata", None) or {}
+    extra_metadata = {
+        k: v
+        for k, v in extra_metadata.items()
+        if isinstance(v, np.ndarray) and v.shape[0] == data.translations.shape[0]
+    }
+
     try:
-        vertex_properties = [
-            VertexPropertyContainer(
-                {
-                    "pytme_score": data.scores[x],
-                    "entity": data.details[x],
-                }
-            )
-            for x in indices
-        ]
+        vertex_properties = []
+        for x in indices:
+            props = {
+                "pytme_score": data.scores[x],
+                "entity": data.details[x],
+            }
+            for key, val in extra_metadata.items():
+                props[key] = val[x]
+            vertex_properties.append(VertexPropertyContainer(props))
     except Exception:
         vertex_properties = None
 

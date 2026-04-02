@@ -321,8 +321,7 @@ class BackgroundTaskManager(QObject):
 
         self._shutdown()
 
-        self._manager = multiprocessing.Manager()
-        self._progress_queue = self._manager.Queue()
+        self._progress_queue = multiprocessing.Queue()
 
         # TODO: See how 15 works out now that pymeshlab is gone
         self.num_workers = int(Settings.rendering.parallel_worker)
@@ -343,6 +342,7 @@ class BackgroundTaskManager(QObject):
         """Clean shutdown of executors and queues."""
         if hasattr(self, "timer"):
             self.timer.stop()
+
         self.futures.clear()
         self.task_info.clear()
         self.task_queue.clear()
@@ -351,16 +351,18 @@ class BackgroundTaskManager(QObject):
         self._task_stdout.clear()
         self._task_stderr.clear()
 
-        try:
-            self.executor.shutdown(wait=False, cancel_futures=True)
-        except Exception:
-            pass
+        if hasattr(self, "executor"):
+            try:
+                self.executor.shutdown(wait=False, cancel_futures=True)
+            except Exception:
+                pass
 
-        try:
-            if hasattr(self, "_manager"):
-                self._manager.shutdown()
-        except Exception:
-            pass
+        if hasattr(self, "_progress_queue"):
+            try:
+                self._progress_queue.cancel_join_thread()
+                self._progress_queue.close()
+            except Exception:
+                pass
 
     def _process_tasks(self):
         """Timer callback: process queue, check completed, submit new tasks."""

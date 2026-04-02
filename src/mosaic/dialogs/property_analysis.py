@@ -29,6 +29,7 @@ from qtpy.QtWidgets import (
     QTableWidgetItem,
     QFileDialog,
     QDoubleSpinBox,
+    QStackedWidget,
 )
 import pyqtgraph as pg
 import qtawesome as qta
@@ -52,6 +53,15 @@ from ..stylesheets import (
     QTable_style,
     Colors,
 )
+
+
+def to_numeric(arr):
+    """Encode a numpy array to float64, factorising string/object dtypes."""
+    arr = np.asarray(arr)
+    if arr.dtype.kind in ("U", "S", "O"):
+        _, codes = np.unique(arr, return_inverse=True)
+        return codes.astype(np.float64)
+    return arr.astype(np.float64, copy=False)
 
 
 @dataclass
@@ -789,11 +799,24 @@ class PropertyAnalysisDialog(QDialog):
         filter_main_layout.setContentsMargins(8, 4, 8, 4)
         filter_main_layout.setSpacing(8)
 
+        self.filter_stack = QStackedWidget()
+
         self.filter_slider = HistogramRangeSlider()
         self.filter_slider.rangeReleased.connect(self._on_filter_changed)
         self._filter_throttle = Throttle(self._on_filter_changed, interval_ms=100)
         self.filter_slider.rangeChanged.connect(self._on_filter_dragging)
-        filter_main_layout.addWidget(self.filter_slider, 1)
+        self.filter_stack.addWidget(self.filter_slider)
+
+        self.category_filter_list = QListWidget()
+        self.category_filter_list.setSelectionMode(
+            QListWidget.SelectionMode.ExtendedSelection
+        )
+        self.category_filter_list.itemSelectionChanged.connect(
+            lambda: self._on_filter_changed(0, 0)
+        )
+        self.filter_stack.addWidget(self.category_filter_list)
+
+        filter_main_layout.addWidget(self.filter_stack, 1)
 
         filter_btn_layout = QVBoxLayout()
         filter_btn_layout.setContentsMargins(0, 0, 0, 0)
@@ -818,6 +841,15 @@ class PropertyAnalysisDialog(QDialog):
         self.extract_btn.setToolTip("Create new object from points within filter range")
         self.extract_btn.clicked.connect(self._extract_filtered)
         filter_btn_layout.addWidget(self.extract_btn)
+
+        self.split_btn = QPushButton("Split")
+        self.split_btn.setIcon(qta.icon("ph.git-fork", color=Colors.PRIMARY))
+        self.split_btn.setToolTip(
+            "Split each object into separate objects per category"
+        )
+        self.split_btn.clicked.connect(self._split_by_category)
+        self.split_btn.hide()
+        filter_btn_layout.addWidget(self.split_btn)
 
         filter_main_layout.addLayout(filter_btn_layout)
 
@@ -1247,6 +1279,14 @@ class PropertyAnalysisDialog(QDialog):
                 QMessageBox.warning(self, "Error", str(e))
                 return None
 
+    def _is_categorical(self, geometries):
+        """Check whether the current cached property values are categorical."""
+        for g in geometries:
+            v = self._cache.get_value(g.uuid)
+            if v is not None and isinstance(v, np.ndarray):
+                return v.dtype.kind in ("U", "S", "O")
+        return False
+
     def _get_transformed_properties(self, geometries):
         """Apply the full visualization transform pipeline to cached properties.
 
@@ -1254,7 +1294,7 @@ class PropertyAnalysisDialog(QDialog):
         order as ``_preview`` so that filter operations work on consistent values.
         """
         properties = {
-            g.uuid: self._cache.get_value(g.uuid)
+            g.uuid: to_numeric(self._cache.get_value(g.uuid))
             for g in geometries
             if self._cache.get_value(g.uuid) is not None
         }
@@ -1354,9 +1394,30 @@ class PropertyAnalysisDialog(QDialog):
 
         self.legend.set_lookup_table(lut, self.property_combo.currentText())
 
-        # Update filter slider with all property values
-        all_values = np.concatenate([np.asarray(v).flatten() for v in values])
-        self.filter_slider.setData(all_values)
+        # Update filter widget — category checklist or histogram slider
+        categorical = self._is_categorical(geometries)
+        if categorical:
+            raw_values = [
+                self._cache.get_value(g.uuid)
+                for g in geometries
+                if self._cache.get_value(g.uuid) is not None
+            ]
+            all_labels = np.unique(
+                np.concatenate([np.asarray(v).flatten() for v in raw_values])
+            )
+            self.category_filter_list.blockSignals(True)
+            self.category_filter_list.clear()
+            for label in all_labels:
+                self.category_filter_list.addItem(str(label))
+            self.category_filter_list.selectAll()
+            self.category_filter_list.blockSignals(False)
+            self.filter_stack.setCurrentWidget(self.category_filter_list)
+            self.split_btn.show()
+        else:
+            all_values = np.concatenate([np.asarray(v).flatten() for v in values])
+            self.filter_slider.setData(all_values)
+            self.filter_stack.setCurrentWidget(self.filter_slider)
+            self.split_btn.hide()
 
         if render:
             self.render()
@@ -1379,6 +1440,10 @@ class PropertyAnalysisDialog(QDialog):
             self.cdata.data.blockSignals(False)
             self.cdata.models.blockSignals(False)
 
+    def _get_selected_categories(self):
+        """Return the set of selected label strings from the category filter."""
+        return {item.text() for item in self.category_filter_list.selectedItems()}
+
     def _on_filter_changed(self, lower, upper):
         """Hide points outside the filter range using transparent LUT colors."""
         from ..utils import cmap_to_vtkctf
@@ -1390,17 +1455,35 @@ class PropertyAnalysisDialog(QDialog):
         colormap = self._get_colormap()
         properties = self._get_transformed_properties(geometries)
 
-        lut, lut_range = cmap_to_vtkctf(
-            colormap, upper, min_value=lower, transparent_range=True
-        )
-        self.legend.set_lookup_table(lut, self.property_combo.currentText())
-        for geometry in geometries:
-            values = properties.get(geometry.uuid)
-            if values is None:
-                continue
-
-            values = np.asarray(values).flatten()
-            geometry.set_scalars(values, lut, lut_range)
+        if self._is_categorical(geometries):
+            checked = self._get_selected_categories()
+            values = [x for x in properties.values() if x is not None]
+            if not values:
+                return
+            max_code = np.max([np.max(x) for x in values])
+            lut, lut_range = cmap_to_vtkctf(
+                colormap, max_code, min_value=0.0, transparent_range=True
+            )
+            for geometry in geometries:
+                raw = self._cache.get_value(geometry.uuid)
+                coded = properties.get(geometry.uuid)
+                if raw is None or coded is None:
+                    continue
+                raw_flat = np.asarray(raw).flatten()
+                visible = np.array([str(v) in checked for v in raw_flat])
+                display = np.where(visible, coded, -1.0)
+                geometry.set_scalars(display, lut, lut_range)
+        else:
+            lut, lut_range = cmap_to_vtkctf(
+                colormap, upper, min_value=lower, transparent_range=True
+            )
+            self.legend.set_lookup_table(lut, self.property_combo.currentText())
+            for geometry in geometries:
+                values = properties.get(geometry.uuid)
+                if values is None:
+                    continue
+                values = np.asarray(values).flatten()
+                geometry.set_scalars(values, lut, lut_range)
 
         self.render()
 
@@ -1412,35 +1495,48 @@ class PropertyAnalysisDialog(QDialog):
 
     def _reset_filter(self):
         """Reset filter to show all points."""
-        self.filter_slider._slider.setValues(
-            self.filter_slider._slider.min_val,
-            self.filter_slider._slider.max_val,
-        )
-        self.filter_slider._histogram.setSelection(
-            self.filter_slider._slider.min_val,
-            self.filter_slider._slider.max_val,
-        )
+        if self.filter_stack.currentWidget() is self.category_filter_list:
+            self.category_filter_list.blockSignals(True)
+            self.category_filter_list.selectAll()
+            self.category_filter_list.blockSignals(False)
+        else:
+            self.filter_slider._slider.setValues(
+                self.filter_slider._slider.min_val,
+                self.filter_slider._slider.max_val,
+            )
+            self.filter_slider._histogram.setSelection(
+                self.filter_slider._slider.min_val,
+                self.filter_slider._slider.max_val,
+            )
         self._preview()
 
     def _extract_filtered(self):
         """Create new geometry from points within filter range."""
-        lower, upper = self.filter_slider.getRange()
         geometries = self._get_selected_geometries()
 
         if not geometries:
             QMessageBox.warning(self, "No Selection", "Please select geometry first.")
             return
 
-        properties = self._get_transformed_properties(geometries)
+        categorical = self._is_categorical(geometries)
 
         extracted_any = False
         for geometry in geometries:
-            values = properties.get(geometry.uuid)
-            if values is None:
-                continue
-
-            values = np.asarray(values).flatten()
-            mask = (values >= lower) & (values <= upper)
+            if categorical:
+                raw = self._cache.get_value(geometry.uuid)
+                if raw is None:
+                    continue
+                checked = self._get_selected_categories()
+                raw_flat = np.asarray(raw).flatten()
+                mask = np.array([str(v) in checked for v in raw_flat])
+            else:
+                lower, upper = self.filter_slider.getRange()
+                properties = self._get_transformed_properties(geometries)
+                values = properties.get(geometry.uuid)
+                if values is None:
+                    continue
+                values = np.asarray(values).flatten()
+                mask = (values >= lower) & (values <= upper)
 
             if not mask.any():
                 continue
@@ -1456,6 +1552,37 @@ class PropertyAnalysisDialog(QDialog):
             QMessageBox.information(
                 self, "No Points", "No points fall within the selected range."
             )
+
+    def _split_by_category(self):
+        """Split each selected geometry into one object per unique category."""
+        geometries = self._get_selected_geometries()
+        if not geometries:
+            QMessageBox.warning(self, "No Selection", "Please select geometry first.")
+            return
+
+        if not self._is_categorical(geometries):
+            return
+
+        added_any = False
+        for geometry in geometries:
+            raw = self._cache.get_value(geometry.uuid)
+            if raw is None:
+                continue
+
+            raw_flat = np.asarray(raw).flatten()
+            parent_name = geometry._meta.get("name", "Object")
+
+            for label in np.unique(raw_flat):
+                mask = raw_flat == label
+                subset = geometry[mask]
+                if subset.get_number_of_points() == 0:
+                    continue
+                subset._meta["name"] = f"{parent_name}_{label}"
+                self.cdata.data.add(subset)
+                added_any = True
+
+        if added_any:
+            self.cdata.data.render()
 
     def _update_tab(self):
         current_tab_index = self.tabs_widget.currentIndex()
@@ -1487,6 +1614,7 @@ class PropertyAnalysisDialog(QDialog):
                 continue
 
             row_count += 1
+            value = to_numeric(value)
             self._set_stat_cell(index, 0, item_text)
             self._set_stat_cell(index, 1, str(np.round(np.min(value), n_decimals)))
             self._set_stat_cell(index, 2, str(np.round(np.max(value), n_decimals)))
@@ -1551,6 +1679,7 @@ class PropertyAnalysisDialog(QDialog):
         all_values = []
         for i, (item_text, obj) in enumerate(selected_items):
             if (values := self._cache.get_value(obj.uuid)) is not None:
+                values = to_numeric(values)
                 all_values.append(values)
                 data_series.append((item_text, obj, values, colors[i % len(colors)]))
 
@@ -1561,7 +1690,7 @@ class PropertyAnalysisDialog(QDialog):
             self.plot_widget.setUpdatesEnabled(False)
 
             self.plot_widget.clear()
-            all_scalar = not isinstance(all_values[0], np.ndarray)
+            all_scalar = np.asarray(all_values[0]).ndim == 0
             if all_scalar:
                 all_values = np.asarray(all_values)
                 self._create_categorical_plot(data_series, all_values, plot_type)
