@@ -604,12 +604,6 @@ def generate_screen(
 def write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
     """Write local and SLURM launcher scripts for a screen.
 
-    Generates ``run_all.sh`` for local execution (sequential, or via
-    GNU parallel when available) and ``submit_slurm.sh`` for HPC
-    submission as a SLURM array job.  When the number of runs exceeds
-    1000, per-chunk scripts are generated and a master
-    ``submit_slurm.sh`` chains them via ``--dependency``.
-
     Parameters
     ----------
     output_dir : Path
@@ -622,7 +616,7 @@ def write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
         #!/bin/bash
         set -euo pipefail
 
-        SCREEN_DIR="${{SCREEN_DIR:-$(cd "$(dirname "$0")" && pwd)}}"
+        SCREEN_DIR="{output_dir}"
         mapfile -t ALL < <(find "$SCREEN_DIR" -path '*/run_*/run.sh' | sort)
 
         RUNS=()

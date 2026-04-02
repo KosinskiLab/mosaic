@@ -596,18 +596,23 @@ def export_property_csv(file_path, property_name, geometries, values, sources=No
         for g, v in zip(geometries, values)
     )
 
+    header = f"source,{property_name}\n"
+    if per_point:
+        header = f"source,point_id,x,y,z,{property_name}\n"
+
     with open(file_path, "w", encoding="utf-8") as ofile:
-        if per_point:
-            ofile.write(f"source,point_id,x,y,z,{property_name}\n")
-            for source, geom, vals in zip(sources, geometries, values):
-                vals = np.asarray(vals).reshape(-1)
+        ofile.write(header)
+
+        for source, geom, vals in zip(sources, geometries, values):
+            vals = np.asarray(vals).reshape(-1)
+
+            if per_point:
                 for pid, (p, v) in enumerate(zip(geom.points, vals)):
                     ofile.write(f"{source},{pid},{p[0]},{p[1]},{p[2]},{v}\n")
-        else:
-            ofile.write(f"source,{property_name}\n")
-            for source, vals in zip(sources, values):
-                for v in np.asarray(vals).reshape(-1):
-                    ofile.write(f"{source},{v}\n")
+                continue
+
+            for v in vals:
+                ofile.write(f"{source},{v}\n")
 
 
 class GeometryProperties:

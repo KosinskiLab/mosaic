@@ -25,9 +25,10 @@ def main():
     repl = MosaicREPL(log_file=args.log)
 
     if args.command:
-        output = repl.execute(args.command)
-        if output:
-            repl._console.print(output)
+        for cmd in repl._split_commands(args.command):
+            output = repl.execute(cmd)
+            if output:
+                repl._console.print(output)
     elif args.script:
         output = repl.execute_script(args.script)
         if output:

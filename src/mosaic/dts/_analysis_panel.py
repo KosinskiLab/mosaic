@@ -1,9 +1,6 @@
 """
 Analysis panel widget for DTS screening dialog.
 
-Unified metric viewer with compute-new-metric dialog, multi-run
-plotting, and data export.
-
 Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
