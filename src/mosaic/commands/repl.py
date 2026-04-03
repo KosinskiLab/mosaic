@@ -377,7 +377,7 @@ class MosaicREPL:
         self._console.print()
 
         self._console.print(
-            "This is an experimental Mosaic feature and might have rough edges.\n",
+            "This is a new Mosaic feature and might have rough edges.\n",
             style="mosaic.warning",
         )
 

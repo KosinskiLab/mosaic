@@ -110,7 +110,7 @@ class ExportDialog(QDialog):
                 "icon": "ph.dots-nine",
                 "label": "Point Cloud",
                 "description": "Export coordinates and orientations.",
-                "formats": ["star", "tsv", "xyz"],
+                "formats": ["star", "ndjson", "xyz"],
             },
             "mesh": {
                 "icon": "ph.triangle",
@@ -149,6 +149,7 @@ class ExportDialog(QDialog):
                 },
             },
             "tsv": {},
+            "ndjson": {},
             "obj": {},
             "stl": {},
             "ply": {},

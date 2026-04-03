@@ -1135,7 +1135,7 @@ class App(QMainWindow):
     def open_czi_dialog(self):
         """Open the CZI CryoET Data Portal browser."""
         try:
-            from .formats.czi.dialog import CZIPortalDialog
+            from .czi.dialog import CZIPortalDialog
 
             if getattr(self, "_czi_dialog", None) is not None:
                 self._czi_dialog.raise_()

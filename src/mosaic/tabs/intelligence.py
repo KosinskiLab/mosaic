@@ -1,7 +1,5 @@
-import re
-from os import listdir
 from typing import Union
-from os.path import join, exists, basename
+from os.path import join, exists
 
 import numpy as np
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QMessageBox, QApplication, QFileDialog
@@ -84,7 +82,7 @@ class IntelligenceTab(QWidget):
         self.ribbon.add_section("Detection", detection_actions)
 
     def _equilibrate_fit(self):
-        from ..dialogs import MeshEquilibrationDialog
+        from ..dts._equilibration_dialog import MeshEquilibrationDialog
         from ..meshing import equilibrate_fit
 
         geometries = self.cdata.models.get_selected_geometries()
@@ -116,7 +114,7 @@ class IntelligenceTab(QWidget):
 
     def _setup_hmff(self):
         from ..meshing import setup_hmff
-        from ..dialogs import HMFFDialog
+        from ..dts._hmff_dialog import HMFFDialog
 
         directory = getExistingDirectory(
             self, caption="Select directory with equilibrated meshes."
@@ -164,26 +162,16 @@ class IntelligenceTab(QWidget):
         drop_pbc: bool = False,
         **kwargs,
     ):
-        from ..meshing import to_open3d
-        from ..formats import open_file
-        from ..dialogs import ProgressDialog
         from ..geometry import GeometryTrajectory
-        from ..parametrization import TriangularMesh
+        from ..dts._utils import (
+            list_trajectory_files,
+            build_trajectory_frames,
+        )
 
         directory = getExistingDirectory(
             self, caption="Select directory with DTS trajectory"
         )
         if not directory:
-            return None
-
-        files = [
-            join(directory, x)
-            for x in listdir(directory)
-            if x.endswith(".tsi") or x.endswith(".vtu") and x != "conf-1.vtu"
-        ]
-        files = sorted(files, key=lambda x: int(re.findall(r"\d+", basename(x))[0]))
-        if len(files) == 0:
-            QMessageBox.warning(self, "Error", f"No meshes found at: {directory}.")
             return None
 
         if isinstance(offset, str):
@@ -195,52 +183,27 @@ class IntelligenceTab(QWidget):
                     "Error",
                     "Offset should be a single or three comma-separated floats.",
                 )
+                return None
 
-        ret = []
-        with ProgressDialog(files, title="Importing Trajectory", parent=None) as pbar:
-            for index, filename in enumerate(pbar):
-                container = open_file(filename)[0]
-                faces = container.faces.astype(int)
-                points = np.divide(np.subtract(container.vertices, offset), scale)
+        files = list_trajectory_files(directory)
+        if not files:
+            QMessageBox.warning(self, "Error", f"No meshes found at: {directory}.")
+            return None
 
-                if drop_pbc:
-                    from ..meshing.utils import _edge_lengths
-
-                    points_norm = points - points.min(axis=0)
-
-                    box_stop = points_norm.max(axis=0)
-                    points_pbc = np.mod(points_norm, 0.85 * box_stop)
-
-                    dist_regular = _edge_lengths(points_norm, faces)
-                    dist_pbc = _edge_lengths(points_pbc, faces)
-
-                    keep = np.all(dist_pbc >= dist_regular, axis=-1)
-                    faces = faces[keep]
-
-                # Avoid detecting PBC as ill-defined meshes
-                fit = TriangularMesh(to_open3d(points, faces), repair=False)
-
-                ret.append(
-                    {
-                        "fit": fit,
-                        "filename": filename,
-                        "name": basename(directory),
-                        "vertex_properties": container.vertex_properties,
-                    }
-                )
-
-        base = ret[0]["fit"]
+        frames = build_trajectory_frames(
+            directory,
+            scale,
+            offset,
+            drop_pbc=drop_pbc,
+        )
         trajectory = GeometryTrajectory(
-            points=base.vertices.copy(),
-            normals=base.compute_vertex_normals().copy(),
             sampling_rate=1 / scale,
-            meta=ret[0].copy(),
-            trajectory=ret,
-            vertex_properties=ret[0]["vertex_properties"],
-            model=base,
+            trajectory=frames,
+            model=frames[0]["fit"],
+            vertex_properties=frames[0].get("vertex_properties"),
         )
         trajectory.change_representation("mesh")
-        self.cdata._models.add(trajectory)
+        self.cdata.models.add(trajectory)
         self.cdata.models.data_changed.emit()
         return self.cdata.models.render()
 

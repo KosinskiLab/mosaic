@@ -538,8 +538,9 @@ def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
 
 
 def compute_bounding_box(points: List[np.ndarray]) -> List[float]:
+    points = [p for p in points if p.shape[0] > 0]
     if len(points) == 0:
-        return (0, 0, 0)
+        return (0, 0, 0), np.zeros(3)
     starts = points[0].min(axis=0)
     stops = points[0].max(axis=0)
     for point in points[1:]:

@@ -14,13 +14,13 @@ _module_map = {
         "extend_screen",
         "get_screen_status",
     ],
-    ".analysis": [
+    "._utils": [
         "parse_time_series",
         "parse_run_time_series",
         "load_screen_results",
-        "compute_trajectory_distance",
-        "compute_vertex_fluctuation",
-        "compute_trajectory_property",
+    ],
+    ".analysis": [
+        "compute",
     ],
     ".dialog": ["DTSScreeningDialog"],
 }

@@ -73,4 +73,4 @@ pytest.ini
 src/mosaic/mcp
 src/mosaic/scripts/mcp_server.py
 src/mosaic/models/
-src/mosaic/formats/czi/
+src/mosaic/czi/

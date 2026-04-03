@@ -18,7 +18,6 @@ from typing import Callable, Any, Dict, Optional
 from dataclasses import dataclass
 
 from .settings import Settings
-from qtpy.QtWidgets import QMessageBox
 from qtpy.QtCore import QObject, Signal, QTimer
 
 
@@ -227,6 +226,8 @@ def _default_handler(task_id, task_name, msg, is_warning=False):
 
 
 def _flush_messages():
+    from qtpy.QtWidgets import QMessageBox
+
     if not _pending_messages:
         return
 

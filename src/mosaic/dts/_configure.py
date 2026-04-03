@@ -6,7 +6,6 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import re
 from pathlib import Path
 from typing import Dict, List
 
@@ -42,66 +41,13 @@ _EXTRA_CONFIG_PLACEHOLDER = (
     "# List:    Set_Steps = 1 {{steps:1000,5000}}"
 )
 
-_COUPLING_DEFS = {
-    "vol_coupling": {
-        "label": "Volume Coupling",
-        "dts_keyword": "VolumeCoupling",
-        "modes": {
-            "SecondOrder": [
-                ("delta_p", "\u0394p (pressure)", 0.0, 0.1),
-                ("K", "Stiffness", 10000.0, 100.0),
-                ("target_v", "Target volume", 0.7, 0.05),
-            ],
-            "OsmoticPressure": [
-                ("gamma", "\u03b3", 1.0, 0.1),
-                ("P0", "P\u2080", 0.0, 0.1),
-            ],
-        },
-    },
-    "curv_coupling": {
-        "label": "Global Curvature",
-        "dts_keyword": "GlobalCurvatureCoupling",
-        "modes": {
-            "HarmonicPotential": [
-                ("K", "Stiffness", 180.0, 1.0),
-                ("C_g0", "Target curvature", 0.3, 0.05),
-            ],
-        },
-    },
-    "area_coupling": {
-        "label": "Total Area",
-        "dts_keyword": "TotalAreaCoupling",
-        "modes": {
-            "HarmonicPotential": [
-                ("K", "Stiffness", 1000.0, 10.0),
-                ("gamma", "Target ratio", 0.34, 0.05),
-            ],
-        },
-    },
-}
-
-
-def _extract_screening_placeholder(value: str):
-    """Return ``(name, range_str)`` if *value* is a ``{{name:range}}`` placeholder."""
-    match = re.fullmatch(r"\{\{(\w+):([^}]+)\}\}", value.strip())
-    if match:
-        return match.group(1), match.group(2)
-    return None
-
-
-def _parse_screening_ranges(text: str) -> Dict[str, List]:
-    """Extract ``{{name:range}}`` placeholders from text and parse values."""
-    result = {}
-    for match in re.finditer(r"\{\{(\w+):([^}]+)\}\}", text):
-        name, range_str = match.group(1), match.group(2)
-        try:
-            from pyfreedts.screen import ParameterParser
-
-            _, parsed = ParameterParser.parse_template("{{" + f"p:{range_str}" + "}}")
-            result[name] = parsed.get("p", [])
-        except Exception:
-            pass
-    return result
+from ._utils import (
+    COUPLING_DEFS as _COUPLING_DEFS,
+    extract_screening_placeholder as _extract_screening_placeholder,
+    parse_screening_ranges as _parse_screening_ranges,
+    parse_filter_directives as _parse_filter_directives,
+    parse_dts_content,
+)
 
 
 class ConfigurePanel(QScrollArea):
@@ -140,36 +86,48 @@ class ConfigurePanel(QScrollArea):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
-        input_group = QGroupBox("Input")
-        input_form = QFormLayout(input_group)
-        input_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        layout.addWidget(self._build_input_group())
+        layout.addWidget(self._build_simulation_group())
+        layout.addWidget(self._build_physics_group())
+        layout.addWidget(self._build_hmff_group())
+        layout.addWidget(self._build_extra_group())
+        layout.addStretch()
+        layout.addLayout(self._build_footer())
+
+        self.setWidget(content)
+
+    def _build_input_group(self):
+        group = QGroupBox("Input")
+        form = QFormLayout(group)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         self._mesh_path = PathSelector(
             placeholder="Input mesh (.tsi, .q)",
             file_filter="TSI Files (*.tsi) Q Files (*.q);;All Files (*.*)",
         )
-        input_form.addRow("Mesh:", self._mesh_path)
+        form.addRow("Mesh:", self._mesh_path)
 
         self._output_dir = PathSelector(
             placeholder="Output directory", mode="directory"
         )
-        input_form.addRow("Output:", self._output_dir)
+        form.addRow("Output:", self._output_dir)
 
         self._dts_file = PathSelector(
             placeholder="(Optional) populate from dts config",
             file_filter="DTS Files (*.dts);;All Files (*.*)",
         )
         self._dts_file.path_input.textChanged.connect(self._load_dts_file)
-        input_form.addRow("DTS:", self._dts_file)
+        form.addRow("DTS:", self._dts_file)
 
-        layout.addWidget(input_group)
+        return group
 
-        sim_group = QGroupBox("Simulation")
-        sim_form = QFormLayout(sim_group)
-        sim_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+    def _build_simulation_group(self):
+        group = QGroupBox("Simulation")
+        form = QFormLayout(group)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         self._add_screenable_row(
-            sim_form, key="temperature", label="Temperature", default=1.0
+            form, key="temperature", label="Temperature", default=1.0
         )
 
         self._param_widgets["edge_range"] = QLineEdit("1 - 5")
@@ -177,7 +135,7 @@ class ConfigurePanel(QScrollArea):
         self._param_widgets["edge_range"].setToolTip(
             "Min and max edge lengths for mesh refinement (format: min - max)"
         )
-        sim_form.addRow("Edge length:", self._param_widgets["edge_range"])
+        form.addRow("Edge length:", self._param_widgets["edge_range"])
 
         for key, label, cfg in (
             (
@@ -197,50 +155,52 @@ class ConfigurePanel(QScrollArea):
             ),
         ):
             self._param_widgets[key] = create_setting_widget(cfg)
-            sim_form.addRow(label, self._param_widgets[key])
+            form.addRow(label, self._param_widgets[key])
 
-        layout.addWidget(sim_group)
+        return group
 
-        phys_group = QGroupBox("Physical Parameters")
-        phys_form = QFormLayout(phys_group)
-        phys_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+    def _build_physics_group(self):
+        group = QGroupBox("Physical Parameters")
+        form = QFormLayout(group)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         self._add_screenable_row(
-            phys_form, key="kappa", label="Rigidity (\u03ba)", default=25.0
+            form, key="kappa", label="Rigidity (\u03ba)", default=25.0
         )
         self._add_screenable_row(
-            phys_form,
+            form,
             key="kappa0",
             label="Spont. curvature (\u03ba\u2080)",
             default=0.0,
         )
         for coupling_key, coupling_def in _COUPLING_DEFS.items():
-            self._add_coupling_section(phys_form, coupling_key, coupling_def)
+            self._add_coupling_section(form, coupling_key, coupling_def)
 
-        layout.addWidget(phys_group)
+        return group
 
-        hmff_group = QGroupBox("HMFF Parameters")
-        self._hmff_form = QFormLayout(hmff_group)
+    def _build_hmff_group(self):
+        group = QGroupBox("HMFF Parameters")
+        self._hmff_form = QFormLayout(group)
         self._hmff_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         vol_row = QWidget()
-        vol_row_layout = QHBoxLayout(vol_row)
-        vol_row_layout.setContentsMargins(0, 0, 0, 0)
-        vol_row_layout.setSpacing(6)
+        vol_layout = QHBoxLayout(vol_row)
+        vol_layout.setContentsMargins(0, 0, 0, 0)
+        vol_layout.setSpacing(6)
 
         self._volume_path = PathSelector(
             placeholder="Volume file (.mrc)",
             file_filter="MRC Files (*.mrc);;All Files (*.*)",
         )
         self._volume_path.path_input.textChanged.connect(self._on_volume_changed)
-        vol_row_layout.addWidget(self._volume_path)
+        vol_layout.addWidget(self._volume_path)
 
         self._volume_screen_cb = QCheckBox("Screen")
         self._volume_screen_cb.setToolTip(
             "Enable screening: select multiple volume files"
         )
         self._volume_screen_cb.stateChanged.connect(self._toggle_volume_screening)
-        vol_row_layout.addWidget(self._volume_screen_cb)
+        vol_layout.addWidget(self._volume_screen_cb)
 
         self._hmff_form.addRow("Volume:", vol_row)
 
@@ -330,30 +290,28 @@ class ConfigurePanel(QScrollArea):
             self._filter_dep_widgets.append(self._param_widgets[param_key])
 
         self._set_hmff_volume_visible(False)
+        return group
 
-        layout.addWidget(hmff_group)
-
-        extra_group = QGroupBox("Extra Parameters")
-        extra_layout = QVBoxLayout(extra_group)
+    def _build_extra_group(self):
+        group = QGroupBox("Extra Parameters")
+        layout = QVBoxLayout(group)
         self._extra_config_edit = QPlainTextEdit()
         self._extra_config_edit.setPlaceholderText(_EXTRA_CONFIG_PLACEHOLDER)
         self._extra_config_edit.setMinimumHeight(80)
         self._extra_config_edit.setMaximumHeight(140)
         self._extra_config_edit.setStyleSheet("QPlainTextEdit { font-size: 12px; }")
         self._extra_config_edit.textChanged.connect(self._update_combo_summary)
-        extra_layout.addWidget(self._extra_config_edit)
-        layout.addWidget(extra_group)
+        layout.addWidget(self._extra_config_edit)
+        return group
 
-        layout.addStretch()
-
+    def _build_footer(self):
         import shutil
 
         info_row = QHBoxLayout()
         dts_path = shutil.which("dts") or shutil.which("DTS")
-        if dts_path:
-            dts_info = QLabel(f"DTS binary: {dts_path}")
-        else:
-            dts_info = QLabel("DTS binary not found in PATH")
+        dts_info = QLabel(
+            f"DTS binary: {dts_path}" if dts_path else "DTS binary not found in PATH"
+        )
         dts_info.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
         info_row.addWidget(dts_info)
 
@@ -363,7 +321,9 @@ class ConfigurePanel(QScrollArea):
         )
         info_row.addStretch()
         info_row.addWidget(self._combo_summary)
-        layout.addLayout(info_row)
+
+        outer = QVBoxLayout()
+        outer.addLayout(info_row)
 
         btn_row = QHBoxLayout()
         btn_row.setSpacing(6)
@@ -380,9 +340,8 @@ class ConfigurePanel(QScrollArea):
         self._save_dts_btn.clicked.connect(self._save_dts)
         btn_row.addWidget(self._save_dts_btn)
 
-        layout.addLayout(btn_row)
-
-        self.setWidget(content)
+        outer.addLayout(btn_row)
+        return outer
 
     def set_preview_widgets(self, plot_widget, plot_item, placeholder):
         """Receive preview plot widgets owned by the parent dialog."""
@@ -551,8 +510,6 @@ class ConfigurePanel(QScrollArea):
         content = Path(path).read_text(encoding="utf-8")
         known, extra_lines = self._parse_dts_content(content)
 
-        from .screening import _parse_filter_directives
-
         filter_params = _parse_filter_directives(content)
         if filter_params:
             set_widget_value(self._param_widgets["use_filters"], True)
@@ -622,136 +579,7 @@ class ConfigurePanel(QScrollArea):
                 self._screen_cbs[key].setChecked(True)
                 self._screen_ranges[key].setText(range_str)
 
-    @staticmethod
-    def _parse_dts_content(content: str):
-        """Parse DTS config content into known parameters and extra lines.
-
-        Parameters
-        ----------
-        content : str
-            DTS file content.
-
-        Returns
-        -------
-        tuple of (dict, list)
-            Known parameter dict and list of extra config lines.
-        """
-        known = {}
-        extra_lines = []
-        tail_lines = []
-
-        if "INCLUSION" in content:
-            idx = content.index("INCLUSION")
-            tail_lines = content[idx:].strip().split("\n")
-            content = content[:idx]
-
-        _SKIP_KEYS = {
-            "Integrator_Type",
-            "VertexPositionIntegrator",
-            "AlexanderMove",
-            "InclusionPoseIntegrator",
-            "VisualizationFormat",
-            "NonbinaryTrajectory",
-            "Box_Centering_F",
-        }
-
-        for line in content.strip().split("\n"):
-            line = line.strip()
-            if not line or line.startswith("#") or line.startswith(";"):
-                continue
-
-            if "=" not in line:
-                extra_lines.append(line)
-                continue
-
-            key, _, value = line.partition("=")
-            key = key.strip()
-            value = value.strip()
-            parts = value.split()
-
-            if not parts:
-                continue
-
-            def _parse_val(raw):
-                """Return the fixed value for *raw*, recording screening info.
-
-                If *raw* is a ``{{name:range}}`` placeholder, stores the
-                range in ``known["_screen"]`` and returns the first value.
-                """
-                placeholder = _extract_screening_placeholder(raw)
-                if placeholder:
-                    name, range_str = placeholder
-                    known.setdefault("_screen", {})[name] = range_str
-                    try:
-                        from pyfreedts.screen import ParameterParser
-
-                        _, parsed = ParameterParser.parse_template(
-                            "{{" + f"p:{range_str}" + "}}"
-                        )
-                        vals = parsed.get("p", [])
-                        return vals[0] if vals else raw
-                    except Exception:
-                        return raw
-                return raw
-
-            if key == "EnergyMethod":
-                if ("MDFF" in parts[0] or "HMFF" in parts[0]) and len(parts) >= 8:
-                    vol_raw = parts[1]
-                    placeholder = _extract_screening_placeholder(vol_raw)
-                    if placeholder:
-                        paths = placeholder[1].split(",")
-                        known["volume_path"] = paths
-                        known.setdefault("_screen", {})["volume_path"] = placeholder[1]
-                    else:
-                        known["volume_path"] = vol_raw
-                    known["xi"] = float(_parse_val(parts[2]))
-                    known["scale_factor"] = parts[4]
-                    known["offset"] = parts[5]
-                    try:
-                        known["invert_contrast"] = bool(int(parts[6]))
-                    except (ValueError, IndexError):
-                        pass
-            elif key == "Kappa":
-                known["kappa"] = float(_parse_val(parts[0]))
-                if len(parts) >= 2:
-                    known["kappa0"] = float(_parse_val(parts[1]))
-            elif key == "Temperature":
-                known["temperature"] = float(_parse_val(parts[0]))
-            elif key == "Set_Steps" and len(parts) >= 2:
-                known["steps"] = int(float(parts[1]))
-            elif key == "Min_Max_Lenghts" and len(parts) >= 2:
-                known["min_edge"] = float(parts[0])
-                known["max_edge"] = float(parts[1])
-            elif key == "TimeSeriesData_Period":
-                known["output_period"] = int(float(parts[0]))
-            elif key == "VolumeCoupling":
-                if parts[0] != "No":
-                    known["vol_coupling"] = {
-                        "mode": parts[0],
-                        "values": [_parse_val(p) for p in parts[1:]],
-                    }
-            elif key == "GlobalCurvatureCoupling":
-                if parts[0] != "No":
-                    known["curv_coupling"] = {
-                        "mode": parts[0],
-                        "values": [_parse_val(p) for p in parts[1:]],
-                    }
-            elif key == "TotalAreaCoupling":
-                if parts[0] != "No":
-                    known["area_coupling"] = {
-                        "mode": parts[0],
-                        "values": [_parse_val(p) for p in parts[1:]],
-                    }
-            elif key in _SKIP_KEYS:
-                pass
-            else:
-                extra_lines.append(line)
-
-        if "OpenMP" in content:
-            known["threads"] = 4
-
-        extra_lines.extend(tail_lines)
-        return known, extra_lines
+    _parse_dts_content = staticmethod(parse_dts_content)
 
     def _toggle_screen_param(self, key: str, state: int):
         screening = bool(state)
