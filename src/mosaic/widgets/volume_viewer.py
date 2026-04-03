@@ -265,7 +265,7 @@ class VolumeViewer(QWidget):
 
         def _open():
             try:
-                from ..formats.czi.zarr_source import open_omezarr
+                from ..formats.stream import open_omezarr
 
                 zarr_src, info = open_omezarr(
                     source,

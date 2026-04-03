@@ -11,6 +11,7 @@ from .parser import (
     read_tsi,
     read_vtu,
     read_structure,
+    read_ndjson,
     GeometryDataContainer,
 )
 
@@ -34,6 +35,7 @@ FORMAT_MAPPING = {
     read_tsi: ["q", "tsi"],
     read_vtu: ["vtu"],
     read_structure: ["pdb", "cif", "gro"],
+    read_ndjson: ["ndjson"],
 }
 
 

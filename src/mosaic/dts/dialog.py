@@ -1,16 +1,11 @@
 """
-DTS parameter screening dialog with two-tab layout and analysis.
-
-Configure tab: parameter groups (Simulation, Physical, HMFF, Extra Config)
-with screening toggle + range input. Overview tab: status table with
-search filtering + full analysis mode on the right panel.
+DTS parameter screening and analysis dialog.
 
 Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import re
 import functools
 from pathlib import Path
 
@@ -48,17 +43,22 @@ from ..stylesheets import (
 )
 from ._configure import ConfigurePanel
 from ._analysis_panel import AnalysisPanel
+from ._compute_panel import ComputePanel
 
 __all__ = ["DTSScreeningDialog"]
 
 
-class DTSScreeningDialog(QDialog):
-    """DTS parameter screening and analysis dialog.
+def _icon_button(icon_name, size=22, tooltip="", flat=True):
+    btn = QPushButton()
+    btn.setIcon(qta.icon(icon_name, color=Colors.ICON))
+    btn.setFixedSize(size, size)
+    btn.setToolTip(tooltip)
+    btn.setFlat(flat)
+    return btn
 
-    Two-tab left panel (Configure / Overview) with a context-sensitive
-    right panel: parameter space preview during configuration, full
-    analysis plots during overview.
-    """
+
+class DTSScreeningDialog(QDialog):
+    """DTS parameter screening and analysis dialog."""
 
     def __init__(self, cdata=None, parent=None):
         super().__init__(parent)
@@ -100,8 +100,8 @@ class DTSScreeningDialog(QDialog):
         )
         self._left_tabs.addTab(
             self._overview_tab,
-            qta.icon("ph.list-bullets", color=Colors.ICON),
-            "Overview",
+            qta.icon("ph.chart-line-up", color=Colors.ICON),
+            "Analyze",
         )
 
         self._right_widget = QWidget()
@@ -137,22 +137,17 @@ class DTSScreeningDialog(QDialog):
 
         self._right_layout.addWidget(self._preview_container)
 
-        # Give configure panel access to the preview plot widgets
         self._configure_panel.set_preview_widgets(
             self._preview_plot, self._preview_plot_item, self._preview_placeholder
         )
 
         self._analysis_panel = AnalysisPanel(
-            cdata=self.cdata,
-            get_mesh_transform=self._configure_panel.get_mesh_transform,
             get_selected_run_ids=self._get_selected_run_ids,
         )
         self._right_layout.addWidget(self._analysis_panel)
 
-        # Initial visibility
         self._analysis_panel.setVisible(False)
 
-        # Wire signals
         self._left_tabs.currentChanged.connect(self._on_left_tab_changed)
         self._configure_panel.screenGenerated.connect(self._on_screen_generated)
 
@@ -182,10 +177,9 @@ class DTSScreeningDialog(QDialog):
         )
         dir_row.addWidget(self._screen_dir_input)
 
-        refresh_btn = QPushButton()
-        refresh_btn.setIcon(qta.icon("ph.arrows-clockwise", color=Colors.ICON))
-        refresh_btn.setFixedSize(28, 28)
-        refresh_btn.setToolTip("Refresh status")
+        refresh_btn = _icon_button(
+            "ph.arrows-clockwise", size=28, tooltip="Refresh status"
+        )
         refresh_btn.clicked.connect(self._refresh_overview)
         dir_row.addWidget(refresh_btn)
         screen_layout.addLayout(dir_row)
@@ -220,7 +214,36 @@ class DTSScreeningDialog(QDialog):
         screen_layout.addWidget(self._status_label)
 
         layout.addWidget(screen_group)
+
+        self._compute_panel = ComputePanel(
+            cdata=self.cdata,
+            get_mesh_transform=self._configure_panel.get_mesh_transform,
+            get_run_ids=self._get_compute_run_ids,
+            get_run_dir=self._get_run_dir,
+            on_complete=self._on_compute_complete,
+        )
+        layout.addWidget(self._compute_panel)
+
         return widget
+
+    def _get_compute_run_ids(self):
+        """Return selected run IDs, falling back to all available."""
+        ids = self._get_selected_run_ids()
+        return ids if ids else self._analysis_panel.available_run_ids()
+
+    def _get_run_dir(self, run_id):
+        """Return the run directory path for a run ID, or None."""
+        results = self._analysis_panel.screen_results
+        if not results:
+            return None
+        for r in results["runs"]:
+            if r["run_id"] == run_id:
+                return r.get("run_dir")
+        return None
+
+    def _on_compute_complete(self):
+        if self._screen_dir:
+            self._analysis_panel.load_results(self._screen_dir)
 
     def _on_left_tab_changed(self, index: int):
         is_configure = index == 0
@@ -313,19 +336,13 @@ class DTSScreeningDialog(QDialog):
             actions_layout.setContentsMargins(2, 0, 2, 0)
             actions_layout.setSpacing(2)
 
-            folder_btn = QPushButton()
-            folder_btn.setIcon(qta.icon("ph.folder-open", color=Colors.ICON))
-            folder_btn.setFixedSize(22, 22)
-            folder_btn.setToolTip("Open run directory")
-            folder_btn.setFlat(True)
+            folder_btn = _icon_button("ph.folder-open", tooltip="Open run directory")
             folder_btn.clicked.connect(functools.partial(self._open_run_dir, run_id))
             actions_layout.addWidget(folder_btn)
 
-            import_btn = QPushButton()
-            import_btn.setIcon(qta.icon("ph.upload", color=Colors.ICON))
-            import_btn.setFixedSize(22, 22)
-            import_btn.setToolTip("Import trajectory into viewer")
-            import_btn.setFlat(True)
+            import_btn = _icon_button(
+                "ph.upload", tooltip="Import trajectory into viewer"
+            )
             import_btn.setEnabled(is_available)
             import_btn.clicked.connect(
                 functools.partial(self._import_run_trajectory, run_id)
@@ -388,19 +405,14 @@ class DTSScreeningDialog(QDialog):
         if not traj_dir.exists():
             return QMessageBox.warning(self, "Error", "No trajectory output found.")
 
-        from ..formats import open_file
-        from ..meshing import to_open3d
         from ..geometry import GeometryTrajectory
-        from ..parametrization import TriangularMesh
-
-        files = sorted(
-            [
-                f
-                for f in traj_dir.iterdir()
-                if f.suffix in (".tsi", ".vtu") and f.name != "conf-1.vtu"
-            ],
-            key=lambda f: int(re.findall(r"\d+", f.name)[0]),
+        from ._utils import (
+            list_trajectory_files,
+            build_trajectory_frames,
+            collect_vertex_properties,
         )
+
+        files = list_trajectory_files(str(traj_dir))
         if not files:
             return QMessageBox.warning(self, "Error", "No trajectory frames found.")
 
@@ -415,23 +427,15 @@ class DTSScreeningDialog(QDialog):
             if "offset" in known:
                 offset = np.array([float(x) for x in known["offset"].split(",")])
 
-        ret = []
-        for filepath in files:
-            container = open_file(str(filepath))[0]
-            points = np.divide(np.subtract(container.vertices, offset), scale)
-            faces = container.faces.astype(int)
-            fit = TriangularMesh(to_open3d(points, faces), repair=False)
-            ret.append({"fit": fit, "filename": str(filepath)})
-
-        base = ret[0]["fit"]
+        vertex_props = collect_vertex_properties(str(run_dir))
+        frames = build_trajectory_frames(str(traj_dir), scale, offset, vertex_props)
         trajectory = GeometryTrajectory(
-            points=base.vertices.copy(),
-            normals=base.compute_vertex_normals().copy(),
             sampling_rate=1 / scale,
-            trajectory=ret,
-            model=base,
+            trajectory=frames,
+            model=frames[0]["fit"],
+            vertex_properties=frames[0].get("vertex_properties"),
         )
         trajectory.change_representation("mesh")
-        self.cdata._models.add(trajectory)
+        self.cdata.models.add(trajectory)
         self.cdata.models.data_changed.emit()
         self.cdata.models.render()

@@ -20,11 +20,7 @@ import numpy as np
 
 from ..parallel import report_progress
 
-__all__ = [
-    "generate_screen",
-    "extend_screen",
-    "get_screen_status",
-]
+__all__ = ["generate_screen", "extend_screen", "get_screen_status"]
 
 
 _SENTINEL = ".done"
@@ -152,48 +148,6 @@ def _prepare_volume(
             )
         )
     return results
-
-
-def _parse_filter_directives(content: str) -> Dict:
-    """Extract ``;@filter`` directives from DTS content.
-
-    Parameters
-    ----------
-    content : str
-        DTS config content that may contain ``;@filter key=val ...`` lines.
-
-    Returns
-    -------
-    dict
-        Parsed filter parameters (lowpass, highpass, plane_norm).
-    """
-    result = {}
-    _KEY_MAP = {
-        "lowpass": "lowpass_cutoff",
-        "highpass": "highpass_cutoff",
-        "plane_norm": "plane_norm",
-    }
-    for line in content.splitlines():
-        line = line.strip()
-        if not line.startswith(";@filter"):
-            continue
-        for token in line[len(";@filter") :].split():
-            if "=" not in token:
-                continue
-            key, _, val = token.partition("=")
-            mapped = _KEY_MAP.get(key.strip(), key.strip())
-            try:
-                result[mapped] = float(val)
-            except ValueError:
-                result[mapped] = val.strip()
-    return result
-
-
-def _strip_filter_directives(content: str) -> str:
-    """Remove ``;@filter`` comment lines from DTS content."""
-    return "\n".join(
-        line for line in content.splitlines() if not line.strip().startswith(";@filter")
-    )
 
 
 def _build_dts_template(
@@ -416,6 +370,37 @@ def _write_summary(
     return summary
 
 
+def _finalize_runs(
+    screen_dir: Path,
+    summary: Dict,
+    mesh_name: str = "",
+) -> None:
+    """Write run.sh for every run, then write launcher scripts.
+
+    Parameters
+    ----------
+    screen_dir : Path
+        Screen output directory.
+    summary : dict
+        Screen summary (as returned by :func:`_write_summary`).
+    mesh_name : str
+        Filename of the mesh in the screen root directory.  When empty,
+        the name is inferred from ``<screen_dir>/topol.top`` if present.
+    """
+    if not mesh_name:
+        topol_path = screen_dir / "topol.top"
+        if topol_path.exists():
+            first_word = topol_path.read_text().split()[0]
+            if (screen_dir / first_word).is_file():
+                mesh_name = first_word
+
+    for run_info in summary["runs"]:
+        run_dir = screen_dir / run_info["run_id"]
+        _write_run_script(run_dir, run_info["parameters"], mesh_name=mesh_name)
+
+    _write_launcher_scripts(screen_dir, summary)
+
+
 def _write_run_script(run_dir: Path, params: Dict, mesh_name: str = "") -> None:
     """Write a run.sh script for a single screen run.
 
@@ -457,35 +442,162 @@ def _write_run_script(run_dir: Path, params: Dict, mesh_name: str = "") -> None:
         f.write(script)
 
 
-def _finalize_runs(
-    screen_dir: Path,
-    summary: Dict,
-    mesh_name: str = "",
-) -> None:
-    """Write run.sh for every run, then write launcher scripts.
+def _pending_runs_preamble(output_dir: Path) -> str:
+    """Shared bash preamble that builds RUNS array from pending run scripts."""
+    return textwrap.dedent(
+        f"""\
+        SCREEN_DIR="{output_dir}"
+        mapfile -t ALL < <(find "$SCREEN_DIR" -path '*/run_*/run.sh' | sort)
 
-    Parameters
-    ----------
-    screen_dir : Path
-        Screen output directory.
-    summary : dict
-        Screen summary (as returned by :func:`_write_summary`).
-    mesh_name : str
-        Filename of the mesh in the screen root directory.  When empty,
-        the name is inferred from ``<screen_dir>/topol.top`` if present.
+        RUNS=()
+        for script in "${{ALL[@]}}"; do
+            [[ -f "$(dirname "$script")/{_SENTINEL}" ]] && continue
+            RUNS+=("$script")
+        done
     """
-    if not mesh_name:
-        topol_path = screen_dir / "topol.top"
-        if topol_path.exists():
-            first_word = topol_path.read_text().split()[0]
-            if (screen_dir / first_word).is_file():
-                mesh_name = first_word
+    )
 
-    for run_info in summary["runs"]:
-        run_dir = screen_dir / run_info["run_id"]
-        _write_run_script(run_dir, run_info["parameters"], mesh_name=mesh_name)
 
-    write_launcher_scripts(screen_dir, summary)
+def _write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
+    """Write local and SLURM launcher scripts for a screen."""
+    preamble = _pending_runs_preamble(output_dir)
+
+    local_script = (
+        "#!/bin/bash\nset -euo pipefail\n\n"
+        + preamble
+        + textwrap.dedent(
+            """\
+        echo "${#RUNS[@]}/${#ALL[@]} runs pending"
+        [[ ${#RUNS[@]} -eq 0 ]] && exit 0
+
+        if command -v parallel &>/dev/null; then
+            printf '%s\\n' "${RUNS[@]}" | parallel --bar bash {}
+        else
+            for script in "${RUNS[@]}"; do
+                echo "Running $script"
+                bash "$script"
+            done
+        fi
+        """
+        )
+    )
+    local_path = output_dir / "run_all.sh"
+    local_path.write_text(local_script, encoding="utf-8")
+    local_path.chmod(0o755)
+
+    n_runs = len(summary["runs"])
+    if n_runs == 0:
+        return
+
+    slurm_script = (
+        textwrap.dedent(
+            f"""\
+        #!/bin/bash
+        #SBATCH --ntasks=1
+        #SBATCH --cpus-per-task=1
+        #SBATCH --mem=6G
+        #SBATCH --time=24:00:00
+        #SBATCH --output=slurm_%A_%a.log
+        #
+        # DTS screen launcher — {n_runs} runs.
+        # Edit MAX_ARRAY below to change the chunk size.
+        #
+
+        MAX_ARRAY=1000
+
+        """
+        )
+        + preamble
+        + textwrap.dedent(
+            """\
+        N=${#RUNS[@]}
+
+        if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
+            OFFSET=${SLURM_OFFSET:-0}
+            exec bash "${RUNS[$((SLURM_ARRAY_TASK_ID + OFFSET))]}"
+        fi
+
+        echo "$N/${#ALL[@]} runs pending"
+        [[ $N -eq 0 ]] && exit 0
+
+        for (( START=0; START<N; START+=MAX_ARRAY )); do
+            END=$(( START + MAX_ARRAY - 1 ))
+            if (( END >= N )); then END=$(( N - 1 )); fi
+
+            ARGS=(--parsable --job-name=dts_$((START / MAX_ARRAY))
+                  --array=0-$((END - START))
+                  --export=ALL,SLURM_OFFSET=$START)
+            [[ -n "${JOB:-}" ]] && ARGS+=(--dependency=afterany:$JOB)
+
+            JOB=$(sbatch "${ARGS[@]}" "$0")
+            echo "Submitted chunk $((START / MAX_ARRAY)): $JOB (runs $START-$END)"
+        done
+        """
+        )
+    )
+    slurm_path = output_dir / "submit_slurm.sh"
+    slurm_path.write_text(slurm_script, encoding="utf-8")
+    slurm_path.chmod(0o755)
+
+
+def _setup_screen_dir(screen_dir, mesh):
+    """Copy mesh into screen directory, return mesh filename."""
+    mesh_src = Path(mesh).resolve()
+    if not mesh_src.exists():
+        raise FileNotFoundError(f"Mesh file not found: {mesh_src}")
+    screen_mesh = screen_dir / mesh_src.name
+    if not screen_mesh.exists():
+        shutil.copy2(mesh_src, screen_mesh)
+    return mesh_src.name
+
+
+def _apply_volume_filters(volume_path, dts_content, output_dir, parse_fn):
+    """Apply filter directives to volumes if present, return updated paths."""
+    if volume_path is None:
+        return volume_path
+    filter_params = parse_fn(dts_content)
+    if not filter_params:
+        return volume_path
+    return _prepare_volume(
+        volume_path=volume_path,
+        output_dir=output_dir,
+        use_filters=True,
+        lowpass_cutoff=filter_params.get("lowpass_cutoff"),
+        highpass_cutoff=filter_params.get("highpass_cutoff"),
+        plane_norm=filter_params.get("plane_norm"),
+    )
+
+
+def _merge_parameters(old_summary, new_parameters):
+    """Merge existing parameter ranges from a summary with new values."""
+    merged = dict(new_parameters)
+    for name, info in old_summary.get("parameter_ranges", {}).items():
+        old_vals = set(info.get("values", []))
+        new_vals = set(merged.get(name, []))
+        merged[name] = sorted(old_vals | new_vals)
+    return merged
+
+
+def _is_run_directory(path: Path) -> bool:
+    """Return True if *path* looks like a DTS run directory."""
+    if not path.is_dir():
+        return False
+    return run_status(path) == "available" or (path / "input.dts").exists()
+
+
+def _run_info(run_dir: Path) -> Dict:
+    """Build a status dict for a single run directory."""
+    params = {}
+    params_file = run_dir / "params.json"
+    if params_file.exists():
+        with open(params_file, "r") as f:
+            params = json.load(f)
+
+    return {
+        "run_id": run_dir.name,
+        "parameters": params,
+        "status": run_status(run_dir),
+    }
 
 
 def generate_screen(
@@ -495,10 +607,6 @@ def generate_screen(
     volume_path: Optional[Union[str, List[str]]] = None,
 ) -> Dict:
     """Generate a DTS parameter screen from a DTS config template.
-
-    The *dts_content* is the canonical input: a DTS config string that
-    may contain ``{{name:range}}`` screening placeholders and
-    ``;@filter`` directives for volume filtering.
 
     Parameters
     ----------
@@ -518,8 +626,15 @@ def generate_screen(
     -------
     dict
         Summary with run count, parameter names, directory paths.
+
+    Notes
+    -----
+    The *dts_content* is the canonical input: a DTS config string that
+    may contain ``{{name:range}}`` screening placeholders and
+    ``;@filter`` directives for volume filtering.
     """
     from pyfreedts.screen import ParameterParser
+    from ._utils import parse_filter_directives
 
     warnings.warn(
         "Setup FreeDTS Screen - Citation: "
@@ -531,45 +646,28 @@ def generate_screen(
     makedirs(screen_dir, exist_ok=True)
     report_progress(message="Preparing inputs", current=1, total=4)
 
-    # Copy mesh into screen directory for portability
-    mesh_src = Path(mesh).resolve()
-    if not mesh_src.exists():
-        raise FileNotFoundError(f"Mesh file not found: {mesh_src}")
-    mesh_name = mesh_src.name
-    screen_mesh = screen_dir / mesh_name
-    if not screen_mesh.exists():
-        shutil.copy2(mesh_src, screen_mesh)
-
-    multi_volume = isinstance(volume_path, list) and len(volume_path) > 1
-
-    # Apply volume filtering from ;@filter directives
-    filter_params = _parse_filter_directives(dts_content)
-    if volume_path is not None and filter_params:
-        volume_path = _prepare_volume(
-            volume_path=volume_path,
-            output_dir=output_dir,
-            use_filters=True,
-            lowpass_cutoff=filter_params.get("lowpass_cutoff"),
-            highpass_cutoff=filter_params.get("highpass_cutoff"),
-            plane_norm=filter_params.get("plane_norm"),
-        )
+    mesh_name = _setup_screen_dir(screen_dir, mesh)
+    volume_path = _apply_volume_filters(
+        volume_path, dts_content, output_dir, parse_filter_directives
+    )
 
     report_progress(message="Building template", current=2, total=4)
 
-    raw_template = _strip_filter_directives(dts_content)
+    raw_template = "\n".join(
+        l for l in dts_content.splitlines() if not l.strip().startswith(";@filter")
+    )
     template_content, parameters = ParameterParser.parse_template(raw_template)
 
-    # If volumes were filtered, override with the filtered paths
+    multi_volume = isinstance(volume_path, list) and len(volume_path) > 1
+    filter_params = parse_filter_directives(dts_content)
     if multi_volume and filter_params and "volume_path" in parameters:
         parameters["volume_path"] = list(volume_path)
 
     (screen_dir / "screen.dts").write_text(dts_content, encoding="utf-8")
-
-    template_path = screen_dir / "template.dts"
-    template_path.write_text(template_content, encoding="utf-8")
-
-    topol_path = screen_dir / "topol.top"
-    topol_path.write_text(f"{screen_mesh} 1\n", encoding="utf-8")
+    (screen_dir / "template.dts").write_text(template_content, encoding="utf-8")
+    (screen_dir / "topol.top").write_text(
+        f"{screen_dir / mesh_name} 1\n", encoding="utf-8"
+    )
 
     report_progress(message="Generating runs", current=3, total=4)
 
@@ -580,10 +678,7 @@ def generate_screen(
         with open(summary_path, "r") as f:
             old_summary = json.load(f)
         existing_runs = old_summary["runs"]
-        for name, info in old_summary.get("parameter_ranges", {}).items():
-            old_vals = set(info.get("values", []))
-            new_vals = set(merged_parameters.get(name, []))
-            merged_parameters[name] = sorted(old_vals | new_vals)
+        merged_parameters = _merge_parameters(old_summary, parameters)
 
     new_runs = _expand_screen(screen_dir, template_content, parameters, existing_runs)
     all_runs = existing_runs + new_runs
@@ -599,104 +694,6 @@ def generate_screen(
         "output_dir": output_dir,
         "summary_path": str(screen_dir / "screen_summary.json"),
     }
-
-
-def write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
-    """Write local and SLURM launcher scripts for a screen.
-
-    Parameters
-    ----------
-    output_dir : Path
-        Screen output directory containing per-run subdirectories.
-    summary : dict
-        Screen summary with ``runs`` and ``total_runs`` keys.
-    """
-    local_script = textwrap.dedent(
-        f"""\
-        #!/bin/bash
-        set -euo pipefail
-
-        SCREEN_DIR="{output_dir}"
-        mapfile -t ALL < <(find "$SCREEN_DIR" -path '*/run_*/run.sh' | sort)
-
-        RUNS=()
-        for script in "${{ALL[@]}}"; do
-            [[ -f "$(dirname "$script")/{_SENTINEL}" ]] && continue
-            RUNS+=("$script")
-        done
-
-        echo "${{#RUNS[@]}}/${{#ALL[@]}} runs pending"
-        [[ ${{#RUNS[@]}} -eq 0 ]] && exit 0
-
-        if command -v parallel &>/dev/null; then
-            printf '%s\\n' "${{RUNS[@]}}" | parallel --bar bash {{}}
-        else
-            for script in "${{RUNS[@]}}"; do
-                echo "Running $script"
-                bash "$script"
-            done
-        fi
-        """
-    )
-    local_path = output_dir / "run_all.sh"
-    local_path.write_text(local_script, encoding="utf-8")
-    local_path.chmod(0o755)
-
-    n_runs = len(summary["runs"])
-    if n_runs == 0:
-        return
-
-    slurm_script = textwrap.dedent(
-        f"""\
-        #!/bin/bash
-        #SBATCH --ntasks=1
-        #SBATCH --cpus-per-task=1
-        #SBATCH --mem=6G
-        #SBATCH --time=24:00:00
-        #SBATCH --output=slurm_%A_%a.log
-        #
-        # DTS screen launcher — {n_runs} runs.
-        # Edit MAX_ARRAY below to change the chunk size.
-        #
-
-        MAX_ARRAY=1000
-
-        SCREEN_DIR="{output_dir}"
-        mapfile -t ALL < <(find "$SCREEN_DIR" -path '*/run_*/run.sh' | sort)
-
-        RUNS=()
-        for script in "${{ALL[@]}}"; do
-            [[ -f "$(dirname "$script")/{_SENTINEL}" ]] && continue
-            RUNS+=("$script")
-        done
-        N=${{#RUNS[@]}}
-
-        if [[ -n "${{SLURM_ARRAY_TASK_ID:-}}" ]]; then
-            OFFSET=${{SLURM_OFFSET:-0}}
-            exec bash "${{RUNS[$((SLURM_ARRAY_TASK_ID + OFFSET))]}}"
-        fi
-
-        echo "$N/${{#ALL[@]}} runs pending"
-        [[ $N -eq 0 ]] && exit 0
-
-        # Otherwise, submit self in chunks
-        for (( START=0; START<N; START+=MAX_ARRAY )); do
-            END=$(( START + MAX_ARRAY - 1 ))
-            if (( END >= N )); then END=$(( N - 1 )); fi
-
-            ARGS=(--parsable --job-name=dts_$((START / MAX_ARRAY))
-                  --array=0-$((END - START))
-                  --export=ALL,SLURM_OFFSET=$START)
-            [[ -n "${{JOB:-}}" ]] && ARGS+=(--dependency=afterany:$JOB)
-
-            JOB=$(sbatch "${{ARGS[@]}}" "$0")
-            echo "Submitted chunk $((START / MAX_ARRAY)): $JOB (runs $START-$END)"
-        done
-        """
-    )
-    slurm_path = output_dir / "submit_slurm.sh"
-    slurm_path.write_text(slurm_script, encoding="utf-8")
-    slurm_path.chmod(0o755)
 
 
 def extend_screen(screen_dir: str, new_screen_params: Dict[str, str]) -> Dict:
@@ -733,15 +730,7 @@ def extend_screen(screen_dir: str, new_screen_params: Dict[str, str]) -> Dict:
     )
 
     all_runs = summary["runs"] + new_runs
-    all_parameters = {}
-    for name in set(
-        list(summary.get("parameter_ranges", {}).keys()) + list(new_values.keys())
-    ):
-        existing_vals = (
-            summary.get("parameter_ranges", {}).get(name, {}).get("values", [])
-        )
-        merged = sorted(set(existing_vals + new_values.get(name, [])))
-        all_parameters[name] = merged
+    all_parameters = _merge_parameters(summary, new_values)
 
     updated_summary = _write_summary(
         screen_path,
@@ -758,26 +747,8 @@ def extend_screen(screen_dir: str, new_screen_params: Dict[str, str]) -> Dict:
     }
 
 
-def _is_run_directory(path: Path) -> bool:
-    """Return True if *path* looks like a DTS run directory."""
-    if not path.is_dir():
-        return False
-    return (
-        (path / "dts-en.xvg").exists()
-        or (path / "TrajTSI").is_dir()
-        or (path / "VTU_F").is_dir()
-        or bool(list(path.glob("*.res")))
-        or (path / "input.dts").exists()
-    )
-
-
 def get_screen_status(screen_dir: str) -> List[Dict]:
     """Check status of all runs in a screen or trajectory directory.
-
-    Supports three modes:
-    - Screen directory (has ``screen_summary.json``): returns runs with parameters.
-    - Directory of trajectories: subdirectories that are DTS runs.
-    - Single trajectory: the directory itself is a DTS run.
 
     Parameters
     ----------
@@ -788,6 +759,13 @@ def get_screen_status(screen_dir: str) -> List[Dict]:
     -------
     list of dict
         Each dict has run_id, parameters, status.
+
+    Notes
+    -----
+    Supports three modes:
+    - Screen directory (has ``screen_summary.json``): returns runs with parameters.
+    - Directory of trajectories: subdirectories that are DTS runs.
+    - Single trajectory: the directory itself is a DTS run.
     """
     root = Path(screen_dir)
     summary_path = root / "screen_summary.json"
@@ -795,52 +773,13 @@ def get_screen_status(screen_dir: str) -> List[Dict]:
     if summary_path.exists():
         with open(summary_path, "r") as f:
             summary = json.load(f)
-
-        results = []
-        for run_info in summary["runs"]:
-            run_dir = root / run_info["run_id"]
-            results.append(
-                {
-                    "run_id": run_info["run_id"],
-                    "parameters": run_info["parameters"],
-                    "status": run_status(run_dir),
-                }
-            )
-        return results
+        return [_run_info(root / r["run_id"]) for r in summary["runs"]]
 
     if _is_run_directory(root):
-        params = {}
-        params_file = root / "params.json"
-        if params_file.exists():
-            with open(params_file, "r") as f:
-                params = json.load(f)
-        return [
-            {
-                "run_id": root.name,
-                "parameters": params,
-                "status": run_status(root),
-            }
-        ]
+        return [_run_info(root)]
 
     subdirs = sorted(
         [d for d in root.iterdir() if _is_run_directory(d)],
         key=lambda d: d.name,
     )
-    if subdirs:
-        results = []
-        for d in subdirs:
-            params = {}
-            params_file = d / "params.json"
-            if params_file.exists():
-                with open(params_file, "r") as f:
-                    params = json.load(f)
-            results.append(
-                {
-                    "run_id": d.name,
-                    "parameters": params,
-                    "status": run_status(d),
-                }
-            )
-        return results
-
-    return []
+    return [_run_info(d) for d in subdirs]

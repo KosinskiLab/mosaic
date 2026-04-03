@@ -889,3 +889,80 @@ def load_density(filename: str, **kwargs):
         volume.sampling_rate = 1
 
     return volume
+
+
+def read_ndjson(filename: str) -> GeometryDataContainer:
+    """Read a newline-delimited JSON annotation file.
+
+    Supports OrientedPoint (with rotation matrices), Point, and
+    InstanceSegmentation records.  The shape type is inferred from
+    the first record.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the ndjson file.
+
+    Returns
+    -------
+    GeometryDataContainer
+        Parsed geometry data container.
+    """
+    import json
+    from scipy.spatial.transform import Rotation
+    from ..utils import NORMAL_REFERENCE
+
+    records = []
+    with open(filename, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                records.append(json.loads(line))
+
+    if not records:
+        return GeometryDataContainer(vertices=[np.empty((0, 3), dtype=np.float32)])
+
+    first = records[0]
+
+    if "xyz_rotation_matrix" in first:
+        points = np.array(
+            [
+                [r["location"]["x"], r["location"]["y"], r["location"]["z"]]
+                for r in records
+            ],
+            dtype=np.float32,
+        )
+        rotations = Rotation.from_matrix(
+            np.array([r["xyz_rotation_matrix"] for r in records], dtype=np.float64)
+        )
+        return GeometryDataContainer(
+            vertices=[points],
+            normals=[rotations.apply(NORMAL_REFERENCE).astype(np.float32)],
+            quaternions=[rotations.as_quat(scalar_first=True).astype(np.float32)],
+        )
+
+    if "instance_id" in first:
+        instances = {}
+        for r in records:
+            iid = r.get("instance_id", 0)
+            loc = r["location"]
+            instances.setdefault(iid, []).append([loc["x"], loc["y"], loc["z"]])
+        vertices, properties = [], []
+        for iid in sorted(instances):
+            pts = np.array(instances[iid], dtype=np.float32)
+            vertices.append(pts)
+            properties.append(
+                VertexPropertyContainer(
+                    {"instance_id": np.full(len(pts), iid, dtype=np.int32)}
+                )
+            )
+        return GeometryDataContainer(
+            vertices=vertices,
+            vertex_properties=properties,
+        )
+
+    points = np.array(
+        [[r["location"]["x"], r["location"]["y"], r["location"]["z"]] for r in records],
+        dtype=np.float32,
+    )
+    return GeometryDataContainer(vertices=[points])

@@ -1,0 +1,205 @@
+"""
+Compute panel widget for DTS trajectory analysis.
+
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
+
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
+
+from pathlib import Path
+from typing import Callable, Optional
+
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import (
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QComboBox,
+    QSpinBox,
+    QCheckBox,
+    QPushButton,
+    QFormLayout,
+    QWidget,
+    QGroupBox,
+    QMessageBox,
+)
+import qtawesome as qta
+
+from ..stylesheets import Colors
+
+
+class ComputePanel(QGroupBox):
+    """Inline compute controls for DTS trajectory analysis.
+
+    Parameters
+    ----------
+    cdata : MosaicData or None
+        Application data (provides reference models for distance).
+    get_mesh_transform : callable
+        ``() -> (float, ndarray)`` returning scale and offset.
+    get_run_ids : callable
+        ``() -> list[str]`` returning run IDs to compute on.
+    get_run_dir : callable
+        ``(run_id) -> str or None`` returning the run directory path.
+    on_complete : callable, optional
+        Called after each computation finishes.
+    parent : QWidget, optional
+        Parent widget.
+    """
+
+    def __init__(
+        self,
+        cdata=None,
+        get_mesh_transform: Optional[Callable] = None,
+        get_run_ids: Optional[Callable] = None,
+        get_run_dir: Optional[Callable] = None,
+        on_complete: Optional[Callable] = None,
+        parent=None,
+    ):
+        super().__init__("Compute", parent)
+        self.cdata = cdata
+        self._get_mesh_transform = get_mesh_transform
+        self._get_run_ids = get_run_ids or (lambda: [])
+        self._get_run_dir = get_run_dir or (lambda _: None)
+        self._on_complete = on_complete
+        self._option_widgets = {}
+
+        self._build_ui()
+
+    def _build_ui(self):
+        self._form = QFormLayout(self)
+        self._form.setSpacing(5)
+        self._form.setContentsMargins(8, 8, 8, 8)
+        self._form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+        self._type_combo = QComboBox()
+        self._type_combo.addItems(["Distance", "Fluctuation", "Area", "Volume"])
+        self._type_combo.currentTextChanged.connect(self._on_type_changed)
+        self._form.addRow("Type:", self._type_combo)
+
+        bottom = QHBoxLayout()
+        self._ignore_cache_cb = QCheckBox("Ignore cache")
+        bottom.addWidget(self._ignore_cache_cb)
+        bottom.addStretch()
+
+        compute_btn = QPushButton("Compute")
+        compute_btn.setIcon(qta.icon("ph.play-fill", color=Colors.PRIMARY))
+        compute_btn.clicked.connect(self._on_compute)
+        bottom.addWidget(compute_btn)
+
+        self._form.addRow(bottom)
+        self._on_type_changed(self._type_combo.currentText())
+
+    def _on_type_changed(self, text):
+        self._option_widgets.clear()
+        form = self._form
+
+        while form.rowCount() > 2:
+            form.removeRow(1)
+
+        opts = self._option_widgets
+        insert = form.rowCount() - 1
+
+        if text == "Distance":
+            ref = QComboBox()
+            if self.cdata is not None:
+                for label, _ in self.cdata.format_datalist("models", mesh_only=True):
+                    ref.addItem(label)
+            form.insertRow(insert, "Reference:", ref)
+            opts["ref"] = ref
+
+        elif text == "Fluctuation":
+            window = QSpinBox()
+            window.setRange(1, 1000)
+            window.setValue(5)
+            window.setToolTip(
+                "Half-window size: each frame uses \u00b1window neighbours"
+            )
+            form.insertRow(insert, "Window (\u00b1):", window)
+
+            row = QHBoxLayout()
+            from_spin = QSpinBox()
+            from_spin.setRange(0, 999999)
+            from_spin.setSpecialValueText("start")
+            row.addWidget(from_spin)
+            row.addWidget(QLabel("\u2013"))
+            to_spin = QSpinBox()
+            to_spin.setRange(0, 999999)
+            to_spin.setSpecialValueText("end")
+            row.addWidget(to_spin)
+            form.insertRow(insert + 1, "Frames:", row)
+            opts["window"] = window
+            opts["from"] = from_spin
+            opts["to"] = to_spin
+
+    def _on_compute(self):
+        opts = self._option_widgets
+        prop = self._type_combo.currentText()
+
+        if prop == "Distance":
+            ref_name = opts["ref"].currentText()
+            if not ref_name or self.cdata is None:
+                QMessageBox.warning(self, "Error", "Select a reference model.")
+                return
+
+            ref_geom = next(
+                (
+                    g
+                    for l, g in self.cdata.format_datalist("models", mesh_only=True)
+                    if l == ref_name
+                ),
+                None,
+            )
+            if ref_geom is None:
+                QMessageBox.warning(self, "Error", "Reference geometry not found.")
+                return
+
+            self._submit(
+                "Distance", "distance", reference=ref_geom, reference_label=ref_name
+            )
+        elif prop == "Fluctuation":
+            self._submit(
+                "RMSF",
+                "fluctuation",
+                window=opts["window"].value(),
+                start_frame=opts["from"].value() or None,
+                end_frame=opts["to"].value() or None,
+            )
+        elif prop == "Area":
+            self._submit("Area", "mesh_area")
+        elif prop == "Volume":
+            self._submit("Volume", "mesh_volume")
+
+    def _submit(self, task_label, kind, **kwargs):
+        from ..dts import compute
+        from ..parallel import submit_task
+
+        scale, offset = self._get_mesh_transform()
+        run_ids = self._get_run_ids()
+
+        if not run_ids:
+            return QMessageBox.warning(self, "Error", "No available runs found.")
+
+        force = self._ignore_cache_cb.isChecked()
+
+        for run_id in run_ids:
+            run_dir = self._get_run_dir(run_id)
+            if not run_dir:
+                continue
+
+            traj_dir = Path(run_dir) / "TrajTSI"
+            if not traj_dir.exists():
+                continue
+
+            submit_task(
+                f"{task_label} ({run_id})",
+                compute,
+                lambda _: self._on_complete() if self._on_complete else None,
+                trajectory_dir=str(traj_dir),
+                kind=kind,
+                scale=scale,
+                offset=offset,
+                output_dir=run_dir,
+                force=force,
+                **kwargs,
+            )
