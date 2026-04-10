@@ -1,5 +1,6 @@
 from functools import partial
 
+import warnings
 import numpy as np
 from qtpy.QtWidgets import QWidget, QVBoxLayout
 
@@ -193,7 +194,7 @@ class ModelTab(QWidget):
         self.legend = legend
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(5)
+        layout.setSpacing(4)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.ribbon)
 
@@ -449,15 +450,11 @@ class ModelTab(QWidget):
         partition: bool = False,
         **kwargs,
     ):
-        selected_meshes = self._get_selected_meshes()
-        if not selected_meshes:
-            raise ValueError("Please select at least one mesh for projection.")
-
         submit_task(
             "Project",
             _project,
             self._default_callback,
-            selected_meshes,
+            self._get_selected_meshes(),
             self.cdata.data.get_selected_geometries(),
             use_normals,
             invert_normals,

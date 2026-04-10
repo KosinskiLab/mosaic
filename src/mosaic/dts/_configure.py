@@ -35,18 +35,17 @@ from ..widgets import PathSelector, generate_gradient_colors
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
 from ..stylesheets import Colors
 
+from ._utils import (
+    COUPLING_DEFS as _COUPLING_DEFS,
+    parse_screening_ranges,
+    parse_dts_content,
+)
+
+
 _EXTRA_CONFIG_PLACEHOLDER = (
     "# Fixed:   Kappa = 25.0 0 0\n"
     "# Screen:  Kappa = {{kappa:25.0:35.0:5.0}} 0 0\n"
     "# List:    Set_Steps = 1 {{steps:1000,5000}}"
-)
-
-from ._utils import (
-    COUPLING_DEFS as _COUPLING_DEFS,
-    extract_screening_placeholder as _extract_screening_placeholder,
-    parse_screening_ranges as _parse_screening_ranges,
-    parse_filter_directives as _parse_filter_directives,
-    parse_dts_content,
 )
 
 
@@ -508,9 +507,9 @@ class ConfigurePanel(QScrollArea):
         self._reset_fields()
 
         content = Path(path).read_text(encoding="utf-8")
-        known, extra_lines = self._parse_dts_content(content)
+        known, extra_lines = parse_dts_content(content)
 
-        filter_params = _parse_filter_directives(content)
+        filter_params = known.pop("_filters", {})
         if filter_params:
             set_widget_value(self._param_widgets["use_filters"], True)
             for full_key, val in filter_params.items():
@@ -579,8 +578,6 @@ class ConfigurePanel(QScrollArea):
                 self._screen_cbs[key].setChecked(True)
                 self._screen_ranges[key].setText(range_str)
 
-    _parse_dts_content = staticmethod(parse_dts_content)
-
     def _toggle_screen_param(self, key: str, state: int):
         screening = bool(state)
         self._screen_stacks[key].setCurrentIndex(1 if screening else 0)
@@ -647,7 +644,7 @@ class ConfigurePanel(QScrollArea):
 
         extra_text = self._extra_config_edit.toPlainText()
         if extra_text:
-            result.update(_parse_screening_ranges(extra_text))
+            result.update(parse_screening_ranges(extra_text))
 
         volumes = self._volume_path.get_path()
         if isinstance(volumes, list) and len(volumes) > 1:
@@ -932,8 +929,6 @@ class ConfigurePanel(QScrollArea):
 
         dts_content = self._build_dts_content()
 
-        volume, use_hmff = self._get_volume_state()
-
         def _on_done(result):
             if isinstance(result, dict):
                 self.screenGenerated.emit(output)
@@ -945,5 +940,4 @@ class ConfigurePanel(QScrollArea):
             output_dir=output,
             mesh=mesh,
             dts_content=dts_content,
-            volume_path=volume if use_hmff else None,
         )

@@ -24,7 +24,7 @@ class SegmentationTab(QWidget):
         self.trimmer = PlaneTrimmer(self.cdata.data)
         self.transfomer = ClusterTransformer(self.cdata.data)
         layout = QVBoxLayout(self)
-        layout.setSpacing(5)
+        layout.setSpacing(4)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.ribbon)
 

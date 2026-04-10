@@ -730,7 +730,7 @@ MethodRegistry.register(
 MethodRegistry.register(
     Operation(
         name="open",
-        description="Load geometries or session from file.",
+        description="Open files or session (session clears current state).",
         targets=False,
         common_params=(
             Param("filepath", "path", description="Path to the input file."),
@@ -759,14 +759,30 @@ MethodRegistry.register(
 MethodRegistry.register(
     Operation(
         name="save",
-        description="Save geometries or session to file.",
+        description="Save geometries or session (.mosaic) to file.",
         common_params=(
-            Param("filepath", "path", description="Path to the output file."),
+            Param(
+                "filepath",
+                "path",
+                description="Output path (.mosaic for session, or geometry format).",
+            ),
             Param(
                 "format",
                 "str",
                 default=None,
-                options=("star", "tsv", "xyz", "obj", "stl", "ply", "mrc", "em", "h5"),
+                options=(
+                    "star",
+                    "tsv",
+                    "xyz",
+                    "obj",
+                    "stl",
+                    "ply",
+                    "mrc",
+                    "em",
+                    "h5",
+                    "mosaic",
+                    "pickle",
+                ),
                 description="Output file format.",
             ),
             Param(
@@ -879,6 +895,54 @@ MethodRegistry.register(
                 "output",
                 "path",
                 description="Output directory for the generated screen.",
+            ),
+        ),
+    )
+)
+
+MethodRegistry.register(
+    Operation(
+        name="ingest",
+        description="Manage CZI CryoET portal data.",
+        targets=False,
+        common_params=(
+            Param("filepath", "path", description="Directory or manifest.json path."),
+        ),
+        methods=(
+            Method(
+                display_name="Info",
+                internal_name="info",
+                description="Show available runs, annotations, and tomograms.",
+                gui=False,
+            ),
+            Method(
+                display_name="Download",
+                internal_name="download",
+                description="Download missing files from manifest.",
+                params=(
+                    Param(
+                        "max_workers",
+                        "int",
+                        default=4,
+                        description="Parallel download threads.",
+                    ),
+                ),
+                gui=False,
+            ),
+            Method(
+                display_name="Create",
+                internal_name="create",
+                description="Create .mosaic session files from downloaded data.",
+                params=(
+                    Param(
+                        "output_dir",
+                        "path",
+                        default=None,
+                        file_mode=False,
+                        description="Output directory. Defaults to input directory.",
+                    ),
+                ),
+                gui=False,
             ),
         ),
     )

@@ -551,23 +551,6 @@ def _setup_screen_dir(screen_dir, mesh):
     return mesh_src.name
 
 
-def _apply_volume_filters(volume_path, dts_content, output_dir, parse_fn):
-    """Apply filter directives to volumes if present, return updated paths."""
-    if volume_path is None:
-        return volume_path
-    filter_params = parse_fn(dts_content)
-    if not filter_params:
-        return volume_path
-    return _prepare_volume(
-        volume_path=volume_path,
-        output_dir=output_dir,
-        use_filters=True,
-        lowpass_cutoff=filter_params.get("lowpass_cutoff"),
-        highpass_cutoff=filter_params.get("highpass_cutoff"),
-        plane_norm=filter_params.get("plane_norm"),
-    )
-
-
 def _merge_parameters(old_summary, new_parameters):
     """Merge existing parameter ranges from a summary with new values."""
     merged = dict(new_parameters)
@@ -604,7 +587,6 @@ def generate_screen(
     output_dir: str,
     mesh: str,
     dts_content: str,
-    volume_path: Optional[Union[str, List[str]]] = None,
 ) -> Dict:
     """Generate a DTS parameter screen from a DTS config template.
 
@@ -617,10 +599,7 @@ def generate_screen(
     dts_content : str
         DTS config template content.  May contain ``{{name:range}}``
         screening placeholders and ``;@filter`` comment directives.
-    volume_path : str, list of str, or None
-        Path(s) to density volume(s).  When *None* a standard Helfrich
-        energy method is used.  When a list with more than one entry,
-        each volume becomes a screening dimension.
+        Volume path(s) are extracted from the content automatically.
 
     Returns
     -------
@@ -634,7 +613,10 @@ def generate_screen(
     ``;@filter`` directives for volume filtering.
     """
     from pyfreedts.screen import ParameterParser
-    from ._utils import parse_filter_directives
+    from ._utils import parse_filter_directives, extract_volume_path
+
+    volume_path = extract_volume_path(dts_content)
+    filter_params = parse_filter_directives(dts_content)
 
     warnings.warn(
         "Setup FreeDTS Screen - Citation: "
@@ -647,9 +629,15 @@ def generate_screen(
     report_progress(message="Preparing inputs", current=1, total=4)
 
     mesh_name = _setup_screen_dir(screen_dir, mesh)
-    volume_path = _apply_volume_filters(
-        volume_path, dts_content, output_dir, parse_filter_directives
-    )
+    if volume_path is not None and filter_params:
+        volume_path = _prepare_volume(
+            volume_path=volume_path,
+            output_dir=output_dir,
+            use_filters=True,
+            lowpass_cutoff=filter_params.get("lowpass_cutoff"),
+            highpass_cutoff=filter_params.get("highpass_cutoff"),
+            plane_norm=filter_params.get("plane_norm"),
+        )
 
     report_progress(message="Building template", current=2, total=4)
 
@@ -659,7 +647,6 @@ def generate_screen(
     template_content, parameters = ParameterParser.parse_template(raw_template)
 
     multi_volume = isinstance(volume_path, list) and len(volume_path) > 1
-    filter_params = parse_filter_directives(dts_content)
     if multi_volume and filter_params and "volume_path" in parameters:
         parameters["volume_path"] = list(volume_path)
 

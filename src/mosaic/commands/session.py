@@ -42,6 +42,7 @@ class Session:
         self._models = DataContainer(highlight_color=(0.2, 0.4, 0.8))
         self._data_tree = TreeStateData()
         self._models_tree = TreeStateData()
+        self._metadata: dict = {}
         self._order: list = []
         self._last_results: list = []
         self._log: List[str] = []
@@ -322,8 +323,21 @@ class Session:
 
         write_geometries(geometries, filepath, **export_parameters)
 
-    def save_session(self, filepath: str) -> None:
-        """Pickle the session state to *filepath*."""
+    def save_session(self, filepath: str, sections: dict = None) -> None:
+        """Save session state to *filepath*.
+
+        ``.mosaic`` files use the indexed format with optional extra sections.
+        ``.pickle`` files use legacy raw pickle for backward compatibility.
+
+        Parameters
+        ----------
+        filepath : str
+            Destination file path.
+        sections : dict, optional
+            Extra sections to include in the file, mapping section names to
+            ``(encoding, data)`` tuples (e.g. ``{"thumbnail": ("png", bytes)}``).
+            Ignored for ``.pickle`` files.
+        """
         state = {
             "shape": self._data.metadata.get("shape"),
             "_data": self._data,
@@ -331,22 +345,47 @@ class Session:
             "_data_tree": self._data_tree,
             "_models_tree": self._models_tree,
         }
-        with open(filepath, "wb") as fh:
-            pickle.dump(state, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        if filepath.endswith(".pickle"):
+            with open(filepath, "wb") as fh:
+                pickle.dump(state, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        else:
+            from ..formats.session import write_session
+
+            merged = dict(self._metadata)
+            if sections:
+                merged.update(sections)
+            write_session(filepath, state, sections=merged or None)
 
     def load_session(self, filepath: str, persist: bool = True) -> None:
-        """Restore session state from a pickle file.
+        """Restore session state from a session file.
+
+        Handles both legacy ``.pickle`` and ``.mosaic`` formats.
 
         Parameters
         ----------
         filepath : str
-            Path to the pickle file.
+            Path to the session file.
         persist : bool, optional
             When ``True`` (default), replace the current session state.
             When ``False``, geometries are only available via ``@last``.
         """
-        with open(filepath, "rb") as fh:
-            state = pickle.load(fh)
+        from ..formats.session import (
+            open_session,
+            read_session_index,
+            read_session_section,
+        )
+
+        state = open_session(filepath)
+
+        index = read_session_index(filepath)
+        sections = {}
+        for name, info in index.get("sections", {}).items():
+            if name == "state":
+                continue
+            data = read_session_section(filepath, name)
+            if data is not None:
+                sections[name] = (info["encoding"], data)
+        self._metadata = sections
 
         loaded_data = state.get("_data", state.get("data", DataContainer()))
         loaded_models = state.get(

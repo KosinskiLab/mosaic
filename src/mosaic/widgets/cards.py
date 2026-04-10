@@ -140,16 +140,21 @@ class Card(QFrame):
     clicked = Signal(object)
     double_clicked = Signal(object)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, width=None, thumb_height=None, text_height=None):
         super().__init__(parent)
         self._selected = False
         self._pixmap = None
+
+        w = width or CARD_WIDTH
+        th = thumb_height or THUMB_HEIGHT
+        txth = text_height or _TEXT_H
+        content_w = w - 2
 
         cls_name = type(self).__name__
         self._qss_normal = _card_qss(cls_name)
         self._qss_selected = _card_qss_selected(cls_name)
 
-        self.setFixedWidth(CARD_WIDTH)
+        self.setFixedWidth(w)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setStyleSheet(self._qss_normal)
@@ -159,10 +164,10 @@ class Card(QFrame):
         lay.setContentsMargins(0, 0, 0, 0)
 
         self._img = QWidget()
-        self._img.setFixedSize(_CONTENT_W, THUMB_HEIGHT)
+        self._img.setFixedSize(content_w, th)
         self._img.setStyleSheet("background: transparent;")
         self._thumb = QLabel(self._img)
-        self._thumb.setFixedSize(_CONTENT_W, THUMB_HEIGHT)
+        self._thumb.setFixedSize(content_w, th)
         self._thumb.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._thumb.setStyleSheet(
             f"background: {Colors.BG_TERTIARY}; "
@@ -172,7 +177,7 @@ class Card(QFrame):
         lay.addWidget(self._img)
 
         txt = QWidget()
-        txt.setFixedHeight(_TEXT_H)
+        txt.setFixedHeight(txth)
         txt.setStyleSheet("background: transparent;")
         tl = QVBoxLayout(txt)
         tl.setSpacing(1)
@@ -195,7 +200,14 @@ class Card(QFrame):
         lay.addWidget(txt)
 
     def set_thumbnail(self, pixmap):
-        self._pixmap = _apply_thumb(self._thumb, pixmap)
+        w = self._thumb.width()
+        h = self._thumb.height()
+        if pixmap is None or pixmap.isNull():
+            return
+        clipped = clip_thumbnail(pixmap, w=w, h=h)
+        self._thumb.setPixmap(clipped)
+        self._thumb.setStyleSheet("background: transparent;")
+        self._pixmap = clipped
 
     def set_selected(self, sel):
         if self._selected == sel:
@@ -227,11 +239,27 @@ class FlowLayout:
     _SPACING = 10
     _MARGIN = 10
 
-    def __init__(self, parent_widget, card_width=CARD_WIDTH, card_height=None):
+    def __init__(
+        self,
+        parent_widget,
+        card_width=CARD_WIDTH,
+        card_height=None,
+        margin=None,
+        spacing=None,
+    ):
         self._parent = parent_widget
         self._card_w = card_width
         self._card_h = card_height or (THUMB_HEIGHT + _TEXT_H)
+        self._margin = margin if margin is not None else self._MARGIN
+        self._spacing = spacing if spacing is not None else self._SPACING
         self._items = []
+        self._cols = 0
+
+    def set_card_size(self, width=None, height=None):
+        if width is not None:
+            self._card_w = width
+        if height is not None:
+            self._card_h = height
         self._cols = 0
 
     def build(self, cards, container_width):
@@ -244,7 +272,7 @@ class FlowLayout:
 
     def reflow(self, container_width):
         cols = max(
-            1, (container_width - 2 * self._MARGIN) // (self._card_w + self._SPACING)
+            1, (container_width - 2 * self._margin) // (self._card_w + self._spacing)
         )
         if cols == self._cols:
             return
@@ -255,20 +283,18 @@ class FlowLayout:
 
     def _reposition(self, container_width, show_all=False):
         cols = max(
-            1, (container_width - 2 * self._MARGIN) // (self._card_w + self._SPACING)
+            1, (container_width - 2 * self._margin) // (self._card_w + self._spacing)
         )
         self._cols = cols
-
-        grid_width = cols * self._card_w + (cols - 1) * self._SPACING
-        x_offset = max(self._MARGIN, (container_width - grid_width) // 2)
+        x_offset = self._margin
 
         row_idx = 0
         col_idx = 0
         for card in self._items:
             if not show_all and card.isHidden():
                 continue
-            x = x_offset + col_idx * (self._card_w + self._SPACING)
-            y = self._MARGIN + row_idx * (self._card_h + self._SPACING)
+            x = x_offset + col_idx * (self._card_w + self._spacing)
+            y = self._margin + row_idx * (self._card_h + self._spacing)
             card.move(x, y)
             card.show()
             col_idx += 1
@@ -277,5 +303,5 @@ class FlowLayout:
                 row_idx += 1
 
         total_rows = row_idx + (1 if col_idx > 0 else 0)
-        total_h = 2 * self._MARGIN + total_rows * (self._card_h + self._SPACING)
+        total_h = 2 * self._margin + total_rows * (self._card_h + self._spacing)
         self._parent.setMinimumHeight(max(total_h, 0))

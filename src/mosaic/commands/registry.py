@@ -19,9 +19,10 @@ from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
-from .parser import ParsedCommand
-from .theme import BOX_PANEL, BOX_TABLE, get_console
 from ..registry import _UNSET
+from .parser import ParsedCommand
+from ..formats.session import is_session_file
+from .theme import BOX_PANEL, BOX_TABLE, get_console
 
 __all__ = ["Command", "CommandRegistry"]
 
@@ -277,13 +278,6 @@ def _applied_text(op_name: str, created: list, session) -> Text:
     return t
 
 
-def _is_session_file(filepath: str) -> bool:
-    """Return True if *filepath* has a session file extension."""
-    import os
-
-    return os.path.splitext(filepath)[1].lower() == ".pickle"
-
-
 def _expand_brace_range(pattern: str):
     """Expand bash-style ``{start..end}`` or ``{start..end..step}``.
 
@@ -321,7 +315,7 @@ def _cmd_open(session, parsed: ParsedCommand):
     if filepath is None:
         return _usage_line(_usage_for("open"))
 
-    if _is_session_file(filepath):
+    if is_session_file(filepath):
         persist = parsed.kwargs.pop("persist", True)
         session.load_session(filepath, persist=persist)
         if persist:
@@ -378,7 +372,7 @@ def _cmd_save(session, parsed: ParsedCommand):
     if filepath is None:
         return _usage_line(_usage_for("save"))
 
-    if _is_session_file(filepath):
+    if is_session_file(filepath):
         session.save_session(filepath)
         return _success_text("Session saved  ", filepath)
 
@@ -917,7 +911,6 @@ def _cmd_merge(session, parsed: ParsedCommand):
 
 
 def _cmd_dts_screen(session, parsed: ParsedCommand):
-    import re
     from pathlib import Path
 
     dts_file = parsed.kwargs.pop("dts", None) or (
@@ -945,25 +938,12 @@ def _cmd_dts_screen(session, parsed: ParsedCommand):
         return _error_panel("Provide an output directory.")
     output_dir = str(Path(output_dir).resolve())
 
-    content = dts_file.read_text(encoding="utf-8")
-
-    # Extract volume paths from the DTS content for filtering
-    volume_path = None
-    vol_match = re.search(r"\{\{volume_path:([^}]+)\}\}", content)
-    if vol_match:
-        volume_path = vol_match.group(1).split(",")
-    else:
-        em_match = re.search(r"EnergyMethod\s*=\s*\S+\s+(\S+)", content)
-        if em_match and not em_match.group(1).startswith("{{"):
-            volume_path = em_match.group(1)
-
     from ..dts import generate_screen
 
     result = generate_screen(
         output_dir=output_dir,
         mesh=str(mesh),
-        dts_content=content,
-        volume_path=volume_path,
+        dts_content=dts_file.read_text(encoding="utf-8"),
     )
 
     return _success_text(
@@ -972,13 +952,62 @@ def _cmd_dts_screen(session, parsed: ParsedCommand):
     )
 
 
+def _cmd_ingest(session, parsed: ParsedCommand):
+    from ..czi.ingest import download, summarize, sessions_from_directory
+
+    action = parsed.args[0] if parsed.args else None
+    filepath = parsed.kwargs.pop("filepath", None)
+
+    if action is None or filepath is None:
+        return _usage_line(_usage_for("ingest"))
+
+    if action == "info":
+        rows = summarize(filepath)
+        if not rows:
+            return _error_panel("No runs found.")
+        table = Table(box=BOX_TABLE, show_header=True, show_edge=False, pad_edge=True)
+        table.add_column("#", style="mosaic.param")
+        table.add_column("ID", style="mosaic.data")
+        table.add_column("Name", style="mosaic.data")
+        table.add_column("Annotations", style="mosaic.muted")
+        table.add_column("Tomograms", style="mosaic.muted")
+        for row in rows:
+            table.add_row(
+                str(row["index"]),
+                row["run_id"],
+                row["name"],
+                ", ".join(row["annotations"]) or "(none)",
+                ", ".join(row["tomograms"]) or "(none)",
+            )
+        return table
+
+    if action == "download":
+        max_workers = parsed.kwargs.pop("max_workers", 4)
+        n = download(filepath, max_workers=max_workers)
+        return _success_text(f"Downloaded {n} file(s)  ", filepath)
+
+    if action == "create":
+        output_dir = parsed.kwargs.pop("output_dir", None)
+        created = sessions_from_directory(filepath, output_dir=output_dir)
+        if not created:
+            return _error_panel("No runs found.")
+        return _success_text(f"Created {len(created)} session(s)", "")
+
+    return _error_panel(f"Unknown action: {action}")
+
+
 def _register_builtins():
     """Register all built-in and auto-discovered commands."""
     from ..operations import GeometryOperations
     from ..registry import MethodRegistry
 
     for name, handler, desc, group in [
-        ("open", _cmd_open, "Load geometries or session from file", "I/O"),
+        (
+            "open",
+            _cmd_open,
+            "Open files or session (session clears current state)",
+            "I/O",
+        ),
         ("save", _cmd_save, "Save geometries or session to file", "I/O"),
         ("list", _cmd_list, "List all loaded geometries", "Session"),
         ("measure", _cmd_measure, "Compute a geometry property", "Analysis"),
@@ -989,6 +1018,7 @@ def _register_builtins():
             "Filter geometries by property value range",
             "Analysis",
         ),
+        ("ingest", _cmd_ingest, "Manage CZI CryoET portal data", "I/O"),
     ]:
         op = MethodRegistry.get(name)
         usage = op.build_usage() if op is not None else name

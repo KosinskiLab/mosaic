@@ -160,7 +160,9 @@ def compile_run(run_config: dict) -> List[Tuple[str, str]]:
         if op_id == "import_batch":
             input_file = settings.get("input_file", run_config["input_file"])
             params = run_config.get("input_params", {})
-            if input_file.endswith(".pickle"):
+            from ..formats.session import is_session_file
+
+            if is_session_file(input_file):
                 parts = [f"open {shlex.quote(input_file)}"]
             else:
                 parts = [f"open {shlex.quote(input_file)}"]
@@ -176,7 +178,8 @@ def compile_run(run_config: dict) -> List[Tuple[str, str]]:
         if op_id == "save_session":
             output_dir = settings.get("output_dir", ".")
             os.makedirs(output_dir, exist_ok=True)
-            output_path = os.path.join(output_dir, f"{run_config['run_id']}.pickle")
+            ext = ".pickle" if settings.get("use_legacy_format") else ".mosaic"
+            output_path = os.path.join(output_dir, f"{run_config['run_id']}{ext}")
             steps.append((op_id, f"save {shlex.quote(output_path)}"))
             continue
 
@@ -287,7 +290,8 @@ def execute_run(
             output_path = None
 
             if op["operation_id"] == "save_session":
-                output_path = os.path.join(output_dir, f"{run_config['run_id']}.pickle")
+                ext = ".pickle" if settings.get("use_legacy_format") else ".mosaic"
+                output_path = os.path.join(output_dir, f"{run_config['run_id']}{ext}")
             elif op["operation_id"] == "export_data":
                 output_base = os.path.join(output_dir, run_config["run_id"])
                 output_path = f"{output_base}.{settings.get('format', 'star')}"

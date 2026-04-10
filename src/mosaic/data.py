@@ -29,8 +29,9 @@ class MosaicData:
         from .interactor import DataContainerInteractor
 
         self._session = Session(quiet=True)
+        self.thumbnail_provider = None
+        self._session_hooks = []
 
-        # Expose session containers directly
         self._data = self._session._data
         self._models = self._session._models
 
@@ -76,11 +77,54 @@ class MosaicData:
     def shape(self, value):
         self._data.metadata["shape"] = value
 
-    def to_file(self, filename: str):
+    def register_session_hook(self, collect, restore):
+        """Register callbacks for session save/load.
+
+        Parameters
+        ----------
+        collect : callable
+            Called on save. Returns a dict of key-value pairs merged into
+            the session's ``meta`` section.
+        restore : callable
+            Called on load with the full meta dict. Picks out relevant
+            keys to restore widget state.
+        """
+        self._session_hooks.append((collect, restore))
+
+    def to_file(self, filename: str, sections: dict = None):
         """Save current application state to file."""
         self._session._data_tree = self.data.data_list.to_state()
         self._session._models_tree = self.models.data_list.to_state()
-        self._session.save_session(filename)
+
+        if not filename.endswith(".pickle"):
+            if sections is None:
+                sections = {}
+
+            if self.thumbnail_provider is not None:
+                try:
+                    thumb = self.thumbnail_provider()
+                    if thumb is not None:
+                        sections["thumbnail"] = ("png", thumb)
+                except Exception:
+                    pass
+
+            meta = {}
+            for collect, _ in self._session_hooks:
+                try:
+                    result = collect()
+                    if result:
+                        meta.update(result)
+                except Exception:
+                    pass
+            if meta:
+                import json
+
+                sections["meta"] = (
+                    "json",
+                    json.dumps(meta, separators=(",", ":")).encode("utf-8"),
+                )
+
+        self._session.save_session(filename, sections=sections)
 
     def load_session(self, filename: str):
         """Load application state from file."""
@@ -91,6 +135,19 @@ class MosaicData:
 
         self.data.update(self._data, tree_state=self._session._data_tree)
         self.models.update(self._models, tree_state=self._session._models_tree)
+
+        meta_entry = self._session._metadata.get("meta")
+        meta = {}
+        if meta_entry is not None:
+            import json
+
+            meta = json.loads(meta_entry[1])
+
+        for _, restore in self._session_hooks:
+            try:
+                restore(meta)
+            except Exception:
+                pass
 
     def reset(self):
         """Reset the state of the class instance."""

@@ -123,6 +123,113 @@ def capture_frame(
     return arr
 
 
+def compute_crop_context(render_window, width, height, padding=0.1):
+    """Precompute render window size and crop region for actor-tight capture.
+
+    Parameters
+    ----------
+    render_window : vtkRenderWindow
+        The render window to analyse.
+    width, height : int
+        Desired output dimensions in pixels.
+    padding : float
+        Fractional padding around the actor bounding box.
+
+    Returns
+    -------
+    dict or None
+        Context dict with ``render_size``, ``crop_x``, ``crop_y``,
+        ``width``, ``height``, ``original_size``.
+        Returns None if no visible actors.
+    """
+    import vtk
+
+    renderer = render_window.GetRenderers().GetFirstRenderer()
+    bounds = [0.0] * 6
+    renderer.ComputeVisiblePropBounds(bounds)
+    if bounds[0] > bounds[1]:
+        return None
+
+    ow, oh = render_window.GetSize()
+    coord = vtk.vtkCoordinate()
+    coord.SetCoordinateSystemToWorld()
+
+    xs, ys = [], []
+    for i in (0, 1):
+        for j in (2, 3):
+            for k in (4, 5):
+                coord.SetValue(bounds[i], bounds[j], bounds[k])
+                d = coord.GetComputedDisplayValue(renderer)
+                xs.append(d[0])
+                ys.append(d[1])
+
+    data_w = max(max(xs) - min(xs), 1)
+    data_h = max(max(ys) - min(ys), 1)
+
+    scale = max(
+        width / (data_w * (1 + 2 * padding)),
+        height / (data_h * (1 + 2 * padding)),
+    )
+    new_w = int(ow * scale)
+    new_h = int(oh * scale)
+
+    render_window.SetSize(new_w, new_h)
+    render_window.Render()
+
+    xs2, ys2 = [], []
+    for i in (0, 1):
+        for j in (2, 3):
+            for k in (4, 5):
+                coord.SetValue(bounds[i], bounds[j], bounds[k])
+                d = coord.GetComputedDisplayValue(renderer)
+                xs2.append(d[0])
+                ys2.append(d[1])
+
+    cx = (min(xs2) + max(xs2)) / 2
+    cy = (min(ys2) + max(ys2)) / 2
+
+    crop_x = max(0, min(int(cx - width / 2), new_w - width))
+    crop_y = max(0, min(int(cy - height / 2), new_h - height))
+
+    return {
+        "render_size": (new_w, new_h),
+        "original_size": (ow, oh),
+        "crop_x": crop_x,
+        "crop_y": crop_y,
+        "width": width,
+        "height": height,
+    }
+
+
+def capture_cropped(render_window, ctx):
+    """Capture a frame and crop using a precomputed context.
+
+    Parameters
+    ----------
+    render_window : vtkRenderWindow
+        The render window (should already be at ``ctx["render_size"]``).
+    ctx : dict
+        Context from :func:`compute_crop_context`.
+
+    Returns
+    -------
+    np.ndarray
+        Cropped RGB image of exactly ``ctx["width"]`` x ``ctx["height"]``.
+    """
+    rw, rh = ctx["render_size"]
+    frame = capture_frame(render_window, width=rw, height=rh)
+
+    fh = frame.shape[0]
+    x, y, w, h = ctx["crop_x"], ctx["crop_y"], ctx["width"], ctx["height"]
+    return np.ascontiguousarray(frame[fh - y - h : fh - y, x : x + w])
+
+
+def restore_window_size(render_window, ctx):
+    """Restore the render window to its original size after cropped capture."""
+    render_window.SetSize(*ctx["original_size"])
+    render_window.Render()
+
+
 class ScreenshotManager:
     """Manages screenshot capture and export for VTK widgets."""
 

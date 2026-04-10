@@ -6,12 +6,10 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from pathlib import Path
 from typing import Callable, Optional
 
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
-    QVBoxLayout,
     QHBoxLayout,
     QLabel,
     QComboBox,
@@ -19,7 +17,6 @@ from qtpy.QtWidgets import (
     QCheckBox,
     QPushButton,
     QFormLayout,
-    QWidget,
     QGroupBox,
     QMessageBox,
 )
@@ -73,7 +70,17 @@ class ComputePanel(QGroupBox):
         self._form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         self._type_combo = QComboBox()
-        self._type_combo.addItems(["Distance", "Fluctuation", "Area", "Volume"])
+        self._type_combo.addItems(
+            [
+                "Distance",
+                "Fluctuation",
+                "Area",
+                "Volume",
+                "HMFF Potential",
+                "Bending Energy",
+                "HMFF / Bending",
+            ]
+        )
         self._type_combo.currentTextChanged.connect(self._on_type_changed)
         self._form.addRow("Type:", self._type_combo)
 
@@ -83,7 +90,7 @@ class ComputePanel(QGroupBox):
         bottom.addStretch()
 
         compute_btn = QPushButton("Compute")
-        compute_btn.setIcon(qta.icon("ph.play-fill", color=Colors.PRIMARY))
+        compute_btn.setIcon(qta.icon("ph.computer-tower", color=Colors.PRIMARY))
         compute_btn.clicked.connect(self._on_compute)
         bottom.addWidget(compute_btn)
 
@@ -142,14 +149,11 @@ class ComputePanel(QGroupBox):
                 QMessageBox.warning(self, "Error", "Select a reference model.")
                 return
 
-            ref_geom = next(
-                (
-                    g
-                    for l, g in self.cdata.format_datalist("models", mesh_only=True)
-                    if l == ref_name
-                ),
-                None,
-            )
+            ref_geom = None
+            for name, geom in self.cdata.format_datalist("models", mesh_only=True):
+                if name == ref_name:
+                    ref_geom = geom
+
             if ref_geom is None:
                 QMessageBox.warning(self, "Error", "Reference geometry not found.")
                 return
@@ -169,9 +173,16 @@ class ComputePanel(QGroupBox):
             self._submit("Area", "mesh_area")
         elif prop == "Volume":
             self._submit("Volume", "mesh_volume")
+        elif prop == "HMFF Potential":
+            self._submit("HMFF Potential", "hmff_potential")
+        elif prop == "Bending Energy":
+            self._submit("Bending Energy", "bending_energy")
+        elif prop == "HMFF / Bending":
+            self._submit("HMFF / Bending", "hmff_bending_ratio")
 
     def _submit(self, task_label, kind, **kwargs):
         from ..dts import compute
+        from ..dts._utils import resolve_trajectory_dir
         from ..parallel import submit_task
 
         scale, offset = self._get_mesh_transform()
@@ -187,8 +198,8 @@ class ComputePanel(QGroupBox):
             if not run_dir:
                 continue
 
-            traj_dir = Path(run_dir) / "TrajTSI"
-            if not traj_dir.exists():
+            traj_dir = resolve_trajectory_dir(run_dir)
+            if traj_dir is None:
                 continue
 
             submit_task(

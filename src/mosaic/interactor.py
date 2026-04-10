@@ -461,6 +461,17 @@ class DataContainerInteractor(QObject):
         context_menu.addMenu(representation_menu)
 
         context_menu.addSeparator()
+
+        from .geometry import GeometryTrajectory
+
+        trajectories = [g for g in selected if isinstance(g, GeometryTrajectory)]
+        if len(trajectories) == 1:
+            extract_action = QAction("Extract Current Frame", self.data_list)
+            extract_action.triggered.connect(
+                lambda: self._extract_trajectory_frame(trajectories[0])
+            )
+            context_menu.addAction(extract_action)
+
         export_menu = QAction("Export As", self.data_list)
         export_menu.triggered.connect(lambda: self._handle_export())
         context_menu.addAction(export_menu)
@@ -470,6 +481,16 @@ class DataContainerInteractor(QObject):
         context_menu.addAction(properties_action)
 
         context_menu.exec(self.data_list.mapToGlobal(position))
+
+    def _extract_trajectory_frame(self, trajectory):
+        from .geometry import Geometry
+
+        model = trajectory.model
+        geometry = Geometry(model=model, sampling_rate=trajectory.sampling_rate)
+        geometry._set_faces(model.triangles)
+        geometry.change_representation("mesh")
+        self.add(geometry)
+        self.render()
 
     def _handle_export(self, *args, **kwargs):
         from .dialogs import ExportDialog
@@ -517,11 +538,15 @@ class DataContainerInteractor(QObject):
         return dialog.exec()
 
     def _wrap_export(self, export_data):
+        from os.path import splitext
+        from .geometry import Geometry, GeometryTrajectory
+
         file_path = export_data.pop("file_path", None)
         if not file_path:
             return -1
 
         export_data.pop("category", None)
+        export_data.pop("tsi_format", None)
 
         if "shape" not in export_data:
             if (shape := self.container.metadata.get("shape")) is not None:
@@ -530,12 +555,29 @@ class DataContainerInteractor(QObject):
                     np.rint(np.divide(shape, sampling)).astype(int)
                 )
 
+        geometries = self.get_selected_geometries()
+        has_trajectory = any(isinstance(g, GeometryTrajectory) for g in geometries)
+
+        if has_trajectory:
+            ref = file_path if isinstance(file_path, str) else file_path[0]
+            base, ext = splitext(ref)
+            expanded = []
+            for geom in geometries:
+                if not isinstance(geom, GeometryTrajectory):
+                    expanded.append(geom)
+                    continue
+                for frame in geom._trajectory:
+                    model = frame.get("fit")
+                    if model is None:
+                        continue
+                    g = Geometry(model=model, sampling_rate=geom.sampling_rate)
+                    g._set_faces(model.triangles)
+                    expanded.append(g)
+            file_path = [f"{base}_{i:06d}{ext}" for i in range(len(expanded))]
+            geometries = expanded
+
         try:
-            write_geometries(
-                self.get_selected_geometries(),
-                file_path,
-                **export_data,
-            )
+            write_geometries(geometries, file_path, **export_data)
         except Exception as e:
             QMessageBox.warning(None, "Error", str(e))
         return None

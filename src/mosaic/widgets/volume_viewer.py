@@ -17,7 +17,6 @@ from qtpy.QtWidgets import (
     QPushButton,
     QFileDialog,
     QLabel,
-    QGroupBox,
     QMessageBox,
 )
 import qtawesome as qta
@@ -119,8 +118,21 @@ class VolumeViewer(QWidget):
         self._build_ui()
 
     def _build_ui(self):
+
         self.open_button = QPushButton("Load")
         self.open_button.clicked.connect(self.open_volume)
+        self.open_button.setStyleSheet(
+            "QPushButton { border-top-right-radius: 0;"
+            " border-bottom-right-radius: 0; margin-right: 0; }"
+        )
+
+        self._path_combo = QComboBox()
+        self._path_combo.setFixedWidth(20)
+        self._path_combo.setStyleSheet(
+            "QComboBox { border-top-left-radius: 0;"
+            " border-bottom-left-radius: 0; border-left: none; }"
+        )
+        self._path_combo.activated.connect(self._on_path_selected)
 
         self.close_button = QPushButton("Close")
         self.close_button.clicked.connect(self.close_volume)
@@ -152,7 +164,6 @@ class VolumeViewer(QWidget):
         self.orientation_selector.setCurrentText("Z")
         self.orientation_selector.currentTextChanged.connect(self.change_orientation)
 
-        # self.color_selector = QLabel("Contrast:")
         self.color_selector = ColorMapSelector(default=self.current_palette)
         self.color_selector.setMinimumWidth(120)
         self.color_selector.colormapChanged.connect(self.change_color_palette)
@@ -166,7 +177,7 @@ class VolumeViewer(QWidget):
         )
         self.contrast_slider.rangeChanged.connect(self._contrast_throttle)
         self.contrast_value_label = QLabel("0.00 - 1.00")
-        self.contrast_value_label.setFixedWidth(80)
+        self.contrast_value_label.setFixedWidth(70)
 
         self.gamma_row = SliderRow(
             label="Gamma",
@@ -183,15 +194,22 @@ class VolumeViewer(QWidget):
         self.project_selector.currentTextChanged.connect(self.handle_projection_change)
 
         self.controls_layout = QHBoxLayout()
-        self.controls_layout.addWidget(self.open_button)
+
+        load_group = QHBoxLayout()
+        load_group.setSpacing(0)
+        load_group.setContentsMargins(0, 0, 0, 0)
+        load_group.addWidget(self.open_button)
+        load_group.addWidget(self._path_combo)
+        self.controls_layout.addLayout(load_group)
+
         self.controls_layout.addWidget(self.close_button)
         self.controls_layout.addWidget(self.orientation_selector)
         self.controls_layout.addWidget(self.color_selector)
         self.controls_layout.addWidget(self.visibility_button)
         self.controls_layout.addWidget(self.auto_contrast_button)
-        self.controls_layout.addWidget(self.slice_row, 1)
-        self.controls_layout.addWidget(self.contrast_slider, 1)
+        self.controls_layout.addWidget(self.slice_row, 2)
         self.controls_layout.addWidget(self.contrast_label)
+        self.controls_layout.addWidget(self.contrast_slider, 1)
         self.controls_layout.addWidget(self.contrast_value_label)
         self.controls_layout.addWidget(self.gamma_row, 1)
         self.controls_layout.addWidget(self.project_selector)
@@ -305,6 +323,28 @@ class VolumeViewer(QWidget):
         self.slice_mapper.SetInputData(self.volume)
         self.slice_mapper.StreamingOff()
         self._setup_after_load()
+
+    def _rebuild_load_menu(self, paths=None):
+        import os
+
+        self._path_combo.blockSignals(True)
+        self._path_combo.clear()
+        for path in paths or []:
+            self._path_combo.addItem(os.path.basename(path), path)
+        self._path_combo.setCurrentIndex(-1)
+        self._path_combo.blockSignals(False)
+
+    def _on_path_selected(self, index):
+        path = self._path_combo.itemData(index)
+        if path:
+            self._load_from_path(path)
+        self._path_combo.setCurrentIndex(-1)
+
+    def _load_from_path(self, path):
+        try:
+            self.load_volume(path)
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
 
     def open_volume(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open Volume")
@@ -546,113 +586,3 @@ class VolumeViewer(QWidget):
             mapper.AddClippingPlane(self.clipping_plane)
 
         self._render()
-
-
-class MultiVolumeViewer(QWidget):
-    """Container widget for managing multiple VolumeViewer instances."""
-
-    def __init__(self, vtk_widget, legend=None, parent=None):
-        super().__init__(parent)
-        self.vtk_widget = vtk_widget
-        self.legend = legend
-
-        self.setStyleSheet("QPushButton:hover { background-color: #f3f4f6; }")
-
-        self.layout = QVBoxLayout(self)
-        self.layout.setSpacing(0)
-        self.layout.setContentsMargins(4, 4, 4, 4)
-
-        self.viewer_group = QGroupBox("Volume Viewer")
-        self.viewer_layout = QVBoxLayout(self.viewer_group)
-        self.layout.addWidget(self.viewer_group)
-        self.viewer_layout.setSpacing(4)
-        self.viewer_layout.setContentsMargins(0, 4, 0, 4)
-
-        self.primary = VolumeViewer(self.vtk_widget, self.legend)
-        current_margins = self.primary.layout().contentsMargins()
-        self.primary.layout().setContentsMargins(
-            current_margins.left(), 0, current_margins.right(), 0
-        )
-        self.primary_margins = self.primary.layout().contentsMargins()
-        self.viewer_layout.addWidget(self.primary)
-
-        add_button = QPushButton()
-        add_button.setIcon(qta.icon("ph.plus", color=Colors.ICON))
-        add_button.setFixedWidth(30)
-        add_button.clicked.connect(self.add_viewer)
-        self.primary.controls_layout.addWidget(add_button)
-        self.primary.close_button.clicked.connect(self._promote_new_primary)
-
-        self.additional_viewers = []
-
-    def add_viewer(self):
-        new_viewer = VolumeViewer(self.vtk_widget, self.legend)
-        new_viewer.layout().setContentsMargins(self.primary_margins)
-
-        remove_button = QPushButton()
-        remove_button.setIcon(qta.icon("ph.trash", color=Colors.ICON))
-        remove_button.setFixedWidth(30)
-        remove_button.clicked.connect(lambda: self.remove_viewer(new_viewer))
-        new_viewer.controls_layout.addWidget(remove_button)
-
-        if self.primary.volume is not None:
-            new_viewer.volume = self.primary.volume
-            new_viewer.change_widget_state(True)
-            new_viewer.change_color_palette("gray")
-            new_viewer.update_contrast_and_gamma()
-
-        self._copy_from_primary(new_viewer)
-        self.additional_viewers.append(new_viewer)
-        self.viewer_layout.addWidget(new_viewer)
-
-    def remove_viewer(self, viewer):
-        if viewer in self.additional_viewers:
-            self.additional_viewers.remove(viewer)
-            viewer.close_volume()
-            viewer.deleteLater()
-
-    def close(self):
-        for viewer in self.additional_viewers:
-            viewer.close_volume()
-        try:
-            self.primary.close_button.clicked.disconnect(self._promote_new_primary)
-        except TypeError:
-            pass
-        self.primary.close_volume()
-
-    def _copy_from_primary(self, new_viewer: VolumeViewer) -> int:
-        if self.primary.volume is None:
-            new_viewer.change_widget_state(False)
-            return 0
-        return new_viewer.swap_volume(self.primary.volume)
-
-    def _promote_new_primary(self) -> int:
-        viewers = [
-            x for x in self.additional_viewers if getattr(x, "volume") is not None
-        ]
-        if not len(viewers):
-            return None
-
-        new_primary = viewers[0]
-        self.primary._source_path = new_primary._source_path
-        self.primary.swap_volume(new_primary.volume)
-        self.primary.change_orientation(new_primary.get_orientation())
-        self.primary.update_slice(new_primary.get_slice())
-        self.primary.handle_projection_change(new_primary.get_projection())
-
-        self.primary.color_selector.setCurrentText(
-            new_primary.color_selector.currentText()
-        )
-        self.primary.contrast_slider.setValues(
-            new_primary.contrast_slider.lower_pos,
-            new_primary.contrast_slider.upper_pos,
-        )
-        self.primary.contrast_value_label.setText(
-            new_primary.contrast_value_label.text()
-        )
-        self.primary.gamma_row.setValue(new_primary.gamma_row.value())
-
-        if new_primary.is_visible != self.primary.is_visible:
-            self.primary.toggle_visibility()
-
-        self.remove_viewer(new_primary)

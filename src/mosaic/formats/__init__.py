@@ -3,12 +3,17 @@ import importlib
 _module_map = {
     ".reader": [
         "open_file",
-        "open_session",
-        "read_session_header",
     ],
     ".writer": [
         "OrientationsWriter",
         "write_density",
+    ],
+    ".session": [
+        "is_session_file",
+        "open_session",
+        "read_session_index",
+        "read_session_meta",
+        "read_session_section",
         "write_session",
     ],
     ".parser": [

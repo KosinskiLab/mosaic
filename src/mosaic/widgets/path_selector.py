@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Union
 
 from qtpy.QtCore import Qt, QEvent, QObject, QStringListModel
+from qtpy.QtGui import QColor, QPalette
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -173,11 +174,11 @@ class PathSelector(QWidget):
                 color: {Colors.TEXT_PRIMARY};
                 selection-color: white;
             }}
-            QLineEdit::placeholder {{
-                color: {Colors.TEXT_MUTED};
-            }}
         """
         )
+        pal = self.path_input.palette()
+        pal.setColor(QPalette.ColorRole.PlaceholderText, QColor(Colors.ICON_MUTED))
+        self.path_input.setPalette(pal)
 
         self.browse_button = QPushButton()
         self.browse_button.setAutoDefault(False)
