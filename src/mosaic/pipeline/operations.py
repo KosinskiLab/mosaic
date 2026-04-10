@@ -240,7 +240,13 @@ OPERATION_CATEGORIES = {
                             "type": "PathSelector",
                             "file_mode": False,
                             "placeholder": "Select output directory",
-                        }
+                        },
+                        {
+                            "label": "Use Legacy Format (.pickle)",
+                            "parameter": "use_legacy_format",
+                            "type": "boolean",
+                            "default": False,
+                        },
                     ],
                 },
             },

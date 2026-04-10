@@ -8,8 +8,9 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import re
 import json
+import warnings
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -63,6 +64,27 @@ def sanitize_label(label: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "_", label).strip("_").lower()
 
 
+def resolve_trajectory_dir(run_dir) -> Optional[Path]:
+    """Return the first existing trajectory directory for a DTS run.
+
+    Parses ``input.dts`` (when present) for ``VisualizationFormat`` and
+    ``NonbinaryTrajectory`` directory names, falling back to ``TrajTSI``.
+    """
+    run_path = Path(run_dir)
+    dts_file = run_path / "input.dts"
+    candidates = []
+    if dts_file.exists():
+        known, _ = parse_dts_content(dts_file.read_text())
+        for name in known.get("trajectory_dirs", []):
+            candidates.append(run_path / name)
+    candidates.append(run_path / "TrajTSI")
+
+    for path in candidates:
+        if path.is_dir() and any(path.iterdir()):
+            return path
+    return None
+
+
 def list_trajectory_files(trajectory_dir):
     """Return sorted trajectory mesh file paths from *trajectory_dir*."""
     traj_path = Path(trajectory_dir)
@@ -95,7 +117,11 @@ def iter_frames(trajectory_dir, scale, offset, drop_pbc=False):
     from ..formats import open_file
 
     for f in list_trajectory_files(trajectory_dir):
-        container = open_file(str(f))[0]
+        try:
+            container = open_file(str(f))[0]
+        except Exception as e:
+            warnings.warn(f"Encountered exception loading frame {e}.")
+            continue
         points = (container.vertices - offset) / scale
         faces = container.faces
         if drop_pbc:
@@ -331,6 +357,33 @@ COUPLING_DEFS = {
 }
 
 
+def extract_volume_path(dts_content: str) -> Optional[Union[str, List[str]]]:
+    """Extract volume path(s) from DTS config content.
+
+    Checks for a ``{{volume_path:...}}`` screening placeholder first,
+    falling back to the literal path in the ``EnergyMethod`` line.
+
+    Parameters
+    ----------
+    dts_content : str
+        Raw DTS configuration text.
+
+    Returns
+    -------
+    str, list of str, or None
+        Extracted path(s), or *None* when no volume is referenced.
+    """
+    vol_match = re.search(r"\{\{volume_path:([^}]+)\}\}", dts_content)
+    if vol_match:
+        return vol_match.group(1).split(",")
+
+    em_match = re.search(r"EnergyMethod\s*=\s*\S+\s+(\S+)", dts_content)
+    if em_match and not em_match.group(1).startswith("{{"):
+        return em_match.group(1)
+
+    return None
+
+
 def extract_screening_placeholder(value: str):
     """Return ``(name, range_str)`` if *value* is a ``{{name:range}}`` placeholder."""
     match = re.fullmatch(r"\{\{(\w+):([^}]+)\}\}", value.strip())
@@ -354,28 +407,35 @@ def parse_screening_ranges(text: str) -> Dict[str, List]:
     return result
 
 
+_FILTER_KEY_MAP = {
+    "lowpass": "lowpass_cutoff",
+    "highpass": "highpass_cutoff",
+    "plane_norm": "plane_norm",
+}
+
+
+def _parse_filter_line(line: str, known: Dict):
+    """Parse a single ``;@filter`` line into *known* under ``_filters``."""
+    filters = known.setdefault("_filters", {})
+    for token in line[len(";@filter") :].split():
+        if "=" not in token:
+            continue
+        key, _, val = token.partition("=")
+        mapped = _FILTER_KEY_MAP.get(key.strip(), key.strip())
+        try:
+            filters[mapped] = float(val)
+        except ValueError:
+            filters[mapped] = val.strip()
+
+
 def parse_filter_directives(dts_content: str) -> Dict[str, float]:
     """Parse ``; @filter`` directives from DTS content."""
-    _KEY_MAP = {
-        "lowpass": "lowpass_cutoff",
-        "highpass": "highpass_cutoff",
-        "plane_norm": "plane_norm",
-    }
-    params = {}
+    known: Dict = {}
     for line in dts_content.splitlines():
         stripped = line.strip()
-        if not stripped.startswith(";@filter"):
-            continue
-        for token in stripped[len(";@filter") :].split():
-            if "=" not in token:
-                continue
-            key, _, val = token.partition("=")
-            mapped = _KEY_MAP.get(key.strip(), key.strip())
-            try:
-                params[mapped] = float(val)
-            except ValueError:
-                params[mapped] = val.strip()
-    return params
+        if stripped.startswith(";@filter"):
+            _parse_filter_line(stripped, known)
+    return known.get("_filters", {})
 
 
 def parse_dts_content(content: str):
@@ -407,7 +467,11 @@ def parse_dts_content(content: str):
 
     for line in content.strip().split("\n"):
         line = line.strip()
-        if not line or line.startswith("#") or line.startswith(";"):
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith(";"):
+            if line.startswith(";@filter"):
+                _parse_filter_line(line, known)
             continue
 
         if "=" not in line:
@@ -460,6 +524,8 @@ def parse_dts_content(content: str):
             known["kappa"] = float(_parse_val(parts[0]))
             if len(parts) >= 2:
                 known["kappa0"] = float(_parse_val(parts[1]))
+            if len(parts) >= 3:
+                known["c0"] = float(_parse_val(parts[2]))
         elif key == "Temperature":
             known["temperature"] = float(_parse_val(parts[0]))
         elif key == "Set_Steps" and len(parts) >= 2:
@@ -487,6 +553,10 @@ def parse_dts_content(content: str):
                     "mode": parts[0],
                     "values": [_parse_val(p) for p in parts[1:]],
                 }
+        elif key == "VisualizationFormat" and len(parts) >= 2:
+            known.setdefault("trajectory_dirs", []).append(parts[1])
+        elif key == "NonbinaryTrajectory" and len(parts) >= 2:
+            known.setdefault("trajectory_dirs", []).append(parts[1])
         elif key in _SKIP_KEYS:
             pass
         else:

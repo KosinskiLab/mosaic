@@ -29,6 +29,12 @@ def _build_stem(kind, **kwargs):
         return f"distance_to_{label}"
     if kind == "fluctuation":
         return f"rmsf_w{kwargs.get('window', 5)}"
+    if kind == "hmff_potential":
+        return "hmff_potential"
+    if kind == "bending_energy":
+        return "bending_energy"
+    if kind == "hmff_bending_ratio":
+        return "hmff_bending_ratio"
     stem = f"prop_{sanitize_label(kind)}"
     for _, v in sorted(kwargs.items()):
         if isinstance(v, (str, int, float)):
@@ -136,47 +142,25 @@ def compute(
     if cached is not None:
         return cached
 
-    if kind == "distance":
-        result = _compute_distance(trajectory_dir, scale, offset, **kwargs)
-    elif kind == "fluctuation":
+    if kind == "fluctuation":
         result = _compute_fluctuation(trajectory_dir, scale, offset, **kwargs)
+    elif kind == "hmff_potential":
+        result = _compute_hmff(
+            trajectory_dir, scale, offset, output_dir=output_dir, **kwargs
+        )
+    elif kind == "bending_energy":
+        result = _compute_bending_energy(
+            trajectory_dir, scale, offset, output_dir=output_dir, **kwargs
+        )
+    elif kind == "hmff_bending_ratio":
+        result = _compute_hmff_bending_ratio(
+            trajectory_dir, scale, offset, output_dir=output_dir, **kwargs
+        )
     else:
         result = _compute_property(trajectory_dir, kind, scale, offset, **kwargs)
 
     _write_result(output_dir, stem, result)
     return result
-
-
-def _compute_distance(
-    trajectory_dir, scale, offset, reference, reference_label="reference"
-):
-    """Per-frame vertex-to-surface distance to a reference mesh."""
-    from ..geometry import Geometry
-    from ..parallel import report_progress
-    from ..properties import GeometryProperties
-
-    n_frames = len(list_trajectory_files(trajectory_dir))
-    reference_pts = Geometry(points=reference.points)
-
-    per_vertex = []
-    for i, (pts, faces, _) in enumerate(iter_frames(trajectory_dir, scale, offset)):
-        report_progress(current=i, total=n_frames)
-        mesh = Geometry(points=pts, model=_build_mesh(pts, faces))
-        per_vertex.append(
-            GeometryProperties.compute("distance", reference_pts, queries=[mesh])
-        )
-
-    per_vertex = np.array(per_vertex)
-    return {
-        "frames": np.arange(per_vertex.shape[0], dtype=float),
-        "values": per_vertex.mean(axis=1),
-        "per_vertex": per_vertex,
-        "column": "distance",
-        "metadata": {
-            "computation": "distance",
-            "reference": reference_label,
-        },
-    }
 
 
 def _compute_fluctuation(
@@ -231,37 +215,360 @@ def _compute_fluctuation(
 
 
 def _compute_property(trajectory_dir, property_name, scale, offset, **kwargs):
-    """Per-frame scalar mesh property (area, volume, etc.)."""
+    """Per-frame mesh property (area, volume, distance, etc.)."""
     from ..geometry import Geometry
     from ..parallel import report_progress
     from ..properties import GeometryProperties
 
-    # Properties may return None for degenerate meshes to we track frame indices
-    frame_indices, values = [], []
+    frame_indices, scalars, per_vertex = [], [], []
     n_frames = len(list_trajectory_files(trajectory_dir))
     for i, (pts, faces, _) in enumerate(iter_frames(trajectory_dir, scale, offset)):
         report_progress(current=i, total=n_frames)
         mesh = _build_mesh(pts, faces)
 
-        val = GeometryProperties.compute(property_name, Geometry(model=mesh), **kwargs)
+        val = GeometryProperties.compute(
+            property_name, Geometry(points=pts, model=mesh), **kwargs
+        )
         if val is None:
             continue
 
-        if hasattr(val, "__len__"):
-            val = float(val[0]) if len(val) == 1 else float(np.mean(val))
-        else:
-            val = float(val)
-
         frame_indices.append(i)
-        values.append(val)
+        if hasattr(val, "__len__") and len(val) > 1:
+            per_vertex.append(np.asarray(val))
+            scalars.append(float(np.mean(val)))
+        else:
+            scalars.append(float(val[0]) if hasattr(val, "__len__") else float(val))
 
     return {
         "frames": np.array(frame_indices, dtype=float),
-        "values": np.array(values),
-        "per_vertex": None,
+        "values": np.array(scalars),
+        "per_vertex": np.array(per_vertex) if per_vertex else None,
         "column": property_name,
         "metadata": {
             "computation": property_name,
             **{k: str(v) for k, v in kwargs.items()},
+        },
+    }
+
+
+def _vertex_bending_energy(vertices, triangles, kappa, kappa_g=0.0, c0=0.0):
+    """Compute per-vertex bending energy using the Helfrich Hamiltonian.
+
+    Uses ``igl.principal_curvature`` for curvature estimation and the
+    barycentric vertex area (1/3 of adjacent triangle areas).
+
+    Parameters
+    ----------
+    vertices : np.ndarray
+        Vertex positions, shape ``(N, 3)``.
+    triangles : np.ndarray
+        Triangle connectivity, shape ``(M, 3)``.
+    kappa : float
+        Bending rigidity (as in the DTS ``Kappa`` line).
+    kappa_g : float
+        Gaussian bending rigidity.
+    c0 : float
+        Spontaneous curvature.
+
+    Returns
+    -------
+    np.ndarray
+        Per-vertex bending energy, shape ``(N,)``.
+    """
+    import igl
+
+    vertices = np.asarray(vertices, dtype=np.float64)
+    triangles = np.asarray(triangles, dtype=np.int32)
+
+    _, _, pv1, pv2, _ = igl.principal_curvature(vertices, triangles, radius=5)
+
+    # Barycentric vertex area: each vertex gets 1/3 of each adjacent triangle
+    v0 = vertices[triangles[:, 0]]
+    v1 = vertices[triangles[:, 1]]
+    v2 = vertices[triangles[:, 2]]
+    tri_areas = np.linalg.norm(np.cross(v1 - v0, v2 - v0), axis=1) / 2.0
+
+    vertex_areas = np.zeros(len(vertices))
+    for j in range(3):
+        np.add.at(vertex_areas, triangles[:, j], tri_areas / 3.0)
+
+    mean2 = pv1 + pv2
+    gaussian = pv1 * pv2
+
+    # E_v = kappa/2 * (2H - c0)^2 * A  -  kappa_g * K * A
+    return (kappa / 2.0) * (
+        mean2 - c0
+    ) ** 2 * vertex_areas - kappa_g * gaussian * vertex_areas
+
+
+def _compute_bending_energy(trajectory_dir, scale, offset, output_dir=None, **kwargs):
+    """Per-frame bending energy from DTS config and trajectory meshes."""
+    from ..parallel import report_progress
+    from ._utils import parse_dts_content
+
+    run_dir = Path(output_dir) if output_dir else Path(trajectory_dir).parent
+    dts_file = run_dir / "input.dts"
+    if not dts_file.exists():
+        raise FileNotFoundError(f"DTS config not found: {dts_file}")
+
+    known, _ = parse_dts_content(dts_file.read_text())
+    kappa = float(known.get("kappa", 20.0))
+    kappa_g = float(known.get("kappa0", 0.0))
+    c0 = float(known.get("c0", 0.0))
+
+    n_frames = len(list_trajectory_files(trajectory_dir))
+    frame_indices, scalars, per_vertex = [], [], []
+
+    for i, (points, faces, _) in enumerate(iter_frames(trajectory_dir, scale, offset)):
+        report_progress(current=i, total=n_frames)
+        pv = _vertex_bending_energy(points, faces, kappa, kappa_g, c0)
+        frame_indices.append(i)
+        scalars.append(float(pv.sum()))
+        per_vertex.append(pv)
+
+    return {
+        "frames": np.array(frame_indices, dtype=float),
+        "values": np.array(scalars),
+        "per_vertex": np.array(per_vertex) if per_vertex else None,
+        "column": "bending_energy",
+        "metadata": {
+            "computation": "bending_energy",
+            "kappa": str(kappa),
+            "kappa_g": str(kappa_g),
+            "c0": str(c0),
+        },
+    }
+
+
+def _compute_hmff_bending_ratio(
+    trajectory_dir, scale, offset, output_dir=None, **kwargs
+):
+    """Per-frame ratio of HMFF potential to bending energy.
+
+    Values > 1 indicate regions where the density fit dominates over
+    intrinsic membrane elasticity.
+    """
+    run_dir = Path(output_dir) if output_dir else Path(trajectory_dir).parent
+
+    bend_stem = "bending_energy"
+    hmff_stem = "hmff_potential"
+    mosaic_dir = run_dir / "mosaic"
+
+    bend_result = parse_xvg(str(mosaic_dir / f"{bend_stem}_vertices.xvg"))
+    hmff_result = parse_xvg(str(mosaic_dir / f"{hmff_stem}_vertices.xvg"))
+
+    if bend_result is None or hmff_result is None:
+        bend = compute(
+            trajectory_dir,
+            "bending_energy",
+            scale=scale,
+            offset=offset,
+            output_dir=output_dir,
+            **kwargs,
+        )
+        hmff = compute(
+            trajectory_dir,
+            "hmff_potential",
+            scale=scale,
+            offset=offset,
+            output_dir=output_dir,
+            **kwargs,
+        )
+        bend_pv = bend["per_vertex"]
+        hmff_pv = hmff["per_vertex"]
+    else:
+        bend_pv = bend_result[1][:, 1:]
+        hmff_pv = hmff_result[1][:, 1:]
+
+    n_frames = min(bend_pv.shape[0], hmff_pv.shape[0])
+    bend_pv = bend_pv[:n_frames]
+    hmff_pv = hmff_pv[:n_frames]
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = np.where(
+            np.abs(bend_pv) > 1e-12,
+            hmff_pv / bend_pv,
+            0.0,
+        )
+
+    return {
+        "frames": np.arange(n_frames, dtype=float),
+        "values": ratio.mean(axis=1),
+        "per_vertex": ratio,
+        "column": "hmff_bending_ratio",
+        "metadata": {"computation": "hmff_bending_ratio"},
+    }
+
+
+def _hmff_potential(
+    vertices,
+    interpolator,
+    xi=5.0,
+    theta_min=0.0,
+    theta_max=1.0,
+    boundary_values=None,
+    padding=0.4,
+):
+    """Evaluate the HMFF potential for a set of vertices.
+
+    Parameters
+    ----------
+    vertices : np.ndarray
+        Vertex positions in voxel coordinates, shape ``(N, 3)``.
+    interpolator : RegularGridInterpolator
+        Interpolator over the density grid.
+    xi : float
+        Coupling strength.
+    theta_min : float
+        Minimum density threshold.
+    theta_max : float
+        Maximum density threshold.
+    boundary_values : np.ndarray, optional
+        Min-max normalized per-slice boundary values for out-of-bounds
+        vertices (see ``_compute_boundary_values``).
+    padding : float
+        Scaling factor for boundary fallback values.
+
+    Returns
+    -------
+    np.ndarray
+        Per-vertex HMFF potential.
+    """
+    theta = interpolator(vertices)
+
+    # Match FreeDTS VertexInScalarFieldPotential.cpp: all out-of-bounds
+    # vertices get padding * boundaryValues[z_clamped] * thetaMax,
+    # with z clamped to [0, nz - 1].
+    mask = np.isnan(theta)
+    if mask.any() and boundary_values is not None:
+        z_idx = np.clip(vertices[mask, 2].astype(int), 0, len(boundary_values) - 1)
+        theta[mask] = padding * boundary_values[z_idx] * theta_max
+
+    theta = np.minimum(theta, theta_max)
+    potential = xi * (1 - (theta - theta_min) / (theta_max - theta_min))
+    potential[theta < theta_min] = xi
+    return potential
+
+
+def _compute_boundary_values(data):
+    """Compute min-max normalized per-slice boundary values.
+
+    Matches the FreeDTS ``HarmonicPotentialCalculator`` constructor:
+    per-slice mean of absolute values, smoothed with neighbor averaging,
+    then min-max normalized to [0, 1].
+    """
+    # Per z-slice mean of absolute values
+    averages = np.abs(data).mean(axis=(0, 1))
+
+    # Neighbor-weighted smoothing (2-point at edges, 3-point interior)
+    smoothed = np.empty_like(averages)
+    smoothed[0] = (
+        (averages[0] + averages[1]) / 2.0 if len(averages) > 1 else averages[0]
+    )
+    smoothed[-1] = (
+        (averages[-2] + averages[-1]) / 2.0 if len(averages) > 1 else averages[-1]
+    )
+    for i in range(1, len(averages) - 1):
+        smoothed[i] = (averages[i - 1] + averages[i] + averages[i + 1]) / 3.0
+
+    # Min-max normalization
+    vmin, vmax = smoothed.min(), smoothed.max()
+    if vmax - vmin > 0:
+        smoothed = (smoothed - vmin) / (vmax - vmin)
+    else:
+        smoothed[:] = 0.5
+
+    return smoothed
+
+
+def _compute_hmff(trajectory_dir, scale, offset, output_dir=None, **kwargs):
+    """Per-frame HMFF potential energy from DTS config and density volume.
+
+    Parameters
+    ----------
+    trajectory_dir : str
+        Path to TrajTSI or VTU_F directory.
+    scale : float
+        DTS scale factor.
+    offset : np.ndarray
+        DTS offset.
+    output_dir : str, optional
+        Run directory containing ``input.dts``.
+    """
+    from scipy.interpolate import RegularGridInterpolator
+    from ..formats.parser import load_density
+    from ..parallel import report_progress
+    from ._utils import parse_dts_content
+
+    run_dir = Path(output_dir) if output_dir else Path(trajectory_dir).parent
+    dts_file = run_dir / "input.dts"
+    if not dts_file.exists():
+        raise FileNotFoundError(f"DTS config not found: {dts_file}")
+
+    known, _ = parse_dts_content(dts_file.read_text())
+
+    volume_path = known.get("volume_path")
+    if volume_path is None:
+        raise ValueError(
+            "No volume path found in DTS config — HMFF requires a density."
+        )
+    if isinstance(volume_path, list):
+        volume_path = volume_path[0]
+
+    volume_path = str((run_dir / volume_path).resolve())
+
+    xi = float(known.get("xi", 5.0))
+    invert = known.get("invert_contrast", False)
+
+    if "scale_factor" in known:
+        scale = float(known["scale_factor"])
+    if "offset" in known:
+        offset = np.array([float(x) for x in known["offset"].split(",")])
+
+    density = load_density(volume_path)
+    data = density.data.copy()
+    if invert:
+        data *= -1
+
+    sampling_rate = np.asarray(density.sampling_rate)
+    voxel_scale = 1.0 / (sampling_rate * scale)
+
+    theta_max = float(np.quantile(data, q=0.999))
+    boundary_values = _compute_boundary_values(data)
+
+    interpolator = RegularGridInterpolator(
+        tuple(np.arange(x) for x in data.shape),
+        data,
+        method="linear",
+        bounds_error=False,
+        fill_value=np.nan,
+    )
+
+    n_frames = len(list_trajectory_files(trajectory_dir))
+    frame_indices, scalars, per_vertex = [], [], []
+
+    for i, (points, _, _) in enumerate(iter_frames(trajectory_dir, 1.0, offset)):
+        report_progress(current=i, total=n_frames)
+        voxel_points = points * voxel_scale
+        pv = _hmff_potential(
+            voxel_points,
+            interpolator,
+            xi=xi,
+            theta_max=theta_max,
+            boundary_values=boundary_values,
+        )
+        frame_indices.append(i)
+        scalars.append(float(pv.sum()))
+        per_vertex.append(pv)
+
+    return {
+        "frames": np.array(frame_indices, dtype=float),
+        "values": np.array(scalars),
+        "per_vertex": np.array(per_vertex) if per_vertex else None,
+        "column": "hmff_potential",
+        "metadata": {
+            "computation": "hmff_potential",
+            "volume": str(volume_path),
+            "xi": str(xi),
         },
     }

@@ -44,6 +44,7 @@ from ..stylesheets import (
 from ._configure import ConfigurePanel
 from ._analysis_panel import AnalysisPanel
 from ._compute_panel import ComputePanel
+from ._utils import parse_dts_content
 
 __all__ = ["DTSScreeningDialog"]
 
@@ -106,7 +107,7 @@ class DTSScreeningDialog(QDialog):
 
         self._right_widget = QWidget()
         self._right_layout = QVBoxLayout(self._right_widget)
-        self._right_layout.setContentsMargins(6, 6, 6, 6)
+        self._right_layout.setContentsMargins(6, 6, 6, 0)
         self._right_layout.setSpacing(6)
 
         self._preview_container = QWidget()
@@ -399,10 +400,10 @@ class DTSScreeningDialog(QDialog):
             return
         run_dir = self._resolve_run_dir(run_id)
 
-        traj_dir = run_dir / "VTU_F"
-        if not traj_dir.exists():
-            traj_dir = run_dir / "TrajTSI"
-        if not traj_dir.exists():
+        from ._utils import resolve_trajectory_dir
+
+        traj_dir = resolve_trajectory_dir(str(run_dir))
+        if traj_dir is None:
             return QMessageBox.warning(self, "Error", "No trajectory output found.")
 
         from ..geometry import GeometryTrajectory
@@ -419,9 +420,7 @@ class DTSScreeningDialog(QDialog):
         scale, offset = self._configure_panel.get_mesh_transform()
         dts_file = run_dir / "input.dts"
         if dts_file.exists():
-            known, _ = ConfigurePanel._parse_dts_content(
-                dts_file.read_text(encoding="utf-8")
-            )
+            known, _ = parse_dts_content(dts_file.read_text(encoding="utf-8"))
             if "scale_factor" in known:
                 scale = float(known["scale_factor"])
             if "offset" in known:
@@ -434,6 +433,7 @@ class DTSScreeningDialog(QDialog):
             trajectory=frames,
             model=frames[0]["fit"],
             vertex_properties=frames[0].get("vertex_properties"),
+            meta={"name": run_id},
         )
         trajectory.change_representation("mesh")
         self.cdata.models.add(trajectory)

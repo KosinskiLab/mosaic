@@ -289,21 +289,21 @@ class TrajectoryPlayer(QWidget):
         """Update trajectories from MosaicData models."""
         from ..geometry import GeometryTrajectory
 
-        geometry_trajectories = [
+        trajectories = [
             model
             for model in self.cdata._models.data
             if isinstance(model, GeometryTrajectory)
         ]
 
         max_frames = 0
-        if len(geometry_trajectories):
-            max_frames = max(t.frames for t in geometry_trajectories)
+        if len(trajectories):
+            max_frames = max(t.frames for t in trajectories)
 
         for i in reversed(range(self.rows_layout.count())):
             widget = self.rows_layout.itemAt(i).widget()
             try:
-                index = geometry_trajectories.index(widget.trajectory)
-                trajectory = geometry_trajectories.pop(index)
+                index = trajectories.index(widget.trajectory)
+                trajectory = trajectories.pop(index)
                 widget.set_name_from_trajectory(trajectory)
                 if max_frames != 0:
                     widget.set_maxframes(max_frames)
@@ -314,9 +314,9 @@ class TrajectoryPlayer(QWidget):
             self.current_frame_label.setText("0/0")
             return None
 
-        for model in geometry_trajectories:
+        for model in trajectories:
             row = TrajectoryRow(model, max_frames)
-            row.frameChanged.connect(lambda: self.cdata.models.render_vtk())
+            row.frameChanged.connect(lambda: self.cdata.models._highlight_selection())
             self.rows_layout.addWidget(row)
         self.current_frame_label.setText(f"0/{max_frames-1}")
 

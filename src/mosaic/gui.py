@@ -61,7 +61,6 @@ from .dialogs import (
     ProgressDialog,
 )
 from .widgets import (
-    MultiVolumeViewer,
     AxesWidget,
     RibbonToolBar,
     TrajectoryPlayer,
@@ -75,6 +74,7 @@ from .widgets import (
 )
 from .widgets.dock import toggle_dock
 from .widgets.drop_overlay import DropOverlay
+from .widgets.volume_viewer_hud import VolumeViewerHUD
 
 
 class App(QMainWindow):
@@ -92,6 +92,7 @@ class App(QMainWindow):
         self.vtk_widget = QVTKRenderWindowInteractor()
 
         self.cdata = MosaicData(self.vtk_widget)
+        self.cdata.thumbnail_provider = self._capture_thumbnail
 
         self.renderer = vtk.vtkRenderer()
         self.render_window = self.vtk_widget.GetRenderWindow()
@@ -225,7 +226,9 @@ class App(QMainWindow):
         super().closeEvent(event)
 
     def _toggle_volume_dock(self, checked: bool):
-        toggle_dock(self.volume_dock, checked)
+        self.volume_viewer.setVisible(checked)
+        if checked:
+            self.volume_viewer.raise_()
 
     def _end_drag(self):
         QApplication.restoreOverrideCursor()
@@ -260,7 +263,7 @@ class App(QMainWindow):
             url.isLocalFile() and is_volume_file(url.toLocalFile())
             for url in event.mimeData().urls()
         )
-        if has_volumes and not self.volume_dock.isVisible():
+        if has_volumes and not self.volume_viewer.isVisible():
             self._toggle_volume_dock(True)
             self.volume_action.setChecked(True)
             self._drag_opened_dock = True
@@ -272,8 +275,10 @@ class App(QMainWindow):
             self._volume_overlay.show()
 
     def _handle_import(self, file_paths):
-        session_files = [f for f in file_paths if f.lower().endswith(".pickle")]
-        data_files = [f for f in file_paths if not f.lower().endswith(".pickle")]
+        from .formats.session import is_session_file
+
+        session_files = [f for f in file_paths if is_session_file(f)]
+        data_files = [f for f in file_paths if not is_session_file(f)]
 
         if session_files:
             if len(session_files) > 1:
@@ -1098,7 +1103,7 @@ class App(QMainWindow):
         """Open the PipelineBuilderDialog dialog."""
         from .parallel import submit_task_batch
         from .pipeline.executor import execute_run
-        from .pipeline.dialog import PipelineBuilderDialog
+        from .pipeline.builder import PipelineBuilderDialog
 
         dialog = PipelineBuilderDialog(self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
@@ -1127,10 +1132,20 @@ class App(QMainWindow):
     def open_batch_navigator(self):
         """Open the batch navigator dialog."""
         from .widgets.dock import create_or_toggle_dock
-        from .pipeline.dialog import BatchNavigatorDialog
+        from .pipeline.navigator import BatchNavigatorDialog
 
-        dialog = BatchNavigatorDialog(self)
-        create_or_toggle_dock(self, "batch_navigator", dialog)
+        dialog = BatchNavigatorDialog(self.cdata)
+        dialog.load_requested.connect(self._load_session)
+        create_or_toggle_dock(
+            self,
+            "batch_navigator",
+            dialog,
+            dock_area=Qt.BottomDockWidgetArea,
+            scroll=False,
+        )
+        dock = getattr(self, "batch_navigator", None)
+        if dock is not None:
+            dock.setTitleBarWidget(QWidget())
 
     def open_czi_dialog(self):
         """Open the CZI CryoET Data Portal browser."""
@@ -1191,24 +1206,23 @@ class App(QMainWindow):
         create_or_toggle_dock(self, "animation_composer", dialog)
 
     def _setup_volume_viewer(self):
-        self.volume_viewer = MultiVolumeViewer(self.vtk_widget, legend=self.legend)
-
-        self.volume_dock = QDockWidget(parent=self)
-        self.volume_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
-        self.volume_dock.setTitleBarWidget(QWidget())
-
-        self.volume_dock.setWidget(self.volume_viewer)
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea,
-            self.volume_dock,
-            Qt.Orientation.Vertical,
+        self.volume_viewer = VolumeViewerHUD(self.vtk_widget, legend=self.legend)
+        self.cdata.register_session_hook(
+            collect=lambda: (
+                {"volume_paths": self.volume_viewer.recent_paths}
+                if self.volume_viewer.recent_paths
+                else {}
+            ),
+            restore=lambda meta: self.volume_viewer.set_recent_paths(
+                meta.get("volume_paths", [])
+            ),
         )
-        self.volume_dock.setVisible(False)
 
     def _on_volume_dropped(self, paths):
         self._drag_opened_dock = False
-        if not self.volume_dock.isVisible():
-            self.volume_dock.setVisible(True)
+        if not self.volume_viewer.isVisible():
+            self.volume_viewer.setVisible(True)
+            self.volume_viewer.raise_()
             self.volume_action.setChecked(True)
         for path in paths:
             try:
@@ -1265,7 +1279,14 @@ class App(QMainWindow):
 
     def load_session(self):
         file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(self, "Open Session")
+        file_path, _ = file_dialog.getOpenFileName(
+            self,
+            "Open Session",
+            "",
+            "Session Files (*.mosaic *.pickle)"
+            ";;Mosaic Sessions (*.mosaic)"
+            ";;Legacy Pickle (*.pickle)",
+        )
         if not file_path:
             return -1
         return self._load_session(file_path)
@@ -1303,7 +1324,9 @@ class App(QMainWindow):
                 segmentation=parameters.get("render_as_segmentation", False),
             )
         except Exception as e:
-            if filename.endswith(".pickle"):
+            from .formats.session import is_session_file
+
+            if is_session_file(filename):
                 raise ValueError("Use Load Session to open session files.")
             raise e
 
@@ -1337,17 +1360,53 @@ class App(QMainWindow):
 
         return self._open_files(filenames)
 
+    def _capture_thumbnail(self):
+        """Capture a PNG thumbnail cropped to visible data."""
+        from .animation._utils import (
+            compute_crop_context,
+            capture_cropped,
+            restore_window_size,
+        )
+        from qtpy.QtGui import QImage
+        from qtpy.QtCore import QBuffer, QIODevice
+
+        try:
+            rw = self.vtk_widget.GetRenderWindow()
+            ctx = compute_crop_context(rw, 320, 240)
+            if ctx is None:
+                return None
+            frame = capture_cropped(rw, ctx)
+            restore_window_size(rw, ctx)
+
+            h, w = frame.shape[:2]
+            channels = frame.shape[2] if frame.ndim == 3 else 1
+            fmt = (
+                QImage.Format.Format_RGBA8888
+                if channels == 4
+                else QImage.Format.Format_RGB888
+            )
+            img = QImage(frame.data, w, h, w * channels, fmt)
+            buf = QBuffer()
+            buf.open(QIODevice.OpenModeFlag.WriteOnly)
+            img.save(buf, "PNG")
+            return bytes(buf.data())
+        except Exception:
+            return None
+
     def save_session(self):
         file_dialog = QFileDialog()
-        file_dialog.setDefaultSuffix("pickle")
+        file_dialog.setDefaultSuffix("mosaic")
         file_path, _ = file_dialog.getSaveFileName(
-            self, "Save File", "", "Pickle Files (*.pickle)"
+            self,
+            "Save File",
+            "",
+            "Mosaic Sessions (*.mosaic);;Legacy Pickle (*.pickle)",
         )
         if not file_path:
             return -1
 
-        if not file_path.lower().endswith(".pickle"):
-            file_path += ".pickle"
+        if not file_path.lower().endswith((".mosaic", ".pickle")):
+            file_path += ".mosaic"
         self.cdata.to_file(file_path)
 
     def update_recent_files_menu(self):
@@ -1392,7 +1451,9 @@ class App(QMainWindow):
             Settings.ui.recent_files = recent_files
             return self.update_recent_files_menu()
 
-        if file_path.endswith(".pickle"):
+        from .formats.session import is_session_file
+
+        if is_session_file(file_path):
             return self._load_session(file_path)
         return self._open_files([file_path])
 

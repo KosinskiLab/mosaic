@@ -6,7 +6,6 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from pathlib import Path
 from typing import Callable, Optional
 
 import numpy as np
@@ -75,7 +74,7 @@ class AnalysisPanel(QWidget):
         self._style_plot(self._plot_item)
 
         self._placeholder = QLabel(
-            "No time series data available.\n" "Select a to display."
+            "No time series data available.\n" "Select a metric to display."
         )
         self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._placeholder.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 13px;")
@@ -91,7 +90,7 @@ class AnalysisPanel(QWidget):
         display = QGroupBox("Display")
         form = QFormLayout(display)
         form.setSpacing(4)
-        form.setContentsMargins(8, 8, 8, 8)
+        form.setContentsMargins(4, 4, 4, 4)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         self._metric_combo = QComboBox()
@@ -99,7 +98,7 @@ class AnalysisPanel(QWidget):
         form.addRow("Metric:", self._metric_combo)
 
         self._norm_combo = QComboBox()
-        self._norm_combo.addItems(["None", "Per-run", "Global", "Relative"])
+        self._norm_combo.addItems(["None", "Per-run", "Relative"])
         self._norm_combo.currentTextChanged.connect(self._update_plot)
         form.addRow("Normalize:", self._norm_combo)
 
@@ -120,10 +119,9 @@ class AnalysisPanel(QWidget):
         self._alpha_spin.valueChanged.connect(self._update_plot)
         form.addRow("Alpha:", self._alpha_spin)
 
-        columns.addWidget(display, stretch=1)
+        columns.addWidget(display, stretch=1, alignment=Qt.AlignmentFlag.AlignTop)
 
         stats = QGroupBox("Statistics")
-        stats.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         stats_layout = QVBoxLayout(stats)
         stats_layout.setContentsMargins(4, 4, 4, 4)
         stats_layout.setSpacing(4)
@@ -139,6 +137,7 @@ class AnalysisPanel(QWidget):
         )
         self._readout_table.verticalHeader().setVisible(False)
         self._readout_table.verticalHeader().setDefaultSectionSize(22)
+        self._readout_table.setMaximumHeight(168)
         self._readout_table.setStyleSheet(
             "QTableWidget::item:hover { background: none; }"
             "QTableWidget::item:selected,"
@@ -148,7 +147,6 @@ class AnalysisPanel(QWidget):
         stats_layout.addWidget(self._readout_table)
 
         columns.addWidget(stats, stretch=2)
-        layout.addLayout(columns, stretch=0)
 
         footer = QHBoxLayout()
         export_plot_btn = QPushButton("Export Plot")
@@ -166,6 +164,7 @@ class AnalysisPanel(QWidget):
         export_stats_btn.clicked.connect(self._export_statistics)
         footer.addWidget(export_stats_btn)
         footer.addStretch()
+        layout.addLayout(columns, stretch=0)
         layout.addLayout(footer)
 
     @property
@@ -199,6 +198,11 @@ class AnalysisPanel(QWidget):
         self._metric_combo.addItems(metrics)
         if old_metric in metrics:
             self._metric_combo.setCurrentText(old_metric)
+        elif not old_metric:
+            for m in metrics:
+                if "energy" in m.lower():
+                    self._metric_combo.setCurrentText(m)
+                    break
         self._metric_combo.blockSignals(False)
 
         old_color = self._color_combo.currentText()
@@ -308,10 +312,6 @@ class AnalysisPanel(QWidget):
             except (ValueError, TypeError):
                 pass
 
-        global_min = min(np.min(y) for _, _, y in series)
-        global_max = max(np.max(y) for _, _, y in series)
-        global_range = global_max - global_min + 1e-12
-
         plot.setLabel("left", ylabel)
         plot.setLabel("bottom", xlabel)
         plot.addLegend(offset=(-10, 10))
@@ -321,8 +321,6 @@ class AnalysisPanel(QWidget):
         for i, (run, x, y) in enumerate(series):
             if norm_mode == "Per-run" and np.max(np.abs(y)) > 0:
                 y = (y - np.min(y)) / (np.max(y) - np.min(y) + 1e-12)
-            elif norm_mode == "Global":
-                y = (y - global_min) / global_range
             elif norm_mode == "Relative" and len(y) > 0 and abs(y[0]) > 1e-12:
                 y = y / y[0]
 

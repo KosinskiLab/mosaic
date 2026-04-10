@@ -16,7 +16,7 @@ class IntelligenceTab(QWidget):
         self.ribbon = ribbon
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(5)
+        layout.setSpacing(4)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.ribbon)
 

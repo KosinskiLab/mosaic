@@ -116,7 +116,7 @@ class ExportDialog(QDialog):
                 "icon": "ph.triangle",
                 "label": "Mesh",
                 "description": "Export as a surface mesh.",
-                "formats": ["obj", "stl", "ply"],
+                "formats": ["obj", "ply", "tsi"],
             },
             "volume": {
                 "icon": "ph.cube",
@@ -151,8 +151,16 @@ class ExportDialog(QDialog):
             "tsv": {},
             "ndjson": {},
             "obj": {},
-            "stl": {},
             "ply": {},
+            "tsi": {
+                "tsi_format": {
+                    "type": "boolean",
+                    "label": "TSI format",
+                    "description": "Use .tsi format with version header (otherwise .q)",
+                    "default": True,
+                    "parameter": "tsi_format",
+                },
+            },
         }
 
         self.selected_category = next(
@@ -469,6 +477,9 @@ class ExportDialog(QDialog):
 
     def accept(self):
         ext = self.selected_format
+        if ext == "tsi":
+            settings = self.get_current_settings()
+            ext = "tsi" if settings.get("tsi_format", True) else "q"
         file_filter = f"{ext.upper()} Files (*.{ext})"
         path, _ = QFileDialog.getSaveFileName(self, "Export", "", file_filter)
 

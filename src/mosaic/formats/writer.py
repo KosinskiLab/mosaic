@@ -1,11 +1,9 @@
 import json
-import pickle
 from typing import Dict
-from datetime import datetime, timezone
 
 import numpy as np
 
-from ._utils import get_extension, _HEADER_STRUCT
+from ._utils import get_extension
 
 
 class OrientationsWriter:
@@ -215,7 +213,7 @@ def write_geometries(
             f"geometries length ({len(geometries)})"
         )
 
-    mesh_formats = ("obj", "stl", "ply")
+    mesh_formats = ("obj", "stl", "ply", "tsi", "q")
     volume_formats = ("mrc", "em", "h5")
     point_formats = ("tsv", "star", "xyz", "ndjson")
 
@@ -351,37 +349,3 @@ def write_geometries(
         orientations = OrientationsWriter(**{k: v[index] for k, v in data.items()})
         fname = file_path if is_single else file_path[index]
         orientations.to_file(fname, file_format=file_format, **orientation_kwargs)
-
-
-def write_session(filepath: str, state: dict, **extra_meta) -> None:
-    """Write a session file in the header+pickle format.
-
-    Format::
-
-        [4 bytes : uint32 big-endian header length N]
-        [N bytes : UTF-8 JSON header]
-        [remaining bytes : pickle payload]
-
-    Parameters
-    ----------
-    filepath : str
-        Destination file path.
-    state : dict
-        Session state dictionary to pickle.
-    **extra_meta
-        Arbitrary metadata stored in the header's ``meta`` field
-        (e.g. ``volume_paths=[...]``).
-    """
-    from ..__version__ import __version__
-
-    header = {
-        "version": __version__,
-        "created": datetime.now(timezone.utc).isoformat(),
-        "meta": dict(extra_meta) if extra_meta else {},
-    }
-    header_bytes = json.dumps(header, separators=(",", ":")).encode("utf-8")
-
-    with open(filepath, "wb") as fh:
-        fh.write(_HEADER_STRUCT.pack(len(header_bytes)))
-        fh.write(header_bytes)
-        pickle.dump(state, fh, protocol=pickle.HIGHEST_PROTOCOL)

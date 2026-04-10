@@ -12,7 +12,7 @@ from .colors import (
     ColorMapSelector,
     generate_gradient_colors,
 )
-from .volume_viewer import MultiVolumeViewer, VolumeViewer
+from .volume_viewer import VolumeViewer
 from .vtk_widgets import (
     AxesWidget,
     BoundingBoxManager,

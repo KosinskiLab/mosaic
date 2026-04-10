@@ -47,7 +47,11 @@ class VerticalScrollArea(QScrollArea):
 
 
 def create_or_toggle_dock(
-    instance, dock_attr_name, dialog_widget, dock_area=Qt.RightDockWidgetArea
+    instance,
+    dock_attr_name,
+    dialog_widget,
+    dock_area=Qt.RightDockWidgetArea,
+    scroll=True,
 ):
     """
     Helper method to create or toggle a docked dialog.
@@ -60,6 +64,8 @@ def create_or_toggle_dock(
         The dialog widget to display in the dock
     dock_area : Qt.DockWidgetArea, optional
         Where to dock the widget, default is RightDockWidgetArea
+    scroll : bool, optional
+        Whether to wrap the widget in a VerticalScrollArea, default is True.
     """
 
     def _exit():
@@ -93,15 +99,18 @@ def create_or_toggle_dock(
         | QDockWidget.DockWidgetMovable
     )
 
-    from ..stylesheets import QScrollArea_style
+    if scroll:
+        from ..stylesheets import QScrollArea_style
 
-    scroll_area = VerticalScrollArea()
-    scroll_area.setWidgetResizable(True)
-    scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-    scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-    scroll_area.setStyleSheet(QScrollArea_style)
-    scroll_area.setWidget(dialog_widget)
-    dock.setWidget(scroll_area)
+        scroll_area = VerticalScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setStyleSheet(QScrollArea_style)
+        scroll_area.setWidget(dialog_widget)
+        dock.setWidget(scroll_area)
+    else:
+        dock.setWidget(dialog_widget)
 
     if hasattr(dialog_widget, "accepted"):
         dialog_widget.accepted.connect(_exit)

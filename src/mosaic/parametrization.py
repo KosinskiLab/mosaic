@@ -823,6 +823,17 @@ class TriangularMesh(Parametrization):
             self.mesh.remove_duplicated_vertices()
 
     def to_file(self, file_path):
+        from os.path import splitext
+
+        ext = splitext(file_path)[1].lower()
+        if ext in (".tsi", ".q"):
+            from .meshing.utils import to_tsi
+            from .formats.writer import write_topology_file
+
+            data = to_tsi(self.vertices, self.triangles, margin=20)
+            write_topology_file(file_path, data, tsi_format=(ext == ".tsi"))
+            return
+
         import open3d as o3d
 
         o3d.io.write_triangle_mesh(file_path, self.mesh)
