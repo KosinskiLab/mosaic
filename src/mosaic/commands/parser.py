@@ -209,9 +209,7 @@ def parse_command(text: str) -> Optional[ParsedCommand]:
     kwargs = {}
 
     for token in tokens[1:]:
-        if token in ("--help", "-h"):
-            continue
-        elif "=" in token and not token.startswith("="):
+        if "=" in token and not token.startswith("="):
             key, _, val = token.partition("=")
             kwargs[key] = _coerce_value(val)
         elif _TARGET_RE.match(token) or token in _SPECIAL_TARGETS:

@@ -255,9 +255,8 @@ class AppSettingsPanel(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowFlags(
-            Qt.WindowType.Window
+            Qt.WindowType.Tool
             | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setMinimumSize(420, 300)
         self.resize(420, 520)

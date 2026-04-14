@@ -105,6 +105,13 @@ class CommandRegistry:
         """
         from ..registry import MethodRegistry
 
+        # "measure help" / "measure distance help" → "help measure [distance]"
+        if parsed.args and parsed.args[-1] == "help":
+            parsed = ParsedCommand(
+                verb="help",
+                args=[parsed.verb] + parsed.args[:-1],
+            )
+
         cmd = cls.get(parsed.verb)
         if cmd is None:
             return _error_panel(
@@ -605,7 +612,10 @@ def _registry_method_listing(op_name: str):
         Text(),
         table,
         Text(),
-        Text(f"Type 'help {op_name} <method>' for parameters.", style="mosaic.muted"),
+        Text(
+            f"Type '{op_name} <method> help' for parameters.",
+            style="mosaic.muted",
+        ),
     )
 
 
@@ -704,7 +714,10 @@ def _cmd_help(session, parsed: ParsedCommand):
         parts.append(Rule(group_name, style="mosaic.rule", align="left"))
         parts.append(table)
 
-    parts += [Text(), Text("Type 'help <command>' for details.", style="mosaic.muted")]
+    parts += [
+        Text(),
+        Text("Type 'help <command>' or '<command> help' for details.", style="mosaic.muted"),
+    ]
 
     return _help_panel("Mosaic Commands", *parts)
 
