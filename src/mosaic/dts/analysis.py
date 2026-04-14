@@ -252,10 +252,7 @@ def _compute_property(trajectory_dir, property_name, scale, offset, **kwargs):
 
 
 def _vertex_bending_energy(vertices, triangles, kappa, kappa_g=0.0, c0=0.0):
-    """Compute per-vertex bending energy using the Helfrich Hamiltonian.
-
-    Uses ``igl.principal_curvature`` for curvature estimation and the
-    barycentric vertex area (1/3 of adjacent triangle areas).
+    """Compute per-vertex Helfrich bending energy.
 
     Parameters
     ----------
@@ -280,6 +277,13 @@ def _vertex_bending_energy(vertices, triangles, kappa, kappa_g=0.0, c0=0.0):
     vertices = np.asarray(vertices, dtype=np.float64)
     triangles = np.asarray(triangles, dtype=np.int32)
 
+    # TODO: Check the useKring interface changes
+
+    # From parametrization.py
+    # pd1, pd2, pv1, pv2, bad_vs = igl.principal_curvature(
+    #     self.vertices, self.triangles, radius=radius, useKring=use_k_ring
+    # )
+
     _, _, pv1, pv2, _ = igl.principal_curvature(vertices, triangles, radius=5)
 
     # Barycentric vertex area: each vertex gets 1/3 of each adjacent triangle
@@ -292,13 +296,10 @@ def _vertex_bending_energy(vertices, triangles, kappa, kappa_g=0.0, c0=0.0):
     for j in range(3):
         np.add.at(vertex_areas, triangles[:, j], tri_areas / 3.0)
 
-    mean2 = pv1 + pv2
-    gaussian = pv1 * pv2
-
-    # E_v = kappa/2 * (2H - c0)^2 * A  -  kappa_g * K * A
-    return (kappa / 2.0) * (
-        mean2 - c0
-    ) ** 2 * vertex_areas - kappa_g * gaussian * vertex_areas
+    # E_v = A * (kappa/2 * (2H - c0)^2 - kappa_g * K)
+    gaus = kappa_g * pv1 * pv2
+    mean = (kappa / 2.0) * (pv1 + pv2 - c0) ** 2
+    return (mean - gaus) * vertex_areas
 
 
 def _compute_bending_energy(trajectory_dir, scale, offset, output_dir=None, **kwargs):

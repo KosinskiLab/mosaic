@@ -431,9 +431,10 @@ def _write_run_script(run_dir: Path, params: Dict, mesh_name: str = "") -> None:
         {symlink_line}
 
         DTS_CMD="${{DTS_CMD:-{default_cmd}}}"
+        DTS_NT="${{DTS_NT:-{threads}}}"
         $DTS_CMD -in input.dts \\
             -top ../topol.top \\
-            -nt {threads} \\
+            -nt $DTS_NT \\
             -seed 76532 \\
             && touch {_SENTINEL}
         """
@@ -464,6 +465,7 @@ def _write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
 
     local_script = (
         "#!/bin/bash\nset -euo pipefail\n\n"
+        "export DTS_NT=${DTS_NT:-1}\n\n"
         + preamble
         + textwrap.dedent(
             """\
@@ -481,7 +483,7 @@ def _write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
         """
         )
     )
-    local_path = output_dir / "run_all.sh"
+    local_path = output_dir / "submit_local.sh"
     local_path.write_text(local_script, encoding="utf-8")
     local_path.chmod(0o755)
 
@@ -498,11 +500,14 @@ def _write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
         #SBATCH --mem=6G
         #SBATCH --time=24:00:00
         #SBATCH --output=slurm_%A_%a.log
+
         #
         # DTS screen launcher — {n_runs} runs.
-        # Edit MAX_ARRAY below to change the chunk size.
+        # Set DTS_NT before calling sbatch to control thread count, e.g.
+        # DTS_NT=8 sbatch submit_slurm.sh
         #
 
+        export DTS_NT="${{DTS_NT:-1}}"
         MAX_ARRAY=1000
 
         """
@@ -525,6 +530,7 @@ def _write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
             if (( END >= N )); then END=$(( N - 1 )); fi
 
             ARGS=(--parsable --job-name=dts_$((START / MAX_ARRAY))
+                  --cpus-per-task="$DTS_NT"
                   --array=0-$((END - START))
                   --export=ALL,SLURM_OFFSET=$START)
             [[ -n "${JOB:-}" ]] && ARGS+=(--dependency=afterany:$JOB)

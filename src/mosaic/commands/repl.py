@@ -69,8 +69,14 @@ class _Completer:
                 name = m.internal_name
                 if name.startswith(text):
                     candidates.append(name + " ")
+            if "help".startswith(text):
+                candidates.append("help ")
             return sorted(candidates)
-        return self._complete_param_names(text, line, op, tokens)
+
+        candidates = self._complete_param_names(text, line, op, tokens)
+        if "help".startswith(text):
+            candidates.append("help ")
+        return candidates
 
     def _get_operation(self, verb: str):
         """Look up the Operation for a command verb."""
@@ -371,7 +377,7 @@ class MosaicREPL:
         t.append(f"  v{version}", style="mosaic.muted")
         self._console.print(t)
         self._console.print(
-            "Type 'help' for commands, 'exit' to quit.",
+            "Type 'help' for commands, '<command> help' for details, 'exit' to quit.",
             style="mosaic.muted",
         )
         self._console.print()
