@@ -6,7 +6,6 @@ import numpy as np
 from tme import Density
 from qtpy.QtWidgets import (
     QDialog,
-    QTabWidget,
     QVBoxLayout,
     QLabel,
     QLineEdit,
@@ -22,8 +21,8 @@ from qtpy.QtWidgets import (
 )
 import qtawesome as qta
 
-from ..widgets import PathSelector, DialogFooter
-from ..stylesheets import QPushButton_style, QScrollArea_style, QTabBar_style, Colors
+from ..widgets import PathSelector, DialogFooter, TabWidget
+from ..stylesheets import QScrollArea_style, Colors
 
 
 class InputDataTab(QWidget):
@@ -472,7 +471,7 @@ class TemplateMatchingDialog(QDialog):
         self.resize(650, 600)
 
         self.layout = QVBoxLayout(self)
-        self.tabs = QTabWidget()
+        self.tabs = TabWidget()
 
         self.input_tab = InputDataTab()
         self.preprocess_tab = PreprocessTab()
@@ -481,26 +480,27 @@ class TemplateMatchingDialog(QDialog):
         self.compute_tab = ComputeTab()
 
         self.tabs.addTab(
-            self.input_tab, qta.icon("ph.file-arrow-down", color=Colors.ICON), "Data"
+            self.input_tab, "Data", qta.icon("ph.file-arrow-down", color=Colors.ICON)
         )
         self.tabs.addTab(
             self.preprocess_tab,
-            qta.icon("ph.wrench", color=Colors.ICON),
             "Preprocess",
+            qta.icon("ph.wrench", color=Colors.ICON),
         )
         self.tabs.addTab(
-            self.matching_tab, qta.icon("ph.sliders", color=Colors.ICON), "Matching"
+            self.matching_tab, "Matching", qta.icon("ph.sliders", color=Colors.ICON)
         )
         self.tabs.addTab(
             self.peak_tab,
-            qta.icon("ph.magnifying-glass", color=Colors.ICON),
             "Peak Calling",
+            qta.icon("ph.magnifying-glass", color=Colors.ICON),
         )
         self.tabs.addTab(
             self.compute_tab,
-            qta.icon("ph.hard-drives", color=Colors.ICON),
             "Compute",
+            qta.icon("ph.hard-drives", color=Colors.ICON),
         )
+        self.tabs.finalize()
 
         self.layout.addWidget(self.tabs)
 
@@ -511,7 +511,7 @@ class TemplateMatchingDialog(QDialog):
         )
         self.layout.addWidget(self.footer)
         self.tabs.currentChanged.connect(self._update_help_text)
-        self.setStyleSheet(QTabBar_style + QPushButton_style + QScrollArea_style)
+        self.setStyleSheet(QScrollArea_style)
 
     def _update_help_text(self, index):
         help_texts = [

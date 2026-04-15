@@ -16,7 +16,7 @@ from qtpy.QtWidgets import (
 )
 
 from ..widgets import PathSelector, DialogFooter
-from ..stylesheets import QGroupBox_style, QPushButton_style
+from ..stylesheets import QGroupBox_style
 from ..widgets.settings import get_widget_value, create_setting_widget
 
 
@@ -30,7 +30,7 @@ class HMFFDialog(QDialog):
         self.mesh_options = mesh_options
         self.setup_ui()
         self.setup_connections()
-        self.setStyleSheet(QGroupBox_style + QPushButton_style)
+        self.setStyleSheet(QGroupBox_style)
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)

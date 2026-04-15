@@ -27,7 +27,7 @@ from vtkmodules.util import numpy_support
 from ..utils import Throttle
 from .colors import ColorMapSelector
 from .sliders import SliderRow, DualHandleSlider
-from ..stylesheets import QPushButton_style, Colors
+from ..stylesheets import Colors
 
 
 _VTK_READERS = {
@@ -232,7 +232,6 @@ class VolumeViewer(QWidget):
         layout = QVBoxLayout(self)
         layout.addLayout(self.controls_layout)
         self.setLayout(layout)
-        self.setStyleSheet(QPushButton_style)
 
     def _icon_button(self, icon_name, tooltip, callback):
         btn = QPushButton()

@@ -33,7 +33,7 @@ from .widgets import OperationCardWidget, PipelineTreeWidget
 from ..__version__ import __version__
 from ..settings import Settings
 from ..widgets.settings import format_tooltip
-from ..stylesheets import Colors, QPushButton_style, QScrollArea_style
+from ..stylesheets import Colors, QScrollArea_style
 
 
 __all__ = ["PipelineBuilderDialog"]
@@ -48,7 +48,7 @@ class PipelineBuilderDialog(QDialog):
         self.setMinimumSize(1100, 750)
         self.resize(1300, 850)
         self.setup_ui()
-        self.setStyleSheet(QScrollArea_style + QPushButton_style)
+        self.setStyleSheet(QScrollArea_style)
 
     def setup_ui(self):
         import qtawesome as qta

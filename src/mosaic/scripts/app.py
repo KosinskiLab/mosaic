@@ -11,23 +11,14 @@ import signal
 import argparse
 from importlib_resources import files
 
-from qtpy.QtGui import QIcon
+from qtpy.QtGui import QIcon, QFont, QFontDatabase
 from qtpy.QtWidgets import QApplication
 
 from mosaic import __version__
 from mosaic.stylesheets import (
-    QMessageBox_style,
-    QLineEdit_style,
-    QSpinBox_style,
-    QDoubleSpinBox_style,
-    QComboBox_style,
-    QCheckBox_style,
-    QSlider_style,
-    QGroupBox_style,
-    QListWidget_style,
-    QToolButton_style,
-    QMenu_style,
-    QDockWidget_style,
+    build_global_stylesheet,
+    build_qt_palette,
+    install_macos_titlebar_filter,
 )
 
 
@@ -45,20 +36,16 @@ def main():
     # Fixes alignment issue in default style
     # https://forum.qt.io/topic/105191/why-isn-t-a-qcombobox-positioned-correctly-in-a-layout/11
     app.setStyle("Fusion")
-    app.setStyleSheet(
-        QMessageBox_style
-        + QLineEdit_style
-        + QSpinBox_style
-        + QDoubleSpinBox_style
-        + QComboBox_style
-        + QCheckBox_style
-        + QSlider_style
-        + QGroupBox_style
-        + QListWidget_style
-        + QToolButton_style
-        + QMenu_style
-        + QDockWidget_style
-    )
+    app.setPalette(build_qt_palette())
+    app.setStyleSheet(build_global_stylesheet())
+
+    font = QFont("Helvetica Neue")
+    if "Helvetica Neue" not in QFontDatabase.families():
+        font = app.font()
+    font.setPointSize(13)
+    app.setFont(font)
+
+    install_macos_titlebar_filter()
 
     signal.signal(signal.SIGINT, lambda *args: app.quit())
 

@@ -9,11 +9,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from typing import List, Optional, Callable
 
 import numpy as np
-from qtpy.QtCore import QTimer
-from scipy import ndimage
-from scipy.spatial import KDTree
-from scipy.sparse import coo_matrix
-from scipy.sparse.csgraph import connected_components as sparse_connected_components
 
 __all__ = [
     "points_to_volume",
@@ -64,6 +59,8 @@ class Throttle:
     """
 
     def __init__(self, func: Callable, interval_ms: int = 100):
+        from qtpy.QtCore import QTimer
+
         self._func = func
         self._timer = QTimer()
         self._timer.setSingleShot(True)
@@ -229,6 +226,9 @@ def volume_to_points(
 
 
 def _get_adjacency_matrix(points, symmetric: bool = False, eps: float = 0.0):
+    from scipy.spatial import KDTree
+    from scipy.sparse import coo_matrix
+
     # Leafsize needs to be tuned depending on the structure of the input data.
     # Points typically originates from voxel membrane segmentation on regular grids.
     # Leaf sizes between 8 - 16 work reasonably well.
@@ -268,6 +268,8 @@ def connected_components(data, **kwargs):
     ndarray
         Cluster labels.
     """
+    from scipy.sparse.csgraph import connected_components as sparse_connected_components
+
     adjacency = _get_adjacency_matrix(data)
     return sparse_connected_components(adjacency, directed=False, return_labels=True)[1]
 
@@ -435,6 +437,8 @@ def eigenvalue_outlier_removal(points, k_neighbors=20, thresh=0.05):
     ----------
     .. [1]  https://github.com/denabazazian/Edge_Extraction/blob/master/Difference_Eigenvalues.py
     """
+    from scipy.spatial import KDTree
+
     tree = KDTree(points)
     distances, indices = tree.query(points, k=k_neighbors + 1, workers=-1)
 
@@ -483,6 +487,8 @@ def statistical_outlier_removal(points, k_neighbors=20, thresh=2.0):
 
 
 def find_closest_points(positions1, positions2, k=1):
+    from scipy.spatial import KDTree
+
     positions1, positions2 = np.asarray(positions1), np.asarray(positions2)
 
     tree = KDTree(positions1)
@@ -490,6 +496,8 @@ def find_closest_points(positions1, positions2, k=1):
 
 
 def find_closest_points_cutoff(positions1, positions2, cutoff=1):
+    from scipy.spatial import KDTree
+
     positions1, positions2 = np.asarray(positions1), np.asarray(positions2)
 
     tree = KDTree(positions1)
@@ -510,6 +518,8 @@ def compute_normals(points: np.ndarray, k: int = 15, return_pcd: bool = False):
 
 
 def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
+    from scipy.spatial import KDTree
+
     if not isinstance(positions, np.ndarray):
         positions = np.array(positions)
 
@@ -881,6 +891,8 @@ def skeletonize(
     we created this implementation, which produces very similar results but optimized
     for CPU runtime, numerical stability, and small memory footprint.
     """
+    from scipy import ndimage
+
     dist = -ndimage.distance_transform_edt(mask)
     if mode in ("outer", "inner"):
         mode = "boundary"

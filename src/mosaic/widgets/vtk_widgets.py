@@ -24,7 +24,9 @@ from vtk import (
     vtkOrientationMarkerWidget,
 )
 
-AXIS_COLORS = ((0.8, 0.2, 0.2), (0.26, 0.65, 0.44), (0.2, 0.4, 0.8))
+from ..stylesheets import Colors
+
+AXIS_COLORS = Colors.AXIS
 
 
 class LegendWidget:
@@ -116,7 +118,7 @@ class ScaleBarWidget:
     """VTK Scale Bar widget for adding distance indicators to the vtk viewer."""
 
     def __init__(
-        self, renderer: vtk.vtkRenderer, interactor: vtk.vtkRenderWindowInteractor
+        self, renderer: "vtk.vtkRenderer", interactor: "vtk.vtkRenderWindowInteractor"
     ):
         self.renderer = renderer
         self.interactor = interactor

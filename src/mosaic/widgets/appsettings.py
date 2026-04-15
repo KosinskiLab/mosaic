@@ -26,7 +26,7 @@ from qtpy.QtWidgets import (
 
 from mosaic.settings import Settings
 from mosaic.actor import QUALITY_PRESETS
-from mosaic.stylesheets import Colors, QPushButton_style, QScrollArea_style
+from mosaic.stylesheets import Colors, QScrollArea_style
 from mosaic.widgets.sliders import SliderRow
 from mosaic.widgets.colors import ColorPickerRow
 from mosaic.widgets.segmented_control import SegmentedControl
@@ -254,10 +254,7 @@ class AppSettingsPanel(QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(
-            Qt.WindowType.Tool
-            | Qt.WindowType.FramelessWindowHint
-        )
+        self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
         self.setMinimumSize(420, 300)
         self.resize(420, 520)
         self._build_ui()
@@ -315,11 +312,10 @@ class AppSettingsPanel(QFrame):
         root.addWidget(scroll, 1)
 
         self.setStyleSheet(
-            f"""AppearancePanel {{
+            f"""AppSettingsPanel {{
                 border: 1px solid {Colors.BORDER_DARK};
                 border-bottom: none;
             }}"""
-            + QPushButton_style
         )
 
     def _build_theme_section(self):

@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 from vtk import vtkTransform
 from qtpy.QtWidgets import QDialog
 
-from ..stylesheets import Colors, QPushButton_style, QScrollArea_style
+from ..stylesheets import Colors, QScrollArea_style
 
 
 class BaseAnimation(ABC):
@@ -496,7 +496,7 @@ class ActorSelectionDialog(QDialog):
         self.setWindowTitle("Select Objects")
         self.resize(400, 500)
         self.setModal(True)
-        self.setStyleSheet(QPushButton_style + QScrollArea_style)
+        self.setStyleSheet(QScrollArea_style)
 
         self._cdata = cdata
         self._trees = []

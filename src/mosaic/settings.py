@@ -38,7 +38,7 @@ class SettingsProperty:
 
         obj._qsettings.setValue(self.key, value)
 
-    def _load_from_qsettings(self, qsettings: QSettings):
+    def _load_from_qsettings(self, qsettings: "QSettings"):
         """Load value from QSettings."""
         if not qsettings.contains(self.key):
             self._value = self.default
@@ -119,6 +119,7 @@ class UISettings:
     auto_save_session: bool = False
     auto_save_interval: int = 300
     skipped_version: str = ""
+    theme_mode: str = "system"
 
 
 @dataclass

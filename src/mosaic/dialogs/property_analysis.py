@@ -23,8 +23,8 @@ from qtpy.QtWidgets import (
     QFormLayout,
     QWidget,
     QMessageBox,
-    QTabWidget,
     QTableWidget,
+    QButtonGroup,
     QHeaderView,
     QTableWidgetItem,
     QFileDialog,
@@ -47,9 +47,7 @@ from ..widgets import (
 from ..utils import Throttle
 from ..widgets.settings import get_widget_value, set_widget_value
 from ..stylesheets import (
-    QPushButton_style,
     QScrollArea_style,
-    QTabBar_style,
     QTable_style,
     Colors,
 )
@@ -416,7 +414,6 @@ class ColorScaleSettingsDialog(QDialog):
         self.upper_value = 1.0
 
         self._setup_ui()
-        self.setStyleSheet(QPushButton_style)
 
     def sizeHint(self):
         return QSize(400, 350)
@@ -562,12 +559,8 @@ class PropertyAnalysisDialog(QDialog):
         self.setWindowTitle("Property Analysis")
 
         self.legend = legend
-        self.setWindowFlags(Qt.WindowType.Window)
-
         self._setup_ui()
-        self.setStyleSheet(
-            QTabBar_style + QTable_style + QPushButton_style + QScrollArea_style
-        )
+        self.setStyleSheet(QTable_style + QScrollArea_style)
 
         self.cdata.data.vtk_pre_render.connect(self._on_render_update)
         self.cdata.models.vtk_pre_render.connect(self._on_render_update)
@@ -704,12 +697,34 @@ class PropertyAnalysisDialog(QDialog):
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.tabs_container = QWidget()
-        tabs_layout = QVBoxLayout(self.tabs_container)
-        tabs_layout.setContentsMargins(0, 0, 0, 0)
+        # Tab bar
+        tab_bar = QWidget()
+        tab_bar_layout = QHBoxLayout(tab_bar)
+        tab_bar_layout.setContentsMargins(8, 4, 8, 4)
+        tab_bar_layout.setSpacing(4)
 
-        self.tabs_widget = QTabWidget()
+        self._tab_group = QButtonGroup(self)
+        self._tab_group.setExclusive(True)
+
+        tab_style = f"""
+            QPushButton {{
+                border: none; padding: 6px 14px; font-size: 13px;
+                background: transparent; border-radius: 6px;
+                color: {Colors.TEXT_MUTED};
+            }}
+            QPushButton:checked {{
+                background: {Colors.BG_HOVER};
+                color: {Colors.TEXT_PRIMARY};
+            }}
+            QPushButton:hover:!checked {{
+                color: {Colors.TEXT_SECONDARY};
+            }}
+            QPushButton:focus {{ outline: none; }}
+        """
+
+        self._stack = QStackedWidget()
         self.visualization_tab = QWidget()
         self.analysis_tab = QWidget()
         self.statistics_tab = QWidget()
@@ -718,23 +733,27 @@ class PropertyAnalysisDialog(QDialog):
         self._setup_analysis_tab()
         self._setup_statistics_tab()
 
-        self.tabs_widget.addTab(
-            self.visualization_tab,
-            qta.icon("ph.paint-brush", color=Colors.ICON),
-            "Visualize",
-        )
-        self.tabs_widget.addTab(
-            self.analysis_tab,
-            qta.icon("ph.chart-line", color=Colors.ICON),
-            "Distribution",
-        )
-        self.tabs_widget.addTab(
-            self.statistics_tab,
-            qta.icon("ph.chart-bar", color=Colors.ICON),
-            "Statistics",
-        )
-        self.tabs_widget.currentChanged.connect(self._update_tab)
-        main_layout.addWidget(self.tabs_widget)
+        for idx, (icon_name, label, widget) in enumerate(
+            [
+                ("ph.paint-brush", "Visualize", self.visualization_tab),
+                ("ph.chart-line", "Distribution", self.analysis_tab),
+                ("ph.chart-bar", "Statistics", self.statistics_tab),
+            ]
+        ):
+            btn = QPushButton(qta.icon(icon_name, color=Colors.ICON), label)
+            btn.setCheckable(True)
+            btn.setStyleSheet(tab_style)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            self._tab_group.addButton(btn, idx)
+            tab_bar_layout.addWidget(btn)
+            self._stack.addWidget(widget)
+
+        tab_bar_layout.addStretch()
+        self._tab_group.button(0).setChecked(True)
+        self._tab_group.idClicked.connect(self._switch_tab)
+
+        main_layout.addWidget(tab_bar)
+        main_layout.addWidget(self._stack)
 
     def _create_colormap_combo(self, with_settings_button=False):
         """Create a colormap combo widget with optional settings button"""
@@ -1137,6 +1156,12 @@ class PropertyAnalysisDialog(QDialog):
             *self.cdata.format_datalist("models", selected=selected),
         ]
 
+    def _interactor_for(self, geometry):
+        """Return the interactor (data or models) that owns *geometry*."""
+        if self.cdata._models.get(geometry.uuid) is not None:
+            return self.cdata.models
+        return self.cdata.data
+
     def _get_or_create_texture_sampler(
         self, geometry, file_path: str, texture_size: int, interpolation_order: int
     ):
@@ -1301,8 +1326,8 @@ class PropertyAnalysisDialog(QDialog):
         if self.normalize_checkbox.isChecked():
             properties = {
                 k: (
-                    (v - np.min(v)) / (np.max(v) - np.min(v))
-                    if (np.max(v) - np.min(v)) > 0
+                    (v - np.nanmin(v)) / (np.nanmax(v) - np.nanmin(v))
+                    if (np.nanmax(v) - np.nanmin(v)) > 0
                     else v
                 )
                 for k, v in properties.items()
@@ -1380,8 +1405,8 @@ class PropertyAnalysisDialog(QDialog):
         if len(values) == 0:
             return None
 
-        max_value = np.max([np.max(x) for x in values])
-        min_value = np.min([np.min(x) for x in values])
+        max_value = np.nanmax([np.nanmax(x) for x in values])
+        min_value = np.nanmin([np.nanmin(x) for x in values])
         gamma = self.gamma_row.value()
         lut, lut_range = cmap_to_vtkctf(
             colormap, max_value, min_value=min_value, gamma=gamma
@@ -1460,7 +1485,7 @@ class PropertyAnalysisDialog(QDialog):
             values = [x for x in properties.values() if x is not None]
             if not values:
                 return
-            max_code = np.max([np.max(x) for x in values])
+            max_code = np.nanmax([np.nanmax(x) for x in values])
             lut, lut_range = cmap_to_vtkctf(
                 colormap, max_code, min_value=0.0, transparent_range=True
             )
@@ -1520,7 +1545,7 @@ class PropertyAnalysisDialog(QDialog):
 
         categorical = self._is_categorical(geometries)
 
-        extracted_any = False
+        dirty_interactors = set()
         for geometry in geometries:
             if categorical:
                 raw = self._cache.get_value(geometry.uuid)
@@ -1543,11 +1568,15 @@ class PropertyAnalysisDialog(QDialog):
 
             subset = geometry[mask]
             if subset.get_number_of_points() > 0:
-                self.cdata.data.add(subset)
-                extracted_any = True
+                interactor = self._interactor_for(geometry)
+                interactor.add(subset)
+                dirty_interactors.add(id(interactor))
 
-        if extracted_any:
-            self.cdata.data.render()
+        if dirty_interactors:
+            if id(self.cdata.data) in dirty_interactors:
+                self.cdata.data.render()
+            if id(self.cdata.models) in dirty_interactors:
+                self.cdata.models.render()
         else:
             QMessageBox.information(
                 self, "No Points", "No points fall within the selected range."
@@ -1563,7 +1592,7 @@ class PropertyAnalysisDialog(QDialog):
         if not self._is_categorical(geometries):
             return
 
-        added_any = False
+        dirty_interactors = set()
         for geometry in geometries:
             raw = self._cache.get_value(geometry.uuid)
             if raw is None:
@@ -1571,6 +1600,7 @@ class PropertyAnalysisDialog(QDialog):
 
             raw_flat = np.asarray(raw).flatten()
             parent_name = geometry._meta.get("name", "Object")
+            interactor = self._interactor_for(geometry)
 
             for label in np.unique(raw_flat):
                 mask = raw_flat == label
@@ -1578,14 +1608,21 @@ class PropertyAnalysisDialog(QDialog):
                 if subset.get_number_of_points() == 0:
                     continue
                 subset._meta["name"] = f"{parent_name}_{label}"
-                self.cdata.data.add(subset)
-                added_any = True
+                interactor.add(subset)
+                dirty_interactors.add(id(interactor))
 
-        if added_any:
-            self.cdata.data.render()
+        if dirty_interactors:
+            if id(self.cdata.data) in dirty_interactors:
+                self.cdata.data.render()
+            if id(self.cdata.models) in dirty_interactors:
+                self.cdata.models.render()
+
+    def _switch_tab(self, index):
+        self._stack.setCurrentIndex(index)
+        self._update_tab()
 
     def _update_tab(self):
-        current_tab_index = self.tabs_widget.currentIndex()
+        current_tab_index = self._stack.currentIndex()
 
         self.plot_widget.clear()
         QTimer.singleShot(
@@ -1616,10 +1653,10 @@ class PropertyAnalysisDialog(QDialog):
             row_count += 1
             value = to_numeric(value)
             self._set_stat_cell(index, 0, item_text)
-            self._set_stat_cell(index, 1, str(np.round(np.min(value), n_decimals)))
-            self._set_stat_cell(index, 2, str(np.round(np.max(value), n_decimals)))
-            self._set_stat_cell(index, 3, str(np.round(np.mean(value), n_decimals)))
-            self._set_stat_cell(index, 4, str(np.round(np.std(value), n_decimals)))
+            self._set_stat_cell(index, 1, str(np.round(np.nanmin(value), n_decimals)))
+            self._set_stat_cell(index, 2, str(np.round(np.nanmax(value), n_decimals)))
+            self._set_stat_cell(index, 3, str(np.round(np.nanmean(value), n_decimals)))
+            self._set_stat_cell(index, 4, str(np.round(np.nanstd(value), n_decimals)))
         self.stats_table.setRowCount(row_count)
 
     def _set_plot_type(self, plot_type):
@@ -1661,7 +1698,7 @@ class PropertyAnalysisDialog(QDialog):
 
     def _update_plot(self):
         """Update the plot based on the current property and selected objects"""
-        if self.tabs_widget.currentIndex() != 1:
+        if self._stack.currentIndex() != 1:
             return None
 
         selected_items = self._get_selection()
@@ -1795,12 +1832,14 @@ class PropertyAnalysisDialog(QDialog):
         bins, x_range = None, None
         if plot_type == "Histogram":
             all_data = np.concatenate(all_values)
+            all_data = all_data[~np.isnan(all_data)]
             bins = np.histogram_bin_edges(all_data, bins="auto")
             y_label = "Frequency"
             x_label = property_name
         elif plot_type == "Density":
             all_data = np.concatenate(all_values)
-            x_min, x_max = np.min(all_data), np.max(all_data)
+            all_data = all_data[~np.isnan(all_data)]
+            x_min, x_max = np.nanmin(all_data), np.nanmax(all_data)
             x_range = np.linspace(x_min, x_max, 500)
             y_label = "Density"
             x_label = property_name

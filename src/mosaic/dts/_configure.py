@@ -82,7 +82,7 @@ class ConfigurePanel(QScrollArea):
         content = QWidget()
         content.setObjectName("scrollContentWidget")
         layout = QVBoxLayout(content)
-        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
         layout.addWidget(self._build_input_group())

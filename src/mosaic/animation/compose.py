@@ -49,7 +49,6 @@ from ..stylesheets import (
     QSlider_style,
     QGroupBox_style,
     QListWidget_style,
-    QPushButton_style,
     QScrollArea_style,
     Colors,
 )
@@ -101,7 +100,6 @@ class AnimationComposerDialog(QDialog):
             + QSlider_style
             + QGroupBox_style
             + QListWidget_style
-            + QPushButton_style
             + QScrollArea_style
         )
 

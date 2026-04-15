@@ -1,3 +1,13 @@
+"""
+Mosaic stylesheet and theme system.
+
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
+
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
+
+import sys
+
 from importlib_resources import files
 
 __all__ = [
@@ -20,66 +30,79 @@ __all__ = [
     "QMenu_style",
     "QDockWidget_style",
     "QTable_style",
+    "build_global_stylesheet",
+    "build_qt_palette",
+    "switch_theme",
+    "install_macos_titlebar_filter",
 ]
 
 
 class Colors:
     """Centralized color definitions for the Mosaic application."""
 
-    PRIMARY = "#4f46e5"  # Indigo - main accent color
+    LIGHT = {
+        "SURFACE": "#ffffff",  # Window / title bar
+        "PRIMARY": "#6366f1",  # Indigo 500
+        "TEXT_PRIMARY": "#18181b",  # Zinc 900
+        "TEXT_SECONDARY": "#52525b",  # Zinc 600
+        "TEXT_MUTED": "#a1a1aa",  # Zinc 400
+        "BORDER_HOVER": "#d4d4d8",  # Zinc 300
+        "BORDER_DARK": "#ebebec",  # Subtle border
+        "BG_SECONDARY": "#fafafa",  # Surface dim
+        "BG_TERTIARY": "#f4f4f5",  # Surface tint (Zinc 100)
+        "BG_HOVER": "rgba(0, 0, 0, 0.06)",
+        "BG_PRESSED": "rgba(0, 0, 0, 0.10)",
+        "SUCCESS": "#10b981",
+        "WARNING": "#f59e0b",
+        "ERROR": "#ef4444",
+    }
 
-    # =========================================================================
-    # Text Colors
-    # =========================================================================
-    TEXT_PRIMARY = "#334155"  # Slate 700 - main text, headings
-    TEXT_SECONDARY = "#64748b"  # Slate 500 - secondary text, labels, icons
-    TEXT_MUTED = "#6b7280"  # Gray 500 - muted/placeholder text
+    DARK = {
+        "SURFACE": "#18181b",  # Zinc 900 — Window / title bar
+        "PRIMARY": "#818cf8",  # Indigo 400
+        "TEXT_PRIMARY": "#fafafa",  # Zinc 50
+        "TEXT_SECONDARY": "#a1a1aa",  # Zinc 400
+        "TEXT_MUTED": "#71717a",  # Zinc 500
+        "BORDER_HOVER": "#3f3f46",  # Zinc 700
+        "BORDER_DARK": "#2e2e33",  # Subtle dark border
+        "BG_SECONDARY": "#1e1e22",  # Surface dim
+        "BG_TERTIARY": "#27272a",  # Surface tint (Zinc 800)
+        "BG_HOVER": "rgba(255, 255, 255, 0.06)",
+        "BG_PRESSED": "rgba(255, 255, 255, 0.10)",
+        "SUCCESS": "#34d399",
+        "WARNING": "#fbbf24",
+        "ERROR": "#f87171",
+    }
 
-    # =========================================================================
-    # Border Colors
-    # =========================================================================
-    BORDER_HOVER = "#94a3b8"  # Slate 400 - border on hover
-    BORDER_DARK = "#cbd5e1"  # Slate 300 - default borders
+    @classmethod
+    def apply_palette(cls, palette: dict):
+        """Apply a palette dict, updating all mutable color attributes."""
+        for key, value in palette.items():
+            setattr(cls, key, value)
 
-    # =========================================================================
-    # Background Colors
-    # =========================================================================
-    BG_SECONDARY = "#f8fafc"  # Slate 50 - subtle background
-    BG_TERTIARY = "#f1f5f9"  # Slate 100 - disabled/muted background
-    BG_HOVER = "rgba(0, 0, 0, 0.06)"  # Hover state
-    BG_PRESSED = "rgba(0, 0, 0, 0.10)"  # Pressed state
+        # Derived aliases — icon colors track the text hierarchy
+        cls.ICON = cls.TEXT_MUTED
+        cls.ICON_MUTED = cls.TEXT_MUTED
+        cls.ICON_ACTIVE = cls.TEXT_SECONDARY
 
-    # =========================================================================
-    # Status Colors
-    # =========================================================================
-    SUCCESS = "#10b981"  # Emerald 500
-    SUCCESS_BG = "#d1fae5"  # Emerald 100
-    SUCCESS_TEXT = "#065f46"  # Emerald 800
+    @classmethod
+    def alpha(cls, token, value):
+        """Return a palette color at the given alpha as an rgba() string."""
+        from qtpy.QtGui import QColor
 
-    WARNING = "#f59e0b"  # Amber 500
-    WARNING_DARK = "#d97706"  # Amber 600
-    WARNING_BG = "#fef3c7"  # Amber 100
-    WARNING_TEXT = "#92400e"  # Amber 800
+        c = QColor(getattr(cls, token))
+        return f"rgba({c.red()}, {c.green()}, {c.blue()}, {value})"
 
-    ERROR = "#ef4444"  # Red 500
-    ERROR_BG = "#fee2e2"  # Red 100
-    ERROR_TEXT = "#991b1b"  # Red 800
-
-    NEUTRAL = "#6b7280"  # Gray 500
-    NEUTRAL_BG = "#e5e7eb"  # Gray 200
-    NEUTRAL_TEXT = "#374151"  # Gray 700
-
-    # =========================================================================
-    # Icon Colors
-    # =========================================================================
-    ICON = "#64748b"  # Slate 500 - primary icon color
-    ICON_MUTED = "#9ca3af"  # Gray 400 - muted icons, chevrons
+    @classmethod
+    def is_dark(cls):
+        """Return True if the current palette is dark."""
+        return cls.PRIMARY == cls.DARK["PRIMARY"]
 
     WIDGET_HEIGHT = 30  # Standard height for input widgets (px)
+    RADIUS = 6  # Standard border radius for controls (px)
 
-    # =========================================================================
-    # Entity Colors (for "By Entity" coloring mode)
-    # =========================================================================
+    AXIS = ((0.8, 0.2, 0.2), (0.26, 0.65, 0.44), (0.2, 0.4, 0.8))
+
     ENTITY = [
         (0.18, 0.62, 0.78),  # Cerulean
         (0.98, 0.75, 0.18),  # Saffron
@@ -107,12 +130,8 @@ class Colors:
         (0.90, 0.25, 0.20),  # Vermillion red
     ]
 
-    # Annotation colors — ENTITY palette brightened for visibility on dark backgrounds
     ANNOTATION = [tuple(min(1.0, c + 0.25) for c in color) for color in ENTITY]
 
-    # =========================================================================
-    # Category Colors (for pipelines, animations, etc.)
-    # =========================================================================
     CATEGORY = {
         # Pipeline operation categories
         "input": "#7c3aed",  # Violet 600
@@ -136,20 +155,17 @@ class Colors:
     }
 
 
+# Initialize class attributes from LIGHT palette at import time
+Colors.apply_palette(Colors.LIGHT)
+
+
 def _get_resource_path(resource_name):
-    """Get the absolute path to a resource in the package.
-
-    Args:
-        resource_name (str): Relative path to the resource within the
-            package data directory
-
-    Returns:
-        str: The absolute path to the resource
-    """
+    """Get the absolute path to a resource in the package."""
     return str(files("mosaic.data").joinpath(f"data/{resource_name}"))
 
 
-HelpLabel_style = f"""
+def _build_HelpLabel_style():
+    return f"""
     QLabel {{
         color: {Colors.TEXT_MUTED};
         font-size: 12px;
@@ -157,22 +173,46 @@ HelpLabel_style = f"""
     }}
 """
 
-QGroupBox_style = f"""
+
+def _build_QGroupBox_style():
+    return f"""
     QGroupBox {{
-        font-weight: 500;
-        border: 1px solid {Colors.BORDER_DARK};
-        border-radius: 6px;
-        margin-top: 6px;
+        font-weight: 600;
+        border: none;
+        border-bottom: 1px solid {Colors.BORDER_DARK};
+        border-radius: 0px;
+        margin-bottom: 4px;
         padding-top: 14px;
+        padding-bottom: 10px;
     }}
     QGroupBox::title {{
-        subcontrol-origin: margin;
-        left: 7px;
-        padding: 0px 5px 0px 5px;
+        subcontrol-origin: padding;
+        left: 0px;
+        color: {Colors.TEXT_MUTED};
     }}
 """
 
-QPushButton_style = f"""
+
+# def _build_QGroupBox_style():
+#     return f"""
+#     QGroupBox {{
+#         font-weight: 500;
+#         border: 1px solid {Colors.BORDER_DARK};
+#         border-radius: 6px;
+#         margin-top: 6px;
+#         padding-top: 14px;
+#     }}
+#     QGroupBox::title {{
+#         subcontrol-origin: margin;
+#         left: 7px;
+#         padding: 0px 5px 0px 5px;
+#         color: {Colors.TEXT_MUTED};
+#     }}
+# """
+
+
+def _build_QPushButton_style():
+    return f"""
     QPushButton {{
         border: 1px solid {Colors.BORDER_DARK};
         border-radius: 4px;
@@ -180,23 +220,25 @@ QPushButton_style = f"""
     }}
     QPushButton:hover {{
         background: {Colors.BG_HOVER};
-        border: 1px solid rgba(0, 0, 0, 0.08);
+        border: 1px solid {Colors.BORDER_HOVER};
     }}
     QPushButton:pressed {{
         background: {Colors.BG_PRESSED};
-        border: 1px solid rgba(0, 0, 0, 0.12);
+        border: 1px solid {Colors.BORDER_HOVER};
     }}
     QPushButton:focus {{
         outline: none;
     }}
 """
 
-QLineEdit_style = f"""
+
+def _build_QLineEdit_style():
+    return f"""
     QLineEdit {{
         border: 1px solid {Colors.BORDER_DARK};
         border-radius: 4px;
         padding: 6px 8px;
-        selection-background-color: rgba(99, 102, 241, 0.6);
+        selection-background-color: {Colors.alpha("PRIMARY", 0.6)};
         background: transparent;
     }}
     QLineEdit:focus {{
@@ -212,13 +254,15 @@ QLineEdit_style = f"""
     }}
 """
 
-QSpinBox_style = f"""
+
+def _build_QSpinBox_style():
+    return f"""
     QSpinBox {{
         border: 1px solid {Colors.BORDER_DARK};
         border-radius: 4px;
         padding: 6px 8px;
         background-color: transparent;
-        selection-background-color: rgba(99, 102, 241, 0.6);
+        selection-background-color: {Colors.alpha("PRIMARY", 0.6)};
     }}
     QSpinBox:focus {{
         outline: none;
@@ -248,18 +292,19 @@ QSpinBox_style = f"""
         border-color: {Colors.BORDER_HOVER};
     }}
     QSpinBox::up-button:pressed, QSpinBox::down-button:pressed {{
-        background-color: #e2e8f0;
+        background-color: {Colors.BORDER_DARK};
     }}
 """
 
 
-QDoubleSpinBox_style = f"""
+def _build_QDoubleSpinBox_style():
+    return f"""
     QDoubleSpinBox {{
         border: 1px solid {Colors.BORDER_DARK};
         border-radius: 4px;
         padding: 6px 8px;
         background-color: transparent;
-        selection-background-color: rgba(99, 102, 241, 0.6);
+        selection-background-color: {Colors.alpha("PRIMARY", 0.6)};
     }}
     QDoubleSpinBox:focus {{
         outline: none;
@@ -289,19 +334,20 @@ QDoubleSpinBox_style = f"""
         border-color: {Colors.BORDER_HOVER};
     }}
     QDoubleSpinBox::up-button:pressed, QDoubleSpinBox::down-button:pressed {{
-        background-color: #e2e8f0;
+        background-color: {Colors.BORDER_DARK};
     }}
 """
 
 
-QComboBox_style = f"""
+def _build_QComboBox_style():
+    return f"""
     QComboBox {{
         border: 1px solid {Colors.BORDER_DARK};
         border-radius: 4px;
         min-height: {Colors.WIDGET_HEIGHT - 2}px;
         padding: 0px 8px;
         background: transparent;
-        selection-background-color: rgba(99, 102, 241, 0.6);
+        selection-background-color: {Colors.alpha("PRIMARY", 0.6)};
     }}
     QComboBox:focus {{
         outline: none;
@@ -320,11 +366,21 @@ QComboBox_style = f"""
     QComboBox QAbstractItemView {{
         border: 1px solid {Colors.BORDER_DARK};
         border-radius: 4px;
-        selection-background-color: rgba(99, 102, 241, 0.3);
+        outline: none;
+        background: {Colors.BG_SECONDARY};
+        selection-background-color: {Colors.alpha("PRIMARY", 0.3)};
+    }}
+    QComboBox QAbstractItemView::item {{
+        outline: none;
+    }}
+    QComboBox QFrame {{
+        border: none;
     }}
 """
 
-QCheckBox_style = f"""
+
+def _build_QCheckBox_style():
+    return f"""
     QCheckBox {{
         spacing: 5px;
         background-color: transparent;
@@ -348,7 +404,9 @@ QCheckBox_style = f"""
     }}
 """
 
-QScrollArea_style = f"""
+
+def _build_QScrollArea_style():
+    return f"""
     QScrollArea {{
         border: none;
     }}
@@ -372,7 +430,9 @@ QScrollArea_style = f"""
     }}
 """
 
-QTabBar_style = f"""
+
+def _build_QTabBar_style():
+    return f"""
     QTabBar::tab {{
         background: transparent;
         border: 1px solid {Colors.BORDER_DARK};
@@ -389,7 +449,6 @@ QTabBar_style = f"""
     QTabBar::tab:hover:!selected {{
         color: {Colors.TEXT_MUTED};
     }}
-    /* Style for the tab widget itself */
     QTabWidget::pane {{
         border: 1px solid {Colors.BORDER_DARK};
         background-color: transparent;
@@ -397,22 +456,18 @@ QTabBar_style = f"""
         border-bottom-right-radius: 6px;
         border-bottom-left-radius: 6px;
     }}
-
-    /* Style for the tab contents */
     QWidget#scrollContentWidget {{
         background-color: transparent;
     }}
-
-    /* Make scroll areas transparent */
     QScrollArea {{
         background-color: transparent;
         border: none;
     }}
-
 """
 
 
-QTable_style = f"""
+def _build_QTable_style():
+    return f"""
     QTableWidget {{
         border: 1px solid {Colors.BORDER_DARK};
         border-radius: 4px;
@@ -427,7 +482,8 @@ QTable_style = f"""
         background-color: {Colors.BG_HOVER};
     }}
     QTableWidget::item:selected {{
-        background-color: rgba(99, 102, 241, 0.3);
+        background-color: {Colors.alpha("PRIMARY", 0.08)};
+        color: {Colors.PRIMARY};
     }}
     QTableWidget QHeaderView::section {{
         background: transparent;
@@ -443,7 +499,9 @@ QTable_style = f"""
     }}
 """
 
-QListWidget_style = f"""
+
+def _build_QListWidget_style():
+    return f"""
     QListWidget {{
         border: none;
         background-color: transparent;
@@ -459,13 +517,14 @@ QListWidget_style = f"""
         background-color: {Colors.BG_PRESSED};
     }}
     QListWidget::item:selected {{
-        background-color: rgba(99, 102, 241, 0.3);
+        background-color: {Colors.alpha("PRIMARY", 0.3)};
         font-weight: 500;
     }}
 """
 
-# Left background used to be #4f46e5
-QSlider_style = f"""
+
+def _build_QSlider_style():
+    return f"""
     QSlider {{
         height: 24px;
     }}
@@ -474,14 +533,14 @@ QSlider_style = f"""
     }}
     QSlider::groove:horizontal {{
         height: 4px;
-        background: #e2e8f0;
+        background: {Colors.BORDER_DARK};
         border-radius: 2px;
     }}
     QSlider::groove:horizontal:disabled {{
         background: {Colors.BG_TERTIARY};
     }}
     QSlider::handle:horizontal {{
-        background: #ffffff;
+        background: {Colors.SURFACE};
         border: 1px solid {Colors.BORDER_DARK};
         width: 16px;
         height: 16px;
@@ -493,11 +552,11 @@ QSlider_style = f"""
     }}
     QSlider::handle:horizontal:focus {{
         border: 1px solid {Colors.PRIMARY};
-        background: #f9fafb;
+        background: {Colors.BG_SECONDARY};
     }}
     QSlider::handle:horizontal:disabled {{
         background: {Colors.BG_SECONDARY};
-        border: 1px solid #e2e8f0;
+        border: 1px solid {Colors.BORDER_DARK};
     }}
     QSlider::sub-page:horizontal {{
         background: {Colors.BORDER_HOVER};
@@ -508,7 +567,9 @@ QSlider_style = f"""
     }}
 """
 
-QMessageBox_style = f"""
+
+def _build_QMessageBox_style():
+    return f"""
     QMessageBox QLabel {{
         font-size: 13px;
     }}
@@ -524,7 +585,7 @@ QMessageBox_style = f"""
     }}
     QMessageBox QPushButton:pressed {{
         border: 1px solid {Colors.ICON_MUTED};
-        background: rgba(0, 0, 0, 0.24);
+        background: {Colors.BG_PRESSED};
     }}
     QMessageBox QPushButton:focus {{
         outline: none;
@@ -540,10 +601,12 @@ QMessageBox_style = f"""
     }}
 """
 
-QProgressBar_style = f"""
+
+def _build_QProgressBar_style():
+    return f"""
     QProgressBar {{
         border: none;
-        background-color: {Colors.NEUTRAL_BG};
+        background-color: {Colors.BG_TERTIARY};
         border-radius: 4px;
         height: 8px;
     }}
@@ -554,7 +617,8 @@ QProgressBar_style = f"""
 """
 
 
-QToolButton_style = f"""
+def _build_QToolButton_style():
+    return f"""
     QToolButton {{
         min-width: 52px;
         padding: 4px 6px;
@@ -565,11 +629,11 @@ QToolButton_style = f"""
     }}
     QToolButton:hover {{
         background: {Colors.BG_HOVER};
-        border: 1px solid rgba(0, 0, 0, 0.08);
+        border: 1px solid {Colors.BORDER_DARK};
     }}
     QToolButton:pressed {{
         background: {Colors.BG_PRESSED};
-        border: 1px solid rgba(0, 0, 0, 0.12);
+        border: 1px solid {Colors.BORDER_HOVER};
     }}
     QToolButton::menu-indicator {{
         image: url(none);
@@ -590,8 +654,11 @@ QToolButton_style = f"""
     }}
 """
 
-QMenu_style = f"""
+
+def _build_QMenu_style():
+    return f"""
     QMenu {{
+        background-color: {Colors.SURFACE};
         border: 1px solid {Colors.BORDER_DARK};
         border-radius: 8px;
         padding: 4px;
@@ -603,11 +670,11 @@ QMenu_style = f"""
     }}
     QMenu::item:selected {{
         background: {Colors.BG_HOVER};
-        border: 1px solid rgba(0, 0, 0, 0.08);
+        border: 1px solid {Colors.BORDER_DARK};
     }}
     QMenu::item:pressed {{
         background: {Colors.BG_PRESSED};
-        border: 1px solid rgba(0, 0, 0, 0.12);
+        border: 1px solid {Colors.BORDER_HOVER};
     }}
     QMenu::separator {{
         height: 1px;
@@ -624,10 +691,14 @@ QMenu_style = f"""
     }}
 """
 
-QDockWidget_style = f"""
+
+def _build_QDockWidget_style():
+    return f"""
     QDockWidget {{
         titlebar-close-icon: url('{_get_resource_path("dock-close.svg")}');
         titlebar-normal-icon: url('{_get_resource_path("dock-float.svg")}');
+        margin: 0px;
+        padding: 0px;
     }}
     QDockWidget::title {{
         background: transparent;
@@ -654,10 +725,231 @@ QDockWidget_style = f"""
     }}
     QDockWidget::close-button:hover, QDockWidget::float-button:hover {{
         background: {Colors.BG_HOVER};
-        border: 1px solid rgba(0, 0, 0, 0.08);
+        border: 1px solid {Colors.BORDER_DARK};
     }}
     QDockWidget::close-button:pressed, QDockWidget::float-button:pressed {{
         background: {Colors.BG_PRESSED};
-        border: 1px solid rgba(0, 0, 0, 0.12);
+        border: 1px solid {Colors.BORDER_HOVER};
+    }}
+    QMainWindow::separator {{
+        width: 0px;
+        height: 0px;
     }}
 """
+
+
+# The 12 styles concatenated in the global app stylesheet
+_GLOBAL_STYLES = [
+    _build_QMessageBox_style,
+    _build_QPushButton_style,
+    _build_QLineEdit_style,
+    _build_QSpinBox_style,
+    _build_QDoubleSpinBox_style,
+    _build_QComboBox_style,
+    _build_QCheckBox_style,
+    _build_QSlider_style,
+    _build_QGroupBox_style,
+    _build_QListWidget_style,
+    _build_QToolButton_style,
+    _build_QMenu_style,
+    _build_QDockWidget_style,
+]
+
+
+def build_global_stylesheet():
+    """Build the concatenated global stylesheet from current Colors values."""
+    return "".join(fn() for fn in _GLOBAL_STYLES)
+
+
+def build_qt_palette():
+    """Build a QPalette from the current Colors values."""
+    from qtpy.QtGui import QColor, QPalette
+
+    pal = QPalette()
+
+    surface = Colors.SURFACE
+    base = surface
+
+    pal.setColor(QPalette.ColorRole.Window, QColor(surface))
+    pal.setColor(QPalette.ColorRole.Base, QColor(base))
+    pal.setColor(QPalette.ColorRole.WindowText, QColor(Colors.TEXT_PRIMARY))
+    pal.setColor(QPalette.ColorRole.Text, QColor(Colors.TEXT_PRIMARY))
+    pal.setColor(QPalette.ColorRole.PlaceholderText, QColor(Colors.TEXT_MUTED))
+    pal.setColor(QPalette.ColorRole.Button, QColor(surface))
+    pal.setColor(QPalette.ColorRole.ButtonText, QColor(Colors.TEXT_PRIMARY))
+    pal.setColor(QPalette.ColorRole.Highlight, QColor(Colors.PRIMARY))
+    pal.setColor(QPalette.ColorRole.HighlightedText, QColor("#ffffff"))
+    return pal
+
+
+def _get_nswindow(widget):
+    """Return the NSWindow pointer for a Qt widget, or None."""
+    if sys.platform != "darwin":
+        return None
+    try:
+        import ctypes
+        import ctypes.util
+
+        lib_path = ctypes.util.find_library("objc")
+        if not lib_path:
+            return None
+        objc = ctypes.cdll.LoadLibrary(lib_path)
+        objc.objc_getClass.restype = ctypes.c_void_p
+        objc.objc_getClass.argtypes = [ctypes.c_char_p]
+        objc.sel_registerName.restype = ctypes.c_void_p
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+        send = objc.objc_msgSend
+        send.restype = ctypes.c_void_p
+        send.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        return send(int(widget.winId()), objc.sel_registerName(b"window"))
+    except Exception:
+        return None
+
+
+def _apply_macos_titlebar(ns_win, hide_title=False):
+    """Make a native window's title bar transparent with themed background."""
+    try:
+        import ctypes
+        import ctypes.util
+
+        objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("objc"))
+        objc.objc_getClass.restype = ctypes.c_void_p
+        objc.objc_getClass.argtypes = [ctypes.c_char_p]
+        objc.sel_registerName.restype = ctypes.c_void_p
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+        send = objc.objc_msgSend
+
+        send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
+        send.restype = ctypes.c_void_p
+        send(ns_win, objc.sel_registerName(b"setTitlebarAppearsTransparent:"), True)
+
+        if hide_title:
+            send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_long]
+            send.restype = ctypes.c_void_p
+            send(ns_win, objc.sel_registerName(b"setTitleVisibility:"), 1)
+
+        _update_macos_titlebar_color(ns_win)
+    except Exception:
+        pass
+
+
+def _update_macos_titlebar_color(ns_win):
+    """Set an NSWindow's background color to match the current theme surface."""
+    try:
+        import ctypes
+        import ctypes.util
+        from qtpy.QtGui import QColor
+
+        objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("objc"))
+        objc.objc_getClass.restype = ctypes.c_void_p
+        objc.objc_getClass.argtypes = [ctypes.c_char_p]
+        objc.sel_registerName.restype = ctypes.c_void_p
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+        send = objc.objc_msgSend
+
+        c = QColor(Colors.SURFACE)
+        NSColor = objc.objc_getClass(b"NSColor")
+        send.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+        ]
+        send.restype = ctypes.c_void_p
+        color = send(
+            NSColor,
+            objc.sel_registerName(b"colorWithRed:green:blue:alpha:"),
+            c.redF(),
+            c.greenF(),
+            c.blueF(),
+            1.0,
+        )
+        send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+        send.restype = ctypes.c_void_p
+        send(ns_win, objc.sel_registerName(b"setBackgroundColor:"), color)
+    except Exception:
+        pass
+
+
+def install_macos_titlebar_filter():
+    """Install an application-wide event filter for native title bar styling."""
+    if sys.platform != "darwin":
+        return None
+
+    from qtpy.QtWidgets import QApplication
+    from qtpy.QtCore import QEvent, QObject
+
+    class _MacOSTitleBarFilter(QObject):
+        """Event filter that styles the native title bar of every top-level window."""
+
+        def __init__(self, parent=None):
+            super().__init__(parent)
+            self._styled = set()
+
+        def eventFilter(self, obj, event):
+            if (
+                event.type() == QEvent.Type.Show
+                and hasattr(obj, "isWindow")
+                and obj.isWindow()
+                and id(obj) not in self._styled
+            ):
+                ns_win = _get_nswindow(obj)
+                if ns_win is not None:
+                    from qtpy.QtWidgets import QMainWindow
+
+                    self._styled.add(id(obj))
+                    _apply_macos_titlebar(
+                        ns_win, hide_title=isinstance(obj, QMainWindow)
+                    )
+                    obj.destroyed.connect(
+                        lambda _, oid=id(obj): self._styled.discard(oid)
+                    )
+            return False
+
+    app = QApplication.instance()
+    if app is not None:
+        app.installEventFilter(_MacOSTitleBarFilter(app))
+
+
+def switch_theme(palette: dict):
+    """Switch the active theme.
+
+    Parameters
+    ----------
+    palette : dict
+        One of ``Colors.LIGHT``, ``Colors.DARK``, or a custom palette dict.
+    """
+    from qtpy.QtWidgets import QApplication
+
+    Colors.apply_palette(palette)
+    if (app := QApplication.instance()) is None:
+        return None
+
+    app.setPalette(build_qt_palette())
+    app.setStyleSheet(build_global_stylesheet())
+    for widget in app.allWidgets():
+        if hasattr(widget, "_on_theme_changed"):
+            widget._on_theme_changed()
+    if sys.platform == "darwin":
+        for window in app.topLevelWidgets():
+            ns_win = _get_nswindow(window)
+            if ns_win is not None:
+                _update_macos_titlebar_color(ns_win)
+
+
+# Backward compatibility ``from mosaic.stylesheets import QLineEdit_style``
+# still works. The module __getattr__ calls the function and returns the string.
+
+_STYLE_BUILDERS = {
+    name.removeprefix("_build_"): fn
+    for name, fn in globals().items()
+    if name.startswith("_build_") and name.endswith("_style")
+}
+
+
+def __getattr__(name):
+    if name in _STYLE_BUILDERS:
+        return _STYLE_BUILDERS[name]()
+    raise AttributeError(f"module 'mosaic.stylesheets' has no attribute {name!r}")

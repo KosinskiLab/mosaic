@@ -183,6 +183,15 @@ class DualHandleSlider(QWidget):
         self.handle_disabled = QColor(Colors.BG_SECONDARY)
         self.border_disabled = QColor("#e2e8f0")
 
+    def _on_theme_changed(self):
+        """Re-create QColor instances from Colors after a theme switch."""
+        self.active_color = QColor(Colors.BORDER_HOVER)
+        self.border_color = QColor(Colors.BORDER_DARK)
+        self.groove_disabled = QColor(Colors.BG_TERTIARY)
+        self.active_disabled = QColor(Colors.BORDER_DARK)
+        self.handle_disabled = QColor(Colors.BG_SECONDARY)
+        self.update()
+
     def setRange(self, minimum, maximum):
         """Set the range of values the slider represents."""
         self.min_val = minimum
@@ -334,6 +343,16 @@ class MiniHistogram(QWidget):
         self.placeholder_color = QColor(Colors.BORDER_DARK)
         self.placeholder_color.setAlpha(30)
 
+    def _on_theme_changed(self):
+        """Re-create QColor instances from Colors after a theme switch."""
+        self.hist_color = QColor(Colors.BORDER_HOVER)
+        self.hist_color.setAlpha(100)
+        self.selected_color = QColor(Colors.PRIMARY)
+        self.selected_color.setAlpha(160)
+        self.placeholder_color = QColor(Colors.BORDER_DARK)
+        self.placeholder_color.setAlpha(30)
+        self.update()
+
     def setData(self, values):
         """Compute histogram from values."""
         if values is None or len(values) == 0:
@@ -424,6 +443,11 @@ class HistogramRangeSlider(QWidget):
 
         self._slider.rangeChanged.connect(self._on_range_changed)
         self._slider.rangeReleased.connect(self.rangeReleased)
+
+    def _on_theme_changed(self):
+        """Propagate theme change to child widgets."""
+        self._histogram._on_theme_changed()
+        self._slider._on_theme_changed()
 
     def _on_range_changed(self, lower, upper):
         self._histogram.setSelection(lower, upper)

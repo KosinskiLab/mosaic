@@ -716,7 +716,10 @@ def _cmd_help(session, parsed: ParsedCommand):
 
     parts += [
         Text(),
-        Text("Type 'help <command>' or '<command> help' for details.", style="mosaic.muted"),
+        Text(
+            "Type 'help <command>' or '<command> help' for details.",
+            style="mosaic.muted",
+        ),
     ]
 
     return _help_panel("Mosaic Commands", *parts)

@@ -199,6 +199,24 @@ class Card(QFrame):
         tl.addStretch(1)
         lay.addWidget(txt)
 
+    def _on_theme_changed(self):
+        """Re-apply stylesheets that reference Colors after a theme switch."""
+        cls_name = type(self).__name__
+        self._qss_normal = _card_qss(cls_name)
+        self._qss_selected = _card_qss_selected(cls_name)
+        self.setStyleSheet(self._qss_selected if self._selected else self._qss_normal)
+
+        if self._pixmap is None:
+            self._thumb.setStyleSheet(
+                f"background: {Colors.BG_TERTIARY}; "
+                f"border-top-left-radius: {_R}px; "
+                f"border-top-right-radius: {_R}px;"
+            )
+        self._sub.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 10px;")
+        self._title.setStyleSheet(
+            f"color: {Colors.TEXT_PRIMARY}; font-size: 12px; font-weight: 600;"
+        )
+
     def set_thumbnail(self, pixmap):
         w = self._thumb.width()
         h = self._thumb.height()

@@ -20,7 +20,6 @@ import qtawesome as qta
 from ..widgets import DialogFooter, create_setting_widget, get_widget_value
 from ..stylesheets import (
     QGroupBox_style,
-    QPushButton_style,
     QLineEdit_style,
     QCheckBox_style,
     Colors,
@@ -179,9 +178,7 @@ class ExportDialog(QDialog):
         self.set_defaults(list(parameters.keys()), list(parameters.values()))
 
         self.setup_ui()
-        self.setStyleSheet(
-            QGroupBox_style + QPushButton_style + QLineEdit_style + QCheckBox_style
-        )
+        self.setStyleSheet(QGroupBox_style + QLineEdit_style + QCheckBox_style)
 
     def set_defaults(self, keys, values):
         """Update default values for format settings"""
@@ -207,7 +204,7 @@ class ExportDialog(QDialog):
 
         content = QWidget()
         content_layout = QVBoxLayout(content)
-        content_layout.setContentsMargins(20, 20, 20, 10)
+        content_layout.setContentsMargins(10, 10, 10, 10)
         content_layout.setSpacing(16)
 
         export_group = QGroupBox("Export Type")
@@ -269,7 +266,7 @@ class ExportDialog(QDialog):
 
         main_layout.addWidget(content, 1)
 
-        footer = DialogFooter(dialog=self, margin=(20, 10, 20, 10))
+        footer = DialogFooter(dialog=self, margin=(10, 10, 10, 10))
         self.export_button = footer.accept_button
         self.export_button.setText("Export")
         self.export_button.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))

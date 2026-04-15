@@ -204,10 +204,16 @@ def _compute_fluctuation(
         n_verts = all_frames[t][0].shape[0]
         per_vertex.append(np.std(dists, axis=0) if dists else np.zeros(n_verts))
 
-    per_vertex = np.array(per_vertex)
+    per_vertex = np.array(per_vertex, dtype=float)
+
+    # Frames at boundaries have truncated windows and are not comparable
+    # to interior frames so we mark them as missing data.
+    per_vertex[:window] = np.nan
+    per_vertex[-window:] = np.nan
+
     return {
         "frames": np.arange(n_frames, dtype=float),
-        "values": per_vertex.mean(axis=1),
+        "values": np.nanmean(per_vertex, axis=1),
         "per_vertex": per_vertex,
         "column": "rmsf",
         "metadata": {"computation": "rmsf", "window": str(window)},

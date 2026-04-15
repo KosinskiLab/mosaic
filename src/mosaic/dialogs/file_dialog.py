@@ -12,8 +12,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from sys import platform
 from qtpy.QtWidgets import QFileDialog
 
-from ..stylesheets import QPushButton_style
-
 
 __all__ = [
     "getExistingDirectory",
@@ -35,7 +33,7 @@ def _configure_dialog(dialog, use_native: bool = True):
             padding: 0px 4px;
         }
     """
-    dialog.setStyleSheet(QPushButton_style + _inline_edit)
+    dialog.setStyleSheet(_inline_edit)
 
 
 def getExistingDirectory(

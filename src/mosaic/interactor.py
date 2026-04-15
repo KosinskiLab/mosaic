@@ -145,7 +145,7 @@ class DataContainerInteractor(QObject):
 
         # setData already wrote the new name to geometry._meta;
         # detect whether the stored metadata name diverged (i.e. a rename)
-        current_name = item.text()
+        current_name = item.text(0)
         if current_name != item.metadata.get("name"):
             item.metadata["name"] = current_name
             self.data_changed.emit()
@@ -356,17 +356,18 @@ class DataContainerInteractor(QObject):
 
         # Make sure right click also selects group members
         self.data_list._select_group_children(item)
-        context_menu = QMenu(self.data_list)
+        context_menu = QMenu(self.data_list.window())
         context_menu.setWindowFlags(
             context_menu.windowFlags()
-            | Qt.FramelessWindowHint
-            | Qt.NoDropShadowWindowHint
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint
         )
-        context_menu.setAttribute(Qt.WA_TranslucentBackground)
+        context_menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         show_action = QAction("Show", self.data_list)
         show_action.triggered.connect(lambda: self.visibility(visible=True))
         context_menu.addAction(show_action)
+
         hide_action = QAction("Hide", self.data_list)
         hide_action.triggered.connect(lambda: self.visibility(visible=False))
         context_menu.addAction(hide_action)
@@ -424,10 +425,10 @@ class DataContainerInteractor(QObject):
         representation_menu = QMenu("Representation", context_menu)
         representation_menu.setWindowFlags(
             representation_menu.windowFlags()
-            | Qt.FramelessWindowHint
-            | Qt.NoDropShadowWindowHint
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint
         )
-        representation_menu.setAttribute(Qt.WA_TranslucentBackground)
+        representation_menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         for format_name in formats:
             if format_name is None:

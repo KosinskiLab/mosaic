@@ -126,7 +126,7 @@ class PathSelector(QWidget):
             f"""
             #pathSelectorFrame {{
                 border: 1px solid {Colors.BORDER_DARK};
-                border-radius: 4px;
+                border-radius: {Colors.RADIUS}px;
                 background-color: transparent;
             }}
             #pathSelectorFrame:focus-within {{
@@ -211,6 +211,74 @@ class PathSelector(QWidget):
 
         self.container_frame.setFixedHeight(Colors.WIDGET_HEIGHT)
         main_layout.addWidget(self.container_frame)
+
+    def _on_theme_changed(self):
+        """Re-apply stylesheets, icons, and palette after a theme switch."""
+        if hasattr(self, "label"):
+            self.label.setStyleSheet(
+                f"""
+                QLabel {{
+                    font-size: 12px;
+                    font-weight: 500;
+                    color: {Colors.TEXT_PRIMARY};
+                    margin-bottom: 1px;
+                }}
+            """
+            )
+
+        self.container_frame.setStyleSheet(
+            f"""
+            #pathSelectorFrame {{
+                border: 1px solid {Colors.BORDER_DARK};
+                border-radius: {Colors.RADIUS}px;
+                background-color: transparent;
+            }}
+            #pathSelectorFrame:focus-within {{
+                border-color: {Colors.PRIMARY};
+            }}
+        """
+        )
+
+        self.path_input.setStyleSheet(
+            f"""
+            QLineEdit {{
+                border: none;
+                background-color: transparent;
+                padding: 4px 6px;
+                color: {Colors.TEXT_PRIMARY};
+                selection-color: white;
+            }}
+        """
+        )
+
+        pal = self.path_input.palette()
+        pal.setColor(QPalette.ColorRole.PlaceholderText, QColor(Colors.ICON_MUTED))
+        self.path_input.setPalette(pal)
+
+        icon_name = _ICON_MAP.get(self.mode, "ph.file")
+        # Re-create the file-type icon (first QLabel child of container)
+        for child in self.container_frame.findChildren(QLabel):
+            child.setPixmap(qta.icon(icon_name, color=Colors.ICON_MUTED).pixmap(14, 14))
+            break
+
+        self.browse_button.setIcon(qta.icon("ph.folder-open", color=Colors.ICON))
+        self.browse_button.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: transparent;
+                border: none;
+                border-left: 1px solid {Colors.BORDER_DARK};
+                padding: 4px 10px;
+                min-width: 32px;
+            }}
+            QPushButton:hover {{
+                background-color: {Colors.BG_HOVER};
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.BG_PRESSED};
+            }}
+        """
+        )
 
     def set_mode(self, mode: str):
         """Switch the selection mode at runtime."""

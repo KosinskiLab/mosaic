@@ -10,13 +10,13 @@ import warnings
 from uuid import uuid4
 from typing import Dict, List, Optional, Tuple
 
-import vtk
 import numpy as np
-from vtk.util import numpy_support
+from vtkmodules.vtkCommonCore import vtkPoints, vtkLookupTable
+from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
+from vtkmodules.util import numpy_support
 
-from .actor import create_actor
 from .utils import normals_to_rot, apply_quat, NORMAL_REFERENCE
-from .widgets.vtk_widgets import AXIS_COLORS
+from .stylesheets import Colors
 
 
 __all__ = [
@@ -61,9 +61,9 @@ class GeometryData:
     ):
         if polydata is None and points is not None:
             # Legacy construction from numpy arrays
-            polydata = vtk.vtkPolyData()
+            polydata = vtkPolyData()
 
-        self.polydata = polydata if polydata is not None else vtk.vtkPolyData()
+        self.polydata = polydata if polydata is not None else vtkPolyData()
         self.set_sampling_rate(sampling_rate)
         self.model = model
         self.meta = {} if meta is None else meta
@@ -94,7 +94,7 @@ class GeometryData:
         vertex_properties=None,
     ):
         """Create a GeometryData from numpy arrays."""
-        pd = vtk.vtkPolyData()
+        pd = vtkPolyData()
         gd = cls(
             polydata=pd,
             sampling_rate=sampling_rate,
@@ -122,7 +122,7 @@ class GeometryData:
         if value is None:
             return self.polydata.SetPoints(None)
         value = np.asarray(value, dtype=np.float32)
-        vtk_pts = vtk.vtkPoints()
+        vtk_pts = vtkPoints()
         vtk_pts.SetDataTypeToFloat()
         vtk_pts.SetData(numpy_support.numpy_to_vtk(value, deep=False))
         self.polydata.SetPoints(vtk_pts)
@@ -172,7 +172,7 @@ class GeometryData:
                 axis=1,
                 dtype=int,
             )
-        poly_cells = vtk.vtkCellArray()
+        poly_cells = vtkCellArray()
         poly_cells.SetCells(
             faces.shape[0],
             numpy_support.numpy_to_vtkIdTypeArray(faces.ravel()),
@@ -232,22 +232,26 @@ class GeometryData:
             idx = np.where(idx)[0]
         idx = idx[idx < n_points]
 
-        sel_node = vtk.vtkSelectionNode()
-        sel_node.SetFieldType(vtk.vtkSelectionNode.POINT)
-        sel_node.SetContentType(vtk.vtkSelectionNode.INDICES)
+        from vtkmodules.vtkCommonDataModel import vtkSelection, vtkSelectionNode
+        from vtkmodules.vtkFiltersExtraction import vtkExtractSelection
+        from vtkmodules.vtkFiltersGeometry import vtkGeometryFilter
+
+        sel_node = vtkSelectionNode()
+        sel_node.SetFieldType(vtkSelectionNode.POINT)
+        sel_node.SetContentType(vtkSelectionNode.INDICES)
         sel_node.SetSelectionList(
             numpy_support.numpy_to_vtkIdTypeArray(idx.astype(np.int64))
         )
 
-        sel = vtk.vtkSelection()
+        sel = vtkSelection()
         sel.AddNode(sel_node)
 
-        extract = vtk.vtkExtractSelection()
+        extract = vtkExtractSelection()
         extract.SetInputData(0, self.polydata)
         extract.SetInputData(1, sel)
         extract.Update()
 
-        geom_filter = vtk.vtkGeometryFilter()
+        geom_filter = vtkGeometryFilter()
         geom_filter.SetInputData(extract.GetOutput())
         geom_filter.Update()
 
@@ -276,7 +280,7 @@ class GeometryData:
         cell_arr = np.empty(n + 1, dtype=np.int64)
         cell_arr[0] = n
         cell_arr[1:] = np.arange(n, dtype=np.int64)
-        vertex_cells = vtk.vtkCellArray()
+        vertex_cells = vtkCellArray()
         vertex_cells.SetCells(1, numpy_support.numpy_to_vtkIdTypeArray(cell_arr))
         self.polydata.SetVerts(vertex_cells)
 
@@ -815,6 +819,8 @@ class Geometry:
         vtk.vtkActor
             Configured VTK actor.
         """
+        import vtk
+
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(self._data)
 
@@ -824,6 +830,8 @@ class Geometry:
         mapper.SetResolveCoincidentTopologyToPolygonOffset()
 
         if actor is None:
+            from .actor import create_actor
+
             actor = create_actor()
         actor.SetMapper(mapper)
         return actor
@@ -907,7 +915,7 @@ class Geometry:
         if not (cur_scalars is not None and cur_scalars.GetNumberOfComponents() == 1):
             return False
 
-        scalars_np = vtk.util.numpy_support.vtk_to_numpy(cur_scalars)
+        scalars_np = numpy_support.vtk_to_numpy(cur_scalars)
         if scalars_np.shape[0] != self.get_number_of_points():
             return False
 
@@ -962,7 +970,7 @@ class Geometry:
         point_ids = point_ids.astype(np.int32, copy=False)
         point_ids = point_ids[point_ids < n_points]
 
-        lut = vtk.vtkLookupTable()
+        lut = vtkLookupTable()
         lut.SetNumberOfTableValues(2)
         lut.SetRange(0.0, 1.0)
         lut.SetTableValue(0, *self._appearance["base_color"], 1.0)
@@ -1083,6 +1091,8 @@ class Geometry:
             raise ValueError(
                 f"Supported representations are {supported} - got {representation}."
             )
+        import vtk
+
         clipping_planes = self._actor.GetMapper().GetClippingPlanes()
 
         # Use fitted mesh representation
@@ -1181,8 +1191,8 @@ class Geometry:
             for i, axis in enumerate(np.eye(3)):
                 directions[i::3] = apply_quat(self.quaternions, axis)
 
-            basis_data = vtk.vtkPolyData()
-            vtk_pts = vtk.vtkPoints()
+            basis_data = vtkPolyData()
+            vtk_pts = vtkPoints()
             vtk_pts.SetData(
                 numpy_support.numpy_to_vtk(
                     np.repeat(self.points, 3, axis=0).astype(np.float32),
@@ -1200,10 +1210,10 @@ class Geometry:
                 numpy_support.numpy_to_vtk(axis_idx, deep=True)
             )
 
-            lut = vtk.vtkLookupTable()
+            lut = vtkLookupTable()
             lut.SetNumberOfTableValues(3)
             lut.SetRange(0.0, 2.0)
-            for i, color in enumerate(AXIS_COLORS):
+            for i, color in enumerate(Colors.AXIS):
                 lut.SetTableValue(i, *color, 1.0)
             lut.Build()
 
@@ -1301,6 +1311,8 @@ class VolumeGeometry(Geometry):
         target_resolution: float = 10.0,
         **kwargs,
     ):
+        import vtk
+
         super().__init__(**kwargs)
         self._volume = None
         self._target_resolution = target_resolution
@@ -1548,6 +1560,8 @@ class SegmentationGeometry(Geometry):
         volume_data : np.ndarray, optional
             Binary volume data (3D array). If None, an empty mesh is created.
         """
+        import vtk
+
         self._highlighted_point_ids = None
         self._vertex_visible = None
         self._extract_surface_mesh(volume_data)
@@ -1555,6 +1569,8 @@ class SegmentationGeometry(Geometry):
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(self._mesh_polydata)
         mapper.ScalarVisibilityOff()
+
+        from .actor import create_actor
 
         self._actor = create_actor()
         self._actor.SetMapper(mapper)
@@ -1571,12 +1587,14 @@ class SegmentationGeometry(Geometry):
         volume_data : np.ndarray, optional
             Binary 3D numpy array. If None, creates an empty mesh.
         """
+        import vtk
+
         mesh_sr = getattr(self, "_mesh_sampling", np.max(self.sampling_rate))
         spacing = np.full(3, mesh_sr, dtype=np.float64)
         origin = self._origin.astype(np.float64)
 
         if volume_data is None:
-            self._mesh_polydata = vtk.vtkPolyData()
+            self._mesh_polydata = vtkPolyData()
             self._vertex_to_point_idx = np.array([], dtype=np.intp)
             return
 
@@ -1794,9 +1812,9 @@ class SegmentationGeometry(Geometry):
 
         # vtkColorTransferFunction has no per-vertex alpha support in polygon
         # rendering so we sample it into a vtkLookupTable that does.
-        if not isinstance(color_lut, vtk.vtkLookupTable):
+        if not isinstance(color_lut, vtkLookupTable):
             n_colors = 256
-            lut = vtk.vtkLookupTable()
+            lut = vtkLookupTable()
             lut.SetNumberOfTableValues(n_colors)
             lut.SetTableRange(*scalar_range)
             rgb = [0.0, 0.0, 0.0]
@@ -1833,7 +1851,7 @@ class SegmentationGeometry(Geometry):
         -------
         vtk.vtkLookupTable
         """
-        lut = vtk.vtkLookupTable()
+        lut = vtkLookupTable()
         lut.SetNumberOfTableValues(len(colors))
         lut.SetTableRange(0.0, max(len(colors) - 1, 0.0))
         for i, c in enumerate(colors):
