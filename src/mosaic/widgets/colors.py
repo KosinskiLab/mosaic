@@ -22,7 +22,7 @@ from qtpy.QtWidgets import (
 )
 import qtawesome as qta
 
-from ..stylesheets import Colors, QPushButton_style
+from ..stylesheets import Colors
 
 __all__ = [
     "ColorMapSelector",
@@ -175,8 +175,10 @@ class ColorMapSelector(QPushButton):
 
     def _setup_ui(self):
         self.setStyleSheet(
-            QPushButton_style
-            + """
+            """
+            QPushButton {
+                padding: 6px 12px;
+            }
             QPushButton:focus {
                 outline: none;
             }
@@ -375,7 +377,6 @@ class ColorPickerRow(QWidget):
 
         self.custom_btn = QPushButton("Custom")
         self.custom_btn.setIcon(qta.icon("ph.eyedropper", color=Colors.ICON))
-        self.custom_btn.setStyleSheet(QPushButton_style)
         self.custom_btn.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.custom_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.custom_btn.clicked.connect(self._open_color_dialog)
@@ -411,6 +412,22 @@ class ColorPickerRow(QWidget):
     def get_color(self) -> tuple:
         """Get the current color as (r, g, b) floats."""
         return self.current_color
+
+    def _on_theme_changed(self):
+        """Re-apply label stylesheet and custom-button icon after a theme switch."""
+        # Re-apply label stylesheet
+        label_widget = self.findChild(QLabel)
+        if label_widget is not None:
+            label_widget.setStyleSheet(
+                f"""
+                QLabel {{
+                    font-size: 13px;
+                    color: {Colors.TEXT_PRIMARY};
+                }}
+            """
+            )
+        # Re-create the custom-color-picker button icon
+        self.custom_btn.setIcon(qta.icon("ph.eyedropper", color=Colors.ICON))
 
     def set_color(self, color: tuple):
         """Set the current color."""

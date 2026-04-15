@@ -167,6 +167,16 @@ class TrajectoryPlayer(QWidget):
         else:
             self.play_button.setIcon(qta.icon("ph.pause", color=Colors.ICON))
 
+    def _on_theme_changed(self):
+        self.first_button.setIcon(qta.icon("ph.skip-back", color=Colors.ICON))
+        self.prev_button.setIcon(qta.icon("ph.rewind", color=Colors.ICON))
+        self.next_button.setIcon(qta.icon("ph.fast-forward", color=Colors.ICON))
+        self.last_button.setIcon(qta.icon("ph.skip-forward", color=Colors.ICON))
+        if self._playing:
+            self.play_button.setIcon(qta.icon("ph.pause", color=Colors.ICON))
+        else:
+            self.play_button.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
+
     @property
     def trajectories(self):
         ret = []

@@ -28,7 +28,7 @@ class SearchWidget(QWidget):
             f"""
             QFrame {{
                 border: 1px solid {Colors.BORDER_DARK};
-                border-radius: 4px;
+                border-radius: {Colors.RADIUS}px;
                 background-color: transparent;
             }}
             QFrame:focus-within {{
@@ -64,6 +64,26 @@ class SearchWidget(QWidget):
         container_layout.addWidget(icon_label)
         container_layout.addWidget(self.search_input)
         layout.addWidget(container)
+
+    def _on_theme_changed(self):
+        """Re-apply stylesheet and re-create icon after a theme switch."""
+        self.findChild(QFrame).setStyleSheet(
+            f"""
+            QFrame {{
+                border: 1px solid {Colors.BORDER_DARK};
+                border-radius: {Colors.RADIUS}px;
+                background-color: transparent;
+            }}
+            QFrame:focus-within {{
+                border: 1px solid {Colors.PRIMARY};
+            }}
+        """
+        )
+        icon_label = self.findChild(QLabel)
+        if icon_label is not None:
+            icon_label.setPixmap(
+                qta.icon("ph.magnifying-glass", color=Colors.ICON).pixmap(16, 16)
+            )
 
     def text(self):
         """Get current search text."""

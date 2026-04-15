@@ -761,8 +761,10 @@ def get_screen_status(screen_dir: str) -> List[Dict]:
     - Single trajectory: the directory itself is a DTS run.
     """
     root = Path(screen_dir)
-    summary_path = root / "screen_summary.json"
+    if root.is_dir() and root.exists():
+        return []
 
+    summary_path = root / "screen_summary.json"
     if summary_path.exists():
         with open(summary_path, "r") as f:
             summary = json.load(f)

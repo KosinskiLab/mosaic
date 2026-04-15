@@ -27,7 +27,7 @@ from qtpy.QtWidgets import (
 from qtpy.QtGui import QTextCursor, QPainter, QColor
 import qtawesome as qta
 
-from ..stylesheets import Colors, QPushButton_style, QScrollArea_style
+from ..stylesheets import Colors, QScrollArea_style
 from ..parallel import BackgroundTaskManager
 
 
@@ -48,16 +48,14 @@ class TextSpinnerLabel(QLabel):
         self.current_frame = 0
         self.timer = QTimer()
         self.timer.timeout.connect(self.next_frame)
-        self.setStyleSheet(
-            f"QLabel {{ color: {Colors.WARNING_DARK}; font-weight: bold; }}"
-        )
+        self.setStyleSheet(f"QLabel {{ color: {Colors.PRIMARY}; font-weight: bold; }}")
 
     def start(self):
         self.timer.start(60)
 
     def stop(self):
         self.timer.stop()
-        self.setText("✓")
+        self.clear()
 
     def next_frame(self):
         self.setText(self.frames[self.current_frame])
@@ -149,7 +147,7 @@ class TaskCard(QFrame):
             QPushButton {{
                 border: none; border-radius: 3px; background: transparent;
             }}
-            QPushButton:hover {{ background: {Colors.ERROR_BG}; }}
+            QPushButton:hover {{ background: {Colors.alpha("ERROR", 0.15)}; }}
         """
         )
         row.addWidget(self.cancel_btn)
@@ -211,6 +209,9 @@ class TaskCard(QFrame):
         if self.status == "running":
             self.icon_label.setVisible(False)
             self.spinner.setVisible(True)
+            self.spinner.setStyleSheet(
+                f"QLabel {{ color: {accent}; font-weight: bold; }}"
+            )
             self.spinner.start()
         else:
             self.spinner.setVisible(False)
@@ -333,10 +334,7 @@ class TaskMonitorPanel(QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(
-            Qt.WindowType.Tool
-            | Qt.WindowType.FramelessWindowHint
-        )
+        self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
         self.setMinimumSize(450, 300)
         self.resize(500, 360)
         self.task_cards = {}
@@ -394,7 +392,6 @@ class TaskMonitorPanel(QFrame):
                 border: 1px solid {Colors.BORDER_DARK};
                 border-bottom: none;
             }}"""
-            + QPushButton_style
         )
         self._update_summary()
 
@@ -522,10 +519,6 @@ class StatusIndicator:
 
         self.task_monitor = TaskMonitorPanel(self.main_window)
 
-        from .appsettings import AppSettingsPanel
-
-        self.appearance_panel = AppSettingsPanel(self.main_window)
-
         self._setup_status_bar()
         self.update_status()
         StatusIndicator._instance = self
@@ -585,24 +578,70 @@ class StatusIndicator:
         removed = manager.clear_finished_tasks()
         self.task_monitor.remove_finished_cards(removed)
 
-    def _setup_status_bar(self):
+    def _on_theme_changed(self):
+        self._setup_status_bar_style()
+
+    def _setup_status_bar_style(self):
+        """Re-apply theme-dependent styles to status bar widgets."""
         status_bar = self.main_window.statusBar()
         status_bar.setStyleSheet(
             f"""
-            QStatusBar {{ border-top: 1px solid {Colors.BORDER_DARK}; font-size: 11px; }}
+            QStatusBar {{ font-size: 11px; }}
+            QStatusBar::item {{ border: none; }}
+        """
+        )
+        if hasattr(self, "progress_bar"):
+            self.progress_bar.setStyleSheet(
+                f"""
+                QProgressBar {{
+                    border: none;
+                    background-color: {Colors.BORDER_DARK};
+                    border-radius: 2px;
+                }}
+                QProgressBar::chunk {{
+                    background-color: {Colors.PRIMARY};
+                    border-radius: 2px;
+                }}
+            """
+            )
+        if hasattr(self, "task_button"):
+            self.task_button.setIcon(qta.icon("ph.caret-up", color=Colors.ICON_MUTED))
+            self.task_button.setStyleSheet(
+                f"""
+                QPushButton {{
+                    padding: 0px; margin: 0px; border: none; border-radius: 4px;
+                    color: {Colors.TEXT_MUTED}; font-size: 11px;
+                }}
+                QPushButton:hover {{
+                    background: {Colors.BG_HOVER};
+                    border: 1px solid rgba(0, 0, 0, 0.08);
+                }}
+                QPushButton:pressed {{
+                    background: {Colors.BG_PRESSED};
+                    border: 1px solid rgba(0, 0, 0, 0.12);
+                }}
+                QPushButton:focus {{ outline: none; }}
+            """
+            )
+        for label in ("mode_label", "target_label", "task_label"):
+            if hasattr(self, label):
+                getattr(self, label).setStyleSheet(
+                    f"color: {Colors.TEXT_MUTED}; font-size: 11px;"
+                )
+
+    def _setup_status_bar(self):
+        status_bar = self.main_window.statusBar()
+        status_bar.setFixedHeight(24)
+        status_bar.setStyleSheet(
+            f"""
+            QStatusBar {{ font-size: 11px; }}
             QStatusBar::item {{ border: none; }}
         """
         )
 
-        def separator():
-            lbl = QLabel("•")
-            lbl.setStyleSheet(
-                f"QLabel {{ color: {Colors.ICON_MUTED}; padding: 0 10px; }}"
-            )
-            return lbl
-
         self.task_label = QLabel()
         self.task_label.setFixedWidth(150)
+        self.task_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
         self._task_timer = QTimer()
         self._task_timer.setSingleShot(True)
         self._task_timer.timeout.connect(lambda: self.task_label.clear())
@@ -620,12 +659,12 @@ class StatusIndicator:
             f"""
             QProgressBar {{
                 border: none;
-                background-color: {Colors.NEUTRAL_BG};
-                border-radius: 3px;
+                background-color: {Colors.BORDER_DARK};
+                border-radius: 2px;
             }}
             QProgressBar::chunk {{
                 background-color: {Colors.PRIMARY};
-                border-radius: 3px;
+                border-radius: 2px;
             }}
         """
         )
@@ -634,24 +673,31 @@ class StatusIndicator:
         self.progress_count.setFixedWidth(35)
         self.progress_count.setVisible(False)
 
-        self.mode_label = QLabel("Mode: Viewing")
-        self.mode_label.setMinimumWidth(50)
+        self.mode_label = QLabel("Viewing")
+        self.mode_label.setFixedWidth(55)
+        self.mode_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
 
         self.target_label = QLabel("Clusters")
-        self.target_label.setMinimumWidth(50)
+        self.target_label.setFixedWidth(55)
+        self.target_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
 
         self.spinner = TextSpinnerLabel()
-        self.spinner.setFixedWidth(12)
+        self.spinner.setFixedWidth(14)
+        self.spinner.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.task_button = QPushButton("Idle")
         self.task_button.setIcon(qta.icon("ph.caret-up", color=Colors.ICON_MUTED))
         self.task_button.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.task_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.task_button.setFlat(True)
+        self.task_button.setFixedWidth(50)
         self.task_button.setContentsMargins(0, 0, 0, 0)
         self.task_button.setStyleSheet(
             f"""
-            QPushButton {{ padding: 0px; margin: 0px; border-radius: 4px; }}
+            QPushButton {{
+                padding: 0px; margin: 0px; border: none; border-radius: 4px;
+                color: {Colors.TEXT_MUTED}; font-size: 11px;
+            }}
             QPushButton:hover {{
                 background: {Colors.BG_HOVER};
                 border: 1px solid rgba(0, 0, 0, 0.08);
@@ -665,6 +711,24 @@ class StatusIndicator:
         )
         self.task_button.clicked.connect(self._show_task_monitor)
 
+        # Right-side status group in a fixed-width container
+        right_group = QWidget()
+        right_group.setContentsMargins(0, 0, 0, 0)
+        right_layout = QHBoxLayout(right_group)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(12)
+        right_layout.addWidget(self.mode_label)
+        right_layout.addWidget(self.target_label)
+
+        task_group = QWidget()
+        task_group.setContentsMargins(0, 0, 0, 0)
+        task_layout = QHBoxLayout(task_group)
+        task_layout.setContentsMargins(0, 0, 0, 0)
+        task_layout.setSpacing(2)
+        task_layout.addWidget(self.spinner)
+        task_layout.addWidget(self.task_button)
+        right_layout.addWidget(task_group)
+
         left_spacer = QWidget()
         right_spacer = QWidget()
         status_bar.addWidget(self.task_label)
@@ -673,37 +737,13 @@ class StatusIndicator:
         status_bar.addWidget(self.progress_bar)
         status_bar.addWidget(self.progress_count)
         status_bar.addWidget(right_spacer, 1)
-        status_bar.addPermanentWidget(self.mode_label)
-        status_bar.addPermanentWidget(separator())
-        status_bar.addPermanentWidget(self.target_label)
-        status_bar.addPermanentWidget(separator())
-        status_bar.addPermanentWidget(self.spinner)
-        status_bar.addPermanentWidget(self.task_button)
-
-        self.gear_button = QPushButton()
-        self.gear_button.setIcon(qta.icon("ph.gear", color=Colors.ICON_MUTED))
-        self.gear_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.gear_button.setFlat(True)
-        # TODO: Check how this feels
-        # self.gear_button.setFixedSize(24, 24)
-        self.gear_button.setStyleSheet(
-            f"""
-            QPushButton {{ padding: 0px; margin: 0px; border-radius: 4px; }}
-            QPushButton:hover {{
-                background: {Colors.BG_HOVER};
-                border: 1px solid rgba(0, 0, 0, 0.08);
-            }}
-            QPushButton:pressed {{
-                background: {Colors.BG_PRESSED};
-                border: 1px solid rgba(0, 0, 0, 0.12);
-            }}
-            QPushButton:focus {{ outline: none; }}
-        """
-        )
-        self.gear_button.clicked.connect(self._show_appearance_panel)
-        status_bar.addPermanentWidget(self.gear_button)
+        status_bar.addPermanentWidget(right_group)
 
         self.spinner.stop()
+        self.spinner.setStyleSheet(
+            f"QLabel {{ color: {Colors.TEXT_MUTED}; font-weight: bold; }}"
+        )
+        self.spinner.setText("✓")
 
     def update_status(
         self,
@@ -717,7 +757,7 @@ class StatusIndicator:
             return
 
         if interaction is not None:
-            self.mode_label.setText(f"Mode: {interaction}")
+            self.mode_label.setText(interaction)
 
         if target is not None:
             self.current_target = target
@@ -731,11 +771,19 @@ class StatusIndicator:
             self._task_timer.start(3000)
 
     def _update_task_styling(self, busy: bool = False):
-        self.task_button.setText("Busy" if busy else "Idle")
-
         if not busy:
-            return self.spinner.stop()
-        return self.spinner.start()
+            self.spinner.stop()
+            self.spinner.setStyleSheet(
+                f"QLabel {{ color: {Colors.TEXT_MUTED}; font-weight: bold; }}"
+            )
+            self.spinner.setText("✓")
+            self.task_button.setText("Idle")
+        else:
+            self.spinner.setStyleSheet(
+                f"QLabel {{ color: {Colors.PRIMARY}; font-weight: bold; }}"
+            )
+            self.spinner.start()
+            self.task_button.setText("Busy")
 
     def show_progress(self, title: str, total: int):
         """Show the center progress bar for a foreground operation."""
@@ -783,30 +831,6 @@ class StatusIndicator:
     def hide(self, *args, **kwargs):
         self.visible = False
         self.main_window.statusBar().hide()
-
-    def _show_appearance_panel(self):
-        if self.appearance_panel.isVisible():
-            self.appearance_panel.hide()
-            return
-
-        # Position flush above the status bar, right-aligned
-        status_bar = self.main_window.statusBar()
-        bar_top_right = status_bar.mapToGlobal(status_bar.rect().topRight())
-        panel = self.appearance_panel
-        x = bar_top_right.x() - panel.width()
-        y = bar_top_right.y() - panel.height()
-
-        # Clamp to screen bounds
-        x = max(0, x)
-        y = max(0, y)
-
-        panel.move(x, y)
-        panel.show()
-        panel.raise_()
-
-    def toggle_appearance_panel(self):
-        """Toggle the appearance settings panel visibility."""
-        self._show_appearance_panel()
 
 
 class CursorModeHandler:

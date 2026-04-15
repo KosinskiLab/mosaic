@@ -21,7 +21,7 @@ from qtpy.QtWidgets import (
 
 from ..widgets import DialogFooter
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
-from ..stylesheets import QPushButton_style, QScrollArea_style
+from ..stylesheets import QScrollArea_style
 
 
 def _make_setting(parameter, default, min_val=0, description=""):
@@ -72,7 +72,7 @@ class MeshEquilibrationDialog(QDialog):
 
         self._widgets = {}
         self._setup_ui()
-        self.setStyleSheet(QPushButton_style + QScrollArea_style)
+        self.setStyleSheet(QScrollArea_style)
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)

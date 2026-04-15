@@ -20,7 +20,6 @@ from qtpy.QtWidgets import (
     QDialog,
     QMessageBox,
     QGroupBox,
-    QTabWidget,
     QTableWidget,
     QHeaderView,
     QTableWidgetItem,
@@ -30,13 +29,11 @@ from qtpy.QtWidgets import (
 import pyqtgraph as pg
 import qtawesome as qta
 
-from ..widgets import PathSelector, SearchWidget
+from ..widgets import PathSelector, SearchWidget, TabWidget
 from ..widgets.settings import get_widget_value
 from ..stylesheets import (
-    QPushButton_style,
     QGroupBox_style,
     QScrollArea_style,
-    QTabBar_style,
     QTable_style,
     QLineEdit_style,
     Colors,
@@ -72,12 +69,7 @@ class DTSScreeningDialog(QDialog):
 
         self._setup_ui()
         self.setStyleSheet(
-            QGroupBox_style
-            + QPushButton_style
-            + QTable_style
-            + QScrollArea_style
-            + QTabBar_style
-            + QLineEdit_style
+            QGroupBox_style + QTable_style + QScrollArea_style + QLineEdit_style
         )
 
         for btn in self.findChildren(QPushButton):
@@ -85,25 +77,26 @@ class DTSScreeningDialog(QDialog):
 
     def _setup_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(8, 8, 8, 8)
+        root.setContentsMargins(10, 10, 10, 10)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        self._left_tabs = QTabWidget()
+        self._left_tabs = TabWidget()
 
         self._configure_panel = ConfigurePanel()
         self._overview_tab = self._build_overview_tab()
 
         self._left_tabs.addTab(
             self._configure_panel,
-            qta.icon("ph.sliders", color=Colors.ICON),
             "Configure",
+            qta.icon("ph.sliders", color=Colors.ICON),
         )
         self._left_tabs.addTab(
             self._overview_tab,
-            qta.icon("ph.chart-line-up", color=Colors.ICON),
             "Analyze",
+            qta.icon("ph.chart-line-up", color=Colors.ICON),
         )
+        self._left_tabs.finalize()
 
         self._right_widget = QWidget()
         self._right_layout = QVBoxLayout(self._right_widget)
@@ -163,7 +156,7 @@ class DTSScreeningDialog(QDialog):
     def _build_overview_tab(self) -> QWidget:
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
         screen_group = QGroupBox("Screen")
@@ -278,6 +271,7 @@ class DTSScreeningDialog(QDialog):
             screen_dir = str(get_widget_value(self._screen_dir_input) or "")
         else:
             screen_dir = str(screen_dir)
+
         if not screen_dir:
             return
 
@@ -326,7 +320,7 @@ class DTSScreeningDialog(QDialog):
                 style_color = Colors.SUCCESS
             else:
                 indicator = "\u25cb Pending"
-                style_color = Colors.NEUTRAL
+                style_color = Colors.TEXT_SECONDARY
 
             status_item = _make_item(indicator)
             status_item.setForeground(pg.mkColor(style_color))

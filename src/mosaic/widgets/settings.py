@@ -13,6 +13,14 @@ from qtpy.QtWidgets import (
 
 from ..stylesheets import Colors
 
+__all__ = [
+    "format_tooltip",
+    "create_setting_widget",
+    "get_widget_value",
+    "set_widget_value",
+    "get_layout_widget_value",
+]
+
 
 def format_tooltip(label=None, description="", default=None, notes=None, **kwargs):
     if label is None:

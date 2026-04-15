@@ -9,7 +9,6 @@ from qtpy.QtWidgets import (
     QGroupBox,
 )
 
-from ..stylesheets import QPushButton_style
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
 
 
@@ -43,7 +42,6 @@ class ImportDataDialog(QDialog):
         self.filenames = []
         self.file_parameters = {}
         self.setup_ui()
-        self.setStyleSheet(QPushButton_style)
 
     def setup_ui(self):
         from ..icons import (

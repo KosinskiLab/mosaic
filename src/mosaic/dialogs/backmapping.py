@@ -17,7 +17,7 @@ from qtpy.QtWidgets import (
 import qtawesome as qta
 
 from ..widgets import DialogFooter
-from ..stylesheets import QPushButton_style, Colors
+from ..stylesheets import Colors
 
 
 class MeshMappingRow(QWidget):
@@ -83,7 +83,6 @@ class MeshMappingDialog(QDialog):
         self.setWindowTitle("Backmapping")
         self.resize(500, 540)
         self.setup_ui()
-        self.setStyleSheet(QPushButton_style)
 
     def setup_ui(self):
         from ..icons import dialog_margin, footer_margin

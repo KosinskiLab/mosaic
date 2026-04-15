@@ -23,7 +23,6 @@ from qtpy.QtWidgets import (
 )
 
 from ..stylesheets import (
-    QPushButton_style,
     QLineEdit_style,
     QCheckBox_style,
     Colors,
@@ -136,8 +135,6 @@ class BatchRenameDialog(QDialog):
         footer = DialogFooter(dialog=self, margin=(0, 4, 0, 0))
         footer.accept_button.setText("Rename")
         main_layout.addWidget(footer)
-
-        self.setStyleSheet(QPushButton_style)
 
     def _build_replace_page(self):
         page = QWidget()

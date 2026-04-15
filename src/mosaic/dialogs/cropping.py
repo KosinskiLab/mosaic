@@ -26,7 +26,6 @@ import qtawesome as qta
 from ..widgets.container_list import ContainerTreeWidget, StyledTreeWidgetItem
 from ..stylesheets import (
     QGroupBox_style,
-    QPushButton_style,
     QScrollArea_style,
     HelpLabel_style,
     Colors,
@@ -64,7 +63,6 @@ class DistanceCropDialog(QDialog):
         self.setup_ui()
         self.setStyleSheet(
             QGroupBox_style
-            + QPushButton_style
             + QScrollArea_style
             + """
             QRadioButton {
@@ -80,10 +78,9 @@ class DistanceCropDialog(QDialog):
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(10)
-        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Crop Target panel - objects to be cropped
-        crop_panel = QGroupBox("Crop Target")
+        crop_panel = QGroupBox("Target")
         crop_layout = QVBoxLayout(crop_panel)
         crop_layout.setSpacing(6)
 
@@ -99,8 +96,7 @@ class DistanceCropDialog(QDialog):
 
         main_layout.addWidget(crop_panel, 1)
 
-        # Distance Reference panel - objects to compute distance to
-        ref_panel = QGroupBox("Distance Reference")
+        ref_panel = QGroupBox("Reference")
         ref_layout = QVBoxLayout(ref_panel)
         ref_layout.setSpacing(6)
 
@@ -167,7 +163,6 @@ class DistanceCropDialog(QDialog):
 
         self.preview_button = QPushButton("Preview")
         self.preview_button.setIcon(qta.icon("ph.eye", color=Colors.ICON))
-        self.preview_button.setStyleSheet(QPushButton_style)
         self.preview_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.preview_button.clicked.connect(self._on_preview)
         footer_layout.addWidget(self.preview_button)
@@ -176,14 +171,12 @@ class DistanceCropDialog(QDialog):
 
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setIcon(qta.icon("ph.x", color=Colors.ICON))
-        self.cancel_button.setStyleSheet(QPushButton_style)
         self.cancel_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.cancel_button.clicked.connect(self.reject)
         footer_layout.addWidget(self.cancel_button)
 
         self.crop_button = QPushButton("Crop")
         self.crop_button.setIcon(qta.icon("ph.scissors", color=Colors.PRIMARY))
-        self.crop_button.setStyleSheet(QPushButton_style)
         self.crop_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.crop_button.clicked.connect(self.accept)
         footer_layout.addWidget(self.crop_button)

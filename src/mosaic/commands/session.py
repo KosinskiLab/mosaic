@@ -20,8 +20,7 @@ from typing import List, Optional
 import numpy as np
 
 from ..container import DataContainer
-from ..parallel import _init_worker, _wrap_task
-from ..widgets.container_list import TreeStateData, TreeState
+from ..tree_state import TreeStateData, TreeState
 
 __all__ = ["Session"]
 
@@ -234,7 +233,6 @@ class Session:
         base = os.path.basename(filepath).split(".", 1)[0]
         use_index = len(container) > 1
 
-        sampling = 1
         shape, indices, opened_geoms = None, [], []
         for index, data in enumerate(container):
             effective_scale = scale if scale is not None else data.sampling
@@ -437,6 +435,8 @@ class Session:
         errors : list of (int, Exception)
             Index and exception for each failed geometry.
         """
+        from ..parallel import _init_worker, _wrap_task
+
         workers = int(kwargs.pop("workers", 1))
         pool = ProcessPoolExecutor(max_workers=workers, initializer=_init_worker)
         futures = {

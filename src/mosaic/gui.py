@@ -17,9 +17,6 @@ from qtpy.QtCore import (
     QEvent,
     QSize,
     QTimer,
-    QPropertyAnimation,
-    QEasingCurve,
-    QRect,
 )
 from qtpy.QtWidgets import (
     QApplication,
@@ -32,7 +29,7 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QPushButton,
     QDockWidget,
-    QButtonGroup,
+    QFrame,
     QShortcut,
     QMessageBox,
     QCheckBox,
@@ -63,6 +60,7 @@ from .dialogs import (
 from .widgets import (
     AxesWidget,
     RibbonToolBar,
+    TabBar,
     TrajectoryPlayer,
     LegendWidget,
     ScaleBarWidget,
@@ -105,17 +103,9 @@ class App(QMainWindow):
         self.interactor.AddObserver("KeyPressEvent", self.on_key_press)
         self.interactor.SetDesiredUpdateRate(Settings.rendering.target_fps)
 
-        self.tab_bar = QWidget()
-        self.tab_bar.setFixedHeight(32)
-        tab_layout = QHBoxLayout(self.tab_bar)
-        tab_layout.setContentsMargins(0, 0, 0, 0)
-        tab_layout.setSpacing(2)
-
-        self.tab_button_group = QButtonGroup(self)
-        self.tab_button_group.setExclusive(True)
+        self.tab_bar = TabBar()
 
         self.setup_widgets()
-        self.tab_buttons = {}
         self.tab_ribbon = RibbonToolBar(self)
         data = {"cdata": self.cdata, "ribbon": self.tab_ribbon, "legend": self.legend}
 
@@ -132,73 +122,65 @@ class App(QMainWindow):
                 )
             )
 
-        for index, (tab, name) in enumerate(self.tabs):
-            btn = QPushButton(name)
-            btn.setObjectName("TabButton")
-            btn.setProperty("tab_id", index)
-            btn.setCheckable(True)
-            self.tab_button_group.addButton(btn, index)
+        for _index, (tab, name) in enumerate(self.tabs):
+            self.tab_bar.addTab(name)
 
-            btn.setStyleSheet(
-                f"""
-                QPushButton {{
-                    border: none;
-                    padding: 6px 8px;
-                    font-size: 12px;
-                    background: transparent;
-                    min-width: 90px;
-                }}
-                QPushButton:checked {{
-                    color: {Colors.PRIMARY};
-                }}
-                QPushButton:focus {{
-                    outline: none;
-                }}
-            """
-            )
-            tab_layout.addWidget(btn)
-            self.tab_buttons[index] = btn
-
-        self.tab_indicator = QWidget(self.tab_bar)
-        self.tab_indicator.setFixedHeight(2)
-        self.tab_indicator.setStyleSheet(f"background-color: {Colors.PRIMARY};")
-
-        self.tab_indicator_anim = QPropertyAnimation(self.tab_indicator, b"geometry")
-        self.tab_indicator_anim.setDuration(150)
-        self.tab_indicator_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-
-        def update_indicator(tab_id):
+        def on_tab_changed(tab_id):
             self.tabs[tab_id][0].show_ribbon()
-            btn = self.tab_buttons[tab_id]
-            QTimer.singleShot(0, lambda: self._animate_tab_indicator(btn))
 
-        self.tab_button_group.idClicked.connect(update_indicator)
+        self.tab_bar.currentChanged.connect(on_tab_changed)
+        self.tab_bar.finalize()
 
-        tab_layout.addStretch()
-        self.tab_buttons[0].setChecked(True)
+        from .widgets.theme_toggle import ThemeToggle
+
+        self._tab_gear = QPushButton()
+        self._tab_gear.setIcon(qta.icon("ph.gear", color=Colors.ICON_MUTED))
+        self._tab_gear.setFlat(True)
+        self._tab_gear.setFixedSize(28, 28)
+        self._tab_gear.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._tab_gear.setStyleSheet(
+            f"""
+            QPushButton {{ border: none; border-radius: 6px; }}
+            QPushButton:hover {{ background: {Colors.BG_HOVER}; }}
+            QPushButton:focus {{ outline: none; }}
+        """
+        )
+        self.theme_toggle = ThemeToggle()
+        self.theme_toggle.toggled.connect(self._on_theme_toggled)
+        self.tab_bar._layout.addWidget(self.theme_toggle)
+
+        self._tab_gear.clicked.connect(self._toggle_appearance_panel)
+        self.tab_bar._layout.addWidget(self._tab_gear)
+
         self.tabs[0][0].show_ribbon()
-
-        # Position indicator on first tab after layout is ready
-        QTimer.singleShot(0, lambda: self._animate_tab_indicator(self.tab_buttons[0]))
 
         layout.addWidget(self.tab_bar)
         layout.addWidget(self.tab_ribbon)
 
-        # Create sidebar with Object Browser
+        self.ribbon_separator = QFrame()
+        self.ribbon_separator.setFixedHeight(1)
+        self.ribbon_separator.setFrameShape(QFrame.Shape.NoFrame)
+        self.ribbon_separator.setStyleSheet(f"background: {Colors.BORDER_DARK};")
+        layout.addWidget(self.ribbon_separator)
+
+        # Create sidebar
         list_wrapper = ObjectBrowserSidebar()
-        list_wrapper.set_title("Object Browser")
-        list_wrapper.add_widget("cluster", "Clusters", self.cdata.data.data_list)
-        list_wrapper.add_widget("model", "Models", self.cdata.models.data_list)
+        list_wrapper.add_widget("Clusters", self.cdata.data.data_list)
+        list_wrapper.add_widget("Models", self.cdata.models.data_list)
 
         # Create splitter with sidebar on left, viewport on right
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(list_wrapper)
-        splitter.addWidget(self.vtk_widget)
-        splitter.setSizes([200, self.width() - 200])
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
+        self._main_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._main_splitter.addWidget(list_wrapper)
+        self._main_splitter.addWidget(self.vtk_widget)
+        self._main_splitter.setSizes([200, self.width() - 200])
+        self._main_splitter.setStretchFactor(0, 0)
+        self._main_splitter.setStretchFactor(1, 1)
+        self._main_splitter.setHandleWidth(1)
+        self._main_splitter.setStyleSheet(
+            f"QSplitter::handle {{ background: {Colors.BORDER_DARK}; }}"
+        )
 
-        layout.addWidget(splitter)
+        layout.addWidget(self._main_splitter)
 
         self.actor_collection = vtk.vtkActorCollection()
         self.setup_menu()
@@ -448,34 +430,12 @@ class App(QMainWindow):
                 )
                 if ret != QMessageBox.StandardButton.Yes:
                     Settings.rendering.parallel_worker = btm.num_workers
-                    panel = self.status_indicator.appearance_panel
+                    panel = self.appearance_panel
                     panel._workers_slider.blockSignals(True)
                     panel._workers_slider.setValue(btm.num_workers)
                     panel._workers_slider.blockSignals(False)
                     return
             btm._initialize()
-
-    def _animate_tab_indicator(self, btn):
-        """Animate the tab indicator to the given button."""
-        from qtpy.QtGui import QFontMetrics
-
-        # Calculate text width
-        fm = QFontMetrics(btn.font())
-        text_width = fm.horizontalAdvance(btn.text())
-
-        # Center the indicator under the text
-        btn_center = btn.x() + btn.width() // 2
-        x = btn_center - text_width // 2
-        y = self.tab_bar.height() - 2
-
-        target_rect = QRect(x, y, text_width, 2)
-
-        if self.tab_indicator_anim.state() == QPropertyAnimation.State.Running:
-            self.tab_indicator_anim.stop()
-
-        self.tab_indicator_anim.setStartValue(self.tab_indicator.geometry())
-        self.tab_indicator_anim.setEndValue(target_rect)
-        self.tab_indicator_anim.start()
 
     def handle_escape_key(self, *args, **kwargs):
         """Handle escape key press - switch to viewing mode if not already in it."""
@@ -628,6 +588,32 @@ class App(QMainWindow):
         direction = getattr(self, "_camera_direction", True)
         return self.set_camera_view(view, not direction)
 
+    def _toggle_appearance_panel(self):
+        panel = self.appearance_panel
+        if panel.isVisible():
+            panel.hide()
+            return
+        pos = self._tab_gear.mapToGlobal(self._tab_gear.rect().bottomRight())
+        panel.move(max(0, pos.x() - panel.width()), pos.y() + 4)
+        panel.show()
+        panel.raise_()
+
+    def _on_theme_toggled(self, checked):
+        from .stylesheets import Colors, switch_theme
+
+        switch_theme(Colors.DARK if checked else Colors.LIGHT)
+
+    def _on_theme_changed(self):
+        self._update_style()
+        self._main_splitter.setStyleSheet(
+            f"QSplitter::handle {{ background: {Colors.BORDER_DARK}; }}"
+        )
+        self.ribbon_separator.setStyleSheet(f"background: {Colors.BORDER_DARK};")
+
+        self.tab_bar._on_theme_changed()
+        if hasattr(self, "_tab_gear"):
+            self._tab_gear.setIcon(qta.icon("ph.gear", color=Colors.ICON_MUTED))
+
     def _update_style(self):
         self.setStyleSheet(
             f"""
@@ -640,17 +626,6 @@ class App(QMainWindow):
             QMenuBar::item:selected {{
                 background-color: {Colors.BG_HOVER};
                 border-radius: 4px;
-            }}
-            QMenu {{
-                border-radius: 4px;
-                padding: 4px;
-            }}
-            QMenu::item {{
-                padding: 4px 24px 4px 8px;
-                border-radius: 4px;
-            }}
-            QMenu::item:selected {{
-                background-color: {Colors.BG_HOVER};
             }}
         """
         )
@@ -683,9 +658,13 @@ class App(QMainWindow):
         )
 
         self.status_indicator.connect_signals()
-        self.status_indicator.appearance_panel.settingsChanged.connect(
-            self.apply_render_settings
-        )
+
+        from .widgets.appsettings import AppSettingsPanel
+
+        self.appearance_panel = AppSettingsPanel(self)
+        self.appearance_panel.settingsChanged.connect(self.apply_render_settings)
+
+        # Gear button is connected after tab bar creation in __init__
 
         self._setup_trajectory_player()
 
@@ -1247,7 +1226,7 @@ class App(QMainWindow):
         self.trajectory_dock.setVisible(False)
 
     def show_app_settings(self):
-        self.status_indicator.toggle_appearance_panel()
+        self._toggle_appearance_panel()
 
     def _load_session(self, file_path: str):
         self.close_session(render=False)

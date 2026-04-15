@@ -7,7 +7,7 @@ from qtpy.QtWidgets import (
     QFrame,
     QDialog,
 )
-from ..stylesheets import HelpLabel_style, QPushButton_style
+from ..stylesheets import HelpLabel_style
 
 
 class DialogFooter(QFrame):
@@ -47,4 +47,3 @@ class DialogFooter(QFrame):
 
         layout.addWidget(self.reject_button)
         layout.addWidget(self.accept_button)
-        self.setStyleSheet(QPushButton_style)

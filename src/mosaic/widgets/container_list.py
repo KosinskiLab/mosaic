@@ -1,6 +1,5 @@
 from uuid import uuid4
 from typing import Dict, List, Union
-from dataclasses import dataclass, field
 
 from qtpy.QtGui import QColor, QIcon, QPixmap, QPainter
 from qtpy.QtCore import Qt, QRect, QByteArray, QItemSelection, QItemSelectionModel
@@ -18,68 +17,7 @@ from qtpy.QtSvg import QSvgRenderer
 import qtawesome as qta
 
 from ..stylesheets import Colors
-
-
-@dataclass()
-class TreeState:
-    """Legacy tree structure (deprecated - kept for backward compatibility)."""
-
-    #: {'Group 1': ['uuid1', 'uuid2'], ...}
-    groups: Dict[str, List[str]] = field(default_factory=dict)
-    #: {'Group 1', 'uuid1', ...}
-    root_order: Dict[str, int] = field(default_factory=dict)
-    #: ['uuid3', 'uuid4', ...]
-    root_items: List[str] = field(default_factory=list)
-
-    def get_all_uuids(self):
-        """Get all UUIDs currently in the tree."""
-        uuids = set(self.root_items)
-        for group_uuids in self.groups.values():
-            uuids.update(group_uuids)
-        return uuids
-
-    def to_tree_state_data(self) -> "TreeStateData":
-        """Convert legacy TreeState to new TreeStateData format."""
-        state = TreeStateData()
-
-        state.root_items = [None] * len(self.root_order)
-        for uuid, (index, group_name) in self.root_order.items():
-            state.root_items[index] = uuid
-
-            if group_name is not None:
-                state.group_names[uuid] = group_name
-                state.groups[uuid] = self.groups[group_name]
-        return state
-
-
-@dataclass()
-class TreeStateData:
-    """Minimal tree structure tracking."""
-
-    #: Maps group UUIDs to list of geometry UUIDs
-    groups: Dict[str, List[str]] = field(default_factory=dict)
-    #: Maps group UUIDs to display names
-    group_names: Dict[str, str] = field(default_factory=dict)
-    #: Top-level items in display order (mix of group UUIDs and geometry UUIDs)
-    root_items: List[str] = field(default_factory=list)
-
-    def get_all_uuids(self):
-        """Get all UUIDs currently in the tree."""
-        uuids = set()
-        for item in self.root_items:
-            uuids.update(self.groups.get(item, [item]))
-        return uuids
-
-    def remove_uuid(self, uuid: str):
-        """Remove a UUID from the tree. Can be either group or item"""
-        self.root_items = [x for x in self.root_items if x != uuid]
-
-        if uuid in self.group_names:
-            self.group_names.pop(uuid)
-            self.groups.pop(uuid, None)
-
-        for k in self.groups.keys():
-            self.groups[k] = [x for x in self.groups[k] if x != uuid]
+from ..tree_state import TreeState, TreeStateData
 
 
 class ContainerTreeWidget(QFrame):
@@ -137,8 +75,8 @@ class ContainerTreeWidget(QFrame):
                 background-color: rgba(0, 0, 0, 0.0);
                 font-weight: 500;
             }
-            QLineEdit {
-                background-color: white;
+            QTreeWidget QLineEdit {
+                background-color: palette(base);
                 border: 1px solid #4f46e5;
                 border-radius: 6px;
                 padding: 0px 3px;
@@ -612,9 +550,8 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
         self.update_icon(visible)
         self.setForeground(0, self.original_color if visible else self.invisible_color)
 
-    def text(self):
-        """Get item text for backward compatibility."""
-        return super().text(0)
+    def text(self, column=0):
+        return super().text(column)
 
     def setData(self, *args):
         if len(args) == 2:
@@ -665,13 +602,18 @@ class MetadataItemDelegate(QStyledItemDelegate):
             option.rect.height() - 4,
         )
 
+        is_selected = bool(option.state & QStyle.StateFlag.State_Selected)
+        is_hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
+
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        if option.state & QStyle.StateFlag.State_Selected:
-            painter.setBrush(QColor(f"#33{Colors.PRIMARY.replace('#', '')}"))
+        if is_selected:
+            accent = QColor(Colors.PRIMARY)
+            accent.setAlphaF(0.07 if not Colors.is_dark() else 0.10)
+            painter.setBrush(accent)
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(content_rect, 6, 6)
-        elif option.state & QStyle.StateFlag.State_MouseOver:
+        elif is_hovered:
             painter.setBrush(QColor(0, 0, 0, int(0.06 * 255)))
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(content_rect, 6, 6)
@@ -691,9 +633,11 @@ class MetadataItemDelegate(QStyledItemDelegate):
         painter.save()
         text = index.data(Qt.ItemDataRole.DisplayRole)
         if isinstance(item, StyledTreeWidgetItem) and not item.visible:
-            painter.setPen(QColor(128, 128, 128))
+            painter.setPen(QColor(Colors.TEXT_MUTED))
+        elif is_selected:
+            painter.setPen(QColor(Colors.PRIMARY))
         else:
-            painter.setPen(option.palette.color(option.palette.ColorRole.Text))
+            painter.setPen(QColor(Colors.TEXT_SECONDARY))
 
         text_rect = QRect(
             option.rect.left() + 12 + icon_size + 4,

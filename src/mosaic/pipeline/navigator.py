@@ -24,7 +24,7 @@ from qtpy.QtCore import Qt, Signal
 from ._utils import natural_sort_key, strip_filepath
 from ..widgets import SearchWidget
 from ..widgets.cards import Card, FlowLayout
-from ..stylesheets import Colors, QPushButton_style, QScrollArea_style
+from ..stylesheets import Colors, QScrollArea_style
 
 __all__ = ["BatchNavigatorDialog"]
 
@@ -162,7 +162,7 @@ class BatchNavigatorDialog(QWidget):
         self.session_files = []
 
         self.setup_ui()
-        self.setStyleSheet(QPushButton_style + QScrollArea_style)
+        self.setStyleSheet(QScrollArea_style)
 
         cdata.data.data_changed.connect(self._mark_modified)
         cdata.models.data_changed.connect(self._mark_modified)

@@ -16,7 +16,7 @@ from qtpy.QtWidgets import (
     QGroupBox,
 )
 import qtawesome as qta
-from ..stylesheets import QPushButton_style, QGroupBox_style, QSlider_style, Colors
+from ..stylesheets import QGroupBox_style, QSlider_style, Colors
 from ..utils import Throttle
 
 
@@ -37,7 +37,7 @@ class TiltControlDialog(QDialog):
                 | Qt.WindowType.WindowStaysOnTopHint
                 & ~Qt.WindowType.WindowContextHelpButtonHint
             )
-        self.setStyleSheet(QPushButton_style + QGroupBox_style + QSlider_style)
+        self.setStyleSheet(QGroupBox_style + QSlider_style)
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
