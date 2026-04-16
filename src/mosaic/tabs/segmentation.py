@@ -70,21 +70,21 @@ class SegmentationTab(QWidget):
                 "ph.chart-bar",
                 self,
                 self._show_histogram,
-                "Filter objects by size",
+                "Filter clusters by point count",
             ),
             create_button(
                 "Transform",
                 "ph.arrows-out-cardinal",
                 self,
                 self._toggle_transform,
-                "Transform selected cluster",
+                "Translate or rotate selected cluster",
             ),
             create_button(
                 "Crop",
                 "ph.crop",
                 self,
                 self._distance_crop,
-                "Crop by distance",
+                "Filter points by distance to other geometries",
             ),
         ]
         self.ribbon.add_section("Base Operations", cluster_actions)
@@ -95,7 +95,7 @@ class SegmentationTab(QWidget):
                 "ph.arrows-out-line-horizontal",
                 self,
                 self.cdata.data.cluster,
-                "Extract distinct components",
+                "Partition cluster",
                 MethodRegistry.settings_dict("cluster"),
             ),
             create_button(
@@ -103,7 +103,7 @@ class SegmentationTab(QWidget):
                 "ph.funnel",
                 self,
                 self.cdata.data.remove_outliers,
-                "Remove isolated points",
+                "Remove outliers from cluster",
                 MethodRegistry.settings_dict("remove_outliers"),
             ),
             create_button(
@@ -111,7 +111,7 @@ class SegmentationTab(QWidget):
                 "ph.arrows-out",
                 self,
                 self.cdata.data.compute_normals,
-                "Assign normals",
+                "Compute or flip cluster normals",
                 MethodRegistry.settings_dict("compute_normals"),
             ),
             create_button(
@@ -119,14 +119,14 @@ class SegmentationTab(QWidget):
                 "ph.scissors",
                 self,
                 self._toggle_trimmer,
-                "Trim points using planes",
+                "Trim cluster using planes",
             ),
             create_button(
                 "Skeletonize",
                 "ph.line-segments",
                 self,
                 self.cdata.data.skeletonize,
-                "Extract boundary or core points",
+                "Extract skeleton from cluster",
                 MethodRegistry.settings_dict("skeletonize"),
             ),
             create_button(
@@ -134,7 +134,7 @@ class SegmentationTab(QWidget):
                 "ph.arrows-in",
                 self,
                 self.cdata.data.downsample,
-                "Reduce point density",
+                "Downsample cluster",
                 MethodRegistry.settings_dict("downsample"),
             ),
         ]
@@ -146,7 +146,7 @@ class SegmentationTab(QWidget):
                 "ph.chart-bar-horizontal",
                 self,
                 self._show_property_dialog,
-                "Analyze cluster properties",
+                "Visualize and quantify properties of geometries",
             ),
         ]
         self.ribbon.add_section("Analysis", analysis_actions)

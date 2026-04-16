@@ -27,7 +27,6 @@ from qtpy.QtWidgets import (
     QSizePolicy,
 )
 import pyqtgraph as pg
-import qtawesome as qta
 
 from ..widgets import PathSelector, SearchWidget, TabWidget
 from ..widgets.settings import get_widget_value
@@ -38,27 +37,13 @@ from ..stylesheets import (
     QLineEdit_style,
     Colors,
 )
+from ..icons import icon, icon_button
 from ._configure import ConfigurePanel
 from ._analysis_panel import AnalysisPanel
 from ._compute_panel import ComputePanel
 from ._utils import parse_dts_content
 
 __all__ = ["DTSScreeningDialog"]
-
-
-def _icon_button(icon_name, size=22, tooltip="", flat=True):
-    btn = QPushButton()
-    btn.setIcon(
-        qta.icon(
-            icon_name,
-            color=Colors.ICON_ACTIVE,
-            color_disabled=Colors.ICON,
-        )
-    )
-    btn.setFixedSize(size, size)
-    btn.setToolTip(tooltip)
-    btn.setFlat(flat)
-    return btn
 
 
 class DTSScreeningDialog(QDialog):
@@ -87,7 +72,7 @@ class DTSScreeningDialog(QDialog):
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        self._left_tabs = TabWidget()
+        self._left_tabs = TabWidget(tab_bar_margins=(0, 0, 0, 0))
 
         self._configure_panel = ConfigurePanel()
         self._overview_tab = self._build_overview_tab()
@@ -95,12 +80,12 @@ class DTSScreeningDialog(QDialog):
         self._left_tabs.addTab(
             self._configure_panel,
             "Configure",
-            qta.icon("ph.sliders", color=Colors.ICON),
+            icon("ph.sliders", role="muted"),
         )
         self._left_tabs.addTab(
             self._overview_tab,
             "Analyze",
-            qta.icon("ph.chart-line-up", color=Colors.ICON),
+            icon("ph.chart-line-up", role="muted"),
         )
         self._left_tabs.finalize()
 
@@ -177,7 +162,7 @@ class DTSScreeningDialog(QDialog):
         )
         dir_row.addWidget(self._screen_dir_input)
 
-        refresh_btn = _icon_button(
+        refresh_btn = icon_button(
             "ph.arrows-clockwise", size=28, tooltip="Refresh status"
         )
         refresh_btn.clicked.connect(self._refresh_overview)
@@ -337,11 +322,11 @@ class DTSScreeningDialog(QDialog):
             actions_layout.setContentsMargins(2, 0, 2, 0)
             actions_layout.setSpacing(2)
 
-            folder_btn = _icon_button("ph.folder-open", tooltip="Open run directory")
+            folder_btn = icon_button("ph.folder-open", tooltip="Open run directory")
             folder_btn.clicked.connect(functools.partial(self._open_run_dir, run_id))
             actions_layout.addWidget(folder_btn)
 
-            import_btn = _icon_button(
+            import_btn = icon_button(
                 "ph.upload", tooltip="Import trajectory into viewer"
             )
             import_btn.setEnabled(is_available)

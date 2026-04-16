@@ -36,11 +36,19 @@ class SegmentedControl(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
+        last = len(options) - 1
         for i, text in enumerate(options):
             btn = QPushButton(text)
             btn.setCheckable(True)
             btn.setChecked(i == default)
             btn.clicked.connect(lambda _, idx=i: self._select(idx))
+            if i == 0:
+                position = "first" if last > 0 else "only"
+            elif i == last:
+                position = "last"
+            else:
+                position = "middle"
+            btn.setProperty("position", position)
             layout.addWidget(btn)
             self._buttons.append(btn)
 
@@ -56,14 +64,34 @@ class SegmentedControl(QWidget):
         return self._buttons[self._selected].text()
 
     def _on_theme_changed(self):
+        # Buttons share a single outer border: each carries top/bottom/left, and
+        # only the trailing button adds the right edge. Corners are rounded only
+        # on the outermost ends so the control reads as one continuous surface.
+        border = f"1px solid {Colors.BORDER_DARK}"
         self.setStyleSheet(
             f"""
             QPushButton {{
-                border: 1px solid {Colors.BORDER_DARK};
-                border-radius: 4px;
+                border-top: {border};
+                border-bottom: {border};
+                border-left: {border};
+                border-right: none;
+                border-radius: 0;
                 padding: 6px 12px;
                 color: {Colors.TEXT_SECONDARY};
                 background: transparent;
+            }}
+            QPushButton[position="only"] {{
+                border-right: {border};
+                border-radius: 4px;
+            }}
+            QPushButton[position="first"] {{
+                border-top-left-radius: 4px;
+                border-bottom-left-radius: 4px;
+            }}
+            QPushButton[position="last"] {{
+                border-right: {border};
+                border-top-right-radius: 4px;
+                border-bottom-right-radius: 4px;
             }}
             QPushButton:checked {{
                 background: {Colors.BG_TERTIARY};

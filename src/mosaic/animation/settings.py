@@ -16,10 +16,8 @@ from qtpy.QtWidgets import (
     QPushButton,
     QSizePolicy,
 )
-import qtawesome as qta
-
 from mosaic.widgets import create_setting_widget
-from mosaic.stylesheets import Colors
+from mosaic.icons import icon
 
 
 class AnimationSettings(QGroupBox):
@@ -369,14 +367,14 @@ class ExportDialog(QDialog):
         button_layout.setSpacing(8)
 
         cancel_btn = QPushButton("Cancel")
-        cancel_btn.setIcon(qta.icon("ph.x", color=Colors.ICON))
+        cancel_btn.setIcon(icon("ph.x", role="muted"))
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
 
         button_layout.addStretch()
 
         export_btn = QPushButton("Export")
-        export_btn.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
+        export_btn.setIcon(icon("ph.download", role="primary"))
         export_btn.setDefault(True)
         export_btn.clicked.connect(self.accept)
         button_layout.addWidget(export_btn)

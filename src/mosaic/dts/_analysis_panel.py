@@ -28,10 +28,10 @@ from qtpy.QtWidgets import (
     QAbstractItemView,
 )
 import pyqtgraph as pg
-import qtawesome as qta
 
 from ..widgets import ColorMapSelector, generate_gradient_colors
 from ..stylesheets import Colors
+from ..icons import icon
 from ..dts._utils import collect_available_metrics, extract_metric_series
 
 
@@ -150,17 +150,17 @@ class AnalysisPanel(QWidget):
 
         footer = QHBoxLayout()
         export_plot_btn = QPushButton("Export Plot")
-        export_plot_btn.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
+        export_plot_btn.setIcon(icon("ph.download", role="primary"))
         export_plot_btn.clicked.connect(self._export_plot)
         footer.addWidget(export_plot_btn)
 
         export_data_btn = QPushButton("Export Data")
-        export_data_btn.setIcon(qta.icon("ph.file-arrow-down", color=Colors.PRIMARY))
+        export_data_btn.setIcon(icon("ph.file-arrow-down", role="primary"))
         export_data_btn.clicked.connect(self._export_data)
         footer.addWidget(export_data_btn)
 
         export_stats_btn = QPushButton("Export Statistics")
-        export_stats_btn.setIcon(qta.icon("ph.table", color=Colors.PRIMARY))
+        export_stats_btn.setIcon(icon("ph.table", role="primary"))
         export_stats_btn.clicked.connect(self._export_statistics)
         footer.addWidget(export_stats_btn)
         footer.addStretch()

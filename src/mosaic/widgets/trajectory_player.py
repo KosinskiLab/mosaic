@@ -10,9 +10,8 @@ from qtpy.QtWidgets import (
     QSizePolicy,
     QGroupBox,
 )
-import qtawesome as qta
-
-from ..stylesheets import QSlider_style, Colors
+from ..icons import icon
+from ..stylesheets import QSlider_style
 from ..utils import Throttle
 
 
@@ -163,19 +162,19 @@ class TrajectoryPlayer(QWidget):
             return None
 
         if not playing:
-            self.play_button.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
+            self.play_button.setIcon(icon("ph.play", role="primary"))
         else:
-            self.play_button.setIcon(qta.icon("ph.pause", color=Colors.ICON))
+            self.play_button.setIcon(icon("ph.pause", role="muted"))
 
     def _on_theme_changed(self):
-        self.first_button.setIcon(qta.icon("ph.skip-back", color=Colors.ICON))
-        self.prev_button.setIcon(qta.icon("ph.rewind", color=Colors.ICON))
-        self.next_button.setIcon(qta.icon("ph.fast-forward", color=Colors.ICON))
-        self.last_button.setIcon(qta.icon("ph.skip-forward", color=Colors.ICON))
+        self.first_button.setIcon(icon("ph.skip-back", role="muted"))
+        self.prev_button.setIcon(icon("ph.rewind", role="muted"))
+        self.next_button.setIcon(icon("ph.fast-forward", role="muted"))
+        self.last_button.setIcon(icon("ph.skip-forward", role="muted"))
         if self._playing:
-            self.play_button.setIcon(qta.icon("ph.pause", color=Colors.ICON))
+            self.play_button.setIcon(icon("ph.pause", role="muted"))
         else:
-            self.play_button.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
+            self.play_button.setIcon(icon("ph.play", role="primary"))
 
     @property
     def trajectories(self):
@@ -208,27 +207,27 @@ class TrajectoryPlayer(QWidget):
 
         button_size = 32
         self.first_button = QPushButton()
-        self.first_button.setIcon(qta.icon("ph.skip-back", color=Colors.ICON))
+        self.first_button.setIcon(icon("ph.skip-back", role="muted"))
         self.first_button.setFixedSize(button_size, button_size)
         self.first_button.clicked.connect(lambda: self.sync_frame(0))
 
         self.prev_button = QPushButton(autoRepeat=True)
-        self.prev_button.setIcon(qta.icon("ph.rewind", color=Colors.ICON))
+        self.prev_button.setIcon(icon("ph.rewind", role="muted"))
         self.prev_button.setFixedSize(button_size, button_size)
         self.prev_button.clicked.connect(self.prev_frame)
 
         self.play_button = QPushButton()
-        self.play_button.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
+        self.play_button.setIcon(icon("ph.play", role="primary"))
         self.play_button.setFixedSize(button_size, button_size)
         self.play_button.clicked.connect(self.toggle_play)
 
         self.next_button = QPushButton(autoRepeat=True)
-        self.next_button.setIcon(qta.icon("ph.fast-forward", color=Colors.ICON))
+        self.next_button.setIcon(icon("ph.fast-forward", role="muted"))
         self.next_button.setFixedSize(button_size, button_size)
         self.next_button.clicked.connect(self.next_frame)
 
         self.last_button = QPushButton()
-        self.last_button.setIcon(qta.icon("ph.skip-forward", color=Colors.ICON))
+        self.last_button.setIcon(icon("ph.skip-forward", role="muted"))
         self.last_button.setFixedSize(button_size, button_size)
         self.last_button.clicked.connect(lambda: self.sync_frame(self.max_frame()))
 

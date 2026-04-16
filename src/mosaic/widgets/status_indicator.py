@@ -25,9 +25,8 @@ from qtpy.QtWidgets import (
     QApplication,
 )
 from qtpy.QtGui import QTextCursor, QPainter, QColor
-import qtawesome as qta
-
 from ..stylesheets import Colors, QScrollArea_style
+from ..icons import icon
 from ..parallel import BackgroundTaskManager
 
 
@@ -138,7 +137,7 @@ class TaskCard(QFrame):
         row.addWidget(self.progress_text)
 
         self.cancel_btn = QPushButton()
-        self.cancel_btn.setIcon(qta.icon("ph.x", color=Colors.TEXT_MUTED))
+        self.cancel_btn.setIcon(icon("ph.x", role="muted"))
         self.cancel_btn.setFixedSize(20, 20)
         self.cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.cancel_btn.clicked.connect(self._cancel_task)
@@ -219,8 +218,8 @@ class TaskCard(QFrame):
             self.icon_label.setVisible(True)
             icon_name = self._ICONS.get(self.status, "ph.clock")
             self.icon_label.setText("")
-            icon = qta.icon(icon_name, color=accent)
-            self.icon_label.setPixmap(icon.pixmap(14, 14))
+            status_icon = icon(icon_name, color=accent)
+            self.icon_label.setPixmap(status_icon.pixmap(14, 14))
 
         self.cancel_btn.setVisible(self.status in ("running", "queued"))
 
@@ -356,14 +355,14 @@ class TaskMonitorPanel(QFrame):
         header_layout.addStretch()
 
         clear_btn = QPushButton()
-        clear_btn.setIcon(qta.icon("ph.trash", color=Colors.TEXT_MUTED))
+        clear_btn.setIcon(icon("ph.trash", role="muted"))
         clear_btn.setToolTip("Clear finished tasks")
         clear_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
         clear_btn.clicked.connect(self._clear_finished_tasks)
         header_layout.addWidget(clear_btn)
 
         close_btn = QPushButton()
-        close_btn.setIcon(qta.icon("ph.x", color=Colors.TEXT_MUTED))
+        close_btn.setIcon(icon("ph.x", role="muted"))
         close_btn.setToolTip("Close task manager")
         close_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
         close_btn.clicked.connect(self.hide)
@@ -605,7 +604,7 @@ class StatusIndicator:
             """
             )
         if hasattr(self, "task_button"):
-            self.task_button.setIcon(qta.icon("ph.caret-up", color=Colors.ICON_MUTED))
+            self.task_button.setIcon(icon("ph.caret-up", role="muted"))
             self.task_button.setStyleSheet(
                 f"""
                 QPushButton {{
@@ -686,7 +685,7 @@ class StatusIndicator:
         self.spinner.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.task_button = QPushButton("Idle")
-        self.task_button.setIcon(qta.icon("ph.caret-up", color=Colors.ICON_MUTED))
+        self.task_button.setIcon(icon("ph.caret-up", role="muted"))
         self.task_button.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.task_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.task_button.setFlat(True)

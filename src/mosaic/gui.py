@@ -43,10 +43,10 @@ from qtpy.QtGui import (
     QCursor,
     QDragEnterEvent,
 )
-import qtawesome as qta
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from .data import MosaicData
+from .icons import icon
 from .settings import Settings
 from .stylesheets import Colors
 from .animation._utils import ScreenshotManager
@@ -134,7 +134,7 @@ class App(QMainWindow):
         from .widgets.theme_toggle import ThemeToggle
 
         self._tab_gear = QPushButton()
-        self._tab_gear.setIcon(qta.icon("ph.gear", color=Colors.ICON_MUTED))
+        self._tab_gear.setIcon(icon("ph.gear", role="muted"))
         self._tab_gear.setFlat(True)
         self._tab_gear.setFixedSize(28, 28)
         self._tab_gear.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -378,20 +378,26 @@ class App(QMainWindow):
             renderer.SetPass(sobel)
 
     def apply_render_settings(self):
-        self.renderer.SetBackground(
-            *[float(x) for x in Settings.rendering.background_color]
-        )
-        self.renderer_next_background = [
-            float(x) for x in Settings.rendering.background_color_alt
-        ]
+        dark = [float(x) for x in Settings.rendering.background_color]
+        light = [float(x) for x in Settings.rendering.background_color_alt]
+
+        # Preserve whichever background the user last selected (e.g. via 'd')
+        # so unrelated setting changes don't snap the viewport back to dark.
+        if getattr(self, "_use_alt_background", False):
+            active, inactive = light, dark
+        else:
+            active, inactive = dark, light
 
         if Settings.rendering.use_gradient_background:
-            self.renderer.SetBackground2(
-                *[float(x) for x in Settings.rendering.background_color_alt]
-            )
+            # VTK treats SetBackground as the bottom color and SetBackground2
+            # as the top — place dark at the top, light at the bottom.
+            self.renderer.SetBackground(*light)
+            self.renderer.SetBackground2(*dark)
             self.renderer.GradientBackgroundOn()
         else:
+            self.renderer.SetBackground(*active)
             self.renderer.GradientBackgroundOff()
+        self.renderer_next_background = inactive
         self.renderer.SetUseDepthPeeling(Settings.rendering.use_depth_peeling)
         self.renderer.SetOcclusionRatio(Settings.rendering.occlusion_ratio)
         self.renderer.SetMaximumNumberOfPeels(Settings.rendering.max_depth_peels)
@@ -450,6 +456,7 @@ class App(QMainWindow):
         elif key == "v":
             self.swap_camera_view_direction(key)
         elif key in ["d"]:
+            self._use_alt_background = not getattr(self, "_use_alt_background", False)
             current_color = self.renderer.GetBackground()
             self.renderer.SetBackground(*self.renderer_next_background)
             self.renderer_next_background = current_color
@@ -612,7 +619,7 @@ class App(QMainWindow):
 
         self.tab_bar._on_theme_changed()
         if hasattr(self, "_tab_gear"):
-            self._tab_gear.setIcon(qta.icon("ph.gear", color=Colors.ICON_MUTED))
+            self._tab_gear.setIcon(icon("ph.gear", role="muted"))
 
     def _update_style(self):
         self.setStyleSheet(
@@ -779,7 +786,7 @@ class App(QMainWindow):
         tilt_menu = QMenu("Camera", self)
         self.tilt_dialog = TiltControlDialog(self)
         show_tilt_control = QAction(
-            qta.icon("ph.sliders", color=Colors.ICON),
+            icon("ph.sliders", role="muted"),
             "Tilt Controls...",
             self,
         )
@@ -802,7 +809,7 @@ class App(QMainWindow):
 
         tilt_menu.addSeparator()
         reset_action = QAction(
-            qta.icon("ph.arrow-counter-clockwise", color=Colors.ICON),
+            icon("ph.arrow-counter-clockwise", role="muted"),
             "Reset Tilt",
             self,
         )

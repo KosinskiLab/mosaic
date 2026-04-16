@@ -15,8 +15,8 @@ from qtpy.QtWidgets import (
     QDialog,
     QGroupBox,
 )
-import qtawesome as qta
-from ..stylesheets import QGroupBox_style, QSlider_style, Colors
+from ..icons import icon
+from ..stylesheets import QGroupBox_style, QSlider_style
 from ..utils import Throttle
 
 
@@ -88,9 +88,7 @@ class TiltControlDialog(QDialog):
             "Pitch", self.pitch_value_label, self.pitch_slider
         )
 
-        reset_button = QPushButton(
-            qta.icon("ph.arrow-counter-clockwise", color=Colors.ICON), "Reset"
-        )
+        reset_button = QPushButton(icon("ph.arrow-counter-clockwise"), "Reset")
         reset_button.clicked.connect(self.reset_tilt)
 
         layout.addWidget(elevation_frame)

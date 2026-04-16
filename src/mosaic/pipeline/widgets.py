@@ -149,7 +149,7 @@ class OperationCardWidget(QFrame):
         super().mousePressEvent(event)
 
     def setup_ui(self):
-        import qtawesome as qta
+        from ..icons import icon
 
         self.setStyleSheet(
             f"""
@@ -171,9 +171,7 @@ class OperationCardWidget(QFrame):
 
         icon_label = QLabel()
         icon_label.setPixmap(
-            qta.icon(self.operation_info["icon"], color=self.category_color).pixmap(
-                20, 20
-            )
+            icon(self.operation_info["icon"], color=self.category_color).pixmap(20, 20)
         )
         header_layout.addWidget(icon_label)
 
@@ -187,7 +185,7 @@ class OperationCardWidget(QFrame):
         header_layout.addStretch()
 
         self.expand_btn = QPushButton()
-        self.expand_btn.setIcon(qta.icon("ph.caret-down", color=Colors.TEXT_MUTED))
+        self.expand_btn.setIcon(icon("ph.caret-down", role="muted"))
         self.expand_btn.setFixedSize(28, 28)
         self.expand_btn.setStyleSheet(
             f"QPushButton {{ border: none}} QPushButton:hover {{ background: {Colors.BG_TERTIARY}; border-radius: 12px; }}"
@@ -196,7 +194,7 @@ class OperationCardWidget(QFrame):
         header_layout.addWidget(self.expand_btn)
 
         close_btn = QPushButton()
-        close_btn.setIcon(qta.icon("ph.x", color=Colors.TEXT_MUTED))
+        close_btn.setIcon(icon("ph.x", role="muted"))
         close_btn.setFixedSize(28, 28)
         close_btn.setStyleSheet(
             f"QPushButton {{ border: none}} QPushButton:hover {{ background: {Colors.BG_TERTIARY}; border-radius: 12px; }}"
@@ -475,13 +473,13 @@ class OperationCardWidget(QFrame):
 
     def toggle_settings(self):
         """Expand/collapse settings panel."""
-        import qtawesome as qta
+        from ..icons import icon
 
         self.expanded = not self.expanded
         self.settings_container.setVisible(self.expanded)
 
-        icon = "ph.caret-up" if self.expanded else "ph.caret-down"
-        self.expand_btn.setIcon(qta.icon(icon, color=Colors.TEXT_MUTED))
+        icon_name = "ph.caret-up" if self.expanded else "ph.caret-down"
+        self.expand_btn.setIcon(icon(icon_name, role="muted"))
 
         self.update_summary()
         self.desc.setVisible(not self.expanded)
@@ -598,7 +596,7 @@ class PipelineTreeWidget(QTreeWidget):
     def add_operation_card(self, card_widget):
         """Add operation card to list."""
 
-        import qtawesome as qta
+        from ..icons import icon_pixmap
 
         if self.topLevelItemCount() > 0:
             separator_item = QTreeWidgetItem()
@@ -612,9 +610,7 @@ class PipelineTreeWidget(QTreeWidget):
             layout.addStretch()
 
             icon_label = QLabel()
-            icon_label.setPixmap(
-                qta.icon("ph.caret-down", color=Colors.ICON_MUTED).pixmap(20, 20)
-            )
+            icon_label.setPixmap(icon_pixmap("ph.caret-down", 20, role="muted"))
             icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             layout.addWidget(icon_label)
             layout.addStretch()

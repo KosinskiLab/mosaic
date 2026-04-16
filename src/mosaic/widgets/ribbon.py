@@ -11,10 +11,9 @@ from qtpy.QtWidgets import (
     QSizePolicy,
     QApplication,
 )
-import qtawesome as qta
-
 from .settings import create_setting_widget
 from ..stylesheets import QPushButton_style, Colors
+from ..icons import icon
 
 
 class SettingsPanel(QFrame):
@@ -298,7 +297,7 @@ class RibbonButton(QPushButton):
         self.setFixedHeight(30)
         self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setIcon(qta.icon(icon_name, color=Colors.ICON_ACTIVE))
+        self.setIcon(icon(icon_name, role="active"))
         self.setIconSize(QSize(16, 16))
 
         if has_settings:
@@ -311,7 +310,7 @@ class RibbonButton(QPushButton):
         self._apply_style()
 
     def _on_theme_changed(self):
-        self.setIcon(qta.icon(self._icon_name, color=Colors.ICON_ACTIVE))
+        self.setIcon(icon(self._icon_name, role="active"))
         self._apply_style()
 
     def mousePressEvent(self, event):

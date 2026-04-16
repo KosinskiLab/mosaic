@@ -63,7 +63,7 @@ class SessionListItem(QFrame):
 
     def __init__(self, filepath, index, is_current=False, parent=None):
         super().__init__(parent)
-        import qtawesome as qta
+        from ..icons import icon as _icon
 
         self.metadata = {"index": index, "filepath": filepath}
         self._is_current = False
@@ -94,8 +94,8 @@ class SessionListItem(QFrame):
         )
         lay.addWidget(self._label, 1)
 
-        self._eye_icon = qta.icon("ph.eye", color=Colors.PRIMARY)
-        self._file_icon = qta.icon("ph.file", color=Colors.ICON_MUTED)
+        self._eye_icon = _icon("ph.eye", role="primary")
+        self._file_icon = _icon("ph.file", role="muted")
 
         self.set_current(is_current)
 
@@ -172,7 +172,7 @@ class BatchNavigatorDialog(QWidget):
         self._session_modified = True
 
     def setup_ui(self):
-        import qtawesome as qta
+        from ..icons import icon
 
         self.setMinimumHeight(110)
 
@@ -208,21 +208,21 @@ class BatchNavigatorDialog(QWidget):
         row1.addWidget(self.search_widget, 1)
 
         self._view_toggle = QPushButton()
-        self._view_toggle.setIcon(qta.icon("ph.squares-four", color=Colors.ICON))
+        self._view_toggle.setIcon(icon("ph.squares-four", role="muted"))
         self._view_toggle.setToolTip("Toggle list / gallery view")
         self._view_toggle.setFixedSize(h, h)
         self._view_toggle.clicked.connect(self._toggle_view_mode)
         row1.addWidget(self._view_toggle)
 
         self.add_btn = QPushButton()
-        self.add_btn.setIcon(qta.icon("ph.file-arrow-up", color=Colors.ICON))
+        self.add_btn.setIcon(icon("ph.file-arrow-up", role="muted"))
         self.add_btn.setToolTip("Add session files")
         self.add_btn.setFixedSize(h, h)
         self.add_btn.clicked.connect(self._add_sessions)
         row1.addWidget(self.add_btn)
 
         self.clear_btn = QPushButton()
-        self.clear_btn.setIcon(qta.icon("ph.x", color=Colors.ICON))
+        self.clear_btn.setIcon(icon("ph.x", role="muted"))
         self.clear_btn.setToolTip("Remove all sessions")
         self.clear_btn.setFixedSize(h, h)
         self.clear_btn.clicked.connect(self._clear_sessions)
@@ -236,17 +236,13 @@ class BatchNavigatorDialog(QWidget):
         self._auto_save_btn = QPushButton("Auto-save")
         self._auto_save_btn.setCheckable(True)
         self._auto_save_btn.setChecked(True)
-        self._auto_save_btn.setIcon(
-            qta.icon("ph.arrows-clockwise", color=Colors.PRIMARY)
-        )
+        self._auto_save_btn.setIcon(icon("ph.arrows-clockwise", role="primary"))
         self._auto_save_btn.setToolTip("Auto-save when switching sessions")
         self._auto_save_btn.toggled.connect(self._on_auto_save_toggled)
         row2.addWidget(self._auto_save_btn, 1)
 
         self.discard_btn = QPushButton("Reload")
-        self.discard_btn.setIcon(
-            qta.icon("ph.arrow-counter-clockwise", color=Colors.ICON)
-        )
+        self.discard_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
         self.discard_btn.clicked.connect(self._discard_changes)
         self.discard_btn.setToolTip(
             "Reload current session, discarding unsaved changes"
@@ -254,7 +250,7 @@ class BatchNavigatorDialog(QWidget):
         row2.addWidget(self.discard_btn, 1)
 
         self.save_btn = QPushButton("Save")
-        self.save_btn.setIcon(qta.icon("ph.floppy-disk", color=Colors.ICON))
+        self.save_btn.setIcon(icon("ph.floppy-disk", role="muted"))
         self.save_btn.setToolTip("Save current session to disk")
         self.save_btn.clicked.connect(self._save_current)
         row2.addWidget(self.save_btn, 1)
@@ -297,21 +293,42 @@ class BatchNavigatorDialog(QWidget):
         self._populate_session_list()
 
     def _toggle_view_mode(self):
-        import qtawesome as qta
+        from ..icons import icon
 
         if self._view_mode == "list":
             self._view_mode = "gallery"
-            self._view_toggle.setIcon(qta.icon("ph.list-bullets", color=Colors.ICON))
+            self._view_toggle.setIcon(icon("ph.list-bullets", role="muted"))
         else:
             self._view_mode = "list"
-            self._view_toggle.setIcon(qta.icon("ph.squares-four", color=Colors.ICON))
+            self._view_toggle.setIcon(icon("ph.squares-four", role="muted"))
         self._populate_session_list()
 
     def _on_auto_save_toggled(self, checked):
-        import qtawesome as qta
+        from ..icons import icon
 
         color = Colors.PRIMARY if checked else Colors.ICON_MUTED
-        self._auto_save_btn.setIcon(qta.icon("ph.arrows-clockwise", color=color))
+        self._auto_save_btn.setIcon(icon("ph.arrows-clockwise", color=color))
+
+    def _on_theme_changed(self):
+        """Rebuild all persistent button icons after a theme switch."""
+        from ..icons import icon
+
+        # Persistent buttons whose icons are set once in setup_ui
+        toggle_icon_name = (
+            "ph.list-bullets" if self._view_mode == "gallery" else "ph.squares-four"
+        )
+        self._view_toggle.setIcon(icon(toggle_icon_name, role="muted"))
+        self.add_btn.setIcon(icon("ph.file-arrow-up", role="muted"))
+        self.clear_btn.setIcon(icon("ph.x", role="muted"))
+        self.discard_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
+        self.save_btn.setIcon(icon("ph.floppy-disk", role="muted"))
+
+        # Auto-save button uses a dynamic color based on checked state
+        self._on_auto_save_toggled(self._auto_save_btn.isChecked())
+
+        # Session list items hold cached icons; force a rebuild so they pick up
+        # the new palette colours on the next display.
+        self._populate_session_list()
 
     def _active_flow(self):
         return self._list_flow if self._view_mode == "list" else self._gallery_flow

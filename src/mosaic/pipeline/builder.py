@@ -51,8 +51,7 @@ class PipelineBuilderDialog(QDialog):
         self.setStyleSheet(QScrollArea_style)
 
     def setup_ui(self):
-        import qtawesome as qta
-        from ..icons import dialog_accept_icon, dialog_reject_icon
+        from ..icons import dialog_accept_icon, dialog_reject_icon, icon, icon_pixmap
 
         self.pipeline_tree = PipelineTreeWidget()
         self.pipeline_tree.pipeline_changed.connect(self._update_library_state)
@@ -122,9 +121,9 @@ class PipelineBuilderDialog(QDialog):
         ]
 
         self.preset_buttons = {}
-        for idx, (name, icon, color) in enumerate(preset_buttons):
+        for idx, (name, icon_name, color) in enumerate(preset_buttons):
             btn = QPushButton(name)
-            btn.setIcon(qta.icon(icon, color=color))
+            btn.setIcon(icon(icon_name, color=color))
             btn.setIconSize(QSize(24, 24))
             btn.setFixedHeight(32)
 
@@ -196,17 +195,17 @@ class PipelineBuilderDialog(QDialog):
 
         load_btn = QPushButton("Load Pipeline")
         load_btn.clicked.connect(self._load_config)
-        load_btn.setIcon(qta.icon("ph.upload", color=Colors.PRIMARY))
+        load_btn.setIcon(icon("ph.upload", role="primary"))
         footer_layout.addWidget(load_btn)
 
         export_btn = QPushButton("Export Pipeline")
         export_btn.clicked.connect(self._export_config)
-        export_btn.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
+        export_btn.setIcon(icon("ph.download", role="primary"))
         footer_layout.addWidget(export_btn)
 
         validate_btn = QPushButton("Validate Pipeline")
         validate_btn.clicked.connect(self._validate_pipeline)
-        validate_btn.setIcon(qta.icon("ph.check", color=Colors.PRIMARY))
+        validate_btn.setIcon(icon("ph.check", role="primary"))
         footer_layout.addWidget(validate_btn)
 
         footer_layout.addStretch()
@@ -266,7 +265,7 @@ class PipelineBuilderDialog(QDialog):
 
     def _create_library_button(self, name, info, color):
         """Create compact button for library operation."""
-        import qtawesome as qta
+        from ..icons import icon, icon_pixmap
 
         btn = QPushButton()
         btn.setFixedHeight(50)
@@ -293,7 +292,7 @@ class PipelineBuilderDialog(QDialog):
         btn_layout.setContentsMargins(4, 4, 4, 4)
 
         icon_label = QLabel()
-        icon_label.setPixmap(qta.icon(info["icon"], color=color).pixmap(20, 20))
+        icon_label.setPixmap(icon(info["icon"], color=color).pixmap(20, 20))
         btn_layout.addWidget(icon_label)
 
         text_layout = QVBoxLayout()
@@ -311,9 +310,7 @@ class PipelineBuilderDialog(QDialog):
         btn_layout.addLayout(text_layout, 1)
 
         add_icon_label = QLabel()
-        add_icon_label.setPixmap(
-            qta.icon("ph.plus", color=Colors.ICON_MUTED).pixmap(14, 14)
-        )
+        add_icon_label.setPixmap(icon_pixmap("ph.plus", 14, role="muted"))
         btn_layout.addWidget(add_icon_label)
 
         btn.setLayout(btn_layout)

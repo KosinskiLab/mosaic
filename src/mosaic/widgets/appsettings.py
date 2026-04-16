@@ -10,7 +10,6 @@ __all__ = ["AppSettingsPanel"]
 
 from collections import OrderedDict
 
-import qtawesome as qta
 from qtpy.QtGui import QPainter, QColor, QPen, QBrush, QPainterPath
 from qtpy.QtCore import Qt, Signal, QRectF, QThread
 from qtpy.QtWidgets import (
@@ -27,14 +26,22 @@ from qtpy.QtWidgets import (
 from mosaic.settings import Settings
 from mosaic.actor import QUALITY_PRESETS
 from mosaic.stylesheets import Colors, QScrollArea_style
+from mosaic.icons import icon
 from mosaic.widgets.sliders import SliderRow
 from mosaic.widgets.colors import ColorPickerRow
 from mosaic.widgets.segmented_control import SegmentedControl
 
+
+def _rgb(hex_str: str) -> tuple:
+    """Convert a ``#rrggbb`` string to a normalized ``(r, g, b)`` tuple."""
+    return QColor(hex_str).getRgbF()[:3]
+
+
 THEME_PAIRINGS = OrderedDict(
     [
+        # Matches the app's dark/light surface tokens.
+        ("Zinc", (_rgb(Colors.DARK["SURFACE"]), _rgb(Colors.LIGHT["SURFACE"]))),
         ("Slate", ((0.09, 0.10, 0.12), (0.97, 0.97, 0.96))),
-        ("Midnight", ((0.02, 0.02, 0.05), (1.00, 1.00, 1.00))),
         ("Steel", ((0.18, 0.20, 0.25), (0.90, 0.92, 0.94))),
         ("Ocean", ((0.10, 0.18, 0.28), (0.88, 0.93, 0.97))),
         ("Ember", ((0.22, 0.12, 0.08), (0.98, 0.95, 0.92))),
@@ -204,7 +211,7 @@ class CollapsibleSection(QWidget):
 
     def _update_header(self):
         icon_name = "ph.caret-down" if self._expanded else "ph.caret-right"
-        self._header.setIcon(qta.icon(icon_name, color=Colors.TEXT_SECONDARY))
+        self._header.setIcon(icon(icon_name, role="active"))
         self._header.setText(f" {self._title}")
 
 
@@ -275,16 +282,14 @@ class AppSettingsPanel(QFrame):
         header_layout.addStretch()
 
         reset_btn = QPushButton()
-        reset_btn.setIcon(
-            qta.icon("ph.arrow-counter-clockwise", color=Colors.ICON_MUTED)
-        )
+        reset_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
         reset_btn.setToolTip("Reset all appearance settings to defaults")
         reset_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
         reset_btn.clicked.connect(self._reset_settings)
         header_layout.addWidget(reset_btn)
 
         close_btn = QPushButton()
-        close_btn.setIcon(qta.icon("ph.x", color=Colors.TEXT_MUTED))
+        close_btn.setIcon(icon("ph.x", role="muted"))
         close_btn.setToolTip("Close panel")
         close_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
         close_btn.clicked.connect(self.hide)
@@ -338,7 +343,7 @@ class AppSettingsPanel(QFrame):
 
         self._custom_btn = QPushButton()
         self._custom_btn.setCheckable(True)
-        self._custom_btn.setIcon(qta.icon("ph.eyedropper", color=Colors.ICON))
+        self._custom_btn.setIcon(icon("ph.eyedropper", role="muted"))
         self._custom_btn.setFixedHeight(36)
         self._custom_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._custom_btn.setToolTip("Choose custom dark and light background colors")

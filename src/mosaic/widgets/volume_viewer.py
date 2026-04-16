@@ -19,7 +19,7 @@ from qtpy.QtWidgets import (
     QLabel,
     QMessageBox,
 )
-import qtawesome as qta
+from ..icons import icon as _icon_factory
 
 from qtpy.QtCore import Signal
 from vtkmodules.util import numpy_support
@@ -27,8 +27,6 @@ from vtkmodules.util import numpy_support
 from ..utils import Throttle
 from .colors import ColorMapSelector
 from .sliders import SliderRow, DualHandleSlider
-from ..stylesheets import Colors
-
 
 _VTK_READERS = {
     ".mrc": "vtkMRCReader",
@@ -235,7 +233,7 @@ class VolumeViewer(QWidget):
 
     def _icon_button(self, icon_name, tooltip, callback):
         btn = QPushButton()
-        btn.setIcon(qta.icon(icon_name, color=Colors.ICON))
+        btn.setIcon(_icon_factory(icon_name, role="muted"))
         btn.setFixedWidth(30)
         btn.setToolTip(tooltip)
         btn.clicked.connect(callback)
@@ -416,7 +414,7 @@ class VolumeViewer(QWidget):
         self.slice.SetVisibility(visible)
         icon = "ph.eye" if visible else "ph.eye-slash"
         tip = "Hide volume" if visible else "Show volume"
-        self.visibility_button.setIcon(qta.icon(icon, color=Colors.ICON))
+        self.visibility_button.setIcon(_icon_factory(icon, role="muted"))
         self.visibility_button.setToolTip(tip)
         self._render()
 

@@ -24,7 +24,6 @@ from qtpy.QtWidgets import (
     QWidget,
     QMessageBox,
     QTableWidget,
-    QButtonGroup,
     QHeaderView,
     QTableWidgetItem,
     QFileDialog,
@@ -32,7 +31,6 @@ from qtpy.QtWidgets import (
     QStackedWidget,
 )
 import pyqtgraph as pg
-import qtawesome as qta
 
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
@@ -42,10 +40,12 @@ from ..widgets import (
     StyledListWidgetItem,
     ColorMapSelector,
     HistogramRangeSlider,
+    TabWidget,
     generate_gradient_colors,
 )
 from ..utils import Throttle
 from ..widgets.settings import get_widget_value, set_widget_value
+from ..icons import icon as _icon
 from ..stylesheets import (
     QScrollArea_style,
     QTable_style,
@@ -392,12 +392,7 @@ class ColorScaleSettingsDialog(QDialog):
     """Dialog for configuring color scale thresholds"""
 
     def __init__(self, parent=None):
-        from ..icons import (
-            dialog_accept_icon,
-            dialog_reject_icon,
-            dialog_margin,
-            footer_margin,
-        )
+        from ..icons import dialog_accept_icon, dialog_reject_icon
 
         super().__init__(parent)
         self.setWindowTitle("Color Scale Settings")
@@ -405,8 +400,8 @@ class ColorScaleSettingsDialog(QDialog):
 
         self._dialog_accept_icon = dialog_accept_icon
         self._dialog_reject_icon = dialog_reject_icon
-        self._dialog_margin = dialog_margin
-        self._footer_margin = footer_margin
+        self._dialog_margin = (10, 10, 10, 10)
+        self._footer_margin = (0, 10, 0, 0)
 
         self.lower_enabled = False
         self.upper_enabled = False
@@ -699,32 +694,6 @@ class PropertyAnalysisDialog(QDialog):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Tab bar
-        tab_bar = QWidget()
-        tab_bar_layout = QHBoxLayout(tab_bar)
-        tab_bar_layout.setContentsMargins(8, 4, 8, 4)
-        tab_bar_layout.setSpacing(4)
-
-        self._tab_group = QButtonGroup(self)
-        self._tab_group.setExclusive(True)
-
-        tab_style = f"""
-            QPushButton {{
-                border: none; padding: 6px 14px; font-size: 13px;
-                background: transparent; border-radius: 6px;
-                color: {Colors.TEXT_MUTED};
-            }}
-            QPushButton:checked {{
-                background: {Colors.BG_HOVER};
-                color: {Colors.TEXT_PRIMARY};
-            }}
-            QPushButton:hover:!checked {{
-                color: {Colors.TEXT_SECONDARY};
-            }}
-            QPushButton:focus {{ outline: none; }}
-        """
-
-        self._stack = QStackedWidget()
         self.visualization_tab = QWidget()
         self.analysis_tab = QWidget()
         self.statistics_tab = QWidget()
@@ -733,27 +702,14 @@ class PropertyAnalysisDialog(QDialog):
         self._setup_analysis_tab()
         self._setup_statistics_tab()
 
-        for idx, (icon_name, label, widget) in enumerate(
-            [
-                ("ph.paint-brush", "Visualize", self.visualization_tab),
-                ("ph.chart-line", "Distribution", self.analysis_tab),
-                ("ph.chart-bar", "Statistics", self.statistics_tab),
-            ]
-        ):
-            btn = QPushButton(qta.icon(icon_name, color=Colors.ICON), label)
-            btn.setCheckable(True)
-            btn.setStyleSheet(tab_style)
-            btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            self._tab_group.addButton(btn, idx)
-            tab_bar_layout.addWidget(btn)
-            self._stack.addWidget(widget)
+        self._tabs = TabWidget(tab_bar_margins=(0, 0, 0, 0))
+        self._tabs.addTab(self.visualization_tab, "Visualize", _icon("ph.paint-brush"))
+        self._tabs.addTab(self.analysis_tab, "Distribution", _icon("ph.chart-line"))
+        self._tabs.addTab(self.statistics_tab, "Statistics", _icon("ph.chart-bar"))
+        self._tabs.finalize()
+        self._tabs.currentChanged.connect(self._switch_tab)
 
-        tab_bar_layout.addStretch()
-        self._tab_group.button(0).setChecked(True)
-        self._tab_group.idClicked.connect(self._switch_tab)
-
-        main_layout.addWidget(tab_bar)
-        main_layout.addWidget(self._stack)
+        main_layout.addWidget(self._tabs)
 
     def _create_colormap_combo(self, with_settings_button=False):
         """Create a colormap combo widget with optional settings button"""
@@ -770,7 +726,7 @@ class PropertyAnalysisDialog(QDialog):
 
         if with_settings_button:
             settings_btn = QPushButton()
-            settings_btn.setIcon(qta.icon("ph.gear", color=Colors.ICON))
+            settings_btn.setIcon(_icon("ph.gear"))
             settings_btn.setToolTip("Color Scale Settings")
             settings_btn.setFixedSize(28, 28)
             settings_btn.clicked.connect(_open_colormap_settings)
@@ -849,20 +805,20 @@ class PropertyAnalysisDialog(QDialog):
 
         self.reset_filter_btn = QPushButton("Reset")
         self.reset_filter_btn.setIcon(
-            qta.icon("ph.arrow-counter-clockwise", color=Colors.PRIMARY)
+            _icon("ph.arrow-counter-clockwise", role="primary")
         )
         self.reset_filter_btn.setToolTip("Reset filter to show all points")
         self.reset_filter_btn.clicked.connect(self._reset_filter)
         filter_btn_layout.addWidget(self.reset_filter_btn)
 
         self.extract_btn = QPushButton("Extract")
-        self.extract_btn.setIcon(qta.icon("ph.selection", color=Colors.PRIMARY))
+        self.extract_btn.setIcon(_icon("ph.selection", role="primary"))
         self.extract_btn.setToolTip("Create new object from points within filter range")
         self.extract_btn.clicked.connect(self._extract_filtered)
         filter_btn_layout.addWidget(self.extract_btn)
 
         self.split_btn = QPushButton("Split")
-        self.split_btn.setIcon(qta.icon("ph.git-fork", color=Colors.PRIMARY))
+        self.split_btn.setIcon(_icon("ph.git-fork", role="primary"))
         self.split_btn.setToolTip(
             "Split each object into separate objects per category"
         )
@@ -949,7 +905,7 @@ class PropertyAnalysisDialog(QDialog):
 
         button_layout = QHBoxLayout()
         refresh_btn = QPushButton("Refresh")
-        refresh_btn.setIcon(qta.icon("ph.arrow-clockwise", color=Colors.PRIMARY))
+        refresh_btn.setIcon(_icon("ph.arrow-clockwise", role="primary"))
         refresh_btn.clicked.connect(self._preview)
         button_layout.addWidget(refresh_btn)
 
@@ -964,7 +920,7 @@ class PropertyAnalysisDialog(QDialog):
         button_layout.addStretch()
 
         self.visualize_export_btn = QPushButton("Export")
-        self.visualize_export_btn.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
+        self.visualize_export_btn.setIcon(_icon("ph.download", role="primary"))
         self.visualize_export_btn.clicked.connect(self._export_data)
         button_layout.addWidget(self.visualize_export_btn)
 
@@ -1061,7 +1017,7 @@ class PropertyAnalysisDialog(QDialog):
         button_layout.addStretch()
 
         self.analysis_export_btn = QPushButton("Export Plot")
-        self.analysis_export_btn.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
+        self.analysis_export_btn.setIcon(_icon("ph.download", role="primary"))
         self.analysis_export_btn.clicked.connect(self._export_plot)
         button_layout.addWidget(self.analysis_export_btn)
 
@@ -1091,9 +1047,7 @@ class PropertyAnalysisDialog(QDialog):
         button_layout.addStretch()
 
         self.statistics_export_btn = QPushButton("Export Statistics")
-        self.statistics_export_btn.setIcon(
-            qta.icon("ph.download", color=Colors.PRIMARY)
-        )
+        self.statistics_export_btn.setIcon(_icon("ph.download", role="primary"))
         self.statistics_export_btn.clicked.connect(self._export_statistics)
         button_layout.addWidget(self.statistics_export_btn)
 
@@ -1618,11 +1572,10 @@ class PropertyAnalysisDialog(QDialog):
                 self.cdata.models.render()
 
     def _switch_tab(self, index):
-        self._stack.setCurrentIndex(index)
         self._update_tab()
 
     def _update_tab(self):
-        current_tab_index = self._stack.currentIndex()
+        current_tab_index = self._tabs.currentIndex()
 
         self.plot_widget.clear()
         QTimer.singleShot(
@@ -1668,8 +1621,7 @@ class PropertyAnalysisDialog(QDialog):
         """Update plot type button icons and styling based on selection state."""
         for plot_type, (btn, icon_name) in self.plot_type_buttons.items():
             is_selected = plot_type == self.current_plot_type
-            icon_color = Colors.PRIMARY if is_selected else Colors.ICON
-            btn.setIcon(qta.icon(icon_name, color=icon_color))
+            btn.setIcon(_icon(icon_name, role="primary" if is_selected else "muted"))
 
             if is_selected:
                 btn.setStyleSheet(
@@ -1698,7 +1650,7 @@ class PropertyAnalysisDialog(QDialog):
 
     def _update_plot(self):
         """Update the plot based on the current property and selected objects"""
-        if self._stack.currentIndex() != 1:
+        if self._tabs.currentIndex() != 1:
             return None
 
         selected_items = self._get_selection()

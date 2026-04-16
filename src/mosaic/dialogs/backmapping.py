@@ -16,10 +16,8 @@ from qtpy.QtWidgets import (
     QMessageBox,
     QCheckBox,
 )
-import qtawesome as qta
-
+from ..icons import icon
 from ..widgets import DialogFooter, PathSelector
-from ..stylesheets import Colors
 
 
 class MeshMappingRow(QWidget):
@@ -55,11 +53,11 @@ class MeshMappingRow(QWidget):
 
     def update_button_state(self, state):
         if state:
-            self.toggle_btn.setIcon(qta.icon("ph.plus", color=Colors.ICON))
+            self.toggle_btn.setIcon(icon("ph.plus"))
             self.toggle_btn.clicked.connect(self.add_requested)
             return None
 
-        self.toggle_btn.setIcon(qta.icon("ph.trash", color=Colors.ICON))
+        self.toggle_btn.setIcon(icon("ph.trash"))
         self.toggle_btn.clicked.connect(self.deleteLater)
 
     def add_requested(self):
