@@ -21,6 +21,7 @@ from qtpy.QtWidgets import (
     QTreeWidgetItem,
     QSizePolicy,
     QCheckBox,
+    QAbstractItemView,
 )
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtGui import QFont
@@ -55,7 +56,6 @@ def _make_grid():
 def _add_to_grid(grid, label_text, widget, row, col, wide=False):
     """Add a label: widget pair to the grid at the given logical column."""
     label = QLabel(f"{label_text}:")
-    label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
 
     widget.setFixedHeight(Colors.WIDGET_HEIGHT)
 
@@ -345,6 +345,7 @@ class OperationCardWidget(QFrame):
         if base_settings and "options" in base_settings:
             self.method_combo = create_setting_widget(base_settings)
             self.method_combo.currentTextChanged.connect(self._update_method_settings)
+            self.method_combo.setMaximumWidth(220)
             param_name = base_settings.get("parameter", "method")
             self.method_combo.setProperty("parameter", param_name)
             _add_to_grid(
@@ -577,6 +578,9 @@ class PipelineTreeWidget(QTreeWidget):
         self.setAcceptDrops(False)
 
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.verticalScrollBar().setSingleStep(12)
         self.setStyleSheet(
             """
             QTreeWidget {

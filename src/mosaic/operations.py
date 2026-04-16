@@ -1177,6 +1177,35 @@ def smooth(geometry, method: str, **kwargs):
                 ),
             ),
         ),
+        Method(
+            "Shrink Wrap",
+            "shrink_wrap",
+            description="Deforms the convex hull toward the points under a "
+            "topology-preserving, self-intersection-free flow. Best on clean, "
+            "roughly equidistant point clouds (e.g. resampled from a mesh) -- "
+            "raw segmentation data often produces spikes.",
+            params=(
+                Param(
+                    "max_iter",
+                    "int",
+                    default=100,
+                    min=1,
+                    label="Max Iterations",
+                    description="Maximum number of flow iterations.",
+                ),
+                _K_NEIGHBORS,
+                Param(
+                    "target_edge_length",
+                    "float",
+                    default=-1.0,
+                    min=-1.0,
+                    label="Edge Length",
+                    description="Target edge length for the post-fairing "
+                    "remesh, in input units. -1 uses median of the flowed mesh.",
+                ),
+                *_FAIRING_PARAMS,
+            ),
+        ),
         Method("Sphere", "sphere", gui=False),
         Method("Ellipsoid", "ellipsoid", gui=False),
         Method("Cylinder", "cylinder", gui=False),
@@ -1237,6 +1266,7 @@ def fit(geometry, method: str, **kwargs):
         - 'ball_pivoting' : Ball pivoting surface reconstruction
         - 'poisson' : Poisson surface reconstruction
         - 'flying_edges' : Flying edges isosurface extraction
+        - 'shrink_wrap' : Topology-preserving deformation (Reach for the Spheres)
         - 'sphere' : Least-squares sphere
         - 'ellipsoid' : Ellipsoid via eigenvalue decomposition
         - 'cylinder' : Cylinder via PCA and constrained optimization
