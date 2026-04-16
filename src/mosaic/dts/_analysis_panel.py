@@ -9,7 +9,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from typing import Callable, Optional
 
 import numpy as np
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, QTimer
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -46,6 +46,9 @@ class AnalysisPanel(QWidget):
         Parent widget.
     """
 
+    _LOD_TARGET_POINTS = 1000
+    _LOD_IDLE_MS = 150
+
     def __init__(
         self,
         get_selected_run_ids: Optional[Callable] = None,
@@ -55,6 +58,13 @@ class AnalysisPanel(QWidget):
         self._get_selected_run_ids = get_selected_run_ids or (lambda: [])
         self._screen_results = None
         self._screen_dir = None
+
+        self._lod_active = False
+        self._lod_downsample: Optional[int] = None
+        self._lod_timer = QTimer(self)
+        self._lod_timer.setSingleShot(True)
+        self._lod_timer.setInterval(self._LOD_IDLE_MS)
+        self._lod_timer.timeout.connect(self._restore_full_quality)
 
         self._build_ui()
 
@@ -72,6 +82,7 @@ class AnalysisPanel(QWidget):
         )
         self._plot_item = self._plot_widget.addPlot()
         self._style_plot(self._plot_item)
+        self._plot_item.vb.sigRangeChangedManually.connect(self._on_user_interaction)
 
         self._placeholder = QLabel(
             "No time series data available.\n" "Select a metric to display."
@@ -230,6 +241,24 @@ class AnalysisPanel(QWidget):
             if r["status"] == "available"
         ]
 
+    def _on_user_interaction(self, *_args):
+        """Switch to aggressive downsampling while zooming/panning."""
+        if self._lod_downsample is None:
+            return
+        if not self._lod_active:
+            self._lod_active = True
+            self._plot_item.setDownsampling(
+                ds=self._lod_downsample, auto=False, mode="peak"
+            )
+        self._lod_timer.start()
+
+    def _restore_full_quality(self):
+        """Restore auto downsampling once interaction has stopped."""
+        if not self._lod_active:
+            return
+        self._lod_active = False
+        self._plot_item.setDownsampling(auto=True, mode="peak")
+
     def _style_plot(self, plot):
         fg = Colors.TEXT_PRIMARY
         for axis_name in ("left", "bottom", "top", "right"):
@@ -237,6 +266,7 @@ class AnalysisPanel(QWidget):
             axis.setPen(pg.mkPen(fg))
             axis.setTextPen(pg.mkPen(fg))
         plot.setClipToView(True)
+        plot.setDownsampling(auto=True, mode="peak")
         pg.setConfigOptions(antialias=True)
 
     def _extract_series(self):
@@ -293,9 +323,16 @@ class AnalysisPanel(QWidget):
             plot.legend = None
 
         if not series:
+            self._lod_downsample = None
             self._stack.setCurrentIndex(0)
             self._plot_widget.setUpdatesEnabled(True)
             return
+
+        total_points = sum(len(y) for _, _, y in series)
+        if total_points <= self._LOD_TARGET_POINTS:
+            self._lod_downsample = None
+        else:
+            self._lod_downsample = max(2, total_points // self._LOD_TARGET_POINTS)
 
         self._stack.setCurrentIndex(1)
 
@@ -338,6 +375,7 @@ class AnalysisPanel(QWidget):
                 y,
                 pen=pg.mkPen(pen_color, width=1.5),
                 name=" ".join(label_parts),
+                skipFiniteCheck=True,
             )
 
         plot.vb.enableAutoRange()

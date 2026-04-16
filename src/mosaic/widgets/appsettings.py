@@ -25,7 +25,7 @@ from qtpy.QtWidgets import (
 
 from mosaic.settings import Settings
 from mosaic.actor import QUALITY_PRESETS
-from mosaic.stylesheets import Colors, QScrollArea_style
+from mosaic.stylesheets import Colors
 from mosaic.icons import icon
 from mosaic.widgets.sliders import SliderRow
 from mosaic.widgets.colors import ColorPickerRow
@@ -301,7 +301,6 @@ class AppSettingsPanel(QFrame):
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet(QScrollArea_style)
 
         self._body = QWidget()
         self._body_layout = QVBoxLayout(self._body)

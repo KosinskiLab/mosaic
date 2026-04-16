@@ -32,7 +32,6 @@ from ..widgets import PathSelector, SearchWidget, TabWidget
 from ..widgets.settings import get_widget_value
 from ..stylesheets import (
     QGroupBox_style,
-    QScrollArea_style,
     QTable_style,
     QLineEdit_style,
     Colors,
@@ -59,9 +58,7 @@ class DTSScreeningDialog(QDialog):
         self.resize(1250, 820)
 
         self._setup_ui()
-        self.setStyleSheet(
-            QGroupBox_style + QTable_style + QScrollArea_style + QLineEdit_style
-        )
+        self.setStyleSheet(QGroupBox_style + QTable_style + QLineEdit_style)
 
         for btn in self.findChildren(QPushButton):
             btn.setAutoDefault(False)
@@ -391,12 +388,12 @@ class DTSScreeningDialog(QDialog):
         if traj_dir is None:
             return QMessageBox.warning(self, "Error", "No trajectory output found.")
 
-        from ..geometry import GeometryTrajectory
         from ._utils import (
             list_trajectory_files,
             build_trajectory_frames,
             collect_vertex_properties,
         )
+        from ..parallel import submit_io_task
 
         files = list_trajectory_files(str(traj_dir))
         if not files:
@@ -412,7 +409,24 @@ class DTSScreeningDialog(QDialog):
                 offset = np.array([float(x) for x in known["offset"].split(",")])
 
         vertex_props = collect_vertex_properties(str(run_dir))
-        frames = build_trajectory_frames(str(traj_dir), scale, offset, vertex_props)
+
+        submit_io_task(
+            f"Import {run_id}",
+            build_trajectory_frames,
+            functools.partial(self._on_trajectory_loaded, run_id=run_id, scale=scale),
+            str(traj_dir),
+            scale,
+            offset,
+            vertex_props,
+        )
+
+    def _on_trajectory_loaded(self, frames, run_id: str, scale: float):
+        """GUI-thread callback: construct GeometryTrajectory and add it."""
+        if not frames or self.cdata is None:
+            return
+
+        from ..geometry import GeometryTrajectory
+
         trajectory = GeometryTrajectory(
             sampling_rate=1 / scale,
             trajectory=frames,

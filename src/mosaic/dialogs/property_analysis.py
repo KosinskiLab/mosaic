@@ -47,7 +47,6 @@ from ..utils import Throttle
 from ..widgets.settings import get_widget_value, set_widget_value
 from ..icons import icon as _icon
 from ..stylesheets import (
-    QScrollArea_style,
     QTable_style,
     Colors,
 )
@@ -555,7 +554,7 @@ class PropertyAnalysisDialog(QDialog):
 
         self.legend = legend
         self._setup_ui()
-        self.setStyleSheet(QTable_style + QScrollArea_style)
+        self.setStyleSheet(QTable_style)
 
         self.cdata.data.vtk_pre_render.connect(self._on_render_update)
         self.cdata.models.vtk_pre_render.connect(self._on_render_update)
@@ -1808,6 +1807,8 @@ class PropertyAnalysisDialog(QDialog):
             plot = self.plot_widget.addPlot(row=0, col=0)
             plot.setLabel("left", y_label)
             plot.setLabel("bottom", x_label)
+            plot.setClipToView(True)
+            plot.setDownsampling(auto=True, mode="peak")
 
             plot.disableAutoRange()
             plot.addLegend(offset=(-10, 10))
@@ -1849,6 +1850,8 @@ class PropertyAnalysisDialog(QDialog):
             plot.setTitle(name)
             plot.setLabel("left", y_label)
             plot.setLabel("bottom", x_label)
+            plot.setClipToView(True)
+            plot.setDownsampling(auto=True, mode="peak")
 
             try:
                 item = self._create_plot_item(

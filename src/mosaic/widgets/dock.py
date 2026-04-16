@@ -100,13 +100,10 @@ def create_or_toggle_dock(
     )
 
     if scroll:
-        from ..stylesheets import QScrollArea_style
-
         scroll_area = VerticalScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll_area.setStyleSheet(QScrollArea_style)
         scroll_area.setWidget(dialog_widget)
         dock.setWidget(scroll_area)
     else:

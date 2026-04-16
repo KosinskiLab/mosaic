@@ -1,10 +1,6 @@
 """
 Floating HUD overlay for the volume viewer.
 
-Dark-glass pill bars anchored to the bottom of the VTK viewport.
-Secondary adjustments (contrast, gamma, colormap) live behind an
-overflow toggle to keep the bar minimal.
-
 Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
@@ -20,7 +16,6 @@ from qtpy.QtWidgets import (
     QApplication,
 )
 
-from ..stylesheets import Colors
 from ..icons import icon
 from .segmented_control import SegmentedControl
 from .volume_viewer import VolumeViewer
@@ -232,7 +227,7 @@ class _ViewerStrip(QWidget):
     def _build_layout(self, add_btn, remove_btn):
         v = self.viewer
         main = QVBoxLayout(self)
-        main.setContentsMargins(14, 6, 14, 6)
+        main.setContentsMargins(6, 6, 6, 6)
         main.setSpacing(4)
 
         row = QHBoxLayout()
