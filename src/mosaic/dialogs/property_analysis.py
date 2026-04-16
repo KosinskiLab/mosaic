@@ -44,12 +44,9 @@ from ..widgets import (
     generate_gradient_colors,
 )
 from ..utils import Throttle
-from ..widgets.settings import get_widget_value, set_widget_value
+from ..widgets.settings import get_widget_value
 from ..icons import icon as _icon
-from ..stylesheets import (
-    QTable_style,
-    Colors,
-)
+from ..stylesheets import Colors
 
 
 def to_numeric(arr):
@@ -554,7 +551,6 @@ class PropertyAnalysisDialog(QDialog):
 
         self.legend = legend
         self._setup_ui()
-        self.setStyleSheet(QTable_style)
 
         self.cdata.data.vtk_pre_render.connect(self._on_render_update)
         self.cdata.models.vtk_pre_render.connect(self._on_render_update)

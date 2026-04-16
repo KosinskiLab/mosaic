@@ -754,6 +754,7 @@ _GLOBAL_STYLES = [
     _build_QToolButton_style,
     _build_QMenu_style,
     _build_QDockWidget_style,
+    _build_QTable_style,
 ]
 
 
@@ -773,6 +774,7 @@ def build_qt_palette():
 
     pal.setColor(QPalette.ColorRole.Window, QColor(surface))
     pal.setColor(QPalette.ColorRole.Base, QColor(base))
+    pal.setColor(QPalette.ColorRole.AlternateBase, QColor(Colors.BG_TERTIARY))
     pal.setColor(QPalette.ColorRole.WindowText, QColor(Colors.TEXT_PRIMARY))
     pal.setColor(QPalette.ColorRole.Text, QColor(Colors.TEXT_PRIMARY))
     pal.setColor(QPalette.ColorRole.PlaceholderText, QColor(Colors.TEXT_MUTED))
@@ -870,6 +872,28 @@ def _update_macos_titlebar_color(ns_win):
         send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
         send.restype = ctypes.c_void_p
         send(ns_win, objc.sel_registerName(b"setBackgroundColor:"), color)
+
+        # Match NSWindow appearance to the theme so the system-drawn title text
+        # (and traffic-light buttons) pick up the correct contrast colour.
+        appearance_name = (
+            b"NSAppearanceNameDarkAqua"
+            if c.lightness() < 128
+            else b"NSAppearanceNameAqua"
+        )
+        NSString = objc.objc_getClass(b"NSString")
+        send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p]
+        send.restype = ctypes.c_void_p
+        ns_name = send(
+            NSString, objc.sel_registerName(b"stringWithUTF8String:"), appearance_name
+        )
+        NSAppearance = objc.objc_getClass(b"NSAppearance")
+        send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+        send.restype = ctypes.c_void_p
+        appearance = send(
+            NSAppearance, objc.sel_registerName(b"appearanceNamed:"), ns_name
+        )
+        if appearance:
+            send(ns_win, objc.sel_registerName(b"setAppearance:"), appearance)
     except Exception:
         pass
 
@@ -885,27 +909,18 @@ def install_macos_titlebar_filter():
     class _MacOSTitleBarFilter(QObject):
         """Event filter that styles the native title bar of every top-level window."""
 
-        def __init__(self, parent=None):
-            super().__init__(parent)
-            self._styled = set()
-
         def eventFilter(self, obj, event):
             if (
                 event.type() == QEvent.Type.Show
                 and hasattr(obj, "isWindow")
                 and obj.isWindow()
-                and id(obj) not in self._styled
             ):
                 ns_win = _get_nswindow(obj)
                 if ns_win is not None:
                     from qtpy.QtWidgets import QMainWindow
 
-                    self._styled.add(id(obj))
                     _apply_macos_titlebar(
                         ns_win, hide_title=isinstance(obj, QMainWindow)
-                    )
-                    obj.destroyed.connect(
-                        lambda _, oid=id(obj): self._styled.discard(oid)
                     )
             return False
 

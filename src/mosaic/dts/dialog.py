@@ -30,12 +30,7 @@ import pyqtgraph as pg
 
 from ..widgets import PathSelector, SearchWidget, TabWidget
 from ..widgets.settings import get_widget_value
-from ..stylesheets import (
-    QGroupBox_style,
-    QTable_style,
-    QLineEdit_style,
-    Colors,
-)
+from ..stylesheets import Colors
 from ..icons import icon, icon_button
 from ._configure import ConfigurePanel
 from ._analysis_panel import AnalysisPanel
@@ -58,8 +53,6 @@ class DTSScreeningDialog(QDialog):
         self.resize(1250, 820)
 
         self._setup_ui()
-        self.setStyleSheet(QGroupBox_style + QTable_style + QLineEdit_style)
-
         for btn in self.findChildren(QPushButton):
             btn.setAutoDefault(False)
 
