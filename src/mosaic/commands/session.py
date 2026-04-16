@@ -255,34 +255,28 @@ class Session:
 
                 mesh_model = TriangularMesh(to_open3d(data.vertices, data.faces))
 
+            kw = {
+                "model": mesh_model,
+                "sampling_rate": sampling,
+                "vertex_properties": data.vertex_properties,
+            }
+            data_container = self._models
+            if not is_mesh:
+                data_container = self._data
+                kw |= {
+                    "points": data.vertices,
+                    "normals": data.normals,
+                    "quaternions": data.quaternions,
+                }
+
             if persist:
-                if is_mesh:
-                    idx = self._models.add(
-                        model=mesh_model,
-                        sampling_rate=sampling,
-                    )
-                    geom = list(self._models.data)[idx]
-                else:
-                    idx = self._data.add(
-                        points=data.vertices,
-                        normals=data.normals,
-                        quaternions=data.quaternions,
-                        sampling_rate=sampling,
-                        vertex_properties=data.vertex_properties,
-                    )
-                    geom = list(self._data.data)[idx]
+                idx = data_container.add(**kw)
+                geom = data_container.get(idx)
 
                 self._order.append(geom)
                 indices.append(len(self._order) - 1)
             else:
-                geom = Geometry(
-                    points=data.vertices,
-                    normals=data.normals,
-                    quaternions=data.quaternions,
-                    sampling_rate=sampling,
-                    vertex_properties=data.vertex_properties,
-                    model=mesh_model,
-                )
+                geom = Geometry(**kw)
 
             if is_mesh:
                 geom.change_representation("surface")

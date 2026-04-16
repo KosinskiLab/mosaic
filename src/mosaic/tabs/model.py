@@ -14,6 +14,7 @@ from ..parallel import submit_task, submit_task_batch
 def _repair_mesh(
     geometry,
     max_hole_size=-1,
+    bridge_alpha=0.0,
     smoothness=0,
     curvature_weight=0,
     pressure=0,
@@ -35,9 +36,13 @@ def _repair_mesh(
 
     vs = np.asarray(model.mesh.vertices, dtype=np.float64).copy()
     fs = np.asarray(model.mesh.triangles).copy()
+    n_original_fs = len(fs)
+
+    if bridge_alpha > 0:
+        fs = meshing.bridge_boundaries(vs, fs, alpha=bridge_alpha)
 
     new_fs = meshing.close_holes(vs, fs, max_hole_size)
-    hole_fids = np.arange(len(fs), len(new_fs))
+    hole_fids = np.arange(n_original_fs, len(new_fs))
 
     if not (smoothness == 0 and curvature_weight == 0 and pressure == 0):
         try:
@@ -528,6 +533,18 @@ REPAIR_SETTINGS = {
             "min": -1.0,
             "default": -1.0,
             "description": "Maximum surface area of holes considered for triangulation.",
+        },
+        {
+            "label": "Bridge Alpha",
+            "parameter": "bridge_alpha",
+            "type": "float",
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.1,
+            "default": 0.0,
+            "description": "Alpha-shape parameter for bridging boundary vertices. "
+            "Connects disjoint components and bridges gaps Liepa cannot close. "
+            "0 disables bridging.",
         },
         {
             "label": "Flip Normals",

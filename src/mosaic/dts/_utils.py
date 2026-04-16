@@ -113,7 +113,7 @@ def _drop_pbc_faces(points, faces):
 
 
 def iter_frames(trajectory_dir, scale, offset, drop_pbc=False):
-    """Yield ``(points, faces, filepath)`` per frame with transform applied."""
+    """Yield ``(points, faces, vertex_properties, filepath)`` per frame with transform applied."""
     from ..formats import open_file
 
     for f in list_trajectory_files(trajectory_dir):
@@ -126,7 +126,7 @@ def iter_frames(trajectory_dir, scale, offset, drop_pbc=False):
         faces = container.faces
         if drop_pbc:
             faces = _drop_pbc_faces(points, faces)
-        yield points, faces, str(f)
+        yield points, faces, container.vertex_properties, str(f)
 
 
 def build_trajectory_frames(
@@ -160,21 +160,29 @@ def build_trajectory_frames(
     total = len(list_trajectory_files(trajectory_dir))
 
     frames = []
-    for i, (points, faces, filepath) in enumerate(
+    for i, (points, faces, file_vp, filepath) in enumerate(
         iter_frames(trajectory_dir, scale, offset, drop_pbc=drop_pbc)
     ):
         report_progress(current=i, total=total)
         fit = TriangularMesh(to_open3d(points, faces), repair=False)
         frame = {"fit": fit, "filename": filepath}
 
+        n_verts = fit.vertices.shape[0]
+        props = VertexPropertyContainer()
+
+        if file_vp is not None:
+            for name in file_vp.properties:
+                data = file_vp.get_property(name)
+                if data is not None and len(data) == n_verts:
+                    props.set_property(name, data)
+
         if vertex_props:
-            n_verts = fit.vertices.shape[0]
-            props = VertexPropertyContainer()
             for name, data in vertex_props.items():
                 if i < data.shape[0] and data.shape[1] == n_verts:
                     props.set_property(name, data[i])
-            if props.properties:
-                frame["vertex_properties"] = props
+
+        if props.properties:
+            frame["vertex_properties"] = props
 
         frames.append(frame)
 

@@ -1,6 +1,6 @@
 import functools
 from typing import Union
-from os.path import exists
+from os.path import exists, basename, normpath
 
 import numpy as np
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QMessageBox, QApplication, QFileDialog
@@ -160,10 +160,12 @@ class IntelligenceTab(QWidget):
             QMessageBox.warning(self, "Error", f"No meshes found at: {directory}.")
             return None
 
+        name = basename(normpath(directory)) or "trajectory"
+
         submit_io_task(
             "Import trajectory",
             build_trajectory_frames,
-            functools.partial(self._on_trajectory_loaded, scale=scale),
+            functools.partial(self._on_trajectory_loaded, scale=scale, name=name),
             directory,
             scale,
             offset,
@@ -171,7 +173,7 @@ class IntelligenceTab(QWidget):
             drop_pbc,
         )
 
-    def _on_trajectory_loaded(self, frames, scale: float):
+    def _on_trajectory_loaded(self, frames, scale: float, name: str):
         """GUI-thread callback: construct GeometryTrajectory and add it."""
         if not frames or self.cdata is None:
             return
@@ -183,6 +185,7 @@ class IntelligenceTab(QWidget):
             trajectory=frames,
             model=frames[0]["fit"],
             vertex_properties=frames[0].get("vertex_properties"),
+            meta={"name": name},
         )
         trajectory.change_representation("mesh")
         self.cdata.models.add(trajectory)

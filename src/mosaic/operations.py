@@ -1069,6 +1069,7 @@ def smooth(geometry, method: str, **kwargs):
                     "alpha",
                     "float",
                     default=1.0,
+                    step=0.1,
                     description="Alpha-shape parameter.",
                     notes="Large values yield coarser features.",
                 ),

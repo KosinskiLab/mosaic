@@ -19,6 +19,7 @@ _module_map = {
     ".parser": [
         "GeometryDataContainer",
         "VertexPropertyContainer",
+        "NotASegmentationError",
         "read_ndjson",
         "read_volume",
         "load_density",
