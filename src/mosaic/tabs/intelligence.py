@@ -1,5 +1,5 @@
 from typing import Union
-from os.path import join, exists
+from os.path import exists
 
 import numpy as np
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QMessageBox, QApplication, QFileDialog
@@ -95,10 +95,6 @@ class IntelligenceTab(QWidget):
             msg = f"{geometry} is not a triangular mesh."
             return QMessageBox.warning(self, "Error", msg)
 
-        directory = getExistingDirectory(self, caption="Select or create directory")
-        if not directory:
-            return None
-
         dialog = MeshEquilibrationDialog(None)
         if not dialog.exec():
             return -1
@@ -108,7 +104,7 @@ class IntelligenceTab(QWidget):
             equilibrate_fit,
             None,
             geometry,
-            directory,
+            dialog.get_output_directory(),
             dialog.get_parameters(),
         )
 
@@ -116,33 +112,7 @@ class IntelligenceTab(QWidget):
         from ..meshing import setup_hmff
         from ..dts._hmff_dialog import HMFFDialog
 
-        directory = getExistingDirectory(
-            self, caption="Select directory with equilibrated meshes."
-        )
-        if not directory:
-            return None
-
-        mesh_config = join(directory, "mesh.txt")
-        if not exists(mesh_config):
-            msg = f"Missing mesh_config at {mesh_config}. Most likely {directory} "
-            "is not a valid directory created by Equilibrate Mesh."
-            return QMessageBox.warning(self, "Error", msg)
-
-        with open(mesh_config, mode="r", encoding="utf-8") as infile:
-            data = [x.strip() for x in infile.read().split("\n")]
-            data = [x.split("\t") for x in data if len(x)]
-
-        headers = data.pop(0)
-        ret = {header: list(column) for header, column in zip(headers, zip(*data))}
-
-        if not all(t in ret.keys() for t in ("file", "scale_factor", "offset")):
-            print(
-                "mesh_config is malformated. Expected file, scale_factor, "
-                f"offset columns, got {', '.join(list(ret.keys()))}."
-            )
-            return -1
-
-        dialog = HMFFDialog(None, mesh_options=ret["file"])
+        dialog = HMFFDialog(None)
         if not dialog.exec():
             return -1
 
@@ -150,8 +120,7 @@ class IntelligenceTab(QWidget):
             "HMFF Setup",
             setup_hmff,
             None,
-            ret,
-            directory=directory,
+            dialog.get_mesh_conf(),
             **dialog.get_parameters(),
         )
 
@@ -220,10 +189,6 @@ class IntelligenceTab(QWidget):
         from ..meshing import mesh_to_cg
         from ..dialogs import MeshMappingDialog
 
-        directory = getExistingDirectory(self, caption="Select output directory")
-        if not directory:
-            return None
-
         fits = self.cdata.format_datalist("models", mesh_only=True)
         clusters = self.cdata.format_datalist("data")
         dialog = MeshMappingDialog(fits=fits, clusters=clusters)
@@ -237,7 +202,7 @@ class IntelligenceTab(QWidget):
             mesh_to_cg,
             None,
             edge_length=edge_length,
-            output_directory=directory,
+            output_directory=dialog.get_output_directory(),
             inclusions=mappings,
             include_normals=cast_ray,
             flip_normals=flip,

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -16,7 +18,7 @@ from qtpy.QtWidgets import (
 )
 import qtawesome as qta
 
-from ..widgets import DialogFooter
+from ..widgets import DialogFooter, PathSelector
 from ..stylesheets import Colors
 
 
@@ -85,11 +87,22 @@ class MeshMappingDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
-        from ..icons import dialog_margin, footer_margin
+        from ..icons import footer_margin
 
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
-        layout.setContentsMargins(*dialog_margin)
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        output_group = QGroupBox("Output")
+        output_layout = QHBoxLayout(output_group)
+        output_label = QLabel("Directory:")
+        self.output_selector = PathSelector(
+            placeholder="Output directory for coarse-grained mesh",
+            mode="directory",
+        )
+        output_layout.addWidget(output_label)
+        output_layout.addWidget(self.output_selector)
+        layout.addWidget(output_group)
 
         config_group = QGroupBox("Mesh")
         config_layout = QVBoxLayout()
@@ -151,16 +164,35 @@ class MeshMappingDialog(QDialog):
         mapping_group.setLayout(mapping_layout)
         layout.addWidget(mapping_group)
 
-        footer = DialogFooter(dialog=self, margin=footer_margin)
-        layout.addWidget(footer)
+        self.footer = DialogFooter(dialog=self, margin=footer_margin)
+        self.footer.accept_button.setEnabled(False)
+        layout.addWidget(self.footer)
+
+        self.output_selector.path_input.textChanged.connect(self._update_accept_state)
 
         first_row = MeshMappingRow(
             self.clusters, is_first=True, parent=self.mapping_container, dialog=self
         )
         self.mapping_layout.insertWidget(self.mapping_layout.count() - 1, first_row)
 
+    def _update_accept_state(self, *_):
+        """Enable the accept button only when a directory is set."""
+        path = self.output_selector.get_path().strip()
+        self.footer.accept_button.setEnabled(bool(path))
+
     def accept(self):
         """Validate the dialog inputs before accepting"""
+        path = self.output_selector.get_path().strip()
+        try:
+            Path(path).mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            QMessageBox.warning(
+                self,
+                "Invalid Output Directory",
+                f"Cannot use '{path}':\n{exc}",
+            )
+            return
+
         if not self.fit_combo.currentText():
             QMessageBox.warning(
                 self, "Validation Error", "Please select a surface fit."
@@ -183,6 +215,10 @@ class MeshMappingDialog(QDialog):
             return
 
         return super().accept()
+
+    def get_output_directory(self) -> str:
+        """Return the selected output directory."""
+        return self.output_selector.get_path().strip()
 
     def add_mapping_row(self):
         new_row = MeshMappingRow(

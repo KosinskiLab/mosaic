@@ -48,7 +48,13 @@ __all__ = ["DTSScreeningDialog"]
 
 def _icon_button(icon_name, size=22, tooltip="", flat=True):
     btn = QPushButton()
-    btn.setIcon(qta.icon(icon_name, color=Colors.ICON))
+    btn.setIcon(
+        qta.icon(
+            icon_name,
+            color=Colors.ICON_ACTIVE,
+            color_disabled=Colors.ICON,
+        )
+    )
     btn.setFixedSize(size, size)
     btn.setToolTip(tooltip)
     btn.setFlat(flat)

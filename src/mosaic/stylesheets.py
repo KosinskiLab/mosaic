@@ -80,7 +80,7 @@ class Colors:
         for key, value in palette.items():
             setattr(cls, key, value)
 
-        # Derived aliases — icon colors track the text hierarchy
+        # Icon colors track the text hierarchy
         cls.ICON = cls.TEXT_MUTED
         cls.ICON_MUTED = cls.TEXT_MUTED
         cls.ICON_ACTIVE = cls.TEXT_SECONDARY
