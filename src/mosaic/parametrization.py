@@ -29,6 +29,7 @@ __all__ = [
     "BallPivoting",
     "PoissonMesh",
     "AlphaShape",
+    "ShrinkWrap",
     "FlyingEdges",
     "SplineCurve",
 ]
@@ -1485,15 +1486,6 @@ class PoissonMesh(TriangularMesh):
 
 
 class AlphaShape(TriangularMesh):
-    """
-    Represent a point cloud as triangular mesh.
-
-    Parameters
-    ----------
-    mesh : open3d.cpu.pybind.geometry.TriangleMesh
-        Triangular mesh.
-    """
-
     @classmethod
     def fit(
         cls,
@@ -1603,16 +1595,152 @@ class AlphaShape(TriangularMesh):
         return cls(mesh=meshing.to_open3d(vs, fs))
 
 
+class ShrinkWrap(TriangularMesh):
+    @classmethod
+    def fit(
+        cls,
+        positions: np.ndarray,
+        voxel_size: float = 1,
+        max_iter: int = 100,
+        k_neighbors: int = 8,
+        target_edge_length: float = -1,
+        smoothness: float = 0.0,
+        curvature_weight: float = 0.0,
+        pressure: float = 0.0,
+        boundary_ring: int = 0,
+        tol: float = -1,
+        **kwargs,
+    ) -> "ShrinkWrap":
+        """
+        Shrink-wrap surface reconstruction via Reach for the Spheres [1]_.
+
+        Notes
+        -----
+        Starts from the convex hull of the input points and deforms it
+        inward toward the point cloud under a topology-preserving,
+        self-intersection-free flow. A final isotropic remeshing and
+        fairing pass smooths out local artefacts left by the flow.
+
+        The flow is sensitive to non-uniform sampling and noise in the
+        input -- raw segmentation point clouds often produce sharp
+        spikes where neighbouring samples disagree on the local normal.
+        Best results come from inputs that are relatively clean and
+        roughly equidistantly spaced, e.g. points sampled from an
+        intermediate mesh reconstruction rather than the raw cloud.
+
+        References
+        ----------
+        .. [1] Sellán, Batty, Stein. "Reach For the Spheres: Tangency-aware
+           surface reconstruction of SDFs." SIGGRAPH Asia 2023.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Point coordinates with shape (n, 3).
+        voxel_size : float
+            Sampling rate of the input point cloud.
+        max_iter : int
+            Maximum flow iterations.
+        k_neighbors : int
+            Neighbourhood size for normal estimation and orientation.
+        target_edge_length : float
+            Target edge length for the post-processing remesher, in the
+            same units as ``positions``. ``-1`` uses the median edge
+            length of the flowed mesh.
+        smoothness : float
+            Balance between position anchoring and curvature minimisation
+            during fairing. 0 disables fairing.
+        curvature_weight : float
+            Weight for triharmonic (higher-order smoothing) energy.
+        pressure : float
+            Internal mesh pressure along vertex normals.
+        boundary_ring : int
+            Number of vertex rings around inferred vertices to include in fairing.
+        tol : float
+            Tangency tolerance for the flow. ``< 0`` uses the default.
+
+        Returns
+        -------
+        ShrinkWrap
+            Reconstructed surface mesh.
+        """
+        import gpytoolbox as gpy
+        from scipy.spatial import cKDTree
+
+        positions = np.asarray(positions, dtype=np.float64)
+        positions_orig = positions
+
+        center = positions.mean(axis=0)
+        positions = positions - center
+        scale = float(np.abs(positions).max())
+        positions = positions / scale
+
+        pcd = utils.compute_normals(positions, k=k_neighbors, return_pcd=True)
+        normals = np.asarray(pcd.normals, dtype=np.float64)
+
+        # Per-point outward orientation: flip any normal disagreeing with
+        # its radial direction. MST orientation gives consistency, not
+        # outwardness, and a few inward-facing normals break the SDF sign.
+        radial = positions / np.linalg.norm(positions, axis=1, keepdims=True).clip(
+            1e-12
+        )
+        inward = np.einsum("ij,ij->i", normals, radial) < 0
+        normals[inward] = -normals[inward]
+
+        hull = AlphaShape.fit(positions, alpha=1).mesh
+        V0 = np.asarray(hull.vertices, dtype=np.float64)
+        F0 = np.asarray(hull.triangles, dtype=np.int64)
+
+        tree = cKDTree(positions)
+
+        def sdf(Q):
+            d, idx = tree.query(Q, k=1)
+            sign = np.sign(np.einsum("ij,ij->i", Q - positions[idx], normals[idx]))
+            sign = np.where(sign == 0, 1.0, sign)
+            return d * sign
+
+        V, F = gpy.reach_for_the_spheres(
+            U=positions,
+            sdf=sdf,
+            V=V0,
+            F=F0,
+            max_iter=max_iter,
+            tol=tol if tol > 0 else None,
+        )
+
+        mesh = meshing.to_open3d(V * scale + center, F)
+
+        if smoothness == 0 and curvature_weight == 0 and pressure == 0:
+            return cls(mesh=mesh)
+
+        mesh = meshing.remesh(mesh, target_edge_length)
+        vs = np.asarray(mesh.vertices, dtype=np.float64)
+        fs = np.asarray(mesh.triangles)
+
+        distances, _ = utils.find_closest_points(positions_orig, vs)
+        edge_length = (
+            target_edge_length
+            if target_edge_length > 0
+            else float(np.median(meshing.compute_edge_lengths(mesh)))
+        )
+        vids = np.where(distances > edge_length / 2.0)[0]
+
+        if len(vids) == 0:
+            return cls(mesh=meshing.to_open3d(vs, fs))
+
+        vs = meshing.fair_mesh(
+            vs,
+            fs,
+            vids,
+            smoothness=smoothness,
+            curvature_weight=curvature_weight,
+            pressure=pressure,
+            n_ring=boundary_ring,
+        )
+        return cls(mesh=meshing.to_open3d(vs, fs))
+
+
 class FlyingEdges(TriangularMesh):
-    """
-    Represent a point cloud as triangular mesh.
-
-    Parameters
-    ----------
-    mesh : open3d.cpu.pybind.geometry.TriangleMesh
-        Triangular mesh.
-    """
-
     @classmethod
     def fit(
         cls,
@@ -1766,6 +1894,7 @@ PARAMETRIZATION_TYPE = {
     "poisson": PoissonMesh,
     "rbf": RBF,
     "alpha_shape": AlphaShape,
+    "shrink_wrap": ShrinkWrap,
     "spline": SplineCurve,
     "flying_edges": FlyingEdges,
 }

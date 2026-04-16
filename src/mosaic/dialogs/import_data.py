@@ -113,7 +113,7 @@ class ImportDataDialog(QDialog):
             "min": -1e32,
             "max": 1e32,
             "default": 0.0,
-            "description": "Add offset as (points - offset) * scale.",
+            "description": "Consider offset as points * scale - offset",
         }
         self.offset_x = create_setting_widget(offset_settings)
         self.offset_y = create_setting_widget(offset_settings)
@@ -270,14 +270,14 @@ class ImportDataDialog(QDialog):
             extension = get_extension(file)[1:]
             if extension in FORMAT_MAPPING.get(read_volume):
                 shape, sampling_rate = _load_density_header(file)
-                self.scale_x.setText(f"{sampling_rate[0]}")
-                self.sampling_x.setText(f"{sampling_rate[0]}")
+                self.scale_x.setText(f"{sampling_rate[0]:g}")
+                self.sampling_x.setText(f"{sampling_rate[0]:g}")
 
-                self.scale_y.setText(f"{sampling_rate[1]}")
-                self.sampling_y.setText(f"{sampling_rate[1]}")
+                self.scale_y.setText(f"{sampling_rate[1]:g}")
+                self.sampling_y.setText(f"{sampling_rate[1]:g}")
 
-                self.scale_z.setText(f"{sampling_rate[2]}")
-                self.sampling_z.setText(f"{sampling_rate[2]}")
+                self.scale_z.setText(f"{sampling_rate[2]:g}")
+                self.sampling_z.setText(f"{sampling_rate[2]:g}")
 
             self.file_parameters[file] = self._get_current_parameters()
 

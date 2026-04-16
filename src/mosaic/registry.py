@@ -368,6 +368,7 @@ _CURVATURE_WEIGHT = Param(
     default=0.0,
     min=-(2**28),
     decimals=6,
+    step=0.1,
     label="Curvature Weight",
     description="Controls propagation of mesh curvature.",
 )
@@ -389,6 +390,7 @@ _SMOOTHNESS = Param(
     min=0.0,
     max=1.0,
     decimals=6,
+    step=0.1,
     label="Smoothness",
     description=(
         "Balance between position anchoring and curvature minimization. "
@@ -401,6 +403,7 @@ _PRESSURE = Param(
     "float",
     default=0.0,
     decimals=6,
+    step=0.1,
     label="Pressure",
     description="Internal mesh pressure along vertex normals.",
 )

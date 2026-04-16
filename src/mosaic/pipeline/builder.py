@@ -57,7 +57,7 @@ class PipelineBuilderDialog(QDialog):
 
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(12)
-        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
         content_splitter = QWidget()
         content_layout = QHBoxLayout(content_splitter)
@@ -73,6 +73,7 @@ class PipelineBuilderDialog(QDialog):
         library_scroll = QScrollArea()
         library_scroll.setWidgetResizable(True)
         library_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        library_scroll.verticalScrollBar().setSingleStep(12)
 
         self.library_widget = self._create_library()
         library_scroll.setWidget(self.library_widget)
@@ -139,8 +140,6 @@ class PipelineBuilderDialog(QDialog):
         workers_layout = QHBoxLayout()
         workers_layout.setSpacing(8)
 
-        workers_vbox = QVBoxLayout()
-        workers_vbox.setSpacing(4)
         workers_label = QLabel("Parallel Workers:")
         workers_label.setToolTip(
             format_tooltip(
@@ -150,7 +149,6 @@ class PipelineBuilderDialog(QDialog):
                 "outputs are saved, calculate approximately 8GB of RAM per worker.",
             )
         )
-        workers_label.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_MUTED};")
         self.workers_spin = QSpinBox()
         self.workers_spin.setMinimum(1)
         self.workers_spin.setMaximum(Settings.rendering.parallel_worker)
@@ -158,12 +156,11 @@ class PipelineBuilderDialog(QDialog):
             int(getattr(Settings.rendering, "parallel_worker", 4))
         )
         self.workers_spin.setFixedWidth(80)
-        self.workers_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
-        workers_vbox.addWidget(workers_label)
-        workers_vbox.addWidget(self.workers_spin)
+        workers_layout.addWidget(workers_label)
+        workers_layout.addWidget(self.workers_spin)
 
-        skip_vbox = QVBoxLayout()
-        skip_vbox.setSpacing(4)
+        workers_layout.addSpacing(15)
+
         skip_complete_label = QLabel("Skip Complete:")
         skip_complete_label.setToolTip(
             format_tooltip(
@@ -171,16 +168,10 @@ class PipelineBuilderDialog(QDialog):
                 description="Skip runs where output files already exist.",
             )
         )
-        skip_complete_label.setStyleSheet(
-            f"font-size: 11px; color: {Colors.TEXT_MUTED};"
-        )
         self.skip_complete = QCheckBox()
-        self.skip_complete.setFixedHeight(Colors.WIDGET_HEIGHT)
-        skip_vbox.addWidget(skip_complete_label)
-        skip_vbox.addWidget(self.skip_complete)
+        workers_layout.addWidget(skip_complete_label)
+        workers_layout.addWidget(self.skip_complete)
 
-        workers_layout.addLayout(workers_vbox)
-        workers_layout.addLayout(skip_vbox)
         workers_layout.addStretch()
 
         workers_group.setLayout(workers_layout)
