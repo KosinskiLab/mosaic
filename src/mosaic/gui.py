@@ -143,6 +143,7 @@ class App(QMainWindow):
         """
         )
         self.theme_toggle = ThemeToggle()
+        self.theme_toggle.set_initial_state(Colors.is_dark())
         self.theme_toggle.toggled.connect(self._on_theme_toggled)
         self.tab_bar._layout.addWidget(self.theme_toggle)
 
@@ -605,6 +606,7 @@ class App(QMainWindow):
     def _on_theme_toggled(self, checked):
         from .stylesheets import Colors, switch_theme
 
+        Settings.ui.theme_mode = "dark" if checked else "light"
         switch_theme(Colors.DARK if checked else Colors.LIGHT)
 
     def _on_theme_changed(self):

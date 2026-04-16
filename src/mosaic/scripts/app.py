@@ -16,6 +16,7 @@ from qtpy.QtWidgets import QApplication
 
 from mosaic import __version__
 from mosaic.stylesheets import (
+    Colors,
     build_global_stylesheet,
     build_qt_palette,
     install_macos_titlebar_filter,
@@ -32,6 +33,15 @@ def main():
     app.setApplicationDisplayName("Mosaic")
     icon = QIcon(str(files("mosaic.data").joinpath("data/mosaic.icns")))
     app.setWindowIcon(icon)
+
+    # Restore the previously selected theme before any palette/stylesheet is
+    # built so the very first frame is painted with the correct colors.
+    from mosaic.settings import Settings
+
+    if Settings.ui.theme_mode == "dark":
+        Colors.apply_palette(Colors.DARK)
+    else:
+        Colors.apply_palette(Colors.LIGHT)
 
     # Fixes alignment issue in default style
     # https://forum.qt.io/topic/105191/why-isn-t-a-qcombobox-positioned-correctly-in-a-layout/11

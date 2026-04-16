@@ -312,6 +312,15 @@ class AnalysisPanel(QWidget):
     def _plot_multi_run(self, series, ylabel, xlabel="Frame"):
         plot = self._plot_item
 
+        # Cancel any pending LOD restore and return the plot to a known
+        # downsample state before rebuilding. Without this the new curves
+        # inherit whatever fixed-ds mode was active mid-gesture, and a
+        # late-firing timer can touch a half-rebuilt plot.
+        self._lod_timer.stop()
+        if self._lod_active:
+            self._lod_active = False
+            plot.setDownsampling(auto=True, mode="peak")
+
         self._plot_widget.setUpdatesEnabled(False)
         plot.vb.disableAutoRange()
 

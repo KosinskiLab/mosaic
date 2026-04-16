@@ -44,6 +44,14 @@ class ThemeToggle(QPushButton):
         self._anim.setEndValue(24.0 if checked else 2.0)
         self._anim.start()
 
+    def set_initial_state(self, checked):
+        """Set checked state on construction without animation or signal."""
+        self.blockSignals(True)
+        self.setChecked(checked)
+        self._knob = 24.0 if checked else 2.0
+        self.update()
+        self.blockSignals(False)
+
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
