@@ -20,8 +20,7 @@ from qtpy.QtWidgets import (
     QMenu,
     QWidgetAction,
 )
-import qtawesome as qta
-
+from ..icons import icon
 from ..stylesheets import Colors
 
 __all__ = [
@@ -376,7 +375,7 @@ class ColorPickerRow(QWidget):
         swatches_layout.addStretch()
 
         self.custom_btn = QPushButton("Custom")
-        self.custom_btn.setIcon(qta.icon("ph.eyedropper", color=Colors.ICON))
+        self.custom_btn.setIcon(icon("ph.eyedropper", role="muted"))
         self.custom_btn.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.custom_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.custom_btn.clicked.connect(self._open_color_dialog)
@@ -427,7 +426,7 @@ class ColorPickerRow(QWidget):
             """
             )
         # Re-create the custom-color-picker button icon
-        self.custom_btn.setIcon(qta.icon("ph.eyedropper", color=Colors.ICON))
+        self.custom_btn.setIcon(icon("ph.eyedropper", role="muted"))
 
     def set_color(self, color: tuple):
         """Set the current color."""

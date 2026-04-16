@@ -16,9 +16,8 @@ from qtpy.QtWidgets import (
     QFileDialog,
     QCompleter,
 )
-import qtawesome as qta
-
 from ..stylesheets import Colors
+from ..icons import icon, icon_pixmap
 
 
 class _TabCompleteFilter(QObject):
@@ -142,9 +141,7 @@ class PathSelector(QWidget):
         icon_name = _ICON_MAP.get(mode, "ph.file")
 
         icon_label = QLabel()
-        icon_label.setPixmap(
-            qta.icon(icon_name, color=Colors.ICON_MUTED).pixmap(14, 14)
-        )
+        icon_label.setPixmap(icon_pixmap(icon_name, 14, role="muted"))
         icon_label.setFixedSize(14, 14)
         icon_label.setStyleSheet("border: none;")
 
@@ -183,7 +180,7 @@ class PathSelector(QWidget):
         self.browse_button = QPushButton()
         self.browse_button.setAutoDefault(False)
         self.browse_button.setDefault(False)
-        self.browse_button.setIcon(qta.icon("ph.folder-open", color=Colors.ICON))
+        self.browse_button.setIcon(icon("ph.folder-open", role="muted"))
         self.browse_button.setToolTip("Browse")
         self.browse_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.browse_button.setStyleSheet(
@@ -258,10 +255,10 @@ class PathSelector(QWidget):
         icon_name = _ICON_MAP.get(self.mode, "ph.file")
         # Re-create the file-type icon (first QLabel child of container)
         for child in self.container_frame.findChildren(QLabel):
-            child.setPixmap(qta.icon(icon_name, color=Colors.ICON_MUTED).pixmap(14, 14))
+            child.setPixmap(icon_pixmap(icon_name, 14, role="muted"))
             break
 
-        self.browse_button.setIcon(qta.icon("ph.folder-open", color=Colors.ICON))
+        self.browse_button.setIcon(icon("ph.folder-open", role="muted"))
         self.browse_button.setStyleSheet(
             f"""
             QPushButton {{

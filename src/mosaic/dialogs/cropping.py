@@ -21,14 +21,12 @@ from qtpy.QtWidgets import (
     QFrame,
     QMessageBox,
 )
-import qtawesome as qta
-
+from ..icons import icon
 from ..widgets.container_list import ContainerTreeWidget, StyledTreeWidgetItem
 from ..stylesheets import (
     QGroupBox_style,
     QScrollArea_style,
     HelpLabel_style,
-    Colors,
 )
 
 
@@ -162,7 +160,7 @@ class DistanceCropDialog(QDialog):
         footer_layout.setContentsMargins(0, 8, 0, 0)
 
         self.preview_button = QPushButton("Preview")
-        self.preview_button.setIcon(qta.icon("ph.eye", color=Colors.ICON))
+        self.preview_button.setIcon(icon("ph.eye"))
         self.preview_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.preview_button.clicked.connect(self._on_preview)
         footer_layout.addWidget(self.preview_button)
@@ -170,13 +168,13 @@ class DistanceCropDialog(QDialog):
         footer_layout.addStretch()
 
         self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setIcon(qta.icon("ph.x", color=Colors.ICON))
+        self.cancel_button.setIcon(icon("ph.x"))
         self.cancel_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.cancel_button.clicked.connect(self.reject)
         footer_layout.addWidget(self.cancel_button)
 
         self.crop_button = QPushButton("Crop")
-        self.crop_button.setIcon(qta.icon("ph.scissors", color=Colors.PRIMARY))
+        self.crop_button.setIcon(icon("ph.scissors", role="primary"))
         self.crop_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.crop_button.clicked.connect(self.accept)
         footer_layout.addWidget(self.crop_button)

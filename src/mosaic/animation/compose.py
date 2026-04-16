@@ -30,12 +30,12 @@ from qtpy.QtWidgets import (
     QSizePolicy,
     QCheckBox,
 )
-import qtawesome as qta
-
 from .timeline import TimelineWidget
 from .animations import AnimationType, BaseAnimation
 from .settings import AnimationSettings, ExportDialog
 from ._utils import FrameWriter, capture_frame
+
+from ..icons import icon
 
 from ..__version__ import __version__
 from ..utils import Throttle
@@ -50,7 +50,6 @@ from ..stylesheets import (
     QGroupBox_style,
     QListWidget_style,
     QScrollArea_style,
-    Colors,
 )
 
 
@@ -113,14 +112,14 @@ class AnimationComposerDialog(QDialog):
         toolbar_layout.setContentsMargins(0, 0, 0, 0)
         toolbar_layout.setSpacing(4)
 
-        for icon, tooltip, callback in [
+        for icon_name, tooltip, callback in [
             ("ph.folder-open", "Load project", self.load_project),
             ("ph.floppy-disk", "Save project", self.save_project),
             ("ph.trash", "Clear all tracks", self.clear_all_tracks),
             ("ph.export", "Export animation", self.export_animation),
         ]:
             btn = QToolButton()
-            btn.setIcon(qta.icon(icon, color=Colors.ICON))
+            btn.setIcon(icon(icon_name, role="muted"))
             btn.setToolTip(tooltip)
             btn.setIconSize(QSize(20, 20))
             btn.clicked.connect(callback)
@@ -141,17 +140,17 @@ class AnimationComposerDialog(QDialog):
         controls_layout.setSpacing(4)
 
         back_btn = QToolButton()
-        back_btn.setIcon(qta.icon("ph.skip-back", color=Colors.ICON))
+        back_btn.setIcon(icon("ph.skip-back", role="muted"))
         back_btn.setToolTip("Go to start (Home)")
         back_btn.clicked.connect(lambda: self.set_current_frame(0))
 
         self.play_btn = QToolButton()
-        self.play_btn.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
+        self.play_btn.setIcon(icon("ph.play", role="primary"))
         self.play_btn.setToolTip("Play/Pause (Space)")
         self.play_btn.clicked.connect(self.toggle_play)
 
         forward_btn = QToolButton()
-        forward_btn.setIcon(qta.icon("ph.skip-forward", color=Colors.ICON))
+        forward_btn.setIcon(icon("ph.skip-forward", role="muted"))
         forward_btn.setToolTip("Go to end (End)")
         forward_btn.clicked.connect(self._go_to_end)
 
@@ -471,11 +470,11 @@ class AnimationComposerDialog(QDialog):
 
         if self.is_playing:
             self._set_preview_visibility(False)
-            self.play_btn.setIcon(qta.icon("ph.pause", color=Colors.ICON))
+            self.play_btn.setIcon(icon("ph.pause", role="muted"))
             self.timer.start(1000 // self.playback_fps)
         else:
             self._set_preview_visibility(True)
-            self.play_btn.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
+            self.play_btn.setIcon(icon("ph.play", role="primary"))
             self.timer.stop()
 
     def _advance_frame(self):

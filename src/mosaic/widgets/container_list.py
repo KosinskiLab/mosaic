@@ -14,8 +14,7 @@ from qtpy.QtWidgets import (
     QAbstractItemView,
 )
 from qtpy.QtSvg import QSvgRenderer
-import qtawesome as qta
-
+from ..icons import icon as _icon_factory
 from ..stylesheets import Colors
 from ..tree_state import TreeState, TreeStateData
 
@@ -542,7 +541,7 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
             icon_name = "mdi.scatter-plot"
 
         color = self.visible_color if visible else self.invisible_color
-        icon = qta.icon(icon_name, color=color, scale_factor=0.85)
+        icon = _icon_factory(icon_name, color=color.name(), scale_factor=0.85)
         self.setIcon(0, icon)
 
     def set_visible(self, visible):

@@ -10,8 +10,6 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import qtawesome as qta
-
 from qtpy.QtCore import Qt, QEvent, QTimer
 from qtpy.QtGui import QPainter, QColor, QPen, QCursor, QFont
 from qtpy.QtWidgets import (
@@ -23,6 +21,7 @@ from qtpy.QtWidgets import (
 )
 
 from ..stylesheets import Colors
+from ..icons import icon
 from .segmented_control import SegmentedControl
 from .volume_viewer import VolumeViewer
 
@@ -143,7 +142,7 @@ QLabel:disabled {{ color: rgba(255, 255, 255, 0.18); }}
 
 def _icon_btn(name, tooltip, size=_BTN):
     btn = QPushButton()
-    btn.setIcon(qta.icon(name, color=_ICON))
+    btn.setIcon(icon(name, color=_ICON))
     btn.setFixedSize(size, size)
     btn.setToolTip(tooltip)
     return btn
@@ -202,9 +201,9 @@ class _ViewerStrip(QWidget):
         v.close_button.hide()
         v.orientation_selector.hide()
 
-        v.visibility_button.setIcon(qta.icon("ph.eye", color=_ICON))
+        v.visibility_button.setIcon(icon("ph.eye", color=_ICON))
         v.visibility_button.setFixedSize(_BTN, _BTN)
-        v.auto_contrast_button.setIcon(qta.icon("ph.magic-wand", color=_ICON))
+        v.auto_contrast_button.setIcon(icon("ph.magic-wand", color=_ICON))
         v.auto_contrast_button.setFixedSize(_BTN, _BTN)
 
         v._path_combo.setToolTip("Recent volumes")
@@ -223,8 +222,8 @@ class _ViewerStrip(QWidget):
 
         def _patched(visible, _f=_orig):
             _f(visible)
-            icon = "ph.eye" if visible else "ph.eye-slash"
-            v.visibility_button.setIcon(qta.icon(icon, color=_ICON))
+            icon_name = "ph.eye" if visible else "ph.eye-slash"
+            v.visibility_button.setIcon(icon(icon_name, color=_ICON))
 
         v.set_visibility = _patched
 
@@ -247,7 +246,7 @@ class _ViewerStrip(QWidget):
 
         self._recent_btn = QPushButton()
         self._recent_btn.setObjectName("recentDrop")
-        self._recent_btn.setIcon(qta.icon("ph.caret-down", color=_ICON))
+        self._recent_btn.setIcon(icon("ph.caret-down", color=_ICON))
         self._recent_btn.setFixedSize(22, _BTN)
         self._recent_btn.setToolTip("Recent volumes")
         self._recent_btn.clicked.connect(self._show_recent_menu)

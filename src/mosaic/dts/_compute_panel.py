@@ -20,9 +20,7 @@ from qtpy.QtWidgets import (
     QGroupBox,
     QMessageBox,
 )
-import qtawesome as qta
-
-from ..stylesheets import Colors
+from ..icons import icon
 
 
 class ComputePanel(QGroupBox):
@@ -90,7 +88,7 @@ class ComputePanel(QGroupBox):
         bottom.addStretch()
 
         compute_btn = QPushButton("Compute")
-        compute_btn.setIcon(qta.icon("ph.computer-tower", color=Colors.PRIMARY))
+        compute_btn.setIcon(icon("ph.computer-tower", role="primary"))
         compute_btn.clicked.connect(self._on_compute)
         bottom.addWidget(compute_btn)
 

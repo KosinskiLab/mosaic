@@ -29,9 +29,9 @@ from qtpy.QtWidgets import (
     QFileDialog,
 )
 import pyqtgraph as pg
-import qtawesome as qta
 
 from ..widgets import PathSelector, generate_gradient_colors
+from ..icons import icon
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
 from ..stylesheets import Colors
 
@@ -328,12 +328,12 @@ class ConfigurePanel(QScrollArea):
         btn_row.setSpacing(6)
 
         self._generate_btn = QPushButton("Setup")
-        self._generate_btn.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
+        self._generate_btn.setIcon(icon("ph.play", role="primary"))
         self._generate_btn.clicked.connect(self._run_screen)
         btn_row.addWidget(self._generate_btn)
 
         self._save_dts_btn = QPushButton()
-        self._save_dts_btn.setIcon(qta.icon("ph.floppy-disk", color=Colors.ICON))
+        self._save_dts_btn.setIcon(icon("ph.floppy-disk", role="muted"))
         self._save_dts_btn.setFixedSize(28, 28)
         self._save_dts_btn.setToolTip("Save screen input.dts only")
         self._save_dts_btn.clicked.connect(self._save_dts)

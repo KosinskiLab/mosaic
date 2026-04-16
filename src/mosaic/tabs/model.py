@@ -208,28 +208,28 @@ class ModelTab(QWidget):
                 "ph.circle",
                 self,
                 partial(func, "sphere"),
-                "Fit to selected clusters",
+                "Fit sphere to selected clusters",
             ),
             create_button(
                 "Ellipse",
                 "ph.link-simple-horizontal-break",
                 self,
                 partial(func, "ellipsoid"),
-                "Fit to selected clusters",
+                "Fit ellipsoid to selected clusters",
             ),
             create_button(
                 "Cylinder",
                 "ph.hexagon",
                 self,
                 partial(func, "cylinder"),
-                "Fit to selected clusters",
+                "Fit cylinder to selected clusters",
             ),
             create_button(
                 "RBF",
                 "ph.dots-nine",
                 self,
                 partial(func, "rbf"),
-                "Fit to selected clusters",
+                "Fit radial basis function surface to selected clusters",
                 RBF_SETTINGS,
             ),
             create_button(
@@ -237,7 +237,7 @@ class ModelTab(QWidget):
                 "ph.triangle",
                 self,
                 func,
-                "Fit to selected clusters",
+                "Reconstruct triangular mesh from selected clusters",
                 MethodRegistry.settings_dict("fit"),
             ),
             create_button(
@@ -245,7 +245,7 @@ class ModelTab(QWidget):
                 "ph.line-segments",
                 self,
                 partial(func, "spline"),
-                "Fit to selected clusters",
+                "Fit spline curve to selected clusters",
                 SPLINE_SETTINGS,
             ),
         ]
@@ -257,7 +257,7 @@ class ModelTab(QWidget):
                 "ph.broadcast",
                 self,
                 self._sample_parallel,
-                "Generate points from fitted model",
+                "Sample points from fitted model",
                 SAMPLE_SETTINGS,
             ),
         ]
@@ -269,7 +269,7 @@ class ModelTab(QWidget):
                 "ph.wrench",
                 self,
                 self._repair_mesh_parallel,
-                "Fix holes and topology issues",
+                "Fix holes and topology issues in mesh",
                 REPAIR_SETTINGS,
             ),
             create_button(
@@ -277,7 +277,7 @@ class ModelTab(QWidget):
                 "ph.arrows-clockwise",
                 self,
                 self._remesh_parallel,
-                "Adjust resolution and quality",
+                "Remesh by edge length, decimation or subdivision",
                 MethodRegistry.settings_dict("remesh"),
             ),
             create_button(
@@ -285,7 +285,7 @@ class ModelTab(QWidget):
                 "ph.drop",
                 self,
                 self._smooth_parallel,
-                "Reduce surface noise",
+                "Smooth mesh surface",
                 MethodRegistry.settings_dict("smooth"),
             ),
             create_button(
@@ -301,7 +301,7 @@ class ModelTab(QWidget):
                 "ph.cube",
                 self,
                 self._fill_parallel,
-                "Fill the interior of a closed mesh with points",
+                "Fill closed mesh interior with points",
             ),
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)

@@ -2,7 +2,7 @@ from qtpy.QtCore import Qt, QRect, Signal
 from qtpy.QtWidgets import QWidget, QScrollArea, QApplication
 from qtpy.QtGui import QPainter, QColor, QPen, QFont, QMouseEvent
 
-import qtawesome as qta
+from ..icons import icon
 
 
 class TimelineContent(QWidget):
@@ -193,8 +193,10 @@ class TimelineContent(QWidget):
                     if self.hovered_remove_button == track.id
                     else QColor("#9ca3af")
                 )
-                icon = qta.icon("ph.trash", color=icon_color)
-                pixmap = icon.pixmap(self.remove_button_size, self.remove_button_size)
+                trash_icon = icon("ph.trash", color=icon_color)
+                pixmap = trash_icon.pixmap(
+                    self.remove_button_size, self.remove_button_size
+                )
                 painter.drawPixmap(remove_x, remove_y, pixmap)
 
             track_y += self.track_height

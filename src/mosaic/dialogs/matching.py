@@ -20,10 +20,9 @@ from qtpy.QtWidgets import (
     QFormLayout,
     QMessageBox,
 )
-import qtawesome as qta
-
+from ..icons import icon
 from ..widgets import PathSelector, DialogFooter, TabWidget
-from ..stylesheets import QScrollArea_style, Colors
+from ..stylesheets import QScrollArea_style
 
 
 class InputDataTab(QWidget):
@@ -492,26 +491,22 @@ class TemplateMatchingDialog(QDialog):
         self.peak_tab = PeakCallingTab()
         self.compute_tab = ComputeTab()
 
-        self.tabs.addTab(
-            self.input_tab, "Data", qta.icon("ph.file-arrow-down", color=Colors.ICON)
-        )
+        self.tabs.addTab(self.input_tab, "Data", icon("ph.file-arrow-down"))
         self.tabs.addTab(
             self.preprocess_tab,
             "Preprocess",
-            qta.icon("ph.wrench", color=Colors.ICON),
+            icon("ph.wrench"),
         )
-        self.tabs.addTab(
-            self.matching_tab, "Matching", qta.icon("ph.sliders", color=Colors.ICON)
-        )
+        self.tabs.addTab(self.matching_tab, "Matching", icon("ph.sliders"))
         self.tabs.addTab(
             self.peak_tab,
             "Peak Calling",
-            qta.icon("ph.magnifying-glass", color=Colors.ICON),
+            icon("ph.magnifying-glass"),
         )
         self.tabs.addTab(
             self.compute_tab,
             "Compute",
-            qta.icon("ph.hard-drives", color=Colors.ICON),
+            icon("ph.hard-drives"),
         )
         self.tabs.finalize()
 

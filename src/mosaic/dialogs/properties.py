@@ -24,13 +24,11 @@ from qtpy.QtWidgets import (
     QGroupBox,
     QApplication,
 )
-import qtawesome as qta
-
+from ..icons import icon
 from ..stylesheets import (
     QSpinBox_style,
     QLineEdit_style,
     QGroupBox_style,
-    Colors,
 )
 from ..widgets import (
     DialogFooter,
@@ -199,14 +197,14 @@ class GeometryPropertiesDialog(QDialog):
         browse_layout.addStretch()
 
         self.browse_button = QPushButton("Browse...")
-        self.browse_button.setIcon(qta.icon("ph.folder-open", color=Colors.ICON))
+        self.browse_button.setIcon(icon("ph.folder-open"))
         self.browse_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.browse_button.setToolTip("Select a density map file")
         self.browse_button.clicked.connect(self.browse_volume)
         browse_layout.addWidget(self.browse_button)
 
         self.attach_button = QPushButton("Reattach")
-        self.attach_button.setIcon(qta.icon("ph.link", color=Colors.ICON))
+        self.attach_button.setIcon(icon("ph.link"))
         self.attach_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.attach_button.setEnabled(self.volume_path is not None)
         self.attach_button.setToolTip("Recompute isosurface from the density map")
@@ -296,9 +294,7 @@ class GeometryPropertiesDialog(QDialog):
         footer = DialogFooter(dialog=self, margin=(0, 0, 0, 0))
 
         self.reset_button = QPushButton("Reset")
-        self.reset_button.setIcon(
-            qta.icon("ph.arrow-counter-clockwise", color=Colors.ICON)
-        )
+        self.reset_button.setIcon(icon("ph.arrow-counter-clockwise"))
         self.reset_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.reset_button.clicked.connect(self._reset_to_defaults)
         footer.layout().insertWidget(0, self.reset_button)

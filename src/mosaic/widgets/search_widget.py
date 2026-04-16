@@ -1,7 +1,6 @@
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QLabel, QFrame
-import qtawesome as qta
-
+from ..icons import icon_pixmap
 from ..stylesheets import Colors
 
 
@@ -41,9 +40,7 @@ class SearchWidget(QWidget):
         container_layout.setSpacing(4)
 
         icon_label = QLabel()
-        icon_label.setPixmap(
-            qta.icon("ph.magnifying-glass", color=Colors.ICON).pixmap(16, 16)
-        )
+        icon_label.setPixmap(icon_pixmap("ph.magnifying-glass", 16, role="muted"))
         icon_label.setFixedSize(16, 16)
         icon_label.setStyleSheet("border: none;")
 
@@ -81,9 +78,7 @@ class SearchWidget(QWidget):
         )
         icon_label = self.findChild(QLabel)
         if icon_label is not None:
-            icon_label.setPixmap(
-                qta.icon("ph.magnifying-glass", color=Colors.ICON).pixmap(16, 16)
-            )
+            icon_label.setPixmap(icon_pixmap("ph.magnifying-glass", 16, role="muted"))
 
     def text(self):
         """Get current search text."""

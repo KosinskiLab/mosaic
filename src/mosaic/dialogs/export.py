@@ -15,8 +15,7 @@ from qtpy.QtWidgets import (
     QLineEdit,
     QFileDialog,
 )
-import qtawesome as qta
-
+from ..icons import icon as _icon
 from ..widgets import DialogFooter, create_setting_widget, get_widget_value
 from ..stylesheets import (
     QGroupBox_style,
@@ -46,9 +45,8 @@ class StyleableButton(QPushButton):
         layout.setSpacing(4)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        icon = qta.icon(icon_name, color=Colors.ICON)
         icon_label = QLabel()
-        icon_label.setPixmap(icon.pixmap(icon_size, icon_size))
+        icon_label.setPixmap(_icon(icon_name).pixmap(icon_size, icon_size))
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(icon_label)
 
@@ -269,7 +267,7 @@ class ExportDialog(QDialog):
         footer = DialogFooter(dialog=self, margin=(10, 10, 10, 10))
         self.export_button = footer.accept_button
         self.export_button.setText("Export")
-        self.export_button.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
+        self.export_button.setIcon(_icon("ph.download", role="primary"))
         main_layout.addWidget(footer)
 
     def _update_preview(self):
