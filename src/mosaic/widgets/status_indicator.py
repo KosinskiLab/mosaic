@@ -25,7 +25,7 @@ from qtpy.QtWidgets import (
     QApplication,
 )
 from qtpy.QtGui import QTextCursor, QPainter, QColor
-from ..stylesheets import Colors, QScrollArea_style
+from ..stylesheets import Colors
 from ..icons import icon
 from ..parallel import BackgroundTaskManager
 
@@ -375,7 +375,6 @@ class TaskMonitorPanel(QFrame):
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet(QScrollArea_style)
 
         self._task_container = QWidget()
         self._task_layout = QVBoxLayout(self._task_container)
@@ -515,6 +514,7 @@ class StatusIndicator:
         self.main_window = main_window
         self.visible = True
         self.current_target = "Clusters"
+        self._active_io_task_id: str | None = None
 
         self.task_monitor = TaskMonitorPanel(self.main_window)
 
@@ -528,6 +528,9 @@ class StatusIndicator:
 
     def connect_signals(self):
         """Connect all BackgroundTaskManager signals to StatusIndicator and TaskMonitorDialog."""
+        # Must be called exactly once per StatusIndicator instance. Qt
+        # connections here are not guarded with UniqueConnection, so a
+        # duplicate call would make every handler fire twice.
         manager = BackgroundTaskManager.instance()
 
         manager.running_tasks.connect(self._on_running_tasks_changed)
@@ -538,6 +541,14 @@ class StatusIndicator:
         manager.task_progress.connect(self.task_monitor.on_task_progress)
         manager.task_message.connect(self.task_monitor.on_task_message)
         manager.task_output.connect(self.task_monitor.on_task_output)
+
+        # I/O tasks drive the status-bar center progress bar with a
+        # most-recent-started-wins policy. Non-owning concurrent I/O tasks
+        # are still visible as cards in the TaskMonitorPanel.
+        manager.task_started.connect(self._on_io_task_started)
+        manager.task_progress.connect(self._on_io_task_progress)
+        manager.task_completed.connect(self._on_io_task_finished)
+        manager.task_failed.connect(self._on_io_task_finished)
 
         self.task_monitor.cancel_task_requested.connect(self._on_cancel_task_requested)
         self.task_monitor.clear_finished_requested.connect(
@@ -552,6 +563,57 @@ class StatusIndicator:
     def _on_running_tasks_changed(self, count: int):
         """Handle running tasks count change - busy/idle status only."""
         self._update_task_styling(busy=count >= 1)
+
+    def _on_io_task_started(self, task_id: str, task_name: str):
+        """Most-recent-started I/O task takes the center bar."""
+        mgr = BackgroundTaskManager.instance()
+        info = mgr.task_info.get(task_id, {})
+        if not info.get("is_io"):
+            return
+
+        self._active_io_task_id = task_id
+        # Initial state: determinate bar at 0%. Using total=1 (rather than
+        # total=0) avoids Qt's indeterminate-mode rendering, which has
+        # different visual styling than the styled determinate fill and
+        # would cause a visible jump when the first progress call arrives.
+        self.show_progress(task_name, total=1)
+
+    def _on_io_task_progress(
+        self,
+        task_id: str,
+        task_name: str,
+        progress: float,
+        current: int,
+        total: int,
+    ):
+        """Update the center bar only for the currently-owning I/O task."""
+        if task_id != self._active_io_task_id:
+            return
+        if total > 0:
+            if self.progress_bar.maximum() != total:
+                self.progress_bar.setMaximum(total)
+            self.update_progress(current, total)
+
+    def _on_io_task_finished(self, task_id: str, task_name: str, *_args):
+        """Clear or hand off ownership when the owning I/O task ends."""
+        if task_id != self._active_io_task_id:
+            return
+
+        mgr = BackgroundTaskManager.instance()
+        # Pick the latest-inserted still-running I/O task (if any).
+        running = [
+            tid
+            for tid, info in mgr.task_info.items()
+            if info.get("is_io") and info.get("status") == "running" and tid != task_id
+        ]
+        if running:
+            next_id = running[-1]
+            self._active_io_task_id = next_id
+            next_name = mgr.task_info[next_id].get("name", "I/O")
+            self.show_progress(next_name, total=1)
+        else:
+            self._active_io_task_id = None
+            self.hide_progress()
 
     def _on_cancel_task_requested(self, task_id: str):
         """Handle task cancellation request from dialog."""
@@ -622,7 +684,13 @@ class StatusIndicator:
                 QPushButton:focus {{ outline: none; }}
             """
             )
-        for label in ("mode_label", "target_label", "task_label"):
+        for label in (
+            "mode_label",
+            "target_label",
+            "task_label",
+            "progress_label",
+            "progress_count",
+        ):
             if hasattr(self, label):
                 getattr(self, label).setStyleSheet(
                     f"color: {Colors.TEXT_MUTED}; font-size: 11px;"
@@ -648,6 +716,9 @@ class StatusIndicator:
         self.progress_label = QLabel()
         self.progress_label.setFixedWidth(120)
         self.progress_label.setVisible(False)
+        self.progress_label.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: 11px;"
+        )
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setFixedWidth(250)
@@ -671,6 +742,9 @@ class StatusIndicator:
         self.progress_count = QLabel()
         self.progress_count.setFixedWidth(35)
         self.progress_count.setVisible(False)
+        self.progress_count.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: 11px;"
+        )
 
         self.mode_label = QLabel("Viewing")
         self.mode_label.setFixedWidth(55)

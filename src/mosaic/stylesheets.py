@@ -750,6 +750,7 @@ _GLOBAL_STYLES = [
     _build_QSlider_style,
     _build_QGroupBox_style,
     _build_QListWidget_style,
+    _build_QScrollArea_style,
     _build_QToolButton_style,
     _build_QMenu_style,
     _build_QDockWidget_style,

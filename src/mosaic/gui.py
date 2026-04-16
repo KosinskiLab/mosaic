@@ -26,13 +26,11 @@ from qtpy.QtWidgets import (
     QSplitter,
     QFileDialog,
     QMenu,
-    QHBoxLayout,
     QPushButton,
     QDockWidget,
     QFrame,
     QShortcut,
     QMessageBox,
-    QCheckBox,
     QDialog,
 )
 from qtpy.QtGui import (
@@ -55,7 +53,6 @@ from .tabs import SegmentationTab, ModelTab, IntelligenceTab, DevelopmentTab
 from .dialogs import (
     TiltControlDialog,
     ImportDataDialog,
-    ProgressDialog,
 )
 from .widgets import (
     AxesWidget,
@@ -1300,44 +1297,65 @@ class App(QMainWindow):
         if render:
             self.set_camera_view("z")
 
-    def _open_file(self, filename, parameters):
-        try:
-            self.cdata.open_file(
-                filename,
-                offset=parameters.get("offset", 0),
-                scale=parameters.get("scale", 1),
-                sampling_rate=parameters.get("sampling_rate", 1),
-                segmentation=parameters.get("render_as_segmentation", False),
-            )
-        except Exception as e:
-            from .formats.session import is_session_file
-
-            if is_session_file(filename):
-                raise ValueError("Use Load Session to open session files.")
-            raise e
-
     def _open_files(self, filenames: List[str]):
-        dialog = ImportDataDialog(self)
+        from .formats.session import is_session_file
+
         if isinstance(filenames, str):
             filenames = [filenames]
 
+        session_hits = [f for f in filenames if is_session_file(f)]
+        if session_hits:
+            QMessageBox.warning(
+                self,
+                "Session Files",
+                "Use Load Session to open session files:\n" + "\n".join(session_hits),
+            )
+            return -1
+
+        dialog = ImportDataDialog(self)
         dialog.set_files(filenames)
         if not dialog.exec():
             return -1
 
         file_parameters = dialog.get_all_parameters()
-        with ProgressDialog(filenames, title="Reading Files", parent=None) as pbar:
-            for filename in pbar:
-                self._open_file(filename, file_parameters[filename])
+
+        from .parallel import submit_io_task
+
+        submit_io_task(
+            "Reading Files",
+            _read_files_worker,
+            self._on_files_read,
+            self.cdata,
+            filenames,
+            file_parameters,
+        )
+
+    def _on_files_read(self, results):
+        """GUI-thread callback: surface errors, render, recentre camera."""
+        failures = []
+        for filename, outcome in results:
+            if isinstance(outcome, Exception):
+                failures.append((filename, str(outcome)))
+            else:
                 self._add_file_to_recent(filename)
 
         self.cdata.data.data_changed.emit()
         self.cdata.models.data_changed.emit()
         self.cdata.data.render(defer_render=False)
         self.cdata.models.render(defer_render=False)
-
-        # Make sure loaded objects are visible in scene
         self.set_camera_view("z")
+
+        if failures:
+            if len(failures) == 1:
+                fn, msg = failures[0]
+                QMessageBox.warning(self, "Read Failed", f"{fn}\n\n{msg}")
+            else:
+                lines = [f"{len(failures)} files failed:"]
+                for fn, msg in failures[:20]:
+                    lines.append(f"  {fn}: {msg}")
+                if len(failures) > 20:
+                    lines.append(f"  ... and {len(failures) - 20} more")
+                QMessageBox.warning(self, "Read Failed", "\n".join(lines))
 
     def open_files(self):
         filenames, _ = QFileDialog.getOpenFileNames(self, "Import Files")
@@ -1461,50 +1479,44 @@ class App(QMainWindow):
         self.update_checker.start()
 
 
-def show_large_file_warning() -> bool:
-    if Settings.warnings.suppress_large_file_warning:
-        return True
+def _read_files_worker(cdata, filenames, file_parameters):
+    """I/O worker: read each file into ``cdata`` and report progress.
 
-    msg_box = QMessageBox()
-    msg_box.setIcon(QMessageBox.Icon.Warning)
-    msg_box.setWindowTitle("Large File Detected")
+    Parameters
+    ----------
+    cdata : MosaicData
+        Application data layer. ``cdata.open_file`` mutates the raw
+        ``DataContainer`` instances in place; actor/render work is
+        deferred to the GUI callback.
+    filenames : list of str
+        Files to read, in order.
+    file_parameters : dict
+        Map of filename to per-file import parameters from
+        :class:`ImportDataDialog`.
 
-    msg_box.setText(
-        "Large File Warning\n\n"
-        "We found one or more files exceeding 10 million points."
-    )
+    Returns
+    -------
+    list of tuple
+        ``(filename, exception_or_None)`` per input file, in input order.
+    """
+    from pathlib import Path
+    from .parallel import report_progress
 
-    msg_box.setInformativeText(
-        "Please make sure this is a segmentation and not raw data. "
-        "If you are on a laptop without dedicated GPU, consider reducing the number "
-        "of points for a smooth experience using Segmentation > Downsample "
-        "or process in batches."
-    )
-
-    msg_box.setStandardButtons(
-        QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel
-    )
-    msg_box.setDefaultButton(QMessageBox.StandardButton.Ok)
-    msg_box.button(QMessageBox.StandardButton.Ok).setText("Accept")
-    msg_box.button(QMessageBox.StandardButton.Cancel).setText("Skip File")
-
-    help_button = msg_box.addButton("Help", QMessageBox.ButtonRole.HelpRole)
-
-    def open_documentation():
-        import webbrowser
-
-        webbrowser.open(
-            "https://kosinskilab.github.io/mosaic/tutorial/reference/troubleshooting.html#performance-issues"
-        )
-
-    help_button.clicked.connect(open_documentation)
-
-    checkbox = QCheckBox("Don't show this warning again")
-    msg_box.setCheckBox(checkbox)
-
-    result = msg_box.exec()
-
-    if checkbox.isChecked():
-        Settings.warnings.suppress_large_file_warning = True
-
-    return result == QMessageBox.StandardButton.Ok
+    results = []
+    total = len(filenames)
+    for i, fn in enumerate(filenames):
+        report_progress(current=i, total=total, message=Path(fn).name)
+        params = file_parameters.get(fn, {})
+        try:
+            cdata.open_file(
+                fn,
+                offset=params.get("offset", 0),
+                scale=params.get("scale", 1),
+                sampling_rate=params.get("sampling_rate", 1),
+                segmentation=params.get("render_as_segmentation", False),
+            )
+            results.append((fn, None))
+        except Exception as e:
+            results.append((fn, e))
+    report_progress(current=total, total=total)
+    return results

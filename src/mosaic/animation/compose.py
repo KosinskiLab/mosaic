@@ -49,7 +49,6 @@ from ..stylesheets import (
     QSlider_style,
     QGroupBox_style,
     QListWidget_style,
-    QScrollArea_style,
 )
 
 
@@ -99,7 +98,6 @@ class AnimationComposerDialog(QDialog):
             + QSlider_style
             + QGroupBox_style
             + QListWidget_style
-            + QScrollArea_style
         )
 
     def _setup_ui(self):

@@ -25,7 +25,6 @@ from ..icons import icon
 from ..widgets.container_list import ContainerTreeWidget, StyledTreeWidgetItem
 from ..stylesheets import (
     QGroupBox_style,
-    QScrollArea_style,
     HelpLabel_style,
 )
 
@@ -61,7 +60,6 @@ class DistanceCropDialog(QDialog):
         self.setup_ui()
         self.setStyleSheet(
             QGroupBox_style
-            + QScrollArea_style
             + """
             QRadioButton {
                 spacing: 5px;

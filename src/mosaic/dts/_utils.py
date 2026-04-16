@@ -155,11 +155,15 @@ def build_trajectory_frames(
     from ..meshing import to_open3d
     from ..parametrization import TriangularMesh
     from ..formats.parser import VertexPropertyContainer
+    from ..parallel import report_progress
+
+    total = len(list_trajectory_files(trajectory_dir))
 
     frames = []
     for i, (points, faces, filepath) in enumerate(
         iter_frames(trajectory_dir, scale, offset, drop_pbc=drop_pbc)
     ):
+        report_progress(current=i, total=total)
         fit = TriangularMesh(to_open3d(points, faces), repair=False)
         frame = {"fit": fit, "filename": filepath}
 
@@ -173,6 +177,8 @@ def build_trajectory_frames(
                 frame["vertex_properties"] = props
 
         frames.append(frame)
+
+    report_progress(current=total, total=total)
     return frames
 
 

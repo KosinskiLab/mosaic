@@ -22,7 +22,6 @@ from qtpy.QtWidgets import (
 )
 from ..icons import icon
 from ..widgets import PathSelector, DialogFooter, TabWidget
-from ..stylesheets import QScrollArea_style
 
 
 class InputDataTab(QWidget):
@@ -519,7 +518,6 @@ class TemplateMatchingDialog(QDialog):
         )
         self.layout.addWidget(self.footer)
         self.tabs.currentChanged.connect(self._update_help_text)
-        self.setStyleSheet(QScrollArea_style)
 
     def _update_help_text(self, index):
         help_texts = [

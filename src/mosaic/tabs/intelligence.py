@@ -1,3 +1,4 @@
+import functools
 from typing import Union
 from os.path import exists
 
@@ -131,11 +132,11 @@ class IntelligenceTab(QWidget):
         drop_pbc: bool = False,
         **kwargs,
     ):
-        from ..geometry import GeometryTrajectory
         from ..dts._utils import (
             list_trajectory_files,
             build_trajectory_frames,
         )
+        from ..parallel import submit_io_task
 
         directory = getExistingDirectory(
             self, caption="Select directory with DTS trajectory"
@@ -159,12 +160,24 @@ class IntelligenceTab(QWidget):
             QMessageBox.warning(self, "Error", f"No meshes found at: {directory}.")
             return None
 
-        frames = build_trajectory_frames(
+        submit_io_task(
+            "Import trajectory",
+            build_trajectory_frames,
+            functools.partial(self._on_trajectory_loaded, scale=scale),
             directory,
             scale,
             offset,
-            drop_pbc=drop_pbc,
+            None,
+            drop_pbc,
         )
+
+    def _on_trajectory_loaded(self, frames, scale: float):
+        """GUI-thread callback: construct GeometryTrajectory and add it."""
+        if not frames or self.cdata is None:
+            return
+
+        from ..geometry import GeometryTrajectory
+
         trajectory = GeometryTrajectory(
             sampling_rate=1 / scale,
             trajectory=frames,
@@ -174,7 +187,7 @@ class IntelligenceTab(QWidget):
         trajectory.change_representation("mesh")
         self.cdata.models.add(trajectory)
         self.cdata.models.data_changed.emit()
-        return self.cdata.models.render()
+        self.cdata.models.render()
 
     def _screen_parameters(self):
         from ..dialogs import DTSScreeningDialog
