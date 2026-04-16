@@ -17,6 +17,7 @@ from qtpy.QtWidgets import (
     QDoubleSpinBox,
     QWidget,
     QGridLayout,
+    QFormLayout,
     QMessageBox,
 )
 import qtawesome as qta
@@ -31,42 +32,42 @@ class InputDataTab(QWidget):
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
 
         self.output_group = QGroupBox("Working Directory")
-        self.output_layout = QVBoxLayout(self.output_group)
+        self.output_layout = QFormLayout(self.output_group)
 
         self.output_selector = PathSelector(
-            "Output Directory:", "Path to working directory", mode="directory"
+            placeholder="Path to working directory", mode="directory"
         )
-        self.output_layout.addWidget(self.output_selector)
+        self.output_layout.addRow("Output Directory:", self.output_selector)
         self.scroll_layout.addWidget(self.output_group)
 
         self.target_group = QGroupBox("Target")
-        self.target_layout = QVBoxLayout(self.target_group)
-        self.tomogram_selector = PathSelector("Tomogram:", "Path to target")
-        self.target_layout.addWidget(self.tomogram_selector)
+        self.target_layout = QFormLayout(self.target_group)
+        self.tomogram_selector = PathSelector(placeholder="Path to target")
+        self.target_layout.addRow("Tomogram:", self.tomogram_selector)
 
-        self.target_mask_selector = PathSelector(
-            "Target Mask (Optional):", "Path to target mask"
-        )
-        self.target_layout.addWidget(self.target_mask_selector)
+        self.target_mask_selector = PathSelector(placeholder="Path to target mask")
+        self.target_layout.addRow("Target Mask (Optional):", self.target_mask_selector)
 
         self.scroll_layout.addWidget(self.target_group)
 
         self.template_group = QGroupBox("Template")
-        self.template_layout = QVBoxLayout(self.template_group)
-        self.template_selector = PathSelector("Template:", "Path to template")
-        self.template_layout.addWidget(self.template_selector)
-        self.template_mask_selector = PathSelector(
-            "Template Mask (Optional):", "Path to template mask"
+        self.template_layout = QFormLayout(self.template_group)
+        self.template_selector = PathSelector(placeholder="Path to template")
+        self.template_layout.addRow("Template:", self.template_selector)
+        self.template_mask_selector = PathSelector(placeholder="Path to template mask")
+        self.template_layout.addRow(
+            "Template Mask (Optional):", self.template_mask_selector
         )
-        self.template_layout.addWidget(self.template_mask_selector)
         self.scroll_layout.addWidget(self.template_group)
 
         self.scroll_layout.addStretch()
@@ -89,12 +90,14 @@ class PreprocessTab(QWidget):
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
 
         self.skip_group = QGroupBox("Control")
         self.skip_layout = QVBoxLayout(self.skip_group)
@@ -201,12 +204,14 @@ class MatchingTab(QWidget):
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
 
         self.angular_group = QGroupBox("Sampling")
         self.angular_layout = QGridLayout(self.angular_group)
@@ -230,8 +235,9 @@ class MatchingTab(QWidget):
         self.orientation_group = QGroupBox("Constraints")
         self.orientation_layout = QGridLayout(self.orientation_group)
 
+        orientations_label = QLabel("Orientations File (Optional):")
         self.orientations_selector = PathSelector(
-            "Orientations File (Optional):", "Path to orientations file"
+            placeholder="Path to orientations file"
         )
 
         scaling_label = QLabel("Scaling:")
@@ -260,7 +266,8 @@ class MatchingTab(QWidget):
         )
         translational_uncertainty_help.setStyleSheet("color: #64748b; font-size: 10px;")
 
-        self.orientation_layout.addWidget(self.orientations_selector, 0, 0, 1, 2)
+        self.orientation_layout.addWidget(orientations_label, 0, 0)
+        self.orientation_layout.addWidget(self.orientations_selector, 0, 1)
         self.orientation_layout.addWidget(scaling_label, 1, 0)
         self.orientation_layout.addWidget(self.orientation_scaling, 1, 1)
         self.orientation_layout.addWidget(scaling_help, 2, 1)
@@ -277,8 +284,9 @@ class MatchingTab(QWidget):
         self.filters_group = QGroupBox("Filters")
         self.filters_layout = QGridLayout(self.filters_group)
 
+        ctf_label = QLabel("CTF File:")
         self.ctf_file = PathSelector(
-            "CTF File:", "Can be a path to mdoc, warp xml or tomostar file."
+            placeholder="Can be a path to mdoc, warp xml or tomostar file."
         )
 
         lowpass_label = QLabel("Lowpass (Å):")
@@ -308,7 +316,8 @@ class MatchingTab(QWidget):
         whitening_label = QLabel("Spectral Whitening:")
         self.whitening_check = QCheckBox("Apply")
 
-        self.filters_layout.addWidget(self.ctf_file, 0, 0, 1, 2)
+        self.filters_layout.addWidget(ctf_label, 0, 0)
+        self.filters_layout.addWidget(self.ctf_file, 0, 1)
 
         self.filters_layout.addWidget(lowpass_label, 1, 0)
         self.filters_layout.addWidget(self.lowpass_input, 1, 1)
@@ -360,12 +369,14 @@ class PeakCallingTab(QWidget):
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
 
         self.peak_group = QGroupBox("Peak Properties")
         self.peak_layout = QGridLayout(self.peak_group)
@@ -417,12 +428,14 @@ class ComputeTab(QWidget):
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
 
         self.compute_group = QGroupBox("Computation Settings")
         self.compute_layout = QGridLayout(self.compute_group)
@@ -471,7 +484,7 @@ class TemplateMatchingDialog(QDialog):
         self.resize(650, 600)
 
         self.layout = QVBoxLayout(self)
-        self.tabs = TabWidget()
+        self.tabs = TabWidget(tab_bar_margins=(0, 0, 0, 0))
 
         self.input_tab = InputDataTab()
         self.preprocess_tab = PreprocessTab()

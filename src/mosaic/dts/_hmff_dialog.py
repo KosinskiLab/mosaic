@@ -6,6 +6,9 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from os.path import join, exists
+from typing import Dict, List, Optional
+
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QVBoxLayout,
@@ -13,21 +16,23 @@ from qtpy.QtWidgets import (
     QDialog,
     QGroupBox,
     QFormLayout,
+    QLabel,
 )
 
 from ..widgets import PathSelector, DialogFooter
-from ..stylesheets import QGroupBox_style
+from ..stylesheets import QGroupBox_style, Colors
 from ..widgets.settings import get_widget_value, create_setting_widget
 
 
 class HMFFDialog(QDialog):
-    def __init__(self, parent=None, mesh_options=[""]):
+    def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("HMFF Configuration")
         self.setMinimumWidth(400)
 
         self.parameter_widgets = {}
-        self.mesh_options = mesh_options
+        self._mesh_conf: Optional[Dict[str, List[str]]] = None
+        self._gated_groups: List[QGroupBox] = []
         self.setup_ui()
         self.setup_connections()
         self.setStyleSheet(QGroupBox_style)
@@ -38,11 +43,22 @@ class HMFFDialog(QDialog):
         input_group = QGroupBox("Input Configuration")
         input_layout = QFormLayout(input_group)
 
+        self.directory_selector = PathSelector(
+            placeholder="Directory created by Mesh Equilibration (contains mesh.txt)",
+            mode="directory",
+        )
+        input_layout.addRow("Working directory:", self.directory_selector)
+
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet(f"color: {Colors.ERROR}; font-size: 11px;")
+        self.status_label.setVisible(False)
+        input_layout.addRow("", self.status_label)
+
         self.parameter_widgets["mesh"] = create_setting_widget(
             {
                 "type": "select",
-                "options": self.mesh_options,
-                "default": self.mesh_options[0],
+                "options": [""],
+                "default": "",
             }
         )
         input_layout.addRow("Mesh:", self.parameter_widgets["mesh"])
@@ -142,8 +158,19 @@ class HMFFDialog(QDialog):
             sim_layout.addRow(labels[param], self.parameter_widgets[param])
         main_layout.addWidget(sim_group)
 
-        footer = DialogFooter(dialog=self, margin=(0, 10, 0, 0))
-        main_layout.addWidget(footer)
+        self.footer = DialogFooter(dialog=self, margin=(0, 10, 0, 0))
+        self.footer.accept_button.setEnabled(False)
+        main_layout.addWidget(self.footer)
+
+        # Groups whose contents are only meaningful once the working directory is set.
+        self._gated_groups = [filter_group, sim_group]
+        # Mesh and volume live in input_group alongside the directory selector,
+        # so gate them individually rather than disabling the whole group.
+        self._gated_widgets = [
+            self.parameter_widgets["mesh"],
+            self.parameter_widgets["volume_path"],
+        ]
+        self._set_downstream_enabled(False)
 
     def setup_connections(self):
         self.parameter_widgets["use_filters"].stateChanged.connect(
@@ -155,6 +182,85 @@ class HMFFDialog(QDialog):
         self.parameter_widgets["highpass_cutoff"].valueChanged.connect(
             self.validate_filters
         )
+        self.directory_selector.path_input.textChanged.connect(
+            self._on_directory_changed
+        )
+
+    def _set_downstream_enabled(self, enabled: bool):
+        """Enable or disable everything that depends on a valid working directory.
+
+        Qt propagates disabled state through parent groups without overriding
+        individual child states, so the filter fields preserve whatever state
+        the 'Enable Filters' checkbox last set when the group is re-enabled.
+        """
+        for group in self._gated_groups:
+            group.setEnabled(enabled)
+        for widget in self._gated_widgets:
+            widget.setEnabled(enabled)
+        self.footer.accept_button.setEnabled(enabled)
+
+    def _show_status(self, message: str):
+        self.status_label.setText(message)
+        self.status_label.setVisible(bool(message))
+
+    def _on_directory_changed(self, text: str):
+        """Parse mesh.txt from the selected directory and update dependent widgets."""
+        directory = text.strip()
+        self._mesh_conf = None
+
+        if not directory:
+            self._show_status("")
+            self._set_downstream_enabled(False)
+            self._set_mesh_options([""])
+            return
+
+        if not exists(directory):
+            self._show_status("Directory does not exist.")
+            self._set_downstream_enabled(False)
+            self._set_mesh_options([""])
+            return
+
+        mesh_config = join(directory, "mesh.txt")
+        if not exists(mesh_config):
+            self._show_status(
+                "Missing mesh.txt — pick a directory created by Mesh Equilibration."
+            )
+            self._set_downstream_enabled(False)
+            self._set_mesh_options([""])
+            return
+
+        try:
+            with open(mesh_config, mode="r", encoding="utf-8") as infile:
+                data = [x.strip() for x in infile.read().split("\n")]
+                data = [x.split("\t") for x in data if len(x)]
+            headers = data.pop(0)
+            ret = {header: list(column) for header, column in zip(headers, zip(*data))}
+        except (OSError, ValueError, IndexError) as exc:
+            self._show_status(f"Could not parse mesh.txt: {exc}")
+            self._set_downstream_enabled(False)
+            self._set_mesh_options([""])
+            return
+
+        required = ("file", "scale_factor", "offset")
+        if not all(col in ret for col in required):
+            self._show_status(
+                "mesh.txt is malformed (expected file, scale_factor, offset columns)."
+            )
+            self._set_downstream_enabled(False)
+            self._set_mesh_options([""])
+            return
+
+        self._mesh_conf = ret
+        self._show_status("")
+        self._set_mesh_options(ret["file"])
+        self._set_downstream_enabled(True)
+
+    def _set_mesh_options(self, options: List[str]):
+        mesh_widget = self.parameter_widgets["mesh"]
+        mesh_widget.blockSignals(True)
+        mesh_widget.clear()
+        mesh_widget.addItems(options)
+        mesh_widget.blockSignals(False)
 
     def toggle_filter_inputs(self, state):
         enabled = state == Qt.CheckState.Checked.value
@@ -177,6 +283,12 @@ class HMFFDialog(QDialog):
         return valid_range
 
     def accept(self):
+        if self._mesh_conf is None:
+            QMessageBox.warning(
+                self, "Invalid Input", "Please select a valid working directory."
+            )
+            return
+
         if not self.validate_filters():
             QMessageBox.warning(
                 self, "Invalid Input", "Please provide a valid filter specification."
@@ -185,8 +297,14 @@ class HMFFDialog(QDialog):
 
         return super().accept()
 
+    def get_mesh_conf(self) -> Dict[str, List[str]]:
+        """Return the parsed mesh.txt contents for the selected working directory."""
+        return self._mesh_conf or {}
+
     def get_parameters(self):
-        return {
+        params = {
             name: get_widget_value(widget)
             for name, widget in self.parameter_widgets.items()
         }
+        params["directory"] = self.directory_selector.get_path().strip()
+        return params

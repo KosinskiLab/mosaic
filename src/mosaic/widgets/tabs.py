@@ -6,6 +6,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from typing import Tuple
+
 from qtpy.QtCore import Qt, Signal, QRect, QTimer
 from qtpy.QtGui import QPainter, QColor
 from qtpy.QtWidgets import (
@@ -45,16 +47,23 @@ class TabBar(QWidget):
     ----------
     parent : QWidget, optional
         Parent widget.
+    margins : tuple of int, optional
+        Content margins ``(left, top, right, bottom)`` for the tab row.
+        Defaults to ``(8, 0, 8, 0)``.
     """
 
     currentChanged = Signal(int)
 
-    def __init__(self, parent=None):
+    def __init__(
+        self,
+        parent=None,
+        margins: Tuple[int, int, int, int] = (8, 0, 8, 0),
+    ):
         super().__init__(parent)
         self.setFixedHeight(38)
 
         self._layout = QHBoxLayout(self)
-        self._layout.setContentsMargins(8, 0, 8, 0)
+        self._layout.setContentsMargins(*margins)
         self._layout.setSpacing(4)
 
         self._button_group = QButtonGroup(self)
@@ -172,17 +181,24 @@ class TabWidget(QWidget):
     ----------
     parent : QWidget, optional
         Parent widget.
+    tab_bar_margins : tuple of int, optional
+        Content margins forwarded to the underlying :class:`TabBar`.
+        Defaults to ``(8, 0, 8, 0)``.
     """
 
     currentChanged = Signal(int)
 
-    def __init__(self, parent=None):
+    def __init__(
+        self,
+        parent=None,
+        tab_bar_margins: Tuple[int, int, int, int] = (8, 0, 8, 0),
+    ):
         super().__init__(parent)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self.tab_bar = TabBar()
+        self.tab_bar = TabBar(margins=tab_bar_margins)
         self._stack = QStackedWidget()
 
         layout.addWidget(self.tab_bar)

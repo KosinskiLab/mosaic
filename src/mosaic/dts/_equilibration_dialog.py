@@ -6,6 +6,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from pathlib import Path
+
 from qtpy.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -17,9 +19,11 @@ from qtpy.QtWidgets import (
     QScrollArea,
     QWidget,
     QGroupBox,
+    QFormLayout,
+    QMessageBox,
 )
 
-from ..widgets import DialogFooter
+from ..widgets import DialogFooter, PathSelector
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
 from ..stylesheets import QScrollArea_style
 
@@ -76,7 +80,7 @@ class MeshEquilibrationDialog(QDialog):
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(15)
 
         header_layout = QHBoxLayout()
@@ -96,6 +100,15 @@ class MeshEquilibrationDialog(QDialog):
         header_layout.addWidget(self.mode_selector)
 
         main_layout.addLayout(header_layout)
+
+        output_group = QGroupBox("Output")
+        output_layout = QFormLayout(output_group)
+        self.output_selector = PathSelector(
+            placeholder="Directory where the equilibrated mesh will be written",
+            mode="directory",
+        )
+        output_layout.addRow("Directory:", self.output_selector)
+        main_layout.addWidget(output_group)
 
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
@@ -156,8 +169,12 @@ class MeshEquilibrationDialog(QDialog):
 
         main_layout.addWidget(scroll_area)
 
-        footer = DialogFooter(dialog=self, margin=(0, 15, 0, 0))
-        main_layout.addWidget(footer)
+        self.footer = DialogFooter(dialog=self, margin=(0, 15, 0, 0))
+        self.footer.accept_button.setEnabled(False)
+        main_layout.addWidget(self.footer)
+
+        self.output_selector.path_input.textChanged.connect(self._update_accept_state)
+
         self._toggle_mode("Default")
 
     def _create_labeled_widget(self, setting):
@@ -191,6 +208,29 @@ class MeshEquilibrationDialog(QDialog):
             set_widget_value(self._widgets["upper_bound"], val * 1.25)
         except (ValueError, KeyError):
             pass
+
+    def _update_accept_state(self, *_):
+        """Enable the accept button only when a directory is set."""
+        path = self.output_selector.get_path().strip()
+        self.footer.accept_button.setEnabled(bool(path))
+
+    def accept(self):
+        """Ensure the output directory exists (creating it if needed)."""
+        path = self.output_selector.get_path().strip()
+        try:
+            Path(path).mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            QMessageBox.warning(
+                self,
+                "Invalid Output Directory",
+                f"Cannot use '{path}':\n{exc}",
+            )
+            return
+        return super().accept()
+
+    def get_output_directory(self) -> str:
+        """Return the selected output directory."""
+        return self.output_selector.get_path().strip()
 
     def get_parameters(self):
         """Get the current parameters."""
