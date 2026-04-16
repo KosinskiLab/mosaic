@@ -11,56 +11,25 @@ import warnings
 from io import BytesIO
 from string import ascii_lowercase
 from dataclasses import dataclass
-import xml.etree.ElementTree as ET
 from typing import List, Dict, Any, Optional
 
 import numpy as np
 from gzip import open as gzip_open
 
 
+class NotASegmentationError(ValueError):
+    """Raised when a volume cannot be interpreted as a segmentation.
+
+    The sampled unique-value count exceeded ``max_cluster``, indicating
+    the file is most likely a density map rather than a label map. The
+    caller should offer to render it as a volume instead.
+    """
+
+
 def is_gzipped(filename: str) -> bool:
     """Check if a file is a gzip file by reading its magic number."""
     with open(filename, "rb") as f:
         return f.read(2) == b"\x1f\x8b"
-
-
-def _parse_data_array(data_array: ET.Element, dtype: type = float) -> np.ndarray:
-    """
-    Parse a DataArray element into a numpy array.
-
-    Parameters
-    ----------
-    data_array : ET.Element
-        XML element containing array data.
-    dtype : type, optional
-        Data type for parsing, by default float.
-
-    Returns
-    -------
-    np.ndarray
-        Parsed numpy array.
-    """
-    rows = [row.strip() for row in data_array.text.strip().split("\n") if row.strip()]
-    parsed_rows = [[dtype(x) for x in row.split()] for row in rows]
-    data = np.array(parsed_rows)
-    return np.squeeze(data)
-
-
-def _parse_dtype(xml_element) -> object:
-    """
-    Determine data type from XML element type attribute.
-
-    Parameters
-    ----------
-    xml_element : ET.Element
-        XML element to parse type from.
-
-    Returns
-    -------
-    object
-        Data type (float or int).
-    """
-    return float if xml_element.get("type", "").startswith("Float") else int
 
 
 @dataclass
@@ -647,7 +616,7 @@ def read_volume(filename: str):
 
 
 def read_mrc_flat(filepath):
-    """Read an MRC file via bulk read with endianness and axis handling.
+    """Read an MRC file into a flat buffer.
 
     Returns
     -------
@@ -720,11 +689,21 @@ def points_from_flat_array(arr, dims, spacing, max_cluster=10000):
     -------
     list of ndarray
         One ``(N, 3)`` float32 point array per label.
+
+    Raises
+    ------
+    NotASegmentationError
+        If the sampled unique-value count exceeds ``max_cluster``.
     """
     rng = np.random.default_rng()
     sample = arr[rng.integers(0, arr.size, size=min(125_000, arr.size))]
-    if len(np.unique(sample)) > max_cluster:
-        return []
+    unique_count = len(np.unique(sample))
+    if unique_count > max_cluster:
+        raise NotASegmentationError(
+            f"Volume has {unique_count} unique values in a {sample.size}-voxel "
+            f"sample, exceeding max_cluster={max_cluster}. It is most likely a "
+            f"density map rather than a label map."
+        )
 
     flat = np.where(arr != 0)[0]
     if flat.size == 0:
@@ -813,7 +792,7 @@ def _read_tsi_file(file_path: str) -> Dict:
 
 def _read_vtu_file(file_path: str) -> Dict:
     """
-    Parse a VTK XML file into a dictionary of numpy arrays.
+    Parse a VTK XML UnstructuredGrid file into a dictionary of numpy arrays.
 
     Parameters
     ----------
@@ -825,40 +804,46 @@ def _read_vtu_file(file_path: str) -> Dict:
     Dict
         Topology file content.
     """
-    with open(file_path, mode="r") as ifile:
-        data = ifile.read()
+    import vtk
+    from vtk.util.numpy_support import vtk_to_numpy
 
-    root = ET.fromstring(data)
-    piece = root.find(".//Piece")
+    reader = vtk.vtkXMLUnstructuredGridReader()
+    reader.SetFileName(file_path)
+    reader.Update()
+    grid = reader.GetOutput()
 
-    result = {
-        "num_points": int(piece.get("NumberOfPoints")),
-        "num_cells": int(piece.get("NumberOfCells")),
-        "point_data": {},
-        "points": None,
-        "connectivity": None,
-        "offsets": None,
-        "types": None,
+    points = vtk_to_numpy(grid.GetPoints().GetData())
+    cells = grid.GetCells()
+    connectivity = vtk_to_numpy(cells.GetConnectivityArray())
+
+    # vtkCellArray offsets are length num_cells+1 with a leading 0. The legacy
+    # XML representation stores only the trailing offsets.
+    offsets = vtk_to_numpy(cells.GetOffsetsArray())[1:]
+    types = vtk_to_numpy(grid.GetCellTypes())
+
+    if offsets.size:
+        starts = np.concatenate(([0], offsets[:-1]))
+        strides = offsets - starts
+        if np.all(strides == strides[0]):
+            connectivity = connectivity.reshape(-1, int(strides[0]))
+
+    pd = grid.GetPointData()
+    point_data: Dict[str, np.ndarray] = {}
+    for i in range(pd.GetNumberOfArrays()):
+        arr = vtk_to_numpy(pd.GetArray(i))
+        if arr.ndim == 2 and arr.shape[1] == 1:
+            arr = arr.reshape(-1)
+        point_data[pd.GetArrayName(i)] = arr
+
+    return {
+        "num_points": grid.GetNumberOfPoints(),
+        "num_cells": grid.GetNumberOfCells(),
+        "point_data": point_data,
+        "points": points,
+        "connectivity": connectivity,
+        "offsets": offsets,
+        "types": types,
     }
-
-    # Parse point data arrays
-    if (point_data := piece.find("PointData")) is not None:
-        for array in point_data.findall("DataArray"):
-            data_type = _parse_dtype(array)
-            result["point_data"][array.get("Name")] = _parse_data_array(
-                array, data_type
-            )
-
-    if (points_array := piece.find(".//Points/DataArray")) is not None:
-        data_type = _parse_dtype(points_array)
-        result["points"] = _parse_data_array(points_array, data_type)
-
-    if (cells := piece.find("Cells")) is not None:
-        for array in cells.findall("DataArray"):
-            data_type = _parse_dtype(array)
-            result[array.get("Name")] = _parse_data_array(array, data_type)
-
-    return result
 
 
 def load_density(filename: str, **kwargs):

@@ -188,7 +188,9 @@ def _compute_fluctuation(
             "metadata": {"computation": "rmsf", "window": str(window)},
         }
 
-    meshes = [Geometry(model=_build_mesh(pts, faces)) for pts, faces, _ in all_frames]
+    meshes = [
+        Geometry(model=_build_mesh(pts, faces)) for pts, faces, _, _ in all_frames
+    ]
 
     per_vertex = []
     for t in range(n_frames):
@@ -228,7 +230,7 @@ def _compute_property(trajectory_dir, property_name, scale, offset, **kwargs):
 
     frame_indices, scalars, per_vertex = [], [], []
     n_frames = len(list_trajectory_files(trajectory_dir))
-    for i, (pts, faces, _) in enumerate(iter_frames(trajectory_dir, scale, offset)):
+    for i, (pts, faces, _, _) in enumerate(iter_frames(trajectory_dir, scale, offset)):
         report_progress(current=i, total=n_frames)
         mesh = _build_mesh(pts, faces)
 
@@ -326,7 +328,9 @@ def _compute_bending_energy(trajectory_dir, scale, offset, output_dir=None, **kw
     n_frames = len(list_trajectory_files(trajectory_dir))
     frame_indices, scalars, per_vertex = [], [], []
 
-    for i, (points, faces, _) in enumerate(iter_frames(trajectory_dir, scale, offset)):
+    for i, (points, faces, _, _) in enumerate(
+        iter_frames(trajectory_dir, scale, offset)
+    ):
         report_progress(current=i, total=n_frames)
         pv = _vertex_bending_energy(points, faces, kappa, kappa_g, c0)
         frame_indices.append(i)
@@ -554,7 +558,7 @@ def _compute_hmff(trajectory_dir, scale, offset, output_dir=None, **kwargs):
     n_frames = len(list_trajectory_files(trajectory_dir))
     frame_indices, scalars, per_vertex = [], [], []
 
-    for i, (points, _, _) in enumerate(iter_frames(trajectory_dir, 1.0, offset)):
+    for i, (points, _, _, _) in enumerate(iter_frames(trajectory_dir, 1.0, offset)):
         report_progress(current=i, total=n_frames)
         voxel_points = points * voxel_scale
         pv = _hmff_potential(

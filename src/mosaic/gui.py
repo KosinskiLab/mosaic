@@ -38,7 +38,6 @@ from qtpy.QtGui import (
     QGuiApplication,
     QActionGroup,
     QKeyEvent,
-    QCursor,
     QDragEnterEvent,
 )
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
@@ -68,7 +67,6 @@ from .widgets import (
     BoundingBoxManager,
 )
 from .widgets.dock import toggle_dock
-from .widgets.drop_overlay import DropOverlay
 from .widgets.volume_viewer_hud import VolumeViewerHUD
 
 
@@ -190,17 +188,6 @@ class App(QMainWindow):
 
         self.setAcceptDrops(True)
 
-        from .formats.reader import is_volume_file
-
-        self._import_overlay = DropOverlay("Import", self.vtk_widget)
-        self._volume_overlay = DropOverlay(
-            "Render Volume", self.volume_viewer, file_filter=is_volume_file
-        )
-        self._import_overlay.dropped.connect(self._on_import_dropped)
-        self._volume_overlay.dropped.connect(self._on_volume_dropped)
-        self._import_overlay.drag_ended.connect(self._end_drag)
-        self._volume_overlay.drag_ended.connect(self._end_drag)
-
     def closeEvent(self, event):
         BackgroundTaskManager.instance()._shutdown()
         super().closeEvent(event)
@@ -210,49 +197,21 @@ class App(QMainWindow):
         if checked:
             self.volume_viewer.raise_()
 
-    def _end_drag(self):
-        QApplication.restoreOverrideCursor()
-        self._import_overlay.active = False
-        self._import_overlay.hide()
-        self._volume_overlay.active = False
-        self._volume_overlay.hide()
-        if getattr(self, "_drag_opened_dock", False):
-            self._toggle_volume_dock(False)
-            self.volume_action.setChecked(False)
-            self._drag_opened_dock = False
-
     def dragEnterEvent(self, event: QDragEnterEvent):
-        if not event.mimeData().hasUrls():
-            return
-        if not any(url.isLocalFile() for url in event.mimeData().urls()):
-            return
+        urls = event.mimeData().urls() if event.mimeData().hasUrls() else []
+        if any(url.isLocalFile() for url in urls):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
 
-        if hasattr(self, "_drag_leave_timer"):
-            self._drag_leave_timer.stop()
-
+    def dropEvent(self, event):
+        urls = event.mimeData().urls() if event.mimeData().hasUrls() else []
+        paths = [u.toLocalFile() for u in urls if u.isLocalFile()]
+        if not paths:
+            event.ignore()
+            return
         event.acceptProposedAction()
-        if QApplication.overrideCursor() is None:
-            QApplication.setOverrideCursor(QCursor(Qt.DragCopyCursor))
-
-        if self._import_overlay.isVisible():
-            return
-
-        from .formats.reader import is_volume_file
-
-        has_volumes = any(
-            url.isLocalFile() and is_volume_file(url.toLocalFile())
-            for url in event.mimeData().urls()
-        )
-        if has_volumes and not self.volume_viewer.isVisible():
-            self._toggle_volume_dock(True)
-            self.volume_action.setChecked(True)
-            self._drag_opened_dock = True
-
-        self._import_overlay.refit()
-        self._import_overlay.show()
-        if has_volumes:
-            self._volume_overlay.refit()
-            self._volume_overlay.show()
+        self._handle_import(paths)
 
     def _handle_import(self, file_paths):
         from .formats.session import is_session_file
@@ -270,10 +229,7 @@ class App(QMainWindow):
             self._load_session(session_files[0])
 
         if data_files:
-            self._open_files(data_files)
-
-    def _on_import_dropped(self, paths):
-        self._handle_import(paths)
+            self._open_files(data_files, allow_volume_fallback=True)
 
     def sizeHint(self):
         """Provide the preferred size for the main window."""
@@ -1203,17 +1159,47 @@ class App(QMainWindow):
             ),
         )
 
-    def _on_volume_dropped(self, paths):
-        self._drag_opened_dock = False
+    def _load_volume_file(self, path: str) -> None:
+        """Show the volume dock if hidden and load *path* into the primary viewer."""
         if not self.volume_viewer.isVisible():
             self.volume_viewer.setVisible(True)
             self.volume_viewer.raise_()
             self.volume_action.setChecked(True)
-        for path in paths:
-            try:
-                self.volume_viewer.primary.load_volume(path)
-            except Exception as e:
-                QMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
+        try:
+            self.volume_viewer.primary.load_volume(path)
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
+
+    def _maybe_open_as_volume(self, path: str, error: Exception) -> bool:
+        """Offer to open *path* in the volume viewer after load failure."""
+        if Settings.ui.always_open_as_volume:
+            self._load_volume_file(path)
+            return True
+
+        box = QMessageBox(self)
+        box.setWindowTitle("Open as volume?")
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setText(
+            f"Could not load this file as a segmentation:\n\n"
+            f"{path}\n\n"
+            f"{error}\n\n"
+            f"Open it in the volume viewer instead?"
+        )
+        yes_btn = box.addButton("Yes", QMessageBox.ButtonRole.AcceptRole)
+        always_btn = box.addButton("Always", QMessageBox.ButtonRole.AcceptRole)
+        no_btn = box.addButton("No", QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(yes_btn)
+        box.exec()
+
+        clicked = box.clickedButton()
+        if clicked is no_btn:
+            return False
+
+        if clicked is always_btn:
+            Settings.ui.always_open_as_volume = True
+
+        self._load_volume_file(path)
+        return True
 
     def _setup_trajectory_player(self):
         self.trajectory_dock = QDockWidget(parent=self)
@@ -1299,7 +1285,7 @@ class App(QMainWindow):
         if render:
             self.set_camera_view("z")
 
-    def _open_files(self, filenames: List[str]):
+    def _open_files(self, filenames: List[str], allow_volume_fallback: bool = False):
         from .formats.session import is_session_file
 
         if isinstance(filenames, str):
@@ -1326,17 +1312,24 @@ class App(QMainWindow):
         submit_io_task(
             "Reading Files",
             _read_files_worker,
-            self._on_files_read,
+            lambda results: self._on_files_read(
+                results, allow_volume_fallback=allow_volume_fallback
+            ),
             self.cdata,
             filenames,
             file_parameters,
         )
 
-    def _on_files_read(self, results):
+    def _on_files_read(self, results, allow_volume_fallback: bool = False):
         """GUI-thread callback: surface errors, render, recentre camera."""
+        from .formats import NotASegmentationError
+
+        volume_fallbacks = []
         failures = []
         for filename, outcome in results:
-            if isinstance(outcome, Exception):
+            if allow_volume_fallback and isinstance(outcome, NotASegmentationError):
+                volume_fallbacks.append((filename, outcome))
+            elif isinstance(outcome, Exception):
                 failures.append((filename, str(outcome)))
             else:
                 self._add_file_to_recent(filename)
@@ -1358,6 +1351,10 @@ class App(QMainWindow):
                 if len(failures) > 20:
                     lines.append(f"  ... and {len(failures) - 20} more")
                 QMessageBox.warning(self, "Read Failed", "\n".join(lines))
+
+        for path, error in volume_fallbacks:
+            if self._maybe_open_as_volume(path, error):
+                self._add_file_to_recent(path)
 
     def open_files(self):
         filenames, _ = QFileDialog.getOpenFileNames(self, "Import Files")

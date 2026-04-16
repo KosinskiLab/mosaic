@@ -23,6 +23,7 @@ __all__ = [
     "fair_mesh",
     "get_ring_vertices",
     "close_holes",
+    "bridge_boundaries",
     "triangulation_refine_leipa",
 ]
 
@@ -165,6 +166,79 @@ def close_holes(
             break
         out_fs = _close_hole(vs, out_fs, b, fast)
     return out_fs
+
+
+def bridge_boundaries(vs: np.ndarray, fs: np.ndarray, alpha: float) -> np.ndarray:
+    """Close mesh topology by bridging boundary vertices via an alpha shape.
+
+    Unlike Liepa hole filling, which triangulates a single boundary loop,
+    this computes an alpha shape over all boundary vertices and appends
+    its faces to the input mesh. Can connect disjoint components and
+    bridge multiple loops simultaneously.
+
+    Parameters
+    ----------
+    vs : ndarray, shape (N, 3)
+        Vertex coordinates.
+    fs : ndarray, shape (M, 3)
+        Face indices.
+    alpha : float
+        Alpha-shape parameter. Same units as
+        :class:`~mosaic.parametrization.AlphaShape`.
+
+    Returns
+    -------
+    ndarray, shape (K, 3)
+        Face indices with bridging faces appended.
+    """
+    from scipy.spatial import cKDTree
+    from ..parametrization import AlphaShape
+
+    fs = np.asarray(fs, dtype=np.int64)
+    if len(fs) == 0 or alpha <= 0:
+        return fs.copy()
+
+    boundary_edges = np.sort(igl.boundary_facets(fs)[0], axis=1)
+    if len(boundary_edges) == 0:
+        return fs.copy()
+    boundary_vids = np.unique(boundary_edges)
+
+    boundary_vs = vs[boundary_vids].astype(np.float64)
+
+    try:
+        alpha_mesh = AlphaShape.fit(boundary_vs, alpha=alpha).mesh
+    except Exception:
+        return fs.copy()
+
+    a_vs = np.asarray(alpha_mesh.vertices, dtype=np.float64)
+    a_fs = np.asarray(alpha_mesh.triangles, dtype=np.int64)
+    if len(a_fs) == 0:
+        return fs.copy()
+
+    # open3d drops unreferenced vertices during cleanup, so map back by
+    # proximity -- alpha shape does not move input points.
+    tree = cKDTree(boundary_vs)
+    _, local = tree.query(a_vs, k=1)
+    mapped = boundary_vids[local][a_fs]
+
+    # A bridging face must touch an existing boundary edge -- this discards
+    # the opposite hemisphere of the alpha shape and any interior duplicates.
+    be_set = {tuple(e) for e in boundary_edges.tolist()}
+    e1 = np.sort(mapped[:, [0, 1]], axis=1).tolist()
+    e2 = np.sort(mapped[:, [1, 2]], axis=1).tolist()
+    e3 = np.sort(mapped[:, [2, 0]], axis=1).tolist()
+    touches = np.array(
+        [
+            tuple(a) in be_set or tuple(b) in be_set or tuple(c) in be_set
+            for a, b, c in zip(e1, e2, e3)
+        ]
+    )
+
+    new_faces = mapped[touches]
+    if len(new_faces) == 0:
+        return fs.copy()
+
+    return np.concatenate([fs, new_faces.astype(fs.dtype)], axis=0)
 
 
 def get_mollified_edge_length(
