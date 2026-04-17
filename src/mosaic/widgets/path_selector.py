@@ -16,7 +16,7 @@ from qtpy.QtWidgets import (
     QFileDialog,
     QCompleter,
 )
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 from ..icons import icon, icon_pixmap
 
 
@@ -110,7 +110,7 @@ class PathSelector(QWidget):
             self.label.setStyleSheet(
                 f"""
                 QLabel {{
-                    font-size: 12px;
+                    font-size: {Typography.LABEL}px;
                     font-weight: 500;
                     color: {Colors.TEXT_PRIMARY};
                     margin-bottom: 1px;
@@ -215,7 +215,7 @@ class PathSelector(QWidget):
             self.label.setStyleSheet(
                 f"""
                 QLabel {{
-                    font-size: 12px;
+                    font-size: {Typography.LABEL}px;
                     font-weight: 500;
                     color: {Colors.TEXT_PRIMARY};
                     margin-bottom: 1px;

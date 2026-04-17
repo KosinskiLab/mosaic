@@ -30,7 +30,7 @@ import pyqtgraph as pg
 
 from ..widgets import PathSelector, SearchWidget, TabWidget
 from ..widgets.settings import get_widget_value
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 from ..icons import icon, icon_button
 from ._configure import ConfigurePanel
 from ._analysis_panel import AnalysisPanel
@@ -106,7 +106,7 @@ class DTSScreeningDialog(QDialog):
         )
         self._preview_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._preview_placeholder.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: 13px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.BODY}px;"
         )
         preview_layout.addWidget(self._preview_placeholder)
 
@@ -184,7 +184,7 @@ class DTSScreeningDialog(QDialog):
 
         self._status_label = QLabel("")
         self._status_label.setStyleSheet(
-            f"color: {Colors.TEXT_SECONDARY}; font-size: 11px;"
+            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
         )
         screen_layout.addWidget(self._status_label)
 

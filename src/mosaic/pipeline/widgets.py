@@ -37,7 +37,7 @@ from ..widgets.container_list import ContainerListWidget, StyledTreeWidgetItem
 
 
 from ._utils import strip_filepath, natural_sort_key
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 
 _COLS = 3  # logical parameter columns (actual grid columns = _COLS * 2)
 
@@ -177,9 +177,10 @@ class OperationCardWidget(QFrame):
 
         title = QLabel(self.operation_name)
         title_font = QFont()
-        title_font.setPointSize(13)
+        title_font.setPixelSize(Typography.BODY)
+        title_font.setBold(True)
         title.setFont(title_font)
-        title.setStyleSheet(f"color: {Colors.TEXT_PRIMARY};")
+        title.setStyleSheet(f"color: {self.category_color};")
         header_layout.addWidget(title)
         header_layout.addStretch()
 
@@ -204,13 +205,15 @@ class OperationCardWidget(QFrame):
         layout.addLayout(header_layout)
 
         self.desc = QLabel(self.operation_info["description"])
-        self.desc.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+        self.desc.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+        )
         self.desc.setWordWrap(True)
         layout.addWidget(self.desc)
 
         self.params_summary = QLabel("No parameters set")
         self.params_summary.setStyleSheet(
-            f"color: {Colors.ICON_MUTED}; font-size: 11px; font-style: italic;"
+            f"color: {Colors.ICON_MUTED}; font-size: {Typography.SMALL}px; font-style: italic;"
         )
         self.params_summary.setWordWrap(True)
         layout.addWidget(self.params_summary)
@@ -396,7 +399,7 @@ class OperationCardWidget(QFrame):
             separator = QLabel(f"  {method} Settings")
             separator.setFixedHeight(Colors.WIDGET_HEIGHT)
             separator.setStyleSheet(
-                f"color: {Colors.TEXT_SECONDARY}; font-size: 11px;"
+                f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
                 f"border-top: 1px solid {Colors.BORDER_DARK};"
                 f"padding-top: 6px;"
             )

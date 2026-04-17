@@ -21,6 +21,7 @@ from qtpy.QtWidgets import (
     QMessageBox,
 )
 from ..icons import icon
+from ..stylesheets import Typography
 from ..widgets import PathSelector, DialogFooter, TabWidget
 
 
@@ -126,7 +127,9 @@ class PreprocessTab(QWidget):
         invert_template_label = QLabel("Contrast:")
         self.invert_template_check = QCheckBox("Invert template contrast")
         contrast_help = QLabel("Invert template contrast to match target contrast.")
-        contrast_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        contrast_help.setStyleSheet(
+            f"color: #64748b; font-size: {Typography.CAPTION}px;"
+        )
 
         self.preproc_filters_layout.addWidget(preproc_lowpass_label, 0, 0)
         self.preproc_filters_layout.addWidget(self.preproc_lowpass_input, 0, 1)
@@ -155,7 +158,7 @@ class PreprocessTab(QWidget):
         align_help = QLabel(
             "Templates including membrane typically align on eigenvector 2."
         )
-        align_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        align_help.setStyleSheet(f"color: #64748b; font-size: {Typography.CAPTION}px;")
 
         flip_axis_label = QLabel("Flip Template:")
         self.flip_axis_check = QCheckBox("Flip template along alignment axis")
@@ -246,7 +249,9 @@ class MatchingTab(QWidget):
         scaling_help = QLabel(
             "2 if orientations are at 3 Apx and tomogram is at 6 Apx."
         )
-        scaling_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        scaling_help.setStyleSheet(
+            f"color: #64748b; font-size: {Typography.CAPTION}px;"
+        )
 
         rotational_uncertainty_label = QLabel("Rotational Uncertainty:")
         self.rotational_uncertainty = QLineEdit()
@@ -254,7 +259,9 @@ class MatchingTab(QWidget):
         rotational_uncertainty_help = QLabel(
             "Deviation from seed point normal in degrees."
         )
-        rotational_uncertainty_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        rotational_uncertainty_help.setStyleSheet(
+            f"color: #64748b; font-size: {Typography.CAPTION}px;"
+        )
 
         translational_uncertainty_label = QLabel("Translational Uncertainty:")
         self.translational_uncertainty = QLineEdit()
@@ -262,7 +269,9 @@ class MatchingTab(QWidget):
         translational_uncertainty_help = QLabel(
             "x, y, z deviation from seed point in voxels."
         )
-        translational_uncertainty_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        translational_uncertainty_help.setStyleSheet(
+            f"color: #64748b; font-size: {Typography.CAPTION}px;"
+        )
 
         self.orientation_layout.addWidget(orientations_label, 0, 0)
         self.orientation_layout.addWidget(self.orientations_selector, 0, 1)
@@ -299,13 +308,13 @@ class MatchingTab(QWidget):
         self.tilt_input = QLineEdit()
         self.tilt_input.setPlaceholderText("e.g., 57,60")
         tilt_help = QLabel("Format: start_angle,stop_angle")
-        tilt_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        tilt_help.setStyleSheet(f"color: #64748b; font-size: {Typography.CAPTION}px;")
 
         axes_label = QLabel("Wedge Axes:")
         self.axes_input = QLineEdit()
         self.axes_input.setPlaceholderText("e.g., 2,0")
         axes_help = QLabel("Format: opening_axis,tilt_axis")
-        axes_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        axes_help.setStyleSheet(f"color: #64748b; font-size: {Typography.CAPTION}px;")
 
         defocus_label = QLabel("Defocus (Å):")
         self.defocus_input = QLineEdit()

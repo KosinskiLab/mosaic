@@ -33,7 +33,7 @@ import pyqtgraph as pg
 from ..widgets import PathSelector, generate_gradient_colors
 from ..icons import icon
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 
 from ._utils import (
     COUPLING_DEFS as _COUPLING_DEFS,
@@ -298,7 +298,9 @@ class ConfigurePanel(QScrollArea):
         self._extra_config_edit.setPlaceholderText(_EXTRA_CONFIG_PLACEHOLDER)
         self._extra_config_edit.setMinimumHeight(80)
         self._extra_config_edit.setMaximumHeight(140)
-        self._extra_config_edit.setStyleSheet("QPlainTextEdit { font-size: 12px; }")
+        self._extra_config_edit.setStyleSheet(
+            f"QPlainTextEdit {{ font-size: {Typography.LABEL}px; }}"
+        )
         self._extra_config_edit.textChanged.connect(self._update_combo_summary)
         layout.addWidget(self._extra_config_edit)
         return group
@@ -311,12 +313,14 @@ class ConfigurePanel(QScrollArea):
         dts_info = QLabel(
             f"DTS binary: {dts_path}" if dts_path else "DTS binary not found in PATH"
         )
-        dts_info.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+        dts_info.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+        )
         info_row.addWidget(dts_info)
 
         self._combo_summary = QLabel("")
         self._combo_summary.setStyleSheet(
-            f"color: {Colors.TEXT_SECONDARY}; font-size: 11px;"
+            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
         )
         info_row.addStretch()
         info_row.addWidget(self._combo_summary)
@@ -767,7 +771,7 @@ class ConfigurePanel(QScrollArea):
                 ]
 
             font = pg.QtGui.QFont()
-            font.setPixelSize(9)
+            font.setPixelSize(Typography.CAPTION)
 
             use_volume_labels = name == "volume_path" and volume_labels is not None
             for idx in indices:

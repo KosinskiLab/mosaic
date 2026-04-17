@@ -3,6 +3,7 @@ from qtpy.QtWidgets import QWidget, QScrollArea, QApplication
 from qtpy.QtGui import QPainter, QColor, QPen, QFont, QMouseEvent
 
 from ..icons import icon
+from ..stylesheets import Typography
 
 
 class TimelineContent(QWidget):
@@ -94,7 +95,7 @@ class TimelineContent(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         font = QFont(painter.font())
-        font.setPointSize(8)
+        font.setPixelSize(Typography.CAPTION)
         painter.setFont(font)
 
         painter.setPen(QPen(Qt.GlobalColor.black, 1))
@@ -122,7 +123,7 @@ class TimelineContent(QWidget):
             first_visible_tick += frames_per_tick
 
         metadata_font = QFont(painter.font())
-        metadata_font.setPointSize(12)
+        metadata_font.setPixelSize(Typography.LABEL)
         painter.setFont(metadata_font)
 
         for frame in range(

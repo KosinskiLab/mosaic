@@ -25,7 +25,7 @@ from qtpy.QtWidgets import (
     QApplication,
 )
 from qtpy.QtGui import QTextCursor, QPainter, QColor, QPen, QPainterPath
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 from ..icons import icon
 from ..parallel import BackgroundTaskManager
 
@@ -159,10 +159,10 @@ class TaskCard(QFrame):
         output_layout.setContentsMargins(0, 4, 0, 4)
         output_layout.setSpacing(4)
 
-        _text_style = """
+        _text_style = f"""
             QTextEdit {{
                 background: transparent;
-                font-size: 10px;
+                font-size: {Typography.CAPTION}px;
                 border: none; padding: 4px;
             }}
         """
@@ -685,8 +685,8 @@ class StatusIndicator:
         """Re-apply theme-dependent styles to status bar widgets."""
         status_bar = self.main_window.statusBar()
         status_bar.setStyleSheet(
-            """
-            QStatusBar {{ font-size: 11px; }}
+            f"""
+            QStatusBar {{ font-size: {Typography.SMALL}px; }}
             QStatusBar::item {{ border: none; }}
         """
         )
@@ -710,7 +710,7 @@ class StatusIndicator:
                 f"""
                 QPushButton {{
                     padding: 0px; margin: 0px; border: none; border-radius: 4px;
-                    color: {Colors.TEXT_MUTED}; font-size: 11px;
+                    color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;
                 }}
                 QPushButton:hover {{
                     background: {Colors.BG_HOVER};
@@ -732,7 +732,7 @@ class StatusIndicator:
         ):
             if hasattr(self, label):
                 getattr(self, label).setStyleSheet(
-                    f"color: {Colors.TEXT_MUTED}; font-size: 11px;"
+                    f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
                 )
 
     def _setup_status_bar(self):
@@ -740,14 +740,16 @@ class StatusIndicator:
         status_bar.setFixedHeight(24)
         status_bar.setStyleSheet(
             f"""
-            QStatusBar {{ font-size: 11px; }}
+            QStatusBar {{ font-size: {Typography.SMALL}px; }}
             QStatusBar::item {{ border: none; }}
         """
         )
 
         self.task_label = QLabel()
         self.task_label.setFixedWidth(150)
-        self.task_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+        self.task_label.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+        )
         self._task_timer = QTimer()
         self._task_timer.setSingleShot(True)
         self._task_timer.timeout.connect(lambda: self.task_label.clear())
@@ -756,7 +758,7 @@ class StatusIndicator:
         self.progress_label.setFixedWidth(120)
         self.progress_label.setVisible(False)
         self.progress_label.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: 11px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
         )
 
         self.progress_bar = QProgressBar()
@@ -782,16 +784,20 @@ class StatusIndicator:
         self.progress_count.setFixedWidth(35)
         self.progress_count.setVisible(False)
         self.progress_count.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: 11px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
         )
 
         self.mode_label = QLabel("Viewing")
         self.mode_label.setFixedWidth(55)
-        self.mode_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+        self.mode_label.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+        )
 
         self.target_label = QLabel("Clusters")
         self.target_label.setFixedWidth(55)
-        self.target_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+        self.target_label.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+        )
 
         self.spinner = TextSpinnerLabel()
         self.spinner.setFixedWidth(14)
@@ -808,7 +814,7 @@ class StatusIndicator:
             f"""
             QPushButton {{
                 padding: 0px; margin: 0px; border: none; border-radius: 4px;
-                color: {Colors.TEXT_MUTED}; font-size: 11px;
+                color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;
             }}
             QPushButton:hover {{
                 background: {Colors.BG_HOVER};

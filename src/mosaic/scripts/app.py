@@ -11,12 +11,14 @@ import signal
 import argparse
 from importlib_resources import files
 
-from qtpy.QtGui import QIcon, QFont, QFontDatabase
+from qtpy.QtGui import QIcon, QFont, QFontDatabase, QFontInfo
 from qtpy.QtWidgets import QApplication
+
 
 from mosaic import __version__
 from mosaic.stylesheets import (
     Colors,
+    Typography,
     build_global_stylesheet,
     build_qt_palette,
     install_macos_titlebar_filter,
@@ -46,14 +48,18 @@ def main():
     # Fixes alignment issue in default style
     # https://forum.qt.io/topic/105191/why-isn-t-a-qcombobox-positioned-correctly-in-a-layout/11
     app.setStyle("Fusion")
+
+    if sys.platform == "darwin":
+        font = QFont("Helvetica Neue")
+        if "Helvetica Neue" not in QFontDatabase.families():
+            font = app.font()
+        font.setPointSize(13)
+        app.setFont(font)
+
+    Typography.set_base(QFontInfo(app.font()).pixelSize())
+
     app.setPalette(build_qt_palette())
     app.setStyleSheet(build_global_stylesheet())
-
-    font = QFont("Helvetica Neue")
-    if "Helvetica Neue" not in QFontDatabase.families():
-        font = app.font()
-    font.setPointSize(13)
-    app.setFont(font)
 
     install_macos_titlebar_filter()
 

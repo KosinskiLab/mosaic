@@ -26,6 +26,7 @@ from ..stylesheets import (
     QLineEdit_style,
     QCheckBox_style,
     Colors,
+    Typography,
 )
 from ..widgets import DialogFooter
 
@@ -94,7 +95,7 @@ class BatchRenameDialog(QDialog):
                     border-top-right-radius: {radius_r};
                     border-bottom-right-radius: {radius_r};
                     padding: 5px 18px;
-                    font-size: 12px;
+                    font-size: {Typography.LABEL}px;
                     color: {Colors.TEXT_SECONDARY};
                     background: transparent;
                     margin-left: {margin_l};
@@ -127,7 +128,7 @@ class BatchRenameDialog(QDialog):
 
         self.preview_label = QLabel()
         self.preview_label.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: 11px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
         )
         main_layout.addWidget(self.preview_label)
         main_layout.addSpacing(8)
@@ -143,7 +144,9 @@ class BatchRenameDialog(QDialog):
         grid.setContentsMargins(0, 0, 0, 0)
 
         find_label = QLabel("Find")
-        find_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 12px;")
+        find_label.setStyleSheet(
+            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.LABEL}px;"
+        )
         grid.addWidget(find_label, 0, 0)
         self.find_input = QLineEdit()
         self.find_input.setPlaceholderText("Text to find")
@@ -151,7 +154,9 @@ class BatchRenameDialog(QDialog):
         grid.addWidget(self.find_input, 0, 1)
 
         replace_label = QLabel("Replace")
-        replace_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 12px;")
+        replace_label.setStyleSheet(
+            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.LABEL}px;"
+        )
         grid.addWidget(replace_label, 1, 0)
         self.replace_input = QLineEdit()
         self.replace_input.setPlaceholderText("Replacement (leave empty to delete)")
@@ -160,7 +165,7 @@ class BatchRenameDialog(QDialog):
 
         self.error_label = QLabel()
         self.error_label.setStyleSheet(
-            f"color: {Colors.ERROR}; font-size: 10px; padding: 0;"
+            f"color: {Colors.ERROR}; font-size: {Typography.CAPTION}px; padding: 0;"
         )
         self.error_label.hide()
         grid.addWidget(self.error_label, 2, 1)
@@ -188,7 +193,7 @@ class BatchRenameDialog(QDialog):
 
         template_label = QLabel("Template")
         template_label.setStyleSheet(
-            f"color: {Colors.TEXT_SECONDARY}; font-size: 12px;"
+            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.LABEL}px;"
         )
         grid.addWidget(template_label, 0, 0)
         self.pattern_input = QLineEdit()
@@ -199,7 +204,9 @@ class BatchRenameDialog(QDialog):
         grid.addWidget(self.pattern_input, 0, 1)
 
         token_help = QLabel("{name} = original · {i} = number · {i:03} = zero-padded")
-        token_help.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 10px;")
+        token_help.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.CAPTION}px;"
+        )
         grid.addWidget(token_help, 1, 1)
 
         self.stack.addWidget(page)

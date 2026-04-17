@@ -21,7 +21,7 @@ from qtpy.QtWidgets import (
     QWidgetAction,
 )
 from ..icons import icon
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 
 __all__ = [
     "ColorMapSelector",
@@ -366,7 +366,7 @@ class ColorPickerRow(QWidget):
         label_widget.setStyleSheet(
             f"""
             QLabel {{
-                font-size: 13px;
+                font-size: {Typography.BODY}px;
                 color: {Colors.TEXT_PRIMARY};
             }}
         """
@@ -431,7 +431,7 @@ class ColorPickerRow(QWidget):
             label_widget.setStyleSheet(
                 f"""
                 QLabel {{
-                    font-size: 13px;
+                    font-size: {Typography.BODY}px;
                     color: {Colors.TEXT_PRIMARY};
                 }}
             """

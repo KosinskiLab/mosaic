@@ -70,6 +70,8 @@ class ThemeToggle(QPushButton):
 
         glyph = "\u263e" if self.isChecked() else "\u2600"
         p.setPen(QColor(glyph_color))
-        p.setFont(QFont(self.font().family(), 10))
+        glyph_font = QFont(self.font().family())
+        glyph_font.setPixelSize(14)
+        p.setFont(glyph_font)
         p.drawText(int(self._knob), 2, 22, 22, Qt.AlignmentFlag.AlignCenter, glyph)
         p.end()

@@ -16,12 +16,12 @@ from qtpy.QtWidgets import (
     QLabel,
     QPushButton,
     QWidget,
+    QGroupBox,
     QScrollArea,
     QSpinBox,
     QFileDialog,
     QMessageBox,
     QCheckBox,
-    QFrame,
 )
 from qtpy.QtCore import Qt, QSize
 from qtpy.QtGui import QFont
@@ -33,7 +33,7 @@ from .widgets import OperationCardWidget, PipelineTreeWidget
 from ..__version__ import __version__
 from ..settings import Settings
 from ..widgets.settings import format_tooltip
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 
 
 __all__ = ["PipelineBuilderDialog"]
@@ -54,93 +54,67 @@ class PipelineBuilderDialog(QDialog):
 
         self.pipeline_tree = PipelineTreeWidget()
         self.pipeline_tree.pipeline_changed.connect(self._update_library_state)
-        self.pipeline_tree.pipeline_changed.connect(self._update_empty_state)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(0)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
-        content = QWidget()
-        content_layout = QHBoxLayout(content)
-        content_layout.setSpacing(0)
+        content_splitter = QWidget()
+        content_layout = QHBoxLayout(content_splitter)
+        content_layout.setSpacing(12)
         content_layout.setContentsMargins(0, 0, 0, 0)
 
-        library_panel = QFrame()
-        library_panel.setFixedWidth(280)
-        library_panel.setStyleSheet(
-            f"QFrame#libraryPanel {{ background: {Colors.BG_SECONDARY}; }}"
-        )
-        library_panel.setObjectName("libraryPanel")
-        library_layout = QVBoxLayout(library_panel)
-        library_layout.setContentsMargins(12, 14, 4, 12)
+        library_group = QGroupBox("Operation Library")
+        library_group.setFixedWidth(280)
+        library_layout = QVBoxLayout()
+        library_layout.setContentsMargins(8, 8, 8, 8)
         library_layout.setSpacing(0)
-
-        lib_header = QLabel("Operation Library")
-        lib_header.setStyleSheet(
-            f"font-size: 13px; font-weight: 600; color: {Colors.TEXT_SECONDARY};"
-        )
-        library_layout.addWidget(lib_header)
-        library_layout.addSpacing(8)
 
         library_scroll = QScrollArea()
         library_scroll.setWidgetResizable(True)
-        library_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        library_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         library_scroll.verticalScrollBar().setSingleStep(12)
-        library_scroll.setStyleSheet(
-            "QScrollArea { border: none; background: transparent; }"
-            "QScrollArea > QWidget > QWidget { background: transparent; }"
-        )
 
         self.library_widget = self._create_library()
         library_scroll.setWidget(self.library_widget)
-        library_layout.addWidget(library_scroll, 1)
+        library_layout.addWidget(library_scroll)
 
-        content_layout.addWidget(library_panel)
+        library_group.setLayout(library_layout)
+        content_layout.addWidget(library_group)
 
-        # Workflow area
-        workflow_panel = QWidget()
-        workflow_layout = QVBoxLayout(workflow_panel)
-        workflow_layout.setContentsMargins(16, 14, 12, 12)
+        workflow_group = QGroupBox("Pipeline Workflow")
+        workflow_layout = QVBoxLayout()
+        workflow_layout.setContentsMargins(8, 8, 8, 8)
         workflow_layout.setSpacing(8)
 
-        wf_header = QLabel("Pipeline Workflow")
-        wf_header.setStyleSheet(
-            f"font-size: 13px; font-weight: 600; color: {Colors.TEXT_SECONDARY};"
+        info_label = QLabel("Operations to execute in sequence")
+        info_label.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
         )
-        workflow_layout.addWidget(wf_header)
-
-        # Empty state placeholder
-        self.empty_state = QLabel(
-            "Select operations from the library\nto build your pipeline"
-        )
-        self.empty_state.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.empty_state.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 12px;")
-        workflow_layout.addWidget(self.empty_state, 1)
+        info_label.setWordWrap(True)
+        workflow_layout.addWidget(info_label)
 
         workflow_layout.addWidget(self.pipeline_tree, 1)
-        self._update_empty_state()
 
-        content_layout.addWidget(workflow_panel, 1)
-        main_layout.addWidget(content, 1)
+        workflow_group.setLayout(workflow_layout)
+        content_layout.addWidget(workflow_group, 1)
 
-        bottom_bar = QFrame()
-        bottom_bar.setStyleSheet(
-            f"QFrame#bottomBar {{ border-top: 1px solid {Colors.BORDER_DARK}; }}"
-        )
-        bottom_bar.setObjectName("bottomBar")
-        bottom_layout = QVBoxLayout(bottom_bar)
-        bottom_layout.setContentsMargins(12, 10, 12, 10)
-        bottom_layout.setSpacing(8)
+        main_layout.addWidget(content_splitter, 1)
 
-        presets_row = QHBoxLayout()
-        presets_row.setSpacing(6)
+        settings_row = QHBoxLayout()
+        settings_row.setSpacing(12)
 
-        presets_label = QLabel("Presets")
+        presets_group = QGroupBox("Presets")
+        presets_container = QVBoxLayout()
+        presets_container.setSpacing(8)
+
+        presets_label = QLabel("Common Workflow Configurations:")
         presets_label.setStyleSheet(
-            f"font-size: 11px; font-weight: 600; color: {Colors.TEXT_SECONDARY};"
+            f"font-size: {Typography.SMALL}px; color: {Colors.TEXT_MUTED};"
         )
-        presets_row.addWidget(presets_label)
-        presets_row.addSpacing(4)
+        presets_container.addWidget(presets_label)
+
+        presets_layout = QHBoxLayout()
 
         preset_buttons = [
             ("Clear", "ph.x-circle", Colors.CATEGORY["clear"]),
@@ -151,26 +125,26 @@ class PipelineBuilderDialog(QDialog):
         ]
 
         self.preset_buttons = {}
-        for _, (name, icon_name, color) in enumerate(preset_buttons):
+        for idx, (name, icon_name, color) in enumerate(preset_buttons):
             btn = QPushButton(name)
             btn.setIcon(icon(icon_name, color=color))
-            btn.setIconSize(QSize(16, 16))
-            btn.setFixedHeight(Colors.WIDGET_HEIGHT)
+            btn.setIconSize(QSize(24, 24))
+            btn.setFixedHeight(32)
 
             preset_key = name.replace("\n", " ")
             btn.clicked.connect(lambda checked, n=preset_key: self._load_preset(n))
-            presets_row.addWidget(btn, 0)
+            presets_layout.addWidget(btn, 0)
             self.preset_buttons[preset_key] = btn
 
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.VLine)
-        separator.setStyleSheet(f"color: {Colors.BORDER_DARK};")
-        separator.setFixedHeight(Colors.WIDGET_HEIGHT)
-        presets_row.addSpacing(8)
-        presets_row.addWidget(separator)
-        presets_row.addSpacing(8)
-        workers_label = QLabel("Workers:")
-        workers_label.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_SECONDARY};")
+        presets_container.addLayout(presets_layout)
+        presets_container.addStretch()
+        presets_group.setLayout(presets_container)
+
+        workers_group = QGroupBox("Settings")
+        workers_layout = QHBoxLayout()
+        workers_layout.setSpacing(8)
+
+        workers_label = QLabel("Parallel Workers:")
         workers_label.setToolTip(
             format_tooltip(
                 label="Parallel Workers",
@@ -185,28 +159,31 @@ class PipelineBuilderDialog(QDialog):
         self.workers_spin.setValue(
             int(getattr(Settings.rendering, "parallel_worker", 4))
         )
-        self.workers_spin.setFixedWidth(60)
-        presets_row.addWidget(workers_label)
-        presets_row.addWidget(self.workers_spin)
+        self.workers_spin.setFixedWidth(80)
+        workers_layout.addWidget(workers_label)
+        workers_layout.addWidget(self.workers_spin)
 
-        presets_row.addSpacing(8)
+        workers_layout.addSpacing(15)
 
-        skip_label = QLabel("Skip Complete:")
-        skip_label.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_SECONDARY};")
-        skip_label.setToolTip(
+        skip_complete_label = QLabel("Skip Complete:")
+        skip_complete_label.setToolTip(
             format_tooltip(
                 label="Skip Complete",
                 description="Skip runs where output files already exist.",
             )
         )
         self.skip_complete = QCheckBox()
-        presets_row.addWidget(skip_label)
-        presets_row.addWidget(self.skip_complete)
+        workers_layout.addWidget(skip_complete_label)
+        workers_layout.addWidget(self.skip_complete)
 
-        presets_row.addStretch()
-        bottom_layout.addLayout(presets_row)
+        workers_layout.addStretch()
 
-        # Footer actions
+        workers_group.setLayout(workers_layout)
+
+        settings_row.addWidget(presets_group, 1)
+        settings_row.addWidget(workers_group)
+        main_layout.addLayout(settings_row)
+
         footer_layout = QHBoxLayout()
         footer_layout.setSpacing(6)
 
@@ -238,19 +215,7 @@ class PipelineBuilderDialog(QDialog):
         run_btn.setDefault(True)
         footer_layout.addWidget(run_btn)
 
-        bottom_layout.addLayout(footer_layout)
-        main_layout.addWidget(bottom_bar)
-
-    def _update_empty_state(self):
-        has_items = any(
-            isinstance(
-                self.pipeline_tree.itemWidget(self.pipeline_tree.topLevelItem(i), 0),
-                OperationCardWidget,
-            )
-            for i in range(self.pipeline_tree.topLevelItemCount())
-        )
-        self.empty_state.setVisible(not has_items)
-        self.pipeline_tree.setVisible(has_items)
+        main_layout.addLayout(footer_layout)
 
     def _create_library(self):
         """Create operation library widget with categories."""
@@ -260,13 +225,21 @@ class PipelineBuilderDialog(QDialog):
         layout.setContentsMargins(0, 0, 8, 0)
         layout.setSpacing(8)
 
+        info_label = QLabel("Select operations to add to your pipeline")
+        info_label.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+        )
+        info_label.setWordWrap(True)
+        layout.addWidget(info_label)
+
         self._library_buttons = {}
         for category_id, category in OPERATION_CATEGORIES.items():
             cat_header = QLabel(category["title"])
-            cat_header.setStyleSheet(
-                f"color: {category['color']}; font-size: 12px;"
-                f" font-weight: 600; margin-top: 8px;"
-            )
+            cat_header_font = QFont()
+            cat_header_font.setBold(True)
+            cat_header_font.setPixelSize(Typography.SMALL)
+            cat_header.setFont(cat_header_font)
+            cat_header.setStyleSheet(f"color: {category['color']}; margin-top: 8px;")
             layout.addWidget(cat_header)
 
             for op_name, op_info in category["operations"].items():
@@ -301,10 +274,9 @@ class PipelineBuilderDialog(QDialog):
                 border-radius: 4px;
                 text-align: left;
                 padding: 6px;
-                background: transparent;
             }}
             QPushButton:hover {{
-                background: {Colors.BG_HOVER};
+                background: {Colors.BG_SECONDARY};
                 border-left-color: {color};
             }}
         """
@@ -323,11 +295,15 @@ class PipelineBuilderDialog(QDialog):
         text_layout.setSpacing(2)
 
         name_label = QLabel(name)
-        name_label.setStyleSheet("font-size: 11px;")
+        name_label.setStyleSheet(
+            f"color: {color}; font-weight: 600; font-size: {Typography.SMALL}px;"
+        )
         text_layout.addWidget(name_label)
 
         desc_label = QLabel(info["description"])
-        desc_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+        desc_label.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+        )
         desc_label.setWordWrap(True)
 
         text_layout.addWidget(desc_label)

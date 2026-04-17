@@ -11,6 +11,7 @@ import sys
 from importlib_resources import files
 
 __all__ = [
+    "Typography",
     "Colors",
     "QGroupBox_style",
     "QPushButton_style",
@@ -35,6 +36,36 @@ __all__ = [
     "switch_theme",
     "install_macos_titlebar_filter",
 ]
+
+
+class Typography:
+    """Ratio-based font sizing anchored to the system default.
+
+    Each level is a fixed ratio of the base (BODY) size.  Call
+    :meth:`set_base` once at startup with the resolved system font
+    pixel size so that the hierarchy adapts to any platform / DPI.
+    """
+
+    _RATIOS = {
+        "DISPLAY": 1.69,
+        "BODY": 1.00,
+        "LABEL": 0.92,
+        "SMALL": 0.85,
+        "CAPTION": 0.77,
+    }
+
+    # Defaults assume macOS base of 13 px
+    DISPLAY: int = 22
+    BODY: int = 13
+    LABEL: int = 12
+    SMALL: int = 11
+    CAPTION: int = 10
+
+    @classmethod
+    def set_base(cls, pixel_size: int):
+        """Recompute every level from *pixel_size* (the BODY anchor)."""
+        for name, ratio in cls._RATIOS.items():
+            setattr(cls, name, max(1, round(pixel_size * ratio)))
 
 
 class Colors:
@@ -168,7 +199,7 @@ def _build_HelpLabel_style():
     return f"""
     QLabel {{
         color: {Colors.TEXT_MUTED};
-        font-size: 12px;
+        font-size: {Typography.LABEL}px;
         border-top: 0px;
     }}
 """
@@ -511,7 +542,7 @@ def _build_QListWidget_style():
     QListWidget::item {{
         border-radius: 6px;
         margin: 2px 8px;
-        font-size: 13px;
+        font-size: {Typography.BODY}px;
     }}
     QListWidget::item:hover {{
         background-color: {Colors.BG_PRESSED};
@@ -571,7 +602,7 @@ def _build_QSlider_style():
 def _build_QMessageBox_style():
     return f"""
     QMessageBox QLabel {{
-        font-size: 13px;
+        font-size: {Typography.BODY}px;
     }}
     QMessageBox QPushButton {{
         border: 1px solid {Colors.BORDER_DARK};
@@ -592,7 +623,7 @@ def _build_QMessageBox_style():
     }}
     QMessageBox QCheckBox {{
         color: {Colors.TEXT_PRIMARY};
-        font-size: 12px;
+        font-size: {Typography.LABEL}px;
     }}
     QMessageBox QTextEdit {{
         border: 1px solid {Colors.BORDER_DARK};
@@ -623,7 +654,7 @@ def _build_QToolButton_style():
         min-width: 52px;
         padding: 4px 6px;
         border-radius: 6px;
-        font-size: 11px;
+        font-size: {Typography.SMALL}px;
         background: transparent;
         border: 1px solid transparent;
     }}

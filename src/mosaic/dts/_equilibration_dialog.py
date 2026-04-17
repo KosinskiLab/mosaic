@@ -25,6 +25,7 @@ from qtpy.QtWidgets import (
 
 from ..widgets import DialogFooter, PathSelector
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
+from ..stylesheets import Typography
 
 
 def _make_setting(parameter, default, min_val=0, description=""):
@@ -84,7 +85,7 @@ class MeshEquilibrationDialog(QDialog):
         header_layout = QHBoxLayout()
 
         title_label = QLabel("Mesh Equilibration Settings")
-        title_label.setStyleSheet("font-size: 14px; font-weight: 600;")
+        title_label.setStyleSheet(f"font-size: {Typography.BODY}px; font-weight: 600;")
         header_layout.addWidget(title_label)
 
         header_layout.addStretch()

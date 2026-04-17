@@ -22,7 +22,9 @@ from qtpy.QtWidgets import (
     QApplication,
     QMainWindow,
     QVBoxLayout,
+    QGridLayout,
     QWidget,
+    QStackedWidget,
     QSplitter,
     QFileDialog,
     QMenu,
@@ -84,6 +86,23 @@ class App(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.vtk_widget = QVTKRenderWindowInteractor()
+
+        # Stacked widget lets us swap the VTK viewport with the empty-state
+        # placeholder without having to overlay widgets on top of VTK's GL
+        # surface (which doesn't work reliably on Linux/X11).
+        self.viewport_stack = QStackedWidget()
+        self.viewport_stack.addWidget(self.vtk_widget)
+
+        # Viewport container holds the stacked viewport and the volume-viewer
+        # HUD in the same grid cell, letting the HUD float at the bottom of
+        # the viewport.  The HUD uses WA_NativeWindow (see volume_viewer_hud)
+        # so Qt gives it its own native X11 window that the compositor layers
+        # above VTK's GL surface.
+        self.viewport_container = QWidget()
+        _vp_layout = QGridLayout(self.viewport_container)
+        _vp_layout.setContentsMargins(0, 0, 0, 0)
+        _vp_layout.setSpacing(0)
+        _vp_layout.addWidget(self.viewport_stack, 0, 0)
 
         self.cdata = MosaicData(self.vtk_widget)
         self.cdata.thumbnail_provider = self._capture_thumbnail
@@ -168,7 +187,7 @@ class App(QMainWindow):
         # Create splitter with sidebar on left, viewport on right
         self._main_splitter = QSplitter(Qt.Orientation.Horizontal)
         self._main_splitter.addWidget(list_wrapper)
-        self._main_splitter.addWidget(self.vtk_widget)
+        self._main_splitter.addWidget(self.viewport_container)
         self._main_splitter.setSizes([200, self.width() - 200])
         self._main_splitter.setStretchFactor(0, 0)
         self._main_splitter.setStretchFactor(1, 1)
@@ -195,10 +214,6 @@ class App(QMainWindow):
 
     def _toggle_volume_dock(self, checked: bool):
         self.volume_viewer.setVisible(checked)
-        if checked:
-            self.volume_viewer.raise_()
-        if self.viewport_placeholder.isVisible():
-            self.viewport_placeholder.raise_()
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         urls = event.mimeData().urls() if event.mimeData().hasUrls() else []
@@ -646,16 +661,17 @@ class App(QMainWindow):
         self.viewport_placeholder = ViewportPlaceholder(
             self.vtk_widget, actions=default_actions(self)
         )
+        self.viewport_stack.addWidget(self.viewport_placeholder)
         self.prime_viewport_placeholder()
 
     def prime_viewport_placeholder(self):
         """Show the placeholder and auto-hide once data arrives."""
-        self.viewport_placeholder.set_empty(True)
+        self.viewport_stack.setCurrentWidget(self.viewport_placeholder)
         self._placeholder_connections = []
 
         def _on_data_arrived():
             if len(self.cdata._data.data) > 0 or len(self.cdata._models.data) > 0:
-                self.viewport_placeholder.set_empty(False)
+                self.viewport_stack.setCurrentWidget(self.vtk_widget)
                 for sig in self._placeholder_connections:
                     sig.disconnect(_on_data_arrived)
                 self._placeholder_connections.clear()
@@ -1181,7 +1197,13 @@ class App(QMainWindow):
         create_or_toggle_dock(self, "animation_composer", dialog)
 
     def _setup_volume_viewer(self):
-        self.volume_viewer = VolumeViewerHUD(self.vtk_widget, legend=self.legend)
+        # HUD is a top-level translucent tool window that tracks the
+        # viewport, it is NOT added to any layout. See
+        # volume_viewer_hud.py for the rationale.
+        self.volume_viewer = VolumeViewerHUD(
+            self.vtk_widget, legend=self.legend, parent=self
+        )
+        self.volume_viewer.attach_to_viewport(self.viewport_container)
         self.cdata.register_session_hook(
             collect=lambda: (
                 {"volume_paths": self.volume_viewer.recent_paths}
@@ -1197,7 +1219,6 @@ class App(QMainWindow):
         """Show the volume dock if hidden and load *path* into the primary viewer."""
         if not self.volume_viewer.isVisible():
             self.volume_viewer.setVisible(True)
-            self.volume_viewer.raise_()
             self.volume_action.setChecked(True)
         try:
             self.volume_viewer.primary.load_volume(path)
@@ -1205,11 +1226,7 @@ class App(QMainWindow):
             QMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
 
     def _triage_volumes(self, volume_paths: list) -> list:
-        """Classify volume files and prompt for density maps.
-
-        Returns paths that should go to the import dialog (segmentations
-        + any density maps the user declined to open as volumes).
-        """
+        """Classify volume files and prompt for density maps."""
         from .formats.reader import is_likely_density_map
 
         density_maps = []
@@ -1267,7 +1284,6 @@ class App(QMainWindow):
         """Load each path into its own volume viewer."""
         if not self.volume_viewer.isVisible():
             self.volume_viewer.setVisible(True)
-            self.volume_viewer.raise_()
             self.volume_action.setChecked(True)
         for path in paths:
             try:

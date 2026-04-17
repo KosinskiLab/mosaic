@@ -24,7 +24,7 @@ from qtpy.QtCore import Qt, Signal
 from ._utils import natural_sort_key, strip_filepath
 from ..widgets import SearchWidget
 from ..widgets.cards import Card, FlowLayout
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 
 __all__ = ["BatchNavigatorDialog"]
 
@@ -86,7 +86,7 @@ class SessionListItem(QFrame):
 
         self._label = QLabel(strip_filepath(filepath))
         self._label.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: 11px; border: none;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Typography.SMALL}px; border: none;"
             " background: transparent;"
         )
         self._label.setAlignment(
@@ -129,7 +129,7 @@ class SessionCard(Card):
         self.metadata = {"index": index, "filepath": filepath}
         self._title.setText(strip_filepath(filepath))
         self._title.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: 10px; font-weight: 600;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Typography.CAPTION}px; font-weight: 600;"
         )
         self._sub.hide()
         self.set_selected(is_current)
@@ -339,7 +339,7 @@ class BatchNavigatorDialog(QWidget):
             return _LIST_ITEM_W
 
         font = QFont()
-        font.setPixelSize(11)
+        font.setPixelSize(Typography.SMALL)
         fm = QFontMetrics(font)
         padding = 30
 
