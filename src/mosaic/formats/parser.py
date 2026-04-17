@@ -600,18 +600,18 @@ def read_volume(filename: str):
     """
     data, dims, spacing, axis_order = read_mrc_flat(filename)
     if data is not None:
-        ret = points_from_flat_array(data, dims, spacing)
+        ret = points_from_flat_array(data, dims)
 
         if axis_order != (0, 1, 2):
             perm = np.argsort(axis_order)
             ret = [pts[:, perm] for pts in ret]
 
-        shape = np.multiply(dims, spacing)
+        shape = np.asarray(dims, dtype=np.float32)
     else:
         volume = load_density(filename, use_memmap=False)
         spacing = np.asarray(volume.sampling_rate, dtype=np.float32)
-        ret = points_from_flat_array(volume.data.ravel(), volume.shape, spacing)
-        shape = np.multiply(volume.shape, spacing)
+        ret = points_from_flat_array(volume.data.ravel(), volume.shape)
+        shape = np.asarray(volume.shape, dtype=np.float32)
     return GeometryDataContainer(vertices=ret, shape=shape, sampling=spacing)
 
 
@@ -671,7 +671,7 @@ def read_mrc_flat(filepath):
         return data, grid, spacing, axis_order
 
 
-def points_from_flat_array(arr, dims, spacing, max_cluster=10000):
+def points_from_flat_array(arr, dims, max_cluster=10000):
     """Extract per-label point clouds from a flat voxel array.
 
     Parameters
@@ -680,15 +680,13 @@ def points_from_flat_array(arr, dims, spacing, max_cluster=10000):
         Flat 1D array of voxel labels.
     dims : tuple
         Volume dimensions ``(nx, ny, nz)``.
-    spacing : ndarray
-        Voxel spacing along each axis.
     max_cluster : int
         Reject if more unique sampled values than this.
 
     Returns
     -------
     list of ndarray
-        One ``(N, 3)`` float32 point array per label.
+        One ``(N, 3)`` float32 point array of voxel indices per label.
 
     Raises
     ------
@@ -717,7 +715,6 @@ def points_from_flat_array(arr, dims, spacing, max_cluster=10000):
         np.unravel_index(flat[order], dims, order="F"),
         dtype=np.float32,
     ).T
-    coords = np.multiply(coords, spacing, out=coords)
 
     splits = np.flatnonzero(np.diff(sorted_labels)) + 1
     bounds = np.concatenate([[0], splits, [len(order)]])

@@ -243,7 +243,7 @@ class IntelligenceTab(QWidget):
             container = open_file(output_name)
             for data in container:
                 self.cdata.data.add(
-                    points=data.vertices,
+                    points=np.multiply(data.vertices, data.sampling),
                     normals=data.normals,
                     sampling_rate=data.sampling,
                 )

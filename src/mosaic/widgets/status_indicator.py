@@ -9,7 +9,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import enum
 from collections import Counter
 
-from qtpy.QtCore import Qt, QTimer, Signal
+from qtpy.QtCore import Qt, QRectF, QTimer, Signal
 from qtpy.QtWidgets import (
     QWidget,
     QLabel,
@@ -24,7 +24,7 @@ from qtpy.QtWidgets import (
     QMessageBox,
     QApplication,
 )
-from qtpy.QtGui import QTextCursor, QPainter, QColor
+from qtpy.QtGui import QTextCursor, QPainter, QColor, QPen, QPainterPath
 from ..stylesheets import Colors
 from ..icons import icon
 from ..parallel import BackgroundTaskManager
@@ -159,7 +159,7 @@ class TaskCard(QFrame):
         output_layout.setContentsMargins(0, 4, 0, 4)
         output_layout.setSpacing(4)
 
-        _text_style = f"""
+        _text_style = """
             QTextEdit {{
                 background: transparent;
                 font-size: 10px;
@@ -331,21 +331,30 @@ class TaskMonitorPanel(QFrame):
     cancel_task_requested = Signal(str)
     clear_finished_requested = Signal()
 
+    _MARGIN = 8
+    _RADIUS = float(Colors.RADIUS)
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
+        self.setWindowFlags(
+            Qt.WindowType.Tool
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setMinimumSize(450, 300)
         self.resize(500, 360)
         self.task_cards = {}
         self._setup_ui()
 
     def _setup_ui(self):
+        m = self._MARGIN
         layout = QVBoxLayout(self)
         layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(m, m, m, m)
 
         header = QWidget()
-        header.setStyleSheet(f"border-bottom: 1px solid {Colors.BORDER_DARK};")
+        header.setObjectName("panelHeader")
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(10, 6, 10, 6)
 
@@ -385,13 +394,42 @@ class TaskMonitorPanel(QFrame):
         scroll.setWidget(self._task_container)
         layout.addWidget(scroll, 1)
 
-        self.setStyleSheet(
-            f"""TaskMonitorPanel {{
-                border: 1px solid {Colors.BORDER_DARK};
-                border-bottom: none;
-            }}"""
-        )
+        self._apply_panel_style()
         self._update_summary()
+
+    def _apply_panel_style(self):
+        self.setStyleSheet(
+            f"""
+            TaskMonitorPanel {{ background: transparent; border: none; }}
+            TaskMonitorPanel > QWidget {{ background: transparent; }}
+            #panelHeader {{ border: none; border-bottom: 1px solid {Colors.BORDER_DARK}; }}
+            QScrollArea {{ background: transparent; }}
+            QScrollArea > QWidget > QWidget {{ background: transparent; }}
+        """
+        )
+        self.update()
+
+    def _on_theme_changed(self):
+        self._apply_panel_style()
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        m = self._MARGIN
+        # 0.5px inset so the 1px pen straddles the edge crisply
+        rf = QRectF(
+            m + 0.5, m + 0.5, self.width() - 2 * m - 1, self.height() - 2 * m - 1
+        )
+
+        path = QPainterPath()
+        path.addRoundedRect(rf, self._RADIUS, self._RADIUS)
+
+        p.setPen(QPen(QColor(Colors.BORDER_DARK), 1.0))
+        p.setBrush(QColor(Colors.SURFACE))
+        p.drawPath(path)
+
+        p.end()
 
     def _insert_card(self, card):
         """Insert card at the right position: running > queued > completed > failed."""
@@ -641,12 +679,13 @@ class StatusIndicator:
 
     def _on_theme_changed(self):
         self._setup_status_bar_style()
+        self.task_monitor._apply_panel_style()
 
     def _setup_status_bar_style(self):
         """Re-apply theme-dependent styles to status bar widgets."""
         status_bar = self.main_window.statusBar()
         status_bar.setStyleSheet(
-            f"""
+            """
             QStatusBar {{ font-size: 11px; }}
             QStatusBar::item {{ border: none; }}
         """
@@ -887,12 +926,13 @@ class StatusIndicator:
             self.task_monitor.hide()
             return
 
-        # Position flush above the status bar, right-aligned
+        # Position above the status bar, right-aligned (offset by margin)
         status_bar = self.main_window.statusBar()
         bar_top_right = status_bar.mapToGlobal(status_bar.rect().topRight())
         panel = self.task_monitor
-        x = bar_top_right.x() - panel.width()
-        y = bar_top_right.y() - panel.height()
+        m = panel._MARGIN
+        x = bar_top_right.x() - panel.width() + m
+        y = bar_top_right.y() - panel.height() + m
         panel.move(x, y)
         panel.show()
         panel.raise_()

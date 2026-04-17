@@ -741,19 +741,19 @@ MethodRegistry.register(
                 "offset",
                 "float",
                 default=0,
-                description="Coordinate offset to subtract from vertices.",
+                description="Coordinate offset subtracted from scaled vertices. Accepts a scalar or comma-separated per-axis values.",
             ),
             Param(
                 "scale",
                 "float",
                 default=None,
-                description="Scale factor applied after offset. Defaults to the file's native sampling rate.",
+                description="Scale factor applied to raw vertices. Defaults to the file's native sampling rate. Accepts a scalar or comma-separated per-axis values.",
             ),
             Param(
                 "sampling_rate",
                 "float",
                 default=None,
-                description="Override the file's native sampling rate.",
+                description="Override the file's native sampling rate. Accepts a scalar or comma-separated per-axis values.",
             ),
         ),
     )
