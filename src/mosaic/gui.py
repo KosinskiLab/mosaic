@@ -218,9 +218,15 @@ class App(QMainWindow):
 
     def _handle_import(self, file_paths):
         from .formats.session import is_session_file
+        from .formats.reader import is_volume_file
 
         session_files = [f for f in file_paths if is_session_file(f)]
-        data_files = [f for f in file_paths if not is_session_file(f)]
+        volume_files = [
+            f for f in file_paths if not is_session_file(f) and is_volume_file(f)
+        ]
+        data_files = [
+            f for f in file_paths if not is_session_file(f) and not is_volume_file(f)
+        ]
 
         if session_files:
             if len(session_files) > 1:
@@ -231,8 +237,12 @@ class App(QMainWindow):
                 )
             self._load_session(session_files[0])
 
+        if volume_files:
+            remaining = self._triage_volumes(volume_files)
+            data_files.extend(remaining)
+
         if data_files:
-            self._open_files(data_files, allow_volume_fallback=True)
+            self._open_files(data_files)
 
     def sizeHint(self):
         """Provide the preferred size for the main window."""
@@ -1194,20 +1204,48 @@ class App(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
 
-    def _maybe_open_as_volume(self, path: str, error: Exception) -> bool:
-        """Offer to open *path* in the volume viewer after load failure."""
+    def _triage_volumes(self, volume_paths: list) -> list:
+        """Classify volume files and prompt for density maps.
+
+        Returns paths that should go to the import dialog (segmentations
+        + any density maps the user declined to open as volumes).
+        """
+        from .formats.reader import is_likely_density_map
+
+        density_maps = []
+        segmentations = []
+        for path in volume_paths:
+            try:
+                if is_likely_density_map(path):
+                    density_maps.append(path)
+                else:
+                    segmentations.append(path)
+            except Exception:
+                segmentations.append(path)
+
+        if density_maps:
+            opened = self._prompt_open_as_volumes(density_maps)
+            if not opened:
+                segmentations.extend(density_maps)
+
+        return segmentations
+
+    def _prompt_open_as_volumes(self, paths: list) -> bool:
+        """Prompt if density map *paths* should be loaded into volume viewer."""
+        from pathlib import Path
+
         if Settings.ui.always_open_as_volume:
-            self._load_volume_file(path)
+            self._load_volume_files(paths)
             return True
 
+        names = "\n".join(f"  {Path(p).name}" for p in paths)
         box = QMessageBox(self)
-        box.setWindowTitle("Open as volume?")
+        box.setWindowTitle("Open as volumes?")
         box.setIcon(QMessageBox.Icon.Question)
         box.setText(
-            f"Could not load this file as a segmentation:\n\n"
-            f"{path}\n\n"
-            f"{error}\n\n"
-            f"Open it in the volume viewer instead?"
+            f"These files appear to be density maps rather than "
+            f"segmentations:\n\n{names}\n\n"
+            f"Open them in volume viewers?"
         )
         yes_btn = box.addButton("Yes", QMessageBox.ButtonRole.AcceptRole)
         always_btn = box.addButton("Always", QMessageBox.ButtonRole.AcceptRole)
@@ -1222,8 +1260,23 @@ class App(QMainWindow):
         if clicked is always_btn:
             Settings.ui.always_open_as_volume = True
 
-        self._load_volume_file(path)
+        self._load_volume_files(paths)
         return True
+
+    def _load_volume_files(self, paths: list) -> None:
+        """Load each path into its own volume viewer."""
+        if not self.volume_viewer.isVisible():
+            self.volume_viewer.setVisible(True)
+            self.volume_viewer.raise_()
+            self.volume_action.setChecked(True)
+        for path in paths:
+            try:
+                self.volume_viewer.load_into_viewer(path)
+                self._add_file_to_recent(path)
+            except Exception as e:
+                QMessageBox.warning(
+                    self, "Error", f"Failed to open volume:\n{path}\n\n{e}"
+                )
 
     def _setup_trajectory_player(self):
         self.trajectory_dock = QDockWidget(parent=self)
@@ -1311,7 +1364,7 @@ class App(QMainWindow):
         if render:
             self.set_camera_view("z")
 
-    def _open_files(self, filenames: List[str], allow_volume_fallback: bool = False):
+    def _open_files(self, filenames: List[str]):
         from .formats.session import is_session_file
 
         if isinstance(filenames, str):
@@ -1338,24 +1391,17 @@ class App(QMainWindow):
         submit_io_task(
             "Reading Files",
             _read_files_worker,
-            lambda results: self._on_files_read(
-                results, allow_volume_fallback=allow_volume_fallback
-            ),
+            self._on_files_read,
             self.cdata,
             filenames,
             file_parameters,
         )
 
-    def _on_files_read(self, results, allow_volume_fallback: bool = False):
+    def _on_files_read(self, results):
         """GUI-thread callback: surface errors, render, recentre camera."""
-        from .formats import NotASegmentationError
-
-        volume_fallbacks = []
         failures = []
         for filename, outcome in results:
-            if allow_volume_fallback and isinstance(outcome, NotASegmentationError):
-                volume_fallbacks.append((filename, outcome))
-            elif isinstance(outcome, Exception):
+            if isinstance(outcome, Exception):
                 failures.append((filename, str(outcome)))
             else:
                 self._add_file_to_recent(filename)
@@ -1377,10 +1423,6 @@ class App(QMainWindow):
                 if len(failures) > 20:
                     lines.append(f"  ... and {len(failures) - 20} more")
                 QMessageBox.warning(self, "Read Failed", "\n".join(lines))
-
-        for path, error in volume_fallbacks:
-            if self._maybe_open_as_volume(path, error):
-                self._add_file_to_recent(path)
 
     def open_files(self):
         filenames, _ = QFileDialog.getOpenFileNames(self, "Import Files")

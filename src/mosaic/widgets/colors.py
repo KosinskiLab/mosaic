@@ -112,7 +112,14 @@ class ColormapMenuItem(QWidget):
         # Use underMouse() for reliable hover detection with QWidgetAction
         if self.underMouse():
             path = QPainterPath()
-            path.addRoundedRect(rect.x(), rect.y(), rect.width(), rect.height(), 4, 4)
+            path.addRoundedRect(
+                rect.x(),
+                rect.y(),
+                rect.width(),
+                rect.height(),
+                Colors.RADIUS,
+                Colors.RADIUS,
+            )
 
             hover_color = QColor(0, 0, 0, 15)
             painter.fillPath(path, QBrush(hover_color))
@@ -144,11 +151,6 @@ class ColormapMenuItem(QWidget):
             gradient.setColorAt(i / (len(colors) - 1), color)
 
         painter.fillRect(gradient_rect, gradient)
-
-        pen = QPen(self.palette().mid().color())
-        pen.setWidth(1)
-        painter.setPen(pen)
-        painter.drawRect(gradient_rect)
 
         painter.end()
 
@@ -196,9 +198,18 @@ class ColorMapSelector(QPushButton):
     def _build_menu(self):
         """Build the hierarchical menu with category submenus."""
         menu = QMenu(self)
+        menu.setWindowFlags(menu.windowFlags() | Qt.WindowType.FramelessWindowHint)
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        _menu_style = f"QMenu {{ background: palette(window); border-radius: {Colors.RADIUS}px; }}"
+        menu.setStyleSheet(_menu_style)
 
         for category, colormaps in self._categories.items():
             submenu = QMenu(category, menu)
+            submenu.setWindowFlags(
+                submenu.windowFlags() | Qt.WindowType.FramelessWindowHint
+            )
+            submenu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+            submenu.setStyleSheet(_menu_style)
 
             for cmap_name in colormaps:
                 action = QWidgetAction(submenu)
