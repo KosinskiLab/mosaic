@@ -16,7 +16,7 @@ from qtpy.QtWidgets import (
     QSplitter,
 )
 
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 from .search_widget import SearchWidget
 
 
@@ -66,7 +66,7 @@ class ObjectBrowserSidebar(QWidget):
     def _style_label(self, label):
         label.setStyleSheet(
             f"""
-            font-size: 12px; font-weight: 600;
+            font-size: {Typography.LABEL}px; font-weight: 600;
             color: {Colors.TEXT_MUTED};
             padding: 8px 0px 4px 0px;
             border-right: 1px solid {Colors.BORDER_DARK};

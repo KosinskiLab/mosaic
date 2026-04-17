@@ -15,7 +15,7 @@ from qtpy.QtWidgets import (
 )
 from qtpy.QtSvg import QSvgRenderer
 from ..icons import icon as _icon_factory
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 from ..tree_state import TreeState, TreeStateData
 
 
@@ -52,37 +52,37 @@ class ContainerTreeWidget(QFrame):
         self.tree_widget.setItemDelegate(MetadataItemDelegate(self.tree_widget))
 
         self.tree_widget.setStyleSheet(
-            """
-            QTreeWidget {
+            f"""
+            QTreeWidget {{
                 border: none;
                 background-color: transparent;
                 outline: none;
                 padding: 4px 0px;
-                font-size: 13px;
-            }
-            QTreeWidget::item {
+                font-size: {Typography.BODY}px;
+            }}
+            QTreeWidget::item {{
                 border-radius: 6px;
                 border: none;
                 padding: 4px 0px;
                 margin: 2px 0px;
                 outline: none;
-            }
-            QTreeWidget::item:hover {
+            }}
+            QTreeWidget::item:hover {{
                 background-color: rgba(0, 0, 0, 0.0);
-            }
-            QTreeWidget::item:selected {
+            }}
+            QTreeWidget::item:selected {{
                 background-color: rgba(0, 0, 0, 0.0);
                 font-weight: 500;
-            }
-            QTreeWidget QLineEdit {
+            }}
+            QTreeWidget QLineEdit {{
                 background-color: palette(base);
                 border: 1px solid #4f46e5;
                 border-radius: 6px;
                 padding: 0px 3px;
                 margin: 0px 8px;
                 selection-background-color: rgba(99, 102, 241, 0.6);
-                font-size: 13px;
-            }
+                font-size: {Typography.BODY}px;
+            }}
         """
         )
 

@@ -20,7 +20,7 @@ from qtpy.QtWidgets import (
 )
 
 from ..widgets import PathSelector, DialogFooter
-from ..stylesheets import QGroupBox_style, Colors
+from ..stylesheets import QGroupBox_style, Colors, Typography
 from ..widgets.settings import get_widget_value, create_setting_widget
 
 
@@ -50,7 +50,9 @@ class HMFFDialog(QDialog):
         input_layout.addRow("Working directory:", self.directory_selector)
 
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet(f"color: {Colors.ERROR}; font-size: 11px;")
+        self.status_label.setStyleSheet(
+            f"color: {Colors.ERROR}; font-size: {Typography.SMALL}px;"
+        )
         self.status_label.setVisible(False)
         input_layout.addRow("", self.status_label)
 

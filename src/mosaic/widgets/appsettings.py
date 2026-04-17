@@ -25,7 +25,7 @@ from qtpy.QtWidgets import (
 
 from mosaic.settings import Settings
 from mosaic.actor import QUALITY_PRESETS
-from mosaic.stylesheets import Colors
+from mosaic.stylesheets import Colors, Typography
 from mosaic.icons import icon
 from mosaic.widgets.sliders import SliderRow
 from mosaic.widgets.colors import ColorPickerRow
@@ -286,7 +286,9 @@ class AppSettingsPanel(QFrame):
         header_layout.setContentsMargins(12, 6, 8, 6)
 
         title = QLabel("Settings")
-        title.setStyleSheet("QLabel { font-size: 13px; border: none; }")
+        title.setStyleSheet(
+            f"QLabel {{ font-size: {Typography.BODY}px; border: none; }}"
+        )
         header_layout.addWidget(title)
         header_layout.addStretch()
 

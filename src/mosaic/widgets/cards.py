@@ -16,7 +16,7 @@ from qtpy.QtWidgets import (
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtGui import QPixmap, QPainter, QPainterPath
 
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 
 __all__ = [
     "CARD_WIDTH",
@@ -35,7 +35,7 @@ _CONTENT_W = CARD_WIDTH - 2
 
 _PILL = (
     f"background: rgba(0,0,0,0.45); color: #ffffff; "
-    f"font-size: 9px; font-weight: 600; border-radius: 3px; "
+    f"font-size: {Typography.CAPTION}px; font-weight: 600; border-radius: 3px; "
     f"padding: 2px 6px;"
 )
 
@@ -184,13 +184,15 @@ class Card(QFrame):
         tl.setContentsMargins(8, 4, 8, 6)
 
         self._sub = QLabel("")
-        self._sub.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 10px;")
+        self._sub.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.CAPTION}px;"
+        )
         self._sub.setAlignment(Qt.AlignmentFlag.AlignLeft)
         tl.addWidget(self._sub)
 
         self._title = QLabel("")
         self._title.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: 12px; font-weight: 600;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Typography.LABEL}px; font-weight: 600;"
         )
         self._title.setWordWrap(True)
         self._title.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -212,9 +214,11 @@ class Card(QFrame):
                 f"border-top-left-radius: {_R}px; "
                 f"border-top-right-radius: {_R}px;"
             )
-        self._sub.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 10px;")
+        self._sub.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.CAPTION}px;"
+        )
         self._title.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: 12px; font-weight: 600;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Typography.LABEL}px; font-weight: 600;"
         )
 
     def set_thumbnail(self, pixmap):

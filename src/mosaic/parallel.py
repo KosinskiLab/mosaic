@@ -361,12 +361,13 @@ class BackgroundTaskManager(QObject):
 
         self._shutdown()
 
-        self._progress_queue = multiprocessing.Queue()
+        mp_ctx = multiprocessing.get_context("spawn")
+        self._progress_queue = mp_ctx.Queue()
 
         # TODO: See how 15 works out now that pymeshlab is gone
         self.num_workers = int(Settings.rendering.parallel_worker)
         self.executor = concurrent.futures.ProcessPoolExecutor(
-            mp_context=multiprocessing.get_context("spawn"),
+            mp_context=mp_ctx,
             max_workers=self.num_workers,
             max_tasks_per_child=15,
             initializer=_init_worker_with_queue,

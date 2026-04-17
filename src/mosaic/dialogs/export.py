@@ -22,6 +22,7 @@ from ..stylesheets import (
     QLineEdit_style,
     QCheckBox_style,
     Colors,
+    Typography,
 )
 
 
@@ -57,7 +58,9 @@ class StyleableButton(QPushButton):
         if description and not is_compact:
             desc_label = QLabel(description)
             desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            desc_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+            desc_label.setStyleSheet(
+                f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+            )
             desc_label.setWordWrap(True)
             layout.addWidget(desc_label)
 
@@ -250,7 +253,7 @@ class ExportDialog(QDialog):
 
         self.preview_label = QLabel()
         self.preview_label.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: 12px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.LABEL}px;"
         )
         output_layout.addWidget(self.preview_label)
         self._update_preview()

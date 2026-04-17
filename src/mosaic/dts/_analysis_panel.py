@@ -29,7 +29,7 @@ from qtpy.QtWidgets import (
 import pyqtgraph as pg
 
 from ..widgets import ColorMapSelector, generate_gradient_colors
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 from ..icons import icon
 from ..dts._utils import collect_available_metrics, extract_metric_series
 
@@ -87,7 +87,9 @@ class AnalysisPanel(QWidget):
             "No time series data available.\n" "Select a metric to display."
         )
         self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._placeholder.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 13px;")
+        self._placeholder.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.BODY}px;"
+        )
 
         self._stack = QStackedWidget()
         self._stack.addWidget(self._placeholder)

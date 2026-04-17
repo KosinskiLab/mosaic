@@ -20,7 +20,7 @@ from qtpy.QtWidgets import (
 )
 from qtpy.QtCore import QPropertyAnimation, QEasingCurve
 
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 
 
 class _PillIndicator(QWidget):
@@ -149,7 +149,7 @@ class TabBar(QWidget):
             QPushButton {{
                 border: none;
                 padding: 6px 14px;
-                font-size: 13px;
+                font-size: {Typography.BODY}px;
                 background: transparent;
                 border-radius: 6px;
                 color: {Colors.TEXT_MUTED};

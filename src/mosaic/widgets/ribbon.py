@@ -12,7 +12,7 @@ from qtpy.QtWidgets import (
     QApplication,
 )
 from .settings import create_setting_widget
-from ..stylesheets import QPushButton_style, Colors
+from ..stylesheets import QPushButton_style, Colors, Typography
 from ..icons import icon
 
 
@@ -96,12 +96,12 @@ class SettingsPanel(QFrame):
         settings_container = QWidget()
         settings_container.setStyleSheet(
             f"""
-            QLabel {{ font-size: 12px; }}
-            QComboBox {{ font-size: 12px; max-height: 26px; }}
-            QSpinBox {{ font-size: 12px; max-height: 26px; }}
-            QDoubleSpinBox {{ font-size: 12px; max-height: 26px; }}
-            QLineEdit {{ font-size: 12px; max-height: 26px; }}
-            QCheckBox {{ font-size: 12px; }}
+            QLabel {{ font-size: {Typography.LABEL}px; }}
+            QComboBox {{ font-size: {Typography.LABEL}px; max-height: 26px; }}
+            QSpinBox {{ font-size: {Typography.LABEL}px; max-height: 26px; }}
+            QDoubleSpinBox {{ font-size: {Typography.LABEL}px; max-height: 26px; }}
+            QLineEdit {{ font-size: {Typography.LABEL}px; max-height: 26px; }}
+            QCheckBox {{ font-size: {Typography.LABEL}px; }}
         """
         )
         settings_container.setLayout(self.settings_grid)
@@ -111,7 +111,9 @@ class SettingsPanel(QFrame):
 
         apply_btn = QPushButton("Apply")
         apply_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        apply_btn.setStyleSheet(QPushButton_style + "QPushButton { font-size: 12px; }")
+        apply_btn.setStyleSheet(
+            QPushButton_style + f"QPushButton {{ font-size: {Typography.LABEL}px; }}"
+        )
 
         apply_btn.clicked.connect(self._apply_settings)
         content_layout.addWidget(apply_btn)
@@ -284,9 +286,8 @@ class RibbonButton(QPushButton):
     def __init__(
         self, text, icon_name, settings_config=None, parent=None, callback=None
     ):
-        has_settings = settings_config is not None
-        display_text = text + "  \u25be" if has_settings else text
-        super().__init__(display_text, parent)
+        self._has_settings = settings_config is not None
+        super().__init__(text, parent)
 
         self._panel_open = False
         self._icon_name = icon_name
@@ -298,9 +299,9 @@ class RibbonButton(QPushButton):
         self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setIcon(icon(icon_name, role="active"))
-        self.setIconSize(QSize(16, 16))
+        self.setIconSize(QSize(18, 18))
 
-        if has_settings:
+        if self._has_settings:
             self.settings_panel = SettingsPanel(settings_config, parent_button=self)
             self.settings_panel.settings_applied.connect(self._applied_settings)
             self.clicked.connect(self._handle_click)
@@ -312,6 +313,27 @@ class RibbonButton(QPushButton):
     def _on_theme_changed(self):
         self.setIcon(icon(self._icon_name, role="active"))
         self._apply_style()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self._has_settings:
+            return None
+
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pen = QPen(QColor(Colors.TEXT_MUTED))
+        pen.setWidthF(1.2)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        cx = self.width() - 10
+        cy = self.height() / 2
+        path = QPainterPath()
+        path.moveTo(cx - 3, cy - 1.5)
+        path.lineTo(cx, cy + 1.5)
+        path.lineTo(cx + 3, cy - 1.5)
+        p.drawPath(path)
+        p.end()
 
     def mousePressEvent(self, event):
         if self.settings_panel is not None:
@@ -347,6 +369,7 @@ class RibbonButton(QPushButton):
         self._apply_style()
 
     def _apply_style(self):
+        pad_r = 20 if self._has_settings else 8
         if self._panel_open:
             self.setStyleSheet(
                 f"""
@@ -357,8 +380,8 @@ class RibbonButton(QPushButton):
                     border-top-right-radius: 6px;
                     border-bottom-left-radius: 0px;
                     border-bottom-right-radius: 0px;
-                    padding: 4px 8px;
-                    font-size: 12px;
+                    padding: 4px {pad_r}px 4px 8px;
+                    font-size: {Typography.LABEL}px;
                     color: {Colors.TEXT_SECONDARY};
                 }}
                 QPushButton:focus {{ outline: none; }}
@@ -371,8 +394,8 @@ class RibbonButton(QPushButton):
                     border: 1px solid transparent;
                     background: transparent;
                     border-radius: 6px;
-                    padding: 4px 8px;
-                    font-size: 12px;
+                    padding: 4px {pad_r}px 4px 8px;
+                    font-size: {Typography.LABEL}px;
                     color: {Colors.TEXT_SECONDARY};
                 }}
                 QPushButton:hover {{

@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 from vtk import vtkTransform
 from qtpy.QtWidgets import QDialog
 
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 
 
 class BaseAnimation(ABC):
@@ -529,7 +529,7 @@ class ActorSelectionDialog(QDialog):
                 continue
 
             header = QLabel(label)
-            header.setStyleSheet("font-weight: 500; font-size: 12px;")
+            header.setStyleSheet(f"font-weight: 500; font-size: {Typography.LABEL}px;")
             layout.addWidget(header)
 
             tree = ContainerTreeWidget()
