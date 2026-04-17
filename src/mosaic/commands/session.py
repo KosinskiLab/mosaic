@@ -146,10 +146,12 @@ class Session:
         filepath : str
             Path to the input file.
         offset : float or array-like, optional
-            Coordinate offset to subtract from vertices (default 0).
+            Coordinate offset subtracted from scaled vertices as
+            ``vertices * scale - offset`` (default 0).
         scale : float or array-like, optional
-            Scale factor applied after offset. Defaults to the file's
-            native sampling rate (matching GUI behavior).
+            Scale factor applied to raw vertices. Defaults to the file's
+            native sampling rate, which converts voxel-index vertices
+            returned by volume loaders into physical units.
         sampling_rate : float, optional
             Override the file's native sampling rate.
         persist : bool, optional
@@ -196,7 +198,7 @@ class Session:
             )
             name = f"{index}_{base}" if use_index else base
             geom = SegmentationGeometry(
-                points=data.vertices,
+                points=np.multiply(data.vertices, data.sampling),
                 sampling_rate=effective_sampling,
                 meta={"name": name},
             )
@@ -210,8 +212,7 @@ class Session:
             self._counter += 1
 
         if persist and geoms:
-            shape = np.divide(container.shape, container.sampling)
-            self._data.metadata["shape"] = shape
+            self._data.metadata["shape"] = np.asarray(container.shape)
 
         self._last_results = geoms
         return indices or None
@@ -238,11 +239,12 @@ class Session:
             effective_scale = scale if scale is not None else data.sampling
             sampling = sampling_rate if sampling_rate is not None else data.sampling
 
-            scale_new = np.divide(effective_scale, data.sampling)
+            data.vertices = np.multiply(
+                data.vertices, effective_scale, out=data.vertices
+            )
             data.vertices = np.subtract(data.vertices, offset, out=data.vertices)
-            data.vertices = np.multiply(data.vertices, scale_new, out=data.vertices)
 
-            data_shape = np.divide(data.shape, data.sampling)
+            data_shape = np.asarray(data.shape)
             if shape is None:
                 shape = data_shape
             shape = np.maximum(shape, data_shape)

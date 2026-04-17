@@ -50,7 +50,7 @@ class PipelineBuilderDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
-        from ..icons import dialog_accept_icon, dialog_reject_icon, icon, icon_pixmap
+        from ..icons import dialog_accept_icon, dialog_reject_icon, icon
 
         self.pipeline_tree = PipelineTreeWidget()
         self.pipeline_tree.pipeline_changed.connect(self._update_library_state)

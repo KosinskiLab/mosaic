@@ -257,22 +257,31 @@ def _section_label(text):
 class AppSettingsPanel(QFrame):
     """Floating appearance settings panel anchored to the status bar."""
 
+    _MARGIN = 8
+    _RADIUS = float(Colors.RADIUS)
+
     settingsChanged = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
+        self.setWindowFlags(
+            Qt.WindowType.Tool
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setMinimumSize(420, 300)
         self.resize(420, 520)
         self._build_ui()
 
     def _build_ui(self):
+        m = self._MARGIN
         root = QVBoxLayout(self)
         root.setSpacing(0)
-        root.setContentsMargins(0, 0, 0, 0)
+        root.setContentsMargins(m, m, m, m)
 
         header = QWidget()
-        header.setStyleSheet(f"border-bottom: 1px solid {Colors.BORDER_DARK};")
+        header.setObjectName("panelHeader")
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(12, 6, 8, 6)
 
@@ -315,12 +324,40 @@ class AppSettingsPanel(QFrame):
         scroll.setWidget(self._body)
         root.addWidget(scroll, 1)
 
+        self._apply_panel_style()
+
+    def _apply_panel_style(self):
         self.setStyleSheet(
-            f"""AppSettingsPanel {{
-                border: 1px solid {Colors.BORDER_DARK};
-                border-bottom: none;
-            }}"""
+            f"""
+            AppSettingsPanel {{ background: transparent; border: none; }}
+            AppSettingsPanel > QWidget {{ background: transparent; }}
+            #panelHeader {{ border: none; border-bottom: 1px solid {Colors.BORDER_DARK}; }}
+            QScrollArea {{ background: transparent; }}
+            QScrollArea > QWidget > QWidget {{ background: transparent; }}
+        """
         )
+        self.update()
+
+    def _on_theme_changed(self):
+        self._apply_panel_style()
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        m = self._MARGIN
+        rf = QRectF(
+            m + 0.5, m + 0.5, self.width() - 2 * m - 1, self.height() - 2 * m - 1
+        )
+
+        path = QPainterPath()
+        path.addRoundedRect(rf, self._RADIUS, self._RADIUS)
+
+        p.setPen(QPen(QColor(Colors.BORDER_DARK), 1.0))
+        p.setBrush(QColor(Colors.SURFACE))
+        p.drawPath(path)
+
+        p.end()
 
     def _build_theme_section(self):
         section = QWidget()

@@ -68,6 +68,7 @@ from .widgets import (
 )
 from .widgets.dock import toggle_dock
 from .widgets.volume_viewer_hud import VolumeViewerHUD
+from .widgets.viewport_placeholder import ViewportPlaceholder, default_actions
 
 
 class App(QMainWindow):
@@ -196,6 +197,8 @@ class App(QMainWindow):
         self.volume_viewer.setVisible(checked)
         if checked:
             self.volume_viewer.raise_()
+        if self.viewport_placeholder.isVisible():
+            self.viewport_placeholder.raise_()
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         urls = event.mimeData().urls() if event.mimeData().hasUrls() else []
@@ -554,8 +557,9 @@ class App(QMainWindow):
         if panel.isVisible():
             panel.hide()
             return
+        m = panel._MARGIN
         pos = self._tab_gear.mapToGlobal(self._tab_gear.rect().bottomRight())
-        panel.move(max(0, pos.x() - panel.width()), pos.y() + 4)
+        panel.move(max(0, pos.x() - panel.width() + m), pos.y() + 4 - m)
         panel.show()
         panel.raise_()
 
@@ -623,12 +627,32 @@ class App(QMainWindow):
 
         from .widgets.appsettings import AppSettingsPanel
 
+        # Gear button is connected after tab bar creation in __init__
         self.appearance_panel = AppSettingsPanel(self)
         self.appearance_panel.settingsChanged.connect(self.apply_render_settings)
 
-        # Gear button is connected after tab bar creation in __init__
-
         self._setup_trajectory_player()
+
+        self.viewport_placeholder = ViewportPlaceholder(
+            self.vtk_widget, actions=default_actions(self)
+        )
+        self.prime_viewport_placeholder()
+
+    def prime_viewport_placeholder(self):
+        """Show the placeholder and auto-hide once data arrives."""
+        self.viewport_placeholder.set_empty(True)
+        self._placeholder_connections = []
+
+        def _on_data_arrived():
+            if len(self.cdata._data.data) > 0 or len(self.cdata._models.data) > 0:
+                self.viewport_placeholder.set_empty(False)
+                for sig in self._placeholder_connections:
+                    sig.disconnect(_on_data_arrived)
+                self._placeholder_connections.clear()
+
+        for sig in (self.cdata.data.data_changed, self.cdata.models.data_changed):
+            sig.connect(_on_data_arrived)
+            self._placeholder_connections.append(sig)
 
     def setup_menu(self):
         self._update_style()
@@ -659,7 +683,7 @@ class App(QMainWindow):
         save_file_action.setShortcut("Ctrl+S")
 
         close_file_action = QAction("Close Session", self)
-        close_file_action.triggered.connect(self.close_session)
+        close_file_action.triggered.connect(lambda: self.close_session(True))
 
         self.recent_file_actions = []
         self.recent_menu = QMenu("Recent Files", self)
@@ -1282,6 +1306,8 @@ class App(QMainWindow):
         self.cdata.reset()
         self.cdata.data.render(defer_render=True)
         self.cdata.models.render(defer_render=True)
+        self.prime_viewport_placeholder()
+
         if render:
             self.set_camera_view("z")
 
