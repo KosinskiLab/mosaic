@@ -614,6 +614,14 @@ class VolumeViewerHUD(QWidget):
         strip.raise_()
         self._layout_strips()
 
+    def load_into_viewer(self, path: str) -> None:
+        """Load *path* into the primary viewer if empty, otherwise a new strip."""
+        if self.primary.volume is None:
+            self.primary.load_volume(path)
+        else:
+            self.add_viewer()
+            self._strips[-1].viewer.load_volume(path)
+
     def remove_viewer(self, strip):
         if strip not in self._strips:
             return

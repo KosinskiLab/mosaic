@@ -169,7 +169,7 @@ class DTSScreeningDialog(QDialog):
             QTableWidget.SelectionBehavior.SelectRows
         )
         self._overview_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.ResizeToContents
+            QHeaderView.ResizeMode.Stretch
         )
         self._overview_table.setStyleSheet(
             "QTableWidget::item:hover { background: none; }"
@@ -274,15 +274,13 @@ class DTSScreeningDialog(QDialog):
         self._overview_table.setHorizontalHeaderLabels(columns)
         self._overview_table.setRowCount(len(statuses))
 
+        status_col = len(columns) - 2
         header = self._overview_table.horizontalHeader()
         header.setStretchLastSection(False)
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(actions_col, QHeaderView.ResizeMode.Fixed)
         self._overview_table.setColumnWidth(actions_col, 64)
-        self._overview_table.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
 
         def _make_item(text):
             item = QTableWidgetItem(str(text))
@@ -334,7 +332,6 @@ class DTSScreeningDialog(QDialog):
 
             self._overview_table.setCellWidget(row, actions_col, actions_widget)
 
-        self._overview_table.resizeColumnsToContents()
         self._status_label.setText(f"{done_count}/{len(statuses)} completed")
         self._analysis_panel.load_results(screen_dir)
 

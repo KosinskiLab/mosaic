@@ -615,6 +615,34 @@ def read_volume(filename: str):
     return GeometryDataContainer(vertices=ret, shape=shape, sampling=spacing)
 
 
+def read_mrc_dtype(filepath):
+    """Return the NumPy dtype of an MRC file from its header, or None.
+
+    Only reads the first 1024 bytes. Returns None for non-MRC files or
+    unrecognised mode values.
+    """
+    _MRC_DTYPES = {
+        0: np.int8,
+        1: np.int16,
+        2: np.float32,
+        4: np.complex64,
+        6: np.uint16,
+        12: np.float16,
+    }
+
+    opener = gzip_open if is_gzipped(filepath) else open
+    with opener(filepath, "rb") as fh:
+        header = fh.read(1024)
+
+    if len(header) < 1024 or header[208:212] != b"MAP ":
+        return None
+
+    nc_le = struct.unpack_from("<i", header, 0)[0]
+    endian = "<" if 0 < nc_le < 65536 else ">"
+    mode = struct.unpack_from(f"{endian}i", header, 12)[0]
+    return _MRC_DTYPES.get(mode)
+
+
 def read_mrc_flat(filepath):
     """Read an MRC file into a flat buffer.
 

@@ -1837,7 +1837,7 @@ class PropertyAnalysisDialog(QDialog):
                     warnings.warn(f"Error creating plot for {name}: {e}")
 
             plot.enableAutoRange()
-            plot.autoRange()
+            QTimer.singleShot(0, plot.autoRange)
             return None
 
         # For separate plots mode
