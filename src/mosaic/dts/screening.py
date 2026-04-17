@@ -195,18 +195,10 @@ def _build_dts_template(
     kappa0 = hmff_params.get("kappa0", 0.0)
 
     steps = sim_params.get("steps", 50000)
-    threads = sim_params.get("threads", 1)
     temperature = sim_params.get("temperature", 1.0)
     min_edge = sim_params.get("min_edge", 1.0)
     max_edge = sim_params.get("max_edge", 5.0)
     output_period = sim_params.get("output_period", 1000)
-
-    integrator = "MetropolisAlgorithm"
-    try:
-        if int(threads) > 1:
-            integrator = "MetropolisAlgorithmOpenMP"
-    except (ValueError, TypeError):
-        pass
 
     if volume_path is not None:
         xi = hmff_params.get("xi", 5.0)
@@ -241,8 +233,8 @@ def _build_dts_template(
         f"""\
         {energy_line}
         Integrator_Type          = MC_Simulation
-        VertexPositionIntegrator = {integrator} 1 1 0.05
-        AlexanderMove            = {integrator} 1
+        VertexPositionIntegrator = MetropolisAlgorithmOpenMP 1 1 0.05
+        AlexanderMove            = MetropolisAlgorithmOpenMP 1
         InclusionPoseIntegrator  = MetropolisAlgorithm 1 1
         VisualizationFormat      = VTUFileFormat VTU_F {output_period}
         NonbinaryTrajectory      = TSI TrajTSI {output_period}
