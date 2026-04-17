@@ -178,9 +178,8 @@ class OperationCardWidget(QFrame):
         title = QLabel(self.operation_name)
         title_font = QFont()
         title_font.setPointSize(13)
-        title_font.setBold(True)
         title.setFont(title_font)
-        title.setStyleSheet(f"color: {self.category_color};")
+        title.setStyleSheet(f"color: {Colors.TEXT_PRIMARY};")
         header_layout.addWidget(title)
         header_layout.addStretch()
 
@@ -581,6 +580,7 @@ class PipelineTreeWidget(QTreeWidget):
         self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.verticalScrollBar().setSingleStep(12)
+        self.setViewportMargins(0, 0, 6, 0)
         self.setStyleSheet(
             """
             QTreeWidget {
@@ -629,8 +629,29 @@ class PipelineTreeWidget(QTreeWidget):
 
         card_widget.removed.connect(lambda w: self._remove_card(item))
         card_widget.settings_changed.connect(lambda: self.scheduleDelayedItemsLayout())
+        self._update_tail_spacer()
         self.pipeline_changed.emit()
         return item
+
+    def _update_tail_spacer(self):
+        """Maintain an empty spacer item at the end for overscroll."""
+        # Remove existing spacer if present
+        if hasattr(self, "_tail_spacer") and self._tail_spacer is not None:
+            try:
+                idx = self.indexOfTopLevelItem(self._tail_spacer)
+                if idx >= 0:
+                    self.takeTopLevelItem(idx)
+            except RuntimeError:
+                pass
+            self._tail_spacer = None
+
+        spacer_item = QTreeWidgetItem()
+        self.addTopLevelItem(spacer_item)
+        spacer = QWidget()
+        spacer.setFixedHeight(120)
+        spacer.setStyleSheet("background: transparent;")
+        self.setItemWidget(spacer_item, 0, spacer)
+        self._tail_spacer = spacer_item
 
     def _remove_card(self, card_item):
         """Remove card and update graph connectivity."""
@@ -676,6 +697,7 @@ class PipelineTreeWidget(QTreeWidget):
             if next_widget and not isinstance(next_widget, OperationCardWidget):
                 self.takeTopLevelItem(card_index)
 
+        self._update_tail_spacer()
         self.pipeline_changed.emit()
 
     def get_pipeline_config(self):

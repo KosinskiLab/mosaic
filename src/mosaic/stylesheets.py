@@ -134,24 +134,24 @@ class Colors:
 
     CATEGORY = {
         # Pipeline operation categories
-        "input": "#7c3aed",  # Violet 600
-        "preprocessing": "#2563eb",  # Blue 600
-        "parametrization": "#059669",  # Emerald 600
-        "analysis": "#0891b2",  # Cyan 600
-        "export": "#ea580c",  # Orange 600
+        "input": "#8b8cf8",  # Indigo 400 (muted)
+        "preprocessing": "#7ba3d9",  # Slate blue (muted)
+        "parametrization": "#6dab96",  # Sage green (muted)
+        "analysis": "#6baab8",  # Steel teal (muted)
+        "export": "#c49070",  # Warm clay (muted)
         # Animation types
-        "trajectory": "#3b82f6",  # Blue 500
-        "camera": "#10b981",  # Emerald 500
-        "zoom": "#14b8a6",  # Teal 500
-        "volume": "#f59e0b",  # Amber 500
-        "visibility": "#8b5cf6",  # Violet 500
-        "waypoint": "#ec4899",  # Pink 500
+        "trajectory": "#7ba3d9",  # Slate blue (muted)
+        "camera": "#6dab96",  # Sage green (muted)
+        "zoom": "#6db0a8",  # Dusty teal (muted)
+        "volume": "#cba95e",  # Warm ochre (muted)
+        "visibility": "#9b8fd4",  # Lavender (muted)
+        "waypoint": "#c48aa0",  # Dusty rose (muted)
         # Pipeline presets
-        "clear": "#ef4444",  # Red 500
-        "import": "#3b82f6",  # Blue 500
-        "cleanup": "#8b5cf6",  # Violet 500
-        "meshing": "#10b981",  # Emerald 500
-        "particle_picking": "#f59e0b",  # Amber 500
+        "clear": "#c47070",  # Dusty red (muted)
+        "import": "#7ba3d9",  # Slate blue (muted)
+        "cleanup": "#9b8fd4",  # Lavender (muted)
+        "meshing": "#6dab96",  # Sage green (muted)
+        "particle_picking": "#cba95e",  # Warm ochre (muted)
     }
 
 

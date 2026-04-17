@@ -15,7 +15,6 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QComboBox,
-    QSpinBox,
     QPushButton,
     QFormLayout,
     QWidget,
@@ -122,13 +121,13 @@ class AnalysisPanel(QWidget):
         self._cmap_selector.colormapChanged.connect(self._update_plot)
         form.addRow("Palette:", self._cmap_selector)
 
-        self._alpha_spin = QSpinBox()
-        self._alpha_spin.setRange(10, 100)
-        self._alpha_spin.setValue(100)
-        self._alpha_spin.setSuffix("%")
-        self._alpha_spin.setToolTip("Line opacity")
-        self._alpha_spin.valueChanged.connect(self._update_plot)
-        form.addRow("Alpha:", self._alpha_spin)
+        self._smooth_combo = QComboBox()
+        for w in (1, 5, 10, 25, 50, 100, 200, 500):
+            label = "None" if w == 1 else str(w)
+            self._smooth_combo.addItem(label, w)
+        self._smooth_combo.setToolTip("Moving average window size")
+        self._smooth_combo.currentIndexChanged.connect(self._update_plot)
+        form.addRow("Smooth:", self._smooth_combo)
 
         columns.addWidget(display, stretch=1, alignment=Qt.AlignmentFlag.AlignTop)
 
@@ -360,7 +359,9 @@ class AnalysisPanel(QWidget):
 
         plot.setLabel("left", ylabel)
         plot.setLabel("bottom", xlabel)
-        plot.addLegend(offset=(-10, 10))
+        show_legend = len(series) <= 20
+        if show_legend:
+            plot.addLegend(offset=(-10, 10))
 
         colors = generate_gradient_colors(cmap_name, max(len(series), 2))
 
@@ -370,25 +371,34 @@ class AnalysisPanel(QWidget):
             elif norm_mode == "Relative" and len(y) > 0 and abs(y[0]) > 1e-12:
                 y = y / y[0]
 
-            color = colors[i % len(colors)]
-            alpha = int(self._alpha_spin.value() * 255 / 100)
-            pen_color = pg.mkColor(color.red(), color.green(), color.blue(), alpha)
+            window = self._smooth_combo.currentData()
+            if window > 1:
+                pad = window // 2
+                y_padded = np.pad(y, pad, mode="edge")
+                kernel = np.ones(window) / window
+                y = np.convolve(y_padded, kernel, mode="same")[pad : pad + len(y)]
 
-            label_parts = [run["run_id"]]
-            if color_by and color_by != "(auto)":
-                val = run["params"].get(color_by, "?")
-                label_parts.append(f"{color_by}={val}")
+            color = colors[i % len(colors)]
+
+            name = None
+            if show_legend:
+                label_parts = [run["run_id"]]
+                if color_by and color_by != "(auto)":
+                    val = run["params"].get(color_by, "?")
+                    label_parts.append(f"{color_by}={val}")
+                name = " ".join(label_parts)
 
             plot.plot(
                 x,
                 y,
-                pen=pg.mkPen(pen_color, width=1.5),
-                name=" ".join(label_parts),
+                pen=pg.mkPen(color, width=1.5),
+                name=name,
                 skipFiniteCheck=True,
             )
 
-        plot.vb.enableAutoRange()
         self._plot_widget.setUpdatesEnabled(True)
+        plot.vb.enableAutoRange()
+        QTimer.singleShot(0, plot.vb.autoRange)
 
     def _update_plot(self, *_args):
         series, metric_display = self._extract_series()

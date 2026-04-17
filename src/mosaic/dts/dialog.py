@@ -169,7 +169,7 @@ class DTSScreeningDialog(QDialog):
             QTableWidget.SelectionBehavior.SelectRows
         )
         self._overview_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
+            QHeaderView.ResizeMode.ResizeToContents
         )
         self._overview_table.setStyleSheet(
             "QTableWidget::item:hover { background: none; }"
@@ -231,7 +231,9 @@ class DTSScreeningDialog(QDialog):
             self._analysis_panel.refresh()
 
     def _on_screen_generated(self, output_dir: str):
+        self._screen_dir_input.path_input.blockSignals(True)
         self._screen_dir_input.set_path(output_dir)
+        self._screen_dir_input.path_input.blockSignals(False)
         self._load_screen_overview(output_dir)
         self._left_tabs.setCurrentIndex(1)
 
@@ -267,15 +269,20 @@ class DTSScreeningDialog(QDialog):
         param_keys = sorted({k for s in statuses for k in s["parameters"].keys()})
         columns = ["Run"] + param_keys + ["Status", "Actions"]
         actions_col = len(columns) - 1
+        self._overview_table.setRowCount(0)
         self._overview_table.setColumnCount(len(columns))
         self._overview_table.setHorizontalHeaderLabels(columns)
         self._overview_table.setRowCount(len(statuses))
 
         header = self._overview_table.horizontalHeader()
-        for col in range(actions_col):
-            header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(actions_col, QHeaderView.ResizeMode.Fixed)
         self._overview_table.setColumnWidth(actions_col, 64)
+        self._overview_table.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
 
         def _make_item(text):
             item = QTableWidgetItem(str(text))
@@ -296,11 +303,11 @@ class DTSScreeningDialog(QDialog):
             status_col = len(param_keys) + 1
             is_available = status["status"] == "available"
             if is_available:
-                indicator = "\u25cf Available"
+                indicator = "Done"
                 done_count += 1
                 style_color = Colors.SUCCESS
             else:
-                indicator = "\u25cb Pending"
+                indicator = "Wait"
                 style_color = Colors.TEXT_SECONDARY
 
             status_item = _make_item(indicator)
@@ -327,6 +334,7 @@ class DTSScreeningDialog(QDialog):
 
             self._overview_table.setCellWidget(row, actions_col, actions_widget)
 
+        self._overview_table.resizeColumnsToContents()
         self._status_label.setText(f"{done_count}/{len(statuses)} completed")
         self._analysis_panel.load_results(screen_dir)
 
