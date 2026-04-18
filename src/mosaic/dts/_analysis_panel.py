@@ -15,6 +15,8 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QComboBox,
+    QCompleter,
+    QLineEdit,
     QPushButton,
     QFormLayout,
     QWidget,
@@ -31,6 +33,8 @@ import pyqtgraph as pg
 from ..widgets import ColorMapSelector, generate_gradient_colors
 from ..stylesheets import Colors, Typography
 from ..icons import icon
+import re
+
 from ..dts._utils import collect_available_metrics, extract_metric_series
 
 
@@ -109,6 +113,36 @@ class AnalysisPanel(QWidget):
         self._metric_combo.currentTextChanged.connect(self._update_plot)
         form.addRow("Metric:", self._metric_combo)
 
+        derived_row = QHBoxLayout()
+        derived_row.setSpacing(4)
+        self._derived_edit = QLineEdit()
+        self._derived_edit.setPlaceholderText("e.g. mesh_area / mesh_volume")
+        self._derived_edit.setToolTip(
+            "Binary expression on computed metrics.\n"
+            "Operators: /  *  -  +\n"
+            "Press Enter to evaluate."
+        )
+        self._derived_edit.setMinimumHeight(Colors.WIDGET_HEIGHT)
+        self._derived_metrics = []
+        self._derived_completer = QCompleter()
+        self._derived_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self._derived_completer.setCompletionMode(
+            QCompleter.CompletionMode.InlineCompletion
+        )
+        self._derived_edit.setCompleter(self._derived_completer)
+        self._derived_edit.returnPressed.connect(self._on_derived_committed)
+        self._derived_edit.textChanged.connect(self._on_derived_text_changed)
+        derived_row.addWidget(self._derived_edit, stretch=1)
+
+        self._derived_save_btn = QPushButton()
+        self._derived_save_btn.setIcon(icon("ph.floppy-disk"))
+        self._derived_save_btn.setToolTip("Save derived metric to run directories")
+        self._derived_save_btn.clicked.connect(self._save_derived)
+        self._derived_save_btn.setMaximumWidth(30)
+        self._derived_save_btn.setMinimumHeight(Colors.WIDGET_HEIGHT)
+        derived_row.addWidget(self._derived_save_btn, stretch=0)
+        form.addRow("Derived:", derived_row)
+
         self._norm_combo = QComboBox()
         self._norm_combo.addItems(["None", "Per-run", "Relative"])
         self._norm_combo.currentTextChanged.connect(self._update_plot)
@@ -131,7 +165,7 @@ class AnalysisPanel(QWidget):
         self._smooth_combo.currentIndexChanged.connect(self._update_plot)
         form.addRow("Smooth:", self._smooth_combo)
 
-        columns.addWidget(display, stretch=1, alignment=Qt.AlignmentFlag.AlignTop)
+        columns.addWidget(display, stretch=2, alignment=Qt.AlignmentFlag.AlignTop)
 
         stats = QGroupBox("Statistics")
         stats_layout = QVBoxLayout(stats)
@@ -149,7 +183,7 @@ class AnalysisPanel(QWidget):
         )
         self._readout_table.verticalHeader().setVisible(False)
         self._readout_table.verticalHeader().setDefaultSectionSize(22)
-        self._readout_table.setMaximumHeight(168)
+        self._readout_table.setMaximumHeight(198)
         self._readout_table.setStyleSheet(
             "QTableWidget::item:hover { background: none; }"
             "QTableWidget::item:selected,"
@@ -158,7 +192,7 @@ class AnalysisPanel(QWidget):
         )
         stats_layout.addWidget(self._readout_table)
 
-        columns.addWidget(stats, stretch=2)
+        columns.addWidget(stats, stretch=3)
 
         footer = QHBoxLayout()
         export_plot_btn = QPushButton("Export Plot")
@@ -217,6 +251,8 @@ class AnalysisPanel(QWidget):
                     break
         self._metric_combo.blockSignals(False)
 
+        self._derived_metrics = metrics
+
         old_color = self._color_combo.currentText()
         self._color_combo.blockSignals(True)
         self._color_combo.clear()
@@ -270,14 +306,85 @@ class AnalysisPanel(QWidget):
         plot.setDownsampling(auto=True, mode="peak")
         pg.setConfigOptions(antialias=True)
 
+    def _on_derived_text_changed(self, text):
+        """Update completer model to complete the last token."""
+        from qtpy.QtCore import QStringListModel
+
+        parts = re.split(r"\s+[/\*\-\+]\s+", text, maxsplit=1)
+        prefix = ""
+        if len(parts) == 2:
+            sep = text[len(parts[0]) : len(text) - len(parts[1])]
+            prefix = parts[0] + sep
+
+        if prefix != getattr(self, "_derived_prefix", None):
+            self._derived_prefix = prefix
+            completions = [prefix + m for m in self._derived_metrics]
+            self._derived_completer.setModel(QStringListModel(completions))
+
+        if not text.strip():
+            self._update_plot()
+
+    def _on_derived_committed(self):
+        """Evaluate the derived expression on Enter."""
+        self._update_plot()
+
+    _DERIVED_OPS = {
+        "/": lambda a, b: np.where(np.abs(b) > 1e-12, a / b, 0.0),
+        "*": lambda a, b: a * b,
+        "-": lambda a, b: a - b,
+        "+": lambda a, b: a + b,
+    }
+    _DERIVED_RE = re.compile(r"^\s*(.+?)\s+([/\*\-\+])\s+(.+?)\s*$")
+
+    def _parse_derived(self):
+        """Parse the derived expression field.
+
+        Returns ``(metric_a, op, metric_b)`` or *None* if empty/invalid.
+        """
+        text = self._derived_edit.text().strip()
+        if not text:
+            return None
+        m = self._DERIVED_RE.match(text)
+        if m is None:
+            return None
+        return m.group(1), m.group(2), m.group(3)
+
+    def _derive_series(self, parsed, run_ids):
+        """Build derived ``(run, x, y)`` tuples from two metric series."""
+        metric_a, op_char, metric_b = parsed
+        op = self._DERIVED_OPS[op_char]
+
+        series_a = extract_metric_series(self._screen_results, metric_a, run_ids)
+        series_b = extract_metric_series(self._screen_results, metric_b, run_ids)
+        b_by_run = {run["run_id"]: (run, x, y) for run, x, y in series_b}
+
+        result = []
+        for run, x_a, y_a in series_a:
+            if run["run_id"] not in b_by_run:
+                continue
+            _, _, y_b = b_by_run[run["run_id"]]
+            n = min(len(y_a), len(y_b))
+            with np.errstate(divide="ignore", invalid="ignore"):
+                y = op(y_a[:n], y_b[:n])
+            result.append((run, x_a[:n], y))
+        return result
+
     def _extract_series(self):
-        """Extract (run_dict, x, y) tuples for the selected metric and runs."""
-        metric_display = self._metric_combo.currentText()
-        if not metric_display or self._screen_results is None:
+        """Extract (run_dict, x, y) tuples for the active metric or derived expression."""
+        if self._screen_results is None:
             return [], ""
-        series = extract_metric_series(
-            self._screen_results, metric_display, set(self._selected_run_ids())
-        )
+
+        run_ids = set(self._selected_run_ids())
+        parsed = self._parse_derived()
+        if parsed is not None:
+            label = f"{parsed[0]} {parsed[1]} {parsed[2]}"
+            series = self._derive_series(parsed, run_ids)
+            return series, label
+
+        metric_display = self._metric_combo.currentText()
+        if not metric_display:
+            return [], ""
+        series = extract_metric_series(self._screen_results, metric_display, run_ids)
         return series, metric_display
 
     def _update_readout(self, series):
@@ -407,6 +514,38 @@ class AnalysisPanel(QWidget):
         self._plot_multi_run(series, metric_display)
         self._update_readout(series)
 
+    def _save_derived(self):
+        """Write the derived metric as .xvg into each run's mosaic/ folder."""
+        from pathlib import Path
+        from ..dts._utils import write_xvg, sanitize_label
+
+        parsed = self._parse_derived()
+        if parsed is None:
+            return
+
+        series, label = self._extract_series()
+        if not series:
+            return
+
+        stem = sanitize_label(label)
+        written = 0
+        for run, x, y in series:
+            run_dir = run.get("run_dir")
+            if not run_dir:
+                continue
+            mosaic_dir = Path(run_dir) / "mosaic"
+            mosaic_dir.mkdir(parents=True, exist_ok=True)
+            write_xvg(
+                str(mosaic_dir / f"{stem}.xvg"),
+                ["frame", stem],
+                np.column_stack([x, y]),
+                metadata={"computation": "derived", "expression": label},
+            )
+            written += 1
+
+        if written:
+            self.refresh()
+
     def _export_plot(self):
         from qtpy.QtWidgets import QFileDialog
 
@@ -438,7 +577,10 @@ class AnalysisPanel(QWidget):
         if not series:
             return
 
-        col_name = metric_display.split("/", 1)[-1]
+        if self._parse_derived() is not None:
+            col_name = metric_display
+        else:
+            col_name = metric_display.split("/", 1)[-1]
 
         try:
             with open(path, "w") as f:

@@ -209,6 +209,7 @@ class App(QMainWindow):
         self.setAcceptDrops(True)
 
     def closeEvent(self, event):
+        Settings.ui.window_geometry = self.saveGeometry()
         BackgroundTaskManager.instance()._shutdown()
         super().closeEvent(event)
 
@@ -265,11 +266,15 @@ class App(QMainWindow):
         return QSize(int(screen.width() * 0.95), int(screen.height() * 0.95))
 
     def show(self):
-        """Override show to position after Qt sizes the window."""
+        """Override show to restore saved geometry or use default size."""
+        saved = Settings.ui.window_geometry
+        if saved and self.restoreGeometry(saved):
+            super().show()
+            return
+
         self.resize(self.sizeHint())
         super().show()
 
-        # Position after showing (when size is established)
         screen = QGuiApplication.primaryScreen().geometry()
         x = (screen.width() - self.width()) // 2
         y = (screen.height() - self.height()) // 2

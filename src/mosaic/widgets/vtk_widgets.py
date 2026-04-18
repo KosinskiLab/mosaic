@@ -77,7 +77,8 @@ class LegendWidget:
     def set_lookup_table(self, lut, title=""):
         self.title = title
         self.scalar_bar.SetLookupTable(lut)
-        self.scalar_bar.SetTitle(title)
+        display_title = f"{title}\n" if title else title
+        self.scalar_bar.SetTitle(display_title)
 
         return self.interactor.Render()
 

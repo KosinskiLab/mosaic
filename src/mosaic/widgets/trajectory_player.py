@@ -11,7 +11,6 @@ from qtpy.QtWidgets import (
     QGroupBox,
 )
 from ..icons import icon
-from ..stylesheets import QSlider_style
 from ..utils import Throttle
 
 
@@ -34,7 +33,6 @@ class TimelineBar(QWidget):
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.valueChanged.connect(self.valueChanged.emit)
 
-        self.slider.setStyleSheet(QSlider_style)
         container_layout.addWidget(self.slider)
         layout.addWidget(self.slider_container, 1)
 

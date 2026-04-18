@@ -18,7 +18,6 @@ from qtpy.QtWidgets import (
     QDialog,
     QPushButton,
     QFileDialog,
-    QRadioButton,
     QWidget,
     QLabel,
     QGroupBox,
@@ -37,6 +36,7 @@ from ..widgets import (
     ColorPickerRow,
     SliderRow,
 )
+from ..widgets.segmented_control import SegmentedControl
 
 
 class GeometryPropertiesDialog(QDialog):
@@ -221,20 +221,11 @@ class GeometryPropertiesDialog(QDialog):
         scale_layout.addWidget(scale_label)
         scale_layout.addStretch()
 
-        self.scale_positive = QRadioButton("+1")
-        self.scale_positive.setToolTip("Use positive density values")
-        self.scale_negative = QRadioButton("-1")
-        self.scale_negative.setToolTip("Invert density (for negative stain maps)")
-        if self.initial_properties.get("volume_scale", 0) >= 0:
-            self.scale_positive.setChecked(True)
-        else:
-            self.scale_negative.setChecked(True)
-
-        scale_layout.addWidget(self.scale_positive)
-        scale_layout.addWidget(self.scale_negative)
-
-        self.scale_positive.setEnabled(self.volume_path is not None)
-        self.scale_negative.setEnabled(self.volume_path is not None)
+        default_idx = 1 if self.initial_properties.get("volume_scale", 0) < 0 else 0
+        self.scale_control = SegmentedControl(["Native", "Invert"], default=default_idx)
+        self.scale_control.setToolTip("Keep original density contrast or invert it")
+        self.scale_control.setEnabled(self.volume_path is not None)
+        scale_layout.addWidget(self.scale_control)
 
         model_layout.addWidget(scale_row)
 
@@ -313,8 +304,7 @@ class GeometryPropertiesDialog(QDialog):
         self.diffuse_slider.valueChanged.connect(self._emit_throttle)
         self.specular_slider.valueChanged.connect(self._emit_throttle)
         self.isovalue_slider.valueChanged.connect(self._emit_throttle)
-        self.scale_positive.toggled.connect(self.emit_parameters)
-        self.scale_negative.toggled.connect(self.emit_parameters)
+        self.scale_control.selectionChanged.connect(lambda _: self.emit_parameters())
         self.sampling_x.textChanged.connect(self.emit_parameters)
         self.sampling_y.textChanged.connect(self.emit_parameters)
         self.sampling_z.textChanged.connect(self.emit_parameters)
@@ -367,10 +357,9 @@ class GeometryPropertiesDialog(QDialog):
         volume = load_density(self.volume_path)
         non_negative = (volume.data > 0).sum()
         if non_negative < volume.data.size // 2:
-            self.scale_negative.setChecked(True)
+            self.scale_control._select(1)
 
-        self.scale_positive.setEnabled(True)
-        self.scale_negative.setEnabled(True)
+        self.scale_control.setEnabled(True)
         self.isovalue_slider.setEnabled(True)
         self.attach_button.setEnabled(True)
 
@@ -386,7 +375,7 @@ class GeometryPropertiesDialog(QDialog):
             "specular": self.specular_slider.value(),
             "base_color": self.base_color_picker.get_color(),
             "highlight_color": self.highlight_color_picker.get_color(),
-            "scale": -1 if self.scale_negative.isChecked() else 1,
+            "scale": -1 if self.scale_control.currentText() == "Invert" else 1,
             "isovalue_percentile": self.isovalue_slider.value(),
             "volume_path": self.volume_path,
             "reattach_volume": False,
