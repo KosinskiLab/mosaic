@@ -7,6 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import vtk
+from vtkmodules.util import numpy_support
 import numpy as np
 
 
@@ -268,7 +269,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         geometry._data.SetPolys(new_cells)
         geometry._data.Modified()
 
-        faces = vtk.util.numpy_support.vtk_to_numpy(new_cells.GetConnectivityArray())
+        faces = numpy_support.vtk_to_numpy(new_cells.GetConnectivityArray())
         mesh = TriangularMesh(to_open3d(geometry.points, faces.reshape(-1, 3)))
 
         geometry.swap_data(

@@ -7,7 +7,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from qtpy.QtCore import Qt
-from qtpy.QtGui import QColor, QPalette
 from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
