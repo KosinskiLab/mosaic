@@ -715,7 +715,7 @@ class VolumeViewerHUD(QWidget):
 
     def close(self):
         for strip in list(self._strips):
-            strip.viewer.close_volume()
+            self.remove_viewer(strip)
         try:
             self.primary.close_button.clicked.disconnect(self._promote_new_primary)
         except TypeError:

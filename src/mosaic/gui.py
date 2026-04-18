@@ -675,13 +675,21 @@ class App(QMainWindow):
         self._placeholder_connections = []
 
         def _on_data_arrived():
-            if len(self.cdata._data.data) > 0 or len(self.cdata._models.data) > 0:
+            if (
+                len(self.cdata._data.data) > 0
+                or len(self.cdata._models.data) > 0
+                or self.volume_viewer.primary.volume is not None
+            ):
                 self.viewport_stack.setCurrentWidget(self.vtk_widget)
                 for sig in self._placeholder_connections:
                     sig.disconnect(_on_data_arrived)
                 self._placeholder_connections.clear()
 
-        for sig in (self.cdata.data.data_changed, self.cdata.models.data_changed):
+        for sig in (
+            self.cdata.data.data_changed,
+            self.cdata.models.data_changed,
+            self.volume_viewer.primary.data_changed,
+        ):
             sig.connect(_on_data_arrived)
             self._placeholder_connections.append(sig)
 
@@ -695,29 +703,30 @@ class App(QMainWindow):
         interact_menu = menu_bar.addMenu("Actions")
         preference_menu = menu_bar.addMenu("Preferences")
 
-        new_session_action = QAction("Load Session", self)
+        new_session_action = QAction(icon("ph.folder-notch-open"), "Load Session", self)
         new_session_action.triggered.connect(self.load_session)
         new_session_action.setShortcut("Ctrl+N")
 
-        add_file_action = QAction("Open", self)
+        add_file_action = QAction(icon("ph.folder-open"), "Open", self)
         add_file_action.triggered.connect(self.open_files)
         add_file_action.setShortcut("Ctrl+O")
 
-        undo_action = QAction("Undo", self)
+        undo_action = QAction(icon("ph.arrow-u-up-left"), "Undo", self)
         undo_action.triggered.connect(
             lambda: (self.cdata.data.undo(), self.cdata.models.undo())
         )
         undo_action.setShortcut("Ctrl+Z")
 
-        save_file_action = QAction("Save Session", self)
+        save_file_action = QAction(icon("ph.floppy-disk"), "Save Session", self)
         save_file_action.triggered.connect(self.save_session)
         save_file_action.setShortcut("Ctrl+S")
 
-        close_file_action = QAction("Close Session", self)
+        close_file_action = QAction(icon("ph.x-circle"), "Close Session", self)
         close_file_action.triggered.connect(lambda: self.close_session(True))
 
         self.recent_file_actions = []
         self.recent_menu = QMenu("Recent Files", self)
+        self.recent_menu.setIcon(icon("ph.clock-counter-clockwise"))
         for i in range(Settings.ui.max_recent_files):
             action = QAction(self)
             action.setVisible(False)
@@ -727,31 +736,36 @@ class App(QMainWindow):
 
         self.update_recent_files_menu()
 
-        quit_action = QAction("Quit", self)
+        quit_action = QAction(icon("ph.sign-out"), "Quit", self)
         quit_action.setShortcut("Ctrl+Q")
         quit_action.triggered.connect(self.close)
 
-        screenshot_action = QAction("Save Viewer Screenshot", self)
+        screenshot_action = QAction(icon("ph.camera"), "Save Viewer Screenshot", self)
         screenshot_action.triggered.connect(lambda x: self.screenshot_manager.save())
         screenshot_action.setShortcut("Ctrl+P")
 
-        animation_action = QAction("Export Animation", self)
+        animation_action = QAction(icon("ph.film-strip"), "Export Animation", self)
         animation_action.triggered.connect(lambda x: self._animate())
         animation_action.setShortcut("Ctrl+E")
 
-        clipboard_action = QAction("Viewer Screenshot to Clipboard", self)
+        clipboard_action = QAction(
+            icon("ph.clipboard"), "Viewer Screenshot to Clipboard", self
+        )
         clipboard_action.triggered.connect(
             lambda x: self.screenshot_manager.copy_to_clipboard()
         )
         clipboard_action.setShortcut("Ctrl+Shift+C")
 
-        clipboard_window_action = QAction("Window Screenshot to Clipboard", self)
+        clipboard_window_action = QAction(
+            icon("ph.app-window"), "Window Screenshot to Clipboard", self
+        )
         clipboard_window_action.triggered.connect(
             lambda x: self.screenshot_manager.copy_to_clipboard(window=True)
         )
         clipboard_window_action.setShortcut("Ctrl+Shift+W")
 
         axes_menu = QMenu("Axes", self)
+        axes_menu.setIcon(icon("ph.crosshair"))
         visible_action = QAction("Visible", self)
         visible_action.setCheckable(True)
         visible_action.setChecked(self.axes_widget.visible)
@@ -794,6 +808,7 @@ class App(QMainWindow):
         axes_menu.addAction(arrow_action)
 
         tilt_menu = QMenu("Camera", self)
+        tilt_menu.setIcon(icon("ph.video-camera"))
         self.tilt_dialog = TiltControlDialog(self)
         show_tilt_control = QAction(
             icon("ph.sliders", role="muted"),
@@ -828,6 +843,7 @@ class App(QMainWindow):
         tilt_menu.addAction(reset_action)
 
         coloring_menu = QMenu("Coloring", self)
+        coloring_menu.setIcon(icon("ph.palette"))
         coloring_group = QActionGroup(self)
         coloring_group.setExclusive(True)
 
@@ -850,6 +866,7 @@ class App(QMainWindow):
         coloring_menu.addAction(self.color_by_entity_action)
 
         legend_bar_menu = QMenu("Legend", self)
+        legend_bar_menu.setIcon(icon("ph.chart-bar"))
         legend_bar = QAction("Show", self)
         legend_bar.setCheckable(True)
         legend_bar.setChecked(False)
@@ -868,17 +885,33 @@ class App(QMainWindow):
         legend_bar_menu.addAction(legend_bar)
         legend_bar_menu.addMenu(orientation_menu)
 
-        self.volume_action = QAction("Volume Viewer", self)
-        self.volume_action.setCheckable(True)
-        self.volume_action.setChecked(False)
-        self.volume_action.triggered.connect(self._toggle_volume_dock)
+        self.volume_action = QAction(icon("ph.cube"), "Volume Viewer", self)
+        self.volume_action._on = False
 
-        self.trajectory_action = QAction("Trajectory Player", self)
-        self.trajectory_action.setCheckable(True)
-        self.trajectory_action.setChecked(False)
-        self.trajectory_action.triggered.connect(
-            lambda checked: toggle_dock(self.trajectory_dock, checked)
+        def _toggle_volume():
+            self.volume_action._on = not self.volume_action._on
+            on = self.volume_action._on
+            self.volume_action.setIcon(
+                icon("ph.cube", role="primary" if on else "muted")
+            )
+            self._toggle_volume_dock(on)
+
+        self.volume_action.triggered.connect(_toggle_volume)
+
+        self.trajectory_action = QAction(
+            icon("ph.play-circle"), "Trajectory Player", self
         )
+        self.trajectory_action._on = False
+
+        def _toggle_trajectory():
+            self.trajectory_action._on = not self.trajectory_action._on
+            on = self.trajectory_action._on
+            self.trajectory_action.setIcon(
+                icon("ph.play-circle", role="primary" if on else "muted")
+            )
+            toggle_dock(self.trajectory_dock, on)
+
+        self.trajectory_action.triggered.connect(_toggle_trajectory)
 
         file_menu.addAction(add_file_action)
         file_menu.addMenu(self.recent_menu)
@@ -889,15 +922,15 @@ class App(QMainWindow):
         file_menu.addAction(close_file_action)
 
         file_menu.addSeparator()
-        batch_process_action = QAction("Batch Processing", self)
+        batch_process_action = QAction(icon("ph.stack"), "Batch Processing", self)
         batch_process_action.triggered.connect(self.open_batch_pipeline)
         batch_process_action.setShortcut("Ctrl+Shift+P")
 
-        batch_navigator_action = QAction("Batch Navigator", self)
+        batch_navigator_action = QAction(icon("ph.compass"), "Batch Navigator", self)
         batch_navigator_action.triggered.connect(self.open_batch_navigator)
         batch_navigator_action.setShortcut("Ctrl+Shift+N")
 
-        czi_action = QAction("CZI Portal", self)
+        czi_action = QAction(icon("ph.cloud"), "CZI Portal", self)
         czi_action.triggered.connect(self.open_czi_dialog)
 
         file_menu.addAction(batch_process_action)
@@ -912,23 +945,27 @@ class App(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(quit_action)
 
-        show_scale_bar = QAction("Scale Bar", self)
-        show_scale_bar.setCheckable(True)
-        show_scale_bar.setChecked(False)
-        show_scale_bar.triggered.connect(
-            lambda checked: self.scale_bar.show() if checked else self.scale_bar.hide()
-        )
+        show_scale_bar = QAction(icon("ph.ruler"), "Scale Bar", self)
+        show_scale_bar._on = False
 
-        show_viewer_mode = QAction("Status Bar", self)
-        show_viewer_mode.setCheckable(True)
-        show_viewer_mode.setChecked(True)
-        show_viewer_mode.triggered.connect(
-            lambda checked: (
-                self.status_indicator.show()
-                if checked
-                else self.status_indicator.hide()
-            )
-        )
+        def _toggle_scale_bar():
+            show_scale_bar._on = not show_scale_bar._on
+            on = show_scale_bar._on
+            show_scale_bar.setIcon(icon("ph.ruler", role="primary" if on else "muted"))
+            self.scale_bar.show() if on else self.scale_bar.hide()
+
+        show_scale_bar.triggered.connect(_toggle_scale_bar)
+
+        show_viewer_mode = QAction(icon("ph.info", role="primary"), "Status Bar", self)
+        show_viewer_mode._on = True
+
+        def _toggle_status_bar():
+            show_viewer_mode._on = not show_viewer_mode._on
+            on = show_viewer_mode._on
+            show_viewer_mode.setIcon(icon("ph.info", role="primary" if on else "muted"))
+            self.status_indicator.show() if on else self.status_indicator.hide()
+
+        show_viewer_mode.triggered.connect(_toggle_status_bar)
 
         view_menu.addMenu(axes_menu)
         view_menu.addMenu(tilt_menu)
@@ -951,7 +988,7 @@ class App(QMainWindow):
         xz_action.setText("Front View (XZ)\tc")
         xz_action.triggered.connect(lambda: self.simulate_key_press("c"))
 
-        flip_action = QAction("Flip View lambda", self)
+        flip_action = QAction(icon("ph.swap"), "Flip View lambda", self)
         flip_action.setText("Flip View Axis \tv")
         flip_action.triggered.connect(lambda: self.simulate_key_press("v"))
 
@@ -966,6 +1003,7 @@ class App(QMainWindow):
         view_menu.addSeparator()
 
         bbox_menu = QMenu("Bounding Boxes", self)
+        bbox_menu.setIcon(icon("ph.bounding-box"))
 
         self.computed_bbox = QAction("Dataset Bounds", self)
         self.computed_bbox.setCheckable(True)
@@ -1005,50 +1043,64 @@ class App(QMainWindow):
         view_menu.addMenu(bbox_menu)
         view_menu.addSeparator()
 
-        show_settings = QAction("Appearance\tCtrl+,", self)
+        show_settings = QAction(icon("ph.gear"), "Appearance\tCtrl+,", self)
         show_settings.setShortcut("Ctrl+,")
         show_settings.triggered.connect(self.show_app_settings)
         preference_menu.addAction(show_settings)
 
-        viewing_action = QAction("Viewing Mode\tEsc", self)
+        viewing_action = QAction(icon("ph.eye"), "Viewing Mode\tEsc", self)
         viewing_action.triggered.connect(lambda: self.handle_escape_key())
 
-        background_action = QAction("Toggle Background\td", self)
+        background_action = QAction(
+            icon("ph.circle-half"), "Toggle Background\td", self
+        )
         background_action.triggered.connect(lambda: self.simulate_key_press("d"))
 
-        selection_action = QAction("Point Selection\tr", self)
+        selection_action = QAction(icon("ph.cursor"), "Point Selection\tr", self)
         selection_action.triggered.connect(lambda: self.simulate_key_press("r"))
 
-        expand_selection_action = QAction("Expand Selection\te", self)
+        expand_selection_action = QAction(
+            icon("ph.arrows-out"), "Expand Selection\te", self
+        )
         expand_selection_action.triggered.connect(lambda: self.simulate_key_press("e"))
 
-        hide_unselected_action = QAction("Hide Unselected\th", self)
+        hide_unselected_action = QAction(
+            icon("ph.eye-slash"), "Hide Unselected\th", self
+        )
         hide_unselected_action.triggered.connect(lambda: self.simulate_key_press("h"))
 
-        show_unselected_action = QAction("Show Unselected\tShift+H", self)
+        show_unselected_action = QAction(
+            icon("ph.eye"), "Show Unselected\tShift+H", self
+        )
         show_unselected_action.triggered.connect(lambda: self.simulate_key_press("H"))
 
-        picking_action = QAction("Pick Objects\tShift+E", self)
+        picking_action = QAction(
+            icon("ph.hand-pointing"), "Pick Objects\tShift+E", self
+        )
         picking_action.triggered.connect(lambda: self.simulate_key_press("E"))
 
-        remove_action = QAction("Remove Selection\tDelete", self)
+        remove_action = QAction(icon("ph.trash"), "Remove Selection\tDelete", self)
         remove_action.triggered.connect(lambda: self.simulate_key_press("\x7f"))
 
-        merge_action = QAction("Merge Selection", self)
+        merge_action = QAction(icon("ph.git-merge"), "Merge Selection", self)
         merge_action.setText("Merge Selection\tm")
         merge_action.triggered.connect(lambda: self.simulate_key_press("m"))
 
-        drawing_action = QAction("Free Hand Drawing", self)
+        drawing_action = QAction(icon("ph.pencil-line"), "Free Hand Drawing", self)
         drawing_action.setText("Free Hand Drawing\ta")
         drawing_action.triggered.connect(lambda: self.simulate_key_press("a"))
 
-        curve_action = QAction("Curve Drawing\tShift+A", self)
+        curve_action = QAction(icon("ph.path"), "Curve Drawing\tShift+A", self)
         curve_action.triggered.connect(lambda: self.simulate_key_press("A"))
 
-        mesh_delete_action = QAction("Delete Mesh Triangles\tq", self)
+        mesh_delete_action = QAction(
+            icon("ph.eraser"), "Delete Mesh Triangles\tq", self
+        )
         mesh_delete_action.triggered.connect(lambda: self.simulate_key_press("q"))
 
-        mesh_add_action = QAction("Add Mesh Triangles\tShift+Q", self)
+        mesh_add_action = QAction(
+            icon("ph.polygon"), "Add Mesh Triangles\tShift+Q", self
+        )
         mesh_add_action.triggered.connect(lambda: self.simulate_key_press("m"))
 
         interaction_target_menu = QMenu("Interaction Target", self)
@@ -1224,7 +1276,8 @@ class App(QMainWindow):
         """Show the volume dock if hidden and load *path* into the primary viewer."""
         if not self.volume_viewer.isVisible():
             self.volume_viewer.setVisible(True)
-            self.volume_action.setChecked(True)
+            self.volume_action._on = True
+            self.volume_action.setIcon(icon("ph.cube", role="primary"))
         try:
             self.volume_viewer.primary.load_volume(path)
         except Exception as e:
@@ -1246,50 +1299,16 @@ class App(QMainWindow):
                 segmentations.append(path)
 
         if density_maps:
-            opened = self._prompt_open_as_volumes(density_maps)
-            if not opened:
-                segmentations.extend(density_maps)
+            self._load_volume_files(density_maps)
 
         return segmentations
-
-    def _prompt_open_as_volumes(self, paths: list) -> bool:
-        """Prompt if density map *paths* should be loaded into volume viewer."""
-        from pathlib import Path
-
-        if Settings.ui.always_open_as_volume:
-            self._load_volume_files(paths)
-            return True
-
-        names = "\n".join(f"  {Path(p).name}" for p in paths)
-        box = QMessageBox(self)
-        box.setWindowTitle("Open as volumes?")
-        box.setIcon(QMessageBox.Icon.Question)
-        box.setText(
-            f"These files appear to be density maps rather than "
-            f"segmentations:\n\n{names}\n\n"
-            f"Open them in volume viewers?"
-        )
-        yes_btn = box.addButton("Yes", QMessageBox.ButtonRole.AcceptRole)
-        always_btn = box.addButton("Always", QMessageBox.ButtonRole.AcceptRole)
-        no_btn = box.addButton("No", QMessageBox.ButtonRole.RejectRole)
-        box.setDefaultButton(yes_btn)
-        box.exec()
-
-        clicked = box.clickedButton()
-        if clicked is no_btn:
-            return False
-
-        if clicked is always_btn:
-            Settings.ui.always_open_as_volume = True
-
-        self._load_volume_files(paths)
-        return True
 
     def _load_volume_files(self, paths: list) -> None:
         """Load each path into its own volume viewer."""
         if not self.volume_viewer.isVisible():
             self.volume_viewer.setVisible(True)
-            self.volume_action.setChecked(True)
+            self.volume_action._on = True
+            self.volume_action.setIcon(icon("ph.cube", role="primary"))
         for path in paths:
             try:
                 self.volume_viewer.load_into_viewer(path)
@@ -1420,9 +1439,14 @@ class App(QMainWindow):
 
     def _on_files_read(self, results):
         """GUI-thread callback: surface errors, render, recentre camera."""
+        from .formats.parser import NotASegmentationError
+
+        density_paths = []
         failures = []
         for filename, outcome in results:
-            if isinstance(outcome, Exception):
+            if isinstance(outcome, NotASegmentationError):
+                density_paths.append(filename)
+            elif isinstance(outcome, Exception):
                 failures.append((filename, str(outcome)))
             else:
                 self._add_file_to_recent(filename)
@@ -1433,12 +1457,35 @@ class App(QMainWindow):
         self.cdata.models.render(defer_render=False)
         self.set_camera_view("z")
 
+        if density_paths:
+            from pathlib import Path
+
+            listing = "\n".join(Path(p).name for p in density_paths)
+            box = QMessageBox(self)
+            box.setWindowTitle("Not a Segmentation")
+            box.setIcon(QMessageBox.Icon.Question)
+            box.setText(
+                f"{len(density_paths)} file(s) contain more than 10 000 "
+                f"unique values and are likely density maps. "
+                f"Open in the Volume Viewer?"
+            )
+            box.setDetailedText(listing)
+            yes_btn = box.addButton("Yes", QMessageBox.ButtonRole.AcceptRole)
+            box.addButton("No", QMessageBox.ButtonRole.RejectRole)
+            box.setDefaultButton(yes_btn)
+            for btn in box.buttons():
+                if box.buttonRole(btn) == QMessageBox.ButtonRole.ActionRole:
+                    btn.setMinimumWidth(120)
+            box.exec()
+            if box.clickedButton() is yes_btn:
+                self._load_volume_files(density_paths)
+
         if failures:
             if len(failures) == 1:
                 fn, msg = failures[0]
                 QMessageBox.warning(self, "Read Failed", f"{fn}\n\n{msg}")
             else:
-                lines = [f"{len(failures)} files failed:"]
+                lines = [f"{len(failures)} file(s) failed:"]
                 for fn, msg in failures[:20]:
                     lines.append(f"  {fn}: {msg}")
                 if len(failures) > 20:
