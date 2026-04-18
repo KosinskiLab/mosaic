@@ -726,9 +726,8 @@ def points_from_flat_array(arr, dims, max_cluster=10000):
     unique_count = len(np.unique(sample))
     if unique_count > max_cluster:
         raise NotASegmentationError(
-            f"Volume has {unique_count} unique values in a {sample.size}-voxel "
-            f"sample, exceeding max_cluster={max_cluster}. It is most likely a "
-            f"density map rather than a label map."
+            f"Found {unique_count} unique values (limit: {max_cluster}). "
+            f"This looks like a density map, not a segmentation."
         )
 
     flat = np.where(arr != 0)[0]
