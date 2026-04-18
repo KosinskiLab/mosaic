@@ -108,6 +108,7 @@ class RenderingSettings:
 class UISettings:
     """User interface configuration."""
 
+    window_geometry: bytes = b""
     window_size_ratio: Tuple[float, float] = (0.9, 0.9)
     splitter_ratio: float = 0.85
     tab_height: int = 40

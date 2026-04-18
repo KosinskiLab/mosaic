@@ -763,8 +763,9 @@ def _build_QDockWidget_style():
         border: 1px solid {Colors.BORDER_HOVER};
     }}
     QMainWindow::separator {{
-        width: 0px;
-        height: 0px;
+        width: 1px;
+        height: 1px;
+        background: transparent;
     }}
 """
 

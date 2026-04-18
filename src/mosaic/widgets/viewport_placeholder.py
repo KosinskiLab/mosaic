@@ -59,6 +59,12 @@ class _ActionPill(QWidget):
         text.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         row.addWidget(text)
 
+    def paintEvent(self, event):
+        opt = QStyleOption()
+        opt.initFrom(self)
+        p = QPainter(self)
+        self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, opt, p, self)
+
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton and self.rect().contains(
             event.pos()
@@ -194,7 +200,7 @@ class ViewportPlaceholder(QWidget):
             }}
             QWidget#actionPill {{
                 background: transparent;
-                border: none;
+                border: 1px solid transparent;
                 border-radius: 6px;
             }}
             QWidget#actionPill:hover {{

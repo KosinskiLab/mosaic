@@ -74,9 +74,8 @@ class ComputePanel(QGroupBox):
                 "Fluctuation",
                 "Area",
                 "Volume",
-                "HMFF Potential",
+                "HMFF Energy",
                 "Bending Energy",
-                "HMFF / Bending",
             ]
         )
         self._type_combo.currentTextChanged.connect(self._on_type_changed)
@@ -171,12 +170,10 @@ class ComputePanel(QGroupBox):
             self._submit("Area", "mesh_area")
         elif prop == "Volume":
             self._submit("Volume", "mesh_volume")
-        elif prop == "HMFF Potential":
-            self._submit("HMFF Potential", "hmff_potential")
+        elif prop == "HMFF Energy":
+            self._submit("HMFF Energy", "hmff_potential")
         elif prop == "Bending Energy":
             self._submit("Bending Energy", "bending_energy")
-        elif prop == "HMFF / Bending":
-            self._submit("HMFF / Bending", "hmff_bending_ratio")
 
     def _submit(self, task_label, kind, **kwargs):
         from ..dts import compute

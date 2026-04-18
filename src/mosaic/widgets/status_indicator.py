@@ -696,11 +696,11 @@ class StatusIndicator:
                 QProgressBar {{
                     border: none;
                     background-color: {Colors.BORDER_DARK};
-                    border-radius: 2px;
+                    border-radius: 3px;
                 }}
                 QProgressBar::chunk {{
                     background-color: {Colors.PRIMARY};
-                    border-radius: 2px;
+                    border-radius: 3px;
                 }}
             """
             )
@@ -771,11 +771,11 @@ class StatusIndicator:
             QProgressBar {{
                 border: none;
                 background-color: {Colors.BORDER_DARK};
-                border-radius: 2px;
+                border-radius: 3px;
             }}
             QProgressBar::chunk {{
                 background-color: {Colors.PRIMARY};
-                border-radius: 2px;
+                border-radius: 3px;
             }}
         """
         )

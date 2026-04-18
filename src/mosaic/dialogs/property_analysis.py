@@ -1283,16 +1283,17 @@ class PropertyAnalysisDialog(QDialog):
             }
 
         if self.quantile_checkbox.isChecked():
-            all_curvatures = np.concatenate(
+            scalars = np.concatenate(
                 [np.asarray(v).flatten() for v in properties.values()]
             )
-            valid_curvatures = all_curvatures[~np.isnan(all_curvatures)]
-            n_bins = min(valid_curvatures.size // 10, 100)
-            bins = np.percentile(valid_curvatures, np.linspace(0, 100, n_bins + 1))
-            properties = {k: np.digitize(v, bins) - 1 for k, v in properties.items()}
-
-        properties = self._apply_threshold_clipping(properties)
-        return properties
+            scalars = scalars[~np.isnan(scalars)]
+            n_bins = min(scalars.size // 10, 100)
+            if n_bins > 0 and scalars.size > 0:
+                bins = np.percentile(scalars, np.linspace(0, 100, n_bins + 1))
+                properties = {
+                    k: np.digitize(v, bins) - 1 for k, v in properties.items()
+                }
+        return self._apply_threshold_clipping(properties)
 
     def _apply_threshold_clipping(self, properties):
         """Apply threshold clipping to property values"""
@@ -1735,6 +1736,10 @@ class PropertyAnalysisDialog(QDialog):
         bar_width=None,
     ):
         """Create a single pyqtgraph item for the given plot type."""
+        values = np.asarray(values).flatten()
+        values = values[~np.isnan(values)]
+        if values.size == 0:
+            return None
         if plot_type == "Histogram":
             hist, edges = np.histogram(values, bins=bins)
             x = (edges[:-1] + edges[1:]) / 2
@@ -1780,12 +1785,16 @@ class PropertyAnalysisDialog(QDialog):
         if plot_type == "Histogram":
             all_data = np.concatenate(all_values)
             all_data = all_data[~np.isnan(all_data)]
+            if all_data.size == 0:
+                return None
             bins = np.histogram_bin_edges(all_data, bins="auto")
             y_label = "Frequency"
             x_label = property_name
         elif plot_type == "Density":
             all_data = np.concatenate(all_values)
             all_data = all_data[~np.isnan(all_data)]
+            if all_data.size == 0:
+                return None
             x_min, x_max = np.nanmin(all_data), np.nanmax(all_data)
             x_range = np.linspace(x_min, x_max, 500)
             y_label = "Density"
@@ -1832,7 +1841,8 @@ class PropertyAnalysisDialog(QDialog):
                         offset=bar_offset,
                         bar_width=bar_width,
                     )
-                    plot.addItem(item)
+                    if item is not None:
+                        plot.addItem(item)
                 except Exception as e:
                     warnings.warn(f"Error creating plot for {name}: {e}")
 
@@ -1857,7 +1867,8 @@ class PropertyAnalysisDialog(QDialog):
                     bins=bins,
                     x_range=x_range,
                 )
-                plot.addItem(item)
+                if item is not None:
+                    plot.addItem(item)
             except Exception as e:
                 warnings.warn(f"Error creating plot for {name}: {e}")
 

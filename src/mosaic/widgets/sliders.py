@@ -172,24 +172,22 @@ class DualHandleSlider(QWidget):
         self.dragging_handle = None
         self.handle_size = 16
 
-        # Colors matching QSlider_style from stylesheets.py
-        self.groove_color = QColor("#e2e8f0")
+        self._apply_colors()
+
+    def _apply_colors(self):
+        """Set all colors from the current Colors palette."""
+        self.groove_color = QColor(Colors.BORDER_DARK)
         self.active_color = QColor(Colors.BORDER_HOVER)
-        self.handle_color = QColor("#ffffff")
+        self.handle_color = QColor(Colors.SURFACE)
         self.border_color = QColor(Colors.BORDER_DARK)
-        # Disabled colors
         self.groove_disabled = QColor(Colors.BG_TERTIARY)
         self.active_disabled = QColor(Colors.BORDER_DARK)
         self.handle_disabled = QColor(Colors.BG_SECONDARY)
-        self.border_disabled = QColor("#e2e8f0")
+        self.border_disabled = QColor(Colors.BORDER_DARK)
 
     def _on_theme_changed(self):
         """Re-create QColor instances from Colors after a theme switch."""
-        self.active_color = QColor(Colors.BORDER_HOVER)
-        self.border_color = QColor(Colors.BORDER_DARK)
-        self.groove_disabled = QColor(Colors.BG_TERTIARY)
-        self.active_disabled = QColor(Colors.BORDER_DARK)
-        self.handle_disabled = QColor(Colors.BG_SECONDARY)
+        self._apply_colors()
         self.update()
 
     def setRange(self, minimum, maximum):

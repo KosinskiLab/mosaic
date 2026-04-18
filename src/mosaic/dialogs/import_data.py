@@ -42,6 +42,7 @@ class ImportDataDialog(QDialog):
         self.filenames = []
         self.file_parameters = {}
         self.setup_ui()
+        self.resize(590, 350)
 
     def setup_ui(self):
         from ..icons import (
@@ -53,28 +54,30 @@ class ImportDataDialog(QDialog):
         )
 
         self.setWindowTitle("Import Parameters")
-        self.setMaximumWidth(650)
         layout = QVBoxLayout()
         layout.setSpacing(15)
 
         group = QGroupBox()
-        grid_layout = QGridLayout(group)
-        grid_layout.setVerticalSpacing(10)
-        grid_layout.setHorizontalSpacing(10)
+        group_layout = QVBoxLayout(group)
+        group_layout.setSpacing(10)
 
         self.progress_label = QLabel("File 0 of 0")
         self.progress_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        grid_layout.addWidget(self.progress_label, 0, 0, 1, 4)
+        group_layout.addWidget(self.progress_label)
 
         self.filename_label = QLabel()
         self.filename_label.setWordWrap(True)
         self.filename_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.filename_label.setMinimumWidth(400)
-        grid_layout.addWidget(self.filename_label, 1, 0, 1, 4)
+        group_layout.addWidget(self.filename_label)
+
+        self.grid_layout = grid_layout = QGridLayout()
+        grid_layout.setVerticalSpacing(10)
+        grid_layout.setHorizontalSpacing(10)
+        group_layout.addLayout(grid_layout)
 
         # Column headers for X, Y, Z axes
         param_label = QLabel("")
-        param_label.setFixedWidth(100)
         self.x_label = QLabel("X")
         self.y_label = QLabel("Y")
         self.z_label = QLabel("Z")
@@ -82,10 +85,10 @@ class ImportDataDialog(QDialog):
         self.y_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.z_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        grid_layout.addWidget(param_label, 2, 0)
-        grid_layout.addWidget(self.x_label, 2, 1)
-        grid_layout.addWidget(self.y_label, 2, 2)
-        grid_layout.addWidget(self.z_label, 2, 3)
+        grid_layout.addWidget(param_label, 0, 0)
+        grid_layout.addWidget(self.x_label, 0, 1)
+        grid_layout.addWidget(self.y_label, 0, 2)
+        grid_layout.addWidget(self.z_label, 0, 3)
 
         scale_label = QLabel("Scale Factor:")
         scale_input = {
@@ -100,10 +103,10 @@ class ImportDataDialog(QDialog):
         self.scale_y = create_setting_widget(scale_input)
         self.scale_z = create_setting_widget(scale_input)
 
-        grid_layout.addWidget(scale_label, 3, 0)
-        grid_layout.addWidget(self.scale_x, 3, 1)
-        grid_layout.addWidget(self.scale_y, 3, 2)
-        grid_layout.addWidget(self.scale_z, 3, 3)
+        grid_layout.addWidget(scale_label, 1, 0)
+        grid_layout.addWidget(self.scale_x, 1, 1)
+        grid_layout.addWidget(self.scale_y, 1, 2)
+        grid_layout.addWidget(self.scale_z, 1, 3)
 
         # Offset inputs
         offset_label = QLabel("Offset:")
@@ -119,10 +122,10 @@ class ImportDataDialog(QDialog):
         self.offset_y = create_setting_widget(offset_settings)
         self.offset_z = create_setting_widget(offset_settings)
 
-        grid_layout.addWidget(offset_label, 4, 0)
-        grid_layout.addWidget(self.offset_x, 4, 1)
-        grid_layout.addWidget(self.offset_y, 4, 2)
-        grid_layout.addWidget(self.offset_z, 4, 3)
+        grid_layout.addWidget(offset_label, 2, 0)
+        grid_layout.addWidget(self.offset_x, 2, 1)
+        grid_layout.addWidget(self.offset_y, 2, 2)
+        grid_layout.addWidget(self.offset_z, 2, 3)
 
         # Sampling rate inputs
         sampling_label = QLabel("Sampling Rate:")
@@ -138,10 +141,10 @@ class ImportDataDialog(QDialog):
         self.sampling_y = create_setting_widget(sampling_settings)
         self.sampling_z = create_setting_widget(sampling_settings)
 
-        grid_layout.addWidget(sampling_label, 5, 0)
-        grid_layout.addWidget(self.sampling_x, 5, 1)
-        grid_layout.addWidget(self.sampling_y, 5, 2)
-        grid_layout.addWidget(self.sampling_z, 5, 3)
+        grid_layout.addWidget(sampling_label, 3, 0)
+        grid_layout.addWidget(self.sampling_x, 3, 1)
+        grid_layout.addWidget(self.sampling_y, 3, 2)
+        grid_layout.addWidget(self.sampling_z, 3, 3)
 
         checkbox_layout = QHBoxLayout()
         checkbox_layout.setSpacing(0)
@@ -177,9 +180,10 @@ class ImportDataDialog(QDialog):
 
         checkbox_layout.addStretch()
 
-        # A bit hacky but makes everything appear aligned
-        grid_layout.addWidget(axis_label, 6, 0)
-        grid_layout.addLayout(checkbox_layout, 6, 1, 1, 3)
+        checkbox_row = QHBoxLayout()
+        checkbox_row.addWidget(axis_label)
+        checkbox_row.addLayout(checkbox_layout)
+        group_layout.addLayout(checkbox_row)
 
         self.scale_x.textChanged.connect(
             lambda text: self._propagate_value(text, self.scale_y, self.scale_z)
@@ -238,6 +242,7 @@ class ImportDataDialog(QDialog):
         sampling_label.setFixedWidth(max_label_width)
 
         self.toggle_per_axis_mode(False)
+        self.accept_button.setFocus()
 
     def toggle_per_axis_mode(self, checked):
         self.x_label.setVisible(checked)
@@ -250,6 +255,10 @@ class ImportDataDialog(QDialog):
         self.offset_z.setVisible(checked)
         self.sampling_y.setVisible(checked)
         self.sampling_z.setVisible(checked)
+
+        self.grid_layout.setColumnStretch(1, 1)
+        self.grid_layout.setColumnStretch(2, 1 if checked else 0)
+        self.grid_layout.setColumnStretch(3, 1 if checked else 0)
 
     def _propagate_value(self, text, y_input, z_input):
         y_input.setText(text)

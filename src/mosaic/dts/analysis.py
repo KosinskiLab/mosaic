@@ -33,8 +33,6 @@ def _build_stem(kind, **kwargs):
         return "hmff_potential"
     if kind == "bending_energy":
         return "bending_energy"
-    if kind == "hmff_bending_ratio":
-        return "hmff_bending_ratio"
     stem = f"prop_{sanitize_label(kind)}"
     for _, v in sorted(kwargs.items()):
         if isinstance(v, (str, int, float)):
@@ -150,10 +148,6 @@ def compute(
         )
     elif kind == "bending_energy":
         result = _compute_bending_energy(
-            trajectory_dir, scale, offset, output_dir=output_dir, **kwargs
-        )
-    elif kind == "hmff_bending_ratio":
-        result = _compute_hmff_bending_ratio(
             trajectory_dir, scale, offset, output_dir=output_dir, **kwargs
         )
     else:
@@ -351,66 +345,6 @@ def _compute_bending_energy(trajectory_dir, scale, offset, output_dir=None, **kw
     }
 
 
-def _compute_hmff_bending_ratio(
-    trajectory_dir, scale, offset, output_dir=None, **kwargs
-):
-    """Per-frame ratio of HMFF potential to bending energy.
-
-    Values > 1 indicate regions where the density fit dominates over
-    intrinsic membrane elasticity.
-    """
-    run_dir = Path(output_dir) if output_dir else Path(trajectory_dir).parent
-
-    bend_stem = "bending_energy"
-    hmff_stem = "hmff_potential"
-    mosaic_dir = run_dir / "mosaic"
-
-    bend_result = parse_xvg(str(mosaic_dir / f"{bend_stem}_vertices.xvg"))
-    hmff_result = parse_xvg(str(mosaic_dir / f"{hmff_stem}_vertices.xvg"))
-
-    if bend_result is None or hmff_result is None:
-        bend = compute(
-            trajectory_dir,
-            "bending_energy",
-            scale=scale,
-            offset=offset,
-            output_dir=output_dir,
-            **kwargs,
-        )
-        hmff = compute(
-            trajectory_dir,
-            "hmff_potential",
-            scale=scale,
-            offset=offset,
-            output_dir=output_dir,
-            **kwargs,
-        )
-        bend_pv = bend["per_vertex"]
-        hmff_pv = hmff["per_vertex"]
-    else:
-        bend_pv = bend_result[1][:, 1:]
-        hmff_pv = hmff_result[1][:, 1:]
-
-    n_frames = min(bend_pv.shape[0], hmff_pv.shape[0])
-    bend_pv = bend_pv[:n_frames]
-    hmff_pv = hmff_pv[:n_frames]
-
-    with np.errstate(divide="ignore", invalid="ignore"):
-        ratio = np.where(
-            np.abs(bend_pv) > 1e-12,
-            hmff_pv / bend_pv,
-            0.0,
-        )
-
-    return {
-        "frames": np.arange(n_frames, dtype=float),
-        "values": ratio.mean(axis=1),
-        "per_vertex": ratio,
-        "column": "hmff_bending_ratio",
-        "metadata": {"computation": "hmff_bending_ratio"},
-    }
-
-
 def _hmff_potential(
     vertices,
     interpolator,
@@ -576,7 +510,7 @@ def _compute_hmff(trajectory_dir, scale, offset, output_dir=None, **kwargs):
         "frames": np.array(frame_indices, dtype=float),
         "values": np.array(scalars),
         "per_vertex": np.array(per_vertex) if per_vertex else None,
-        "column": "hmff_potential",
+        "column": "hmff_energy",
         "metadata": {
             "computation": "hmff_potential",
             "volume": str(volume_path),
