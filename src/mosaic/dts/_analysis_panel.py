@@ -33,6 +33,7 @@ import pyqtgraph as pg
 from ..widgets import ColorMapSelector, generate_gradient_colors
 from ..stylesheets import Colors, Typography
 from ..icons import icon
+from ..utils import Throttle
 import re
 
 from ..dts._utils import collect_available_metrics, extract_metric_series
@@ -68,6 +69,8 @@ class AnalysisPanel(QWidget):
         self._lod_timer.setSingleShot(True)
         self._lod_timer.setInterval(self._LOD_IDLE_MS)
         self._lod_timer.timeout.connect(self._restore_full_quality)
+
+        self._update_plot_throttled = Throttle(self._update_plot, interval_ms=500)
 
         self._build_ui()
 
@@ -235,8 +238,34 @@ class AnalysisPanel(QWidget):
         self._screen_results = load_screen_results(screen_dir)
         self.refresh()
 
+    def update_run(self, screen_dir: str, run_id: str):
+        """Re-read data for a single run and schedule a throttled plot update.
+
+        Called when a compute job finishes for *run_id*.  Only that run's
+        time-series files are re-parsed; the rest of the cached data is kept.
+        """
+        from pathlib import Path
+        from ..dts._utils import parse_run_time_series
+
+        self._screen_dir = screen_dir
+        if self._screen_results is None:
+            self.load_results(screen_dir)
+            return None
+
+        screen_path = Path(screen_dir)
+        run_dir = screen_path / run_id
+        if not run_dir.exists():
+            run_dir = screen_path
+
+        for run in self._screen_results["runs"]:
+            if run["run_id"] == run_id:
+                run["time_series"] = parse_run_time_series(str(run_dir))
+                break
+
+        self.refresh()
+
     def refresh(self):
-        """Rebuild metric/color combos from current screen results."""
+        """Rebuild metric/color combos from current screen results and update the plot."""
         old_metric = self._metric_combo.currentText()
         self._metric_combo.blockSignals(True)
         self._metric_combo.clear()
@@ -264,7 +293,7 @@ class AnalysisPanel(QWidget):
             self._color_combo.setCurrentText(old_color)
         self._color_combo.blockSignals(False)
 
-        self._update_plot()
+        self._update_plot_throttled()
 
     def _selected_run_ids(self) -> list:
         ids = self._get_selected_run_ids()
@@ -408,7 +437,9 @@ class AnalysisPanel(QWidget):
             run_item.setFlags(run_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             table.setItem(row, 0, run_item)
 
-            for col, val in enumerate([np.mean(y), np.min(y), np.max(y)], start=1):
+            for col, val in enumerate(
+                [np.nanmean(y), np.nanmin(y), np.nanmax(y)], start=1
+            ):
                 item = QTableWidgetItem()
                 item.setData(Qt.ItemDataRole.DisplayRole, f"{val:.4g}")
                 item.setData(Qt.ItemDataRole.UserRole, float(val))

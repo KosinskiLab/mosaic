@@ -192,6 +192,8 @@ class Session:
         use_index = len(container) > 1
 
         geoms, indices = [], []
+        shape = self._data.metadata.get("shape", None)
+        physical_shape = self._data.metadata.get("physical_shape", None)
         for index, data in enumerate(container):
             effective_sampling = (
                 sampling_rate if sampling_rate is not None else data.sampling
@@ -211,11 +213,22 @@ class Session:
             geoms.append(geom)
             self._counter += 1
 
-        if persist and geoms:
-            self._data.metadata["shape"] = np.asarray(container.shape)
+            data_shape = np.asarray(data.shape)
+            if shape is None:
+                shape = data_shape
+            shape = np.maximum(shape, data_shape)
+
+            physical_data_shape = np.multiply(data_shape, effective_sampling)
+            if physical_shape is None:
+                physical_shape = physical_data_shape
+            physical_shape = np.maximum(physical_shape, physical_data_shape)
+
+        if persist and shape is not None:
+            self._data.metadata["shape"] = shape
+            self._data.metadata["physical_shape"] = physical_shape
 
         self._last_results = geoms
-        return indices or None
+        return indices
 
     def _open_generic(
         self,
@@ -234,7 +247,9 @@ class Session:
         base = os.path.basename(filepath).split(".", 1)[0]
         use_index = len(container) > 1
 
-        shape, indices, opened_geoms = None, [], []
+        indices, geoms = [], []
+        shape = self._data.metadata.get("shape", None)
+        physical_shape = self._data.metadata.get("physical_shape", None)
         for index, data in enumerate(container):
             effective_scale = scale if scale is not None else data.sampling
             sampling = sampling_rate if sampling_rate is not None else data.sampling
@@ -248,6 +263,11 @@ class Session:
             if shape is None:
                 shape = data_shape
             shape = np.maximum(shape, data_shape)
+
+            physical_data_shape = np.multiply(data_shape, effective_scale)
+            if physical_shape is None:
+                physical_shape = physical_data_shape
+            physical_shape = np.maximum(physical_shape, physical_data_shape)
 
             is_mesh = data.faces is not None
             mesh_model = None
@@ -284,13 +304,14 @@ class Session:
                 geom.change_representation("surface")
 
             geom._meta["name"] = f"{index}_{base}" if use_index else base
-            opened_geoms.append(geom)
+            geoms.append(geom)
             self._counter += 1
 
         if persist and shape is not None:
             self._data.metadata["shape"] = shape
+            self._data.metadata["physical_shape"] = physical_shape
 
-        self._last_results = opened_geoms
+        self._last_results = geoms
         return indices
 
     def save(self, geometries: list, filepath: str, **kwargs) -> None:
@@ -319,9 +340,6 @@ class Session:
 
     def save_session(self, filepath: str, sections: dict = None) -> None:
         """Save session state to *filepath*.
-
-        ``.mosaic`` files use the indexed format with optional extra sections.
-        ``.pickle`` files use legacy raw pickle for backward compatibility.
 
         Parameters
         ----------

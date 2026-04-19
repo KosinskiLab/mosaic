@@ -301,21 +301,17 @@ class BoundingBoxManager:
 
     def _create_session_bounds(self):
         """Create session bounds from cdata.shape"""
-        if not hasattr(self.cdata, "shape") or self.cdata.shape is None:
+        if (shape := self.cdata._data.metadata.get("physical_shape")) is None:
             from qtpy.QtWidgets import QMessageBox
 
             QMessageBox.warning(
                 None,
                 "Session Bound Unavailable",
-                "No session bounding box is available.\n\n"
-                "To use this feature, open a file using 'File > Load Session', "
-                "or a session saved after opening a file using Load Session. "
-                "This will provide the original volume boundaries, useful for instance "
-                "for volume segmentations.",
+                "Session box unavailable. Try loading some data first.",
             )
-            return
+            return None
 
-        self.session_box_actor = create_bounding_box_actor(self.cdata.shape)
+        self.session_box_actor = create_bounding_box_actor(shape)
         self.renderer.AddActor(self.session_box_actor)
 
     def _create_dataset_bounds(self):
