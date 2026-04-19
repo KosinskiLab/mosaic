@@ -549,13 +549,6 @@ class DataContainerInteractor(QObject):
         export_data.pop("category", None)
         export_data.pop("tsi_format", None)
 
-        if "shape" not in export_data:
-            if (shape := self.container.metadata.get("shape")) is not None:
-                sampling = self.container.metadata.get("sampling_rate", 1)
-                export_data["shape"] = tuple(
-                    np.rint(np.divide(shape, sampling)).astype(int)
-                )
-
         geometries = self.get_selected_geometries()
         has_trajectory = any(isinstance(g, GeometryTrajectory) for g in geometries)
 

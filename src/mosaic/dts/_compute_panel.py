@@ -200,7 +200,9 @@ class ComputePanel(QGroupBox):
             submit_task(
                 f"{task_label} ({run_id})",
                 compute,
-                lambda _: self._on_complete() if self._on_complete else None,
+                lambda _, rid=run_id: (
+                    self._on_complete(rid) if self._on_complete else None
+                ),
                 trajectory_dir=str(traj_dir),
                 kind=kind,
                 scale=scale,

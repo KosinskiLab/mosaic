@@ -140,12 +140,13 @@ class DTSScreeningDialog(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        screen_group = QGroupBox("Screen")
+        screen_group = QGroupBox("Data")
         screen_layout = QVBoxLayout(screen_group)
 
         dir_row = QHBoxLayout()
         self._screen_dir_input = PathSelector(
-            placeholder="Screen directory", mode="directory"
+            placeholder="Path to DTS run, screen, or trajectory directory",
+            mode="directory",
         )
         self._screen_dir_input.path_input.textChanged.connect(
             self._load_screen_overview
@@ -216,9 +217,9 @@ class DTSScreeningDialog(QDialog):
                 return r.get("run_dir")
         return None
 
-    def _on_compute_complete(self):
+    def _on_compute_complete(self, run_id: str):
         if self._screen_dir:
-            self._analysis_panel.load_results(self._screen_dir)
+            self._analysis_panel.update_run(self._screen_dir, run_id)
 
     def _on_left_tab_changed(self, index: int):
         is_configure = index == 0

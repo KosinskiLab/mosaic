@@ -128,7 +128,8 @@ class GeometryDataContainer:
             setattr(self, attr_name, self._to_dtype(attr, dtype))
 
         if self.shape is None:
-            self.shape, _ = compute_bounding_box(self.vertices)
+            shape, starts = compute_bounding_box(self.vertices)
+            self.shape = np.add(shape, starts)
 
         if len(self.vertices) != len(self.normals):
             raise ValueError("Normals need to be specified for each vertex set.")
