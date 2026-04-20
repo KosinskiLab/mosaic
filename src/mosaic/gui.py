@@ -346,14 +346,6 @@ class App(QMainWindow):
                 actors.GetNextActor().GetProperty().LightingOff()
 
         elif mode == "poster":
-            light = [float(x) for x in Settings.rendering.background_color_alt]
-            renderer.SetBackground(*light)
-            renderer.GradientBackgroundOff()
-            self._use_alt_background = True
-            self.renderer_next_background = [
-                float(x) for x in Settings.rendering.background_color
-            ]
-
             renderer.RemoveAllLights()
             for pos, intensity, color in [
                 ((1, 1, 0.5), 0.6, (1.0, 1.0, 1.0)),
