@@ -368,7 +368,7 @@ class AxesWidget:
         self.orientation_marker = vtkOrientationMarkerWidget()
         self.orientation_marker.SetOrientationMarker(self.axes_actor)
         self.orientation_marker.SetInteractor(interactor)
-        self.orientation_marker.SetViewport(0.0, 0.0, 0.2, 0.2)
+        self.orientation_marker.SetViewport(0.0, 0.0, 0.15, 0.15)
         self.orientation_marker.SetEnabled(1)
         self.orientation_marker.InteractiveOff()
         self.orientation_marker.SetOutlineColor(0.93, 0.57, 0.13)

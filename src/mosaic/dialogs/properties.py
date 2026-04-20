@@ -138,6 +138,30 @@ class GeometryPropertiesDialog(QDialog):
         self.highlight_color_picker.setToolTip("Color when geometry is selected")
         appearance_layout.addWidget(self.highlight_color_picker)
 
+        interp_row = QWidget()
+        interp_layout = QHBoxLayout(interp_row)
+        interp_layout.setContentsMargins(0, 0, 0, 0)
+        interp_layout.setSpacing(12)
+
+        interp_label = QLabel("Shading")
+        interp_layout.addWidget(interp_label)
+        interp_layout.addStretch()
+
+        interp_labels = ["Flat", "Gouraud", "Phong"]
+        current_interp = self.initial_properties.get("interpolation", "gouraud")
+        interp_idx = next(
+            (i for i, l in enumerate(interp_labels) if l.lower() == current_interp), 1
+        )
+        self._interpolation_control = SegmentedControl(
+            interp_labels, default=interp_idx
+        )
+        self._interpolation_control.setToolTip(
+            "Surface shading — Flat for faceted, Gouraud for smooth, "
+            "Phong for per-pixel smooth with sharper highlights"
+        )
+        interp_layout.addWidget(self._interpolation_control)
+        appearance_layout.addWidget(interp_row)
+
         main_layout.addWidget(appearance_group)
 
         lighting_group = QGroupBox("Lighting")
@@ -303,6 +327,9 @@ class GeometryPropertiesDialog(QDialog):
         self.ambient_slider.valueChanged.connect(self._emit_throttle)
         self.diffuse_slider.valueChanged.connect(self._emit_throttle)
         self.specular_slider.valueChanged.connect(self._emit_throttle)
+        self._interpolation_control.selectionChanged.connect(
+            lambda _: self.emit_parameters()
+        )
         self.isovalue_slider.valueChanged.connect(self._emit_throttle)
         self.scale_control.selectionChanged.connect(lambda _: self.emit_parameters())
         self.sampling_x.textChanged.connect(self.emit_parameters)
@@ -325,10 +352,16 @@ class GeometryPropertiesDialog(QDialog):
     def _reset_to_defaults(self):
         """Reset all values to initial properties."""
         self.size_spin.setValue(self.initial_properties.get("size", 8))
-        self.opacity_slider.setValue(self.initial_properties.get("opacity", 0.3))
+        self.opacity_slider.setValue(self.initial_properties.get("opacity", 1.0))
         self.ambient_slider.setValue(self.initial_properties.get("ambient", 0.3))
-        self.diffuse_slider.setValue(self.initial_properties.get("diffuse", 0.3))
-        self.specular_slider.setValue(self.initial_properties.get("specular", 0.3))
+        self.diffuse_slider.setValue(self.initial_properties.get("diffuse", 0.7))
+        self.specular_slider.setValue(self.initial_properties.get("specular", 0.2))
+
+        interp = self.initial_properties.get("interpolation", "gouraud")
+        interp_idx = next(
+            (i for i, l in enumerate(["flat", "gouraud", "phong"]) if l == interp), 1
+        )
+        self._interpolation_control._select(interp_idx)
 
         self.base_color_picker.set_color(
             self.initial_properties.get("base_color", BASE_COLOR)
@@ -373,6 +406,7 @@ class GeometryPropertiesDialog(QDialog):
             "ambient": self.ambient_slider.value(),
             "diffuse": self.diffuse_slider.value(),
             "specular": self.specular_slider.value(),
+            "interpolation": self._interpolation_control.currentText().lower(),
             "base_color": self.base_color_picker.get_color(),
             "highlight_color": self.highlight_color_picker.get_color(),
             "scale": -1 if self.scale_control.currentText() == "Invert" else 1,

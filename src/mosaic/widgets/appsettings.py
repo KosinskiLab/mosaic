@@ -50,10 +50,10 @@ THEME_PAIRINGS = OrderedDict(
 
 LIGHTING_MODES = [
     ("simple", "Simple", "Single headlight — default lighting"),
-    ("soft", "Soft", "Ambient occlusion (SSAO) — subtle depth shading"),
+    ("soft", "Soft", "Ambient lighting with SSAO depth shading"),
     ("full", "Full", "Multi-light setup — three-point lighting"),
     ("flat", "Flat", "No shading — uniform flat colors"),
-    ("shadow", "Shadow", "Shadow mapping — cast shadows from a light source"),
+    ("poster", "Poster", "Light background with edge outlines"),
     ("silhouettes", "Silhouettes", "Edge outlines via Sobel gradient detection"),
 ]
 
@@ -531,7 +531,7 @@ class AppSettingsPanel(QFrame):
         )
         self._preset_control = SegmentedControl(preset_labels, default=current_idx)
         self._preset_control.setToolTip(
-            "Point rendering quality — higher uses more memory"
+            "Point rendering quality — higher uses more compute"
         )
         self._preset_control.selectionChanged.connect(self._on_preset_changed)
         section.addWidget(self._preset_control)

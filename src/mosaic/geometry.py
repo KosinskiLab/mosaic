@@ -799,6 +799,15 @@ class Geometry:
         prop.SetDiffuse(self._appearance.get("diffuse", 0.7))
         prop.SetSpecular(self._appearance.get("specular", 0.2))
 
+        interpolation = self._appearance.get("interpolation", "gouraud")
+
+        if interpolation == "phong":
+            prop.SetInterpolationToPhong()
+        elif interpolation == "flat":
+            prop.SetInterpolationToFlat()
+        else:
+            prop.SetInterpolationToGouraud()
+
     def _create_actor(
         self, actor=None, lod_points: int = 5e6, lod_points_size: int = 3
     ):
