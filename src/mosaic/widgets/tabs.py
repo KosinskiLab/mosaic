@@ -112,7 +112,7 @@ class TabBar(QWidget):
 
         if index == 0:
             btn.setChecked(True)
-            QTimer.singleShot(0, lambda: self._animate_indicator(btn))
+            QTimer.singleShot(0, lambda: self._snap_indicator(btn))
 
         return index
 
@@ -131,6 +131,13 @@ class TabBar(QWidget):
         btn = self._buttons[index]
         QTimer.singleShot(0, lambda: self._animate_indicator(btn))
         self.currentChanged.emit(index)
+
+    def _snap_indicator(self, btn):
+        """Position the indicator on *btn* without animation."""
+        h = 28
+        self._indicator.setGeometry(
+            QRect(btn.x(), (self.height() - h) // 2, btn.width(), h)
+        )
 
     def _animate_indicator(self, btn):
         h = 28

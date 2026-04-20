@@ -625,7 +625,7 @@ class App(QMainWindow):
         self.setStyleSheet(
             f"""
             QMenuBar {{
-                border-bottom: 1px solid {Colors.TEXT_MUTED};
+                border-bottom: 1px solid {Colors.BORDER_DARK};
             }}
             QMenuBar::item {{
                 padding: 4px 8px;

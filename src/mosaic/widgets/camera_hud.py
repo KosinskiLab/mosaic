@@ -222,10 +222,12 @@ class CameraHUD(QWidget):
         self._viewport_parent = app.viewport_container
         self._viewport_parent.installEventFilter(self)
 
-        top = self._viewport_parent.window()
-        if top is not None and top is not self._viewport_parent:
-            self._top_window = top
-            top.installEventFilter(self)
+        # self.parent() is the main window (passed in __init__); tracking
+        # it keeps the floating HUD anchored as the window moves, resizes,
+        # or hides.
+        self._top_window = self.parent()
+        if self._top_window is not None:
+            self._top_window.installEventFilter(self)
 
         self._install_camera_observer()
         self._reposition()
