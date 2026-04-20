@@ -26,6 +26,7 @@ class ObjectBrowserSidebar(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self._widgets = {}
         self._labels = {}
+        self._boxes = {}
 
         self._lay = QVBoxLayout(self)
         self._lay.setContentsMargins(8, 8, 8, 0)
@@ -61,6 +62,16 @@ class ObjectBrowserSidebar(QWidget):
         self._splitter.addWidget(box)
         self._labels[title] = label
         self._widgets[title] = widget
+        self._boxes[title] = box
+
+    def remove_widget(self, title):
+        if title not in self._widgets:
+            return
+        widget = self._widgets.pop(title)
+        self._labels.pop(title)
+        box = self._boxes.pop(title)
+        widget.setParent(None)
+        box.setParent(None)
 
     def _style_label(self, label):
         label.setStyleSheet(
@@ -83,6 +94,9 @@ class ObjectBrowserSidebar(QWidget):
         self.update()
         for label in self._labels.values():
             self._style_label(label)
+        for widget in self._widgets.values():
+            if hasattr(widget, "_on_theme_changed"):
+                widget._on_theme_changed()
 
     def _filter_objects(self, text):
         lower = text.lower()
@@ -91,6 +105,8 @@ class ObjectBrowserSidebar(QWidget):
                 tree = widget.tree_widget
                 for i in range(tree.topLevelItemCount()):
                     self._filter_item(tree.topLevelItem(i), lower)
+            if hasattr(widget, "filter_items"):
+                widget.filter_items(text)
 
     def _filter_item(self, item, text):
         if not text:

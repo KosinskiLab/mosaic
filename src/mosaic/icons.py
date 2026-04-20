@@ -105,6 +105,7 @@ def icon_button(
     from qtpy.QtWidgets import QPushButton
 
     btn = QPushButton()
+    btn.setAutoDefault(False)
     btn.setIcon(icon(name, role=role))
     btn.setFixedSize(size, size)
     btn.setToolTip(tooltip)

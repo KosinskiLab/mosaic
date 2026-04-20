@@ -2,21 +2,34 @@ from uuid import uuid4
 from typing import Dict, List, Union
 
 from qtpy.QtGui import QColor, QIcon, QPixmap, QPainter
-from qtpy.QtCore import Qt, QRect, QByteArray, QItemSelection, QItemSelectionModel
+from qtpy.QtCore import (
+    Qt,
+    QRect,
+    QByteArray,
+    QItemSelection,
+    QItemSelectionModel,
+    Signal,
+)
 from qtpy.QtWidgets import (
     QFrame,
     QVBoxLayout,
+    QHBoxLayout,
+    QWidget,
     QTreeWidget,
     QTreeWidgetItem,
     QApplication,
     QStyledItemDelegate,
     QStyle,
     QAbstractItemView,
+    QPushButton,
+    QFileDialog,
+    QMessageBox,
 )
 from qtpy.QtSvg import QSvgRenderer
 from ..icons import icon as _icon_factory
-from ..stylesheets import Colors, Typography
+from ..stylesheets import Colors, Typography, _build_QToolTip_style
 from ..tree_state import TreeState, TreeStateData
+from ..pipeline._utils import natural_sort_key, strip_filepath
 
 
 class ContainerTreeWidget(QFrame):
@@ -36,7 +49,7 @@ class ContainerTreeWidget(QFrame):
         self.tree_widget.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
-        self.tree_widget.setIndentation(5)
+        self.tree_widget.setIndentation(0)
         self.tree_widget.setAnimated(True)
         self.tree_widget.setRootIsDecorated(False)
         self.tree_widget.setItemsExpandable(True)
@@ -51,7 +64,13 @@ class ContainerTreeWidget(QFrame):
 
         self.tree_widget.setItemDelegate(MetadataItemDelegate(self.tree_widget))
 
-        self.tree_widget.setStyleSheet(
+        self.apply_tree_stylesheet(self.tree_widget)
+
+        layout.addWidget(self.tree_widget)
+
+    @staticmethod
+    def apply_tree_stylesheet(tree):
+        tree.setStyleSheet(
             f"""
             QTreeWidget {{
                 border: none;
@@ -72,7 +91,6 @@ class ContainerTreeWidget(QFrame):
             }}
             QTreeWidget::item:selected {{
                 background-color: rgba(0, 0, 0, 0.0);
-                font-weight: 500;
             }}
             QTreeWidget QLineEdit {{
                 background-color: palette(base);
@@ -85,8 +103,6 @@ class ContainerTreeWidget(QFrame):
             }}
         """
         )
-
-        layout.addWidget(self.tree_widget)
 
     def selected_items(self):
         # We specifically omit GroupTreeWidgetItem
@@ -630,6 +646,7 @@ class MetadataItemDelegate(QStyledItemDelegate):
             icon.paint(painter, icon_rect)
 
         painter.save()
+        painter.setFont(option.font)
         text = index.data(Qt.ItemDataRole.DisplayRole)
         if isinstance(item, StyledTreeWidgetItem) and not item.visible:
             painter.setPen(QColor(Colors.TEXT_MUTED))
@@ -646,6 +663,277 @@ class MetadataItemDelegate(QStyledItemDelegate):
         )
         painter.drawText(text_rect, int(Qt.AlignmentFlag.AlignVCenter), text)
         painter.restore()
+
+
+class _SessionHeader(QWidget):
+    """Icon action bar for session management, sits below the session list."""
+
+    _BTN_QSS = """
+        QPushButton {{
+            border: 1px solid transparent;
+            background: transparent;
+            border-radius: {r}px;
+            padding: 4px 8px;
+            font-size: {fs}px;
+            color: {color};
+        }}
+        QPushButton:hover {{
+            background: {hover};
+        }}
+        QPushButton:pressed {{
+            background: {pressed};
+        }}
+        QPushButton:focus {{ outline: none; }}
+    """
+
+    def __init__(self, session_widget, parent=None):
+        super().__init__(parent)
+        self._session_widget = session_widget
+
+        from ..icons import icon
+
+        h = Colors.WIDGET_HEIGHT
+
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 2, 0, 4)
+        lay.setSpacing(4)
+
+        self._auto_save_toggle = QPushButton()
+        self._auto_save_toggle.setCheckable(True)
+        self._auto_save_toggle.setChecked(True)
+        self._auto_save_toggle.setFixedHeight(h)
+        self._auto_save_toggle.setToolTip("Auto-save when switching sessions")
+        self._auto_save_toggle.toggled.connect(self._on_auto_save_toggled)
+        self._update_auto_save_icon()
+        lay.addWidget(self._auto_save_toggle, 1)
+
+        self._save_btn = QPushButton()
+        self._save_btn.setIcon(icon("ph.floppy-disk", role="muted"))
+        self._save_btn.setFixedHeight(h)
+        self._save_btn.setToolTip("Save current session")
+        self._save_btn.clicked.connect(session_widget.save_current)
+        lay.addWidget(self._save_btn, 1)
+
+        self._reload_btn = QPushButton()
+        self._reload_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
+        self._reload_btn.setFixedHeight(h)
+        self._reload_btn.setToolTip("Reload current session")
+        self._reload_btn.clicked.connect(session_widget.reload_current)
+        lay.addWidget(self._reload_btn, 1)
+
+        self._add_btn = QPushButton()
+        self._add_btn.setIcon(icon("ph.plus", role="muted"))
+        self._add_btn.setFixedHeight(h)
+        self._add_btn.setToolTip("Add session files")
+        self._add_btn.clicked.connect(session_widget.add_sessions)
+        lay.addWidget(self._add_btn, 1)
+
+        self._apply_btn_style()
+
+    def _on_auto_save_toggled(self, checked):
+        self._session_widget._auto_save = checked
+        self._update_auto_save_icon()
+
+    def _update_auto_save_icon(self):
+        from ..icons import icon
+
+        role = "primary" if self._auto_save_toggle.isChecked() else "muted"
+        self._auto_save_toggle.setIcon(icon("ph.arrows-clockwise", role=role))
+
+    def _apply_btn_style(self):
+        qss = (
+            self._BTN_QSS.format(
+                r=Colors.RADIUS,
+                fs=Typography.LABEL,
+                color=Colors.TEXT_SECONDARY,
+                hover=Colors.BG_HOVER,
+                pressed=Colors.BG_PRESSED,
+            )
+            + _build_QToolTip_style()
+        )
+        for btn in (
+            self._auto_save_toggle,
+            self._save_btn,
+            self._reload_btn,
+            self._add_btn,
+        ):
+            btn.setStyleSheet(qss)
+
+    def _on_theme_changed(self):
+        self._apply_btn_style()
+        self._update_auto_save_icon()
+        from ..icons import icon
+
+        self._save_btn.setIcon(icon("ph.floppy-disk", role="muted"))
+        self._reload_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
+        self._add_btn.setIcon(icon("ph.plus", role="muted"))
+
+
+class SessionListWidget(QWidget):
+    """Sidebar-integrated session list for batch navigation."""
+
+    load_requested = Signal(str)
+
+    def __init__(self, cdata, parent=None):
+        super().__init__(parent)
+        self._cdata = cdata
+        self.session_files = []
+        self.current_index = -1
+        self._items = []
+        self._session_modified = False
+        self._active = False
+        self._auto_save = True
+        self._header = _SessionHeader(self)
+
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(0)
+
+        self._tree = QTreeWidget()
+        self._tree.setHeaderHidden(True)
+        self._tree.setIndentation(0)
+        self._tree.setRootIsDecorated(False)
+        self._tree.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._tree.setFrameShape(QFrame.Shape.NoFrame)
+        self._tree.setDragEnabled(False)
+        self._tree.setItemDelegate(MetadataItemDelegate(self._tree))
+        self._tree.itemClicked.connect(self._on_item_clicked)
+        self._apply_tree_style()
+
+        font = self._tree.font()
+        font.setPixelSize(Typography.BODY)
+        self._tree.setFont(font)
+
+        self._layout.addWidget(self._tree, 1)
+        self._layout.addWidget(self._header)
+
+    def set_sessions(self, filepaths):
+        self.session_files = sorted(filepaths, key=natural_sort_key)
+        self.current_index = -1
+        self._rebuild_items()
+
+    def add_sessions(self):
+        filepaths, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Add Session Files",
+            "",
+            "Session Files (*.mosaic *.pickle)"
+            ";;Mosaic Sessions (*.mosaic)"
+            ";;Legacy Pickle (*.pickle)",
+        )
+        if not filepaths:
+            return
+        existing = set(self.session_files)
+        for fp in filepaths:
+            if fp not in existing:
+                self.session_files.append(fp)
+                existing.add(fp)
+        self.session_files.sort(key=natural_sort_key)
+        self._rebuild_items()
+
+    def clear_sessions(self):
+        self._save_current()
+        self.session_files.clear()
+        self.current_index = -1
+        self._rebuild_items()
+
+    def set_current(self, filepath):
+        try:
+            self.current_index = self.session_files.index(filepath)
+        except ValueError:
+            return
+        self._update_highlight()
+
+    def save_current(self):
+        return self._save_current()
+
+    def reload_current(self):
+        if self.current_index < 0:
+            return
+        reply = QMessageBox.question(
+            self,
+            "Discard Changes",
+            "Reload the current session and discard all unsaved changes?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            filepath = self.session_files[self.current_index]
+            self.load_requested.emit(filepath)
+
+    def activate(self):
+        if self._active:
+            return
+        self._active = True
+        self._cdata.data.data_changed.connect(self._mark_modified)
+        self._cdata.models.data_changed.connect(self._mark_modified)
+
+    def deactivate(self):
+        if not self._active:
+            return
+        self._active = False
+        try:
+            self._cdata.data.data_changed.disconnect(self._mark_modified)
+            self._cdata.models.data_changed.disconnect(self._mark_modified)
+        except (TypeError, RuntimeError):
+            pass
+
+    def filter_items(self, text):
+        lower = text.lower()
+        for item in self._items:
+            name = strip_filepath(item.data(0, Qt.ItemDataRole.UserRole)).lower()
+            item.setHidden(bool(lower) and lower not in name)
+
+    def _mark_modified(self):
+        self._session_modified = True
+
+    def _save_current(self):
+        if self.current_index < 0 or not self._session_modified:
+            return
+        if self._auto_save and self._active:
+            filepath = self.session_files[self.current_index]
+            self._cdata.to_file(filepath)
+            self._session_modified = False
+
+    def _rebuild_items(self):
+        self._tree.clear()
+        self._items.clear()
+
+        from ..icons import icon as _icon
+
+        file_icon = _icon("ph.compass", role="muted", scale_factor=0.85)
+        for i, filepath in enumerate(self.session_files):
+            item = QTreeWidgetItem([strip_filepath(filepath)])
+            item.setData(0, Qt.ItemDataRole.UserRole, filepath)
+            item.setIcon(0, file_icon)
+            self._tree.addTopLevelItem(item)
+            self._items.append(item)
+
+        self._update_highlight()
+
+    def _update_highlight(self):
+        self._tree.blockSignals(True)
+        self._tree.clearSelection()
+        if 0 <= self.current_index < len(self._items):
+            self._items[self.current_index].setSelected(True)
+        self._tree.blockSignals(False)
+
+    def _on_item_clicked(self, item):
+        index = self._tree.indexOfTopLevelItem(item)
+        if index == self.current_index:
+            return
+        self._save_current()
+        self.current_index = index
+        self._update_highlight()
+        filepath = item.data(0, Qt.ItemDataRole.UserRole)
+        self.load_requested.emit(filepath)
+        self._session_modified = False
+
+    def _apply_tree_style(self):
+        ContainerTreeWidget.apply_tree_stylesheet(self._tree)
+
+    def _on_theme_changed(self):
+        self._apply_tree_style()
+        self._header._on_theme_changed()
 
 
 # Backward compatibility aliases

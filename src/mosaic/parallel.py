@@ -282,17 +282,33 @@ def _flush_messages():
             name, msg = items[0]
             text = f"{name.replace('_', ' ').title()} "
             text += "completed with warnings" if is_warning else "failed"
-            text += f"\n\n{msg}" if msg else ""
+            first_line = (msg.strip().splitlines()[0][:300] if msg else "") or ""
+            detail = msg or ""
         else:
             suffix = "completed with warnings" if is_warning else "failed"
-            lines = [f"{len(items)} tasks {suffix}\n"]
+            text = f"{len(items)} tasks {suffix}"
+            first_msg = next((m for _, m in items if m), "")
+            first_line = (
+                first_msg.strip().splitlines()[0][:300] if first_msg else ""
+            ) or ""
+            lines = []
             for n, m in items[:20]:
                 lines.append(f"  {n}: {m}" if m else f"  {n}")
             if len(items) > 20:
                 lines.append(f"  ... and {len(items) - 20} more")
-            text = "\n".join(lines)
+            detail = "\n".join(lines)
 
-        QMessageBox(icon, title, text, QMessageBox.StandardButton.Ok).exec()
+        box = QMessageBox(icon, title, text, QMessageBox.StandardButton.Ok)
+        if first_line:
+            box.setInformativeText(first_line)
+        if detail:
+            box.setDetailedText(detail)
+            text += "\n\nSee details for full error messages."
+            box.setText(text)
+        for btn in box.buttons():
+            if box.buttonRole(btn) == QMessageBox.ButtonRole.ActionRole:
+                btn.setMinimumWidth(120)
+        box.exec()
 
 
 class BackgroundTaskManager(QObject):

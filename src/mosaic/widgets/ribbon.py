@@ -291,6 +291,10 @@ class RibbonButton(QPushButton):
 
         self._panel_open = False
         self._icon_name = icon_name
+        self._full_text = text
+        self._collapsed = False
+        self._full_width = None
+        self._collapsed_width = None
         self._chevron_clicked = False
         self.callback = callback
         self.settings_panel = None
@@ -309,6 +313,23 @@ class RibbonButton(QPushButton):
             self.clicked.connect(self._apply)
 
         self._apply_style()
+
+    def set_collapsed(self, collapsed):
+        if collapsed == self._collapsed:
+            return
+        self._collapsed = collapsed
+        self.setText("" if collapsed else self._full_text)
+        self.setToolTip(self._full_text if collapsed else "")
+
+    def _cache_widths(self):
+        if self._full_width is not None:
+            return
+        was = self._collapsed
+        self.set_collapsed(False)
+        self._full_width = self.sizeHint().width()
+        self.set_collapsed(True)
+        self._collapsed_width = self.sizeHint().width()
+        self.set_collapsed(was)
 
     def _on_theme_changed(self):
         self.setIcon(icon(self._icon_name, role="active"))
@@ -424,6 +445,9 @@ class RibbonToolBar(QWidget):
         self._dividers = []
         self._buttons = []
 
+    def minimumSizeHint(self):
+        return QSize(0, 42)
+
     def clear(self):
         while self._layout.count():
             item = self._layout.takeAt(0)
@@ -441,6 +465,40 @@ class RibbonToolBar(QWidget):
         for btn in self._buttons:
             if hasattr(btn, "_on_theme_changed"):
                 btn._on_theme_changed()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_collapse()
+
+    def _update_collapse(self):
+        ribbon_buttons = [
+            b for b in reversed(self._buttons) if isinstance(b, RibbonButton)
+        ]
+        if not ribbon_buttons:
+            return
+
+        for btn in ribbon_buttons:
+            btn._cache_widths()
+
+        margins = self._layout.contentsMargins()
+        available = self.width() - margins.left() - margins.right()
+        spacing = self._layout.spacing()
+        widget_count = len(self._buttons) + len(self._dividers)
+        needed = (
+            sum(
+                b._full_width if isinstance(b, RibbonButton) else b.sizeHint().width()
+                for b in self._buttons
+            )
+            + sum(d.width() for d in self._dividers)
+            + spacing * max(widget_count - 1, 0)
+        )
+
+        for btn in ribbon_buttons:
+            if needed <= available:
+                btn.set_collapsed(False)
+            else:
+                needed -= btn._full_width - btn._collapsed_width
+                btn.set_collapsed(True)
 
     def add_section(self, title, actions):
         if self._sections:

@@ -531,6 +531,17 @@ def _build_QTable_style():
 """
 
 
+def _build_QToolTip_style():
+    return f"""
+    QToolTip {{
+        background: {Colors.SURFACE};
+        color: {Colors.TEXT_PRIMARY};
+        padding: 2px 2px;
+        font-size: {Typography.SMALL}px;
+    }}
+"""
+
+
 def _build_QListWidget_style():
     return f"""
     QListWidget {{
@@ -763,8 +774,8 @@ def _build_QDockWidget_style():
         border: 1px solid {Colors.BORDER_HOVER};
     }}
     QMainWindow::separator {{
-        width: 1px;
-        height: 1px;
+        width: 4px;
+        height: 4px;
         background: transparent;
     }}
 """
@@ -787,6 +798,7 @@ _GLOBAL_STYLES = [
     _build_QMenu_style,
     _build_QDockWidget_style,
     _build_QTable_style,
+    _build_QToolTip_style,
 ]
 
 

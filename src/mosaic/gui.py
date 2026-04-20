@@ -180,20 +180,20 @@ class App(QMainWindow):
         layout.addWidget(self.ribbon_separator)
 
         # Create sidebar
-        list_wrapper = ObjectBrowserSidebar()
-        list_wrapper.add_widget("Clusters", self.cdata.data.data_list)
-        list_wrapper.add_widget("Models", self.cdata.models.data_list)
+        self.list_wrapper = ObjectBrowserSidebar()
+        self.list_wrapper.add_widget("Clusters", self.cdata.data.data_list)
+        self.list_wrapper.add_widget("Models", self.cdata.models.data_list)
 
         # Create splitter with sidebar on left, viewport on right
         self._main_splitter = QSplitter(Qt.Orientation.Horizontal)
-        self._main_splitter.addWidget(list_wrapper)
+        self._main_splitter.addWidget(self.list_wrapper)
         self._main_splitter.addWidget(self.viewport_container)
         self._main_splitter.setSizes([200, self.width() - 200])
         self._main_splitter.setStretchFactor(0, 0)
         self._main_splitter.setStretchFactor(1, 1)
-        self._main_splitter.setHandleWidth(1)
+        self._main_splitter.setHandleWidth(4)
         self._main_splitter.setStyleSheet(
-            f"QSplitter::handle {{ background: {Colors.BORDER_DARK}; }}"
+            "QSplitter::handle { background: transparent; }"
         )
 
         layout.addWidget(self._main_splitter)
@@ -286,7 +286,8 @@ class App(QMainWindow):
         Parameters
         ----------
         mode: str
-            Can be one of 'simple', 'soft', 'full', 'flat', 'shadow', 'silhouettes'
+            Can be one of 'simple', 'soft', 'full', 'flat', 'poster',
+            'silhouettes'
         """
         renderer = self.renderer
 
@@ -307,11 +308,20 @@ class App(QMainWindow):
             pass
 
         elif mode == "soft":
+            renderer.RemoveAllLights()
+            light = vtk.vtkLight()
+            light.SetLightTypeToHeadlight()
+            light.SetAmbientColor(1.0, 1.0, 1.0)
+            light.SetDiffuseColor(0.6, 0.6, 0.6)
+            light.SetSpecularColor(0.1, 0.1, 0.1)
+            light.SetIntensity(1.5)
+            renderer.AddLight(light)
+
             passes = vtk.vtkRenderStepsPass()
             ssao = vtk.vtkSSAOPass()
             ssao.SetDelegatePass(passes)
-            ssao.SetRadius(200.0)
-            ssao.SetKernelSize(64)
+            ssao.SetRadius(50.0)
+            ssao.SetKernelSize(128)
             ssao.BlurOn()
             renderer.SetPass(ssao)
 
@@ -335,28 +345,35 @@ class App(QMainWindow):
             for _ in range(actors.GetNumberOfItems()):
                 actors.GetNextActor().GetProperty().LightingOff()
 
-        elif mode == "shadow":
-            passes = vtk.vtkRenderStepsPass()
-            shadows = vtk.vtkShadowMapPass()
-
-            seq = vtk.vtkSequencePass()
-            collection = vtk.vtkRenderPassCollection()
-            collection.AddItem(shadows.GetShadowMapBakerPass())
-            collection.AddItem(passes)
-            seq.SetPasses(collection)
-
-            camera_pass = vtk.vtkCameraPass()
-            camera_pass.SetDelegatePass(seq)
-            renderer.SetPass(camera_pass)
+        elif mode == "poster":
+            light = [float(x) for x in Settings.rendering.background_color_alt]
+            renderer.SetBackground(*light)
+            renderer.GradientBackgroundOff()
+            self._use_alt_background = True
+            self.renderer_next_background = [
+                float(x) for x in Settings.rendering.background_color
+            ]
 
             renderer.RemoveAllLights()
-            light = vtk.vtkLight()
-            light.SetPosition(1, 1, 1)
-            light.SetFocalPoint(0, 0, 0)
-            light.SetColor(1.0, 1.0, 0.95)
-            light.SetPositional(True)
-            light.SetConeAngle(60)
-            renderer.AddLight(light)
+            for pos, intensity, color in [
+                ((1, 1, 0.5), 0.6, (1.0, 1.0, 1.0)),
+                ((-1, 0.5, -0.5), 0.4, (1.0, 1.0, 1.0)),
+                ((0, -1, 0.5), 0.3, (1.0, 1.0, 1.0)),
+            ]:
+                l = vtk.vtkLight()
+                l.SetPosition(*pos)
+                l.SetColor(*color)
+                l.SetIntensity(intensity)
+                l.SetLightTypeToSceneLight()
+                renderer.AddLight(l)
+
+            passes = vtk.vtkRenderStepsPass()
+            ssao = vtk.vtkSSAOPass()
+            ssao.SetDelegatePass(passes)
+            ssao.SetRadius(50.0)
+            ssao.SetKernelSize(128)
+            ssao.BlurOn()
+            renderer.SetPass(ssao)
 
         elif mode == "silhouettes":
             passes = vtk.vtkRenderStepsPass()
@@ -602,13 +619,15 @@ class App(QMainWindow):
     def _on_theme_changed(self):
         self._update_style()
         self._main_splitter.setStyleSheet(
-            f"QSplitter::handle {{ background: {Colors.BORDER_DARK}; }}"
+            "QSplitter::handle { background: transparent; }"
         )
         self.ribbon_separator.setStyleSheet(f"background: {Colors.BORDER_DARK};")
 
         self.tab_bar._on_theme_changed()
         if hasattr(self, "_tab_gear"):
             self._tab_gear.setIcon(icon("ph.gear", role="muted"))
+        if hasattr(self, "_session_list_widget"):
+            self._session_list_widget._on_theme_changed()
 
     def _update_style(self):
         self.setStyleSheet(
@@ -926,15 +945,17 @@ class App(QMainWindow):
         batch_process_action.triggered.connect(self.open_batch_pipeline)
         batch_process_action.setShortcut("Ctrl+Shift+P")
 
-        batch_navigator_action = QAction(icon("ph.compass"), "Batch Navigator", self)
-        batch_navigator_action.triggered.connect(self.open_batch_navigator)
-        batch_navigator_action.setShortcut("Ctrl+Shift+N")
+        self.batch_navigator_action = QAction(
+            icon("ph.compass"), "Batch Navigator", self
+        )
+        self.batch_navigator_action.triggered.connect(self.open_batch_navigator)
+        self.batch_navigator_action.setShortcut("Ctrl+Shift+N")
 
         czi_action = QAction(icon("ph.cloud"), "CZI Portal", self)
         czi_action.triggered.connect(self.open_czi_dialog)
 
         file_menu.addAction(batch_process_action)
-        file_menu.addAction(batch_navigator_action)
+        file_menu.addAction(self.batch_navigator_action)
         file_menu.addAction(czi_action)
 
         file_menu.addSeparator()
@@ -1178,22 +1199,23 @@ class App(QMainWindow):
         submit_task_batch(tasks, max_concurrent=int(settings.get("workers", 4)))
 
     def open_batch_navigator(self):
-        """Open the batch navigator dialog."""
-        from .widgets.dock import create_or_toggle_dock
-        from .pipeline.navigator import BatchNavigatorDialog
+        """Toggle the batch navigator sessions pane in the sidebar."""
+        from .widgets.container_list import SessionListWidget
 
-        dialog = BatchNavigatorDialog(self.cdata)
-        dialog.load_requested.connect(self._load_session)
-        create_or_toggle_dock(
-            self,
-            "batch_navigator",
-            dialog,
-            dock_area=Qt.BottomDockWidgetArea,
-            scroll=False,
-        )
-        dock = getattr(self, "batch_navigator", None)
-        if dock is not None:
-            dock.setTitleBarWidget(QWidget())
+        if not hasattr(self, "_session_list_widget"):
+            self._session_list_widget = SessionListWidget(self.cdata)
+            self._session_list_widget.load_requested.connect(self._load_session)
+
+        widget = self._session_list_widget
+
+        if "Sessions" in self.list_wrapper._widgets:
+            widget.deactivate()
+            self.list_wrapper.remove_widget("Sessions")
+            self.batch_navigator_action.setIcon(icon("ph.compass", role="muted"))
+        else:
+            self.list_wrapper.add_widget("Sessions", widget)
+            widget.activate()
+            self.batch_navigator_action.setIcon(icon("ph.compass", role="primary"))
 
     def open_czi_dialog(self):
         """Open the CZI CryoET Data Portal browser."""
@@ -1346,17 +1368,17 @@ class App(QMainWindow):
             print(f"Error opening file: {e}")
             return -1
 
-        batch_navigator = getattr(self, "batch_navigator", None)
-        if batch_navigator is not None:
-            batch_navigator = batch_navigator.widget()
-            if file_path in batch_navigator.session_files:
-                batch_navigator.current_index = batch_navigator.session_files.index(
-                    file_path
-                )
+        if hasattr(self, "_session_list_widget"):
+            from .pipeline._utils import natural_sort_key
+
+            widget = self._session_list_widget
+            if file_path in widget.session_files:
+                widget.set_current(file_path)
             else:
-                batch_navigator.session_files.append(file_path)
-                batch_navigator.current_index = len(batch_navigator.session_files) - 1
-            batch_navigator._populate_session_list()
+                widget.session_files.append(file_path)
+                widget.session_files.sort(key=natural_sort_key)
+                widget._rebuild_items()
+                widget.set_current(file_path)
 
         self._add_file_to_recent(file_path)
 
@@ -1380,9 +1402,9 @@ class App(QMainWindow):
         return self._load_session(file_path)
 
     def close_session(self, render: bool = True):
-        batch_navigator = getattr(self, "batch_navigator", None)
-        if batch_navigator is not None:
-            batch_navigator.widget()._reset_selection()
+        if hasattr(self, "_session_list_widget"):
+            self._session_list_widget.current_index = -1
+            self._session_list_widget._update_highlight()
 
         self.renderer.RemoveAllViewProps()
         self.volume_viewer.close()
