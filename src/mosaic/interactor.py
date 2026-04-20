@@ -526,7 +526,7 @@ class DataContainerInteractor(QObject):
         names = [g._meta.get("name", f"Geometry {i}") for i, g in enumerate(geometries)]
 
         dialog = ExportDialog(
-            parent=None,
+            parent=self.vtk_widget.window(),
             enabled_categories=enabled_categories,
             parameters={
                 "shape": shape,

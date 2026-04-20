@@ -536,12 +536,12 @@ class VolumeViewerHUD(QWidget):
         """Track the viewport so strips resize and the HUD follows it."""
         self._viewport_parent = viewport_parent
         viewport_parent.installEventFilter(self)
-        # Watch the top-level window for move/resize/hide so the
-        # floating HUD stays anchored to the viewport.
-        top = viewport_parent.window()
-        if top is not None and top is not viewport_parent:
-            self._top_window = top
-            top.installEventFilter(self)
+        # self.parent() is the main window (passed in __init__); tracking
+        # it keeps the floating HUD anchored as the window moves, resizes,
+        # or hides.
+        self._top_window = self.parent()
+        if self._top_window is not None:
+            self._top_window.installEventFilter(self)
         self._layout_strips()
 
     def eventFilter(self, obj, event):
@@ -568,15 +568,7 @@ class VolumeViewerHUD(QWidget):
         self._layout_strips()  # also reposition
 
     def _reposition(self):
-        """Anchor the floating HUD to the bottom-centre of the viewport.
-
-        Top-level windows don't auto-resize on layout changes, and
-        they refuse to shrink below their cached ``minimumSize``.  We
-        synchronously invalidate+activate each strip's layout and the
-        HUD's layout so ``sizeHint`` and ``minimumSizeHint`` both
-        reflect the new state, then we relax the window's minimum
-        before pinning new geometry.
-        """
+        """Anchor the floating HUD to the bottom-centre of the viewport."""
         if self._viewport_parent is None or not self.isVisible():
             return
         vp = self._viewport_parent
@@ -609,15 +601,15 @@ class VolumeViewerHUD(QWidget):
 
     def _layout_strips(self):
         """Size visible strips based on the viewport parent's width."""
-        container = self._viewport_parent or self.parentWidget()
-        if container is None:
+        if self._viewport_parent is None:
             return
-        available = container.width() - 2 * self._MARGIN_X
+        available = self._viewport_parent.width() - 2 * self._MARGIN_X
         if available <= 0:
             return
         w = min(available, _MAX_PILL_WIDTH)
         for strip in [self._primary_strip] + self._strips:
             strip.setFixedWidth(w)
+
         # Reposition synchronously: sendPostedEvents(LayoutRequest) inside
         # _reposition flushes pending layout updates so sizeHint is fresh,
         # and doing it in the same event handler as the triggering change
