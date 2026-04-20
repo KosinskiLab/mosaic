@@ -23,6 +23,7 @@ from qtpy.QtWidgets import (
     QAbstractItemView,
     QPushButton,
     QFileDialog,
+    QMenu,
     QMessageBox,
 )
 from qtpy.QtSvg import QSvgRenderer
@@ -698,14 +699,12 @@ class _SessionHeader(QWidget):
         lay.setContentsMargins(0, 2, 0, 4)
         lay.setSpacing(4)
 
-        self._auto_save_toggle = QPushButton()
-        self._auto_save_toggle.setCheckable(True)
-        self._auto_save_toggle.setChecked(True)
-        self._auto_save_toggle.setFixedHeight(h)
-        self._auto_save_toggle.setToolTip("Auto-save when switching sessions")
-        self._auto_save_toggle.toggled.connect(self._on_auto_save_toggled)
-        self._update_auto_save_icon()
-        lay.addWidget(self._auto_save_toggle, 1)
+        self._add_btn = QPushButton()
+        self._add_btn.setIcon(icon("ph.plus", role="muted"))
+        self._add_btn.setFixedHeight(h)
+        self._add_btn.setToolTip("Add session files")
+        self._add_btn.clicked.connect(session_widget.add_sessions)
+        lay.addWidget(self._add_btn, 1)
 
         self._save_btn = QPushButton()
         self._save_btn.setIcon(icon("ph.floppy-disk", role="muted"))
@@ -721,12 +720,23 @@ class _SessionHeader(QWidget):
         self._reload_btn.clicked.connect(session_widget.reload_current)
         lay.addWidget(self._reload_btn, 1)
 
-        self._add_btn = QPushButton()
-        self._add_btn.setIcon(icon("ph.plus", role="muted"))
-        self._add_btn.setFixedHeight(h)
-        self._add_btn.setToolTip("Add session files")
-        self._add_btn.clicked.connect(session_widget.add_sessions)
-        lay.addWidget(self._add_btn, 1)
+        self._auto_save_toggle = QPushButton()
+        self._auto_save_toggle.setCheckable(True)
+        self._auto_save_toggle.setChecked(True)
+        self._auto_save_toggle.setFixedHeight(h)
+        self._auto_save_toggle.setToolTip("Auto-save when switching sessions")
+        self._auto_save_toggle.toggled.connect(self._on_auto_save_toggled)
+        self._update_auto_save_icon()
+        lay.addWidget(self._auto_save_toggle, 1)
+
+        self._clear_btn = QPushButton()
+        self._clear_btn.setIcon(icon("ph.trash", role="muted"))
+        self._clear_btn.setFixedHeight(h)
+        self._clear_btn.setToolTip("Clear all sessions")
+        self._clear_btn.clicked.connect(
+            lambda: session_widget.clear_sessions_with_prompt()
+        )
+        lay.addWidget(self._clear_btn, 1)
 
         self._apply_btn_style()
 
@@ -752,10 +762,11 @@ class _SessionHeader(QWidget):
             + _build_QToolTip_style()
         )
         for btn in (
-            self._auto_save_toggle,
+            self._add_btn,
             self._save_btn,
             self._reload_btn,
-            self._add_btn,
+            self._auto_save_toggle,
+            self._clear_btn,
         ):
             btn.setStyleSheet(qss)
 
@@ -764,9 +775,10 @@ class _SessionHeader(QWidget):
         self._update_auto_save_icon()
         from ..icons import icon
 
+        self._add_btn.setIcon(icon("ph.plus", role="muted"))
         self._save_btn.setIcon(icon("ph.floppy-disk", role="muted"))
         self._reload_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
-        self._add_btn.setIcon(icon("ph.plus", role="muted"))
+        self._clear_btn.setIcon(icon("ph.trash", role="muted"))
 
 
 class SessionListWidget(QWidget):
@@ -797,6 +809,8 @@ class SessionListWidget(QWidget):
         self._tree.setFrameShape(QFrame.Shape.NoFrame)
         self._tree.setDragEnabled(False)
         self._tree.setItemDelegate(MetadataItemDelegate(self._tree))
+        self._tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._tree.customContextMenuRequested.connect(self._on_context_menu)
         self._tree.itemClicked.connect(self._on_item_clicked)
         self._apply_tree_style()
 
@@ -822,7 +836,8 @@ class SessionListWidget(QWidget):
             ";;Legacy Pickle (*.pickle)",
         )
         if not filepaths:
-            return
+            return None
+
         existing = set(self.session_files)
         for fp in filepaths:
             if fp not in existing:
@@ -841,7 +856,7 @@ class SessionListWidget(QWidget):
         try:
             self.current_index = self.session_files.index(filepath)
         except ValueError:
-            return
+            return None
         self._update_highlight()
 
     def save_current(self):
@@ -849,7 +864,8 @@ class SessionListWidget(QWidget):
 
     def reload_current(self):
         if self.current_index < 0:
-            return
+            return None
+
         reply = QMessageBox.question(
             self,
             "Discard Changes",
@@ -862,14 +878,16 @@ class SessionListWidget(QWidget):
 
     def activate(self):
         if self._active:
-            return
+            return None
+
         self._active = True
         self._cdata.data.data_changed.connect(self._mark_modified)
         self._cdata.models.data_changed.connect(self._mark_modified)
 
     def deactivate(self):
         if not self._active:
-            return
+            return None
+
         self._active = False
         try:
             self._cdata.data.data_changed.disconnect(self._mark_modified)
@@ -888,11 +906,77 @@ class SessionListWidget(QWidget):
 
     def _save_current(self):
         if self.current_index < 0 or not self._session_modified:
-            return
+            return None
         if self._auto_save and self._active:
             filepath = self.session_files[self.current_index]
             self._cdata.to_file(filepath)
             self._session_modified = False
+
+    def _prompt_save_if_needed(self):
+        """Prompt to save if there are unsaved changes. Returns True to proceed, False to cancel."""
+        if self.current_index < 0 or not self._session_modified:
+            return True
+
+        if self._auto_save and self._active:
+            filepath = self.session_files[self.current_index]
+            self._cdata.to_file(filepath)
+            self._session_modified = False
+            return True
+
+        reply = QMessageBox.question(
+            self,
+            "Unsaved Changes",
+            "The current session has unsaved changes.",
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Save,
+        )
+        if reply == QMessageBox.StandardButton.Cancel:
+            return False
+
+        if reply == QMessageBox.StandardButton.Save:
+            filepath = self.session_files[self.current_index]
+            self._cdata.to_file(filepath)
+
+        self._session_modified = False
+        return True
+
+    def remove_session(self, index):
+        """Remove a single session by index. Prompts to save if removing the active session."""
+        if index < 0 or index >= len(self.session_files):
+            return None
+
+        is_active = index == self.current_index
+        if is_active and not self._prompt_save_if_needed():
+            return None
+
+        self.session_files.pop(index)
+        if is_active:
+            if not self.session_files:
+                self.current_index = -1
+            else:
+                self.current_index = min(index, len(self.session_files) - 1)
+        elif index < self.current_index:
+            self.current_index -= 1
+
+        self._rebuild_items()
+        if is_active and self.session_files:
+            filepath = self.session_files[self.current_index]
+            self.load_requested.emit(filepath)
+            self._session_modified = False
+
+    def clear_sessions_with_prompt(self):
+        """Clear all sessions, prompting to save if needed."""
+        if not self.session_files:
+            return None
+        if not self._prompt_save_if_needed():
+            return None
+
+        self.session_files.clear()
+        self.current_index = -1
+        self._session_modified = False
+        self._rebuild_items()
 
     def _rebuild_items(self):
         self._tree.clear()
@@ -918,15 +1002,33 @@ class SessionListWidget(QWidget):
         self._tree.blockSignals(False)
 
     def _on_item_clicked(self, item):
-        index = self._tree.indexOfTopLevelItem(item)
-        if index == self.current_index:
-            return
+        if (index := self._tree.indexOfTopLevelItem(item)) == self.current_index:
+            return None
+
         self._save_current()
         self.current_index = index
         self._update_highlight()
         filepath = item.data(0, Qt.ItemDataRole.UserRole)
         self.load_requested.emit(filepath)
         self._session_modified = False
+
+    def _on_context_menu(self, pos):
+        if (item := self._tree.itemAt(pos)) is None:
+            return None
+
+        index = self._tree.indexOfTopLevelItem(item)
+        menu = QMenu(self.window())
+        menu.setWindowFlags(
+            menu.windowFlags()
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint
+        )
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        remove_action = menu.addAction("Remove from list")
+        action = menu.exec(self._tree.viewport().mapToGlobal(pos))
+        if action == remove_action:
+            self.remove_session(index)
+        self._update_highlight()
 
     def _apply_tree_style(self):
         ContainerTreeWidget.apply_tree_stylesheet(self._tree)

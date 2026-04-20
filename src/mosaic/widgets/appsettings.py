@@ -39,7 +39,6 @@ def _rgb(hex_str: str) -> tuple:
 
 THEME_PAIRINGS = OrderedDict(
     [
-        # Matches the app's dark/light surface tokens.
         ("Zinc", (_rgb(Colors.DARK["SURFACE"]), _rgb(Colors.LIGHT["SURFACE"]))),
         ("Slate", ((0.09, 0.10, 0.12), (0.97, 0.97, 0.96))),
         ("Steel", ((0.18, 0.20, 0.25), (0.90, 0.92, 0.94))),
@@ -89,7 +88,6 @@ class ThemeCard(QWidget):
         rect = QRectF(1, 1, self.width() - 2, self.height() - 2)
         mid_x = rect.center().x()
 
-        # Left half (dark)
         left_path = QPainterPath()
         left_path.moveTo(rect.left() + radius, rect.top())
         left_path.lineTo(mid_x, rect.top())
@@ -109,7 +107,6 @@ class ThemeCard(QWidget):
         dr, dg, db = [int(c * 255) for c in self.dark]
         p.fillPath(left_path, QBrush(QColor(dr, dg, db)))
 
-        # Right half (light)
         right_path = QPainterPath()
         right_path.moveTo(mid_x, rect.top())
         right_path.lineTo(rect.right() - radius, rect.top())
@@ -135,7 +132,6 @@ class ThemeCard(QWidget):
         lr, lg, lb = [int(c * 255) for c in self.light]
         p.fillPath(right_path, QBrush(QColor(lr, lg, lb)))
 
-        # Border
         full_path = QPainterPath()
         full_path.addRoundedRect(rect, radius, radius)
 
@@ -167,21 +163,7 @@ class CollapsibleSection(QWidget):
         self._header.clicked.connect(self._toggle)
         self._title = title
         self._update_header()
-        self._header.setStyleSheet(
-            f"""
-            QPushButton {{
-                font-weight: 500;
-                text-align: left;
-                padding: 0;
-                border: none;
-                border-radius: 4px;
-            }}
-            QPushButton:hover {{
-                background: {Colors.BG_HOVER};
-            }}
-            QPushButton:focus {{ outline: none; }}
-        """
-        )
+        self._apply_style()
         layout.addWidget(self._header)
 
         self._content = QWidget()
@@ -209,9 +191,31 @@ class CollapsibleSection(QWidget):
     def _toggle(self):
         self.setExpanded(not self._expanded)
 
+    def _apply_style(self):
+        self._header.setStyleSheet(
+            f"""
+            QPushButton {{
+                font-weight: 600;
+                text-align: left;
+                padding: 0;
+                border: none;
+                border-bottom: 1px solid {Colors.BORDER_DARK};
+                border-radius: 0px;
+                color: {Colors.TEXT_MUTED};
+                background: transparent;
+            }}
+            QPushButton:hover {{ background: transparent; }}
+            QPushButton:pressed {{ background: transparent; }}
+            QPushButton:focus {{ outline: none; }}
+        """
+        )
+
+    def _on_theme_changed(self):
+        self._apply_style()
+
     def _update_header(self):
         icon_name = "ph.caret-down" if self._expanded else "ph.caret-right"
-        self._header.setIcon(icon(icon_name, role="active"))
+        self._header.setIcon(icon(icon_name, role="muted"))
         self._header.setText(f" {self._title}")
 
 
@@ -226,7 +230,6 @@ def _checkbox_row(label_text: str, checked: bool, tooltip: str = ""):
     layout.setSpacing(12)
 
     label = QLabel(f"{label_text}:")
-    label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
     cb = QCheckBox()
     cb.setChecked(checked)
 
@@ -247,13 +250,6 @@ def _checkbox_row(label_text: str, checked: bool, tooltip: str = ""):
     return row, cb
 
 
-def _section_label(text):
-    """Create a section label for grouping related controls."""
-    lbl = QLabel(text)
-    lbl.setStyleSheet("QLabel { font-weight: 500; }")
-    return lbl
-
-
 class AppSettingsPanel(QFrame):
     """Floating appearance settings panel anchored to the status bar."""
 
@@ -270,8 +266,8 @@ class AppSettingsPanel(QFrame):
             | Qt.WindowType.NoDropShadowWindowHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setMinimumSize(420, 300)
-        self.resize(420, 520)
+        self.setMinimumSize(420, 200)
+        self.resize(420, 380)
         self._build_ui()
 
     def _build_ui(self):
@@ -311,6 +307,7 @@ class AppSettingsPanel(QFrame):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
 
         self._body = QWidget()
@@ -362,12 +359,10 @@ class AppSettingsPanel(QFrame):
         p.end()
 
     def _build_theme_section(self):
-        section = QWidget()
-        layout = QVBoxLayout(section)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout = self._body_layout
 
-        layout.addWidget(_section_label("Background"))
+        bg_label = QLabel("Background:")
+        layout.addWidget(bg_label)
 
         cards_row = QHBoxLayout()
         cards_row.setSpacing(6)
@@ -423,28 +418,19 @@ class AppSettingsPanel(QFrame):
         self._custom_container.setVisible(False)
         layout.addWidget(self._custom_container)
 
-        grad_row = QWidget()
-        grad_row.setToolTip(
-            "Blend dark and light background colors as a vertical gradient"
+        grad_row, self._gradient_check = _checkbox_row(
+            "Gradient Background",
+            Settings.rendering.use_gradient_background,
+            tooltip="Blend dark and light background colors as a vertical gradient",
         )
-        grad_layout = QHBoxLayout(grad_row)
-        grad_layout.setContentsMargins(0, 0, 0, 0)
-        grad_layout.setSpacing(12)
-        grad_label = QLabel("Gradient:")
-        grad_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
-        grad_layout.addWidget(grad_label, 0, Qt.AlignmentFlag.AlignVCenter)
-        grad_layout.addStretch(1)
-        self._gradient_check = QCheckBox()
-        self._gradient_check.setChecked(Settings.rendering.use_gradient_background)
         self._gradient_check.toggled.connect(
             lambda v: self._update_setting(
                 Settings.rendering, "use_gradient_background", v
             )
         )
-        grad_layout.addWidget(self._gradient_check, 0, Qt.AlignmentFlag.AlignVCenter)
         layout.addWidget(grad_row)
 
-        layout.addWidget(_section_label("Lighting"))
+        layout.addWidget(QLabel("Lighting:"))
 
         lighting_labels = [lbl for _, lbl, _ in LIGHTING_MODES]
         lighting_tooltips = {lbl: tip for _, lbl, tip in LIGHTING_MODES}
@@ -460,8 +446,6 @@ class AppSettingsPanel(QFrame):
         self._lighting_control.selectionChanged.connect(self._on_lighting_changed)
         layout.addWidget(self._lighting_control)
 
-        layout.addWidget(_section_label("Computation"))
-
         max_workers = QThread.idealThreadCount()
         self._workers_slider = SliderRow(
             "Workers",
@@ -475,8 +459,6 @@ class AppSettingsPanel(QFrame):
             self._workers_slider, Settings.rendering, "parallel_worker", int
         )
         layout.addWidget(self._workers_slider)
-
-        self._body_layout.addWidget(section)
 
         self._update_theme_selection()
 
@@ -650,7 +632,6 @@ class AppSettingsPanel(QFrame):
         smooth_layout.setSpacing(12)
 
         smooth_label = QLabel("Smoothing:")
-        smooth_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
         smooth_layout.addWidget(smooth_label, 0, Qt.AlignmentFlag.AlignVCenter)
         smooth_layout.addStretch(1)
 
@@ -732,7 +713,6 @@ class AppSettingsPanel(QFrame):
 
     def _connect_slider(self, slider, category, attr, cast=float):
         """Connect a SliderRow: live updates on drag, signal on release."""
-        slider.label_widget.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
         slider.valueChanged.connect(
             lambda v: self._set_setting(category, attr, cast(v))
         )
@@ -747,7 +727,7 @@ class AppSettingsPanel(QFrame):
     def _rebuild_contents(self):
         """Tear down and rebuild all panel contents from current settings."""
         old_body = self._body
-        scroll = old_body.parent()
+        scroll = self.findChild(QScrollArea)
 
         new_body = QWidget()
         new_layout = QVBoxLayout(new_body)
@@ -763,7 +743,6 @@ class AppSettingsPanel(QFrame):
 
         self._body_layout.addStretch()
         scroll.setWidget(new_body)
-        old_body.deleteLater()
 
 
 def _colors_match(a: tuple, b: tuple) -> bool:
