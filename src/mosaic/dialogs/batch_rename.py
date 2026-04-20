@@ -22,12 +22,7 @@ from qtpy.QtWidgets import (
     QPushButton,
 )
 
-from ..stylesheets import (
-    QLineEdit_style,
-    QCheckBox_style,
-    Colors,
-    Typography,
-)
+from ..stylesheets import Colors, Typography
 from ..widgets import DialogFooter
 
 
@@ -150,7 +145,6 @@ class BatchRenameDialog(QDialog):
         grid.addWidget(find_label, 0, 0)
         self.find_input = QLineEdit()
         self.find_input.setPlaceholderText("Text to find")
-        self.find_input.setStyleSheet(QLineEdit_style)
         grid.addWidget(self.find_input, 0, 1)
 
         replace_label = QLabel("Replace")
@@ -160,7 +154,6 @@ class BatchRenameDialog(QDialog):
         grid.addWidget(replace_label, 1, 0)
         self.replace_input = QLineEdit()
         self.replace_input.setPlaceholderText("Replacement (leave empty to delete)")
-        self.replace_input.setStyleSheet(QLineEdit_style)
         grid.addWidget(self.replace_input, 1, 1)
 
         self.error_label = QLabel()
@@ -173,11 +166,9 @@ class BatchRenameDialog(QDialog):
         options_row = QHBoxLayout()
         self.case_sensitive_check = QCheckBox("Case sensitive")
         self.case_sensitive_check.setChecked(True)
-        self.case_sensitive_check.setStyleSheet(QCheckBox_style)
         options_row.addWidget(self.case_sensitive_check)
 
         self.regex_check = QCheckBox("Regular expression")
-        self.regex_check.setStyleSheet(QCheckBox_style)
         options_row.addWidget(self.regex_check)
         options_row.addStretch()
 
@@ -199,7 +190,6 @@ class BatchRenameDialog(QDialog):
         self.pattern_input = QLineEdit()
         self.pattern_input.setPlaceholderText("e.g. Mitochondrion {i}")
         self.pattern_input.setText("{name}")
-        self.pattern_input.setStyleSheet(QLineEdit_style)
         self.pattern_input.selectAll()
         grid.addWidget(self.pattern_input, 0, 1)
 

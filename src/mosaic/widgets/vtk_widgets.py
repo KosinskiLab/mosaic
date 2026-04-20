@@ -61,10 +61,9 @@ class LegendWidget:
         self.widget.GetScalarBarRepresentation().SetShowBorder(False)
         self.widget.ProcessEventsOff()
 
-        self.title = None
-        self.visible = False
-        self.orientation = "vertical"
-        self.set_orientation(self.orientation)
+        self.scalar_bar.SetOrientationToVertical()
+        self.scalar_bar.SetTextPositionToPrecedeScalarBar()
+        self.scalar_bar.SetTextPad(-4)
 
         default_lut = vtk.vtkLookupTable()
         default_lut.SetHueRange(0.667, 0.0)
@@ -75,43 +74,24 @@ class LegendWidget:
         self.set_lookup_table(default_lut)
 
     def set_lookup_table(self, lut, title=""):
-        self.title = title
         self.scalar_bar.SetLookupTable(lut)
         display_title = f"{title}\n" if title else title
         self.scalar_bar.SetTitle(display_title)
 
         return self.interactor.Render()
 
-    def set_orientation(self, orientation):
-        is_vertical = orientation.lower() == "vertical"
-
-        self.orientation = "vertical"
-        if is_vertical:
-            self.scalar_bar.SetOrientationToVertical()
-            self.scalar_bar.SetTextPositionToPrecedeScalarBar()
-            self.scalar_bar.SetTextPad(-4)
-        else:
-            self.orientation = "horizontal"
-            self.scalar_bar.SetOrientationToHorizontal()
-            self.scalar_bar.SetTextPositionToSucceedScalarBar()
-            self.scalar_bar.SetTextPad(0)
-
-        self.interactor.Render()
-
     def show(self):
-        if self.visible:
+        if self.widget.GetEnabled():
             return None
 
         self.widget.On()
-        self.visible = True
         return self.interactor.Render()
 
     def hide(self):
-        if not self.visible:
+        if not self.widget.GetEnabled():
             return None
 
         self.widget.Off()
-        self.visible = False
         return self.interactor.Render()
 
 

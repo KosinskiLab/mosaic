@@ -39,17 +39,6 @@ from ..icons import icon
 
 from ..__version__ import __version__
 from ..utils import Throttle
-from ..stylesheets import (
-    QMessageBox_style,
-    QLineEdit_style,
-    QSpinBox_style,
-    QDoubleSpinBox_style,
-    QComboBox_style,
-    QCheckBox_style,
-    QSlider_style,
-    QGroupBox_style,
-    QListWidget_style,
-)
 
 
 @dataclass
@@ -87,18 +76,6 @@ class AnimationComposerDialog(QDialog):
 
         self._setup_ui()
         self._setup_shortcuts()
-
-        self.setStyleSheet(
-            QMessageBox_style
-            + QLineEdit_style
-            + QSpinBox_style
-            + QDoubleSpinBox_style
-            + QComboBox_style
-            + QCheckBox_style
-            + QSlider_style
-            + QGroupBox_style
-            + QListWidget_style
-        )
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)

@@ -17,13 +17,7 @@ from qtpy.QtWidgets import (
 )
 from ..icons import icon as _icon
 from ..widgets import DialogFooter, create_setting_widget, get_widget_value
-from ..stylesheets import (
-    QGroupBox_style,
-    QLineEdit_style,
-    QCheckBox_style,
-    Colors,
-    Typography,
-)
+from ..stylesheets import Colors, Typography
 
 
 class StyleableButton(QPushButton):
@@ -179,7 +173,6 @@ class ExportDialog(QDialog):
         self.set_defaults(list(parameters.keys()), list(parameters.values()))
 
         self.setup_ui()
-        self.setStyleSheet(QGroupBox_style + QLineEdit_style + QCheckBox_style)
 
     def set_defaults(self, keys, values):
         """Update default values for format settings"""

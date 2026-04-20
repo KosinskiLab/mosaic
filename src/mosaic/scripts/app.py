@@ -28,7 +28,23 @@ from mosaic.stylesheets import (
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", action="version", version=f"{__version__}")
-    parser.parse_args()
+    parser.add_argument(
+        "--onboard",
+        nargs="?",
+        const="__list__",
+        metavar="CHAPTER",
+        help="Launch onboarding walkthrough. Run without argument to list chapters.",
+    )
+    args = parser.parse_args()
+
+    if args.onboard == "__list__":
+        from mosaic.onboarding.chapters import all_chapters
+
+        print("\nAvailable onboarding chapters:\n")
+        for ch in all_chapters():
+            print(f"  {ch.id:<20} {ch.description}")
+        print("\nUsage: mosaic --onboard <chapter>\n")
+        sys.exit(0)
 
     app = QApplication(sys.argv)
     app.setApplicationName("Mosaic")
@@ -69,6 +85,13 @@ def main():
 
     window = App()
     window.show()
+
+    if args.onboard:
+        from qtpy.QtCore import QTimer
+        from mosaic.onboarding import launch_onboarding
+
+        QTimer.singleShot(200, lambda: launch_onboarding(window, args.onboard))
+
     sys.exit(app.exec())
 
 

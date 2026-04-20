@@ -15,25 +15,18 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QPushButton,
     QTreeWidget,
-    QRadioButton,
-    QButtonGroup,
     QGroupBox,
     QFrame,
     QMessageBox,
 )
 from ..icons import icon
 from ..widgets.container_list import ContainerTreeWidget, StyledTreeWidgetItem
-from ..stylesheets import (
-    QGroupBox_style,
-    HelpLabel_style,
-)
+from ..widgets.segmented_control import SegmentedControl
+from ..stylesheets import HelpLabel_style
 
 
 class DistanceCropDialog(QDialog):
     """Dialog for cropping geometry points based on distance to reference objects.
-
-    This dialog can be displayed as a dock widget for interactive preview
-    of points that would be removed/kept by the distance crop operation.
 
     Parameters
     ----------
@@ -58,18 +51,6 @@ class DistanceCropDialog(QDialog):
         self.setMinimumWidth(320)
         self.setMaximumWidth(420)
         self.setup_ui()
-        self.setStyleSheet(
-            QGroupBox_style
-            + """
-            QRadioButton {
-                spacing: 5px;
-            }
-            QRadioButton::indicator {
-                width: 18px;
-                height: 18px;
-            }
-            """
-        )
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -132,23 +113,8 @@ class DistanceCropDialog(QDialog):
         direction_layout.addWidget(direction_label)
         direction_layout.addStretch()
 
-        self.comparison_group = QButtonGroup()
-
-        radio_container = QFrame()
-        radio_layout = QHBoxLayout(radio_container)
-        radio_layout.setContentsMargins(0, 0, 0, 0)
-        radio_layout.setSpacing(12)
-
-        self.smaller_radio = QRadioButton("Within")
-        self.smaller_radio.setChecked(True)
-        self.larger_radio = QRadioButton("Outside")
-        self.comparison_group.addButton(self.smaller_radio)
-        self.comparison_group.addButton(self.larger_radio)
-
-        radio_layout.addWidget(self.smaller_radio)
-        radio_layout.addWidget(self.larger_radio)
-
-        direction_layout.addWidget(radio_container)
+        self.direction_control = SegmentedControl(["Within", "Outside"], default=0)
+        direction_layout.addWidget(self.direction_control)
         settings_layout.addLayout(direction_layout)
 
         main_layout.addWidget(settings_group)
@@ -255,7 +221,7 @@ class DistanceCropDialog(QDialog):
             "sources": sources,
             "targets": targets,
             "distance": self.distance_input.value(),
-            "keep_smaller": self.smaller_radio.isChecked(),
+            "keep_smaller": self.direction_control.currentText() == "Within",
         }
 
     def _on_preview(self):

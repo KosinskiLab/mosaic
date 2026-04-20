@@ -807,6 +807,7 @@ class StatusIndicator:
         self.task_button.setIcon(icon("ph.caret-up", role="muted"))
         self.task_button.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.task_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.task_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.task_button.setFlat(True)
         self.task_button.setFixedWidth(50)
         self.task_button.setContentsMargins(0, 0, 0, 0)

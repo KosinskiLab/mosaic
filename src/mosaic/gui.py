@@ -51,10 +51,7 @@ from .stylesheets import Colors
 from .animation._utils import ScreenshotManager
 from .parallel import BackgroundTaskManager
 from .tabs import SegmentationTab, ModelTab, IntelligenceTab, DevelopmentTab
-from .dialogs import (
-    TiltControlDialog,
-    ImportDataDialog,
-)
+from .dialogs import ImportDataDialog
 from .widgets import (
     AxesWidget,
     RibbonToolBar,
@@ -583,6 +580,9 @@ class App(QMainWindow):
         self._camera_direction = aligned_direction
         self.vtk_widget.GetRenderWindow().Render()
 
+        if hasattr(self, "camera_hud"):
+            self.camera_hud.set_angles(elevation, azimuth, pitch)
+
     def swap_camera_view_direction(self, view_key):
         view = getattr(self, "_camera_view", None)
         if view is None:
@@ -646,6 +646,7 @@ class App(QMainWindow):
         self.legend = LegendWidget(self.renderer, self.interactor)
 
         self._setup_volume_viewer()
+        self._setup_camera_hud()
         self.cdata.data.render_update.connect(
             self.volume_viewer.primary.handle_projection_change
         )
@@ -818,40 +819,18 @@ class App(QMainWindow):
         axes_menu.addAction(colored_action)
         axes_menu.addAction(arrow_action)
 
-        tilt_menu = QMenu("Camera", self)
-        tilt_menu.setIcon(icon("ph.video-camera"))
-        self.tilt_dialog = TiltControlDialog(self)
-        show_tilt_control = QAction(
-            icon("ph.sliders", role="muted"),
-            "Tilt Controls...",
-            self,
-        )
-        show_tilt_control.triggered.connect(self.tilt_dialog.show)
-        tilt_menu.addAction(show_tilt_control)
+        show_camera_hud = QAction(icon("ph.video-camera"), "Camera Angles", self)
+        show_camera_hud._on = False
 
-        tilt_menu.addSeparator()
-        tilt_group = QActionGroup(self)
-        tilt_group.setExclusive(True)
-        for angle in [0, 15, 30, 45, 60, 90]:
-            action = QAction(f"{angle}°", self)
-            action.triggered.connect(
-                lambda checked, a=angle: self.set_camera_view(
-                    getattr(self, "_camera_view", "x"),
-                    getattr(self, "_camera_direction", True),
-                    view_angle=a,
-                )
+        def _toggle_camera_hud():
+            show_camera_hud._on = not show_camera_hud._on
+            on = show_camera_hud._on
+            show_camera_hud.setIcon(
+                icon("ph.video-camera", role="primary" if on else "muted")
             )
-            tilt_menu.addAction(action)
+            self.camera_hud.setVisible(on)
 
-        tilt_menu.addSeparator()
-        reset_action = QAction(
-            icon("ph.arrow-counter-clockwise", role="muted"),
-            "Reset Tilt",
-            self,
-        )
-        reset_action.setShortcut("Ctrl+T")
-        reset_action.triggered.connect(self.tilt_dialog.reset_tilt)
-        tilt_menu.addAction(reset_action)
+        show_camera_hud.triggered.connect(_toggle_camera_hud)
 
         coloring_menu = QMenu("Coloring", self)
         coloring_menu.setIcon(icon("ph.palette"))
@@ -876,25 +855,16 @@ class App(QMainWindow):
         coloring_menu.addAction(self.color_default_action)
         coloring_menu.addAction(self.color_by_entity_action)
 
-        legend_bar_menu = QMenu("Legend", self)
-        legend_bar_menu.setIcon(icon("ph.chart-bar"))
-        legend_bar = QAction("Show", self)
-        legend_bar.setCheckable(True)
-        legend_bar.setChecked(False)
-        legend_bar.triggered.connect(
-            lambda checked: self.legend.show() if checked else self.legend.hide()
-        )
+        show_legend = QAction(icon("ph.chart-bar"), "Legend", self)
+        show_legend._on = False
 
-        orientation_menu = QMenu("Orientation", self)
-        vertical = QAction("Vertical", self)
-        vertical.triggered.connect(lambda: self.legend.set_orientation("vertical"))
-        horizontal = QAction("Horizontal", self)
-        horizontal.triggered.connect(lambda: self.legend.set_orientation("horizontal"))
+        def _toggle_legend():
+            show_legend._on = not show_legend._on
+            on = show_legend._on
+            show_legend.setIcon(icon("ph.chart-bar", role="primary" if on else "muted"))
+            self.legend.show() if on else self.legend.hide()
 
-        orientation_menu.addAction(vertical)
-        orientation_menu.addAction(horizontal)
-        legend_bar_menu.addAction(legend_bar)
-        legend_bar_menu.addMenu(orientation_menu)
+        show_legend.triggered.connect(_toggle_legend)
 
         self.volume_action = QAction(icon("ph.cube"), "Volume Viewer", self)
         self.volume_action._on = False
@@ -981,13 +951,13 @@ class App(QMainWindow):
         show_viewer_mode.triggered.connect(_toggle_status_bar)
 
         view_menu.addMenu(axes_menu)
-        view_menu.addMenu(tilt_menu)
-        view_menu.addMenu(legend_bar_menu)
         view_menu.addMenu(coloring_menu)
 
         view_menu.addSeparator()
+        view_menu.addAction(show_legend)
         view_menu.addAction(show_scale_bar)
         view_menu.addAction(show_viewer_mode)
+        view_menu.addAction(show_camera_hud)
 
         view_menu.addSeparator()
 
@@ -1266,6 +1236,12 @@ class App(QMainWindow):
             self.vtk_widget, self.volume_viewer, self.cdata
         )
         create_or_toggle_dock(self, "animation_composer", dialog)
+
+    def _setup_camera_hud(self):
+        from .widgets.camera_hud import CameraHUD
+
+        self.camera_hud = CameraHUD(parent=self)
+        self.camera_hud.attach(self)
 
     def _setup_volume_viewer(self):
         # HUD is a top-level translucent tool window that tracks the
