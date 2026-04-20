@@ -4,7 +4,6 @@ from .histogram import HistogramDialog
 from .cropping import DistanceCropDialog
 from .import_data import ImportDataDialog
 from .backmapping import MeshMappingDialog
-from .tilt_control import TiltControlDialog
 from .matching import TemplateMatchingDialog
 from .update import UpdateChecker, UpdateDialog
 from .properties import GeometryPropertiesDialog

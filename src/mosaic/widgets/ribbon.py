@@ -12,7 +12,7 @@ from qtpy.QtWidgets import (
     QApplication,
 )
 from .settings import create_setting_widget
-from ..stylesheets import QPushButton_style, Colors, Typography
+from ..stylesheets import Colors, Typography
 from ..icons import icon
 
 
@@ -111,9 +111,7 @@ class SettingsPanel(QFrame):
 
         apply_btn = QPushButton("Apply")
         apply_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        apply_btn.setStyleSheet(
-            QPushButton_style + f"QPushButton {{ font-size: {Typography.LABEL}px; }}"
-        )
+        apply_btn.setStyleSheet(f"QPushButton {{ font-size: {Typography.LABEL}px; }}")
 
         apply_btn.clicked.connect(self._apply_settings)
         content_layout.addWidget(apply_btn)

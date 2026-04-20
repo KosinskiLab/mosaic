@@ -28,7 +28,7 @@ from qtpy.QtWidgets import (
 )
 from qtpy.QtSvg import QSvgRenderer
 from ..icons import icon as _icon_factory
-from ..stylesheets import Colors, Typography, _build_QToolTip_style
+from ..stylesheets import Colors, Typography
 from ..tree_state import TreeState, TreeStateData
 from ..pipeline._utils import natural_sort_key, strip_filepath
 
@@ -751,15 +751,12 @@ class _SessionHeader(QWidget):
         self._auto_save_toggle.setIcon(icon("ph.arrows-clockwise", role=role))
 
     def _apply_btn_style(self):
-        qss = (
-            self._BTN_QSS.format(
-                r=Colors.RADIUS,
-                fs=Typography.LABEL,
-                color=Colors.TEXT_SECONDARY,
-                hover=Colors.BG_HOVER,
-                pressed=Colors.BG_PRESSED,
-            )
-            + _build_QToolTip_style()
+        qss = self._BTN_QSS.format(
+            r=Colors.RADIUS,
+            fs=Typography.LABEL,
+            color=Colors.TEXT_SECONDARY,
+            hover=Colors.BG_HOVER,
+            pressed=Colors.BG_PRESSED,
         )
         for btn in (
             self._add_btn,

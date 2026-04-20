@@ -88,8 +88,8 @@ class SettingsCategory:
 class RenderingSettings:
     """VTK rendering configuration."""
 
-    background_color: Tuple[float, float, float] = (0.09, 0.10, 0.12)
-    background_color_alt: Tuple[float, float, float] = (0.97, 0.97, 0.96)
+    background_color: Tuple[float, float, float] = (0.094, 0.094, 0.106)
+    background_color_alt: Tuple[float, float, float] = (1.0, 1.0, 1.0)
     use_gradient_background: bool = False
     target_fps: float = 30.0
     parallel_worker: int = min(8, QThread.idealThreadCount() - 1)
@@ -134,7 +134,6 @@ class WidgetSettings:
     axes_arrows_visible: bool = True
     scale_bar_visible: bool = False
     legend_visible: bool = False
-    legend_orientation: str = "vertical"
     status_indicator_visible: bool = True
     volume_viewer_visible: bool = False
     trajectory_player_visible: bool = False

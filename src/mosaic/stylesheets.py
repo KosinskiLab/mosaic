@@ -161,28 +161,22 @@ class Colors:
         (0.90, 0.25, 0.20),  # Vermillion red
     ]
 
-    ANNOTATION = [tuple(min(1.0, c + 0.25) for c in color) for color in ENTITY]
+    ANNOTATION = [tuple(min(1.0, c + 0.5) for c in color) for color in ENTITY]
 
     CATEGORY = {
         # Pipeline operation categories
-        "input": "#8b8cf8",  # Indigo 400 (muted)
-        "preprocessing": "#7ba3d9",  # Slate blue (muted)
-        "parametrization": "#6dab96",  # Sage green (muted)
-        "analysis": "#6baab8",  # Steel teal (muted)
-        "export": "#c49070",  # Warm clay (muted)
+        "input": "#6366f1",  # Indigo
+        "preprocessing": "#3b82f6",  # Blue
+        "parametrization": "#10b981",  # Emerald
+        "analysis": "#06b6d4",  # Cyan
+        "export": "#f97316",  # Orange
         # Animation types
-        "trajectory": "#7ba3d9",  # Slate blue (muted)
-        "camera": "#6dab96",  # Sage green (muted)
-        "zoom": "#6db0a8",  # Dusty teal (muted)
-        "volume": "#cba95e",  # Warm ochre (muted)
-        "visibility": "#9b8fd4",  # Lavender (muted)
-        "waypoint": "#c48aa0",  # Dusty rose (muted)
-        # Pipeline presets
-        "clear": "#c47070",  # Dusty red (muted)
-        "import": "#7ba3d9",  # Slate blue (muted)
-        "cleanup": "#9b8fd4",  # Lavender (muted)
-        "meshing": "#6dab96",  # Sage green (muted)
-        "particle_picking": "#cba95e",  # Warm ochre (muted)
+        "trajectory": "#3b82f6",  # Blue
+        "camera": "#10b981",  # Emerald
+        "zoom": "#14b8a6",  # Teal
+        "volume": "#eab308",  # Yellow
+        "visibility": "#8b5cf6",  # Violet
+        "waypoint": "#ec4899",  # Pink
     }
 
 

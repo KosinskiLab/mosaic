@@ -24,11 +24,6 @@ from qtpy.QtWidgets import (
     QApplication,
 )
 from ..icons import icon
-from ..stylesheets import (
-    QSpinBox_style,
-    QLineEdit_style,
-    QGroupBox_style,
-)
 from ..widgets import (
     DialogFooter,
     create_setting_widget,
@@ -88,7 +83,6 @@ class GeometryPropertiesDialog(QDialog):
         main_layout.setSpacing(12)
 
         appearance_group = QGroupBox("Appearance")
-        appearance_group.setStyleSheet(QGroupBox_style)
         appearance_layout = QVBoxLayout(appearance_group)
         appearance_layout.setSpacing(12)
 
@@ -109,7 +103,6 @@ class GeometryPropertiesDialog(QDialog):
                 "default": self.initial_properties.get("size", 8),
             }
         )
-        self.size_spin.setStyleSheet(QSpinBox_style)
         self.size_spin.setFixedWidth(80)
         self.size_spin.setToolTip("Size of points in the representation")
         point_size_layout.addWidget(self.size_spin)
@@ -165,7 +158,6 @@ class GeometryPropertiesDialog(QDialog):
         main_layout.addWidget(appearance_group)
 
         lighting_group = QGroupBox("Lighting")
-        lighting_group.setStyleSheet(QGroupBox_style)
         lighting_layout = QVBoxLayout(lighting_group)
         lighting_layout.setSpacing(12)
 
@@ -206,7 +198,6 @@ class GeometryPropertiesDialog(QDialog):
         main_layout.addWidget(lighting_group)
 
         model_group = QGroupBox("Model")
-        model_group.setStyleSheet(QGroupBox_style)
         model_layout = QVBoxLayout(model_group)
         model_layout.setSpacing(12)
 
@@ -272,7 +263,6 @@ class GeometryPropertiesDialog(QDialog):
         main_layout.addWidget(model_group)
 
         sampling_group = QGroupBox("Sampling")
-        sampling_group.setStyleSheet(QGroupBox_style)
         sampling_rate = self.initial_properties.get("sampling_rate", (1.0, 1.0, 1.0))
 
         sampling_layout = QHBoxLayout(sampling_group)
@@ -286,21 +276,18 @@ class GeometryPropertiesDialog(QDialog):
         sampling_layout.addWidget(QLabel("X"))
         self.sampling_x = create_setting_widget(base | {"default": sampling_rate[0]})
         self.sampling_x.setMinimumWidth(min_width)
-        self.sampling_x.setStyleSheet(QLineEdit_style)
         self.sampling_x.setToolTip(sampling_tooltip)
         sampling_layout.addWidget(self.sampling_x)
 
         sampling_layout.addWidget(QLabel("Y"))
         self.sampling_y = create_setting_widget(base | {"default": sampling_rate[1]})
         self.sampling_y.setMinimumWidth(min_width)
-        self.sampling_y.setStyleSheet(QLineEdit_style)
         self.sampling_y.setToolTip(sampling_tooltip)
         sampling_layout.addWidget(self.sampling_y)
 
         sampling_layout.addWidget(QLabel("Z"))
         self.sampling_z = create_setting_widget(base | {"default": sampling_rate[2]})
         self.sampling_z.setMinimumWidth(min_width)
-        self.sampling_z.setStyleSheet(QLineEdit_style)
         self.sampling_z.setToolTip(sampling_tooltip)
         sampling_layout.addWidget(self.sampling_z)
 

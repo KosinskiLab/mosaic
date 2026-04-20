@@ -77,6 +77,9 @@ def generate_runs(pipeline_config):
     if not import_nodes:
         raise ValueError("Pipeline must start with an Import Files operation")
 
+    import_nodes = [
+        node for node in nodes if node.get("operation_id") == "import_batch"
+    ]
     if len(import_nodes) > 1:
         raise ValueError("Pipeline currently supports only one Import Files operation")
 

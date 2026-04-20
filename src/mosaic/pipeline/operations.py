@@ -28,7 +28,7 @@ OPERATION_CATEGORIES = {
         "operations": {
             "Import Files": {
                 "id": "import_batch",
-                "description": "Import multiple files for processing",
+                "description": "Import files for processing",
                 "icon": "ph.file-arrow-down",
                 "has_output": True,
                 "input_type": None,

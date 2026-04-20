@@ -108,26 +108,20 @@ class PipelineBuilderDialog(QDialog):
         presets_container = QVBoxLayout()
         presets_container.setSpacing(8)
 
-        presets_label = QLabel("Common Workflow Configurations:")
-        presets_label.setStyleSheet(
-            f"font-size: {Typography.SMALL}px; color: {Colors.TEXT_MUTED};"
-        )
-        presets_container.addWidget(presets_label)
-
         presets_layout = QHBoxLayout()
 
         preset_buttons = [
-            ("Clear", "ph.x-circle", Colors.CATEGORY["clear"]),
-            ("Import", "ph.file-arrow-up", Colors.CATEGORY["import"]),
-            ("Cleanup", "ph.wrench", Colors.CATEGORY["cleanup"]),
-            ("Meshing", "ph.triangle", Colors.CATEGORY["meshing"]),
-            ("Particle Picking", "ph.crosshair", Colors.CATEGORY["particle_picking"]),
+            ("Clear", "ph.x-circle"),
+            ("Import", "ph.file-arrow-up"),
+            ("Cleanup", "ph.wrench"),
+            ("Meshing", "ph.triangle"),
+            ("Particle Picking", "ph.crosshair"),
         ]
 
         self.preset_buttons = {}
-        for idx, (name, icon_name, color) in enumerate(preset_buttons):
+        for idx, (name, icon_name) in enumerate(preset_buttons):
             btn = QPushButton(name)
-            btn.setIcon(icon(icon_name, color=color))
+            btn.setIcon(icon(icon_name, color=Colors.ICON))
             btn.setIconSize(QSize(24, 24))
             btn.setFixedHeight(32)
 
