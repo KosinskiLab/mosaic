@@ -24,7 +24,8 @@ from qtpy.QtWidgets import (
 )
 
 from mosaic.settings import Settings
-from mosaic.actor import QUALITY_PRESETS
+from mosaic.settings import QUALITY_PRESETS
+from mosaic.lod import LOD_DISABLED
 from mosaic.stylesheets import Colors, Typography
 from mosaic.icons import icon
 from mosaic.widgets.sliders import SliderRow
@@ -48,10 +49,10 @@ THEME_PAIRINGS = OrderedDict(
 )
 
 LIGHTING_MODES = [
-    ("simple", "Simple", "Single headlight — default lighting"),
+    ("simple", "Simple", "Single headlight"),
     ("soft", "Soft", "Ambient lighting with SSAO depth shading"),
-    ("full", "Full", "Multi-light setup — three-point lighting"),
-    ("flat", "Flat", "No shading — uniform flat colors"),
+    ("full", "Full", "Multi-light setup with three-point lighting"),
+    ("flat", "Flat", "No shading with uniform flat colors"),
     ("poster", "Poster", "Light background with edge outlines"),
     ("silhouettes", "Silhouettes", "Edge outlines via Sobel gradient detection"),
 ]
@@ -504,57 +505,51 @@ class AppSettingsPanel(QFrame):
         self.settingsChanged.emit()
 
     def _build_rendering_section(self):
-        section = CollapsibleSection("Rendering", expanded=False)
+        def _fmt_budget(v):
+            v = int(v)
+            if v >= 1_000_000:
+                return f"{v / 1_000_000:.1f}M".replace(".0M", "M")
+            return f"{v // 1000}K"
 
         preset_labels = [name.title() for name in QUALITY_PRESETS]
         current_preset = Settings.vtk.preset
         current_idx = next(
             (i for i, name in enumerate(QUALITY_PRESETS) if name == current_preset), 0
         )
+
+        self._body_layout.addWidget(QLabel("Rendering:"))
+
         self._preset_control = SegmentedControl(preset_labels, default=current_idx)
         self._preset_control.setToolTip(
-            "Point rendering quality — higher uses more compute"
+            "Interaction point budget. Lower keeps more points visible while "
+            "rotating. Ultra disables decimation entirely."
         )
         self._preset_control.selectionChanged.connect(self._on_preset_changed)
-        section.addWidget(self._preset_control)
+        self._body_layout.addWidget(self._preset_control)
 
-        self._lod_container = QWidget()
-        lod_layout = QVBoxLayout(self._lod_container)
-        lod_layout.setContentsMargins(0, 2, 0, 0)
-        lod_layout.setSpacing(2)
-
-        self._lod_points_slider = SliderRow(
-            "LOD Points",
-            min_val=100000,
-            max_val=50000000,
-            default=int(Settings.vtk.lod_points),
-            decimals=0,
-            exponent=2.0,
+        budget_stops = [
+            100_000,
+            250_000,
+            500_000,
+            1_000_000,
+            2_000_000,
+            5_000_000,
+            10_000_000,
+            20_000_000,
+        ]
+        self._budget_slider = SliderRow(
+            "Point Budget",
+            default=int(Settings.vtk.point_budget),
+            values=budget_stops,
+            formatter=_fmt_budget,
         )
-        self._lod_points_slider.setToolTip(
-            "Number of points in the level-of-detail cloud"
+        self._budget_slider.setToolTip(
+            "Maximum points rendered during camera interaction"
         )
-        self._connect_slider(self._lod_points_slider, Settings.vtk, "lod_points", int)
-        lod_layout.addWidget(self._lod_points_slider)
-
-        self._lod_size_slider = SliderRow(
-            "Point Size",
-            min_val=1,
-            max_val=20,
-            default=Settings.vtk.lod_points_size,
-            decimals=0,
-        )
-        self._lod_size_slider.setToolTip(
-            "Pixel size of points in the level-of-detail cloud"
-        )
-        self._connect_slider(
-            self._lod_size_slider, Settings.vtk, "lod_points_size", int
-        )
-        lod_layout.addWidget(self._lod_size_slider)
-
-        quality_type = QUALITY_PRESETS.get(current_preset, {}).get("quality", "full")
-        self._lod_container.setVisible(quality_type == "lod")
-        section.addWidget(self._lod_container)
+        self._connect_slider(self._budget_slider, Settings.vtk, "point_budget", int)
+        is_balanced = current_preset == "balanced"
+        self._budget_slider.setVisible(is_balanced)
+        self._body_layout.addWidget(self._budget_slider)
 
         self._fps_slider = SliderRow(
             "Target Frame Rate",
@@ -566,9 +561,7 @@ class AppSettingsPanel(QFrame):
         )
         self._fps_slider.setToolTip("Target rendering frame rate for the VTK viewport")
         self._connect_slider(self._fps_slider, Settings.rendering, "target_fps", float)
-        section.addWidget(self._fps_slider)
-
-        self._body_layout.addWidget(section)
+        self._body_layout.addWidget(self._fps_slider)
 
     def _on_preset_changed(self, label: str):
         preset_name = label.lower()
@@ -578,23 +571,15 @@ class AppSettingsPanel(QFrame):
         Settings.vtk.preset = preset_name
         preset_config = QUALITY_PRESETS.get(preset_name, {})
 
-        quality_type = preset_config.get("quality", "full")
-        Settings.vtk.quality = quality_type
+        budget = int(preset_config.get("point_budget", LOD_DISABLED))
+        Settings.vtk.point_budget = budget
 
-        self._lod_points_slider.blockSignals(True)
-        self._lod_size_slider.blockSignals(True)
+        self._budget_slider.blockSignals(True)
+        if budget > 0:
+            self._budget_slider.setValue(budget)
+        self._budget_slider.blockSignals(False)
 
-        if "lod_points" in preset_config:
-            Settings.vtk.lod_points = int(preset_config["lod_points"])
-            self._lod_points_slider.setValue(int(preset_config["lod_points"]))
-        if "lod_points_size" in preset_config:
-            Settings.vtk.lod_points_size = preset_config["lod_points_size"]
-            self._lod_size_slider.setValue(preset_config["lod_points_size"])
-
-        self._lod_points_slider.blockSignals(False)
-        self._lod_size_slider.blockSignals(False)
-
-        self._lod_container.setVisible(quality_type == "lod")
+        self._budget_slider.setVisible(preset_name == "balanced")
         self.settingsChanged.emit()
 
     def _build_quality_section(self):
@@ -603,7 +588,7 @@ class AppSettingsPanel(QFrame):
         fxaa_row, self._fxaa_check = _checkbox_row(
             "FXAA",
             Settings.rendering.enable_fxaa,
-            tooltip="Fast approximate anti-aliasing — smooths jagged edges",
+            tooltip="Fast approximate anti-aliasing, smooths jagged edges",
         )
         self._fxaa_check.toggled.connect(
             lambda v: self._update_setting(Settings.rendering, "enable_fxaa", v)
@@ -726,7 +711,6 @@ class AppSettingsPanel(QFrame):
 
     def _rebuild_contents(self):
         """Tear down and rebuild all panel contents from current settings."""
-        old_body = self._body
         scroll = self.findChild(QScrollArea)
 
         new_body = QWidget()

@@ -228,6 +228,9 @@ class _ViewerStrip(QWidget):
 
         v.orientation_selector.currentTextChanged.connect(self._on_orientation_changed)
 
+    def _on_theme_changed(self):
+        _dark_dual_slider(self.viewer.contrast_slider)
+
     def _build_layout(self, add_btn, remove_btn):
         v = self.viewer
         main = QVBoxLayout(self)

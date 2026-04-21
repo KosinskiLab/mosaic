@@ -173,6 +173,24 @@ class TabBar(QWidget):
         """
         )
 
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton and not self.childAt(
+            event.pos()
+        ):
+            self.window().windowHandle().startSystemMove()
+            return
+        super().mousePressEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        if not self.childAt(event.pos()):
+            win = self.window()
+            if win.isMaximized():
+                win.showNormal()
+            else:
+                win.showMaximized()
+            return
+        super().mouseDoubleClickEvent(event)
+
     def _on_theme_changed(self):
         for btn in self._buttons.values():
             self._apply_button_style(btn)

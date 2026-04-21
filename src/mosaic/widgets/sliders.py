@@ -41,10 +41,12 @@ class SliderRow(QWidget):
         steps: int = 100,
         exponent: float = 1.0,
         values: list = None,
+        formatter=None,
         parent=None,
     ):
         super().__init__(parent)
         self._values = values
+        self._formatter = formatter
         if values:
             self.min_val, self.max_val = 0, len(values) - 1
             self.steps = len(values) - 1
@@ -112,7 +114,9 @@ class SliderRow(QWidget):
 
     def _update_value_label(self, value: float):
         """Update the value label display."""
-        if self.decimals == 0:
+        if self._formatter is not None:
+            text = self._formatter(value)
+        elif self.decimals == 0:
             text = f"{int(value)}{self.suffix}"
         else:
             text = f"{value:.{self.decimals}f}{self.suffix}"

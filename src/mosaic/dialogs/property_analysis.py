@@ -1115,18 +1115,7 @@ class PropertyAnalysisDialog(QDialog):
         self, geometry, file_path: str, texture_size: int, interpolation_order: int
     ):
         """Get cached TextureSampler or create a new one."""
-        import vtk as _vtk
         from .. import meshing
-
-        if isinstance(geometry.actor, (_vtk.vtkLODActor, _vtk.vtkQuadricLODActor)):
-            QMessageBox.warning(
-                self,
-                "Texture Error",
-                "Texture mapping requires the 'Ultra' rendering quality preset. "
-                "LOD actors (used by other presets) do not support VTK textures.\n\n"
-                "Change the preset under Preferences > Appearance > Preset.",
-            )
-            return None
 
         if not hasattr(self, "_texture_samplers"):
             self._texture_samplers = {}
@@ -1367,7 +1356,11 @@ class PropertyAnalysisDialog(QDialog):
                 continue
             geometry.set_scalars(metric, lut, lut_range)
 
-        self.legend.set_lookup_table(lut, self.property_combo.currentText())
+        legend_label = self.property_combo.currentText()
+        name_widget = self.option_widgets.get("name")
+        if name_widget is not None:
+            legend_label = name_widget.currentText()
+        self.legend.set_lookup_table(lut, legend_label)
 
         # Update filter widget — category checklist or histogram slider
         categorical = self._is_categorical(geometries)
@@ -1452,7 +1445,11 @@ class PropertyAnalysisDialog(QDialog):
             lut, lut_range = cmap_to_vtkctf(
                 colormap, upper, min_value=lower, transparent_range=True
             )
-            self.legend.set_lookup_table(lut, self.property_combo.currentText())
+            legend_label = self.property_combo.currentText()
+            name_widget = self.option_widgets.get("name")
+            if name_widget is not None:
+                legend_label = name_widget.currentText()
+            self.legend.set_lookup_table(lut, legend_label)
             for geometry in geometries:
                 values = properties.get(geometry.uuid)
                 if values is None:

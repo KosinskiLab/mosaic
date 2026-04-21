@@ -151,10 +151,14 @@ class WarningSettings:
 class vtkActorSettings:
     """vtkActor settings."""
 
-    preset: str = "high"
-    quality: str = "lod"
-    lod_points: int = int(5e6)
-    lod_points_size: int = int(3)
+    preset: str = "balanced"
+    point_budget: int = int(2e6)
+
+
+QUALITY_PRESETS = {
+    "ultra": {"point_budget": 0},
+    "balanced": {"point_budget": int(2e6)},
+}
 
 
 class SettingsManager:
@@ -168,6 +172,16 @@ class SettingsManager:
         self.widgets = SettingsCategory("widgets", WidgetSettings)
         self.warnings = SettingsCategory("warnings", WarningSettings)
         self.vtk = SettingsCategory("vtk", vtkActorSettings)
+
+        self._migrate_vtk_presets()
+
+    def _migrate_vtk_presets(self):
+        """Migrate removed or unrecognised vtk presets to balanced."""
+        if self.vtk.preset in ("ultra", "balanced"):
+            return None
+        self.vtk.preset = "balanced"
+        if self.vtk.point_budget <= 0:
+            self.vtk.point_budget = int(2e6)
 
     def reset_to_defaults(self, category: str = None):
         """Reset settings to defaults."""

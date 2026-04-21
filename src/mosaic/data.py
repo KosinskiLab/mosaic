@@ -41,6 +41,7 @@ class MosaicData:
 
         self.data.attach_area_picker()
         self.active_picker = "data"
+        self._setup_interaction_lod(vtk_widget)
 
     def open_file(
         self, filename, offset=0, scale=1, sampling_rate=1, segmentation=False
@@ -153,12 +154,61 @@ class MosaicData:
         """Reset the state of the class instance."""
         from .container import DataContainer
 
+        self._lod_restore_timer.stop()
         self.shape = None
         self.data.update(DataContainer())
         self.models.update(DataContainer(highlight_color=(0.2, 0.4, 0.8)))
 
         self._session._data = self._data = self.data.container
         self._session._models = self._models = self.models.container
+
+    def _setup_interaction_lod(self, vtk_widget):
+        """Register VTK interaction observers for point-budget LOD."""
+        from qtpy.QtCore import QTimer
+
+        self._vtk_widget = vtk_widget
+        self._lod_restore_timer = QTimer()
+        self._lod_restore_timer.setSingleShot(True)
+        self._lod_restore_timer.setInterval(200)
+        self._lod_restore_timer.timeout.connect(self._restore_full_data)
+
+        interactor = vtk_widget.GetRenderWindow().GetInteractor()
+        if interactor is None:
+            return None
+        interactor.AddObserver("StartInteractionEvent", self._on_interaction_start)
+        interactor.AddObserver("EndInteractionEvent", self._on_interaction_end)
+
+    def _on_interaction_start(self, obj, event):
+        self._lod_restore_timer.stop()
+        for geom in self._data.data:
+            geom.begin_interaction()
+        for geom in self._models.data:
+            geom.begin_interaction()
+
+    def _on_interaction_end(self, obj, event):
+        self._lod_restore_timer.start()
+
+    def _restore_full_data(self):
+        for geom in self._data.data:
+            geom.end_interaction()
+        for geom in self._models.data:
+            geom.end_interaction()
+        self._vtk_widget.GetRenderWindow().Render()
+
+    def refresh_lod(self):
+        """Recompute interaction-LOD budgets from current settings.
+
+        Returns
+        -------
+        bool
+            True when any LOD actors changed (renderer sync needed).
+        """
+        changed = self._data.refresh_lod()
+        changed |= self._models.refresh_lod()
+        if changed:
+            self.data.render()
+            self.models.render()
+        return changed
 
     def refresh_actors(self):
         """Reinitialize all VTK actors to accommodate render setting changes."""
