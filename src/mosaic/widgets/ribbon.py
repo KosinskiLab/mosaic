@@ -317,7 +317,6 @@ class RibbonButton(QPushButton):
             return
         self._collapsed = collapsed
         self.setText("" if collapsed else self._full_text)
-        self.setToolTip(self._full_text if collapsed else "")
 
     def _cache_widths(self):
         if self._full_width is not None:

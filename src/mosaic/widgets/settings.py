@@ -11,7 +11,7 @@ from qtpy.QtWidgets import (
     QLineEdit,
 )
 
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 
 __all__ = [
     "format_tooltip",
@@ -22,32 +22,26 @@ __all__ = [
 ]
 
 
-def format_tooltip(label=None, description="", default=None, notes=None, **kwargs):
-    if label is None:
+def format_tooltip(description=None, default=None, notes=None, **kwargs):
+    if description is None and default is None and notes is None:
         return ""
 
-    label = str(label).title().replace("_", " ")
-    tooltip = f"""
-    <div class="tooltip">
-        <span style='font-size: 11pt; font-weight: 600; color: #2c3e50;'>{label}</span>
-        <p style='margin: 6px 0; color: #34495e;'>{description}</p>
-    """
-    if default is not None:
-        tooltip += f"""
-        <p style='margin: 6px 0;'>
-            <span style='color: #6b7280;'>Default:</span>
-            <span style='color: rgba(99, 102, 241, 1.0);'>{default}</span>
-        </p>
-        """
-
+    lines = []
+    if description is not None:
+        lines.append(
+            f"<span style='font-size: {Typography.SMALL}px;'>{description}</span>"
+        )
+    if default is not None and lines:
+        lines.append(
+            f"<br><br><span style='font-size: {Typography.CAPTION}px;'>Default: </span>"
+            f"<span style='font-size: {Typography.CAPTION}px; color: {Colors.PRIMARY};'>{default}</span>"
+        )
     if notes:
-        tooltip += f"""
-        <p style='margin: 6px 0; color: #95a5a6; font-style: italic;'>
-            Note: {notes}
-        </p>
-        """
-    tooltip += "</div>"
-    return tooltip
+        sep = "<br><br>" if lines else ""
+        lines.append(
+            f"{sep}<span style='font-size: {Typography.CAPTION}px;'>Note: {notes}</span>"
+        )
+    return "".join(lines)
 
 
 def create_setting_widget(setting: Dict):
