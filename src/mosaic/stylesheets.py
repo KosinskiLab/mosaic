@@ -143,13 +143,11 @@ class Colors:
         (0.95, 0.50, 0.20),  # Tangerine
         (0.25, 0.20, 0.72),  # Sapphire
         (0.85, 0.35, 0.55),  # Cerise
-        (0.45, 0.75, 0.30),  # Chartreuse
         (0.55, 0.25, 0.60),  # Plum
         (0.20, 0.68, 0.58),  # Viridian
         (0.92, 0.58, 0.45),  # Coral
         (0.35, 0.35, 0.75),  # Ultramarine
         (0.75, 0.72, 0.25),  # Olive gold
-        (0.78, 0.25, 0.38),  # Carmine
         (0.25, 0.78, 0.72),  # Turquoise
         (0.65, 0.45, 0.20),  # Bronze
         (0.52, 0.58, 0.85),  # Periwinkle
@@ -241,7 +239,7 @@ def _build_QPushButton_style():
     return f"""
     QPushButton {{
         border: 1px solid {Colors.BORDER_DARK};
-        border-radius: 4px;
+        border-radius: {Colors.RADIUS}px;
         padding: 6px 12px;
     }}
     QPushButton:hover {{
@@ -262,7 +260,7 @@ def _build_QLineEdit_style():
     return f"""
     QLineEdit {{
         border: 1px solid {Colors.BORDER_DARK};
-        border-radius: 4px;
+        border-radius: {Colors.RADIUS}px;
         padding: 6px 8px;
         selection-background-color: {Colors.alpha("PRIMARY", 0.6)};
         background: transparent;
@@ -285,7 +283,7 @@ def _build_QSpinBox_style():
     return f"""
     QSpinBox {{
         border: 1px solid {Colors.BORDER_DARK};
-        border-radius: 4px;
+        border-radius: {Colors.RADIUS}px;
         padding: 6px 8px;
         background-color: transparent;
         selection-background-color: {Colors.alpha("PRIMARY", 0.6)};
@@ -307,11 +305,11 @@ def _build_QSpinBox_style():
         background-color: {Colors.BG_SECONDARY};
     }}
     QSpinBox::up-button {{
-        border-top-right-radius: 3px;
+        border-top-right-radius: {Colors.RADIUS - 1}px;
         border-bottom: none;
     }}
     QSpinBox::down-button {{
-        border-bottom-right-radius: 3px;
+        border-bottom-right-radius: {Colors.RADIUS - 1}px;
     }}
     QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
         background-color: {Colors.BG_TERTIARY};
@@ -327,7 +325,7 @@ def _build_QDoubleSpinBox_style():
     return f"""
     QDoubleSpinBox {{
         border: 1px solid {Colors.BORDER_DARK};
-        border-radius: 4px;
+        border-radius: {Colors.RADIUS}px;
         padding: 6px 8px;
         background-color: transparent;
         selection-background-color: {Colors.alpha("PRIMARY", 0.6)};
@@ -349,11 +347,11 @@ def _build_QDoubleSpinBox_style():
         background-color: {Colors.BG_SECONDARY};
     }}
     QDoubleSpinBox::up-button {{
-        border-top-right-radius: 3px;
+        border-top-right-radius: {Colors.RADIUS - 1}px;
         border-bottom: none;
     }}
     QDoubleSpinBox::down-button {{
-        border-bottom-right-radius: 3px;
+        border-bottom-right-radius: {Colors.RADIUS - 1}px;
     }}
     QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {{
         background-color: {Colors.BG_TERTIARY};
@@ -369,7 +367,7 @@ def _build_QComboBox_style():
     return f"""
     QComboBox {{
         border: 1px solid {Colors.BORDER_DARK};
-        border-radius: 4px;
+        border-radius: {Colors.RADIUS}px;
         min-height: {Colors.WIDGET_HEIGHT - 2}px;
         padding: 0px 8px;
         background: transparent;
@@ -391,7 +389,7 @@ def _build_QComboBox_style():
     }}
     QComboBox QAbstractItemView {{
         border: 1px solid {Colors.BORDER_DARK};
-        border-radius: 4px;
+        border-radius: {Colors.RADIUS}px;
         outline: none;
         background: {Colors.BG_SECONDARY};
         selection-background-color: {Colors.alpha("PRIMARY", 0.3)};
@@ -496,7 +494,7 @@ def _build_QTable_style():
     return f"""
     QTableWidget {{
         border: 1px solid {Colors.BORDER_DARK};
-        border-radius: 4px;
+        border-radius: {Colors.RADIUS}px;
         background-color: transparent;
         outline: none;
         gridline-color: {Colors.BORDER_DARK};
@@ -613,7 +611,7 @@ def _build_QMessageBox_style():
     }}
     QMessageBox QPushButton {{
         border: 1px solid {Colors.BORDER_DARK};
-        border-radius: 4px;
+        border-radius: {Colors.RADIUS}px;
         padding: 6px 16px;
         min-width: 80px;
     }}
@@ -634,7 +632,7 @@ def _build_QMessageBox_style():
     }}
     QMessageBox QTextEdit {{
         border: 1px solid {Colors.BORDER_DARK};
-        border-radius: 4px;
+        border-radius: {Colors.RADIUS}px;
         padding: 8px;
     }}
 """
@@ -850,7 +848,11 @@ def _get_nswindow(widget):
 
 
 def _apply_macos_titlebar(ns_win, hide_title=False):
-    """Make a native window's title bar transparent with themed background."""
+    """Make a native window's title bar transparent with themed background.
+
+    When *hide_title* is True (main window only), the content view extends
+    behind the title bar so the tab bar sits alongside the traffic lights.
+    """
     try:
         import ctypes
         import ctypes.util
@@ -870,6 +872,63 @@ def _apply_macos_titlebar(ns_win, hide_title=False):
             send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_long]
             send.restype = ctypes.c_void_p
             send(ns_win, objc.sel_registerName(b"setTitleVisibility:"), 1)
+
+            # Extend content behind the title bar
+            send.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            send.restype = ctypes.c_ulong
+            mask = send(ns_win, objc.sel_registerName(b"styleMask"))
+            mask |= 1 << 15  # NSWindowStyleMaskFullSizeContentView
+            send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong]
+            send.restype = ctypes.c_void_p
+            send(ns_win, objc.sel_registerName(b"setStyleMask:"), mask)
+
+            # Invisible toolbar so macOS enlarges the title bar region and
+            # vertically centers the traffic lights with the tab bar.
+            NSToolbar = objc.objc_getClass(b"NSToolbar")
+            send.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            send.restype = ctypes.c_void_p
+            toolbar = send(NSToolbar, objc.sel_registerName(b"alloc"))
+
+            NSString = objc.objc_getClass(b"NSString")
+            send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p]
+            send.restype = ctypes.c_void_p
+            tb_id = send(
+                NSString,
+                objc.sel_registerName(b"stringWithUTF8String:"),
+                b"mosaic",
+            )
+            send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+            send.restype = ctypes.c_void_p
+            toolbar = send(
+                toolbar, objc.sel_registerName(b"initWithIdentifier:"), tb_id
+            )
+            send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
+            send.restype = ctypes.c_void_p
+            send(
+                toolbar,
+                objc.sel_registerName(b"setShowsBaselineSeparator:"),
+                False,
+            )
+            send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+            send.restype = ctypes.c_void_p
+            send(ns_win, objc.sel_registerName(b"setToolbar:"), toolbar)
+
+            # Unified compact style — minimal height increase
+            send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_long]
+            send.restype = ctypes.c_void_p
+            send(ns_win, objc.sel_registerName(b"setToolbarStyle:"), 4)
+
+            # Hide the toolbar separator line
+            send(ns_win, objc.sel_registerName(b"setTitlebarSeparatorStyle:"), 0)
+
+            # Allow dragging the window by any non-interactive background
+            send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
+            send.restype = ctypes.c_void_p
+            send(
+                ns_win,
+                objc.sel_registerName(b"setMovableByWindowBackground:"),
+                True,
+            )
 
         _update_macos_titlebar_color(ns_win)
     except Exception:
@@ -955,13 +1014,13 @@ def install_macos_titlebar_filter():
                 and hasattr(obj, "isWindow")
                 and obj.isWindow()
             ):
+                from qtpy.QtWidgets import QMainWindow
+
+                if isinstance(obj, QMainWindow):
+                    return False
                 ns_win = _get_nswindow(obj)
                 if ns_win is not None:
-                    from qtpy.QtWidgets import QMainWindow
-
-                    _apply_macos_titlebar(
-                        ns_win, hide_title=isinstance(obj, QMainWindow)
-                    )
+                    _apply_macos_titlebar(ns_win)
             return False
 
     app = QApplication.instance()

@@ -657,7 +657,7 @@ class DataContainerInteractor(QObject):
         """Synchronize vtk actors and tree data structure with subsequent render."""
         renderer = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
-        current_actors = set(self.container.get_actors())
+        current_actors = set(self.container.get_actors(include_lod=True))
         actors_to_remove = self.rendered_actors - current_actors
         for actor in actors_to_remove:
             renderer.RemoveViewProp(actor)

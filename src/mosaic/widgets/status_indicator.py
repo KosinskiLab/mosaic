@@ -710,7 +710,7 @@ class StatusIndicator:
                 f"""
                 QPushButton {{
                     padding: 0px; margin: 0px; border: none; border-radius: 4px;
-                    color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;
+                    color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;
                 }}
                 QPushButton:hover {{
                     background: {Colors.BG_HOVER};
@@ -732,7 +732,7 @@ class StatusIndicator:
         ):
             if hasattr(self, label):
                 getattr(self, label).setStyleSheet(
-                    f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+                    f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
                 )
 
     def _setup_status_bar(self):
@@ -748,7 +748,7 @@ class StatusIndicator:
         self.task_label = QLabel()
         self.task_label.setFixedWidth(150)
         self.task_label.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
         )
         self._task_timer = QTimer()
         self._task_timer.setSingleShot(True)
@@ -758,7 +758,7 @@ class StatusIndicator:
         self.progress_label.setFixedWidth(120)
         self.progress_label.setVisible(False)
         self.progress_label.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
         )
 
         self.progress_bar = QProgressBar()
@@ -784,19 +784,19 @@ class StatusIndicator:
         self.progress_count.setFixedWidth(35)
         self.progress_count.setVisible(False)
         self.progress_count.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
         )
 
         self.mode_label = QLabel("Viewing")
         self.mode_label.setFixedWidth(55)
         self.mode_label.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
         )
 
         self.target_label = QLabel("Clusters")
         self.target_label.setFixedWidth(55)
         self.target_label.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
         )
 
         self.spinner = TextSpinnerLabel()
@@ -815,7 +815,7 @@ class StatusIndicator:
             f"""
             QPushButton {{
                 padding: 0px; margin: 0px; border: none; border-radius: 4px;
-                color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;
+                color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;
             }}
             QPushButton:hover {{
                 background: {Colors.BG_HOVER};

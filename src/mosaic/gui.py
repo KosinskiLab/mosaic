@@ -7,6 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import os
+import sys
 from typing import List
 from os.path import exists
 
@@ -115,7 +116,8 @@ class App(QMainWindow):
         self.interactor.AddObserver("KeyPressEvent", self.on_key_press)
         self.interactor.SetDesiredUpdateRate(Settings.rendering.target_fps)
 
-        self.tab_bar = TabBar()
+        left = 78 if sys.platform == "darwin" else 8
+        self.tab_bar = TabBar(margins=(left, 0, 8, 0))
 
         self.setup_widgets()
         self.tab_ribbon = RibbonToolBar(self)
@@ -167,7 +169,13 @@ class App(QMainWindow):
 
         self.tabs[0][0].show_ribbon()
 
-        layout.addWidget(self.tab_bar)
+        if sys.platform == "darwin":
+            self.setContentsMargins(0, 38, 0, 0)
+            self.tab_bar.setParent(self)
+            self.tab_bar.show()
+            self.tab_bar.raise_()
+        else:
+            layout.addWidget(self.tab_bar)
         layout.addWidget(self.tab_ribbon)
 
         self.ribbon_separator = QFrame()
@@ -264,6 +272,13 @@ class App(QMainWindow):
 
     def show(self):
         """Override show to restore saved geometry or use default size."""
+        if sys.platform == "darwin":
+            from .stylesheets import _get_nswindow, _apply_macos_titlebar
+
+            ns_win = _get_nswindow(self)
+            if ns_win:
+                _apply_macos_titlebar(ns_win, hide_title=True)
+
         saved = Settings.ui.window_geometry
         if saved and self.restoreGeometry(saved):
             super().show()
@@ -408,11 +423,7 @@ class App(QMainWindow):
         if not hasattr(self, "cdata"):
             return None
 
-        from .actor import ActorFactory  # noqa: E402
-
-        if not ActorFactory().is_synced():
-            ActorFactory().update_from_settings()
-            self.cdata.refresh_actors()
+        self.cdata.refresh_lod()
 
         btm = BackgroundTaskManager.instance()
         target_workers = int(Settings.rendering.parallel_worker)
@@ -616,6 +627,8 @@ class App(QMainWindow):
         self.ribbon_separator.setStyleSheet(f"background: {Colors.BORDER_DARK};")
 
         self.tab_bar._on_theme_changed()
+        if hasattr(self, "status_indicator"):
+            self.status_indicator._on_theme_changed()
         if hasattr(self, "_tab_gear"):
             self._tab_gear.setIcon(icon("ph.gear", role="muted"))
         if hasattr(self, "_session_list_widget"):
@@ -636,6 +649,11 @@ class App(QMainWindow):
             }}
         """
         )
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if sys.platform == "darwin" and hasattr(self, "tab_bar"):
+            self.tab_bar.setGeometry(0, 0, self.width(), 38)
 
     def changeEvent(self, event):
         if event.type() == QEvent.Type.PaletteChange:
