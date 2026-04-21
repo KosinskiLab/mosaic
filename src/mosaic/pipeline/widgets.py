@@ -600,14 +600,33 @@ class PipelineTreeWidget(QTreeWidget):
         """
         )
 
+        self._add_tail_spacer()
+
+    def _add_tail_spacer(self):
+        self._tail_spacer = QTreeWidgetItem()
+        self.addTopLevelItem(self._tail_spacer)
+        spacer = QWidget()
+        spacer.setFixedHeight(120)
+        spacer.setStyleSheet("background: transparent;")
+        self.setItemWidget(self._tail_spacer, 0, spacer)
+
+    def clear(self):
+        super().clear()
+        self._add_tail_spacer()
+
+    def _insert_before_spacer(self, item):
+        idx = self.indexOfTopLevelItem(self._tail_spacer)
+        self.insertTopLevelItem(idx, item)
+
     def add_operation_card(self, card_widget):
         """Add operation card to list."""
 
         from ..icons import icon_pixmap
 
-        if self.topLevelItemCount() > 0:
+        spacer_idx = self.indexOfTopLevelItem(self._tail_spacer)
+        if spacer_idx > 0:
             separator_item = QTreeWidgetItem()
-            self.addTopLevelItem(separator_item)
+            self._insert_before_spacer(separator_item)
 
             separator = QWidget()
             layout = QHBoxLayout(separator)
@@ -627,34 +646,13 @@ class PipelineTreeWidget(QTreeWidget):
             self.setItemWidget(separator_item, 0, separator)
 
         item = QTreeWidgetItem()
-        self.addTopLevelItem(item)
+        self._insert_before_spacer(item)
         self.setItemWidget(item, 0, card_widget)
 
         card_widget.removed.connect(lambda w: self._remove_card(item))
         card_widget.settings_changed.connect(lambda: self.scheduleDelayedItemsLayout())
-        self._update_tail_spacer()
         self.pipeline_changed.emit()
         return item
-
-    def _update_tail_spacer(self):
-        """Maintain an empty spacer item at the end for overscroll."""
-        # Remove existing spacer if present
-        if hasattr(self, "_tail_spacer") and self._tail_spacer is not None:
-            try:
-                idx = self.indexOfTopLevelItem(self._tail_spacer)
-                if idx >= 0:
-                    self.takeTopLevelItem(idx)
-            except RuntimeError:
-                pass
-            self._tail_spacer = None
-
-        spacer_item = QTreeWidgetItem()
-        self.addTopLevelItem(spacer_item)
-        spacer = QWidget()
-        spacer.setFixedHeight(120)
-        spacer.setStyleSheet("background: transparent;")
-        self.setItemWidget(spacer_item, 0, spacer)
-        self._tail_spacer = spacer_item
 
     def _remove_card(self, card_item):
         """Remove card and update graph connectivity."""
@@ -689,18 +687,20 @@ class PipelineTreeWidget(QTreeWidget):
 
         # Remove preceding separator if it exists
         if card_index > 0:
-            prev_index = card_index - 1
-            prev_widget = self.itemWidget(self.topLevelItem(prev_index), 0)
-            if prev_widget and not isinstance(prev_widget, OperationCardWidget):
-                self.takeTopLevelItem(prev_index)
+            prev_item = self.topLevelItem(card_index - 1)
+            if prev_item is not self._tail_spacer:
+                prev_widget = self.itemWidget(prev_item, 0)
+                if prev_widget and not isinstance(prev_widget, OperationCardWidget):
+                    self.takeTopLevelItem(card_index - 1)
 
         # If this was the first card, also remove the separator connecting to the next
         if card_index == 0:
-            next_widget = self.itemWidget(self.topLevelItem(card_index), 0)
-            if next_widget and not isinstance(next_widget, OperationCardWidget):
-                self.takeTopLevelItem(card_index)
+            next_item = self.topLevelItem(card_index)
+            if next_item is not self._tail_spacer:
+                next_widget = self.itemWidget(next_item, 0)
+                if next_widget and not isinstance(next_widget, OperationCardWidget):
+                    self.takeTopLevelItem(card_index)
 
-        self._update_tail_spacer()
         self.pipeline_changed.emit()
 
     def get_pipeline_config(self):

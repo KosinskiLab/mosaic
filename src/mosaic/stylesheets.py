@@ -129,9 +129,10 @@ class Colors:
         """Return True if the current palette is dark."""
         return cls.PRIMARY == cls.DARK["PRIMARY"]
 
-    WIDGET_HEIGHT = 30  # Standard height for input widgets (px)
     RADIUS = 6  # Standard border radius for controls (px)
+    WIDGET_HEIGHT = 30  # Standard height for input widgets (px)
 
+    # Standard coordinate axis colors
     AXIS = ((0.8, 0.2, 0.2), (0.26, 0.65, 0.44), (0.2, 0.4, 0.8))
 
     ENTITY = [
@@ -140,7 +141,7 @@ class Colors:
         (0.32, 0.70, 0.40),  # Malachite
         (0.72, 0.32, 0.78),  # Amethyst
         (0.95, 0.50, 0.20),  # Tangerine
-        (0.22, 0.42, 0.72),  # Cobalt
+        (0.25, 0.20, 0.72),  # Sapphire
         (0.85, 0.35, 0.55),  # Cerise
         (0.45, 0.75, 0.30),  # Chartreuse
         (0.55, 0.25, 0.60),  # Plum
@@ -158,7 +159,7 @@ class Colors:
         (0.28, 0.55, 0.45),  # Teal
         (0.82, 0.65, 0.55),  # Peach
         (0.48, 0.38, 0.55),  # Grape
-        (0.90, 0.25, 0.20),  # Vermillion red
+        (0.80, 0.42, 0.30),  # Terracotta
     ]
 
     ANNOTATION = [tuple(min(1.0, c + 0.5) for c in color) for color in ENTITY]
@@ -532,6 +533,7 @@ def _build_QToolTip_style():
         color: {Colors.TEXT_PRIMARY};
         padding: 2px 2px;
         font-size: {Typography.SMALL}px;
+        border: none;
     }}
 """
 

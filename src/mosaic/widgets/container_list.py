@@ -844,7 +844,8 @@ class SessionListWidget(QWidget):
         self._rebuild_items()
 
     def clear_sessions(self):
-        self._save_current()
+        if self._auto_save and self._session_modified:
+            self.save_current()
         self.session_files.clear()
         self.current_index = -1
         self._rebuild_items()
@@ -857,7 +858,11 @@ class SessionListWidget(QWidget):
         self._update_highlight()
 
     def save_current(self):
-        return self._save_current()
+        if self.current_index < 0 or self.current_index >= len(self.session_files):
+            return None
+        filepath = self.session_files[self.current_index]
+        self._cdata.to_file(filepath)
+        self._session_modified = False
 
     def reload_current(self):
         if self.current_index < 0:
@@ -900,14 +905,6 @@ class SessionListWidget(QWidget):
 
     def _mark_modified(self):
         self._session_modified = True
-
-    def _save_current(self):
-        if self.current_index < 0 or not self._session_modified:
-            return None
-        if self._auto_save and self._active:
-            filepath = self.session_files[self.current_index]
-            self._cdata.to_file(filepath)
-            self._session_modified = False
 
     def _prompt_save_if_needed(self):
         """Prompt to save if there are unsaved changes. Returns True to proceed, False to cancel."""
@@ -1002,7 +999,8 @@ class SessionListWidget(QWidget):
         if (index := self._tree.indexOfTopLevelItem(item)) == self.current_index:
             return None
 
-        self._save_current()
+        if self._auto_save and self._session_modified:
+            self.save_current()
         self.current_index = index
         self._update_highlight()
         filepath = item.data(0, Qt.ItemDataRole.UserRole)

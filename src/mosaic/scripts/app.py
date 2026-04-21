@@ -24,22 +24,29 @@ from mosaic.stylesheets import (
     install_macos_titlebar_filter,
 )
 
+try:
+    from mosaic.onboarding.chapters import all_chapters
+    from mosaic.onboarding import launch_onboarding
+
+    HAS_ONBOARDING = True
+except Exception:
+    HAS_ONBOARDING = False
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", action="version", version=f"{__version__}")
-    parser.add_argument(
-        "--onboard",
-        nargs="?",
-        const="__list__",
-        metavar="CHAPTER",
-        help="Launch onboarding walkthrough. Run without argument to list chapters.",
-    )
+    if HAS_ONBOARDING:
+        parser.add_argument(
+            "--onboard",
+            nargs="?",
+            const="__list__",
+            metavar="CHAPTER",
+            help="Launch onboarding walkthrough. Run without argument to list chapters.",
+        )
     args = parser.parse_args()
 
-    if args.onboard == "__list__":
-        from mosaic.onboarding.chapters import all_chapters
-
+    if HAS_ONBOARDING and args.onboard == "__list__":
         print("\nAvailable onboarding chapters:\n")
         for ch in all_chapters():
             print(f"  {ch.id:<20} {ch.description}")
@@ -86,9 +93,8 @@ def main():
     window = App()
     window.show()
 
-    if args.onboard:
+    if HAS_ONBOARDING and args.onboard:
         from qtpy.QtCore import QTimer
-        from mosaic.onboarding import launch_onboarding
 
         QTimer.singleShot(200, lambda: launch_onboarding(window, args.onboard))
 

@@ -23,7 +23,7 @@ from qtpy.QtWidgets import (
     QMessageBox,
     QCheckBox,
 )
-from qtpy.QtCore import Qt, QSize
+from qtpy.QtCore import Qt
 from qtpy.QtGui import QFont
 
 from .executor import generate_runs
@@ -46,7 +46,7 @@ class PipelineBuilderDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Pipeline Builder")
         self.setMinimumSize(1100, 750)
-        self.resize(1300, 850)
+        self.resize(1200, 850)
         self.setup_ui()
 
     def setup_ui(self):
@@ -119,11 +119,8 @@ class PipelineBuilderDialog(QDialog):
         ]
 
         self.preset_buttons = {}
-        for idx, (name, icon_name) in enumerate(preset_buttons):
+        for idx, (name, _) in enumerate(preset_buttons):
             btn = QPushButton(name)
-            btn.setIcon(icon(icon_name, color=Colors.ICON))
-            btn.setIconSize(QSize(24, 24))
-            btn.setFixedHeight(32)
 
             preset_key = name.replace("\n", " ")
             btn.clicked.connect(lambda checked, n=preset_key: self._load_preset(n))
@@ -473,6 +470,9 @@ class PipelineBuilderDialog(QDialog):
 
         if not filename:
             return None
+
+        if not filename.endswith(".json"):
+            filename += ".json"
 
         try:
             config = self.get_pipeline_config()
