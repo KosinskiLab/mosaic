@@ -24,7 +24,7 @@ from ._utils import CompatibilityUnpickler
 
 _INDEX_STRUCT = struct.Struct(">I")
 _FORMAT_VERSION = 1
-_SESSION_EXTENSIONS = (".mosaic", ".pickle")
+_SESSION_EXTENSIONS = (".pickle",)
 
 
 def is_session_file(filepath: str) -> bool:

@@ -181,8 +181,7 @@ def compile_run(run_config: dict) -> List[Tuple[str, str]]:
         if op_id == "save_session":
             output_dir = settings.get("output_dir", ".")
             os.makedirs(output_dir, exist_ok=True)
-            ext = ".pickle" if settings.get("use_legacy_format") else ".mosaic"
-            output_path = os.path.join(output_dir, f"{run_config['run_id']}{ext}")
+            output_path = os.path.join(output_dir, f"{run_config['run_id']}.pickle")
             steps.append((op_id, f"save {shlex.quote(output_path)}"))
             continue
 
@@ -293,8 +292,7 @@ def execute_run(
             output_path = None
 
             if op["operation_id"] == "save_session":
-                ext = ".pickle" if settings.get("use_legacy_format") else ".mosaic"
-                output_path = os.path.join(output_dir, f"{run_config['run_id']}{ext}")
+                output_path = os.path.join(output_dir, f"{run_config['run_id']}.pickle")
             elif op["operation_id"] == "export_data":
                 output_base = os.path.join(output_dir, run_config["run_id"])
                 output_path = f"{output_base}.{settings.get('format', 'star')}"

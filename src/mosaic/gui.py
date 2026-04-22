@@ -609,7 +609,7 @@ class App(QMainWindow):
             return
         m = panel._MARGIN
         pos = self._tab_gear.mapToGlobal(self._tab_gear.rect().bottomRight())
-        panel.move(max(0, pos.x() - panel.width() + m), pos.y() + 4 - m)
+        panel.move(pos.x() - panel.width() + m, pos.y() + 4 - m)
         panel.show()
         panel.raise_()
 
@@ -1379,9 +1379,7 @@ class App(QMainWindow):
             self,
             "Open Session",
             "",
-            "Session Files (*.mosaic *.pickle)"
-            ";;Mosaic Sessions (*.mosaic)"
-            ";;Legacy Pickle (*.pickle)",
+            "Session Files (*.pickle)",
         )
         if not file_path:
             return -1
@@ -1542,18 +1540,18 @@ class App(QMainWindow):
 
     def save_session(self):
         file_dialog = QFileDialog()
-        file_dialog.setDefaultSuffix("mosaic")
+        file_dialog.setDefaultSuffix("pickle")
         file_path, _ = file_dialog.getSaveFileName(
             self,
             "Save File",
             "",
-            "Mosaic Sessions (*.mosaic);;Legacy Pickle (*.pickle)",
+            "Session Files (*.pickle)",
         )
         if not file_path:
             return -1
 
-        if not file_path.lower().endswith((".mosaic", ".pickle")):
-            file_path += ".mosaic"
+        if not file_path.lower().endswith(".pickle"):
+            file_path += ".pickle"
         self.cdata.to_file(file_path)
 
     def update_recent_files_menu(self):

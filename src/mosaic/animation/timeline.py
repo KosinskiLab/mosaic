@@ -376,7 +376,6 @@ class TimelineWidget(QScrollArea):
 
     def set_current_frame(self, frame):
         self.content.set_current_frame(frame)
-        QApplication.processEvents()
 
     @property
     def selected_track(self):

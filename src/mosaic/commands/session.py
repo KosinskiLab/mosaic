@@ -371,7 +371,7 @@ class Session:
     def load_session(self, filepath: str, persist: bool = True) -> None:
         """Restore session state from a session file.
 
-        Handles both legacy ``.pickle`` and ``.mosaic`` formats.
+        Handles both ``.pickle`` and indexed ``.mosaic`` formats.
 
         Parameters
         ----------

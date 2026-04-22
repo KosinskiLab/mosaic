@@ -828,9 +828,7 @@ class SessionListWidget(QWidget):
             self,
             "Add Session Files",
             "",
-            "Session Files (*.mosaic *.pickle)"
-            ";;Mosaic Sessions (*.mosaic)"
-            ";;Legacy Pickle (*.pickle)",
+            "Session Files (*.pickle)",
         )
         if not filepaths:
             return None

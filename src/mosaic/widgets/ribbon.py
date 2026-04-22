@@ -1,5 +1,5 @@
 from qtpy.QtGui import QPainter, QPainterPath, QColor, QPen
-from qtpy.QtCore import Qt, QSize, Signal, QPoint, QTimer, QRectF
+from qtpy.QtCore import Qt, QSize, Signal, QPoint, QTimer, QRectF, QEvent
 from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -32,7 +32,7 @@ class SettingsPanel(QFrame):
         self.method_widgets, self.current_method_widgets = {}, []
 
         self.setWindowFlags(
-            Qt.WindowType.Popup
+            Qt.WindowType.Tool
             | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.NoDropShadowWindowHint
         )
@@ -196,15 +196,37 @@ class SettingsPanel(QFrame):
         # Offset X by margin (8px) to align panel border with button border
         # Offset Y by -1 to overlap with button's bottom edge
         self.move(global_pos.x() - 8, global_pos.y() - 1)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         self.show()
+        QApplication.instance().installEventFilter(self)
 
         if hasattr(button, "_set_panel_open"):
             button._set_panel_open(True)
 
     def closeEvent(self, event):
+        app = QApplication.instance()
+        if app is not None:
+            app.removeEventFilter(self)
         if self.parent_button and hasattr(self.parent_button, "_set_panel_open"):
             self.parent_button._set_panel_open(False)
         super().closeEvent(event)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.MouseButtonPress:
+            if QApplication.activeModalWidget() is not None:
+                return False
+            click = event.globalPosition().toPoint()
+            if self.geometry().contains(click):
+                return False
+            if self.parent_button and self.parent_button.rect().contains(
+                self.parent_button.mapFromGlobal(click)
+            ):
+                return False
+            self.close()
+        elif event.type() == QEvent.Type.KeyPress:
+            if event.key() == Qt.Key.Key_Escape:
+                self.close()
+        return False
 
     def paintEvent(self, event):
         """Custom paint to draw connected border with button."""
