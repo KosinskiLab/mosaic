@@ -85,8 +85,6 @@ class MeshMappingDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
-        from ..icons import footer_margin
-
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -162,7 +160,7 @@ class MeshMappingDialog(QDialog):
         mapping_group.setLayout(mapping_layout)
         layout.addWidget(mapping_group)
 
-        self.footer = DialogFooter(dialog=self, margin=footer_margin)
+        self.footer = DialogFooter(dialog=self, margin=(0, 10, 0, 0))
         self.footer.accept_button.setEnabled(False)
         layout.addWidget(self.footer)
 

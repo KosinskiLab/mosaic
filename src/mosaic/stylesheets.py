@@ -775,7 +775,7 @@ def _build_QDockWidget_style():
 """
 
 
-# The 12 styles concatenated in the global app stylesheet
+# This is used by the main application to achieve consistent styling
 _GLOBAL_STYLES = [
     _build_QMessageBox_style,
     _build_QPushButton_style,
@@ -850,8 +850,11 @@ def _get_nswindow(widget):
 def _apply_macos_titlebar(ns_win, hide_title=False):
     """Make a native window's title bar transparent with themed background.
 
-    When *hide_title* is True (main window only), the content view extends
-    behind the title bar so the tab bar sits alongside the traffic lights.
+    Parameters
+    ----------
+    hide_title : bool, optional
+        Content view extends behind the title bar, e.g., make tab bar sit
+        alongside traffic lights.
     """
     try:
         import ctypes

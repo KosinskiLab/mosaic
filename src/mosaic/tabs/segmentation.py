@@ -321,10 +321,14 @@ class ClusterTransformer:
 
 
 class PlaneTrimmer:
+    _ID_ARRAY_NAME = "_TrimOrigIds"
+
     def __init__(self, data):
         self.data = data
         self.plane1, self.plane2 = None, None
         self._update_throttle = Throttle(self._update_selection, interval_ms=100)
+        self._clip_function = None
+        self._tagged_geometries = []
 
     @property
     def active(self):
@@ -338,6 +342,10 @@ class PlaneTrimmer:
             self.plane_widget2.Off()
             self.plane_widget2.SetEnabled(0)
 
+        for geometry in self._tagged_geometries:
+            geometry._data.GetPointData().RemoveArray(self._ID_ARRAY_NAME)
+        self._tagged_geometries = []
+        self._clip_function = None
         self.plane_widget1, self.plane_widget2 = None, None
         self.plane1, self.plane2 = None, None
 
@@ -353,6 +361,14 @@ class PlaneTrimmer:
     def _setup(self):
         self.plane1 = vtk.vtkPlane()
         self.plane2 = vtk.vtkPlane()
+
+        self._clip_function = vtk.vtkImplicitBoolean()
+        self._clip_function.SetOperationTypeToIntersection()
+        self._clip_function.AddFunction(self.plane1)
+        self._clip_function.AddFunction(self.plane2)
+
+        self._tag_geometries()
+
         self.plane_widget1 = self._setup_plane_widget((1, 0.8, 0.8))
         self.plane_widget2 = self._setup_plane_widget((1, 0.8, 0.8))
 
@@ -362,6 +378,22 @@ class PlaneTrimmer:
         bounds = self._get_scene_bounds()
         self.plane_widget1.SetOrigin(bounds[0], bounds[2], bounds[4])
         self.plane_widget2.SetOrigin(bounds[0], bounds[2], bounds[5])
+
+    def _tag_geometries(self):
+        """Tag visible geometries with point index arrays for VTK extraction."""
+        from vtkmodules.util.numpy_support import numpy_to_vtk
+
+        for geometry in self.data.container.data:
+            if not geometry.visible:
+                continue
+            polydata = geometry._data
+            n = polydata.GetNumberOfPoints()
+            if n == 0:
+                continue
+            ids = numpy_to_vtk(np.arange(n, dtype=np.int64), deep=True)
+            ids.SetName(self._ID_ARRAY_NAME)
+            polydata.GetPointData().AddArray(ids)
+            self._tagged_geometries.append(geometry)
 
     def align_to_axis(self, widget, axis: Literal["x", "y", "z"]):
         """Align plane normal to specified axis."""
@@ -457,36 +489,63 @@ class PlaneTrimmer:
 
         return bounds
 
+    def _bounds_in_frustum(self, bounds):
+        """Check if geometry bounds intersect the region between the planes."""
+        xmin, xmax, ymin, ymax, zmin, zmax = bounds
+        corners = [
+            (x, y, z) for x in (xmin, xmax) for y in (ymin, ymax) for z in (zmin, zmax)
+        ]
+        for plane in (self.plane1, self.plane2):
+            if all(plane.EvaluateFunction(c) > 0 for c in corners):
+                return False
+        return True
+
+    def _ensure_tagged(self, geometry):
+        """Tag a geometry with point IDs if not already tagged."""
+        from vtkmodules.util.numpy_support import numpy_to_vtk
+
+        polydata = geometry._data
+        if polydata.GetPointData().GetArray(self._ID_ARRAY_NAME) is not None:
+            return
+        n = polydata.GetNumberOfPoints()
+        ids = numpy_to_vtk(np.arange(n, dtype=np.int64), deep=True)
+        ids.SetName(self._ID_ARRAY_NAME)
+        polydata.GetPointData().AddArray(ids)
+        self._tagged_geometries.append(geometry)
+
     def _update_selection(self):
         """Update point selection based on current plane positions."""
-        from ..interactor import (
-            _bounds_in_frustum,
-            _points_in_frustum,
-        )
+        from vtkmodules.vtkFiltersPoints import vtkExtractPoints
+        from vtkmodules.util.numpy_support import vtk_to_numpy
 
         self.data.point_selection.clear()
-        plane_norm = np.empty((2, 3), dtype=np.float32)
-        plane_orig = np.empty((2, 3), dtype=np.float32)
-
-        plane_norm[0] = self.plane1.GetNormal()
-        plane_norm[1] = self.plane2.GetNormal()
-        plane_orig[0] = self.plane1.GetOrigin()
-        plane_orig[1] = self.plane2.GetOrigin()
 
         for geometry in self.data.container.data:
             if not geometry.visible:
                 continue
 
-            bounds = geometry._data.GetBounds()
-            if not _bounds_in_frustum(bounds, plane_norm, plane_orig):
+            polydata = geometry._data
+            if polydata.GetNumberOfPoints() == 0:
                 continue
 
-            points = geometry.points
-            ids = np.where(
-                np.invert(_points_in_frustum(points, plane_norm, plane_orig))
-            )[0]
-            if len(ids) == 0:
+            if not self._bounds_in_frustum(polydata.GetBounds()):
                 continue
 
-            self.data.point_selection[geometry.uuid] = ids
+            self._ensure_tagged(geometry)
+
+            extract = vtkExtractPoints()
+            extract.SetInputData(polydata)
+            extract.SetImplicitFunction(self._clip_function)
+            extract.SetExtractInside(False)
+            extract.Update()
+
+            output = extract.GetOutput()
+            if output.GetNumberOfPoints() == 0:
+                continue
+
+            orig_ids = vtk_to_numpy(output.GetPointData().GetArray(self._ID_ARRAY_NAME))
+            self.data.point_selection[geometry.uuid] = orig_ids.astype(
+                np.int32, copy=False
+            )
+
         self.data.highlight_selected_points(color=None)

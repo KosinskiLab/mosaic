@@ -86,7 +86,10 @@ class IntelligenceTab(QWidget):
         from ..meshing import equilibrate_fit
 
         geometries = self.cdata.models.get_selected_geometries()
-        if len(geometries) != 1:
+        if len(geometries) == 0:
+            msg = "A mesh needs for equilibration needs to be selected."
+            return QMessageBox.warning(self, "Error", msg)
+        elif len(geometries) > 1:
             msg = "Can only equilibrate a single mesh at a time."
             return QMessageBox.warning(self, "Error", msg)
 
@@ -199,7 +202,6 @@ class IntelligenceTab(QWidget):
         self._screen_dialog = dialog
 
     def _map_fit(self):
-        from ..meshing import mesh_to_cg
         from ..dialogs import MeshMappingDialog
 
         fits = self.cdata.format_datalist("models", mesh_only=True)
@@ -208,12 +210,15 @@ class IntelligenceTab(QWidget):
         if not dialog.exec():
             return -1
 
+        from ..meshing import mesh_to_cg
+
         fit, edge_length, mappings, cast_ray, flip = dialog.get_parameters()
 
         submit_task(
             "Coarse graining",
             mesh_to_cg,
             None,
+            fit._geometry_data,
             edge_length=edge_length,
             output_directory=dialog.get_output_directory(),
             inclusions=mappings,

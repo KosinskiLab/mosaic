@@ -196,8 +196,12 @@ class SettingsPanel(QFrame):
         # Offset X by margin (8px) to align panel border with button border
         # Offset Y by -1 to overlap with button's bottom edge
         self.move(global_pos.x() - 8, global_pos.y() - 1)
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         self.show()
+
+        # Certain SettingsWidgets appear to draw focus. This pre-clears them.
+        focused = self.focusWidget()
+        if focused is not None:
+            focused.clearFocus()
         QApplication.instance().installEventFilter(self)
 
         if hasattr(button, "_set_panel_open"):
