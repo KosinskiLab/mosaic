@@ -74,7 +74,7 @@ def create_setting_widget(setting: Dict):
         if "file_mode" in setting and "mode" not in setting:
             mode = "file" if setting["file_mode"] else "directory"
         widget = PathSelector(
-            placeholder=setting.get("placeholder", None),
+            placeholder=setting.get("description", None),
             mode=mode,
         )
         if "default" in setting:

@@ -32,7 +32,6 @@ class DataContainer:
         self.metadata = {}
         self.base_color = base_color
         self.highlight_color = highlight_color
-        self._last_lod_budget = None
 
     def __len__(self):
         return len(self.data)
@@ -62,7 +61,7 @@ class DataContainer:
                 actors.append(lod)
         return actors
 
-    def refresh_lod(self, budget=None):
+    def refresh_lod(self, budget=None, force=False):
         """Recompute LOD for all geometries based on aggregate scene budget.
 
         Distributes the point budget proportionally across geometries
@@ -86,8 +85,6 @@ class DataContainer:
         if budget is None:
             budget = lod.get_point_budget()
 
-        force = budget != self._last_lod_budget
-        self._last_lod_budget = budget
         budgets = lod.compute_scene_lod(self.data, budget)
         changed = False
 
@@ -158,7 +155,6 @@ class DataContainer:
         """Remove all data associated with the container."""
         self.data.clear()
         self.metadata.clear()
-        self._last_lod_budget = None
 
     def uuid_to_index(self, uuid: str) -> int:
         """Convert a uuid to an index in self.data."""

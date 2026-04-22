@@ -7,7 +7,6 @@ from qtpy.QtWidgets import QWidget, QVBoxLayout, QMessageBox, QApplication, QFil
 
 from ..parallel import submit_task
 from ..widgets.ribbon import create_button
-from ..dialogs import getExistingDirectory
 
 
 class IntelligenceTab(QWidget):
@@ -127,6 +126,7 @@ class IntelligenceTab(QWidget):
 
     def _import_trajectory(
         self,
+        directory: str = "",
         scale: float = 1.0,
         offset: Union[str, float] = 0.0,
         drop_pbc: bool = False,
@@ -138,9 +138,6 @@ class IntelligenceTab(QWidget):
         )
         from ..parallel import submit_io_task
 
-        directory = getExistingDirectory(
-            self, caption="Select directory with DTS trajectory"
-        )
         if not directory:
             return None
 
@@ -270,6 +267,13 @@ class IntelligenceTab(QWidget):
 IMPORT_SETTINGS = {
     "title": "Settings",
     "settings": [
+        {
+            "label": "Trajectory",
+            "parameter": "directory",
+            "type": "PathSelector",
+            "mode": "directory",
+            "description": "Trajectory directory",
+        },
         {
             "label": "Scale",
             "parameter": "scale",

@@ -24,7 +24,7 @@ MEMBRAIN_SETTINGS = {
             "parameter": "model_path",
             "choices": MODEL_PATHS,
             "default": None,
-            "description": "Path to pre-trained model ckpt file.",
+            "description": "Pre-trained membrain model.",
         },
         {
             "type": "number",

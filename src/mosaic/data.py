@@ -41,6 +41,7 @@ class MosaicData:
 
         self.data.attach_area_picker()
         self.active_picker = "data"
+        self._last_lod_budget = None
         self._setup_interaction_lod(vtk_widget)
 
     def open_file(
@@ -203,8 +204,14 @@ class MosaicData:
         bool
             True when any LOD actors changed (renderer sync needed).
         """
-        changed = self._data.refresh_lod()
-        changed |= self._models.refresh_lod()
+        from . import lod
+
+        budget = lod.get_point_budget()
+        force = budget != self._last_lod_budget
+        self._last_lod_budget = budget
+
+        changed = self._data.refresh_lod(budget=budget, force=force)
+        changed |= self._models.refresh_lod(budget=budget, force=force)
         if changed:
             self.data.render()
             self.models.render()

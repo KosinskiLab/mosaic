@@ -907,7 +907,8 @@ class StatusIndicator:
     def show_progress(self, title: str, total: int):
         """Show the center progress bar for a foreground operation."""
         self.progress_label.setText(title)
-        self.progress_bar.setMaximum(total)
+        self.progress_bar.setMaximum(max(total, 1))
+
         self.progress_bar.setValue(0)
         self.progress_count.setText("0%")
         self.progress_label.setVisible(True)

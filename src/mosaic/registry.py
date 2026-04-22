@@ -762,12 +762,12 @@ MethodRegistry.register(
 MethodRegistry.register(
     Operation(
         name="save",
-        description="Save geometries or session (.mosaic) to file.",
+        description="Save geometries or session (.pickle) to file.",
         common_params=(
             Param(
                 "filepath",
                 "path",
-                description="Output path (.mosaic for session, or geometry format).",
+                description="Output path.",
             ),
             Param(
                 "format",
@@ -935,7 +935,7 @@ MethodRegistry.register(
             Method(
                 display_name="Create",
                 internal_name="create",
-                description="Create .mosaic session files from downloaded data.",
+                description="Create session files from downloaded data.",
                 params=(
                     Param(
                         "output_dir",

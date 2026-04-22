@@ -12,6 +12,7 @@ from typing import Dict, List, Any
 from uuid import uuid4
 
 import imageio
+from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
 from qtpy.QtCore import Qt, QTimer, QSize
 from qtpy.QtGui import QKeySequence, QShortcut
 from qtpy.QtWidgets import (
@@ -33,7 +34,7 @@ from qtpy.QtWidgets import (
 from .timeline import TimelineWidget
 from .animations import AnimationType, BaseAnimation
 from .settings import AnimationSettings, ExportDialog
-from ._utils import FrameWriter, capture_frame
+from ._utils import FrameWriter, capture_frame, read_frame
 
 from ..icons import icon
 
@@ -270,14 +271,12 @@ class AnimationComposerDialog(QDialog):
             )
             return
 
-        # Get all actor object IDs
         all_objects = []
         for _, obj in self.cdata.format_datalist("data"):
             all_objects.append(id(obj))
         for _, obj in self.cdata.format_datalist("models"):
             all_objects.append(id(obj))
 
-        # 1. Hide all actors at the start (instant opacity to 0)
         hide_anim = self.add_animation(AnimationType.VISIBILITY)
         if hide_anim:
             hide_anim.name = "Hide Actors"
@@ -290,13 +289,11 @@ class AnimationComposerDialog(QDialog):
             hide_anim.start_frame = 0
             hide_anim.stop_frame = 1
 
-        # 2. Volume slice forward
         forward_slice = self.add_animation(AnimationType.SLICE)
         if forward_slice:
             forward_slice.name = "Slice Forward"
             forward_slice.update_parameters(direction="forward")
 
-        # 3. Reveal all actors at midpoint (instant opacity to 1)
         reveal_anim = self.add_animation(AnimationType.VISIBILITY)
         if reveal_anim:
             reveal_anim.name = "Reveal Actors"
@@ -558,7 +555,7 @@ class AnimationComposerDialog(QDialog):
             parent=self,
         )
         if not dialog.exec():
-            return
+            return None
 
         settings = dialog.get_settings()
         format_name = settings["format"]
@@ -572,7 +569,7 @@ class AnimationComposerDialog(QDialog):
         )
 
         if not filename:
-            return
+            return None
 
         if not filename.endswith(ext):
             filename += ext
@@ -598,6 +595,8 @@ class AnimationComposerDialog(QDialog):
         # Store original state
         original_frame = self.current_frame
         original_size = render_window.GetSize()
+        original_multisamples = render_window.GetMultiSamples()
+        original_alpha = render_window.GetAlphaBitPlanes()
 
         # Use target dimensions from dialog, ensure even for video encoding
         width = target_width
@@ -622,35 +621,49 @@ class AnimationComposerDialog(QDialog):
         else:
             writer = FrameWriter(filename)
 
-        try:
-            from mosaic.dialogs import ProgressDialog
+        from mosaic.widgets.status_indicator import StatusIndicator
 
+        indicator = StatusIndicator.instance()
+        n_frames = len(frames)
+
+        try:
             self._set_preview_visibility(False)
             render_window.SetOffScreenRendering(1)
-
-            # Store original multisamples and apply export settings
-            original_multisamples = render_window.GetMultiSamples()
             render_window.SetMultiSamples(multisamples)
+            render_window.SetAlphaBitPlanes(1 if transparent_bg else 0)
 
-            # Set render window to target dimensions
-            # capture_frame will handle magnification (render larger, then downscale)
-            render_window.SetSize(width, height)
+            render_width = width * magnification
+            render_height = height * magnification
+            render_window.SetSize(render_width, render_height)
             render_window.Render()
 
-            with ProgressDialog(frames, title="Exporting Animation") as progress:
-                for frame_idx in progress:
-                    self.set_current_frame(frame_idx)
-                    render_window.Render()
+            window_to_image = vtkWindowToImageFilter()
+            window_to_image.SetInput(render_window)
+            window_to_image.SetInputBufferTypeToRGBA()
+            window_to_image.SetScale(1)
+            window_to_image.ReadFrontBufferOff()
+            window_to_image.ShouldRerenderOff()
 
-                    frame = self._capture_frame(
-                        transparent_bg=transparent_bg,
-                        magnification=magnification,
-                    )
-                    writer.append_data(frame)
-                    QApplication.processEvents()
+            if indicator is not None:
+                indicator.show_progress("Exporting Animation", total=n_frames)
+
+            for i, frame_idx in enumerate(frames):
+                self.set_current_frame(frame_idx)
+
+                frame = read_frame(
+                    window_to_image,
+                    width,
+                    height,
+                    magnification,
+                    transparent_bg,
+                )
+                writer.append_data(frame)
+
+                if indicator is not None:
+                    indicator.update_progress(i + 1, n_frames)
+                QApplication.processEvents()
 
             writer.close()
-            render_window.SetMultiSamples(original_multisamples)
 
             QMessageBox.information(
                 self, "Export Complete", f"Animation saved to:\n{filename}"
@@ -660,12 +673,15 @@ class AnimationComposerDialog(QDialog):
             QMessageBox.warning(self, "Export Error", f"Failed to export: {e}")
 
         finally:
+            if indicator is not None:
+                indicator.hide_progress()
             self._set_preview_visibility(True)
+            render_window.SetAlphaBitPlanes(original_alpha)
+            render_window.SetMultiSamples(original_multisamples)
             render_window.SetOffScreenRendering(0)
             render_window.SetSize(*original_size)
             render_window.Render()
             self.set_current_frame(original_frame)
-            # Note: Don't restore playback state - export is a deliberate user action
 
     def save_project(self):
         """Save the animation project to a JSON file."""

@@ -98,11 +98,14 @@ class BaseAnimation(ABC):
                 self._update(local_frame)
 
     def _get_rendering_context(self, return_renderer: bool = False):
-        """Return the current camera instance"""
-        renderer = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
-        camera = renderer.GetActiveCamera()
+        """Return the current camera instance (cached)."""
+        if not hasattr(self, "_cached_renderer") or self._cached_renderer is None:
+            self._cached_renderer = (
+                self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
+            )
+        camera = self._cached_renderer.GetActiveCamera()
         if return_renderer:
-            return camera, renderer
+            return camera, self._cached_renderer
         return camera
 
     def _get_progress(self, frame: int):
@@ -224,6 +227,8 @@ class TrajectoryAnimation(BaseAnimation):
         data_frame = max(data_start, min(data_stop - 1, data_frame))
 
         self._trajectory.display_frame(data_frame)
+        # TODO: selection restore should move to reset() once the interactor
+        # preserves highlight state across display_frame calls.
         uuids = self.cdata.models._get_selected_uuids()
         if uuids:
             self.cdata.models.set_selection_by_uuid(uuids)
@@ -359,17 +364,20 @@ class VolumeAnimation(BaseAnimation):
         if self.parameters.get("hide", False):
             viewer.slice.SetVisibility(False)
 
-        # We change the widgets rather than calling the underlying functions
-        # to ensure the GUI is updated accordingly for interactive views
-        current_orientation = viewer.get_orientation()
-        if current_orientation != self.parameters["axis"]:
-            viewer.orientation_selector.setCurrentText(self.parameters["axis"])
+        # Suppress intermediate renders
+        viewer._rendering_suspended = True
+        try:
+            current_orientation = viewer.get_orientation()
+            if current_orientation != self.parameters["axis"]:
+                viewer.orientation_selector.setCurrentText(self.parameters["axis"])
 
-        current_state = self.volume_viewer.primary.get_projection()
-        if current_state != self.parameters["projection"]:
-            viewer.project_selector.setCurrentText(self.parameters["projection"])
+            current_state = self.volume_viewer.primary.get_projection()
+            if current_state != self.parameters["projection"]:
+                viewer.project_selector.setCurrentText(self.parameters["projection"])
 
-        viewer.set_slice(data_frame)
+            viewer.set_slice(data_frame)
+        finally:
+            viewer._rendering_suspended = False
 
 
 class CameraAnimation(BaseAnimation):
@@ -386,6 +394,7 @@ class CameraAnimation(BaseAnimation):
         )
         self._last_progress = 0.0
         self.stop_frame = 180
+        self._transform = vtkTransform()
 
     def get_settings(self) -> List[Dict[str, Any]]:
         return [
@@ -457,15 +466,13 @@ class CameraAnimation(BaseAnimation):
         else:  # z
             rot_axis = view_dir
 
-        # Apply incremental rotation around focal point
-        transform = vtkTransform()
-        transform.Identity()
-        transform.Translate(*focal)
-        transform.RotateWXYZ(delta_angle, *rot_axis)
-        transform.Translate(-focal[0], -focal[1], -focal[2])
+        self._transform.Identity()
+        self._transform.Translate(*focal)
+        self._transform.RotateWXYZ(delta_angle, *rot_axis)
+        self._transform.Translate(-focal[0], -focal[1], -focal[2])
 
-        new_pos = transform.TransformPoint(pos)
-        new_view_up = transform.TransformVector(view_up)
+        new_pos = self._transform.TransformPoint(pos)
+        new_view_up = self._transform.TransformVector(view_up)
 
         camera.SetPosition(*new_pos)
         camera.SetViewUp(*new_view_up)
@@ -595,6 +602,7 @@ class VisibilityAnimation(BaseAnimation):
             {"start_opacity": 1.0, "target_opacity": 0.0, "easing": "instant"}
         )
         self._original_opacities = {}
+        self._cached_actors = None
 
     def get_settings(self) -> List[Dict[str, Any]]:
         return [
@@ -639,6 +647,7 @@ class VisibilityAnimation(BaseAnimation):
             )
             if dialog.exec():
                 selected_objects = dialog.get_selected_objects()
+                self._cached_actors = None
                 self.update_parameters(selected_objects=selected_objects)
 
         except Exception:
@@ -647,21 +656,24 @@ class VisibilityAnimation(BaseAnimation):
         return False
 
     def _get_actors(self):
-        actors = []
+        if self._cached_actors is not None:
+            return self._cached_actors
+
         object_ids = self.parameters.get("selected_objects", [])
         try:
             all_objects = {}
-            for name, obj in self.cdata.format_datalist("data"):
+            for _name, obj in self.cdata.format_datalist("data"):
                 all_objects[id(obj)] = obj
-            for name, obj in self.cdata.format_datalist("models"):
+            for _name, obj in self.cdata.format_datalist("models"):
                 all_objects[id(obj)] = obj
 
-            actors = [all_objects[x].actor for x in object_ids if x in all_objects]
-
+            self._cached_actors = [
+                all_objects[x].actor for x in object_ids if x in all_objects
+            ]
         except Exception:
-            pass
+            return []
 
-        return actors
+        return self._cached_actors
 
     def reset(self) -> None:
         """Restore actors to the opacity they had before this animation touched them."""

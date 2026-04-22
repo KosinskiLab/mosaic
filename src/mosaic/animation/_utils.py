@@ -16,6 +16,62 @@ from vtkmodules.util import numpy_support
 from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
 
 
+def read_frame(
+    window_to_image, target_width, target_height, magnification=1, transparent_bg=False
+):
+    """Read and post-process a frame from a vtkWindowToImageFilter.
+
+    Parameters
+    ----------
+    window_to_image : vtkWindowToImageFilter
+        Filter connected to the render window.
+    target_width, target_height : int
+        Final output dimensions.
+    magnification : int, optional
+        Supersampling factor applied to the render window.
+    transparent_bg : bool, optional
+        Preserve alpha channel when True.
+
+    Returns
+    -------
+    np.ndarray
+        The captured frame as a numpy array (RGB or RGBA).
+    """
+    window_to_image.Modified()
+    window_to_image.Update()
+
+    vtk_image = window_to_image.GetOutput()
+    img_width, img_height, _ = vtk_image.GetDimensions()
+
+    arr = numpy_support.vtk_to_numpy(vtk_image.GetPointData().GetScalars())
+    arr = np.ascontiguousarray(arr.reshape(img_height, img_width, -1)[::-1])
+
+    if magnification > 1:
+        if transparent_bg:
+            alpha_f = arr[:, :, 3:4].astype(np.float32) / 255.0
+            premult = arr.copy()
+            premult[:, :, :3] = np.clip(
+                arr[:, :, :3].astype(np.float32) * alpha_f, 0, 255
+            ).astype(np.uint8)
+            img = Image.fromarray(premult, "RGBA")
+            img = img.resize((target_width, target_height), Image.LANCZOS)
+            arr = np.array(img)
+            out_alpha = arr[:, :, 3:4].astype(np.float32) / 255.0
+            safe_alpha = np.where(out_alpha > 0, out_alpha, 1.0)
+            arr[:, :, :3] = np.clip(
+                arr[:, :, :3].astype(np.float32) / safe_alpha, 0, 255
+            ).astype(np.uint8)
+        else:
+            img = Image.fromarray(np.ascontiguousarray(arr[:, :, :3]), "RGB")
+            img = img.resize((target_width, target_height), Image.LANCZOS)
+            arr = np.array(img)
+
+    if not transparent_bg:
+        arr = np.ascontiguousarray(arr[:, :, :3])
+
+    return arr
+
+
 def capture_frame(
     render_window,
     transparent_bg: bool = False,
@@ -73,15 +129,10 @@ def capture_frame(
     window_to_image.SetInputBufferTypeToRGBA()
     window_to_image.SetScale(1)
     window_to_image.ReadFrontBufferOff()
-    window_to_image.Update()
 
-    vtk_image = window_to_image.GetOutput()
-    img_width, img_height, _ = vtk_image.GetDimensions()
-
-    arr = numpy_support.vtk_to_numpy(vtk_image.GetPointData().GetScalars())
-    # Reshape, flip vertically, and copy to ensure contiguous memory
-    # (vtk_to_numpy returns a view, [::-1] creates non-contiguous view)
-    arr = np.ascontiguousarray(arr.reshape(img_height, img_width, -1)[::-1])
+    arr = read_frame(
+        window_to_image, target_width, target_height, magnification, transparent_bg
+    )
 
     render_window.SetAlphaBitPlanes(original_alpha_bit_planes)
 
@@ -91,34 +142,6 @@ def capture_frame(
     if size_changed:
         render_window.SetSize(*original_size)
         render_window.Render()
-
-    # Downscale if magnification was applied
-    if magnification > 1:
-        if transparent_bg:
-            # Premultiply alpha before resize to avoid light fringe at edges
-            alpha_f = arr[:, :, 3:4].astype(np.float32) / 255.0
-            premult = arr.copy()
-            premult[:, :, :3] = np.clip(
-                arr[:, :, :3].astype(np.float32) * alpha_f, 0, 255
-            ).astype(np.uint8)
-            img = Image.fromarray(premult, "RGBA")
-            img = img.resize((target_width, target_height), Image.LANCZOS)
-            arr = np.array(img)
-            # Unpremultiply alpha
-            out_alpha = arr[:, :, 3:4].astype(np.float32) / 255.0
-            safe_alpha = np.where(out_alpha > 0, out_alpha, 1.0)
-            arr[:, :, :3] = np.clip(
-                arr[:, :, :3].astype(np.float32) / safe_alpha, 0, 255
-            ).astype(np.uint8)
-        else:
-            # Strip alpha before downsampling to prevent fringe artifacts
-            img = Image.fromarray(np.ascontiguousarray(arr[:, :, :3]), "RGB")
-            img = img.resize((target_width, target_height), Image.LANCZOS)
-            arr = np.array(img)
-
-    if not transparent_bg:
-        # Slice and ensure contiguous for downstream consumers
-        arr = np.ascontiguousarray(arr[:, :, :3])
 
     return arr
 
