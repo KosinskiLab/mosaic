@@ -586,7 +586,10 @@ class PropertyAnalysisDialog(QDialog):
         target_list.update(uuid_to_items)
 
     def closeEvent(self, event):
-        """Disconnect when dialog closes"""
+        """Disconnect signals and restore textured geometries when dialog closes."""
+        for sampler in getattr(self, "_texture_samplers", {}).values():
+            sampler.cleanup()
+
         try:
             self.cdata.data.vtk_pre_render.disconnect(self._on_render_update)
             self.cdata.models.vtk_pre_render.disconnect(self._on_render_update)
