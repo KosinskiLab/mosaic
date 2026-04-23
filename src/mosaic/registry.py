@@ -357,8 +357,8 @@ _K_NEIGHBORS = Param(
     label="Neighbors",
     default=15,
     min=1,
-    description="Number of neighbors for normal estimations.",
-    notes="Consider decreasing this value for small point clouds.",
+    description="Estimate normals using this many neighbors.",
+    notes="If the object has normals, most methods will ignore this parameter.",
 )
 
 

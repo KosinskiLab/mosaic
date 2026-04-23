@@ -147,6 +147,11 @@ class GeometryData:
         self.polydata.Modified()
 
     @property
+    def has_normals(self) -> bool:
+        n = self.polydata.GetPointData().GetNormals()
+        return n is not None and n.GetNumberOfTuples() > 0
+
+    @property
     def quaternions(self) -> Optional[np.ndarray]:
         arr = self.polydata.GetPointData().GetArray("OrientationQuaternion")
         if arr is None or arr.GetNumberOfTuples() == 0:
@@ -666,8 +671,12 @@ class Geometry:
         Parameters
         ----------
         normals : np.ndarray
-            Normal vectors with shape (n_points, 3).
+            Normal vectors with shape (n_points, 3). Pass ``None`` to clear.
         """
+        if normals is None:
+            self._geometry_data.normals = None
+            return None
+
         normals = np.asarray(normals, dtype=np.float32)
         if normals.shape != self.points.shape:
             warnings.warn("Number of normals must match number of points.")
@@ -678,6 +687,10 @@ class Geometry:
         # Update associated quaternions if available
         if self._geometry_data.quaternions is not None:
             self.quaternions = normals_to_rot(self.normals, scalar_first=True)
+
+    @property
+    def has_normals(self) -> bool:
+        return self._geometry_data.has_normals
 
     @property
     def quaternions(self):

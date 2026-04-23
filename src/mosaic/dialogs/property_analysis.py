@@ -175,6 +175,7 @@ def _build_type_combo_option(dlg, key, items):
     """Add a QComboBox option row with given key and items."""
     combo = QComboBox()
     combo.addItems(items)
+    combo.setFixedHeight(Colors.WIDGET_HEIGHT)
     dlg.property_options_layout.addRow("Type:", combo)
     dlg.option_widgets[key] = combo
 
@@ -192,6 +193,7 @@ def _build_vertex_properties_options(dlg):
 
     options = QComboBox()
     options.addItems(sorted(list(properties)))
+    options.setFixedHeight(Colors.WIDGET_HEIGHT)
     dlg.property_options_layout.addRow("Type:", options)
     dlg.option_widgets["name"] = options
 
@@ -262,6 +264,7 @@ def _build_thickness_options(dlg):
     smoothing_spin.setValue(0.0)
     smoothing_spin.setDecimals(1)
     smoothing_spin.setSingleStep(1.0)
+    smoothing_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
     smoothing_spin.setToolTip(
         "Radius for Gaussian-weighted spatial smoothing (0 = no smoothing)"
     )
@@ -286,6 +289,7 @@ def _build_tomogram_options(dlg):
     texture_size.setRange(256, 2048)
     texture_size.setValue(512)
     texture_size.setSingleStep(128)
+    texture_size.setFixedHeight(Colors.WIDGET_HEIGHT)
     texture_size.setToolTip(
         "Texture resolution in pixels. Larger meshes require larger textures to "
         "maintain texture resolution."
@@ -297,6 +301,7 @@ def _build_tomogram_options(dlg):
     spline_order = QSpinBox()
     spline_order.setRange(1, 5)
     spline_order.setValue(3)
+    spline_order.setFixedHeight(Colors.WIDGET_HEIGHT)
     spline_order.setToolTip(
         "Spline interpolation order for tomogram sampling. "
         "1 = linear (fast), 3 = cubic (smooth, default), 5 = quintic."
@@ -427,6 +432,7 @@ class ColorScaleSettingsDialog(QDialog):
         self.lower_spinbox.setDecimals(6)
         self.lower_spinbox.setValue(0.0)
         self.lower_spinbox.setEnabled(False)
+        self.lower_spinbox.setFixedHeight(Colors.WIDGET_HEIGHT)
         lower_value_layout.addRow("Minimum Value:", self.lower_spinbox)
         threshold_layout.addLayout(lower_value_layout)
 
@@ -441,6 +447,7 @@ class ColorScaleSettingsDialog(QDialog):
         self.upper_spinbox.setDecimals(6)
         self.upper_spinbox.setValue(1.0)
         self.upper_spinbox.setEnabled(False)
+        self.upper_spinbox.setFixedHeight(Colors.WIDGET_HEIGHT)
         upper_value_layout.addRow("Maximum Value:", self.upper_spinbox)
         threshold_layout.addLayout(upper_value_layout)
 
@@ -614,10 +621,12 @@ class PropertyAnalysisDialog(QDialog):
         k_start = QSpinBox()
         k_start.setRange(1, 255)
         k_start.setValue(1)
+        k_start.setFixedHeight(Colors.WIDGET_HEIGHT)
 
         k_end = QSpinBox()
         k_end.setRange(1, 255)
         k_end.setValue(1)
+        k_end.setFixedHeight(Colors.WIDGET_HEIGHT)
 
         k_start.valueChanged.connect(lambda x: k_end.setRange(x, 255))
 
@@ -631,6 +640,7 @@ class PropertyAnalysisDialog(QDialog):
         aggregation_layout.addWidget(QLabel("Aggregation:"))
         aggregation_combo = QComboBox()
         aggregation_combo.addItems(["Mean", "Min", "Max", "Median"])
+        aggregation_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
         aggregation_layout.addWidget(aggregation_combo)
         layout.addLayout(aggregation_layout)
 
@@ -646,11 +656,13 @@ class PropertyAnalysisDialog(QDialog):
         """
         curvature_combo = QComboBox()
         curvature_combo.addItems(["Mean", "Gaussian"])
+        curvature_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
         layout.addRow("Method:", curvature_combo)
 
         radius_spin = QSpinBox()
         radius_spin.setRange(1, 20)
         radius_spin.setValue(5)
+        radius_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
         layout.addRow("Radius:", radius_spin)
 
         return curvature_combo, radius_spin
@@ -726,7 +738,7 @@ class PropertyAnalysisDialog(QDialog):
             settings_btn = QPushButton()
             settings_btn.setIcon(_icon("ph.gear"))
             settings_btn.setToolTip("Color Scale Settings")
-            settings_btn.setFixedSize(28, 28)
+            settings_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
             settings_btn.clicked.connect(_open_colormap_settings)
             return colormap, settings_btn
         return colormap
@@ -748,12 +760,14 @@ class PropertyAnalysisDialog(QDialog):
         self.category_combo.addItems(
             ["Distance", "Mesh", "Geometric", "Projection", "Custom"]
         )
+        self.category_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.category_combo.currentTextChanged.connect(self._update_property_list)
         category_layout.addWidget(self.category_combo)
 
         category_layout.addSpacing(15)
         category_layout.addWidget(QLabel("Property:"))
         self.property_combo = QComboBox()
+        self.property_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.property_combo.currentTextChanged.connect(self._update_options)
         category_layout.addWidget(self.property_combo, 1)
         property_layout.addLayout(category_layout)
@@ -947,19 +961,19 @@ class PropertyAnalysisDialog(QDialog):
 
         self.bar_btn = QPushButton()
         self.bar_btn.setToolTip("Histogram")
-        self.bar_btn.setFixedSize(28, 28)
+        self.bar_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
         self.bar_btn.clicked.connect(lambda: self._set_plot_type("Histogram"))
         self.plot_type_buttons["Histogram"] = (self.bar_btn, "ph.chart-bar")
 
         self.density_btn = QPushButton()
         self.density_btn.setToolTip("Density")
-        self.density_btn.setFixedSize(28, 28)
+        self.density_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
         self.density_btn.clicked.connect(lambda: self._set_plot_type("Density"))
         self.plot_type_buttons["Density"] = (self.density_btn, "ph.cell-signal-full")
 
         self.line_btn = QPushButton()
         self.line_btn.setToolTip("Line Chart")
-        self.line_btn.setFixedSize(28, 28)
+        self.line_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
         self.line_btn.clicked.connect(lambda: self._set_plot_type("Line"))
         self.plot_type_buttons["Line"] = (self.line_btn, "ph.chart-line")
 
@@ -983,6 +997,7 @@ class PropertyAnalysisDialog(QDialog):
         self.plot_title = QLabel("Stratification")
         self.plot_mode_combo = QComboBox()
         self.plot_mode_combo.addItems(["Combined", "Separate"])
+        self.plot_mode_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.plot_mode_combo.currentTextChanged.connect(self._update_plot)
         strat_layout.addWidget(self.plot_title)
         strat_layout.addWidget(self.plot_mode_combo)
@@ -993,6 +1008,7 @@ class PropertyAnalysisDialog(QDialog):
         self.alpha_slider = QSpinBox()
         self.alpha_slider.setRange(0, 255)
         self.alpha_slider.setValue(128)
+        self.alpha_slider.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.alpha_slider.valueChanged.connect(self._update_plot_throttle)
         alpha_layout.addWidget(self.alpha_slider)
         options_layout.addLayout(alpha_layout)

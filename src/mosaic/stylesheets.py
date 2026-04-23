@@ -606,6 +606,10 @@ def _build_QSlider_style():
 
 def _build_QMessageBox_style():
     return f"""
+    QMessageBox {{
+        background-color: {Colors.SURFACE};
+        color: {Colors.TEXT_PRIMARY};
+    }}
     QMessageBox QLabel {{
         font-size: {Typography.BODY}px;
     }}

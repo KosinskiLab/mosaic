@@ -714,16 +714,26 @@ def remove_outliers(geometry, method: str = "statistical", **kwargs):
                     label="Neighbors",
                     description="Number of neighboring points for normal estimation.",
                 ),
+                Param(
+                    "assume_single_object",
+                    "bool",
+                    default=False,
+                    label="Single Object",
+                    description="Orient normals outward against the convex hull, "
+                    "deciding the flip per Leiden-clustered component. Use when "
+                    "the points represent one coherent surface.",
+                ),
             ),
         ),
         Method("Flip", "flip"),
+        Method("Remove", "remove"),
     ),
 )
 def compute_normals(
     geometry, method: str = "Compute", k: int = 15, **kwargs
 ) -> Optional:
     """
-    Compute or flip point normals.
+    Compute, flip, or remove point normals.
 
     Parameters
     ----------
@@ -733,6 +743,7 @@ def compute_normals(
         Normal computation method. Options are:
         - 'Compute' : Calculate new normals from point neighborhoods
         - 'Flip' : Reverse existing normal directions
+        - 'Remove' : Clear any existing normal vectors
         Default is 'Compute'.
     k : int, optional
         Number of neighbors to consider for normal computation.
@@ -748,6 +759,11 @@ def compute_normals(
     from .utils import compute_normals
 
     method = MethodRegistry.resolve_method("compute_normals", method)
+    if method == "remove":
+        result = geometry[...]
+        result.normals = None
+        return result
+
     if method == "flip":
         if geometry.normals is None:
             raise ValueError("Geometry has no normal vectors.")
@@ -755,7 +771,9 @@ def compute_normals(
     elif method == "compute":
         normals = compute_normals(geometry.points, k=k, **kwargs)
     else:
-        raise ValueError(f"Unsupported method '{method}'. Use 'compute' or 'flip'.")
+        raise ValueError(
+            f"Unsupported method '{method}'. Use 'compute', 'flip', or 'remove'."
+        )
 
     result = geometry[...]
     result.normals = normals
@@ -1193,6 +1211,15 @@ def smooth(geometry, method: str, **kwargs):
                     label="Max Iterations",
                     description="Maximum number of flow iterations.",
                 ),
+                Param(
+                    "bridge_gaps",
+                    "bool",
+                    default=False,
+                    label="Bridge Gaps",
+                    description="Augment the point cloud with hull-surface "
+                    "samples in regions with no nearby data so the mesh "
+                    "bridges gaps instead of diving through them.",
+                ),
                 _K_NEIGHBORS,
                 Param(
                     "target_edge_length",
@@ -1306,6 +1333,19 @@ def fit(geometry, method: str, **kwargs):
     n = geometry.get_number_of_points()
     if n < 15 and method in ("sphere", "ellipsoid", "cylinder"):
         raise ValueError(f"Insufficient points for {method} ({n} < 15).")
+
+    if geometry.has_normals:
+        from .utils import NORMAL_REFERENCE
+
+        geom_normals = geometry.normals
+        # Skip stored normals if they look like the NORMAL_REFERENCE fallback
+        # (i.e. the geometry has no meaningful orientation data) -- passing
+        # them along would override the fit method's own normal estimation
+        # with a degenerate all-identical field. Sample a capped prefix since
+        # normals are typically set in bulk and a full scan isn't needed.
+        sample = geom_normals[: min(50, len(geom_normals))]
+        if not np.all(sample == NORMAL_REFERENCE):
+            kwargs.setdefault("normals", geom_normals)
 
     fit = fit_object.fit(geometry.points, **kwargs)
     if hasattr(fit, "mesh"):

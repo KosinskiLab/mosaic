@@ -30,7 +30,7 @@ from qtpy.QtWidgets import (
 )
 from qtpy.QtSvg import QSvgRenderer
 from ..icons import icon as _icon_factory
-from ..stylesheets import Colors, Typography
+from ..stylesheets import Colors, Typography, _build_QMessageBox_style
 from ..tree_state import TreeState, TreeStateData
 from ..pipeline._utils import natural_sort_key, strip_filepath
 
@@ -987,12 +987,17 @@ class SessionListWidget(QWidget):
         if self.current_index < 0:
             return None
 
-        reply = QMessageBox.question(
-            self,
-            "Discard Changes",
-            "Reload the current session and discard all unsaved changes?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        box = QMessageBox(self)
+        box.setWindowTitle("Discard Changes")
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setText("Reload the current session and discard all unsaved changes?")
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
+        box.setDefaultButton(QMessageBox.StandardButton.Yes)
+        box.setStyleSheet(_build_QMessageBox_style())
+
+        reply = box.exec()
         if reply == QMessageBox.StandardButton.Yes:
             filepath = self.session_files[self.current_index]
             self.load_requested.emit(filepath)
@@ -1036,18 +1041,19 @@ class SessionListWidget(QWidget):
             self._session_modified = False
             return True
 
-        reply = QMessageBox.question(
-            self,
-            "Unsaved Changes",
-            "The current session has unsaved changes.",
+        box = QMessageBox(self)
+        box.setWindowTitle("Unsaved Changes")
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setText("The current session has unsaved changes.")
+        box.setStandardButtons(
             QMessageBox.StandardButton.Save
             | QMessageBox.StandardButton.Discard
             | QMessageBox.StandardButton.Cancel,
-            QMessageBox.StandardButton.Save,
         )
-        if reply == QMessageBox.StandardButton.Cancel:
-            return False
+        box.setDefaultButton(QMessageBox.StandardButton.Save)
+        box.setStyleSheet(_build_QMessageBox_style())
 
+        reply = box.exec()
         if reply == QMessageBox.StandardButton.Save:
             filepath = self.session_files[self.current_index]
             self._cdata.to_file(filepath)
