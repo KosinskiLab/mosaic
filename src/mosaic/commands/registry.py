@@ -968,48 +968,48 @@ def _cmd_dts_screen(session, parsed: ParsedCommand):
     )
 
 
-def _cmd_ingest(session, parsed: ParsedCommand):
-    from ..czi.ingest import download, summarize, sessions_from_directory
+# def _cmd_ingest(session, parsed: ParsedCommand):
+#     from ..czi.ingest import download, summarize, sessions_from_directory
 
-    action = parsed.args[0] if parsed.args else None
-    filepath = parsed.kwargs.pop("filepath", None)
+#     action = parsed.args[0] if parsed.args else None
+#     filepath = parsed.kwargs.pop("filepath", None)
 
-    if action is None or filepath is None:
-        return _usage_line(_usage_for("ingest"))
+#     if action is None or filepath is None:
+#         return _usage_line(_usage_for("ingest"))
 
-    if action == "info":
-        rows = summarize(filepath)
-        if not rows:
-            return _error_panel("No runs found.")
-        table = Table(box=BOX_TABLE, show_header=True, show_edge=False, pad_edge=True)
-        table.add_column("#", style="mosaic.param")
-        table.add_column("ID", style="mosaic.data")
-        table.add_column("Name", style="mosaic.data")
-        table.add_column("Annotations", style="mosaic.muted")
-        table.add_column("Tomograms", style="mosaic.muted")
-        for row in rows:
-            table.add_row(
-                str(row["index"]),
-                row["run_id"],
-                row["name"],
-                ", ".join(row["annotations"]) or "(none)",
-                ", ".join(row["tomograms"]) or "(none)",
-            )
-        return table
+#     if action == "info":
+#         rows = summarize(filepath)
+#         if not rows:
+#             return _error_panel("No runs found.")
+#         table = Table(box=BOX_TABLE, show_header=True, show_edge=False, pad_edge=True)
+#         table.add_column("#", style="mosaic.param")
+#         table.add_column("ID", style="mosaic.data")
+#         table.add_column("Name", style="mosaic.data")
+#         table.add_column("Annotations", style="mosaic.muted")
+#         table.add_column("Tomograms", style="mosaic.muted")
+#         for row in rows:
+#             table.add_row(
+#                 str(row["index"]),
+#                 row["run_id"],
+#                 row["name"],
+#                 ", ".join(row["annotations"]) or "(none)",
+#                 ", ".join(row["tomograms"]) or "(none)",
+#             )
+#         return table
 
-    if action == "download":
-        max_workers = parsed.kwargs.pop("max_workers", 4)
-        n = download(filepath, max_workers=max_workers)
-        return _success_text(f"Downloaded {n} file(s)  ", filepath)
+#     if action == "download":
+#         max_workers = parsed.kwargs.pop("max_workers", 4)
+#         n = download(filepath, max_workers=max_workers)
+#         return _success_text(f"Downloaded {n} file(s)  ", filepath)
 
-    if action == "create":
-        output_dir = parsed.kwargs.pop("output_dir", None)
-        created = sessions_from_directory(filepath, output_dir=output_dir)
-        if not created:
-            return _error_panel("No runs found.")
-        return _success_text(f"Created {len(created)} session(s)", "")
+#     if action == "create":
+#         output_dir = parsed.kwargs.pop("output_dir", None)
+#         created = sessions_from_directory(filepath, output_dir=output_dir)
+#         if not created:
+#             return _error_panel("No runs found.")
+#         return _success_text(f"Created {len(created)} session(s)", "")
 
-    return _error_panel(f"Unknown action: {action}")
+#     return _error_panel(f"Unknown action: {action}")
 
 
 def _register_builtins():
@@ -1034,7 +1034,6 @@ def _register_builtins():
             "Filter geometries by property value range",
             "Analysis",
         ),
-        ("ingest", _cmd_ingest, "Manage CZI CryoET portal data", "I/O"),
     ]:
         op = MethodRegistry.get(name)
         usage = op.build_usage() if op is not None else name

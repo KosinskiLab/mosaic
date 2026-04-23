@@ -242,7 +242,7 @@ class _ViewerStrip(QWidget):
 
         self._load_close_btn = QPushButton("Load")
         self._load_close_btn.setObjectName("loadClose")
-        self._load_close_btn.setFixedSize(60, _BTN)
+        self._load_close_btn.setFixedHeight(_BTN)
         self._load_close_btn.setToolTip("Load volume")
         self._load_close_btn.clicked.connect(self._on_load_close)
 

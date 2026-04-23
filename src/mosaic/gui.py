@@ -148,7 +148,7 @@ class App(QMainWindow):
         from .widgets.theme_toggle import ThemeToggle
 
         self._tab_gear = QPushButton()
-        self._tab_gear.setIcon(icon("ph.gear", role="muted"))
+        self._tab_gear.setIcon(icon("ph.sliders", role="muted"))
         self._tab_gear.setFlat(True)
         self._tab_gear.setFixedSize(28, 28)
         self._tab_gear.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -617,7 +617,21 @@ class App(QMainWindow):
         from .stylesheets import Colors, switch_theme
 
         Settings.ui.theme_mode = "dark" if checked else "light"
+
+        self._use_alt_background = not checked
         switch_theme(Colors.DARK if checked else Colors.LIGHT)
+
+        dark = [float(x) for x in Settings.rendering.background_color]
+        light = [float(x) for x in Settings.rendering.background_color_alt]
+
+        active, inactive = dark, light
+        if self._use_alt_background:
+            active, inactive = light, dark
+
+        self.renderer.SetBackground(*active)
+        self.renderer.GradientBackgroundOff()
+        self.renderer_next_background = inactive
+        self.renderer.Render()
 
     def _on_theme_changed(self):
         self._update_style()
@@ -630,7 +644,7 @@ class App(QMainWindow):
         if hasattr(self, "status_indicator"):
             self.status_indicator._on_theme_changed()
         if hasattr(self, "_tab_gear"):
-            self._tab_gear.setIcon(icon("ph.gear", role="muted"))
+            self._tab_gear.setIcon(icon("ph.sliders", role="muted"))
         if hasattr(self, "_session_list_widget"):
             self._session_list_widget._on_theme_changed()
 
@@ -940,12 +954,12 @@ class App(QMainWindow):
         self.batch_navigator_action.triggered.connect(self.open_batch_navigator)
         self.batch_navigator_action.setShortcut("Ctrl+Shift+N")
 
-        czi_action = QAction(icon("ph.cloud"), "CZI Portal", self)
-        czi_action.triggered.connect(self.open_czi_dialog)
+        # czi_action = QAction(icon("ph.cloud"), "CZI Portal", self)
+        # czi_action.triggered.connect(self.open_czi_dialog)
 
         file_menu.addAction(batch_process_action)
         file_menu.addAction(self.batch_navigator_action)
-        file_menu.addAction(czi_action)
+        # file_menu.addAction(czi_action)
 
         file_menu.addSeparator()
         file_menu.addAction(screenshot_action)
@@ -1579,13 +1593,10 @@ class App(QMainWindow):
         self.recent_menu.setEnabled(len(files_to_show) > 0)
 
     def _add_file_to_recent(self, file_path):
-        if file_path in Settings.ui.recent_files:
-            return None
-
-        recent_files = [file_path] + list(Settings.ui.recent_files)
-        while len(recent_files) > Settings.ui.max_recent_files:
-            recent_files.pop()
-        Settings.ui.recent_files = list(dict.fromkeys(recent_files))
+        recent_files = [file_path] + [
+            f for f in Settings.ui.recent_files if f != file_path
+        ]
+        Settings.ui.recent_files = recent_files[: Settings.ui.max_recent_files]
 
         self.update_recent_files_menu()
 

@@ -318,6 +318,16 @@ def _build_QSpinBox_style():
     QSpinBox::up-button:pressed, QSpinBox::down-button:pressed {{
         background-color: {Colors.BORDER_DARK};
     }}
+    QSpinBox::up-arrow {{
+        image: url('{_get_resource_path("spinbox-caret-up.svg")}');
+        width: 10px;
+        height: 10px;
+    }}
+    QSpinBox::down-arrow {{
+        image: url('{_get_resource_path("spinbox-caret-down.svg")}');
+        width: 10px;
+        height: 10px;
+    }}
 """
 
 
@@ -360,6 +370,16 @@ def _build_QDoubleSpinBox_style():
     QDoubleSpinBox::up-button:pressed, QDoubleSpinBox::down-button:pressed {{
         background-color: {Colors.BORDER_DARK};
     }}
+    QDoubleSpinBox::up-arrow {{
+        image: url('{_get_resource_path("spinbox-caret-up.svg")}');
+        width: 10px;
+        height: 10px;
+    }}
+    QDoubleSpinBox::down-arrow {{
+        image: url('{_get_resource_path("spinbox-caret-down.svg")}');
+        width: 10px;
+        height: 10px;
+    }}
 """
 
 
@@ -399,6 +419,11 @@ def _build_QComboBox_style():
     }}
     QComboBox QFrame {{
         border: none;
+    }}
+    QComboBox::down-arrow {{
+        image: url('{_get_resource_path("spinbox-caret-down.svg")}');
+        width: 10px;
+        height: 10px;
     }}
 """
 
