@@ -307,7 +307,7 @@ def _flush_messages():
             box.setText(text)
         for btn in box.buttons():
             if box.buttonRole(btn) == QMessageBox.ButtonRole.ActionRole:
-                btn.setMinimumWidth(120)
+                btn.setMinimumWidth(130)
         box.exec()
 
 

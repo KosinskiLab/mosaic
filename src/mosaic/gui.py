@@ -1481,7 +1481,7 @@ class App(QMainWindow):
             box.setDefaultButton(yes_btn)
             for btn in box.buttons():
                 if box.buttonRole(btn) == QMessageBox.ButtonRole.ActionRole:
-                    btn.setMinimumWidth(120)
+                    btn.setMinimumWidth(130)
             box.exec()
             if box.clickedButton() is yes_btn:
                 self._load_volume_files(density_paths)
