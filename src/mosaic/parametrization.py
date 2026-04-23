@@ -1280,6 +1280,7 @@ class BallPivoting(TriangularMesh):
         n_smoothing: int = 5,
         k_neighbors=15,
         boundary_ring: int = 0,
+        normals: np.ndarray = None,
         **kwargs,
     ) -> "BallPivoting":
         """
@@ -1310,10 +1311,13 @@ class BallPivoting(TriangularMesh):
             Taubin smoothing iterations applied after mesh creation.
         k_neighbors : int
             Number of neighbors for normal estimation. Decrease for
-            small point clouds.
+            small point clouds. Ignored when ``normals`` is given.
         boundary_ring : int
             Number of vertex rings around inferred hole vertices to
             include in fairing.
+        normals : np.ndarray, optional
+            Precomputed per-point normals with shape (n, 3). When
+            provided, internal normal estimation is skipped.
 
         Returns
         -------
@@ -1326,7 +1330,14 @@ class BallPivoting(TriangularMesh):
         radii = radii[radii > 0]
 
         positions = np.asarray(positions, dtype=np.float64)
-        pcd = utils.compute_normals(positions, k=k_neighbors, return_pcd=True)
+        if normals is None:
+            pcd = utils.compute_normals(positions, k=k_neighbors, return_pcd=True)
+        else:
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(positions)
+            pcd.normals = o3d.utility.Vector3dVector(
+                np.asarray(normals, dtype=np.float64)
+            )
         mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
             pcd, o3d.utility.DoubleVector(radii)
         )
@@ -1407,6 +1418,7 @@ class PoissonMesh(TriangularMesh):
         deldist: float = 1.5,
         density_quantile: float = 0.0,
         n_threads: int = 1,
+        normals: np.ndarray = None,
         **kwargs,
     ) -> "PoissonMesh":
         """
@@ -1422,7 +1434,8 @@ class PoissonMesh(TriangularMesh):
             Depth of the octree used for reconstruction. Higher values
             capture finer detail but are slower.
         k_neighbors : int
-            Number of neighbors for normal estimation.
+            Number of neighbors for normal estimation. Ignored when
+            ``normals`` is given.
         deldist : float
             Drop mesh vertices further than this distance from the
             input point cloud (in original coordinates).
@@ -1432,6 +1445,9 @@ class PoissonMesh(TriangularMesh):
         n_threads : int
             Number of threads for Poisson reconstruction. Set to -1
             to use all available cores.
+        normals : np.ndarray, optional
+            Precomputed per-point normals with shape (n, 3). When
+            provided, internal normal estimation is skipped.
 
         Returns
         -------
@@ -1444,10 +1460,15 @@ class PoissonMesh(TriangularMesh):
 
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(positions / voxel_size)
-        pcd.estimate_normals(
-            search_param=o3d.geometry.KDTreeSearchParamKNN(knn=k_neighbors)
-        )
-        pcd.orient_normals_consistent_tangent_plane(k=k_neighbors)
+        if normals is None:
+            pcd.estimate_normals(
+                search_param=o3d.geometry.KDTreeSearchParamKNN(knn=k_neighbors)
+            )
+            pcd.orient_normals_consistent_tangent_plane(k=k_neighbors)
+        else:
+            pcd.normals = o3d.utility.Vector3dVector(
+                np.asarray(normals, dtype=np.float64)
+            )
 
         mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
             pcd,
@@ -1609,6 +1630,8 @@ class ShrinkWrap(TriangularMesh):
         pressure: float = 0.0,
         boundary_ring: int = 0,
         tol: float = -1,
+        normals: np.ndarray = None,
+        bridge_gaps: bool = True,
         **kwargs,
     ) -> "ShrinkWrap":
         """
@@ -1643,6 +1666,7 @@ class ShrinkWrap(TriangularMesh):
             Maximum flow iterations.
         k_neighbors : int
             Neighbourhood size for normal estimation and orientation.
+            Ignored when ``normals`` is given.
         target_edge_length : float
             Target edge length for the post-processing remesher, in the
             same units as ``positions``. ``-1`` uses the median edge
@@ -1658,6 +1682,16 @@ class ShrinkWrap(TriangularMesh):
             Number of vertex rings around inferred vertices to include in fairing.
         tol : float
             Tangency tolerance for the flow. ``< 0`` uses the default.
+        normals : np.ndarray, optional
+            Precomputed per-point normals with shape (n, 3). When
+            provided, internal normal estimation and the radial
+            outward-flip are skipped and the supplied normals are
+            trusted for the SDF sign.
+        bridge_gaps : bool
+            Augment the point cloud with hull-surface samples in
+            regions with no nearby data, so the SDF has a coherent
+            zero crossing across gaps and the mesh bridges them
+            instead of diving through.
 
         Returns
         -------
@@ -1675,21 +1709,36 @@ class ShrinkWrap(TriangularMesh):
         scale = float(np.abs(positions).max())
         positions = positions / scale
 
-        pcd = utils.compute_normals(positions, k=k_neighbors, return_pcd=True)
-        normals = np.asarray(pcd.normals, dtype=np.float64)
-
-        # Per-point outward orientation: flip any normal disagreeing with
-        # its radial direction. MST orientation gives consistency, not
-        # outwardness, and a few inward-facing normals break the SDF sign.
-        radial = positions / np.linalg.norm(positions, axis=1, keepdims=True).clip(
-            1e-12
-        )
-        inward = np.einsum("ij,ij->i", normals, radial) < 0
-        normals[inward] = -normals[inward]
-
-        hull = AlphaShape.fit(positions, alpha=1).mesh
+        hull_shape = AlphaShape.fit(positions, alpha=1)
+        hull = hull_shape.mesh
         V0 = np.asarray(hull.vertices, dtype=np.float64)
         F0 = np.asarray(hull.triangles, dtype=np.int64)
+
+        if normals is None:
+            normals = utils.compute_normals(
+                positions, k=k_neighbors, assume_single_object=True
+            )
+        else:
+            normals = np.asarray(normals, dtype=np.float64)
+
+        if bridge_gaps:
+            hull.compute_vertex_normals()
+
+            real_tree = cKDTree(positions)
+            mean_nn = float(real_tree.query(positions, k=2)[0][:, 1].mean())
+            n_hull_samples = hull_shape.points_per_sampling(mean_nn)
+
+            pcd_hull = hull.sample_points_uniformly(number_of_points=n_hull_samples)
+            hull_pts = np.asarray(pcd_hull.points, dtype=np.float64)
+            hull_normals = np.asarray(pcd_hull.normals, dtype=np.float64)
+
+            _, idx = real_tree.query(hull_pts, k=1)
+            sign_hull = np.sign(
+                np.einsum("ij,ij->i", hull_pts - positions[idx], normals[idx])
+            )
+            keep = sign_hull == -1
+            positions = np.concatenate([positions, hull_pts[keep]], axis=0)
+            normals = np.concatenate([normals, hull_normals[keep]], axis=0)
 
         tree = cKDTree(positions)
 

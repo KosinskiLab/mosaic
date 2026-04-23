@@ -101,6 +101,7 @@ def create_setting_widget(setting: Dict):
     else:
         raise ValueError(f"Could not create widget from {setting}.")
 
+    widget.setFixedHeight(Colors.WIDGET_HEIGHT)
     widget.setToolTip(format_tooltip(**setting))
     widget.setProperty("parameter", setting.get("parameter", None))
     return widget
