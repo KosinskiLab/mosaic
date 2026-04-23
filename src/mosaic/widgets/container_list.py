@@ -6,6 +6,7 @@ from qtpy.QtCore import (
     Qt,
     QRect,
     QByteArray,
+    QEvent,
     QItemSelection,
     QItemSelectionModel,
     Signal,
@@ -22,6 +23,7 @@ from qtpy.QtWidgets import (
     QStyle,
     QAbstractItemView,
     QPushButton,
+    QLabel,
     QFileDialog,
     QMenu,
     QMessageBox,
@@ -31,6 +33,119 @@ from ..icons import icon as _icon_factory
 from ..stylesheets import Colors, Typography
 from ..tree_state import TreeState, TreeStateData
 from ..pipeline._utils import natural_sort_key, strip_filepath
+
+
+class SelectionIndicator(QWidget):
+    """Overlay labels that appear when selected items are scrolled off-screen."""
+
+    def __init__(self, tree_widget: QTreeWidget):
+        super().__init__(tree_widget.viewport())
+        self._tree = tree_widget
+        self._above = []
+        self._below = []
+
+        self._top_label = QLabel(self)
+        self._bottom_label = QLabel(self)
+        for label in (self._top_label, self._bottom_label):
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            label.setCursor(Qt.CursorShape.PointingHandCursor)
+            label.setFixedHeight(22)
+            label.hide()
+
+        self._top_label.mousePressEvent = lambda _: self._scroll_to(self._above)
+        self._bottom_label.mousePressEvent = lambda _: self._scroll_to(self._below)
+
+        tree_widget.selectionModel().selectionChanged.connect(self._recompute)
+        tree_widget.verticalScrollBar().valueChanged.connect(self._recompute)
+        tree_widget.viewport().installEventFilter(self)
+
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._top_label.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, False
+        )
+        self._bottom_label.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, False
+        )
+        self.setVisible(True)
+        self._apply_styling()
+
+    def eventFilter(self, obj, event):
+        if obj is self._tree.viewport() and event.type() == QEvent.Type.Resize:
+            self._reposition()
+            self._recompute()
+        return False
+
+    def _recompute(self):
+        viewport_h = self._tree.viewport().height()
+        selected = [
+            item
+            for item in self._tree.selectedItems()
+            if isinstance(item, StyledTreeWidgetItem)
+        ]
+
+        above, below = [], []
+        for item in selected:
+            rect = self._tree.visualItemRect(item)
+            if rect.bottom() < 0:
+                above.append((rect.bottom(), item))
+            elif rect.top() >= viewport_h:
+                below.append((rect.top(), item))
+
+        above.sort(key=lambda x: -x[0])
+        below.sort(key=lambda x: x[0])
+
+        self._above = [item for _, item in above]
+        self._below = [item for _, item in below]
+
+        self._update_label(self._top_label, self._above, "\u2191")
+        self._update_label(self._bottom_label, self._below, "\u2193")
+        self._reposition()
+
+    def _update_label(self, label, items, arrow):
+        if not items:
+            label.hide()
+            return
+        name = items[0].text(0)
+        max_len = 20
+        if len(name) > max_len:
+            name = name[: max_len - 1] + "\u2026"
+        if len(items) > 1:
+            text = f"{arrow}  {name} + {len(items) - 1} more"
+        else:
+            text = f"{arrow}  {name}"
+        label.setText(text)
+        label.show()
+
+    def _reposition(self):
+        w = self._tree.viewport().width()
+        h = self._tree.viewport().height()
+        self.setGeometry(0, 0, w, h)
+        self._top_label.setGeometry(4, 2, w - 8, 22)
+        self._bottom_label.setGeometry(4, h - 24, w - 8, 22)
+
+    def _scroll_to(self, items):
+        if not items:
+            return
+        target = items[0]
+        if (parent := target.parent()) is not None and not parent.isExpanded():
+            parent.setExpanded(True)
+            if isinstance(parent, GroupTreeWidgetItem):
+                parent.update_icon(True)
+        self._tree.scrollToItem(target, QAbstractItemView.ScrollHint.PositionAtCenter)
+
+    def _apply_styling(self):
+        for label in (self._top_label, self._bottom_label):
+            label.setStyleSheet(
+                f"""
+                QLabel {{
+                    background: {Colors.BG_TERTIARY};
+                    color: {Colors.TEXT_SECONDARY};
+                    font-size: {Typography.LABEL}px;
+                    border-radius: 4px;
+                    padding: 0px 8px;
+                }}
+            """
+            )
 
 
 class ContainerTreeWidget(QFrame):
@@ -66,6 +181,8 @@ class ContainerTreeWidget(QFrame):
         self.tree_widget.setItemDelegate(MetadataItemDelegate(self.tree_widget))
 
         self.apply_tree_stylesheet(self.tree_widget)
+
+        self._selection_indicator = SelectionIndicator(self.tree_widget)
 
         layout.addWidget(self.tree_widget)
 
@@ -104,6 +221,10 @@ class ContainerTreeWidget(QFrame):
             }}
         """
         )
+
+    def _on_theme_changed(self):
+        self.apply_tree_stylesheet(self.tree_widget)
+        self._selection_indicator._apply_styling()
 
     def selected_items(self):
         # We specifically omit GroupTreeWidgetItem
