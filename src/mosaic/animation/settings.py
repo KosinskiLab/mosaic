@@ -18,6 +18,7 @@ from qtpy.QtWidgets import (
 )
 from mosaic.widgets import create_setting_widget
 from mosaic.icons import icon
+from mosaic.stylesheets import Colors
 
 
 class AnimationSettings(QGroupBox):
@@ -62,6 +63,7 @@ class AnimationSettings(QGroupBox):
         frame_layout.addWidget(QLabel("Start:"), 0, 0)
         self.global_start_spin = QSpinBox()
         self.global_start_spin.setRange(0, 2 << 29)
+        self.global_start_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.global_start_spin.setMinimumWidth(0)
         self.global_start_spin.valueChanged.connect(
             lambda x: self.on_change(x, "global_start_frame")
@@ -71,6 +73,7 @@ class AnimationSettings(QGroupBox):
         frame_layout.addWidget(QLabel("Len:"), 0, 2)
         self.stop_spin = QSpinBox()
         self.stop_spin.setRange(1, 2 << 29)
+        self.stop_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.stop_spin.setMinimumWidth(0)
         self.stop_spin.valueChanged.connect(self._on_duration_changed)
         frame_layout.addWidget(self.stop_spin, 0, 3)
@@ -81,6 +84,7 @@ class AnimationSettings(QGroupBox):
         self.rate_spin.setValue(1.0)
         self.rate_spin.setSingleStep(0.1)
         self.rate_spin.setDecimals(1)
+        self.rate_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.rate_spin.setMinimumWidth(0)
         self.rate_spin.valueChanged.connect(self._on_rate_changed)
         frame_layout.addWidget(self.rate_spin, 0, 5)

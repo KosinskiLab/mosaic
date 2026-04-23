@@ -386,6 +386,12 @@ class AppSettingsPanel(QFrame):
 
         layout.addLayout(cards_row)
 
+        comment_label = QLabel("Use 'd' to toggle between dark and light background.")
+        comment_label.setStyleSheet(
+            f"font-size: {Typography.CAPTION}; color: {Colors.TEXT_MUTED}"
+        )
+        layout.addWidget(comment_label)
+
         self._custom_container = QWidget()
         custom_layout = QVBoxLayout(self._custom_container)
         custom_layout.setContentsMargins(0, 0, 0, 0)
@@ -447,20 +453,6 @@ class AppSettingsPanel(QFrame):
         self._lighting_control.selectionChanged.connect(self._on_lighting_changed)
         layout.addWidget(self._lighting_control)
 
-        max_workers = QThread.idealThreadCount()
-        self._workers_slider = SliderRow(
-            "Workers",
-            min_val=1,
-            max_val=max_workers,
-            default=Settings.rendering.parallel_worker,
-            decimals=0,
-        )
-        self._workers_slider.setToolTip("Maximum number of parallel background tasks")
-        self._connect_slider(
-            self._workers_slider, Settings.rendering, "parallel_worker", int
-        )
-        layout.addWidget(self._workers_slider)
-
         self._update_theme_selection()
 
     def _on_theme_selected(self, name: str):
@@ -517,15 +509,19 @@ class AppSettingsPanel(QFrame):
             (i for i, name in enumerate(QUALITY_PRESETS) if name == current_preset), 0
         )
 
-        self._body_layout.addWidget(QLabel("Rendering:"))
-
         self._preset_control = SegmentedControl(preset_labels, default=current_idx)
         self._preset_control.setToolTip(
-            "Interaction point budget. Lower keeps more points visible while "
-            "rotating. Ultra disables decimation entirely."
+            "Ultra renders everything, Balanced only a given point budget. \n"
+            "Balanced is recommended for laptop users"
         )
         self._preset_control.selectionChanged.connect(self._on_preset_changed)
-        self._body_layout.addWidget(self._preset_control)
+
+        preset_row = QHBoxLayout()
+        preset_row.setContentsMargins(0, 0, 0, 0)
+        preset_row.setSpacing(12)
+        preset_row.addWidget(QLabel("Rendering:"))
+        preset_row.addWidget(self._preset_control, 1)
+        self._body_layout.addLayout(preset_row)
 
         budget_stops = [
             100_000,
@@ -562,6 +558,20 @@ class AppSettingsPanel(QFrame):
         self._fps_slider.setToolTip("Target rendering frame rate for the VTK viewport")
         self._connect_slider(self._fps_slider, Settings.rendering, "target_fps", float)
         self._body_layout.addWidget(self._fps_slider)
+
+        max_workers = QThread.idealThreadCount()
+        self._workers_slider = SliderRow(
+            "Workers",
+            min_val=1,
+            max_val=max_workers,
+            default=Settings.rendering.parallel_worker,
+            decimals=0,
+        )
+        self._workers_slider.setToolTip("Maximum number of parallel background tasks")
+        self._connect_slider(
+            self._workers_slider, Settings.rendering, "parallel_worker", int
+        )
+        self._body_layout.addWidget(self._workers_slider)
 
     def _on_preset_changed(self, label: str):
         preset_name = label.lower()

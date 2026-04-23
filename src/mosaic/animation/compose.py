@@ -37,9 +37,8 @@ from .settings import AnimationSettings, ExportDialog
 from ._utils import FrameWriter, capture_frame, read_frame
 
 from ..icons import icon
-
-from ..__version__ import __version__
 from ..utils import Throttle
+from ..stylesheets import Colors
 
 
 @dataclass
@@ -138,6 +137,7 @@ class AnimationComposerDialog(QDialog):
 
         self.frame_spin = QSpinBox()
         self.frame_spin.setRange(0, 2 << 29)
+        self.frame_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.frame_spin.valueChanged.connect(self._frame_throttle)
         controls_layout.addWidget(self.frame_spin, 1)
 
@@ -172,6 +172,7 @@ class AnimationComposerDialog(QDialog):
         ]:
             btn = QPushButton(name)
             btn.setToolTip(tooltip)
+            btn.setFixedHeight(Colors.WIDGET_HEIGHT)
             btn.clicked.connect(lambda _, p=preset_type: self._load_preset(p))
             presets_row.addWidget(btn)
         presets_layout.addLayout(presets_row)
@@ -188,6 +189,7 @@ class AnimationComposerDialog(QDialog):
         for i, anim_type in enumerate(anim_types):
             btn = QPushButton(anim_type.value["name"])
             btn.setToolTip(anim_type.value.get("description", ""))
+            btn.setFixedHeight(Colors.WIDGET_HEIGHT)
             btn.clicked.connect(lambda _, t=anim_type: self.add_animation(t))
             anims_layout.addWidget(btn, i // cols, i % cols)
         main_layout.addWidget(anims_group)
@@ -689,23 +691,21 @@ class AnimationComposerDialog(QDialog):
             QMessageBox.warning(
                 self, "No Animation", "Add at least one animation track before saving."
             )
-            return
+            return None
 
         filename, _ = QFileDialog.getSaveFileName(
             self, "Save Animation Project", "", "Animation Project (*.manim)"
         )
 
         if not filename:
-            return
+            return None
 
         if not filename.endswith(".manim"):
             filename += ".manim"
 
-        project_data = {
-            "version": __version__,
-            "tracks": [],
-        }
+        from ..__version__ import __version__
 
+        project_data = {"version": __version__, "tracks": []}
         for track in self.tracks:
             anim = track.animation
             anim_type = None
