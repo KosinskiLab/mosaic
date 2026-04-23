@@ -110,10 +110,10 @@ def equilibrate_fit(geometry, directory: str, parameters: Dict):
         ofile.write(f"{fname}\t{scale_factor}\t{offset}\n")
         dist_remesh = compute_edge_lengths(mesh_scale)
 
+        report_progress(message="Trimem", current=3, total=4)
         ret = equilibrate_edges(
             mesh, lower_bound=lower_bound, upper_bound=upper_bound, **parameters
         )
-        report_progress(message="Trimem", current=3, total=4)
 
         scale_factor = compute_scale_factor_lower(ret, lower_bound=etarget)
         mesh_scale = scale(ret, scale_factor)

@@ -1005,7 +1005,7 @@ def _update_macos_titlebar_color(ns_win):
         send(ns_win, objc.sel_registerName(b"setBackgroundColor:"), color)
 
         # Match NSWindow appearance to the theme so the system-drawn title text
-        # (and traffic-light buttons) pick up the correct contrast colour.
+        # (and traffic-light buttons) pick up the correct contrast color
         appearance_name = (
             b"NSAppearanceNameDarkAqua"
             if c.lightness() < 128

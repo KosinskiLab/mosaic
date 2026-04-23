@@ -23,8 +23,13 @@ numpy = "<2.0"
 scipy = ">=1.14.0"
 vtk = ">=9.3.1"
 # VTK's QVTKRenderWindowInteractor uses WA_PaintOnScreen which breaks
-# on Qt >= 6.10 (macOS native rendering surface changes cause Render() to hang)
-PyQt6 = ">=6.9.1,<6.10"
+# on Qt >= 6.10 on Linux (macOS native rendering surface changes cause Render() to hang).
+# macOS works fine with 6.7.1+ and benefits from older Qt for Retina icon handling.
+PyQt6 = [
+    {version = ">=6.7.1,<6.10", platform = "darwin"},
+    {version = ">=6.9.1,<6.10", platform = "linux"},
+    {version = ">=6.9.1,<6.10", platform = "win32"},
+]
 pyqtgraph = ">=0.13.3"
 pytme = ">=0.3.3"
 open3d = ">=0.18.0"

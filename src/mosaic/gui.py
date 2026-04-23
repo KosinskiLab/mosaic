@@ -148,7 +148,7 @@ class App(QMainWindow):
         from .widgets.theme_toggle import ThemeToggle
 
         self._tab_gear = QPushButton()
-        self._tab_gear.setIcon(icon("ph.sliders", role="muted"))
+        self._tab_gear.setIcon(icon("ph.sliders-thin", role="active"))
         self._tab_gear.setFlat(True)
         self._tab_gear.setFixedSize(28, 28)
         self._tab_gear.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -644,7 +644,7 @@ class App(QMainWindow):
         if hasattr(self, "status_indicator"):
             self.status_indicator._on_theme_changed()
         if hasattr(self, "_tab_gear"):
-            self._tab_gear.setIcon(icon("ph.sliders", role="muted"))
+            self._tab_gear.setIcon(icon("ph.sliders-thin", role="active"))
         if hasattr(self, "_session_list_widget"):
             self._session_list_widget._on_theme_changed()
 

@@ -3,7 +3,7 @@ from qtpy.QtWidgets import QWidget, QScrollArea, QApplication
 from qtpy.QtGui import QPainter, QColor, QPen, QFont, QMouseEvent
 
 from ..icons import icon
-from ..stylesheets import Typography
+from ..stylesheets import Colors, Typography
 
 
 class TimelineContent(QWidget):
@@ -204,7 +204,7 @@ class TimelineContent(QWidget):
 
         playhead_x = self.frame_to_x(self.current_frame)
         if 0 <= playhead_x <= self.width():
-            painter.setPen(QPen(Qt.GlobalColor.red, 1))
+            painter.setPen(QPen(QColor(Colors.BORDER_HOVER), 1))
             painter.drawLine(int(playhead_x), 0, int(playhead_x), self.height())
 
     def mousePressEvent(self, event: QMouseEvent):
