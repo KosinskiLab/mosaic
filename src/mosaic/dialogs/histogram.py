@@ -9,7 +9,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import numpy as np
 import pyqtgraph as pg
 from qtpy.QtGui import QColor, QDoubleValidator
-from qtpy.QtCore import Qt, Signal, QLocale, QSize
+from qtpy.QtCore import Qt, Signal, QSize
 
 from ..utils import Throttle
 
@@ -100,7 +100,6 @@ class HistogramWidget(QWidget):
             widget.setMinimumWidth(widget_width)
 
         validator = QDoubleValidator()
-        validator.setLocale(QLocale.c())
         self.min_value_input.setValidator(validator)
         self.max_value_input.setValidator(validator)
 
@@ -207,9 +206,8 @@ class HistogramWidget(QWidget):
         self.lower_cutoff_line.setValue(lower_value)
         self.upper_cutoff_line.setValue(upper_value)
 
-        locale = QLocale.c()
-        self.min_value_input.setText(locale.toString(float(lower_value), "f", 2))
-        self.max_value_input.setText(locale.toString(float(upper_value), "f", 2))
+        self.min_value_input.setText(f"{float(lower_value):.2f}")
+        self.max_value_input.setText(f"{float(upper_value):.2f}")
 
         for element in block:
             element.blockSignals(False)
@@ -222,8 +220,7 @@ class HistogramWidget(QWidget):
         """Handle changes to either min/max input field."""
         try:
             input_field = self.min_value_input if is_lower else self.max_value_input
-            locale = QLocale.c()
-            value = locale.toDouble(input_field.text())[0]
+            value = float(input_field.text())
 
             if is_lower:
                 return self._update_cutoff_values(lower_value=value)

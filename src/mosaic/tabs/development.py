@@ -140,7 +140,7 @@ class DevelopmentTab(QWidget):
     def _stream_test_zarr(self):
         """Load a preset CZI tomogram via Zarr streaming."""
         if self.volume_viewer is None:
-            return
+            return None
         url = (
             "s3://cryoet-data-portal-public/10473/"
             "210610_Lamela1_Position_35/Reconstructions/"

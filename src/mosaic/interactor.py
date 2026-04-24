@@ -84,8 +84,7 @@ class DataContainerInteractor(QObject):
     def attach_area_picker(self):
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         if self.interactor is None:
-            print("Initialize an Interactor first.")
-            return None
+            raise ValueError("Initialize an Interactor first.")
         self.area_picker = vtk.vtkAreaPicker()
         style = vtk.vtkInteractorStyleRubberBandPick()
 
@@ -467,7 +466,7 @@ class DataContainerInteractor(QObject):
 
         trajectories = [g for g in selected if isinstance(g, GeometryTrajectory)]
         if len(trajectories) == 1:
-            extract_action = QAction("Extract Current Frame", self.data_list)
+            extract_action = QAction("Extract Frame", self.data_list)
             extract_action.triggered.connect(
                 lambda: self._extract_trajectory_frame(trajectories[0])
             )

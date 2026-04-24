@@ -758,7 +758,8 @@ class MetadataItemDelegate(QStyledItemDelegate):
 
         icon_size = 20
         icon = index.data(Qt.ItemDataRole.DecorationRole)
-        if icon and not icon.isNull():
+        has_icon = icon and not icon.isNull()
+        if has_icon:
             icon_rect = QRect(
                 option.rect.left() + 12,
                 option.rect.top() + (option.rect.height() - icon_size) // 2,
@@ -777,10 +778,11 @@ class MetadataItemDelegate(QStyledItemDelegate):
         else:
             painter.setPen(QColor(Colors.TEXT_SECONDARY))
 
+        text_left = 12 + icon_size + 4 if has_icon else 12
         text_rect = QRect(
-            option.rect.left() + 12 + icon_size + 4,
+            option.rect.left() + text_left,
             option.rect.top(),
-            option.rect.width() - icon_size - 28,
+            option.rect.width() - text_left - 12,
             option.rect.height(),
         )
         painter.drawText(text_rect, int(Qt.AlignmentFlag.AlignVCenter), text)

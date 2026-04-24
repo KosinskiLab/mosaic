@@ -26,6 +26,7 @@ from qtpy.QtWidgets import (
     QTableWidget,
     QHeaderView,
     QTableWidgetItem,
+    QTreeWidgetItem,
     QFileDialog,
     QDoubleSpinBox,
     QStackedWidget,
@@ -794,7 +795,7 @@ class PropertyAnalysisDialog(QDialog):
         self.filter_slider.rangeChanged.connect(self._on_filter_dragging)
         self.filter_stack.addWidget(self.filter_slider)
 
-        self.category_filter_list = QListWidget()
+        self.category_filter_list = ContainerTreeWidget()
         self.category_filter_list.setSelectionMode(
             QListWidget.SelectionMode.ExtendedSelection
         )
@@ -1395,7 +1396,7 @@ class PropertyAnalysisDialog(QDialog):
             self.category_filter_list.blockSignals(True)
             self.category_filter_list.clear()
             for label in all_labels:
-                self.category_filter_list.addItem(str(label))
+                self.category_filter_list.addItem(QTreeWidgetItem([str(label)]))
             self.category_filter_list.selectAll()
             self.category_filter_list.blockSignals(False)
             self.filter_stack.setCurrentWidget(self.category_filter_list)
@@ -1429,7 +1430,7 @@ class PropertyAnalysisDialog(QDialog):
 
     def _get_selected_categories(self):
         """Return the set of selected label strings from the category filter."""
-        return {item.text() for item in self.category_filter_list.selectedItems()}
+        return {item.text(0) for item in self.category_filter_list.selectedItems()}
 
     def _on_filter_changed(self, lower, upper):
         """Hide points outside the filter range using transparent LUT colors."""
