@@ -45,6 +45,11 @@ class DTSScreeningDialog(QDialog):
 
     def __init__(self, cdata=None, parent=None):
         super().__init__(parent)
+        self.setWindowFlags(
+            Qt.WindowType.Window
+            | Qt.WindowType.WindowMinMaxButtonsHint
+            | Qt.WindowType.WindowCloseButtonHint
+        )
         self.cdata = cdata
         self._screen_dir = None
 
@@ -172,12 +177,6 @@ class DTSScreeningDialog(QDialog):
         )
         self._overview_table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
-        )
-        self._overview_table.setStyleSheet(
-            "QTableWidget::item:hover { background: none; }"
-            "QTableWidget::item:selected,"
-            "QTableWidget::item:selected:hover"
-            "{ background-color: rgba(99, 102, 241, 0.15); }"
         )
         self._overview_table.itemSelectionChanged.connect(
             self._on_overview_selection_changed

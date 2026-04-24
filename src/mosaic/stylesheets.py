@@ -528,10 +528,10 @@ def _build_QTable_style():
         border: none;
     }}
     QTableWidget::item:hover {{
-        background-color: {Colors.BG_HOVER};
+        background-color: {Colors.alpha("BG_HOVER", 0.03)};
     }}
     QTableWidget::item:selected {{
-        background-color: {Colors.alpha("PRIMARY", 0.08)};
+        background-color: {Colors.alpha("PRIMARY", 0.07)};
         color: {Colors.PRIMARY};
     }}
     QTableWidget QHeaderView::section {{

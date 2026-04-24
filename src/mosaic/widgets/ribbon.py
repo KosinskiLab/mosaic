@@ -21,7 +21,7 @@ class SettingsPanel(QFrame):
 
     settings_applied = Signal(dict)
 
-    PANEL_WIDTH = 340
+    PANEL_WIDTH = 350
     LABEL_COLUMN_WIDTH = 100
 
     def __init__(self, config, parent_button=None):

@@ -746,7 +746,7 @@ class MetadataItemDelegate(QStyledItemDelegate):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         if is_selected:
             accent = QColor(Colors.PRIMARY)
-            accent.setAlphaF(0.07 if not Colors.is_dark() else 0.10)
+            accent.setAlphaF(0.07)
             painter.setBrush(accent)
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(content_rect, 6, 6)

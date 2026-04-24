@@ -267,8 +267,7 @@ class AppSettingsPanel(QFrame):
             | Qt.WindowType.NoDropShadowWindowHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setMinimumSize(420, 200)
-        self.resize(420, 380)
+        self.resize(440, 380)
         self._build_ui()
 
     def _build_ui(self):
@@ -313,7 +312,7 @@ class AppSettingsPanel(QFrame):
 
         self._body = QWidget()
         self._body_layout = QVBoxLayout(self._body)
-        self._body_layout.setContentsMargins(12, 8, 12, 12)
+        self._body_layout.setContentsMargins(12, 8, 6, 12)
         self._body_layout.setSpacing(12)
 
         self._build_theme_section()

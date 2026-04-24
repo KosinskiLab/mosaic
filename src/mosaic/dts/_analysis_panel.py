@@ -187,12 +187,6 @@ class AnalysisPanel(QWidget):
         self._readout_table.verticalHeader().setVisible(False)
         self._readout_table.verticalHeader().setDefaultSectionSize(22)
         self._readout_table.setMaximumHeight(198)
-        self._readout_table.setStyleSheet(
-            "QTableWidget::item:hover { background: none; }"
-            "QTableWidget::item:selected,"
-            "QTableWidget::item:selected:hover"
-            "{ background-color: rgba(99, 102, 241, 0.15); }"
-        )
         stats_layout.addWidget(self._readout_table)
 
         columns.addWidget(stats, stretch=3)

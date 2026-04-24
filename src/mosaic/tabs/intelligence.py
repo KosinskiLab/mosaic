@@ -110,7 +110,6 @@ class IntelligenceTab(QWidget):
             dialog.get_parameters(),
         )
 
-
     def _import_trajectory(
         self,
         directory: str = "",

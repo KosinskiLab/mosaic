@@ -11,7 +11,7 @@ import signal
 import argparse
 from importlib_resources import files
 
-from qtpy.QtCore import QLocale
+from qtpy.QtCore import Qt, QLocale
 from qtpy.QtGui import QIcon, QFont, QFontDatabase, QFontInfo
 from qtpy.QtWidgets import QApplication
 
@@ -55,6 +55,7 @@ def main():
         sys.exit(0)
 
     app = QApplication(sys.argv)
+    app.setAttribute(Qt.ApplicationAttribute.AA_DontShowIconsInMenus, False)
     QLocale.setDefault(QLocale.c())
     app.setApplicationName("Mosaic")
     app.setApplicationDisplayName("Mosaic")
