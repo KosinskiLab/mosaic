@@ -38,11 +38,11 @@ class IntelligenceTab(QWidget):
                 "HMFF", "ph.gear", self, self._setup_hmff, "Configure HMFF simulation"
             ),
             create_button(
-                "Screen",
+                "DTS",
                 "ph.grid-four",
                 self,
                 self._screen_parameters,
-                "DTS parameter screening",
+                "Setup DTS simulations and parameter screens.",
             ),
             create_button(
                 "Trajectory",
@@ -98,7 +98,9 @@ class IntelligenceTab(QWidget):
             msg = f"{geometry} is not a triangular mesh."
             return QMessageBox.warning(self, "Error", msg)
 
-        dialog = MeshEquilibrationDialog(None)
+        from qtpy.QtWidgets import QApplication
+
+        dialog = MeshEquilibrationDialog(QApplication.activeWindow())
         if not dialog.exec():
             return -1
 

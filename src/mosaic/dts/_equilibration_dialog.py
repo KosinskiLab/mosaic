@@ -8,24 +8,22 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from pathlib import Path
 
+from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QDialog,
     QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
     QGridLayout,
-    QComboBox,
-    QFrame,
-    QScrollArea,
-    QWidget,
+    QLabel,
     QGroupBox,
-    QFormLayout,
+    QPushButton,
+    QWidget,
     QMessageBox,
 )
 
+from ..icons import icon
 from ..widgets import DialogFooter, PathSelector
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
-from ..stylesheets import Typography
+from ..stylesheets import Colors
 
 
 def _make_setting(parameter, default, min_val=0, description=""):
@@ -46,7 +44,7 @@ class MeshEquilibrationDialog(QDialog):
         super().__init__(parent)
 
         self.setWindowTitle("Mesh Equilibration")
-        self.resize(600, 500)
+        self.setMinimumWidth(350)
 
         self._settings = [
             _make_setting(
@@ -77,127 +75,123 @@ class MeshEquilibrationDialog(QDialog):
         self._widgets = {}
         self._setup_ui()
 
+    def _add_row(self, grid, row, left, right=None):
+        """Add one or two label:widget pairs to a grid row."""
+        label = QLabel(left["label"])
+        label.setToolTip(left.get("description", ""))
+        widget = create_setting_widget(left)
+        self._widgets[left["parameter"]] = widget
+
+        grid.addWidget(label, row, 0)
+        grid.addWidget(widget, row, 1)
+
+        if right is not None:
+            label_r = QLabel(right["label"])
+            label_r.setToolTip(right.get("description", ""))
+            widget_r = create_setting_widget(right)
+            self._widgets[right["parameter"]] = widget_r
+
+            grid.addWidget(label_r, row, 2)
+            grid.addWidget(widget_r, row, 3)
+
     def _setup_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(15)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
 
-        header_layout = QHBoxLayout()
+        basic_group = QGroupBox("Basic")
+        basic = QGridLayout(basic_group)
+        basic.setColumnStretch(1, 1)
+        basic.setColumnStretch(3, 1)
+        basic.setHorizontalSpacing(12)
+        basic.setVerticalSpacing(8)
 
-        title_label = QLabel("Mesh Equilibration Settings")
-        title_label.setStyleSheet(f"font-size: {Typography.BODY}px; font-weight: 600;")
-        header_layout.addWidget(title_label)
-
-        header_layout.addStretch()
-
-        mode_label = QLabel("Settings Mode:")
-        header_layout.addWidget(mode_label)
-
-        self.mode_selector = QComboBox()
-        self.mode_selector.addItems(["Default", "Advanced"])
-        self.mode_selector.currentTextChanged.connect(self._toggle_mode)
-        header_layout.addWidget(self.mode_selector)
-
-        main_layout.addLayout(header_layout)
-
-        output_group = QGroupBox("Output")
-        output_layout = QFormLayout(output_group)
+        out_label = QLabel("Output Directory")
+        out_label.setToolTip("Directory where the equilibrated mesh will be written")
         self.output_selector = PathSelector(
-            placeholder="Directory where the equilibrated mesh will be written",
+            placeholder="Directory for equilibrated mesh",
             mode="directory",
         )
-        output_layout.addRow("Directory:", self.output_selector)
-        main_layout.addWidget(output_group)
+        basic.addWidget(out_label, 0, 0)
+        basic.addWidget(self.output_selector, 0, 1, 1, 3)
 
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-
-        content_widget = QWidget()
-        scroll_area.setWidget(content_widget)
-        content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(0, 0, 0, 0)
-        content_layout.setSpacing(15)
-
-        basic_settings = QGroupBox("Basic Settings")
-        basic_layout = QGridLayout(basic_settings)
-        basic_layout.setColumnStretch(0, 1)
-        basic_layout.setColumnStretch(1, 1)
-
-        basic_layout.addWidget(self._create_labeled_widget(self._settings[0]), 0, 0)
+        self._add_row(basic, 1, self._settings[0], self._settings[3])
         self._widgets["average_edge_length"].valueChanged.connect(self._update_bounds)
+        self._add_row(basic, 2, self._settings[1], self._settings[2])
 
-        # Add steps widget (index 3)
-        basic_layout.addWidget(self._create_labeled_widget(self._settings[3]), 0, 1)
+        layout.addWidget(basic_group)
 
-        # Add bounds widgets (indices 1, 2)
-        basic_layout.addWidget(self._create_labeled_widget(self._settings[1]), 1, 0)
-        basic_layout.addWidget(self._create_labeled_widget(self._settings[2]), 1, 1)
+        self._toggle_btn = QPushButton(" Advanced")
+        self._toggle_btn.setIcon(icon("ph.caret-right", role="muted"))
+        self._toggle_btn.setCheckable(True)
+        self._toggle_btn.setAutoDefault(False)
+        self._toggle_btn.setDefault(False)
+        self._toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._toggle_btn.setStyleSheet(
+            f"""
+            QPushButton {{
+                background: transparent;
+                border: none;
+                border-bottom: 1px solid {Colors.BORDER_DARK};
+                border-radius: 0px;
+                text-align: left;
+                padding: 6px 0px;
+                color: {Colors.TEXT_MUTED};
+            }}
+            QPushButton:hover {{
+                color: {Colors.TEXT_SECONDARY};
+            }}
+        """
+        )
+        self._toggle_btn.toggled.connect(self._toggle_advanced)
+        layout.addWidget(self._toggle_btn)
 
-        content_layout.addWidget(basic_settings)
+        self._advanced = QWidget()
+        adv = QVBoxLayout(self._advanced)
+        adv.setContentsMargins(0, 4, 0, 0)
+        adv.setSpacing(10)
 
-        # Advanced settings - Energy coefficients
-        self.advanced_group = QGroupBox("Energy Coefficients")
-        advanced_layout = QGridLayout(self.advanced_group)
-        advanced_layout.setColumnStretch(0, 1)
-        advanced_layout.setColumnStretch(1, 1)
+        energy_group = QGroupBox("Energy Coefficients")
+        energy = QGridLayout(energy_group)
+        energy.setColumnStretch(1, 1)
+        energy.setColumnStretch(3, 1)
+        energy.setHorizontalSpacing(12)
+        energy.setVerticalSpacing(8)
 
-        row, col = 0, 0
-        for i in range(4, 10):
-            advanced_layout.addWidget(
-                self._create_labeled_widget(self._settings[i]), row, col
-            )
-            col = (col + 1) % 2
-            if col == 0:
-                row += 1
+        row = 0
+        for i in range(4, 10, 2):
+            self._add_row(energy, row, self._settings[i], self._settings[i + 1])
+            row += 1
+        adv.addWidget(energy_group)
 
-        content_layout.addWidget(self.advanced_group)
+        constraints_group = QGroupBox("Constraints")
+        constraints = QGridLayout(constraints_group)
+        constraints.setColumnStretch(1, 1)
+        constraints.setColumnStretch(3, 1)
+        constraints.setHorizontalSpacing(12)
+        constraints.setVerticalSpacing(8)
 
-        self.constraints_group = QGroupBox("Additional Constraints")
-        constraints_layout = QGridLayout(self.constraints_group)
+        self._add_row(constraints, 0, self._settings[10], self._settings[11])
+        self._add_row(constraints, 1, self._settings[12])
+        adv.addWidget(constraints_group)
 
-        for i in range(10, len(self._settings)):
-            constraints_layout.addWidget(
-                self._create_labeled_widget(self._settings[i]),
-                (i - 10) // 2,
-                (i - 10) % 2,
-            )
+        self._advanced.setVisible(False)
+        layout.addWidget(self._advanced)
 
-        content_layout.addWidget(self.constraints_group)
-        content_layout.addStretch()
+        layout.addStretch()
 
-        main_layout.addWidget(scroll_area)
-
-        self.footer = DialogFooter(dialog=self, margin=(0, 15, 0, 0))
+        self.footer = DialogFooter(dialog=self, margin=(0, 12, 0, 0))
         self.footer.accept_button.setEnabled(False)
-        main_layout.addWidget(self.footer)
+        layout.addWidget(self.footer)
 
         self.output_selector.path_input.textChanged.connect(self._update_accept_state)
 
-        self._toggle_mode("Default")
-
-    def _create_labeled_widget(self, setting):
-        """Create a widget with label for a setting."""
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
-
-        label = QLabel(setting["label"])
-        label.setToolTip(setting.get("description", ""))
-        layout.addWidget(label)
-
-        widget = create_setting_widget(setting)
-        layout.addWidget(widget)
-
-        self._widgets[setting["parameter"]] = widget
-        return container
-
-    def _toggle_mode(self, mode):
-        """Toggle between Default and Advanced modes."""
-        is_advanced = mode == "Advanced"
-        self.advanced_group.setVisible(is_advanced)
-        self.constraints_group.setVisible(is_advanced)
+    def _toggle_advanced(self, expanded):
+        """Toggle visibility of advanced parameters."""
+        icon_name = "ph.caret-down" if expanded else "ph.caret-right"
+        self._toggle_btn.setIcon(icon(icon_name, role="muted"))
+        self._advanced.setVisible(expanded)
+        self.adjustSize()
 
     def _update_bounds(self, value):
         """Update lower and upper bounds when edge length changes."""

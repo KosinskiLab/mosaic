@@ -1,6 +1,5 @@
 from typing import Dict
 
-from qtpy.QtCore import QLocale
 from qtpy.QtGui import QDoubleValidator
 from qtpy.QtWidgets import (
     QSpinBox,
@@ -92,7 +91,6 @@ def create_setting_widget(setting: Dict):
         widget.setProperty("setting_type", setting["type"])
         if not isinstance(default_value, str) and setting["type"] != "float_list":
             validator = QDoubleValidator()
-            validator.setLocale(QLocale.c())
             validator.setNotation(QDoubleValidator.Notation.StandardNotation)
             validator.setBottom(float(setting.get("min", 0.0)))
             widget.setValidator(validator)
@@ -123,9 +121,9 @@ def get_widget_value(widget):
         validator = widget.validator()
         value = widget.text().strip()
         if validator:
-            return float(value.replace(",", "."))
+            return float(value)
         if widget.property("setting_type") == "float_list":
-            return [float(x.strip().replace(",", ".")) for x in value.split(";")]
+            return [float(x.strip()) for x in value.split(";")]
         return value
     elif isinstance(widget, PathSelector):
         return widget.get_path()

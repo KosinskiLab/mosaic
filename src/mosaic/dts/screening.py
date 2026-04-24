@@ -106,7 +106,7 @@ def _prepare_volume(
     lowpass_cutoff: Optional[float] = None,
     highpass_cutoff: Optional[float] = None,
     plane_norm: Optional[str] = None,
-) -> Union[str, List[str]]:
+) -> List[str]:
     """Apply bandpass filtering to volume(s) if requested.
 
     Parameters
@@ -126,18 +126,14 @@ def _prepare_volume(
 
     Returns
     -------
-    str or list of str
-        Path(s) to (possibly filtered) volume(s).  Returns the same
-        type as the input *volume_path*.
+    list of str
+        Path(s) to (possibly filtered) volume(s).
     """
     if not use_filters:
         return volume_path
 
     if isinstance(volume_path, str):
-        out = str(Path(output_dir) / "density.mrc")
-        return _filter_single_volume(
-            volume_path, out, lowpass_cutoff, highpass_cutoff, plane_norm
-        )
+        volume_path = [volume_path]
 
     results = []
     for i, vpath in enumerate(volume_path):
@@ -281,7 +277,9 @@ def _expand_screen(
         Newly created run info dicts with ``run_id`` and ``parameters``.
     """
     existing_runs = existing_runs or []
-    existing_combos = {tuple(sorted(r["parameters"].items())) for r in existing_runs}
+    existing_combo_runs = {
+        tuple(sorted(r["parameters"].items())): r["run_id"] for r in existing_runs
+    }
 
     param_names = sorted(param_values.keys())
     all_values = [param_values[name] for name in param_names]
@@ -292,12 +290,12 @@ def _expand_screen(
     for combo in product(*all_values):
         params = dict(zip(param_names, combo))
         combo_key = tuple(sorted(params.items()))
-        if combo_key in existing_combos:
+        existing_id = existing_combo_runs.get(combo_key)
+        if existing_id and (screen_dir / existing_id).is_dir():
             continue
 
         run_counter += 1
-        width = max(len(str(run_counter)), 4)
-        run_id = f"run_{run_counter:0{width}d}"
+        run_id = f"run_{run_counter}"
         run_dir = screen_dir / run_id
         run_dir.mkdir(exist_ok=True)
 
@@ -388,6 +386,7 @@ def _finalize_runs(
 
     for run_info in summary["runs"]:
         run_dir = screen_dir / run_info["run_id"]
+        run_dir.mkdir(parents=True, exist_ok=True)
         _write_run_script(run_dir, run_info["parameters"], mesh_name=mesh_name)
 
     _write_launcher_scripts(screen_dir, summary)
@@ -644,12 +643,14 @@ def generate_screen(
     )
     template_content, parameters = ParameterParser.parse_template(raw_template)
 
-    multi_volume = isinstance(volume_path, list) and len(volume_path) > 1
-    if multi_volume and filter_params and "volume_path" in parameters:
-        parameters["volume_path"] = list(volume_path)
+    if isinstance(volume_path, list) and len(volume_path) >= 1:
+        original = extract_volume_path(dts_content)
+        if isinstance(original, str):
+            template_content = template_content.replace(original, volume_path[0])
+        else:
+            parameters["volume_path"] = volume_path
 
     (screen_dir / "screen.dts").write_text(dts_content, encoding="utf-8")
-    (screen_dir / "template.dts").write_text(template_content, encoding="utf-8")
     (screen_dir / "topol.top").write_text(
         f"{screen_dir / mesh_name} 1\n", encoding="utf-8"
     )
@@ -667,7 +668,7 @@ def generate_screen(
 
     new_runs = _expand_screen(screen_dir, template_content, parameters, existing_runs)
     all_runs = existing_runs + new_runs
-    summary = _write_summary(screen_dir, "template.dts", merged_parameters, all_runs)
+    summary = _write_summary(screen_dir, "screen.dts", merged_parameters, all_runs)
     _finalize_runs(screen_dir, summary, mesh_name=mesh_name)
 
     report_progress(message="Done", current=4, total=4)
@@ -703,7 +704,11 @@ def extend_screen(screen_dir: str, new_screen_params: Dict[str, str]) -> Dict:
     with open(screen_path / "screen_summary.json", "r") as f:
         summary = json.load(f)
 
-    template_content = (screen_path / "template.dts").read_text()
+    dts_content = (screen_path / "screen.dts").read_text()
+    raw_template = "\n".join(
+        l for l in dts_content.splitlines() if not l.strip().startswith(";@filter")
+    )
+    template_content, _ = ParameterParser.parse_template(raw_template)
 
     new_values = {}
     for name, range_str in new_screen_params.items():

@@ -20,7 +20,6 @@ from qtpy.QtCore import (
     QTimer,
 )
 from qtpy.QtWidgets import (
-    QApplication,
     QMainWindow,
     QVBoxLayout,
     QGridLayout,
@@ -32,7 +31,6 @@ from qtpy.QtWidgets import (
     QPushButton,
     QDockWidget,
     QFrame,
-    QShortcut,
     QMessageBox,
     QDialog,
 )
@@ -40,7 +38,7 @@ from qtpy.QtGui import (
     QAction,
     QGuiApplication,
     QActionGroup,
-    QKeyEvent,
+    QKeySequence,
     QDragEnterEvent,
 )
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
@@ -113,7 +111,7 @@ class App(QMainWindow):
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         self.interactor.Initialize()
         self.interactor.AddObserver("RightButtonPressEvent", self.on_right_click)
-        self.interactor.AddObserver("KeyPressEvent", self.on_key_press)
+        self.interactor.AddObserver("KeyPressEvent", self._on_vtk_key_press)
         self.interactor.SetDesiredUpdateRate(Settings.rendering.target_fps)
 
         left = 78 if sys.platform == "darwin" else 8
@@ -205,9 +203,6 @@ class App(QMainWindow):
 
         self.actor_collection = vtk.vtkActorCollection()
         self.setup_menu()
-
-        self.escape_shortcut = QShortcut(Qt.Key.Key_Escape, self.vtk_widget)
-        self.escape_shortcut.activated.connect(self.handle_escape_key)
 
         QTimer.singleShot(2000, self._check_for_updates)
 
@@ -448,56 +443,45 @@ class App(QMainWindow):
             btm._initialize()
 
     def handle_escape_key(self, *args, **kwargs):
-        """Handle escape key press - switch to viewing mode if not already in it."""
+        """Switch to viewing mode if not already in it."""
         self._transition_modes(self.cursor_handler.current_mode)
         self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
 
-    def on_key_press(self, obj, event):
+    def _on_vtk_key_press(self, obj, event):
         key = obj.GetKeyCode()
-
-        if key in ["x", "c", "z"]:
-            self.set_camera_view(key)
-        elif key == "v":
-            self.swap_camera_view_direction(key)
-        elif key in ["d"]:
-            self._use_alt_background = not getattr(self, "_use_alt_background", False)
-            current_color = self.renderer.GetBackground()
-            self.renderer.SetBackground(*self.renderer_next_background)
-            self.renderer_next_background = current_color
-            self.vtk_widget.GetRenderWindow().Render()
-        elif key in ["\x7f", "\x08"]:
-            self.cdata.data.remove()
-            self.cdata.models.remove()
-        elif key == "m":
-            self.cdata.data.merge()
-        elif key == "e":
-            self.cdata.highlight_clusters_from_selected_points()
-        elif key == "h":
-            self.cdata.visibility_unselected(visible=False)
-        elif key == "H":
-            self.cdata.visibility_unselected(visible=True)
-        elif key == "s":
-            self._transition_modes(ViewerModes.VIEWING)
-            self.cdata.swap_area_picker()
-            self.toggle_selection_menu()
-        elif key == "E":
-            self._transition_modes(ViewerModes.PICKING)
-        elif key == "a":
-            self._transition_modes(ViewerModes.DRAWING)
-        elif key == "A":
-            self._transition_modes(ViewerModes.CURVE)
-        elif key == "q":
-            self._transition_modes(ViewerModes.MESH_DELETE)
-        elif key == "Q":
-            self._transition_modes(ViewerModes.MESH_ADD)
-        elif key == "r":
+        if key == "r":
             self._transition_modes(ViewerModes.SELECTION)
+
+    def _send_vtk_key(self, key_char):
+        self.vtk_widget.setFocus()
+        self.interactor.SetKeyCode(key_char)
+        self.interactor.SetKeySym(key_char)
+        self.interactor.KeyPressEvent()
+        self.interactor.CharEvent()
+
+    def toggle_background(self):
+        self._use_alt_background = not getattr(self, "_use_alt_background", False)
+        current_color = self.renderer.GetBackground()
+        self.renderer.SetBackground(*self.renderer_next_background)
+        self.renderer_next_background = current_color
+        self.vtk_widget.GetRenderWindow().Render()
+
+    def toggle_interaction_target(self):
+        self._transition_modes(ViewerModes.VIEWING)
+        self.cdata.swap_area_picker()
+        self.toggle_selection_menu()
+
+    def remove_selected(self):
+        self.cdata.data.remove()
+        self.cdata.models.remove()
 
     def on_right_click(self, obj, event):
         self.cdata.data.deselect()
         self.cdata.models.deselect()
 
     def _transition_modes(self, new_mode):
+        self.vtk_widget.setFocus()
+
         current_mode = self.cursor_handler.current_mode
         if current_mode in (
             ViewerModes.MESH_ADD,
@@ -526,7 +510,8 @@ class App(QMainWindow):
             self.interactor.SetInteractorStyle(style)
             style.SetDefaultRenderer(self.renderer)
         elif new_mode == ViewerModes.SELECTION:
-            self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleRubberBandPick())
+            self.cdata._get_active_container().attach_area_picker()
+
         elif new_mode == ViewerModes.PICKING:
             self.cdata.activate_picking_mode()
         elif new_mode in (ViewerModes.MESH_ADD, ViewerModes.MESH_DELETE):
@@ -1002,19 +987,19 @@ class App(QMainWindow):
 
         view_menu.addSeparator()
 
-        xy_action = QAction("XY-Plane", self)
-        xy_action.setText("Top View (XY)\tz")
-        xy_action.triggered.connect(lambda: self.simulate_key_press("z"))
-        yz_action = QAction("YZ-Plane", self)
-        yz_action.setText("Side View (YZ)\tx")
-        yz_action.triggered.connect(lambda: self.simulate_key_press("x"))
-        xz_action = QAction("XZ-Plane", self)
-        xz_action.setText("Front View (XZ)\tc")
-        xz_action.triggered.connect(lambda: self.simulate_key_press("c"))
+        xy_action = QAction("Top View (XY)", self)
+        xy_action.setShortcut(QKeySequence("Z"))
+        xy_action.triggered.connect(lambda: self.set_camera_view("z"))
+        yz_action = QAction("Side View (YZ)", self)
+        yz_action.setShortcut(QKeySequence("X"))
+        yz_action.triggered.connect(lambda: self.set_camera_view("x"))
+        xz_action = QAction("Front View (XZ)", self)
+        xz_action.setShortcut(QKeySequence("C"))
+        xz_action.triggered.connect(lambda: self.set_camera_view("c"))
 
-        flip_action = QAction(icon("ph.swap"), "Flip View lambda", self)
-        flip_action.setText("Flip View Axis \tv")
-        flip_action.triggered.connect(lambda: self.simulate_key_press("v"))
+        flip_action = QAction(icon("ph.swap"), "Flip View Axis", self)
+        flip_action.setShortcut(QKeySequence("V"))
+        flip_action.triggered.connect(lambda: self.swap_camera_view_direction("v"))
 
         view_menu.addAction(xy_action)
         view_menu.addAction(yz_action)
@@ -1072,78 +1057,100 @@ class App(QMainWindow):
         show_settings.triggered.connect(self.show_app_settings)
         preference_menu.addAction(show_settings)
 
-        viewing_action = QAction(icon("ph.eye"), "Viewing Mode\tEsc", self)
-        viewing_action.triggered.connect(lambda: self.handle_escape_key())
+        viewing_action = QAction(icon("ph.eye"), "Viewing Mode", self)
+        viewing_action.setShortcut(QKeySequence(Qt.Key.Key_Escape))
+        viewing_action.triggered.connect(self.handle_escape_key)
 
-        background_action = QAction(
-            icon("ph.circle-half"), "Toggle Background\td", self
-        )
-        background_action.triggered.connect(lambda: self.simulate_key_press("d"))
+        background_action = QAction(icon("ph.circle-half"), "Toggle Background", self)
+        background_action.setShortcut(QKeySequence("D"))
+        background_action.triggered.connect(self.toggle_background)
 
-        selection_action = QAction(icon("ph.cursor"), "Point Selection\tr", self)
-        selection_action.triggered.connect(lambda: self.simulate_key_press("r"))
+        # TODO: Figure out why selection needs this extra treatment
+        selection_action = QAction(icon("ph.cursor"), "Point Selection", self)
+        selection_action.setShortcut(QKeySequence("R"))
+        selection_action.triggered.connect(lambda: self._send_vtk_key("r"))
 
         expand_selection_action = QAction(
-            icon("ph.arrows-out"), "Expand Selection\te", self
+            icon("ph.arrows-out"), "Expand Selection", self
         )
-        expand_selection_action.triggered.connect(lambda: self.simulate_key_press("e"))
-
-        hide_unselected_action = QAction(
-            icon("ph.eye-slash"), "Hide Unselected\th", self
+        expand_selection_action.setShortcut(QKeySequence("E"))
+        expand_selection_action.triggered.connect(
+            self.cdata.highlight_clusters_from_selected_points
         )
-        hide_unselected_action.triggered.connect(lambda: self.simulate_key_press("h"))
 
-        show_unselected_action = QAction(
-            icon("ph.eye"), "Show Unselected\tShift+H", self
+        hide_unselected_action = QAction(icon("ph.eye-slash"), "Hide Unselected", self)
+        hide_unselected_action.setShortcut(QKeySequence("H"))
+        hide_unselected_action.triggered.connect(
+            lambda: self.cdata.visibility_unselected(visible=False)
         )
-        show_unselected_action.triggered.connect(lambda: self.simulate_key_press("H"))
 
-        picking_action = QAction(
-            icon("ph.hand-pointing"), "Pick Objects\tShift+E", self
+        show_unselected_action = QAction(icon("ph.eye"), "Show Unselected", self)
+        show_unselected_action.setShortcut(QKeySequence("Shift+H"))
+        show_unselected_action.triggered.connect(
+            lambda: self.cdata.visibility_unselected(visible=True)
         )
-        picking_action.triggered.connect(lambda: self.simulate_key_press("E"))
 
-        remove_action = QAction(icon("ph.trash"), "Remove Selection\tDelete", self)
-        remove_action.triggered.connect(lambda: self.simulate_key_press("\x7f"))
+        picking_action = QAction(icon("ph.hand-pointing"), "Pick Objects", self)
+        picking_action.setShortcut(QKeySequence("Shift+E"))
+        picking_action.triggered.connect(
+            lambda: self._transition_modes(ViewerModes.PICKING)
+        )
+
+        remove_action = QAction(icon("ph.trash"), "Remove Selection", self)
+        remove_action.setShortcuts(
+            [QKeySequence(Qt.Key.Key_Delete), QKeySequence(Qt.Key.Key_Backspace)]
+        )
+        remove_action.triggered.connect(self.remove_selected)
 
         merge_action = QAction(icon("ph.git-merge"), "Merge Selection", self)
-        merge_action.setText("Merge Selection\tm")
-        merge_action.triggered.connect(lambda: self.simulate_key_press("m"))
+        merge_action.setShortcut(QKeySequence("M"))
+        merge_action.triggered.connect(lambda: self.cdata.data.merge())
 
         drawing_action = QAction(icon("ph.pencil-line"), "Free Hand Drawing", self)
-        drawing_action.setText("Free Hand Drawing\ta")
-        drawing_action.triggered.connect(lambda: self.simulate_key_press("a"))
-
-        curve_action = QAction(icon("ph.path"), "Curve Drawing\tShift+A", self)
-        curve_action.triggered.connect(lambda: self.simulate_key_press("A"))
-
-        mesh_delete_action = QAction(
-            icon("ph.eraser"), "Delete Mesh Triangles\tq", self
+        drawing_action.setShortcut(QKeySequence("A"))
+        drawing_action.triggered.connect(
+            lambda: self._transition_modes(ViewerModes.DRAWING)
         )
-        mesh_delete_action.triggered.connect(lambda: self.simulate_key_press("q"))
 
-        mesh_add_action = QAction(
-            icon("ph.polygon"), "Add Mesh Triangles\tShift+Q", self
+        curve_action = QAction(icon("ph.path"), "Curve Drawing", self)
+        curve_action.setShortcut(QKeySequence("Shift+A"))
+        curve_action.triggered.connect(
+            lambda: self._transition_modes(ViewerModes.CURVE)
         )
-        mesh_add_action.triggered.connect(lambda: self.simulate_key_press("m"))
+
+        mesh_delete_action = QAction(icon("ph.eraser"), "Delete Mesh Triangles", self)
+        mesh_delete_action.setShortcut(QKeySequence("Q"))
+        mesh_delete_action.triggered.connect(
+            lambda: self._transition_modes(ViewerModes.MESH_DELETE)
+        )
+
+        mesh_add_action = QAction(icon("ph.polygon"), "Add Mesh Triangles", self)
+        mesh_add_action.setShortcut(QKeySequence("Shift+Q"))
+        mesh_add_action.triggered.connect(
+            lambda: self._transition_modes(ViewerModes.MESH_ADD)
+        )
 
         interaction_target_menu = _style_popup(QMenu("Interaction Target", self))
         target_group = QActionGroup(self)
         target_group.setExclusive(True)
-        self.cluster_target_action = QAction("Clusters\ts", self)
+        self.cluster_target_action = QAction("Clusters", self)
         self.cluster_target_action.setCheckable(True)
         self.cluster_target_action.setChecked(True)
-        self.cluster_target_action.triggered.connect(
-            lambda: self.simulate_key_press("s")
-        )
+        self.cluster_target_action.triggered.connect(self.toggle_interaction_target)
         target_group.addAction(self.cluster_target_action)
 
-        self.model_target_action = QAction("Models\ts", self)
+        self.model_target_action = QAction("Models", self)
         self.model_target_action.setCheckable(True)
-        self.model_target_action.triggered.connect(lambda: self.simulate_key_press("s"))
+        self.model_target_action.triggered.connect(self.toggle_interaction_target)
         target_group.addAction(self.model_target_action)
+        swap_target_action = QAction("Swap Target", self)
+        swap_target_action.setShortcut(QKeySequence("S"))
+        swap_target_action.triggered.connect(self.toggle_interaction_target)
+
         interaction_target_menu.addAction(self.cluster_target_action)
         interaction_target_menu.addAction(self.model_target_action)
+        interaction_target_menu.addSeparator()
+        interaction_target_menu.addAction(swap_target_action)
 
         interact_menu.addAction(undo_action)
         interact_menu.addAction(viewing_action)
@@ -1247,27 +1254,6 @@ class App(QMainWindow):
         else:
             self.model_target_action.setChecked(True)
             self.status_indicator.update_status(target="Models")
-
-    def simulate_key_press(self, key):
-        self.vtk_widget.setFocus()
-
-        key_code = (
-            ord(key.upper())
-            if len(key) == 1
-            else getattr(Qt.Key, f"Key_{key}", ord(key))
-        )
-
-        key_press = QKeyEvent(
-            QEvent.Type.KeyPress, key_code, Qt.KeyboardModifier.NoModifier, key
-        )
-
-        key_release = QKeyEvent(
-            QEvent.Type.KeyRelease, key_code, Qt.KeyboardModifier.NoModifier, key
-        )
-
-        QApplication.postEvent(self.vtk_widget, key_press)
-        QApplication.postEvent(self.vtk_widget, key_release)
-        QApplication.processEvents()
 
     def _animate(self):
         from .widgets.dock import create_or_toggle_dock
