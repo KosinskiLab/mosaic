@@ -48,7 +48,7 @@ class DTSScreeningDialog(QDialog):
         self.cdata = cdata
         self._screen_dir = None
 
-        self.setWindowTitle("DTS Parameter Screening")
+        self.setWindowTitle("DTS Simulation")
         self.setMinimumSize(1100, 750)
         self.resize(1250, 820)
 
@@ -97,6 +97,7 @@ class DTSScreeningDialog(QDialog):
         )
 
         self._preview_plot_item = self._preview_plot.addPlot()
+        self._preview_plot.setVisible(False)
 
         preview_layout.addWidget(self._preview_plot)
 

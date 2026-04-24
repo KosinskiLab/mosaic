@@ -26,7 +26,7 @@ class IntelligenceTab(QWidget):
 
         self.ribbon.clear()
 
-        hmff_actions = [
+        dts_actions = [
             create_button(
                 "Equilibrate",
                 "ph.faders",
@@ -35,21 +35,18 @@ class IntelligenceTab(QWidget):
                 "Prepare mesh for DTS simulation",
             ),
             create_button(
-                "HMFF", "ph.gear", self, self._setup_hmff, "Configure HMFF simulation"
-            ),
-            create_button(
                 "DTS",
                 "ph.grid-four",
                 self,
                 self._screen_parameters,
-                "Setup DTS simulations and parameter screens.",
+                "Setup and analyze DTS simulations.",
             ),
             create_button(
                 "Trajectory",
                 "ph.path",
                 self,
                 self._import_trajectory,
-                "Load simulation trajectory",
+                "Load DTS simulation trajectory",
                 IMPORT_SETTINGS,
             ),
             create_button(
@@ -60,7 +57,7 @@ class IntelligenceTab(QWidget):
                 "Backmap DTS to Martini representation",
             ),
         ]
-        self.ribbon.add_section("DTS Simulation", hmff_actions)
+        self.ribbon.add_section("DTS Simulation", dts_actions)
 
         detection_actions = [
             create_button(
@@ -113,21 +110,6 @@ class IntelligenceTab(QWidget):
             dialog.get_parameters(),
         )
 
-    def _setup_hmff(self):
-        from ..meshing import setup_hmff
-        from ..dts._hmff_dialog import HMFFDialog
-
-        dialog = HMFFDialog(None)
-        if not dialog.exec():
-            return -1
-
-        submit_task(
-            "HMFF Setup",
-            setup_hmff,
-            None,
-            dialog.get_mesh_conf(),
-            **dialog.get_parameters(),
-        )
 
     def _import_trajectory(
         self,
