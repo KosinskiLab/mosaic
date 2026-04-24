@@ -1625,6 +1625,14 @@ class App(QMainWindow):
         self.update_checker.update_available.connect(_show_update_dialog)
         self.update_checker.start()
 
+    def close(self):
+        try:
+            BackgroundTaskManager.instance()._shutdown()
+        except Exception:
+            pass
+        finally:
+            return super().close()
+
 
 def _read_files_worker(cdata, filenames, file_parameters):
     """I/O worker: read each file into ``cdata`` and report progress.

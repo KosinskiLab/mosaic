@@ -87,7 +87,6 @@ def _load_density_image(filepath):
 
 class VolumeViewer(QWidget):
     data_changed = Signal()
-    _zarr_ready = Signal(object, object)
 
     def __init__(self, vtk_widget, legend=None, parent=None):
         super().__init__(parent)
@@ -105,8 +104,6 @@ class VolumeViewer(QWidget):
         self._streaming = False
         self._zarr_source = None
         self._scalar_range = (0.0, 1.0)
-        self._zarr_ready.connect(self._finish_zarr_load)
-
         self._orientation_mapping = {"X": 0, "Y": 1, "Z": 2}
         self.is_visible = True
         self.current_palette = "gray"
@@ -273,47 +270,24 @@ class VolumeViewer(QWidget):
         self._setup_after_load()
 
     def _load_zarr(self, source):
-        import threading
+        from ..formats.stream import open_omezarr
 
         self._streaming = True
-        self._zarr_source = None
+        self._zarr_source, info = open_omezarr(source)
+        self._zarr_source.set_on_chunk_ready(self._on_zarr_slice_ready)
 
-        def _open():
-            try:
-                from ..formats.stream import open_omezarr
-
-                zarr_src, info = open_omezarr(
-                    source,
-                    on_slice_ready=self._on_zarr_slice_ready,
-                )
-                self._zarr_ready.emit(zarr_src, info)
-            except Exception as e:
-                print(f"Zarr open error: {e}")
-
-        threading.Thread(target=_open, daemon=True).start()
-
-    def _finish_zarr_load(self, zarr_src, info):
-        self._zarr_source = zarr_src
-        z, y, x = info["shape"]
+        z, y, x = self._zarr_source.shape
         self.volume = vtk.vtkImageData()
         self.volume.SetDimensions(x, y, z)
-        self.volume.SetSpacing(*info["spacing"])
-        self.slice_mapper.SetInputConnection(zarr_src.GetOutputPort())
+        self.volume.SetSpacing(*self._zarr_source.spacing)
+        self.slice_mapper.SetInputConnection(self._zarr_source.GetOutputPort())
         self.slice_mapper.StreamingOn()
         self._setup_after_load()
-
-    def _on_zarr_slice_ready(self):
-        from qtpy.QtCore import QTimer
-
-        QTimer.singleShot(0, self._zarr_rerender)
-
-    def _zarr_rerender(self):
-        if self._zarr_source is not None:
-            self._zarr_source.Modified()
-        self._render()
+        self._install_lod_observer()
 
     def swap_volume(self, new_volume):
         """Replace the current volume with a pre-built vtkImageData."""
+        self._remove_lod_observer()
         self._streaming = False
         self._zarr_source = None
         self.volume = new_volume
@@ -354,6 +328,7 @@ class VolumeViewer(QWidget):
             QMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
 
     def _close_volume(self):
+        self._remove_lod_observer()
         self._source_path = None
         self.volume = None
         self._streaming = False
@@ -383,6 +358,12 @@ class VolumeViewer(QWidget):
     def _render(self):
         if not self._rendering_suspended:
             self.vtk_widget.GetRenderWindow().Render()
+
+    def _on_zarr_slice_ready(self, *_):
+        if self._zarr_source is not None:
+            self._zarr_source.Modified()
+        self._render()
+        self.auto_contrast()
 
     @contextmanager
     def _suspend_rendering(self):
@@ -478,7 +459,10 @@ class VolumeViewer(QWidget):
         voi[2 * dim + 1] = idx
 
         extractor = vtk.vtkExtractVOI()
-        extractor.SetInputData(self.volume)
+        if self._streaming and self._zarr_source is not None:
+            extractor.SetInputConnection(self._zarr_source.GetOutputPort())
+        else:
+            extractor.SetInputData(self.volume)
         extractor.SetVOI(*voi)
         return extractor
 
@@ -583,3 +567,68 @@ class VolumeViewer(QWidget):
             mapper.AddClippingPlane(self.clipping_plane)
 
         self._render()
+
+    def _world_per_pixel(self):
+        camera = self.renderer.GetActiveCamera()
+        render_window = self.vtk_widget.GetRenderWindow()
+        _, _, w, h = self.renderer.GetViewport()
+        win_w, win_h = render_window.GetSize()
+        viewport_h = int(h * win_h)
+        if viewport_h == 0:
+            return 1.0
+        return 2.0 * camera.GetParallelScale() / viewport_h
+
+    def _on_camera_interaction(self, obj=None, event=None):
+        if not self._streaming or self._zarr_source is None:
+            return
+        from ..formats.stream import pick_level
+
+        wpp = self._world_per_pixel()
+        spacings = self._zarr_source.level_spacings
+        new_level = pick_level(spacings, wpp)
+        if new_level == self._zarr_source.level:
+            return
+        self._switch_zarr_level(new_level)
+
+    def _switch_zarr_level(self, new_level):
+        old_shape = self._zarr_source.shape
+        old_slice = self.slice_mapper.GetSliceNumber()
+        old_dim = self._orientation_mapping.get(
+            self.orientation_selector.currentText(), 0
+        )
+
+        self._zarr_source.set_level(new_level)
+        self._zarr_source.Modified()
+
+        new_shape = self._zarr_source.shape
+        z, y, x = new_shape
+        self.volume.SetDimensions(x, y, z)
+        self.volume.SetSpacing(*self._zarr_source.spacing)
+
+        ratio = new_shape[old_dim] / old_shape[old_dim] if old_shape[old_dim] else 1
+        new_slice = int(old_slice * ratio)
+
+        dims = (x, y, z)
+        dim = self._orientation_mapping.get(self.orientation_selector.currentText(), 0)
+        self.slice_row.blockSignals(True)
+        self.slice_row.setRange(0, dims[dim] - 1)
+        self.slice_row.setValue(new_slice)
+        self.slice_row.blockSignals(False)
+
+        self.slice_mapper.SetSliceNumber(new_slice)
+        self._render()
+
+    def _install_lod_observer(self):
+        interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
+        cb = lambda obj, evt: self._on_camera_interaction()
+        self._lod_observer_ids = [
+            interactor.AddObserver("MouseWheelForwardEvent", cb),
+            interactor.AddObserver("MouseWheelBackwardEvent", cb),
+        ]
+
+    def _remove_lod_observer(self):
+        if hasattr(self, "_lod_observer_ids"):
+            interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
+            for oid in self._lod_observer_ids:
+                interactor.RemoveObserver(oid)
+            del self._lod_observer_ids
