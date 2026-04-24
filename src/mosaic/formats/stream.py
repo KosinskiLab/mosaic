@@ -92,7 +92,7 @@ class ZarrImageSource(VTKPythonAlgorithmBase):
             )
             output.GetPointData().SetScalars(vtk_arr)
         else:
-            # Cache miss — return zeros now, fetch in background
+            # Cache miss, return zeros for now and fetch in the background
             n = (x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1)
             vtk_arr = numpy_support.numpy_to_vtk(
                 np.zeros(n, dtype=np.float32),
@@ -101,7 +101,7 @@ class ZarrImageSource(VTKPythonAlgorithmBase):
             )
             output.GetPointData().SetScalars(vtk_arr)
 
-            # Fetch this slice in background — re-render when ready
+            # Rerender when slice is ready
             with self._lock:
                 if key not in self._pending:
                     self._pending.add(key)
@@ -258,8 +258,8 @@ def open_omezarr(url, level=-1, on_slice_ready=None):
         "shape": chosen["shape"],
         "spacing": chosen["spacing"],
         "levels": [
-            {"path": l["path"], "shape": l["shape"], "spacing": l["spacing"]}
-            for l in levels
+            {"path": level["path"], "shape": level["shape"], "spacing": level["spacing"]}
+            for level in levels
         ],
         "current_level": level,
     }
