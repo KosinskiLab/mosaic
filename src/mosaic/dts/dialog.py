@@ -28,14 +28,14 @@ from qtpy.QtWidgets import (
 )
 import pyqtgraph as pg
 
-from ..widgets import PathSelector, SearchWidget, TabWidget
-from ..widgets.settings import get_widget_value
-from ..stylesheets import Colors, Typography
+from ._utils import parse_dts_content
 from ..icons import icon, icon_button
 from ._configure import ConfigurePanel
-from ._analysis_panel import AnalysisPanel
 from ._compute_panel import ComputePanel
-from ._utils import parse_dts_content
+from ._analysis_panel import AnalysisPanel
+from ..stylesheets import Colors, Typography
+from ..widgets.settings import get_widget_value
+from ..widgets import PathSelector, SearchWidget, TabWidget
 
 __all__ = ["DTSScreeningDialog"]
 

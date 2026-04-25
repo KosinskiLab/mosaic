@@ -100,16 +100,9 @@ class SettingsPanel(QFrame):
             self.method_row_start = self._grid_row
 
         settings_container = QWidget()
-        settings_container.setStyleSheet(
-            f"""
-            QLabel {{ font-size: {Typography.LABEL}px;}}
-            QComboBox {{ font-size: {Typography.LABEL}px}}
-            QSpinBox {{ font-size: {Typography.LABEL}px;}}
-            QDoubleSpinBox {{ font-size: {Typography.LABEL}px;}}
-            QLineEdit {{ font-size: {Typography.LABEL}px;}}
-            QCheckBox {{ font-size: {Typography.LABEL}px;}}
-        """
-        )
+        font = settings_container.font()
+        font.setPixelSize(Typography.LABEL)
+        settings_container.setFont(font)
         settings_container.setLayout(self.settings_grid)
 
         # Pin container to its sizeHint vertically so rows can't be squeezed;

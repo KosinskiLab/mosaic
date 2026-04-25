@@ -12,9 +12,8 @@ import argparse
 from importlib_resources import files
 
 from qtpy.QtCore import Qt, QLocale
-from qtpy.QtGui import QIcon, QFont, QFontDatabase, QFontInfo
 from qtpy.QtWidgets import QApplication
-
+from qtpy.QtGui import QIcon, QFont, QFontDatabase, QFontInfo
 
 from mosaic import __version__
 from mosaic.stylesheets import (
@@ -23,6 +22,7 @@ from mosaic.stylesheets import (
     build_global_stylesheet,
     build_qt_palette,
     install_macos_titlebar_filter,
+    build_appstyle,
 )
 
 try:
@@ -71,10 +71,7 @@ def main():
     else:
         Colors.apply_palette(Colors.LIGHT)
 
-    # Fixes alignment issue in default style
-    # https://forum.qt.io/topic/105191/why-isn-t-a-qcombobox-positioned-correctly-in-a-layout/11
-    app.setStyle("Fusion")
-
+    app.setStyle(build_appstyle())
     if sys.platform == "darwin":
         font = QFont("Helvetica Neue")
         if "Helvetica Neue" not in QFontDatabase.families():

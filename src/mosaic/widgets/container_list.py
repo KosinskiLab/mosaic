@@ -30,8 +30,8 @@ from qtpy.QtWidgets import (
 )
 from qtpy.QtSvg import QSvgRenderer
 from ..icons import icon as _icon_factory
-from ..stylesheets import Colors, Typography, _build_QMessageBox_style
 from ..tree_state import TreeState, TreeStateData
+from ..stylesheets import Colors, Typography, _build_QMessageBox_style
 from ..pipeline._utils import natural_sort_key, strip_filepath
 
 
@@ -67,7 +67,7 @@ class SelectionIndicator(QWidget):
             Qt.WidgetAttribute.WA_TransparentForMouseEvents, False
         )
         self.setVisible(True)
-        self._apply_styling()
+        self._on_theme_changed()
 
     def eventFilter(self, obj, event):
         if obj is self._tree.viewport() and event.type() == QEvent.Type.Resize:
@@ -133,7 +133,7 @@ class SelectionIndicator(QWidget):
                 parent.update_icon(True)
         self._tree.scrollToItem(target, QAbstractItemView.ScrollHint.PositionAtCenter)
 
-    def _apply_styling(self):
+    def _on_theme_changed(self):
         for label in (self._top_label, self._bottom_label):
             label.setStyleSheet(
                 f"""
@@ -179,52 +179,9 @@ class ContainerTreeWidget(QFrame):
         self.tree_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
 
         self.tree_widget.setItemDelegate(MetadataItemDelegate(self.tree_widget))
-
-        self.apply_tree_stylesheet(self.tree_widget)
-
         self._selection_indicator = SelectionIndicator(self.tree_widget)
 
         layout.addWidget(self.tree_widget)
-
-    @staticmethod
-    def apply_tree_stylesheet(tree):
-        tree.setStyleSheet(
-            f"""
-            QTreeWidget {{
-                border: none;
-                background-color: transparent;
-                outline: none;
-                padding: 4px 0px;
-                font-size: {Typography.BODY}px;
-            }}
-            QTreeWidget::item {{
-                border-radius: 6px;
-                border: none;
-                padding: 4px 0px;
-                margin: 2px 0px;
-                outline: none;
-            }}
-            QTreeWidget::item:hover {{
-                background-color: rgba(0, 0, 0, 0.0);
-            }}
-            QTreeWidget::item:selected {{
-                background-color: rgba(0, 0, 0, 0.0);
-            }}
-            QTreeWidget QLineEdit {{
-                background-color: palette(base);
-                border: 1px solid #4f46e5;
-                border-radius: 6px;
-                padding: 0px 3px;
-                margin: 0px 8px;
-                selection-background-color: rgba(99, 102, 241, 0.6);
-                font-size: {Typography.BODY}px;
-            }}
-        """
-        )
-
-    def _on_theme_changed(self):
-        self.apply_tree_stylesheet(self.tree_widget)
-        self._selection_indicator._apply_styling()
 
     def selected_items(self):
         # We specifically omit GroupTreeWidgetItem
@@ -731,11 +688,13 @@ class MetadataItemDelegate(QStyledItemDelegate):
         tree_widget = self.parent()
         item = tree_widget.itemFromIndex(index)
 
+        indent = 6 if index.parent().isValid() else 0
+
         # Calculate content rect extending to right edge
         content_rect = QRect(
-            option.rect.left() + 6,
+            option.rect.left() + 6 + indent,
             option.rect.top() + 2,
-            option.rect.width() - 6,
+            option.rect.width() - 6 - indent,
             option.rect.height() - 4,
         )
 
@@ -761,7 +720,7 @@ class MetadataItemDelegate(QStyledItemDelegate):
         has_icon = icon and not icon.isNull()
         if has_icon:
             icon_rect = QRect(
-                option.rect.left() + 12,
+                option.rect.left() + 12 + indent,
                 option.rect.top() + (option.rect.height() - icon_size) // 2,
                 icon_size,
                 icon_size,
@@ -780,7 +739,7 @@ class MetadataItemDelegate(QStyledItemDelegate):
 
         text_left = 12 + icon_size + 4 if has_icon else 12
         text_rect = QRect(
-            option.rect.left() + text_left,
+            option.rect.left() + text_left + indent,
             option.rect.top(),
             option.rect.width() - text_left - 12,
             option.rect.height(),
@@ -932,7 +891,6 @@ class SessionListWidget(QWidget):
         self._tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._tree.customContextMenuRequested.connect(self._on_context_menu)
         self._tree.itemClicked.connect(self._on_item_clicked)
-        self._apply_tree_style()
 
         font = self._tree.font()
         font.setPixelSize(Typography.BODY)
@@ -1056,6 +1014,8 @@ class SessionListWidget(QWidget):
         box.setStyleSheet(_build_QMessageBox_style())
 
         reply = box.exec()
+        if reply == QMessageBox.StandardButton.Cancel:
+            return False
         if reply == QMessageBox.StandardButton.Save:
             filepath = self.session_files[self.current_index]
             self._cdata.to_file(filepath)
@@ -1151,13 +1111,6 @@ class SessionListWidget(QWidget):
         if action == remove_action:
             self.remove_session(index)
         self._update_highlight()
-
-    def _apply_tree_style(self):
-        ContainerTreeWidget.apply_tree_stylesheet(self._tree)
-
-    def _on_theme_changed(self):
-        self._apply_tree_style()
-        self._header._on_theme_changed()
 
 
 # Backward compatibility aliases

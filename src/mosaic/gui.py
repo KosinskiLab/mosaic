@@ -630,8 +630,6 @@ class App(QMainWindow):
             self.status_indicator._on_theme_changed()
         if hasattr(self, "_tab_gear"):
             self._tab_gear.setIcon(icon("ph.sliders-thin", role="active"))
-        if hasattr(self, "_session_list_widget"):
-            self._session_list_widget._on_theme_changed()
 
     def _update_style(self):
         self.setStyleSheet(
@@ -673,7 +671,6 @@ class App(QMainWindow):
 
         self.cursor_handler = CursorModeHandler(self.vtk_widget)
         self.axes_widget = AxesWidget(self.renderer, self.interactor)
-        self.trajectory_player = TrajectoryPlayer(self.cdata)
         self.scale_bar = ScaleBarWidget(self.renderer, self.interactor)
         self.screenshot_manager = ScreenshotManager(self.vtk_widget)
         self.status_indicator = StatusIndicator(self)

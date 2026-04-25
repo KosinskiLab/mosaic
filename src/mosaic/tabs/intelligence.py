@@ -22,7 +22,6 @@ class IntelligenceTab(QWidget):
 
     def show_ribbon(self):
         from ..segmentation import MEMBRAIN_SETTINGS
-        from ..dialogs import TemplateMatchingDialog
 
         self.ribbon.clear()
 
@@ -64,7 +63,7 @@ class IntelligenceTab(QWidget):
                 "Template Match",
                 "ph.magnifying-glass",
                 self,
-                lambda: TemplateMatchingDialog().exec_(),
+                self._match_template,
                 "Identify proteins by template matching",
             ),
             create_button(
@@ -77,6 +76,13 @@ class IntelligenceTab(QWidget):
             ),
         ]
         self.ribbon.add_section("Detection", detection_actions)
+
+    def _match_template(self):
+        from qtpy.QtWidgets import QApplication
+        from ..dialogs import TemplateMatchingDialog
+
+        dialog = TemplateMatchingDialog(parent=QApplication.activeWindow())
+        return dialog.exec_()
 
     def _equilibrate_fit(self):
         from ..dts._equilibration_dialog import MeshEquilibrationDialog
@@ -123,25 +129,32 @@ class IntelligenceTab(QWidget):
             build_trajectory_frames,
         )
         from ..parallel import submit_io_task
+        from qtpy.QtWidgets import QApplication
 
         if not directory:
-            return None
+            return QMessageBox.warning(
+                QApplication.activeWindow(),
+                "Error",
+                "Trajectory directory needs to be specified.",
+            )
 
         if isinstance(offset, str):
             try:
                 offset = np.array([float(x) for x in offset.split(",")])
             except Exception:
-                QMessageBox.warning(
-                    self,
+                return QMessageBox.warning(
+                    QApplication.activeWindow(),
                     "Error",
                     "Offset should be a single or three comma-separated floats.",
                 )
-                return None
 
         files = list_trajectory_files(directory)
         if not files:
-            QMessageBox.warning(self, "Error", f"No meshes found at: {directory}.")
-            return None
+            return QMessageBox.warning(
+                QApplication.activeWindow(),
+                "Error",
+                f"No meshes found at: {directory}.",
+            )
 
         name = basename(normpath(directory)) or "trajectory"
 
@@ -186,10 +199,13 @@ class IntelligenceTab(QWidget):
 
     def _map_fit(self):
         from ..dialogs import MeshMappingDialog
+        from qtpy.QtWidgets import QApplication
 
         fits = self.cdata.format_datalist("models", mesh_only=True)
         clusters = self.cdata.format_datalist("data")
-        dialog = MeshMappingDialog(fits=fits, clusters=clusters)
+        dialog = MeshMappingDialog(
+            fits=fits, clusters=clusters, parent=QApplication.activeWindow()
+        )
         if not dialog.exec():
             return -1
 

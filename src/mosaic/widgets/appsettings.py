@@ -136,10 +136,9 @@ class ThemeCard(QWidget):
         full_path = QPainterPath()
         full_path.addRoundedRect(rect, radius, radius)
 
+        pen = QColor(Colors.BORDER_DARK)
         if self._selected:
-            pen = QPen(QColor(Colors.PRIMARY), 1.5)
-        else:
-            pen = QPen(QColor(Colors.BORDER_DARK), 1.0)
+            pen = QPen(QColor(Colors.PRIMARY), 1.0)
         p.setPen(pen)
         p.drawPath(full_path)
 

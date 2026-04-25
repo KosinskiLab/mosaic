@@ -20,9 +20,9 @@ from qtpy.QtWidgets import (
     QMessageBox,
 )
 from ..icons import icon
+from ..stylesheets import Colors, Typography
 from ..widgets.container_list import ContainerTreeWidget, StyledTreeWidgetItem
 from ..widgets.segmented_control import SegmentedControl
-from ..stylesheets import HelpLabel_style
 
 
 class DistanceCropDialog(QDialog):
@@ -53,6 +53,15 @@ class DistanceCropDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
+
+        HelpLabel_style = f"""
+            QLabel {{
+                color: {Colors.TEXT_MUTED};
+                font-size: {Typography.LABEL}px;
+                border-top: 0px;
+            }}
+        """
+
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(10)
         main_layout.setContentsMargins(10, 10, 10, 10)

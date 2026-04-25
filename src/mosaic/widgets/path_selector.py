@@ -107,32 +107,10 @@ class PathSelector(QWidget):
 
         if label_text:
             self.label = QLabel(label_text)
-            self.label.setStyleSheet(
-                f"""
-                QLabel {{
-                    font-size: {Typography.LABEL}px;
-                    font-weight: 500;
-                    color: {Colors.TEXT_PRIMARY};
-                    margin-bottom: 1px;
-                }}
-            """
-            )
             main_layout.addWidget(self.label)
 
         self.container_frame = QFrame()
         self.container_frame.setObjectName("pathSelectorFrame")
-        self.container_frame.setStyleSheet(
-            f"""
-            #pathSelectorFrame {{
-                border: 1px solid {Colors.BORDER_DARK};
-                border-radius: {Colors.RADIUS}px;
-                background-color: transparent;
-            }}
-            #pathSelectorFrame:focus-within {{
-                border-color: {Colors.PRIMARY};
-            }}
-        """
-        )
 
         container_layout = QHBoxLayout(self.container_frame)
         container_layout.setContentsMargins(8, 0, 0, 0)
@@ -162,20 +140,36 @@ class PathSelector(QWidget):
         else:
             self.path_input.setReadOnly(True)
 
-        self.path_input.setStyleSheet(
-            f"""
-            QLineEdit {{
-                border: none;
-                background-color: transparent;
-                padding: 4px 6px;
-                color: {Colors.TEXT_PRIMARY};
-                selection-color: white;
-            }}
-        """
-        )
         pal = self.path_input.palette()
         pal.setColor(QPalette.ColorRole.PlaceholderText, QColor(Colors.ICON_MUTED))
         self.path_input.setPalette(pal)
+
+        self.path_input.focusInEvent = lambda *_: (
+            self.container_frame.setStyleSheet(
+                f"""
+                #pathSelectorFrame {{
+                    border: 1px solid {Colors.BORDER_HOVER};
+                    border-radius: {Colors.RADIUS}px;
+                }}
+                #pathSelectorFrame:hover {{
+                    border: 1px solid {Colors.BORDER_HOVER};
+                }}
+                """
+            )
+        )
+        self.path_input.focusOutEvent = lambda *_: (
+            self.container_frame.setStyleSheet(
+                f"""
+                #pathSelectorFrame {{
+                    border: 1px solid {Colors.BORDER_DARK};
+                    border-radius: {Colors.RADIUS}px;
+                }}
+                #pathSelectorFrame:hover {{
+                    border: 1px solid {Colors.BORDER_HOVER};
+                }}
+                """
+            )
+        )
 
         self.browse_button = QPushButton()
         self.browse_button.setAutoDefault(False)
@@ -183,23 +177,6 @@ class PathSelector(QWidget):
         self.browse_button.setIcon(icon("ph.folder-open", role="muted"))
         self.browse_button.setToolTip("Browse")
         self.browse_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.browse_button.setStyleSheet(
-            f"""
-            QPushButton {{
-                background-color: transparent;
-                border: none;
-                border-left: 1px solid {Colors.BORDER_DARK};
-                padding: 4px 10px;
-                min-width: 32px;
-            }}
-            QPushButton:hover {{
-                background-color: {Colors.BG_HOVER};
-            }}
-            QPushButton:pressed {{
-                background-color: {Colors.BG_PRESSED};
-            }}
-        """
-        )
         self.browse_button.clicked.connect(self._browse_clicked)
 
         container_layout.addWidget(icon_label)
@@ -207,6 +184,8 @@ class PathSelector(QWidget):
         container_layout.addWidget(self.browse_button)
 
         self.container_frame.setFixedHeight(Colors.WIDGET_HEIGHT)
+
+        self._on_theme_changed()
         main_layout.addWidget(self.container_frame)
 
     def _on_theme_changed(self):
@@ -220,7 +199,7 @@ class PathSelector(QWidget):
                     color: {Colors.TEXT_PRIMARY};
                     margin-bottom: 1px;
                 }}
-            """
+                """
             )
 
         self.container_frame.setStyleSheet(
@@ -230,10 +209,10 @@ class PathSelector(QWidget):
                 border-radius: {Colors.RADIUS}px;
                 background-color: transparent;
             }}
-            #pathSelectorFrame:focus-within {{
-                border-color: {Colors.PRIMARY};
+            #pathSelectorFrame:hover {{
+                border: 1px solid {Colors.BORDER_HOVER};
             }}
-        """
+            """
         )
 
         self.path_input.setStyleSheet(
@@ -245,7 +224,7 @@ class PathSelector(QWidget):
                 color: {Colors.TEXT_PRIMARY};
                 selection-color: white;
             }}
-        """
+            """
         )
 
         pal = self.path_input.palette()
