@@ -485,8 +485,8 @@ class ComputeTab(QWidget):
 
 
 class TemplateMatchingDialog(QDialog):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.setWindowTitle("Pytme Setup")
         self.resize(650, 600)
 

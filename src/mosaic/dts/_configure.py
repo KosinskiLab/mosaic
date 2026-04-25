@@ -227,7 +227,7 @@ class ConfigurePanel(QScrollArea):
                 "max": 1e6,
                 "default": 1.0,
                 "step": 0.01,
-                "decimals": 12,
+                "decimals": 18,
             }
         )
         self._param_widgets["scale_factor"].setToolTip(

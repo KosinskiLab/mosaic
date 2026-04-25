@@ -206,7 +206,7 @@ class GeometryData:
         """Return fields as a dict suitable for ``Geometry(**gd.to_dict())``."""
         return {
             "points": self.points,
-            "normals": self.normals,
+            "normals": self.normals if self.has_normals else None,
             "quaternions": self.quaternions,
             "sampling_rate": self.sampling_rate,
             "model": self.model,
@@ -1683,32 +1683,14 @@ class SegmentationGeometry(Geometry):
         }
 
         if self._geometry_data.points is not None:
-            from .utils import points_to_volume
-
-            # Use a coarser grid for meshing to limit vertex count
-            n_points = self._geometry_data.get_number_of_points()
-            mesh_sampling = np.max(self.sampling_rate)
-            if n_points > 500_000:
-                mesh_sampling *= max(1, int(np.cbrt(n_points / 500_000)))
-
-            vol, offset = points_to_volume(
-                self._geometry_data.points,
-                sampling_rate=mesh_sampling,
-                use_offset=True,
-                out_dtype=np.uint8,
-            )
-            self._volume_shape = vol.shape
-            self._origin = (offset * mesh_sampling).astype(np.float32)
-            self._mesh_sampling = mesh_sampling
+            self._rebuild(self._geometry_data.points)
         else:
             self._geometry_data.points = np.empty((0, 3), dtype=np.float32)
             self._volume_shape = (1, 1, 1)
-            vol = None
             self._origin = np.zeros(3, dtype=np.float32)
             self._mesh_sampling = np.max(self.sampling_rate)
-
-        self._build_surface(vol)
-        self._set_appearance()
+            self._build_surface(None)
+            self._set_appearance()
 
     def _build_surface(self, volume_data=None):
         """Extract a surface mesh and create the VTK actor.
@@ -1887,10 +1869,11 @@ class SegmentationGeometry(Geometry):
                     got = found >= 0
                     self._vertex_to_point_idx[umask[si[got]]] = found[got]
 
-            # Map to nearest valid point index as last resort
+            # Mark genuinely unmapped vertices as initially invisible
             still_unmapped = self._vertex_to_point_idx == -1
             if np.any(still_unmapped):
                 self._vertex_to_point_idx[still_unmapped] = 0
+                self._vertex_visible = ~still_unmapped
         else:
             self._vertex_to_point_idx = np.array([], dtype=np.intp)
 
@@ -2207,14 +2190,20 @@ class SegmentationGeometry(Geometry):
         """
         from .utils import points_to_volume
 
+        n_points = len(current_points)
+        mesh_sampling = np.max(self.sampling_rate)
+        if n_points > 500_000:
+            mesh_sampling *= max(1, int(np.cbrt(n_points / 500_000)))
+
         vol, offset = points_to_volume(
             current_points,
-            sampling_rate=np.max(self.sampling_rate),
+            sampling_rate=mesh_sampling,
             use_offset=True,
             out_dtype=np.uint8,
         )
         self._volume_shape = vol.shape
-        self._origin = (offset * self.sampling_rate).astype(np.float32)
+        self._origin = (offset * mesh_sampling).astype(np.float32)
+        self._mesh_sampling = mesh_sampling
         self._build_surface(vol)
         self._set_appearance()
 

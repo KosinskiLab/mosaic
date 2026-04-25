@@ -121,11 +121,10 @@ class ColormapMenuItem(QWidget):
                 Colors.RADIUS,
             )
 
-            hover_color = QColor(0, 0, 0, 15)
+            hover_color = QColor(0, 0, 0, int(0.06 * 255))
             painter.fillPath(path, QBrush(hover_color))
 
-            # Add border matching QMenu::item:selected
-            pen = QPen(QColor(0, 0, 0, 20))
+            pen = QPen(QColor(Colors.BORDER_DARK))
             pen.setWidth(1)
             painter.setPen(pen)
             painter.drawPath(path)
@@ -177,12 +176,6 @@ class ColorMapSelector(QPushButton):
     def _setup_ui(self):
         self.setStyleSheet(
             """
-            QPushButton {
-                padding: 6px 12px;
-            }
-            QPushButton:focus {
-                outline: none;
-            }
             QPushButton::menu-indicator {
                 image: none;
                 width: 0;
@@ -198,18 +191,21 @@ class ColorMapSelector(QPushButton):
     def _build_menu(self):
         """Build the hierarchical menu with category submenus."""
         menu = QMenu(self)
-        menu.setWindowFlags(menu.windowFlags() | Qt.WindowType.FramelessWindowHint)
+        menu.setWindowFlags(
+            menu.windowFlags()
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint
+        )
         menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        _menu_style = f"QMenu {{ background: palette(window); border-radius: {Colors.RADIUS}px; }}"
-        menu.setStyleSheet(_menu_style)
 
         for category, colormaps in self._categories.items():
             submenu = QMenu(category, menu)
             submenu.setWindowFlags(
-                submenu.windowFlags() | Qt.WindowType.FramelessWindowHint
+                submenu.windowFlags()
+                | Qt.WindowType.FramelessWindowHint
+                | Qt.WindowType.NoDropShadowWindowHint
             )
             submenu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-            submenu.setStyleSheet(_menu_style)
 
             for cmap_name in colormaps:
                 action = QWidgetAction(submenu)
