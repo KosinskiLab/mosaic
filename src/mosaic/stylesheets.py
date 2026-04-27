@@ -208,6 +208,9 @@ def _build_QPushButton_style():
     QPushButton:focus {{
         outline: none;
     }}
+    QPushButton:disabled {{
+        color: {Colors.BORDER_HOVER};
+    }}
 """
 
 
@@ -221,7 +224,6 @@ def _build_QLineEdit_style():
         background: transparent;
     }}
     QLineEdit:focus {{
-        outline: none;
         border: 1px solid {Colors.BORDER_HOVER};
     }}
     QLineEdit:hover:!focus {{
@@ -243,7 +245,6 @@ def _build_QSpinBox_style():
         selection-background-color: {Colors.alpha("PRIMARY", 0.6)};
     }}
     QSpinBox:focus, QDoubleSpinBox:focus {{
-        outline: none;
         border: 1px solid {Colors.BORDER_HOVER};
     }}
     QSpinBox:hover:!focus, QDoubleSpinBox:hover:!focus {{
@@ -321,19 +322,16 @@ def _build_QCheckBox_style():
         spacing: 5px;
         background-color: transparent;
     }}
-    QCheckBox:focus {{
-        outline: none;
-    }}
     QCheckBox::indicator {{
         width: 18px;
         height: 18px;
         border: 1px solid {Colors.BORDER_DARK};
     }}
-    QCheckBox::indicator:hover {{
-        border: 1px solid {Colors.BORDER_DARK};
-    }}
     QCheckBox::indicator:focus {{
-        border: 1px solid {Colors.BORDER_DARK};
+        border: 1px solid {Colors.BORDER_HOVER};
+    }}
+    QCheckBox:indicator:hover:!focus{{
+        border: 1px solid {Colors.BORDER_HOVER};
     }}
     QCheckBox::indicator:checked {{
         image: url('{_get_resource_path("checkbox-checkmark.svg")}')
@@ -476,11 +474,10 @@ def _build_QSlider_style():
         border-radius: 8px;
     }}
     QSlider::handle:horizontal:hover {{
-        border-color: {Colors.PRIMARY};
+        border-color: {Colors.BORDER_HOVER};
     }}
-    QSlider::handle:horizontal:focus {{
-        border: 1px solid {Colors.BORDER_HOVER};
-        background: {Colors.BG_SECONDARY};
+    QSlider::handle:horizontal:hover:!focus {{
+        border-color: {Colors.BORDER_HOVER};
     }}
     QSlider::handle:horizontal:disabled {{
         background: {Colors.BG_SECONDARY};

@@ -220,10 +220,7 @@ class CollapsibleSection(QWidget):
 
 
 def _checkbox_row(label_text: str, checked: bool, tooltip: str = ""):
-    """Create a label + checkbox row matching SliderRow alignment.
-
-    Returns (container_widget, checkbox).
-    """
+    """Create a label + checkbox row matching SliderRow alignment."""
     row = QWidget()
     layout = QHBoxLayout(row)
     layout.setContentsMargins(0, 0, 0, 0)

@@ -104,6 +104,7 @@ class ConfigurePanel(QScrollArea):
             placeholder="Input mesh (.tsi, .q)",
             file_filter="TSI Files (*.tsi) Q Files (*.q);;All Files (*.*)",
         )
+        self._mesh_path.path_input.textChanged.connect(self._on_mesh_changed)
         form.addRow("Mesh:", self._mesh_path)
 
         self._output_dir = PathSelector(
@@ -129,7 +130,7 @@ class ConfigurePanel(QScrollArea):
             form, key="temperature", label="Temperature", default=1.0
         )
 
-        self._param_widgets["edge_range"] = QLineEdit("1 - 5")
+        self._param_widgets["edge_range"] = QLineEdit("1 - 3")
         self._param_widgets["edge_range"].setPlaceholderText("min - max")
         self._param_widgets["edge_range"].setToolTip(
             "Min and max edge lengths for mesh refinement (format: min - max)"
@@ -214,6 +215,9 @@ class ConfigurePanel(QScrollArea):
 
         self._param_widgets["invert_contrast"] = create_setting_widget(
             {"type": "boolean", "default": True}
+        )
+        self._param_widgets["invert_contrast"].setToolTip(
+            "Invert input volume contrast."
         )
         self._hmff_form.addRow(
             "Invert contrast:", self._param_widgets["invert_contrast"]
@@ -607,6 +611,33 @@ class ConfigurePanel(QScrollArea):
             volume = str(volume_value or "")
         return volume, bool(volume)
 
+    def _on_mesh_changed(self, path: str):
+        if not path:
+            return None
+
+        mesh_path = Path(path)
+        mesh_txt = mesh_path.parent / "mesh.txt"
+        if not mesh_txt.exists():
+            return None
+        try:
+            lines = mesh_txt.read_text(encoding="utf-8").splitlines()
+            for line in lines[1:]:
+                parts = line.split("\t")
+                if len(parts) < 3:
+                    continue
+
+                # These files are not guaranteed to refer to the same mesh, but its very
+                # likely. Since this is just a suggestion exposed in the GUI we aim for
+                # portability in this case
+                if Path(parts[0]).name == mesh_path.name:
+                    set_widget_value(
+                        self._param_widgets["scale_factor"], float(parts[1])
+                    )
+                    self._param_widgets["offset"].setText(parts[2].strip())
+                    break
+        except Exception:
+            pass
+
     def _on_volume_changed(self, _text: str):
         has_volume = bool(self._volume_path.get_path())
         for w in (self._screen_stacks["xi"], self._screen_cbs["xi"]):
@@ -637,9 +668,9 @@ class ConfigurePanel(QScrollArea):
         result = {}
         for key, range_str in self._get_screen_params().items():
             try:
-                from pyfreedts.screen import ParameterParser
+                from ._utils import _ParameterParser
 
-                _, parsed = ParameterParser.parse_template(
+                _, parsed = _ParameterParser.parse_template(
                     "{{" + f"p:{range_str}" + "}}"
                 )
                 result[key] = parsed.get("p", [])

@@ -18,8 +18,8 @@ from qtpy.QtWidgets import (
 
 from ..icons import icon
 from ..stylesheets import Typography
-from .segmented_control import SegmentedControl
 from .volume_viewer import VolumeViewer
+from .segmented_control import SegmentedControl
 
 _ICON = "#d4d4d8"
 _BTN = 28
@@ -209,10 +209,6 @@ class _ViewerStrip(QWidget):
         v._path_combo.setObjectName("splitRight")
         v._path_combo.setFixedHeight(_BTN)
 
-        mono = QFont()
-        mono.setStyleHint(QFont.StyleHint.Monospace)
-        v.slice_row.value_label.setFont(mono)
-
         _dark_dual_slider(v.contrast_slider)
 
         v.project_selector.currentTextChanged.connect(self._on_projection_changed)
@@ -264,6 +260,7 @@ class _ViewerStrip(QWidget):
         self._ori_seg = SegmentedControl(["X", "Y", "Z"], default=2)
         self._ori_seg.selectionChanged.connect(self._set_orientation)
         self._ori_seg.setEnabled(False)
+        self._ori_seg.setFixedHeight(30)
         self._restyle_segmented(self._ori_seg)
         row.addWidget(self._ori_seg)
 

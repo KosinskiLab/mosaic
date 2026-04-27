@@ -15,6 +15,52 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 
 
+# Copied from pyfreedts; may be removed once version coupling is resolved
+class _ParameterParser:
+    """Parse parameter definitions from template files."""
+
+    PARAM_PATTERN = re.compile(r"\{\{(\w+):([^}]+)\}\}")
+
+    @classmethod
+    def parse_template(cls, template_content: str) -> Tuple[str, Dict[str, List]]:
+        """Parse a template and extract ``{{name:range}}`` parameter definitions."""
+        parameters = {}
+
+        def replace_param(match):
+            param_name = match.group(1)
+            param_values = cls._parse_parameter_definition(match.group(2))
+            parameters[param_name] = param_values
+            return f"{{{param_name}}}"
+
+        template_processed = cls.PARAM_PATTERN.sub(replace_param, template_content)
+        return template_processed, parameters
+
+    @classmethod
+    def _parse_parameter_definition(cls, param_def: str) -> List:
+        if ":" in param_def:
+            parts = param_def.split(":")
+            if len(parts) != 3:
+                raise ValueError(
+                    f"Range definition must have format 'start:end:step', got: {param_def}"
+                )
+            try:
+                start, end, step = map(float, parts)
+            except ValueError:
+                raise ValueError(f"Invalid range values in: {param_def}")
+            if step <= 0:
+                raise ValueError(f"Step size must be positive, got: {step}")
+            values = []
+            current = start
+            while current <= end + 1e-10:
+                values.append(current)
+                current += step
+            return values
+        elif "," in param_def:
+            return [x.strip() for x in param_def.split(",")]
+        else:
+            return [param_def.strip()]
+
+
 def parse_xvg(path: str) -> Optional[Tuple[List[str], np.ndarray, Dict[str, str]]]:
     """Parse an .xvg file into (column_names, data, metadata) or None."""
     xvg_path = Path(path)
@@ -412,9 +458,7 @@ def parse_screening_ranges(text: str) -> Dict[str, List]:
     for match in re.finditer(r"\{\{(\w+):([^}]+)\}\}", text):
         name, range_str = match.group(1), match.group(2)
         try:
-            from pyfreedts.screen import ParameterParser
-
-            _, parsed = ParameterParser.parse_template("{{" + f"p:{range_str}" + "}}")
+            _, parsed = _ParameterParser.parse_template("{{" + f"p:{range_str}" + "}}")
             result[name] = parsed.get("p", [])
         except Exception:
             pass
@@ -506,9 +550,7 @@ def parse_dts_content(content: str):
                 name, range_str = placeholder
                 known.setdefault("_screen", {})[name] = range_str
                 try:
-                    from pyfreedts.screen import ParameterParser
-
-                    _, parsed = ParameterParser.parse_template(
+                    _, parsed = _ParameterParser.parse_template(
                         "{{" + f"p:{range_str}" + "}}"
                     )
                     vals = parsed.get("p", [])
