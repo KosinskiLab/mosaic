@@ -417,7 +417,8 @@ class ColorScaleSettingsDialog(QDialog):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(*self._dialog_margin)
+        layout.setContentsMargins(10, 0, 10, 10)
+        # layout.setContentsMargins(*self._dialog_margin)
 
         threshold_group = QGroupBox("Threshold Settings")
         threshold_layout = QVBoxLayout(threshold_group)

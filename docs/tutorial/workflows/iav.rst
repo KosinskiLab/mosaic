@@ -115,8 +115,8 @@ Refine the Mesh
 
 One cap of the VLP falls outside the tomogram. We resample and re-mesh to fill it:
 
-1. Select the mesh, click **Sample** (Method: *Points*, 30000), click *Apply*
-2. Select the sampled points, **Mesh** with the same settings as above, but Pressure 50, click *Apply*.
+1. Select the mesh, click **Sample** (Method: *Points*, 30000)
+2. Select the sampled points, **Mesh** with the same settings, except Pressure 50
 
    .. versionchanged:: v1.2.1
       Volume Weight was renamed to Pressure. Use Volume Weight: 0.005 pre 1.2.1.
@@ -151,7 +151,7 @@ This produces three meshes: mesh_base (input), mesh_remeshed (target edge length
 
    Comparison of edge lengths
 
-Inspect edge-length distributions using **Properties** in the **Segmentation** tab. Use the equilibrated mesh for DTS simulation.
+An important quality metric is the edge-length distribution of equilibrated meshes. We can assess that using **Segmentation > Properties**, Category: Mesh, Property: Mesh Statistics, Type: Edge Length. The best initial mesh for simulation recapitulates the input geometry and has a tight edge length distribution between 1 - sqrt(3). Typically, mesh_equilibrated is the most suitable for subsequent simulation and we will use it for this example as well.
 
 .. note::
 
@@ -161,25 +161,26 @@ Inspect edge-length distributions using **Properties** in the **Segmentation** t
 HMFF Simulation
 ---------------
 
-In the **Intelligence** tab, click **Setup** in the **DTS Simulation** section:
-
 .. figure:: ../../_static/tutorial/iav_workflow/hmff_setup.png
    :scale: 40 %
    :align: right
 
    HMFF simulation setup
 
-- Mesh: mesh_equilibrated.q
-- Volume: EMD-11075
-- Invert Contrast: Enabled
-- HMFF weight (ξ): 5.0, Rigidity (κ): 25.0
-- Steps: 150000, Threads: 8
-- Lowpass: 50Å, Highpass: 900Å
+1. Go to the **Intelligence** tab, click **DTS**
+2. Set parameters:
 
-This creates setup files for DTS simulation [4]_ with HMFF. In input.dts, set:
+   - Mesh: mesh_equilibrated.q, Output: Up to you
+   - Temperature: 1.5, Edge length: 1.0 - 4.0, Steps: 150000, Threads: 8
+   - Rigidity (κ): 25.0, VolumeCoupling: SecondOrder 0.6 1000 1.1
+   - HMFF weight (ξ): 5.0, Enable Filters: 50Å, Highpass: 900Å
+   - Extra Parameters: AlexanderMove = MetropolisAlgorithmOpenMP 0
 
-- AlexanderMove   = MetropolisAlgorithmOpenMP 0
-- VolumeCoupling  = SecondOrder 0.6 1000 1.1
+3. Click **Setup** to generate the DTS directory
+
+The edge length parameter is related to mesh quality, and FreeDTS will inform you if any edges fall outside this range. The ideal range is 1.0 - 3.0, but upper bounds of 5.0 can still yield stable simulations. Beyond that input mesh quality should be improved. When using meshes created without the *Equilibrate* functionality, you need to set HMFF scale and offset parameter yourself (see ``mosaic.meshing.hmff`` equilibrate_fit for how we compute them).
+
+After the background job has completed, navigate to your chosen output directory and from within run_1 execute:
 
 .. code-block:: bash
 
@@ -189,10 +190,13 @@ This creates setup files for DTS simulation [4]_ with HMFF. In input.dts, set:
 
    Simulation outputs are available on `ownCloud <https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi>`_ in hmff/TrajTSI_Done.
 
-To load results, click the arrow next to **Trajectory** in the **Intelligence** tab:
+To load results, move to the Analyze tab within the DTS dialog, set the path to what you chose for Output in the Configure page, and load the import button in the actions field of the corresponding run.
 
-- Scale: 0.012202743213335199
-- Offset: 21.0,6.0,16.0
+.. versionchanged:: v1.2.4
+
+   Use the **Setup** dialog pre 1.2.4. The parameters remain the same, but you will have to adapt the AlexanderMove and VolumeCoupling parameters in the corresponding input.dts file manually.
+
+   Pre 1.2.4, trajectories had to be imported exclusively using the **Trajectory** button in the **Intelligence tab** using the scale parameters from the input.dts, in this case Scale: 0.012202743213335199 and Offset: 21.0,6.0,16.0. Its recommended to use the DTS dialog import, as this will include a range of properties for subsequent analysis through **Segmentation > Properties > Vertex Properties**.
 
 Use View > Trajectory player to navigate time points and View > Volume Viewer to overlay the density.
 

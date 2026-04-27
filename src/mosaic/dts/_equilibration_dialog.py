@@ -21,9 +21,9 @@ from qtpy.QtWidgets import (
 )
 
 from ..icons import icon
+from ..stylesheets import Colors
 from ..widgets import DialogFooter, PathSelector
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
-from ..stylesheets import Colors
 
 
 def _make_setting(parameter, default, min_val=0, description=""):

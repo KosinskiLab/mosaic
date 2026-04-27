@@ -64,7 +64,7 @@ class DistanceCropDialog(QDialog):
 
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(10)
-        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setContentsMargins(10, 0, 10, 10)
 
         crop_panel = QGroupBox("Target")
         crop_layout = QVBoxLayout(crop_panel)

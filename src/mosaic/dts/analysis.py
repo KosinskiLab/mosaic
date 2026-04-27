@@ -443,12 +443,12 @@ def _compute_hmff(trajectory_dir, scale, offset, output_dir=None, **kwargs):
     from scipy.interpolate import RegularGridInterpolator
     from ..formats.parser import load_density
     from ..parallel import report_progress
-    from ._utils import parse_dts_content
+    from ._utils import find_dts_file, parse_dts_content
 
     run_dir = Path(output_dir) if output_dir else Path(trajectory_dir).parent
-    dts_file = run_dir / "input.dts"
-    if not dts_file.exists():
-        raise FileNotFoundError(f"DTS config not found: {dts_file}")
+    dts_file = find_dts_file(run_dir)
+    if dts_file is None:
+        raise FileNotFoundError(f"No DTS config found in {run_dir}")
 
     known, _ = parse_dts_content(dts_file.read_text())
 

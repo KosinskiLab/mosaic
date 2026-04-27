@@ -110,16 +110,29 @@ def sanitize_label(label: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "_", label).strip("_").lower()
 
 
+def find_dts_file(run_dir) -> Optional[Path]:
+    """Return the DTS config file for *run_dir*.
+
+    Prefers ``input.dts``; falls back to the first ``*.dts`` file found.
+    """
+    run_path = Path(run_dir)
+    candidate = run_path / "input.dts"
+    if candidate.exists():
+        return candidate
+    return next(iter(sorted(run_path.glob("*.dts"))), None)
+
+
 def resolve_trajectory_dir(run_dir) -> Optional[Path]:
     """Return the first existing trajectory directory for a DTS run.
 
-    Parses ``input.dts`` (when present) for ``VisualizationFormat`` and
-    ``NonbinaryTrajectory`` directory names, falling back to ``TrajTSI``.
+    Parses ``input.dts`` for ``VisualizationFormat`` and
+    ``NonbinaryTrajectory`` directory names, falling back to the first
+    ``*.dts`` file in the directory, then to ``TrajTSI``.
     """
     run_path = Path(run_dir)
-    dts_file = run_path / "input.dts"
+    dts_file = find_dts_file(run_path)
     candidates = []
-    if dts_file.exists():
+    if dts_file is not None:
         known, _ = parse_dts_content(dts_file.read_text())
         for name in known.get("trajectory_dirs", []):
             candidates.append(run_path / name)

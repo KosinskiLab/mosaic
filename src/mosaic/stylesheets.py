@@ -221,7 +221,6 @@ def _build_QLineEdit_style():
         border-radius: {Colors.RADIUS}px;
         padding: 6px 8px;
         selection-background-color: {Colors.alpha("PRIMARY", 0.6)};
-        background: transparent;
     }}
     QLineEdit:focus {{
         border: 1px solid {Colors.BORDER_HOVER};
@@ -326,14 +325,19 @@ def _build_QCheckBox_style():
         width: 18px;
         height: 18px;
         border: 1px solid {Colors.BORDER_DARK};
+        background-color: transparent;
     }}
     QCheckBox::indicator:focus {{
         border: 1px solid {Colors.BORDER_HOVER};
     }}
-    QCheckBox:indicator:hover:!focus{{
+    QCheckBox::indicator:hover:!focus {{
         border: 1px solid {Colors.BORDER_HOVER};
     }}
+    QCheckBox::indicator:pressed {{
+        background-color: transparent;
+    }}
     QCheckBox::indicator:checked {{
+        background-color: transparent;
         image: url('{_get_resource_path("checkbox-checkmark.svg")}')
     }}
 """
@@ -373,16 +377,14 @@ def _build_QTable_style():
         background-color: transparent;
         outline: none;
         gridline-color: {Colors.BORDER_DARK};
+        selection-background-color: {Colors.alpha("PRIMARY", 0.07)};
+        selection-color: {Colors.PRIMARY};
     }}
     QTableWidget::item {{
         border: none;
     }}
     QTableWidget::item:hover {{
         background-color: {Colors.alpha("BG_HOVER", 0.03)};
-    }}
-    QTableWidget::item:selected {{
-        background-color: {Colors.alpha("PRIMARY", 0.07)};
-        color: {Colors.PRIMARY};
     }}
     QTableWidget QHeaderView::section {{
         background: transparent;
@@ -419,6 +421,12 @@ def _build_QListWidget_style():
         outline: none;
         padding: 4px 0px;
         font-size: {Typography.BODY}px;
+        selection-background-color: {Colors.alpha("PRIMARY", 0.3)};
+        selection-color: {Colors.PRIMARY};
+    }}
+    QTreeWidget {{
+        selection-background-color: transparent;
+        selection-color: {Colors.TEXT_PRIMARY};
     }}
     QListWidget::item, QTreeWidget::item {{
         border-radius: {Colors.RADIUS}px;
@@ -434,7 +442,6 @@ def _build_QListWidget_style():
         background-color: {Colors.BG_PRESSED};
     }}
     QListWidget::item:selected {{
-        background-color: {Colors.alpha("PRIMARY", 0.3)};
         font-weight: 500;
     }}
     QListWidget QLineEdit, QTreeWidget QLineEdit {{
@@ -534,7 +541,6 @@ def _build_QMessageBox_style():
 def _build_QToolButton_style():
     return f"""
     QToolButton {{
-        min-width: 52px;
         padding: 4px 6px;
         border-radius: {Colors.RADIUS}px;
         font-size: {Typography.SMALL}px;
@@ -599,8 +605,10 @@ def _build_QMenu_style():
         width: 16px;
         height: 16px;
         margin-right: 6px;
+        background-color: transparent;
     }}
     QMenu::indicator:checked {{
+        background-color: transparent;
         image: url('{_get_resource_path("checkbox-checkmark.svg")}');
     }}
 """
@@ -931,7 +939,13 @@ def build_appstyle():
                 if (old := getattr(combo, "_popup_menu", None)) is not None:
                     old.deleteLater()
 
-                menu = QMenu(combo)
+                # Parent the popup to the combo's top-level window rather
+                # than to the combo itself.  Inside a QDockWidget the chain
+                # combo -> intermediate plain QWidget -> ... -> main window
+                # makes Qt materialize a non-top-level QWidgetWindow when
+                # resolving the popup's transient parent, which triggers
+                # "QWidgetWindow ... must be a top level window" warnings.
+                menu = QMenu(combo.window() or combo)
                 menu.setStyleSheet(
                     "QMenu { padding: 0px 0px; }" "QMenu::item { padding: 4px 7px; }"
                 )

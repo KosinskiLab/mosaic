@@ -28,7 +28,7 @@ from qtpy.QtWidgets import (
 )
 import pyqtgraph as pg
 
-from ._utils import parse_dts_content
+from ._utils import find_dts_file, parse_dts_content
 from ..icons import icon, icon_button
 from ._configure import ConfigurePanel
 from ._compute_panel import ComputePanel
@@ -63,7 +63,7 @@ class DTSScreeningDialog(QDialog):
 
     def _setup_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 10, 10, 10)
+        root.setContentsMargins(10, 0, 10, 10)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
@@ -399,8 +399,8 @@ class DTSScreeningDialog(QDialog):
             return QMessageBox.warning(self, "Error", "No trajectory frames found.")
 
         scale, offset = self._configure_panel.get_mesh_transform()
-        dts_file = run_dir / "input.dts"
-        if dts_file.exists():
+        dts_file = find_dts_file(run_dir)
+        if dts_file is not None:
             known, _ = parse_dts_content(dts_file.read_text(encoding="utf-8"))
             if "scale_factor" in known:
                 scale = float(known["scale_factor"])

@@ -211,6 +211,14 @@ class App(QMainWindow):
     def closeEvent(self, event):
         Settings.ui.window_geometry = self.saveGeometry()
         BackgroundTaskManager.instance()._shutdown()
+
+        # Close docks via their closeEvent so create_or_toggle_dock's _exit()
+        # runs and Python-side references are released before Qt starts
+        # destroying the widget tree.  Without this, child destruction tears
+        # down dock contents in C++ destructor order and can segfault when a
+        # slot/destructor touches an already-deleted sibling.
+        for dock in self.findChildren(QDockWidget):
+            dock.close()
         super().closeEvent(event)
 
     def _toggle_volume_dock(self, checked: bool):
@@ -1621,14 +1629,6 @@ class App(QMainWindow):
         self.update_checker = UpdateChecker(__version__)
         self.update_checker.update_available.connect(_show_update_dialog)
         self.update_checker.start()
-
-    def close(self):
-        try:
-            BackgroundTaskManager.instance()._shutdown()
-        except Exception:
-            pass
-        finally:
-            return super().close()
 
 
 def _read_files_worker(cdata, filenames, file_parameters):
