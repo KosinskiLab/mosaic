@@ -183,6 +183,11 @@ class ContainerTreeWidget(QFrame):
 
         layout.addWidget(self.tree_widget)
 
+        # QLineEdit background-color is overwritten if we do not re-apply the style here
+        from ..stylesheets import _build_QListWidget_style
+
+        self.setStyleSheet(_build_QListWidget_style())
+
     def selected_items(self):
         # We specifically omit GroupTreeWidgetItem
         return [
@@ -730,6 +735,7 @@ class MetadataItemDelegate(QStyledItemDelegate):
         painter.save()
         painter.setFont(option.font)
         text = index.data(Qt.ItemDataRole.DisplayRole)
+
         if isinstance(item, StyledTreeWidgetItem) and not item.visible:
             painter.setPen(QColor(Colors.TEXT_MUTED))
         elif is_selected:

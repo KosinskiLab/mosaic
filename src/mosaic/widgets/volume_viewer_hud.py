@@ -373,20 +373,13 @@ class _ViewerStrip(QWidget):
         if combo.count() == 0:
             return
         menu = QMenu(self)
-        menu.setStyleSheet(
-            """
-            QMenu {
-                background: rgba(18, 18, 24, 0.96);
-                color: rgba(255, 255, 255, 0.85);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 6px; padding: 4px;
-            }
-            QMenu::item { padding: 4px 12px; border-radius: 3px; }
-            QMenu::item:selected {
-                background: rgba(99, 102, 241, 0.35);
-            }
-        """
+        menu.setWindowFlags(
+            menu.windowFlags()
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint
         )
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+
         for i in range(combo.count()):
             text = combo.itemText(i)
             data = combo.itemData(i)
@@ -435,7 +428,6 @@ class _ViewerStrip(QWidget):
 
     def _sync_state(self):
         has_vol = self.viewer.volume is not None
-        self._more_btn.setEnabled(has_vol)
         self._ori_seg.setEnabled(has_vol)
         if has_vol:
             self._load_close_btn.setText("Close")
@@ -463,7 +455,7 @@ class VolumeViewerHUD(QWidget):
 
     Implemented as a frameless top-level ``Qt.Tool`` window with
     ``WA_TranslucentBackground``.  Top-level ARGB windows are
-    composited reliably by X11 window managers — unlike ARGB child
+    composited reliably by X11 window managers, unlike ARGB child
     widgets sitting under a native GL surface, which dead-lock the
     compositor on our Linux setup.
 
@@ -565,15 +557,17 @@ class VolumeViewerHUD(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
-        self._layout_strips()  # also reposition
+        QTimer.singleShot(0, self._layout_strips)
 
     def _reposition(self):
         """Anchor the floating HUD to the bottom-centre of the viewport."""
         if self._viewport_parent is None or not self.isVisible():
-            return
+            return None
         vp = self._viewport_parent
+
+        # We delay to avoid cases like the HUD showing up on the wrong monitor
         if vp.width() <= 0 or vp.height() <= 0:
-            return
+            return QTimer.singleShot(50, self._reposition)
 
         # Invalidate + activate from the innermost widgets outward so
         # each container sees fresh sizeHints from its children.
@@ -602,10 +596,11 @@ class VolumeViewerHUD(QWidget):
     def _layout_strips(self):
         """Size visible strips based on the viewport parent's width."""
         if self._viewport_parent is None:
-            return
+            return None
+
         available = self._viewport_parent.width() - 2 * self._MARGIN_X
         if available <= 0:
-            return
+            return None
         w = min(available, _MAX_PILL_WIDTH)
         for strip in [self._primary_strip] + self._strips:
             strip.setFixedWidth(w)

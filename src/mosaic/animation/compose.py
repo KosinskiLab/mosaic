@@ -79,7 +79,7 @@ class AnimationComposerDialog(QDialog):
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.setContentsMargins(8, 0, 8, 8)
         main_layout.setSpacing(8)
 
         toolbar = QWidget()
@@ -100,11 +100,10 @@ class AnimationComposerDialog(QDialog):
             btn.clicked.connect(callback)
             toolbar_layout.addWidget(btn)
 
-        toolbar_layout.addStretch()
-
         self.loop_checkbox = QCheckBox("Loop")
-        self.loop_checkbox.setToolTip("Loop playback (L)")
+        self.loop_checkbox.setToolTip("Loop playback")
         self.loop_checkbox.stateChanged.connect(self._on_loop_changed)
+        toolbar_layout.addStretch()
         toolbar_layout.addWidget(self.loop_checkbox)
 
         main_layout.addWidget(toolbar)

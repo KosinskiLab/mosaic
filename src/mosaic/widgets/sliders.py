@@ -112,13 +112,16 @@ class SliderRow(QWidget):
         return self.min_val + ratio * (self.max_val - self.min_val)
 
     def _resize_label(self):
-        if self.decimals == 0:
+        fm = self.value_label.fontMetrics()
+        if self._formatter is not None:
+            candidates = self._values if self._values else [self.min_val, self.max_val]
+            max_text = max((self._formatter(v) for v in candidates), key=len)
+        elif self.decimals == 0:
             max_text = "0" * len(str(int(self.max_val))) + self.suffix
         else:
             lo = f"{self.min_val:.{self.decimals}f}"
             hi = f"{self.max_val:.{self.decimals}f}"
             max_text = (lo if len(lo) > len(hi) else hi) + self.suffix
-        fm = self.value_label.fontMetrics()
         self.value_label.setFixedWidth(fm.horizontalAdvance(max_text) + 2)
 
     def _update_value_label(self, value: float):

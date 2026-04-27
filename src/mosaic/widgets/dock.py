@@ -1,4 +1,5 @@
-from qtpy.QtCore import Qt, QSize
+from qtpy.QtCore import Qt, QSize, QRectF
+from qtpy.QtGui import QPainter, QColor
 from qtpy.QtWidgets import (
     QMessageBox,
     QDockWidget,
@@ -6,6 +7,10 @@ from qtpy.QtWidgets import (
     QMainWindow,
     QScrollArea,
     QFrame,
+    QWidget,
+    QHBoxLayout,
+    QLabel,
+    QToolButton,
 )
 
 
@@ -20,6 +25,59 @@ def toggle_dock(dock, show):
         *True* to show, *False* to hide.
     """
     dock.setVisible(show)
+
+
+class _DockTitleBar(QWidget):
+    def __init__(self, dock):
+        super().__init__(dock)
+        self._dock = dock
+        self._setup_ui()
+        dock.topLevelChanged.connect(self._on_floating_changed)
+
+    def _setup_ui(self):
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(8, 0, 4, 0)
+        layout.setSpacing(2)
+
+        self._title_label = QLabel()
+        layout.addWidget(self._title_label)
+        layout.addStretch()
+
+        self._float_btn = QToolButton()
+        self._float_btn.setAutoRaise(True)
+        self._float_btn.setFixedSize(24, 24)
+        self._float_btn.setIconSize(QSize(14, 14))
+        self._float_btn.clicked.connect(
+            lambda: self._dock.setFloating(not self._dock.isFloating())
+        )
+        layout.addWidget(self._float_btn)
+
+        self._close_btn = QToolButton()
+        self._close_btn.setAutoRaise(True)
+        self._close_btn.setFixedSize(24, 24)
+        self._close_btn.setIconSize(QSize(14, 14))
+        self._close_btn.clicked.connect(self._dock.close)
+        layout.addWidget(self._close_btn)
+
+        self.setFixedHeight(24)
+        self._on_theme_changed()
+
+    def _on_floating_changed(self, floating):
+        from ..icons import icon
+
+        if floating:
+            self._float_btn.setIcon(icon("ph.arrow-square-in", role="muted"))
+            self._float_btn.setToolTip("Re-dock")
+        else:
+            self._float_btn.setIcon(icon("ph.arrow-square-out", role="muted"))
+            self._float_btn.setToolTip("Detach")
+
+    def _on_theme_changed(self):
+        from ..icons import icon
+
+        self._close_btn.setIcon(icon("ph.x", role="muted"))
+        self._close_btn.setToolTip("Close")
+        self._on_floating_changed(self._dock.isFloating())
 
 
 class VerticalScrollArea(QScrollArea):
@@ -98,6 +156,7 @@ def create_or_toggle_dock(
         | QDockWidget.DockWidgetFloatable
         | QDockWidget.DockWidgetMovable
     )
+    dock.setTitleBarWidget(_DockTitleBar(dock))
 
     if scroll:
         scroll_area = VerticalScrollArea()
@@ -121,9 +180,6 @@ def create_or_toggle_dock(
             break
 
     if main_window is None:
-        QMessageBox.warning(
-            instance, "Warning", "Could not determine application main window."
-        )
         return dialog_widget.show()
 
     main_window.addDockWidget(dock_area, dock)

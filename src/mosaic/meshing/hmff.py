@@ -6,7 +6,6 @@ from typing import Dict
 from os.path import join
 
 import numpy as np
-import matplotlib.pyplot as plt
 from tme import Density
 
 try:
@@ -26,45 +25,6 @@ from ..meshing.utils import (
 )
 
 __all__ = ["equilibrate_fit", "setup_hmff"]
-
-
-def _equilibration_plot(instance, args, **kwargs):
-    # Avoid running matplotlib in qthread
-    dist_base, dist_remesh, dist_equil, filename = args
-    plt.style.use("seaborn-v0_8")
-    plt.figure(figsize=(10, 6))
-    plt.hist(
-        dist_base,
-        bins=30,
-        alpha=0.6,
-        color="#1f77b4",
-        label="Baseline",
-        density=True,
-    )
-    plt.hist(
-        dist_remesh,
-        bins=30,
-        alpha=0.6,
-        color="#2ca02c",
-        label="Remeshed",
-        density=True,
-    )
-    plt.hist(
-        dist_equil,
-        bins=30,
-        alpha=0.6,
-        color="#ff7f0e",
-        label="Equilibrated",
-        density=True,
-    )
-
-    plt.xlabel("Edge Lengths")
-    plt.ylabel("Frequency")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(f"{filename}_edgelength_histogram.png", dpi=300, bbox_inches="tight")
-    plt.close()
 
 
 def equilibrate_fit(geometry, directory: str, parameters: Dict):
