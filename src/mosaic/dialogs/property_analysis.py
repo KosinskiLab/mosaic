@@ -36,6 +36,10 @@ import pyqtgraph as pg
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+from ..utils import Throttle
+from ..stylesheets import Colors
+from ..icons import icon as _icon
+from ..widgets.settings import get_widget_value
 from ..widgets import (
     ContainerTreeWidget,
     StyledListWidgetItem,
@@ -44,10 +48,6 @@ from ..widgets import (
     TabWidget,
     generate_gradient_colors,
 )
-from ..utils import Throttle
-from ..widgets.settings import get_widget_value
-from ..icons import icon as _icon
-from ..stylesheets import Colors
 
 
 def to_numeric(arr):

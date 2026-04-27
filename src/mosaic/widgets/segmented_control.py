@@ -101,6 +101,9 @@ class SegmentedControl(QWidget):
             QPushButton:hover:!checked {{
                 background: {Colors.BG_HOVER};
             }}
+            QPushButton:disabled {{
+                color: {Colors.BORDER_HOVER};
+            }}
         """
         )
 

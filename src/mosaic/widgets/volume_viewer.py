@@ -25,6 +25,7 @@ from qtpy.QtCore import Signal
 from vtkmodules.util import numpy_support
 
 from ..utils import Throttle
+from ..stylesheets import Colors
 from .colors import ColorMapSelector
 from .sliders import SliderRow, DualHandleSlider
 
@@ -161,6 +162,7 @@ class VolumeViewer(QWidget):
 
         self.color_selector = ColorMapSelector(default=self.current_palette)
         self.color_selector.setMinimumWidth(120)
+        self.color_selector.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.color_selector.colormapChanged.connect(self.change_color_palette)
 
         self.contrast_label = QLabel("Contrast:")

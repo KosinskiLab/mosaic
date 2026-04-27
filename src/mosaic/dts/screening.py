@@ -19,6 +19,7 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 
 from ..parallel import report_progress
+from ._utils import _ParameterParser
 
 __all__ = ["generate_screen", "extend_screen", "get_screen_status"]
 
@@ -609,7 +610,6 @@ def generate_screen(
     may contain ``{{name:range}}`` screening placeholders and
     ``;@filter`` directives for volume filtering.
     """
-    from pyfreedts.screen import ParameterParser
     from ._utils import parse_filter_directives, extract_volume_path
 
     volume_path = extract_volume_path(dts_content)
@@ -641,7 +641,7 @@ def generate_screen(
     raw_template = "\n".join(
         l for l in dts_content.splitlines() if not l.strip().startswith(";@filter")
     )
-    template_content, parameters = ParameterParser.parse_template(raw_template)
+    template_content, parameters = _ParameterParser.parse_template(raw_template)
 
     if isinstance(volume_path, list) and len(volume_path) >= 1:
         original = extract_volume_path(dts_content)
@@ -697,8 +697,6 @@ def extend_screen(screen_dir: str, new_screen_params: Dict[str, str]) -> Dict:
     dict
         Updated summary.
     """
-    from pyfreedts.screen import ParameterParser
-
     screen_path = Path(screen_dir)
 
     with open(screen_path / "screen_summary.json", "r") as f:
@@ -708,11 +706,11 @@ def extend_screen(screen_dir: str, new_screen_params: Dict[str, str]) -> Dict:
     raw_template = "\n".join(
         l for l in dts_content.splitlines() if not l.strip().startswith(";@filter")
     )
-    template_content, _ = ParameterParser.parse_template(raw_template)
+    template_content, _ = _ParameterParser.parse_template(raw_template)
 
     new_values = {}
     for name, range_str in new_screen_params.items():
-        _, parsed = ParameterParser.parse_template(f"{{{{placeholder:{range_str}}}}}")
+        _, parsed = _ParameterParser.parse_template(f"{{{{placeholder:{range_str}}}}}")
         new_values[name] = parsed.get("placeholder", [])
 
     new_runs = _expand_screen(

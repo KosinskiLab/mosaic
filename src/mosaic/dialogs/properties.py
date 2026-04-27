@@ -149,8 +149,8 @@ class GeometryPropertiesDialog(QDialog):
             interp_labels, default=interp_idx
         )
         self._interpolation_control.setToolTip(
-            "Surface shading — Flat for faceted, Gouraud for smooth, "
-            "Phong for per-pixel smooth with sharper highlights"
+            "Surface shading. Flat for faceted, Gouraud for smooth, Phong \n"
+            "for per-pixel smooth with sharper highlights on meshes."
         )
         interp_layout.addWidget(self._interpolation_control)
         appearance_layout.addWidget(interp_row)

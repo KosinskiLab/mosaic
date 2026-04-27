@@ -93,7 +93,6 @@ class ExportDialog(QDialog):
         self.setWindowTitle("Export Data")
 
         self.names = names or []
-        self.resize(700, 460)
         self.file_names = [f"_{i}" for i in range(len(self.names))]
 
         if enabled_categories is None:
@@ -173,6 +172,7 @@ class ExportDialog(QDialog):
         self.set_defaults(list(parameters.keys()), list(parameters.values()))
 
         self.setup_ui()
+        self.resize(700, 460)
 
     def set_defaults(self, keys, values):
         """Update default values for format settings"""
@@ -211,7 +211,6 @@ class ExportDialog(QDialog):
         self.setup_format_buttons()
         content_layout.addWidget(format_group)
 
-        # -- Bottom row: Settings | Output side by side --
         bottom_row = QHBoxLayout()
         bottom_row.setSpacing(16)
 

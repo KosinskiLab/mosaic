@@ -75,12 +75,11 @@ class SliderRow(QWidget):
         self.slider.sliderReleased.connect(self._on_slider_released)
 
         self.value_label = QLabel()
-        self.value_label.setStyleSheet("QLabel { min-width: 45px; text-align: right;}")
-
         self.value_label.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
         self._update_value_label(default)
+        self._resize_label()
 
         if label_position == "left":
             layout.addWidget(self.label_widget, 0, Qt.AlignmentFlag.AlignVCenter)
@@ -111,6 +110,16 @@ class SliderRow(QWidget):
         if self.exponent != 1.0:
             ratio = 1.0 - (1.0 - ratio) ** self.exponent
         return self.min_val + ratio * (self.max_val - self.min_val)
+
+    def _resize_label(self):
+        if self.decimals == 0:
+            max_text = "0" * len(str(int(self.max_val))) + self.suffix
+        else:
+            lo = f"{self.min_val:.{self.decimals}f}"
+            hi = f"{self.max_val:.{self.decimals}f}"
+            max_text = (lo if len(lo) > len(hi) else hi) + self.suffix
+        fm = self.value_label.fontMetrics()
+        self.value_label.setFixedWidth(fm.horizontalAdvance(max_text) + 2)
 
     def _update_value_label(self, value: float):
         """Update the value label display."""
@@ -149,6 +158,7 @@ class SliderRow(QWidget):
             self.steps = max(1, int(max_val - min_val))
             self.slider.setMaximum(self.steps)
         self._update_value_label(self.value())
+        self._resize_label()
 
     def setEnabled(self, enabled: bool):
         """Enable or disable the widget."""
