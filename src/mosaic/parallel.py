@@ -350,7 +350,7 @@ class BackgroundTaskManager(QObject):
 
         self._initialize()
 
-        self.timer = QTimer()
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self._process_tasks)
         self.timer.start(500)
 

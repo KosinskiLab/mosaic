@@ -343,7 +343,7 @@ class ConfigurePanel(QScrollArea):
         self._save_dts_btn = QPushButton()
         self._save_dts_btn.setIcon(icon("ph.floppy-disk", role="muted"))
         self._save_dts_btn.setFixedSize(28, 28)
-        self._save_dts_btn.setToolTip("Save screen input.dts only")
+        self._save_dts_btn.setToolTip("Save screen inputs only")
         self._save_dts_btn.clicked.connect(self._save_dts)
         btn_row.addWidget(self._save_dts_btn)
 
@@ -929,23 +929,26 @@ class ConfigurePanel(QScrollArea):
         return content
 
     def _save_dts(self):
+        from .screening import _setup_screen_dir
+
         content = self._build_dts_content()
-        output = str(get_widget_value(self._output_dir) or "")
+        output = get_widget_value(self._output_dir) or None
+        mesh = get_widget_value(self._mesh_path) or None
 
-        dialog = QFileDialog(self.window() or self)
-        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
-        dialog.setNameFilter("DTS Files (*.dts);;All Files (*.*)")
-        dialog.setDirectory(str(Path(output)) if output else "")
-        dialog.selectFile("input.dts")
-        dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        if output is None:
+            return QMessageBox.warning(
+                self, "Error", "Output dir needs to be specified."
+            )
 
-        def on_accepted():
-            files = dialog.selectedFiles()
-            if files:
-                Path(files[0]).write_text(content, encoding="utf-8")
+        if mesh is None:
+            return QMessageBox.warning(
+                self, "Error", "Mesh path needs to be specified."
+            )
 
-        dialog.accepted.connect(on_accepted)
-        dialog.open()
+        output = Path(output)
+        mesh_name = _setup_screen_dir(output, mesh)
+        (output / "screen.dts").write_text(content, encoding="utf-8")
+        (output / "topol.top").write_text(f"{output / mesh_name} 1\n", encoding="utf-8")
 
     def _run_screen(self):
         mesh = str(get_widget_value(self._mesh_path) or "")

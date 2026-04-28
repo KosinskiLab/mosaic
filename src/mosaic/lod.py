@@ -7,11 +7,16 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import numpy as np
+from vtkmodules.util import numpy_support
 from vtkmodules.vtkCommonCore import vtkPoints
 from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
-from vtkmodules.util import numpy_support
 
 LOD_DISABLED = 0
+
+# Below this point count, rendering cost is negligible on any modern GPU,
+# so small clouds (landmarks, picked points, ROI markers) skip LOD entirely
+# and render at full fidelity.
+LOD_SMALL_CLOUD_POINTS = 10_000
 
 
 def get_point_budget() -> int:
@@ -207,8 +212,10 @@ def compute_scene_lod(geometries, budget):
     for g in geometries:
         n = g.get_number_of_points()
         rep = getattr(g, "_representation", "pointcloud")
-        if rep not in ("pointcloud", "gaussian_density"):
-            n = 0
+
+        # Ignore other representations or really small point clouds
+        if rep not in ("pointcloud", "gaussian_density") or n < LOD_SMALL_CLOUD_POINTS:
+            n = LOD_DISABLED
         counts.append(n)
 
     total = sum(counts)
@@ -217,7 +224,7 @@ def compute_scene_lod(geometries, budget):
 
     result = {}
     for g, n in zip(geometries, counts):
-        if n == 0:
+        if n == LOD_DISABLED:
             continue
         share = max(1, int(budget * n / total))
         if n > share:

@@ -666,5 +666,4 @@ def collect_vertex_properties(run_dir: str) -> Dict[str, np.ndarray]:
 
         name = xvg_file.stem.removesuffix("_vertices")
         properties[name] = vertex_data
-
     return properties

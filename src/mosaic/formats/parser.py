@@ -554,13 +554,12 @@ def _return_mesh(mesh, vertex_properties: dict = None) -> GeometryDataContainer:
     GeometryDataContainer
         Converted geometry data container.
     """
-    if not mesh.has_vertex_normals():
-        mesh.compute_vertex_normals()
-
     return GeometryDataContainer(
         vertices=[np.asarray(mesh.vertices)],
         faces=[np.asarray(mesh.triangles)],
-        normals=[np.asarray(mesh.vertex_normals)],
+        normals=[
+            np.asarray(mesh.vertex_normals) if mesh.has_vertex_normals() else None
+        ],
         vertex_properties=[VertexPropertyContainer(vertex_properties)],
     )
 

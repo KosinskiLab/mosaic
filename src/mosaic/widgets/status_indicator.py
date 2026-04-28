@@ -45,7 +45,7 @@ class TextSpinnerLabel(QLabel):
         super().__init__(parent)
         self.frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         self.current_frame = 0
-        self.timer = QTimer()
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self.next_frame)
         self.setStyleSheet(f"QLabel {{ color: {Colors.PRIMARY}; font-weight: bold; }}")
 
@@ -665,11 +665,16 @@ class StatusIndicator:
         if cancelled and card is not None:
             card.mark_cancelled()
         elif not cancelled:
-            QMessageBox.warning(
-                self.task_monitor,
-                "Cannot Cancel",
-                f"Task '{task_name}' cannot be cancelled.",
-            )
+            from ..stylesheets import _build_QMessageBox_style
+
+            box = QMessageBox(self.task_monitor)
+            box.setWindowTitle("Cannot Cancel")
+            box.setIcon(QMessageBox.Icon.Warning)
+            box.setText(f"Task '{task_name}' cannot be cancelled.")
+            box.setStandardButtons(QMessageBox.StandardButton.Yes)
+            box.setDefaultButton(QMessageBox.StandardButton.Yes)
+            box.setStyleSheet(_build_QMessageBox_style())
+            box.exec()
 
     def _on_clear_finished_requested(self):
         """Handle clear finished tasks request from dialog."""
@@ -750,7 +755,7 @@ class StatusIndicator:
         self.task_label.setStyleSheet(
             f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
         )
-        self._task_timer = QTimer()
+        self._task_timer = QTimer(self.task_label)
         self._task_timer.setSingleShot(True)
         self._task_timer.timeout.connect(lambda: self.task_label.clear())
 

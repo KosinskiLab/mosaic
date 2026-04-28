@@ -257,7 +257,7 @@ class DTSScreeningDialog(QDialog):
             screen_dir = str(screen_dir)
 
         if not screen_dir:
-            return
+            return None
 
         self._screen_dir = screen_dir
         statuses = get_screen_status(screen_dir)
@@ -265,7 +265,7 @@ class DTSScreeningDialog(QDialog):
         if not statuses:
             self._overview_table.setRowCount(0)
             self._status_label.setText("No DTS runs found.")
-            return
+            return None
 
         param_keys = sorted({k for s in statuses for k in s["parameters"].keys()})
         columns = ["Run"] + param_keys + ["Status", "Actions"]
@@ -367,10 +367,10 @@ class DTSScreeningDialog(QDialog):
 
     def _open_run_dir(self, run_id: str):
         if self._screen_dir is None:
-            return
+            return None
         run_dir = self._resolve_run_dir(run_id)
         if not run_dir.exists():
-            return
+            return None
         from qtpy.QtGui import QDesktopServices
         from qtpy.QtCore import QUrl
 
@@ -378,7 +378,7 @@ class DTSScreeningDialog(QDialog):
 
     def _import_run_trajectory(self, run_id: str):
         if self._screen_dir is None or self.cdata is None:
-            return
+            return None
         run_dir = self._resolve_run_dir(run_id)
 
         from ._utils import resolve_trajectory_dir
@@ -422,7 +422,7 @@ class DTSScreeningDialog(QDialog):
     def _on_trajectory_loaded(self, frames, run_id: str, scale: float):
         """GUI-thread callback: construct GeometryTrajectory and add it."""
         if not frames or self.cdata is None:
-            return
+            return None
 
         from ..geometry import GeometryTrajectory
 

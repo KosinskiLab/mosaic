@@ -159,7 +159,7 @@ def _dark_dual_slider(slider):
 
 
 class _ViewerStrip(QWidget):
-    """A single volume viewer presented as a dark-glass pill."""
+    """A single volume viewer instance."""
 
     _BG_IDLE = QColor(30, 32, 38, 160)
     _BG_HOVER = QColor(36, 38, 46, 235)
@@ -200,7 +200,7 @@ class _ViewerStrip(QWidget):
         v.close_button.hide()
         v.orientation_selector.hide()
 
-        v.visibility_button.setIcon(icon("ph.eye", color=_ICON))
+        v.visibility_button.setIcon(icon("ph.eye-slash", color=_ICON))
         v.visibility_button.setFixedSize(_BTN, _BTN)
         v.auto_contrast_button.setIcon(icon("ph.magic-wand", color=_ICON))
         v.auto_contrast_button.setFixedSize(_BTN, _BTN)
@@ -241,6 +241,7 @@ class _ViewerStrip(QWidget):
         self._load_close_btn.setFixedHeight(_BTN)
         self._load_close_btn.setToolTip("Load volume")
         self._load_close_btn.clicked.connect(self._on_load_close)
+        self._load_close_btn.setFixedWidth(60)
 
         self._recent_btn = QPushButton()
         self._recent_btn.setObjectName("recentDrop")
@@ -298,6 +299,7 @@ class _ViewerStrip(QWidget):
         v.project_selector.hide()
         self._proj_seg = SegmentedControl(["Off", "Clip +", "Clip −"], default=0)
         self._proj_seg.selectionChanged.connect(self._set_projection)
+        self._proj_seg.setEnabled(False)
         self._restyle_segmented(self._proj_seg, square=False)
         ov.addWidget(self._proj_seg)
 
@@ -371,7 +373,8 @@ class _ViewerStrip(QWidget):
 
         combo = self.viewer._path_combo
         if combo.count() == 0:
-            return
+            return None
+
         menu = QMenu(self)
         menu.setWindowFlags(
             menu.windowFlags()
@@ -406,10 +409,11 @@ class _ViewerStrip(QWidget):
         app = QApplication.instance()
         if app and app.activePopupWidget():
             self._leave_timer.start(200)
-            return
+            return None
+
         local = self.mapFromGlobal(QCursor.pos())
         if self.rect().contains(local):
-            return
+            return None
         self._hovered = False
         self.update()
 
@@ -421,7 +425,7 @@ class _ViewerStrip(QWidget):
 
     def _relayout(self):
         if self._hud is None:
-            return
+            return None
         if hasattr(self._hud, "_layout_strips"):
             self._hud._layout_strips()
         self._hud._schedule_vtk_render()
@@ -429,6 +433,7 @@ class _ViewerStrip(QWidget):
     def _sync_state(self):
         has_vol = self.viewer.volume is not None
         self._ori_seg.setEnabled(has_vol)
+        self._proj_seg.setEnabled(has_vol)
         if has_vol:
             self._load_close_btn.setText("Close")
             self._load_close_btn.setToolTip("Close volume")
@@ -528,9 +533,9 @@ class VolumeViewerHUD(QWidget):
         """Track the viewport so strips resize and the HUD follows it."""
         self._viewport_parent = viewport_parent
         viewport_parent.installEventFilter(self)
+
         # self.parent() is the main window (passed in __init__); tracking
-        # it keeps the floating HUD anchored as the window moves, resizes,
-        # or hides.
+        # it keeps the floating HUD anchored as the window changes
         self._top_window = self.parent()
         if self._top_window is not None:
             self._top_window.installEventFilter(self)
@@ -689,7 +694,7 @@ class VolumeViewerHUD(QWidget):
 
     def remove_viewer(self, strip):
         if strip not in self._strips:
-            return
+            return None
         self._strips.remove(strip)
         strip.viewer.close_volume()
         self._layout.removeWidget(strip)

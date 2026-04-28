@@ -19,8 +19,8 @@ class UpdateChecker(QThread):
 
     update_available = Signal(str, str)  # latest_version, release_notes
 
-    def __init__(self, current_version: str = __version__):
-        super().__init__()
+    def __init__(self, current_version: str = __version__, parent=None):
+        super().__init__(parent)
         self.current_version = str(current_version)
         self.repo_url = (
             "https://api.github.com/repos/KosinskiLab/mosaic/releases/latest"
