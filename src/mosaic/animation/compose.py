@@ -67,7 +67,7 @@ class AnimationComposerDialog(QDialog):
         self.is_playing = False
         self.is_looping = False
         self.playback_fps = 30
-        self.timer = QTimer()
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self._advance_frame)
 
         self.cdata = cdata

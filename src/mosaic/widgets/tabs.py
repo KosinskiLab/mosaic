@@ -6,6 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import sys
 from typing import Tuple
 
 from qtpy.QtCore import Qt, Signal, QRect, QTimer
@@ -174,15 +175,17 @@ class TabBar(QWidget):
         )
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton and not self.childAt(
-            event.pos()
+        if (
+            sys.platform == "darwin"
+            and event.button() == Qt.MouseButton.LeftButton
+            and not self.childAt(event.pos())
         ):
             self.window().windowHandle().startSystemMove()
             return
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
-        if not self.childAt(event.pos()):
+        if sys.platform == "darwin" and not self.childAt(event.pos()):
             win = self.window()
             if win.isMaximized():
                 win.showNormal()

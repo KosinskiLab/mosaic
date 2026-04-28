@@ -70,6 +70,7 @@ class AnalysisPanel(QWidget):
         self._lod_timer.setInterval(self._LOD_IDLE_MS)
         self._lod_timer.timeout.connect(self._restore_full_quality)
 
+        self._needs_replot = False
         self._update_plot_throttled = Throttle(self._update_plot, interval_ms=500)
 
         self._build_ui()
@@ -357,6 +358,7 @@ class AnalysisPanel(QWidget):
         "-": lambda a, b: a - b,
         "+": lambda a, b: a + b,
     }
+    _DERIVED_OP_TOKENS = {"/": "_div_", "*": "_mul_", "+": "_add_", "-": "_sub_"}
     _DERIVED_RE = re.compile(r"^\s*(.+?)\s+([/\*\-\+])\s+(.+?)\s*$")
 
     def _parse_derived(self):
@@ -499,6 +501,7 @@ class AnalysisPanel(QWidget):
 
         colors = generate_gradient_colors(cmap_name, max(len(series), 2))
 
+        x_min = x_max = y_min = y_max = None
         for i, (run, x, y) in enumerate(series):
             if norm_mode == "Per-run" and np.max(np.abs(y)) > 0:
                 y = (y - np.min(y)) / (np.max(y) - np.min(y) + 1e-12)
@@ -530,42 +533,103 @@ class AnalysisPanel(QWidget):
                 skipFiniteCheck=True,
             )
 
+            if len(x):
+                xi_min, xi_max = float(np.min(x)), float(np.max(x))
+                x_min = xi_min if x_min is None else min(x_min, xi_min)
+                x_max = xi_max if x_max is None else max(x_max, xi_max)
+            if len(y):
+                yi_min, yi_max = float(np.nanmin(y)), float(np.nanmax(y))
+                if np.isfinite(yi_min) and np.isfinite(yi_max):
+                    y_min = yi_min if y_min is None else min(y_min, yi_min)
+                    y_max = yi_max if y_max is None else max(y_max, yi_max)
+
         self._plot_widget.setUpdatesEnabled(True)
-        plot.vb.enableAutoRange()
-        QTimer.singleShot(0, plot.vb.autoRange)
+
+        # Set the range explicitly from data bounds rather than relying on
+        # ViewBox.autoRange, which races against widget realization on X11
+        # (the queued autoRange can fire before the panel has valid geometry,
+        # leaving the x-axis stuck at the default 0..1 range).
+        if x_min is not None and x_max is not None:
+            if x_min == x_max:
+                x_min, x_max = x_min - 0.5, x_max + 0.5
+            plot.vb.setXRange(x_min, x_max, padding=0.02)
+        if y_min is not None and y_max is not None:
+            if y_min == y_max:
+                y_min, y_max = y_min - 0.5, y_max + 0.5
+            plot.vb.setYRange(y_min, y_max, padding=0.05)
 
     def _update_plot(self, *_args):
+        if not self.isVisible():
+            self._needs_replot = True
+            return
+        self._needs_replot = False
         series, metric_display = self._extract_series()
         self._plot_multi_run(series, metric_display)
         self._update_readout(series)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self._needs_replot:
+            self._needs_replot = False
+            QTimer.singleShot(0, self._update_plot)
+
     def _save_derived(self):
         """Write the derived metric as .xvg into each run's mosaic/ folder."""
         from pathlib import Path
-        from ..dts._utils import write_xvg, sanitize_label
+        from ..dts._utils import write_xvg, sanitize_label, parse_xvg
 
         parsed = self._parse_derived()
         if parsed is None:
             return
-
         series, label = self._extract_series()
         if not series:
             return
 
-        stem = sanitize_label(label)
+        metric_a, op_char, metric_b = parsed
+        op = self._DERIVED_OPS[op_char]
+        stem = f"{sanitize_label(metric_a)}{self._DERIVED_OP_TOKENS[op_char]}{sanitize_label(metric_b)}"
+        meta = {"computation": "derived", "expression": label}
+
+        def load_pv(run, metric):
+            col = metric.split("/", 1)[-1].lower()
+            for ts in run.get("time_series") or []:
+                if (ts.get("metadata") or {}).get("format") == "per_vertex":
+                    continue
+                if any(col == c.lower() for c in ts["columns"]):
+                    r = parse_xvg(
+                        str(
+                            Path(run["run_dir"])
+                            / "mosaic"
+                            / f"{ts['source']}_vertices.xvg"
+                        )
+                    )
+                    return r[1][:, 1:] if r else None
+            return None
+
         written = 0
         for run, x, y in series:
-            run_dir = run.get("run_dir")
-            if not run_dir:
+            if not run.get("run_dir"):
                 continue
-            mosaic_dir = Path(run_dir) / "mosaic"
+            mosaic_dir = Path(run["run_dir"]) / "mosaic"
             mosaic_dir.mkdir(parents=True, exist_ok=True)
             write_xvg(
                 str(mosaic_dir / f"{stem}.xvg"),
                 ["frame", stem],
                 np.column_stack([x, y]),
-                metadata={"computation": "derived", "expression": label},
+                metadata=meta,
             )
+
+            pv_a, pv_b = load_pv(run, metric_a), load_pv(run, metric_b)
+            if pv_a is not None and pv_b is not None and pv_a.shape[1] == pv_b.shape[1]:
+                n = min(pv_a.shape[0], pv_b.shape[0])
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    pv = op(pv_a[:n], pv_b[:n])
+                write_xvg(
+                    str(mosaic_dir / f"{stem}_vertices.xvg"),
+                    ["frame"] + [f"v{j}" for j in range(pv.shape[1])],
+                    np.column_stack([np.arange(n)[:, None], pv]),
+                    metadata={**meta, "format": "per_vertex"},
+                )
             written += 1
 
         if written:

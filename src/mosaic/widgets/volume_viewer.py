@@ -350,8 +350,8 @@ class VolumeViewer(QWidget):
         self.contrast_value_label.setText("0.00 - 1.00")
         self.gamma_row.setValue(1.0)
         self.orientation_selector.setCurrentText("Z")
-        self.color_selector.setCurrentText("gray")
         self.project_selector.setCurrentText("Off")
+        self.set_visibility(False)
 
         self._close_volume()
         self.change_widget_state(is_enabled=False)
@@ -383,6 +383,7 @@ class VolumeViewer(QWidget):
             self.renderer.AddViewProp(self.slice)
             self.change_widget_state(is_enabled=True)
             self.auto_contrast()
+            self.set_visibility(True)
             self.renderer.ResetCamera()
 
     def change_widget_state(self, is_enabled: bool = False):

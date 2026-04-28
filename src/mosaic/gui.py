@@ -212,9 +212,16 @@ class App(QMainWindow):
         Settings.ui.window_geometry = self.saveGeometry()
         BackgroundTaskManager.instance()._shutdown()
 
+        # Wait briefly for the update checker so QThread isn't destroyed
+        # while still running (urlopen has a 5s timeout in run()).
+        checker = getattr(self, "update_checker", None)
+        if checker is not None and checker.isRunning():
+            checker.quit()
+            checker.wait(2000)
+
         # Close docks via their closeEvent so create_or_toggle_dock's _exit()
         # runs and Python-side references are released before Qt starts
-        # destroying the widget tree.  Without this, child destruction tears
+        # destroying the widget tree. Without this, child destruction tears
         # down dock contents in C++ destructor order and can segfault when a
         # slot/destructor touches an already-deleted sibling.
         for dock in self.findChildren(QDockWidget):
@@ -1626,7 +1633,7 @@ class App(QMainWindow):
             dialog.exec()
 
         # We assign the thread to keep it alive
-        self.update_checker = UpdateChecker(__version__)
+        self.update_checker = UpdateChecker(__version__, parent=self)
         self.update_checker.update_available.connect(_show_update_dialog)
         self.update_checker.start()
 
