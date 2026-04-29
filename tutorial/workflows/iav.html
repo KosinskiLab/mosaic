@@ -1,0 +1,856 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Influenza A Virus &#8212; mosaic 1.2.4 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../_static/documentation_options.js?v=928db92d"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial/workflows/iav';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Working with in situ data" href="giardia.html" />
+    <link rel="prev" title="Intelligence" href="../tabs/intelligence.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item pst-sidebar-collapse"><button id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar"><svg class="pst-icon svg-inline--fa" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
+  </svg>
+  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
+  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
+</button></div>
+        <div class="sidebar-primary-item">
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts.html">Concepts</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Working with Data</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../data/import_export.html">Import and Export</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data/sessions.html">Session Management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data/special.html">Specialized Views</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Feature Tabs</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../tabs/segmentation.html">Segmentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tabs/parametrization.html">Parametrization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tabs/intelligence.html">Intelligence</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Practical Workflows</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Influenza A Virus</a></li>
+<li class="toctree-l1"><a class="reference internal" href="giardia.html">Working with <em>in situ</em> data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pipeline.html">Batch Processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="shell.html">Scripting Interface</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../reference/formats.html">File Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/issues.html">Issues</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Further Information</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../misc/license.html">License</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">User Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Influenza A Virus</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="influenza-a-virus">
+<h1>Influenza A Virus<a class="headerlink" href="#influenza-a-virus" title="Link to this heading">#</a></h1>
+<p>This tutorial walks through analyzing Influenza A Virus (IAV) virus-like particles (VLPs), from membrane segmentation to coarse-grained Martini models.</p>
+<figure class="align-center" id="id24">
+<a class="reference internal image-reference" href="../../_images/mosaic_workflow.png"><img alt="../../_images/mosaic_workflow.png" src="../../_images/mosaic_workflow.png" style="width: 100%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">Coming up</span><a class="headerlink" href="#id24" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<section id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">#</a></h2>
+<p>Install Mosaic per the <a class="reference internal" href="../installation.html"><span class="doc">installation instructions</span></a>. For HMFF, install the <a class="reference internal" href="../installation.html#installation-dts"><span class="std std-ref">DTS Simulations</span></a> dependencies. For backmapping, install the <a class="reference internal" href="../installation.html#installation-backmapping"><span class="std std-ref">DTS Backmapping</span></a> tools.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Segmentation, template matching, and CG equilibration require a GPU. Pre-computed intermediates are available from <a class="reference external" href="https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi">ownCloud</a>.</p>
+</div>
+<p>Download the IAV VLP tomogram <a class="footnote-reference brackets" href="#id16" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> from <a class="reference external" href="https://www.ebi.ac.uk/emdb/EMD-11075">EMDB-11075</a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-11075/map/emd_11075.map.gz
+gunzip<span class="w"> </span>emd_11075.map.gz<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mv<span class="w"> </span>emd_11075.map<span class="w"> </span>emd_11075.mrc
+</pre></div>
+</div>
+<p>For segmentation, download the MemBrain_seg_v10_alpha weights <a class="footnote-reference brackets" href="#id17" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a> from <a class="reference external" href="https://drive.google.com/file/d/1tSQIz_UCsQZNfyHg0RxD-4meFgolszo8/view">Google Drive</a>.</p>
+</section>
+<section id="visual-demonstration">
+<h2>Visual Demonstration<a class="headerlink" href="#visual-demonstration" title="Link to this heading">#</a></h2>
+<div class="video_wrapper" style="padding-bottom: 56.250000%; padding-top: 30px; position: relative; width: 100%">
+<iframe allowfullscreen="true" referrerpolicy="strict-origin-when-cross-origin" src="https://www.youtube.com/embed/-XyxZpJQoXA" style="border: 0; height: 100%; left: 0; position: absolute; top: 0; width: 100%">
+</iframe></div></section>
+<section id="membrane-segmentation">
+<span id="id3"></span><h2>Membrane Segmentation<a class="headerlink" href="#membrane-segmentation" title="Link to this heading">#</a></h2>
+<ol class="arabic simple">
+<li><p>In the <strong>Intelligence</strong> tab, click the arrow next to <strong>Membrane</strong> and configure:</p>
+<ul class="simple">
+<li><p>Model: select the downloaded checkpoint file</p></li>
+<li><p>Window Size: 160, Output Sampling: 12.0</p></li>
+<li><p>Clustering: Enabled, Augmentation: Enabled</p></li>
+</ul>
+</li>
+<li><p>Click <em>Apply</em> and select the IAV VLP tomogram upon completion.</p></li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Without a GPU, use the segmentation from <a class="reference external" href="https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi">ownCloud</a> and load via File &gt; Open.</p>
+</div>
+</section>
+<section id="mesh-creation">
+<h2>Mesh Creation<a class="headerlink" href="#mesh-creation" title="Link to this heading">#</a></h2>
+<section id="clean-the-segmentation">
+<h3>Clean the Segmentation<a class="headerlink" href="#clean-the-segmentation" title="Link to this heading">#</a></h3>
+<ol class="arabic">
+<li><p>In the <strong>Segmentation</strong> tab, select the <em>Cluster</em> section in the <strong>Object Browser</strong></p></li>
+<li><p>Click <strong>Select</strong> from <strong>Base operations</strong> and use the threshold slider to isolate the central IAV VLP</p></li>
+<li><p>Close the selection window and press <strong>delete</strong> to remove small artifact clusters</p></li>
+<li><p>Press <strong>r</strong> to activate the crosshair selector, then click-drag to select incorrectly segmented voxels near the tomogram edge. Press <strong>delete</strong> to remove them.</p></li>
+<li><p>Select the VLP in the Object Browser:</p>
+<ul class="simple">
+<li><p>In the <strong>Segmentation</strong> tab, click the arrow next to <strong>Skeletonize</strong> and choose <em>outer_hull</em>, click <em>Apply</em></p></li>
+<li><p>Select the result, click <strong>Downsample</strong>, choose <em>Center of Mass</em> with Radius: 48, click <em>Apply</em></p></li>
+</ul>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version v1.1.0: </span><strong>Thin</strong> was renamed to <strong>Skeletonize</strong>. The <em>outer</em> method was replaced by <em>outer_hull</em>.</p>
+</div>
+</li>
+</ol>
+<div class="before-after-container" style="display: flex; gap: 10px;">
+  <div style="flex: 1;">
+    <img src="../../_static/tutorial/iav_workflow/segmentation_raw.png" style="width: 100%;">
+   <p style="color: #707070">Before cleanup</p>
+  </div>
+  <div style="flex: 1;">
+    <img src="../../_static/tutorial/iav_workflow/segmentation_clean.png" style="width: 100%;">
+      <p style="color: #707070">After cleanup</p>
+  </div>
+</div></section>
+<section id="generate-initial-mesh">
+<h3>Generate Initial Mesh<a class="headerlink" href="#generate-initial-mesh" title="Link to this heading">#</a></h3>
+<ol class="arabic">
+<li><p>In the <strong>Parametrization</strong> tab, select the cleaned segmentation</p></li>
+<li><p>Click the arrow next to <strong>Mesh</strong> and configure:</p>
+<ul class="simple">
+<li><p>Method: Ball Pivoting</p></li>
+<li><p>Smoothness: 1.0, Curvature Weight: 1.0, Pressure: 0.0</p></li>
+<li><p>Boundary Ring: 0, Radii: 60.0, Hole Size: Auto, Edge Length: 36</p></li>
+</ul>
+<p><strong>Edge Length</strong> controls the resolution of the output mesh. A value of -1 (Auto) defaults to the input point spacing, in this case 48 Å from the previous downsampling step. Lowering the value produces smoother meshes at the cost of longer computation times.</p>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version v1.2.1: </span>Elastic Weight renamed to Smoothness. Volume Weight renamed to Pressure. Neighbors, Downsample, and Smoothing Steps were removed. Edge Length did not exist. Sensible parameters are Elastic Weight: 1.0, Curvature Weight: 10.0</p>
+</div>
+</li>
+<li><p>Click <em>Apply</em>. Right-click the new mesh in the Object Browser and set <strong>Representation</strong> to <strong>Mesh</strong>.</p></li>
+</ol>
+<figure class="align-center" id="id25">
+<a class="reference internal image-reference" href="../../_images/initial_mesh_5550.png"><img alt="../../_images/initial_mesh_5550.png" src="../../_images/initial_mesh_5550.png" style="width: 100%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">Initial mesh</span><a class="headerlink" href="#id25" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="refine-the-mesh">
+<h3>Refine the Mesh<a class="headerlink" href="#refine-the-mesh" title="Link to this heading">#</a></h3>
+<p>One cap of the VLP falls outside the tomogram. We resample and re-mesh to fill it:</p>
+<ol class="arabic">
+<li><p>Select the mesh, click <strong>Sample</strong> (Method: <em>Points</em>, 30000)</p></li>
+<li><p>Select the sampled points, <strong>Mesh</strong> with the same settings, except Pressure 50</p>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version v1.2.1: </span>Volume Weight was renamed to Pressure. Use Volume Weight: 0.005 pre 1.2.1.</p>
+</div>
+</li>
+</ol>
+<p>The filled cap should now extend beyond the original segmentation.</p>
+<div class="before-after-container" style="display: flex; gap: 10px;">
+  <div style="flex: 1;">
+    <img src="../../_static/tutorial/iav_workflow/segmentation_sample_0600.png" style="width: 100%;">
+   <p style="color: #707070">Cleaned mesh points</p>
+  </div>
+  <div style="flex: 1;">
+    <img src="../../_static/tutorial/iav_workflow/mesh_pressurized_0600.png" style="width: 100%;">
+      <p style="color: #707070">Pressurized mesh</p>
+  </div>
+</div></section>
+<section id="equilibrate-the-mesh">
+<h3>Equilibrate the Mesh<a class="headerlink" href="#equilibrate-the-mesh" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Select the refined mesh, go to <strong>Intelligence</strong> tab, click <strong>Equilibrate</strong></p></li>
+<li><p>Set Average Edge Length: 100, Steps: 5000</p></li>
+</ol>
+<p>This produces three meshes: mesh_base (input), mesh_remeshed (target edge length), and mesh_equilibrated (equilibrated via Trimem <a class="footnote-reference brackets" href="#id18" id="id5" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a>). If you want to inspect them, load the output meshes via File &gt; Open.</p>
+<figure class="align-right" id="id26">
+<a class="reference internal image-reference" href="../../_images/edge_lengths.png"><img alt="../../_images/edge_lengths.png" height="248" src="../../_images/edge_lengths.png" width="164" />
+</a>
+<figcaption>
+<p><span class="caption-text">Comparison of edge lengths</span><a class="headerlink" href="#id26" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>An important quality metric is the edge-length distribution of equilibrated meshes. We can assess that using <strong>Segmentation &gt; Properties</strong>, Category: Mesh, Property: Mesh Statistics, Type: Edge Length. The best initial mesh for simulation recapitulates the input geometry and has a tight edge length distribution between 1 - sqrt(3). Typically, mesh_equilibrated is the most suitable for subsequent simulation and we will use it for this example as well.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Pre-computed meshes are available from <a class="reference external" href="https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi">ownCloud</a>.</p>
+</div>
+</section>
+</section>
+<section id="hmff-simulation">
+<h2>HMFF Simulation<a class="headerlink" href="#hmff-simulation" title="Link to this heading">#</a></h2>
+<figure class="align-right" id="id27">
+<a class="reference internal image-reference" href="../../_images/hmff_setup.png"><img alt="../../_images/hmff_setup.png" height="396" src="../../_images/hmff_setup.png" width="181" />
+</a>
+<figcaption>
+<p><span class="caption-text">HMFF simulation setup</span><a class="headerlink" href="#id27" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<ol class="arabic simple">
+<li><p>Go to the <strong>Intelligence</strong> tab, click <strong>DTS</strong></p></li>
+<li><p>Set parameters:</p>
+<ul class="simple">
+<li><p>Mesh: mesh_equilibrated.q, Output: Up to you</p></li>
+<li><p>Temperature: 1.5, Edge length: 1.0 - 4.0, Steps: 150000, Threads: 8</p></li>
+<li><p>Rigidity (κ): 25.0, VolumeCoupling: SecondOrder 0.6 1000 1.1</p></li>
+<li><p>HMFF weight (ξ): 5.0, Enable Filters: 50Å, Highpass: 900Å</p></li>
+<li><p>Extra Parameters: AlexanderMove = MetropolisAlgorithmOpenMP 0</p></li>
+</ul>
+</li>
+<li><p>Click <strong>Setup</strong> to generate the DTS directory</p></li>
+</ol>
+<p>The edge length parameter is related to mesh quality, and FreeDTS will inform you if any edges fall outside this range. The ideal range is 1.0 - 3.0, but upper bounds of 5.0 can still yield stable simulations. Beyond that input mesh quality should be improved. When using meshes created without the <em>Equilibrate</em> functionality, you need to set HMFF scale and offset parameter yourself (see <code class="docutils literal notranslate"><span class="pre">mosaic.meshing.hmff</span></code> equilibrate_fit for how we compute them).</p>
+<p>After the background job has completed, navigate to your chosen output directory and from within run_1 execute:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bash<span class="w"> </span>run.sh
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Simulation outputs are available on <a class="reference external" href="https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi">ownCloud</a> in hmff/TrajTSI_Done.</p>
+</div>
+<p>To load results, move to the Analyze tab within the DTS dialog, set the path to what you chose for Output in the Configure page, and load the import button in the actions field of the corresponding run.</p>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version v1.2.4: </span>Use the <strong>Setup</strong> dialog pre 1.2.4. The parameters remain the same, but you will have to adapt the AlexanderMove and VolumeCoupling parameters in the corresponding input.dts file manually.</p>
+<p>Pre 1.2.4, trajectories had to be imported exclusively using the <strong>Trajectory</strong> button in the <strong>Intelligence tab</strong> using the scale parameters from the input.dts, in this case Scale: 0.012202743213335199 and Offset: 21.0,6.0,16.0. Its recommended to use the DTS dialog import, as this will include a range of properties for subsequent analysis through <strong>Segmentation &gt; Properties &gt; Vertex Properties</strong>.</p>
+</div>
+<p>Use View &gt; Trajectory player to navigate time points and View &gt; Volume Viewer to overlay the density.</p>
+<div class="before-after-container" style="display: flex; gap: 10px;">
+  <div style="flex: 1;">
+    <img src="../../_static/tutorial/iav_workflow/hmff_t0.png" style="width: 100%;">
+   <p style="color: #707070">Initial mesh</p>
+  </div>
+  <div style="flex: 1;">
+    <img src="../../_static/tutorial/iav_workflow/hmff_t150.png" style="width: 100%;">
+      <p style="color: #707070">HMFF-refined mesh</p>
+  </div>
+</div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Frozen vertices indicate the simulation cannot develop them. Try increasing Min_Max_Lenghts or lowering the equilibration edge length.</p>
+</div>
+</section>
+<section id="constrained-template-matching">
+<h2>Constrained Template Matching<a class="headerlink" href="#constrained-template-matching" title="Link to this heading">#</a></h2>
+<section id="generate-seed-points">
+<h3>Generate Seed Points<a class="headerlink" href="#generate-seed-points" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Select your desired trajectory time-point, right-click and <strong>Duplicate</strong></p></li>
+<li><p>In <strong>Parametrization</strong>, configure <strong>Sample</strong>: Method: <em>Distance</em>, Sampling: 40, Offset: 100</p></li>
+</ol>
+<p>This places seed points ~40Å apart with a 100Å offset (roughly the center height of HA/NA). Export as STAR via right-click.</p>
+</section>
+<section id="template-matching">
+<h3>Template Matching<a class="headerlink" href="#template-matching" title="Link to this heading">#</a></h3>
+<p>In the <strong>Intelligence</strong> tab, click <strong>Setup</strong> under Template Matching and configure PyTME <a class="footnote-reference brackets" href="#id20" id="id8" role="doc-noteref"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></a>:</p>
+<ul class="simple">
+<li><p><strong>Data</strong>: set working directory, paths to EMD-11075 and HA/NA structures</p></li>
+<li><p><strong>Preprocess</strong>: Lowpass: 15, Align Template Axis: z, Flip Template: checked</p></li>
+<li><p><strong>Matching</strong>: Angular Step: 7, Score: FLC, seed points STAR file, Rotational Uncertainty: 15, Translational Uncertainty: (6,6,10) for HA / (6,6,12) for NA, Tilt Range: 60,60, Wedge Axes: 2,0, Defocus: 30000, No Centering: checked</p></li>
+<li><p><strong>Peak Calling</strong>: PeakCallerMaximumFilter, 10000 peaks, Min Distance: 7 (HA) / 10 (NA)</p></li>
+<li><p><strong>Compute</strong>: set cores, memory, backend: cupy</p></li>
+</ul>
+<p>Click OK to generate and run the matching scripts.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Results are available from <a class="reference external" href="https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi">ownCloud</a>.</p>
+</div>
+</section>
+<section id="refine-protein-picks">
+<h3>Refine Protein Picks<a class="headerlink" href="#refine-protein-picks" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Keep the top 97% of NA picks by score</p></li>
+<li><p>Visualize and manually refine picks in Mosaic using the selection tool</p></li>
+<li><p>Remove HA picks within 7 voxels of NA picks to resolve clashes</p></li>
+</ol>
+<p>Filtering scripts: pytme/filter.py and pytme/resolve_clash.py on <a class="reference external" href="https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi">ownCloud</a>.</p>
+</section>
+</section>
+<section id="coarse-grained-martini-models">
+<h2>Coarse-Grained Martini Models<a class="headerlink" href="#coarse-grained-martini-models" title="Link to this heading">#</a></h2>
+<section id="backmapping">
+<h3>Backmapping<a class="headerlink" href="#backmapping" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>In <strong>Intelligence</strong>, click <strong>Backmapping</strong>, select an output directory</p></li>
+<li><p>Set target edge length to 20, add HA and NA inclusions</p></li>
+</ol>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>The output also contains <em>mesh.tsi</em> for equilibrium DTS simulations with protein inclusions.</p>
+</div>
+</section>
+<section id="coarse-graining">
+<h3>Coarse Graining<a class="headerlink" href="#coarse-graining" title="Link to this heading">#</a></h3>
+<p>Edit <em>martinize.sh</em> to add PDB paths for <em>NA_STRUCTURE</em> and <em>HA_STRUCTURE</em>, then:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bash<span class="w"> </span>martinize.sh
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Protein principal axes must align with z. An example rotation script is available on <a class="reference external" href="https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi">ownCloud</a> (pytme/templates/rot_structures.py).</p>
+</div>
+<p>Create the coarse-grained system using TS2CG <a class="footnote-reference brackets" href="#id21" id="id12" role="doc-noteref"><span class="fn-bracket">[</span>6<span class="fn-bracket">]</span></a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bash<span class="w"> </span>plm.sh<span class="w">   </span><span class="c1"># Create bilayer</span>
+bash<span class="w"> </span>pcg.sh<span class="w">   </span><span class="c1"># Populate with lipids</span>
+</pre></div>
+</div>
+<p>This produces system.gro for MD simulation or visualization.</p>
+</section>
+<section id="equilibration">
+<h3>Equilibration<a class="headerlink" href="#equilibration" title="Link to this heading">#</a></h3>
+<p>Gromacs <a class="footnote-reference brackets" href="#id22" id="id13" role="doc-noteref"><span class="fn-bracket">[</span>7<span class="fn-bracket">]</span></a> settings for Martini <a class="footnote-reference brackets" href="#id23" id="id14" role="doc-noteref"><span class="fn-bracket">[</span>8<span class="fn-bracket">]</span></a> equilibration are on <a class="reference external" href="https://oc.embl.de/index.php/s/URqaMtuk0OWPKEi">ownCloud</a> (ts2cg folder):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bash<span class="w"> </span>equilibrate.sh
+</pre></div>
+</div>
+<p>Energy minimization runs on a laptop. The final equilibration step should run on an HPC cluster (see eq/equilibrate.sbatch).</p>
+</section>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h2>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id16" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>Peukes, J., Xiong, X., Erlendsson, S., Qu, K., Wan, W., Calder, L.J., Schraidt, O., Kummer, S., Freund, S.M.V., Kräusslich, H.G., Briggs, J.A.G. (2020). “The native structure of the assembled matrix protein 1 of influenza A virus”. Nature, 587, 495-498. <a class="reference external" href="https://doi.org/10.1038/s41586-020-2696-8">https://doi.org/10.1038/s41586-020-2696-8</a></p>
+</aside>
+<aside class="footnote brackets" id="id17" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
+<p>Lamm, L., Sieber, J., Chung, J.E. et al. (2024). “MemBrain-seg: Deep learning-based segmentation of cellular membranes in cryo-electron tomography”. bioRxiv, doi.org/10.1101/2024.01.05.574336</p>
+</aside>
+<aside class="footnote brackets" id="id18" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id5">3</a><span class="fn-bracket">]</span></span>
+<p>Siggel, M., Kehl, S., Reuter, K., Köfinger, J., Hummer, G. (2022). “TriMem: A parallelized hybrid Monte Carlo software for efficient simulations of lipid membranes”. Journal of Chemical Physics, 157, 174801. <a class="reference external" href="https://doi.org/10.1063/5.0101118">https://doi.org/10.1063/5.0101118</a></p>
+</aside>
+<aside class="footnote brackets" id="id19" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></span>
+<p>Pezeshkian, W., Ipsen, J.H. (2024). “Mesoscale simulation of biomembranes with FreeDTS”. Nature Communications, 15, 548. <a class="reference external" href="https://doi.org/10.1038/s41467-024-44819-w">https://doi.org/10.1038/s41467-024-44819-w</a></p>
+</aside>
+<aside class="footnote brackets" id="id20" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id8">5</a><span class="fn-bracket">]</span></span>
+<p>Maurer, V.J., Siggel, M., Kosinski, J. (2024). “PyTME (Python Template Matching Engine): A fast, flexible, and multi-purpose template matching library for cryogenic electron microscopy data”. SoftwareX, 25, 101636. <a class="reference external" href="https://doi.org/10.1016/j.softx.2023.101636">https://doi.org/10.1016/j.softx.2023.101636</a></p>
+</aside>
+<aside class="footnote brackets" id="id21" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id12">6</a><span class="fn-bracket">]</span></span>
+<p>Pezeshkian, W., König, M., Wassenaar, T.A., Marrink, S.J. (2020). “Backmapping triangulated surfaces to coarse-grained membrane models”. Nature Communications, 11, 2296. <a class="reference external" href="https://doi.org/10.1038/s41467-020-16094-y">https://doi.org/10.1038/s41467-020-16094-y</a></p>
+</aside>
+<aside class="footnote brackets" id="id22" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id13">7</a><span class="fn-bracket">]</span></span>
+<p>Abraham, M.J., Murtola, T., Schulz, R., Páll, S., Smith, J.C., Hess, B., Lindahl, E. (2015). “GROMACS: High performance molecular simulations through multi-level parallelism from laptops to supercomputers”. SoftwareX, 1-2, 19-25. <a class="reference external" href="https://doi.org/10.1016/j.softx.2015.06.001">https://doi.org/10.1016/j.softx.2015.06.001</a></p>
+</aside>
+<aside class="footnote brackets" id="id23" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id14">8</a><span class="fn-bracket">]</span></span>
+<p>Souza, P.C.T., Alessandri, R., Barnoud, J., Thallmair, S., Faustino, I., Grünewald, F., Patmanidis, I., Abdizadeh, H., Bruininks, B.M.H., Wassenaar, T.A., Kroon, P.C., Melcr, J., Nieto, V., Corradi, V., Khan, H.M., Domański, J., Javanainen, M., Martinez-Seara, H., Reuter, N., Best, R.B., Vattulainen, I., Monticelli, L., Periole, X., Tieleman, D.P., de Vries, A.H., Marrink, S.J. (2021). “Martini 3: a general purpose force field for coarse-grained molecular dynamics”. Nature Methods, 18, 382-388. <a class="reference external" href="https://doi.org/10.1038/s41592-021-01098-3">https://doi.org/10.1038/s41592-021-01098-3</a></p>
+</aside>
+</aside>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../tabs/intelligence.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Intelligence</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="giardia.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Working with <em>in situ</em> data</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#requirements">Requirements</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visual-demonstration">Visual Demonstration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#membrane-segmentation">Membrane Segmentation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mesh-creation">Mesh Creation</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#clean-the-segmentation">Clean the Segmentation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#generate-initial-mesh">Generate Initial Mesh</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#refine-the-mesh">Refine the Mesh</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#equilibrate-the-mesh">Equilibrate the Mesh</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#hmff-simulation">HMFF Simulation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#constrained-template-matching">Constrained Template Matching</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#generate-seed-points">Generate Seed Points</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#template-matching">Template Matching</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#refine-protein-picks">Refine Protein Picks</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#coarse-grained-martini-models">Coarse-Grained Martini Models</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#backmapping">Backmapping</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#coarse-graining">Coarse Graining</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#equilibration">Equilibration</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

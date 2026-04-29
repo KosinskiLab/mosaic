@@ -1,0 +1,43 @@
+﻿mosaic.data.MosaicData
+======================
+
+.. currentmodule:: mosaic.data
+
+.. autoclass:: MosaicData
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MosaicData.__init__
+      ~MosaicData.activate_picking_mode
+      ~MosaicData.activate_viewing_mode
+      ~MosaicData.format_datalist
+      ~MosaicData.get_tree_state
+      ~MosaicData.highlight_clusters_from_selected_points
+      ~MosaicData.load_session
+      ~MosaicData.open_file
+      ~MosaicData.refresh_actors
+      ~MosaicData.refresh_lod
+      ~MosaicData.register_session_hook
+      ~MosaicData.reset
+      ~MosaicData.set_coloring_mode
+      ~MosaicData.swap_area_picker
+      ~MosaicData.to_file
+      ~MosaicData.visibility_unselected
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MosaicData.shape
+   
+   

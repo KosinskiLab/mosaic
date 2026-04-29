@@ -1,0 +1,6 @@
+﻿mosaic.data.MosaicData.shape
+============================
+
+.. currentmodule:: mosaic.data
+
+.. autoproperty:: MosaicData.shape

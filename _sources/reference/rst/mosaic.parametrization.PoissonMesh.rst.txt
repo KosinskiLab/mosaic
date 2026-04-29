@@ -1,0 +1,41 @@
+﻿mosaic.parametrization.PoissonMesh
+==================================
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: PoissonMesh
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~PoissonMesh.__init__
+      ~PoissonMesh.add_projections
+      ~PoissonMesh.compute_curvature
+      ~PoissonMesh.compute_distance
+      ~PoissonMesh.compute_normal
+      ~PoissonMesh.compute_vertex_normals
+      ~PoissonMesh.fit
+      ~PoissonMesh.from_file
+      ~PoissonMesh.geodesic_distance
+      ~PoissonMesh.points_per_sampling
+      ~PoissonMesh.sample
+      ~PoissonMesh.subset
+      ~PoissonMesh.to_file
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PoissonMesh.triangles
+      ~PoissonMesh.vertices
+   
+   
