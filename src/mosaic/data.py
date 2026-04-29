@@ -173,9 +173,9 @@ class MosaicData:
         self._lod_restore_timer.setInterval(200)
         self._lod_restore_timer.timeout.connect(self._restore_full_data)
 
-        interactor = vtk_widget.GetRenderWindow().GetInteractor()
-        if interactor is None:
+        if (interactor := vtk_widget.GetRenderWindow().GetInteractor()) is None:
             return None
+
         interactor.AddObserver("StartInteractionEvent", self._on_interaction_start)
         interactor.AddObserver("EndInteractionEvent", self._on_interaction_end)
 
