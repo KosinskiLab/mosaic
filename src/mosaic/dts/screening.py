@@ -430,10 +430,11 @@ def _write_run_script(run_dir: Path, params: Dict, mesh_name: str = "") -> None:
 
         DTS_CMD="${{DTS_CMD:-{default_cmd}}}"
         DTS_NT="${{DTS_NT:-{threads}}}"
+        DTS_SEED="${{DTS_SEED:-76532}}"
         $DTS_CMD -in input.dts \\
             -top ../topol.top \\
             -nt $DTS_NT \\
-            -seed 76532 \\
+            -seed $DTS_SEED \\
             && touch {_SENTINEL}
         """
     )
@@ -463,7 +464,11 @@ def _write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
 
     local_script = (
         "#!/bin/bash\nset -euo pipefail\n\n"
-        "export DTS_NT=${DTS_NT:-1}\n\n"
+        "# Set DTS_CMD, DTS_NT, and DTS_SEED to override the executable,\n"
+        "# thread count, and random seed, e.g.:\n"
+        "#   DTS_CMD=/opt/dts/bin/dts DTS_NT=8 DTS_SEED=12345 bash submit_local.sh\n\n"
+        "export DTS_NT=${DTS_NT:-1}\n"
+        "export DTS_SEED=${DTS_SEED:-76532}\n\n"
         + preamble
         + textwrap.dedent(
             """\
@@ -501,11 +506,13 @@ def _write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
 
         #
         # DTS screen launcher — {n_runs} runs.
-        # Set DTS_NT before calling sbatch to control thread count, e.g.
-        # DTS_NT=8 sbatch submit_slurm.sh
+        # Set DTS_CMD, DTS_NT, and DTS_SEED before calling sbatch to override
+        # the executable, thread count, and random seed, e.g.:
+        #   DTS_CMD=/opt/dts/bin/dts DTS_NT=8 DTS_SEED=12345 sbatch submit_slurm.sh
         #
 
         export DTS_NT="${{DTS_NT:-1}}"
+        export DTS_SEED="${{DTS_SEED:-76532}}"
         MAX_ARRAY=1000
 
         """
