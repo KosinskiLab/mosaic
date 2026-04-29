@@ -1012,6 +1012,121 @@ def _cmd_dts_screen(session, parsed: ParsedCommand):
 #     return _error_panel(f"Unknown action: {action}")
 
 
+def _cmd_dts_analysis(session, parsed: ParsedCommand):
+    import numpy as np
+    from pathlib import Path
+
+    if not parsed.args:
+        return _registry_method_listing("dts-analysis")
+
+    method_name = parsed.args[0]
+
+    _KIND_MAP = {
+        "hmff_energy": "hmff_potential",
+        "bending_energy": "bending_energy",
+        "fluctuation": "fluctuation",
+        "distance": "distance",
+        "mesh_area": "mesh_area",
+        "mesh_volume": "mesh_volume",
+    }
+    kind = _KIND_MAP.get(method_name)
+    if kind is None:
+        available = ", ".join(_KIND_MAP.keys())
+        return _error_panel(f"Unknown method: {method_name!r}. Available: {available}")
+
+    kwargs = _resolve_kwargs(session, parsed.kwargs)
+
+    run_path_str = kwargs.pop("run", None)
+    if not run_path_str:
+        return _error_panel("Provide a run directory: run=<path>")
+
+    run_path = Path(str(run_path_str)).resolve()
+    if not run_path.exists():
+        return _error_panel(f"Run directory not found: {run_path}")
+
+    force = bool(kwargs.pop("force", False))
+
+    if kind == "distance":
+        reference = kwargs.pop("reference", None)
+        if reference is None:
+            return _error_panel(
+                "Distance requires a reference geometry: reference=<target>"
+            )
+        if isinstance(reference, (list, tuple)):
+            reference = reference[0]
+        kwargs["reference"] = reference
+
+        all_geoms = session._all_geometries()
+        if reference in all_geoms:
+            label = session._geometry_name(reference, all_geoms.index(reference))
+        else:
+            label = getattr(reference, "_meta", {}).get("name", "reference")
+        kwargs.setdefault("reference_label", label)
+        kwargs["invert"] = bool(kwargs.pop("invert", False))
+
+    from ..dts._utils import resolve_trajectory_dir, find_dts_file, parse_dts_content
+    from ..dts import compute
+
+    traj_dir = resolve_trajectory_dir(run_path)
+    if traj_dir is None:
+        return _error_panel(f"No trajectory directory found in: {run_path}")
+
+    dts_file = find_dts_file(run_path)
+    if dts_file is not None:
+        known, _ = parse_dts_content(dts_file.read_text())
+        scale = float(known.get("scale_factor", 1.0))
+        try:
+            offset = np.array(
+                [float(x) for x in str(known.get("offset", "0,0,0")).split(",")]
+            )
+        except (ValueError, AttributeError):
+            offset = np.zeros(3)
+    else:
+        scale, offset = 1.0, np.zeros(3)
+
+    try:
+        result = compute(
+            trajectory_dir=str(traj_dir),
+            kind=kind,
+            scale=scale,
+            offset=offset,
+            output_dir=str(run_path),
+            force=force,
+            **kwargs,
+        )
+    except Exception as exc:
+        return _error_panel(str(exc))
+
+    values = result["values"]
+    n_frames = len(values)
+    if n_frames == 0:
+        return _error_panel("No frames computed.")
+
+    col_name = result["column"]
+
+    table = Table(
+        box=BOX_TABLE,
+        show_header=True,
+        show_edge=False,
+        pad_edge=True,
+        padding=(0, 1),
+        caption=f"[mosaic.muted]{col_name}  ·  {n_frames} frames",
+        caption_style="",
+    )
+    table.add_column("Stat", style="mosaic.param", no_wrap=True)
+    table.add_column("Value", justify="right", style="mosaic.data")
+
+    table.add_row("Mean", f"{np.nanmean(values):.6g}")
+    table.add_row("Std", f"{np.nanstd(values):.6g}")
+    table.add_row("Min", f"{np.nanmin(values):.6g}")
+    table.add_row("Max", f"{np.nanmax(values):.6g}")
+    if n_frames >= 2:
+        table.add_row("First frame", f"{values[0]:.6g}")
+        table.add_row("Last frame", f"{values[-1]:.6g}")
+
+    return table
+
+
 def _register_builtins():
     """Register all built-in and auto-discovered commands."""
     from ..operations import GeometryOperations
@@ -1092,6 +1207,12 @@ def _register_builtins():
             "dts-screen",
             _cmd_dts_screen,
             "Generate DTS parameter screen from config file",
+            "Analysis",
+        ),
+        (
+            "dts-analysis",
+            _cmd_dts_analysis,
+            "Compute DTS trajectory metrics for a run directory",
             "Analysis",
         ),
     ]:

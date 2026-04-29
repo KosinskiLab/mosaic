@@ -335,7 +335,6 @@ class Session:
 
         if export_parameters.get("shape") is None:
             export_parameters["shape"] = self._data.metadata.get("shape")
-
         write_geometries(geometries, filepath, **export_parameters)
 
     def save_session(self, filepath: str, sections: dict = None) -> None:

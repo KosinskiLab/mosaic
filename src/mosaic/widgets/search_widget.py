@@ -30,6 +30,12 @@ class SearchWidget(QWidget):
                 border-radius: {Colors.RADIUS}px;
                 background-color: transparent;
             }}
+            QFrame:hover {{
+                border: 1px solid {Colors.BORDER_HOVER};
+            }}
+            QFrame:hover:!focus {{
+                border: 1px solid {Colors.BORDER_HOVER};
+            }}
             QFrame:focus-within {{
                 border: 1px solid {Colors.PRIMARY};
             }}
@@ -46,7 +52,7 @@ class SearchWidget(QWidget):
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText(placeholder)
-        self.search_input.setClearButtonEnabled(True)
+        self.search_input.setClearButtonEnabled(False)
         self.search_input.textChanged.connect(self.searchTextChanged.emit)
         self.search_input.setStyleSheet(
             """

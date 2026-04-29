@@ -17,9 +17,9 @@ from qtpy.QtWidgets import (
     QPushButton,
     QFileDialog,
     QLabel,
-    QMessageBox,
 )
 from ..icons import icon as _icon_factory
+from .message_box import MosaicMessageBox
 
 from qtpy.QtCore import Signal
 from vtkmodules.util import numpy_support
@@ -317,7 +317,7 @@ class VolumeViewer(QWidget):
         try:
             self.load_volume(path)
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
+            MosaicMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
 
     def open_volume(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open Volume")
@@ -327,7 +327,7 @@ class VolumeViewer(QWidget):
         try:
             self.load_volume(file_path)
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
+            MosaicMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
 
     def _close_volume(self):
         self._remove_lod_observer()

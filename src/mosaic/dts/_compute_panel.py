@@ -18,9 +18,9 @@ from qtpy.QtWidgets import (
     QPushButton,
     QFormLayout,
     QGroupBox,
-    QMessageBox,
 )
 from ..icons import icon
+from ..widgets import MosaicMessageBox
 
 
 class ComputePanel(QGroupBox):
@@ -44,8 +44,8 @@ class ComputePanel(QGroupBox):
 
     def __init__(
         self,
+        get_mesh_transform: Callable,
         cdata=None,
-        get_mesh_transform: Optional[Callable] = None,
         get_run_ids: Optional[Callable] = None,
         get_run_dir: Optional[Callable] = None,
         on_complete: Optional[Callable] = None,
@@ -107,10 +107,20 @@ class ComputePanel(QGroupBox):
         if text == "Distance":
             ref = QComboBox()
             if self.cdata is not None:
-                for label, _ in self.cdata.format_datalist("models", mesh_only=True):
-                    ref.addItem(label)
+                for label, geom in self.cdata.format_datalist("models", mesh_only=True):
+                    ref.addItem(label, geom.uuid)
+                for label, geom in self.cdata.format_datalist("data"):
+                    ref.addItem(label, geom.uuid)
             form.insertRow(insert, "Reference:", ref)
             opts["ref"] = ref
+
+            invert = QCheckBox()
+            invert.setToolTip(
+                "Unchecked: per reference point, distance to nearest mesh vertex.\n"
+                "Checked: per mesh vertex, distance to nearest reference point."
+            )
+            form.insertRow(insert + 1, "Invert:", invert)
+            opts["invert"] = invert
 
         elif text == "Fluctuation":
             window = QSpinBox()
@@ -141,22 +151,28 @@ class ComputePanel(QGroupBox):
         prop = self._type_combo.currentText()
 
         if prop == "Distance":
-            ref_name = opts["ref"].currentText()
-            if not ref_name or self.cdata is None:
-                QMessageBox.warning(self, "Error", "Select a reference model.")
+            ref_uuid = opts["ref"].currentData()
+
+            if not ref_uuid or self.cdata is None:
+                MosaicMessageBox.warning(self, "Error", "Select a reference model.")
                 return
 
-            ref_geom = None
-            for name, geom in self.cdata.format_datalist("models", mesh_only=True):
-                if name == ref_name:
-                    ref_geom = geom
+            all_geoms = [
+                *self.cdata.format_datalist("models", mesh_only=True),
+                *self.cdata.format_datalist("data"),
+            ]
+            ref_geom = next((g for _, g in all_geoms if g.uuid == ref_uuid), None)
 
             if ref_geom is None:
-                QMessageBox.warning(self, "Error", "Reference geometry not found.")
-                return
+                MosaicMessageBox.warning(self, "Error", "Reference geometry not found.")
+                return None
 
             self._submit(
-                "Distance", "distance", reference=ref_geom, reference_label=ref_name
+                "Distance",
+                "distance",
+                reference=ref_geom,
+                reference_label=opts["ref"].currentText(),
+                invert=opts["invert"].isChecked(),
             )
         elif prop == "Fluctuation":
             self._submit(
@@ -184,7 +200,7 @@ class ComputePanel(QGroupBox):
         run_ids = self._get_run_ids()
 
         if not run_ids:
-            return QMessageBox.warning(self, "Error", "No available runs found.")
+            return MosaicMessageBox.warning(self, "Error", "No available runs found.")
 
         force = self._ignore_cache_cb.isChecked()
 

@@ -26,7 +26,6 @@ from qtpy.QtWidgets import (
     QSpinBox,
     QGroupBox,
     QFileDialog,
-    QMessageBox,
     QApplication,
     QSizePolicy,
     QCheckBox,
@@ -39,6 +38,7 @@ from ._utils import FrameWriter, capture_frame, read_frame
 from ..icons import icon
 from ..utils import Throttle
 from ..stylesheets import Colors
+from ..widgets import MosaicMessageBox
 
 
 @dataclass
@@ -225,7 +225,7 @@ class AnimationComposerDialog(QDialog):
         ]
 
         if not trajectories:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self,
                 "No Trajectories",
                 "No trajectory data found. Load a trajectory first.",
@@ -237,14 +237,14 @@ class AnimationComposerDialog(QDialog):
     def _load_slices_preset(self):
         """Load preset for volume slice animation."""
         if self.volume_viewer is None:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Volume", "No volume viewer available for slice animation."
             )
             return
 
         volume = getattr(self.volume_viewer.primary, "volume", None)
         if volume is None:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Volume", "No volume loaded. Load a volume first."
             )
             return
@@ -260,14 +260,14 @@ class AnimationComposerDialog(QDialog):
         3. Slices back through the volume (backward)
         """
         if self.volume_viewer is None:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Volume", "No volume viewer available for reveal flythrough."
             )
             return
 
         volume = getattr(self.volume_viewer.primary, "volume", None)
         if volume is None:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Volume", "No volume loaded. Load a volume first."
             )
             return
@@ -329,7 +329,7 @@ class AnimationComposerDialog(QDialog):
                 name=f"{anim_type.value['name']} {len(self.tracks) + 1}",
             )
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to create animation: {e}")
+            MosaicMessageBox.warning(self, "Error", f"Failed to create animation: {e}")
             return None
 
         track = Track(
@@ -508,7 +508,7 @@ class AnimationComposerDialog(QDialog):
         if not self.tracks:
             return
 
-        reply = QMessageBox.question(
+        reply = MosaicMessageBox.question(
             self,
             "Clear All Tracks",
             "Are you sure you want to remove all animation tracks?",
@@ -532,7 +532,7 @@ class AnimationComposerDialog(QDialog):
     def export_animation(self):
         """Export the animation with current settings."""
         if not self.tracks:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Animation", "Add at least one animation track before export."
             )
             return
@@ -540,7 +540,7 @@ class AnimationComposerDialog(QDialog):
         # Get current render window dimensions
         render_window = self.vtk_widget.GetRenderWindow()
         if render_window is None:
-            QMessageBox.warning(self, "Error", "No render window available.")
+            MosaicMessageBox.warning(self, "Error", "No render window available.")
             return
 
         current_size = render_window.GetSize()
@@ -586,7 +586,7 @@ class AnimationComposerDialog(QDialog):
         multisamples = settings["multisamples"]
 
         if start_frame >= end_frame:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "Invalid Range", "Start frame must be less than end frame."
             )
             return
@@ -666,12 +666,12 @@ class AnimationComposerDialog(QDialog):
 
             writer.close()
 
-            QMessageBox.information(
+            MosaicMessageBox.information(
                 self, "Export Complete", f"Animation saved to:\n{filename}"
             )
 
         except Exception as e:
-            QMessageBox.warning(self, "Export Error", f"Failed to export: {e}")
+            MosaicMessageBox.warning(self, "Export Error", f"Failed to export: {e}")
 
         finally:
             if indicator is not None:
@@ -687,7 +687,7 @@ class AnimationComposerDialog(QDialog):
     def save_project(self):
         """Save the animation project to a JSON file."""
         if not self.tracks:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Animation", "Add at least one animation track before saving."
             )
             return None
@@ -730,11 +730,11 @@ class AnimationComposerDialog(QDialog):
             with open(filename, "w") as f:
                 json.dump(project_data, f, indent=2)
 
-            QMessageBox.information(
+            MosaicMessageBox.information(
                 self, "Project Saved", f"Animation project saved to:\n{filename}"
             )
         except Exception as e:
-            QMessageBox.warning(self, "Save Error", f"Failed to save project: {e}")
+            MosaicMessageBox.warning(self, "Save Error", f"Failed to save project: {e}")
 
     def _serialize_parameters(self, params: Dict) -> Dict:
         """Convert parameters to JSON-serializable format."""
@@ -777,7 +777,9 @@ class AnimationComposerDialog(QDialog):
             with open(filename, "r") as f:
                 project_data = json.load(f)
         except Exception as e:
-            QMessageBox.warning(self, "Load Error", f"Failed to read project file: {e}")
+            MosaicMessageBox.warning(
+                self, "Load Error", f"Failed to read project file: {e}"
+            )
             return
 
         self._cleanup_tracks()
@@ -791,7 +793,7 @@ class AnimationComposerDialog(QDialog):
             try:
                 anim_type = AnimationType[anim_type_name]
             except KeyError:
-                QMessageBox.warning(
+                MosaicMessageBox.warning(
                     self,
                     "Unknown Animation",
                     f"Unknown animation type: {anim_type_name}",
@@ -828,7 +830,7 @@ class AnimationComposerDialog(QDialog):
                 self.tracks.append(track)
 
             except Exception as e:
-                QMessageBox.warning(
+                MosaicMessageBox.warning(
                     self, "Load Error", f"Failed to create animation: {e}"
                 )
                 continue
@@ -838,7 +840,7 @@ class AnimationComposerDialog(QDialog):
         if self.tracks:
             self._on_track_selected(self.tracks[0].id)
 
-        QMessageBox.information(
+        MosaicMessageBox.information(
             self,
             "Project Loaded",
             f"Loaded {len(self.tracks)} animation track(s) from:\n{filename}",

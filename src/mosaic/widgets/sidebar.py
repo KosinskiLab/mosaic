@@ -15,8 +15,8 @@ from qtpy.QtWidgets import (
     QSplitter,
 )
 
-from ..stylesheets import Colors, Typography
 from .search_widget import SearchWidget
+from ..stylesheets import Colors, Typography
 
 
 class ObjectBrowserSidebar(QWidget):

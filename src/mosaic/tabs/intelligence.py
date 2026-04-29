@@ -3,10 +3,11 @@ from typing import Union
 from os.path import exists, basename, normpath
 
 import numpy as np
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QMessageBox, QApplication, QFileDialog
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QApplication, QFileDialog
 
 from ..parallel import submit_task
 from ..widgets.ribbon import create_button
+from ..widgets import MosaicMessageBox
 
 
 class IntelligenceTab(QWidget):
@@ -91,15 +92,15 @@ class IntelligenceTab(QWidget):
         geometries = self.cdata.models.get_selected_geometries()
         if len(geometries) == 0:
             msg = "A mesh needs for equilibration needs to be selected."
-            return QMessageBox.warning(self, "Error", msg)
+            return MosaicMessageBox.warning(self, "Error", msg)
         elif len(geometries) > 1:
             msg = "Can only equilibrate a single mesh at a time."
-            return QMessageBox.warning(self, "Error", msg)
+            return MosaicMessageBox.warning(self, "Error", msg)
 
         geometry = geometries[0]
         if not hasattr(geometry.model, "mesh"):
             msg = f"{geometry} is not a triangular mesh."
-            return QMessageBox.warning(self, "Error", msg)
+            return MosaicMessageBox.warning(self, "Error", msg)
 
         from qtpy.QtWidgets import QApplication
 
@@ -132,7 +133,7 @@ class IntelligenceTab(QWidget):
         from qtpy.QtWidgets import QApplication
 
         if not directory:
-            return QMessageBox.warning(
+            return MosaicMessageBox.warning(
                 QApplication.activeWindow(),
                 "Error",
                 "Trajectory directory needs to be specified.",
@@ -142,7 +143,7 @@ class IntelligenceTab(QWidget):
             try:
                 offset = np.array([float(x) for x in offset.split(",")])
             except Exception:
-                return QMessageBox.warning(
+                return MosaicMessageBox.warning(
                     QApplication.activeWindow(),
                     "Error",
                     "Offset should be a single or three comma-separated floats.",
@@ -150,7 +151,7 @@ class IntelligenceTab(QWidget):
 
         files = list_trajectory_files(directory)
         if not files:
-            return QMessageBox.warning(
+            return MosaicMessageBox.warning(
                 QApplication.activeWindow(),
                 "Error",
                 f"No meshes found at: {directory}.",
@@ -232,7 +233,7 @@ class IntelligenceTab(QWidget):
 
         def _callback(output_name: str):
             if output_name is None:
-                return QMessageBox.warning(
+                return MosaicMessageBox.warning(
                     None, "Error", "No segmentation was created."
                 )
 
@@ -263,7 +264,9 @@ class IntelligenceTab(QWidget):
             return None
 
         if not exists(kwargs.get("model_path", "")):
-            return QMessageBox.warning(None, "Error", "Missing path to membrain model.")
+            return MosaicMessageBox.warning(
+                None, "Error", "Missing path to membrain model."
+            )
 
         return self._run_membrain(tomogram_path=file_name, **kwargs)
 

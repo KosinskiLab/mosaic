@@ -6,12 +6,12 @@ from qtpy.QtCore import Qt, QEvent
 from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
-    QMessageBox,
 )
 
 from ..registry import MethodRegistry
 from ..utils import Throttle
 from ..widgets.ribbon import create_button
+from ..widgets import MosaicMessageBox
 
 
 class SegmentationTab(QWidget):
@@ -217,7 +217,7 @@ class SegmentationTab(QWidget):
                 mask = dist < distance
 
             if mask.sum() == 0:
-                QMessageBox.warning(self, "Warning", "No points satisfy cutoff.")
+                MosaicMessageBox.warning(self, "Warning", "No points satisfy cutoff.")
                 continue
 
             self.cdata.data.add(source[mask])

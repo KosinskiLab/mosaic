@@ -1,7 +1,6 @@
 from qtpy.QtCore import Qt, QSize, QRectF
 from qtpy.QtGui import QPainter, QColor
 from qtpy.QtWidgets import (
-    QMessageBox,
     QDockWidget,
     QApplication,
     QMainWindow,

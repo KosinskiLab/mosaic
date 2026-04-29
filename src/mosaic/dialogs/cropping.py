@@ -17,12 +17,12 @@ from qtpy.QtWidgets import (
     QTreeWidget,
     QGroupBox,
     QFrame,
-    QMessageBox,
 )
 from ..icons import icon
 from ..stylesheets import Colors, Typography
 from ..widgets.container_list import ContainerTreeWidget, StyledTreeWidgetItem
 from ..widgets.segmented_control import SegmentedControl
+from ..widgets import MosaicMessageBox
 
 
 class DistanceCropDialog(QDialog):
@@ -211,7 +211,7 @@ class DistanceCropDialog(QDialog):
                 targets.append(item.metadata["object"])
 
         if not sources:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self,
                 "Selection Required",
                 "Please select at least one object to crop.",
@@ -219,7 +219,7 @@ class DistanceCropDialog(QDialog):
             return None
 
         if not targets:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self,
                 "Selection Required",
                 "Please select at least one distance reference.",

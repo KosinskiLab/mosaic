@@ -34,6 +34,7 @@ from qtpy.QtWidgets import (
     QMessageBox,
     QDialog,
 )
+from .widgets import MosaicMessageBox
 from qtpy.QtGui import (
     QAction,
     QGuiApplication,
@@ -261,7 +262,7 @@ class App(QMainWindow):
 
         if session_files:
             if len(session_files) > 1:
-                QMessageBox.warning(
+                MosaicMessageBox.warning(
                     self,
                     "Multiple Session Files",
                     "Only one session file can be loaded at a time. ",
@@ -439,9 +440,7 @@ class App(QMainWindow):
         target_workers = int(Settings.rendering.parallel_worker)
         if btm.num_workers != target_workers:
             if btm.futures:
-                from qtpy.QtWidgets import QMessageBox
-
-                ret = QMessageBox.question(
+                ret = MosaicMessageBox.question(
                     self,
                     "Active Tasks",
                     f"{len(btm.futures)} task(s) still running. "
@@ -1256,7 +1255,7 @@ class App(QMainWindow):
             self._czi_dialog.show()
 
         except ImportError:
-            QMessageBox.warning(self, "Error", "Failed to import CZI dialog.")
+            MosaicMessageBox.warning(self, "Error", "Failed to import CZI dialog.")
 
     def toggle_selection_menu(self):
         """Update the menu radio buttons to reflect current selection target."""
@@ -1310,7 +1309,7 @@ class App(QMainWindow):
         try:
             self.volume_viewer.primary.load_volume(path)
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
+            MosaicMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
 
     def _triage_volumes(self, volume_paths: list) -> list:
         """Classify volume files and prompt for density maps."""
@@ -1343,7 +1342,7 @@ class App(QMainWindow):
                 self.volume_viewer.load_into_viewer(path)
                 self._add_file_to_recent(path)
             except Exception as e:
-                QMessageBox.warning(
+                MosaicMessageBox.warning(
                     self, "Error", f"Failed to open volume:\n{path}\n\n{e}"
                 )
 
@@ -1439,7 +1438,7 @@ class App(QMainWindow):
 
         session_hits = [f for f in filenames if is_session_file(f)]
         if session_hits:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self,
                 "Session Files",
                 "Use Load Session to open session files:\n" + "\n".join(session_hits),
@@ -1488,7 +1487,7 @@ class App(QMainWindow):
             from pathlib import Path
 
             listing = "\n".join(Path(p).name for p in density_paths)
-            box = QMessageBox(self)
+            box = MosaicMessageBox(self)
             box.setWindowTitle("Not a Segmentation")
             box.setIcon(QMessageBox.Icon.Question)
             box.setText(
@@ -1510,14 +1509,14 @@ class App(QMainWindow):
         if failures:
             if len(failures) == 1:
                 fn, msg = failures[0]
-                QMessageBox.warning(self, "Read Failed", f"{fn}\n\n{msg}")
+                MosaicMessageBox.warning(self, "Read Failed", f"{fn}\n\n{msg}")
             else:
                 lines = [f"{len(failures)} file(s) failed:"]
                 for fn, msg in failures[:20]:
                     lines.append(f"  {fn}: {msg}")
                 if len(failures) > 20:
                     lines.append(f"  ... and {len(failures) - 20} more")
-                QMessageBox.warning(self, "Read Failed", "\n".join(lines))
+                MosaicMessageBox.warning(self, "Read Failed", "\n".join(lines))
 
     def open_files(self):
         filenames, _ = QFileDialog.getOpenFileNames(self, "Import Files")
@@ -1605,7 +1604,7 @@ class App(QMainWindow):
 
         file_path = action.data()
         if not os.path.exists(file_path):
-            QMessageBox.critical(self, "Error", f"{file_path} not found.")
+            MosaicMessageBox.critical(self, "Error", f"{file_path} not found.")
             recent_files = list(Settings.ui.recent_files)
             try:
                 recent_files.remove(file_path)

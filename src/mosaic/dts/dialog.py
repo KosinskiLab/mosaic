@@ -18,7 +18,6 @@ from qtpy.QtWidgets import (
     QPushButton,
     QWidget,
     QDialog,
-    QMessageBox,
     QGroupBox,
     QTableWidget,
     QHeaderView,
@@ -35,7 +34,7 @@ from ._compute_panel import ComputePanel
 from ._analysis_panel import AnalysisPanel
 from ..stylesheets import Colors, Typography
 from ..widgets.settings import get_widget_value
-from ..widgets import PathSelector, SearchWidget, TabWidget
+from ..widgets import PathSelector, SearchWidget, TabWidget, MosaicMessageBox
 
 __all__ = ["DTSScreeningDialog"]
 
@@ -385,7 +384,11 @@ class DTSScreeningDialog(QDialog):
 
         traj_dir = resolve_trajectory_dir(str(run_dir))
         if traj_dir is None:
-            return QMessageBox.warning(self, "Error", "No trajectory output found.")
+            return MosaicMessageBox.warning(
+                self,
+                "Error",
+                "No trajectory found. Check if .dts file or TrajTSI directory are present.",
+            )
 
         from ._utils import (
             list_trajectory_files,
@@ -396,7 +399,9 @@ class DTSScreeningDialog(QDialog):
 
         files = list_trajectory_files(str(traj_dir))
         if not files:
-            return QMessageBox.warning(self, "Error", "No trajectory frames found.")
+            return MosaicMessageBox.warning(
+                self, "Error", "No trajectory frames found."
+            )
 
         scale, offset = self._configure_panel.get_mesh_transform()
         dts_file = find_dts_file(run_dir)
@@ -437,3 +442,7 @@ class DTSScreeningDialog(QDialog):
         self.cdata.models.add(trajectory)
         self.cdata.models.data_changed.emit()
         self.cdata.models.render()
+
+    def closeEvent(self, event):
+        self._preview_plot.close()
+        super().closeEvent(event)

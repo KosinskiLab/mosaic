@@ -28,7 +28,7 @@ _module_map = {
         "MeshMerger",
         "MeshSimplifier",
     ],
-    ".hmff": ["equilibrate_fit", "setup_hmff"],
+    ".hmff": ["equilibrate_fit"],
     ".coarse_graining": ["mesh_to_cg"],
     ".texture": ["TextureSampler"],
 }
