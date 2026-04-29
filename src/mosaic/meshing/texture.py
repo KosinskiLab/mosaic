@@ -1,7 +1,7 @@
 """
 UV texture mapping for mesh visualization.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -264,7 +264,6 @@ class TextureSampler:
         self._tpositions = self._tpositions[self._valid_indices]
         self._tnormals = self._tnormals[self._valid_indices]
 
-        self.geometry._points.Reset()
         self.geometry.points = vertices * sampling
         self.geometry._set_faces(triangles)
         self.geometry.normals = normals
@@ -405,7 +404,6 @@ class TextureSampler:
         self.geometry.actor.GetMapper().ScalarVisibilityOn()
         self.geometry._data.GetPointData().SetTCoords(None)
 
-        self.geometry._points.Reset()
         self.geometry.points = self._model.vertices
         self.geometry._set_faces(self._model.triangles)
         self.geometry.normals = self._model.compute_vertex_normals()

@@ -4,7 +4,7 @@ Rich terminal theme for the Mosaic scripting interface.
 Derives the terminal palette from :class:`~mosaic.stylesheets.Colors`,
 adapting the GUI's indigo/slate/emerald system for dark terminal backgrounds.
 
-Copyright (c) 2026 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """

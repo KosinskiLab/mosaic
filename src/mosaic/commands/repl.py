@@ -1,7 +1,7 @@
 """
 Interactive REPL for the Mosaic scripting interface.
 
-Copyright (c) 2026 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -69,8 +69,14 @@ class _Completer:
                 name = m.internal_name
                 if name.startswith(text):
                     candidates.append(name + " ")
+            if "help".startswith(text):
+                candidates.append("help ")
             return sorted(candidates)
-        return self._complete_param_names(text, line, op, tokens)
+
+        candidates = self._complete_param_names(text, line, op, tokens)
+        if "help".startswith(text):
+            candidates.append("help ")
+        return candidates
 
     def _get_operation(self, verb: str):
         """Look up the Operation for a command verb."""
@@ -222,17 +228,18 @@ class MosaicREPL:
             if line.lower() in ("exit", "quit"):
                 break
 
-            try:
-                output = self.execute(line)
-            except Exception as exc:
-                output = _error_panel(str(exc))
-            if output:
-                from rich.table import Table
-                from rich.columns import Columns
+            for cmd in self._split_commands(line):
+                try:
+                    output = self.execute(cmd)
+                except Exception as exc:
+                    output = _error_panel(str(exc))
+                if output:
+                    from rich.table import Table
+                    from rich.columns import Columns
 
-                if isinstance(output, (Table, Columns)):
-                    self._console.print()
-                self._console.print(output)
+                    if isinstance(output, (Table, Columns)):
+                        self._console.print()
+                    self._console.print(output)
 
         self._save_readline_history()
 
@@ -248,13 +255,6 @@ class MosaicREPL:
         -------
         str or rich renderable
             Command output (may be empty).
-
-        Raises
-        ------
-        ValueError
-            If the command text has a syntax error.
-        Exception
-            If the command handler raises.
         """
         line = _SUBST_RE.sub(self._subst_inner, line)
 
@@ -267,6 +267,42 @@ class MosaicREPL:
 
         result = CommandRegistry.dispatch(self.session, parsed)
         return result or ""
+
+    @staticmethod
+    def _split_commands(line: str) -> list:
+        """Split a command line on semicolons, respecting quoted strings.
+
+        Parameters
+        ----------
+        line : str
+            Raw input potentially containing semicolons.
+
+        Returns
+        -------
+        list of str
+            Individual command strings.
+        """
+        commands = []
+        current = []
+        in_quote = None
+        for char in line:
+            if char in ('"', "'") and in_quote is None:
+                in_quote = char
+                current.append(char)
+            elif char == in_quote:
+                in_quote = None
+                current.append(char)
+            elif char == ";" and in_quote is None:
+                part = "".join(current).strip()
+                if part:
+                    commands.append(part)
+                current = []
+            else:
+                current.append(char)
+        part = "".join(current).strip()
+        if part:
+            commands.append(part)
+        return commands if commands else [line.strip()]
 
     def _subst_inner(self, match: re.Match) -> str:
         """Handle ``$(...)`` substitution, converting renderables to text."""
@@ -313,15 +349,16 @@ class MosaicREPL:
             if not line:
                 continue
 
-            try:
-                output = self.execute(line)
-            except Exception as exc:
-                output = _error_panel(str(exc))
-            if output:
-                if isinstance(output, str):
-                    outputs.append(output)
-                else:
-                    outputs.append(render_to_text(output))
+            for cmd in self._split_commands(line):
+                try:
+                    output = self.execute(cmd)
+                except Exception as exc:
+                    output = _error_panel(str(exc))
+                if output:
+                    if isinstance(output, str):
+                        outputs.append(output)
+                    else:
+                        outputs.append(render_to_text(output))
         return "\n".join(outputs)
 
     def _print_banner(self) -> None:
@@ -340,23 +377,14 @@ class MosaicREPL:
         t.append(f"  v{version}", style="mosaic.muted")
         self._console.print(t)
         self._console.print(
-            "Type 'help' for commands, 'exit' to quit.",
+            "Type 'help' for commands, '<command> help' for details, 'exit' to quit.",
             style="mosaic.muted",
         )
         self._console.print()
 
-        self._console.print(
-            "This is an experimental Mosaic feature and might have rough edges.\n",
-            style="mosaic.warning",
-        )
-
     @staticmethod
     def _build_prompt() -> str:
-        """Build a readline-safe ANSI-colored prompt string.
-
-        Wraps escape sequences in ``\\x01``/``\\x02`` so readline
-        correctly computes the visible prompt width.
-        """
+        """Build a readline-safe prompt string."""
         from io import StringIO
 
         from rich.console import Console

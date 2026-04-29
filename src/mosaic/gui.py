@@ -1,14 +1,15 @@
 """
 Mosaic GUI implementation
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import os
+import sys
 from typing import List
-from os.path import extsep, basename, exists
+from os.path import exists
 
 import vtk
 import numpy as np
@@ -17,56 +18,44 @@ from qtpy.QtCore import (
     QEvent,
     QSize,
     QTimer,
-    QPropertyAnimation,
-    QEasingCurve,
-    QRect,
 )
 from qtpy.QtWidgets import (
-    QApplication,
     QMainWindow,
     QVBoxLayout,
+    QGridLayout,
     QWidget,
+    QStackedWidget,
     QSplitter,
     QFileDialog,
     QMenu,
-    QHBoxLayout,
     QPushButton,
     QDockWidget,
-    QButtonGroup,
-    QShortcut,
+    QFrame,
     QMessageBox,
-    QCheckBox,
     QDialog,
 )
+from .widgets import MosaicMessageBox
 from qtpy.QtGui import (
     QAction,
     QGuiApplication,
     QActionGroup,
-    QKeyEvent,
-    QDropEvent,
-    QCursor,
+    QKeySequence,
     QDragEnterEvent,
 )
-import qtawesome as qta
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from .data import MosaicData
+from .icons import icon
 from .settings import Settings
 from .stylesheets import Colors
 from .animation._utils import ScreenshotManager
 from .parallel import BackgroundTaskManager
 from .tabs import SegmentationTab, ModelTab, IntelligenceTab, DevelopmentTab
-from .dialogs import (
-    TiltControlDialog,
-    ImportDataDialog,
-    ProgressDialog,
-    AppSettingsDialog,
-    getOpenFileNames,
-)
+from .dialogs import ImportDataDialog
 from .widgets import (
-    MultiVolumeViewer,
     AxesWidget,
     RibbonToolBar,
+    TabBar,
     TrajectoryPlayer,
     LegendWidget,
     ScaleBarWidget,
@@ -76,6 +65,9 @@ from .widgets import (
     CursorModeHandler,
     BoundingBoxManager,
 )
+from .widgets.dock import toggle_dock
+from .widgets.volume_viewer_hud import VolumeViewerHUD
+from .widgets.viewport_placeholder import ViewportPlaceholder, default_actions
 
 
 class App(QMainWindow):
@@ -90,34 +82,43 @@ class App(QMainWindow):
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Render Block
         self.vtk_widget = QVTKRenderWindowInteractor()
 
+        # Stacked widget lets us swap the VTK viewport with the empty-state
+        # placeholder without having to overlay widgets on top of VTK's GL
+        # surface (which doesn't work reliably on Linux/X11).
+        self.viewport_stack = QStackedWidget()
+        self.viewport_stack.addWidget(self.vtk_widget)
+
+        # Viewport container holds the stacked viewport and the volume-viewer
+        # HUD in the same grid cell, letting the HUD float at the bottom of
+        # the viewport.  The HUD uses WA_NativeWindow (see volume_viewer_hud)
+        # so Qt gives it its own native X11 window that the compositor layers
+        # above VTK's GL surface.
+        self.viewport_container = QWidget()
+        _vp_layout = QGridLayout(self.viewport_container)
+        _vp_layout.setContentsMargins(0, 0, 0, 0)
+        _vp_layout.setSpacing(0)
+        _vp_layout.addWidget(self.viewport_stack, 0, 0)
+
         self.cdata = MosaicData(self.vtk_widget)
+        self.cdata.thumbnail_provider = self._capture_thumbnail
 
         self.renderer = vtk.vtkRenderer()
         self.render_window = self.vtk_widget.GetRenderWindow()
         self.render_window.AddRenderer(self.renderer)
         self.apply_render_settings()
 
-        # Setup GUI interactions
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         self.interactor.Initialize()
         self.interactor.AddObserver("RightButtonPressEvent", self.on_right_click)
-        self.interactor.AddObserver("KeyPressEvent", self.on_key_press)
+        self.interactor.AddObserver("KeyPressEvent", self._on_vtk_key_press)
         self.interactor.SetDesiredUpdateRate(Settings.rendering.target_fps)
 
-        self.tab_bar = QWidget()
-        self.tab_bar.setFixedHeight(32)
-        tab_layout = QHBoxLayout(self.tab_bar)
-        tab_layout.setContentsMargins(0, 0, 0, 0)
-        tab_layout.setSpacing(2)
-
-        self.tab_button_group = QButtonGroup(self)
-        self.tab_button_group.setExclusive(True)
+        left = 78 if sys.platform == "darwin" else 8
+        self.tab_bar = TabBar(margins=(left, 0, 8, 0))
 
         self.setup_widgets()
-        self.tab_buttons = {}
         self.tab_ribbon = RibbonToolBar(self)
         data = {"cdata": self.cdata, "ribbon": self.tab_ribbon, "legend": self.legend}
 
@@ -134,149 +135,145 @@ class App(QMainWindow):
                 )
             )
 
-        for index, (tab, name) in enumerate(self.tabs):
-            btn = QPushButton(name)
-            btn.setObjectName("TabButton")
-            btn.setProperty("tab_id", index)
-            btn.setCheckable(True)
-            self.tab_button_group.addButton(btn, index)
+        for _index, (tab, name) in enumerate(self.tabs):
+            self.tab_bar.addTab(name)
 
-            btn.setStyleSheet(
-                f"""
-                QPushButton {{
-                    border: none;
-                    padding: 6px 8px;
-                    font-size: 12px;
-                    background: transparent;
-                    min-width: 90px;
-                }}
-                QPushButton:checked {{
-                    color: {Colors.PRIMARY};
-                }}
-                QPushButton:focus {{
-                    outline: none;
-                }}
-            """
-            )
-            tab_layout.addWidget(btn)
-            self.tab_buttons[index] = btn
-
-        # Animated tab indicator
-        self.tab_indicator = QWidget(self.tab_bar)
-        self.tab_indicator.setFixedHeight(2)
-        self.tab_indicator.setStyleSheet(f"background-color: {Colors.PRIMARY};")
-
-        self.tab_indicator_anim = QPropertyAnimation(self.tab_indicator, b"geometry")
-        self.tab_indicator_anim.setDuration(150)
-        self.tab_indicator_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-
-        def update_indicator(tab_id):
+        def on_tab_changed(tab_id):
             self.tabs[tab_id][0].show_ribbon()
-            btn = self.tab_buttons[tab_id]
-            QTimer.singleShot(0, lambda: self._animate_tab_indicator(btn))
 
-        self.tab_button_group.idClicked.connect(update_indicator)
+        self.tab_bar.currentChanged.connect(on_tab_changed)
+        self.tab_bar.finalize()
 
-        tab_layout.addStretch()
-        self.tab_buttons[0].setChecked(True)
+        from .widgets.theme_toggle import ThemeToggle
+
+        self._tab_gear = QPushButton()
+        self._tab_gear.setIcon(icon("ph.sliders-thin", role="active"))
+        self._tab_gear.setFlat(True)
+        self._tab_gear.setFixedSize(28, 28)
+        self._tab_gear.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._tab_gear.setStyleSheet(
+            f"""
+            QPushButton {{ border: none; border-radius: 6px; }}
+            QPushButton:hover {{ background: {Colors.BG_HOVER}; }}
+            QPushButton:focus {{ outline: none; }}
+        """
+        )
+        self.theme_toggle = ThemeToggle()
+        self.theme_toggle.set_initial_state(Colors.is_dark())
+        self.theme_toggle.toggled.connect(self._on_theme_toggled)
+        self.tab_bar._layout.addWidget(self.theme_toggle)
+
+        self._tab_gear.clicked.connect(self._toggle_appearance_panel)
+        self.tab_bar._layout.addWidget(self._tab_gear)
+
         self.tabs[0][0].show_ribbon()
 
-        # Position indicator on first tab after layout is ready
-        QTimer.singleShot(0, lambda: self._animate_tab_indicator(self.tab_buttons[0]))
-
-        layout.addWidget(self.tab_bar)
+        if sys.platform == "darwin":
+            self.setContentsMargins(0, 38, 0, 0)
+            self.tab_bar.setParent(self)
+            self.tab_bar.show()
+            self.tab_bar.raise_()
+        else:
+            layout.addWidget(self.tab_bar)
         layout.addWidget(self.tab_ribbon)
 
-        # Create sidebar with Object Browser
-        list_wrapper = ObjectBrowserSidebar()
-        list_wrapper.set_title("Object Browser")
-        list_wrapper.add_widget("cluster", "Clusters", self.cdata.data.data_list)
-        list_wrapper.add_widget("model", "Models", self.cdata.models.data_list)
+        self.ribbon_separator = QFrame()
+        self.ribbon_separator.setFixedHeight(1)
+        self.ribbon_separator.setFrameShape(QFrame.Shape.NoFrame)
+        self.ribbon_separator.setStyleSheet(f"background: {Colors.BORDER_DARK};")
+        layout.addWidget(self.ribbon_separator)
+
+        # Create sidebar
+        self.list_wrapper = ObjectBrowserSidebar()
+        self.list_wrapper.add_widget("Clusters", self.cdata.data.data_list)
+        self.list_wrapper.add_widget("Models", self.cdata.models.data_list)
 
         # Create splitter with sidebar on left, viewport on right
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(list_wrapper)
-        splitter.addWidget(self.vtk_widget)
-        splitter.setSizes([200, self.width() - 200])
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
+        self._main_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._main_splitter.addWidget(self.list_wrapper)
+        self._main_splitter.addWidget(self.viewport_container)
+        self._main_splitter.setSizes([200, self.width() - 200])
+        self._main_splitter.setStretchFactor(0, 0)
+        self._main_splitter.setStretchFactor(1, 1)
+        self._main_splitter.setHandleWidth(4)
+        self._main_splitter.setStyleSheet(
+            "QSplitter::handle { background: transparent; }"
+        )
 
-        layout.addWidget(splitter)
+        layout.addWidget(self._main_splitter)
 
         self.actor_collection = vtk.vtkActorCollection()
         self.setup_menu()
 
-        self.escape_shortcut = QShortcut(Qt.Key.Key_Escape, self.vtk_widget)
-        self.escape_shortcut.activated.connect(self.handle_escape_key)
-
         QTimer.singleShot(2000, self._check_for_updates)
 
         self.setAcceptDrops(True)
-        self._drag_active = False
+
+    def closeEvent(self, event):
+        Settings.ui.window_geometry = self.saveGeometry()
+        BackgroundTaskManager.instance()._shutdown()
+
+        # Wait briefly for the update checker so QThread isn't destroyed
+        # while still running (urlopen has a 5s timeout in run()).
+        checker = getattr(self, "update_checker", None)
+        if checker is not None and checker.isRunning():
+            checker.quit()
+            checker.wait(2000)
+
+        # Close docks via their closeEvent so create_or_toggle_dock's _exit()
+        # runs and Python-side references are released before Qt starts
+        # destroying the widget tree. Without this, child destruction tears
+        # down dock contents in C++ destructor order and can segfault when a
+        # slot/destructor touches an already-deleted sibling.
+        for dock in self.findChildren(QDockWidget):
+            dock.close()
+        super().closeEvent(event)
+
+    def _toggle_volume_dock(self, checked: bool):
+        self.volume_viewer.setVisible(checked)
 
     def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            valid_files = False
-            for url in event.mimeData().urls():
-                if url.isLocalFile():
-                    valid_files = True
-                    break
-
-            if valid_files:
-                event.acceptProposedAction()
-                self._drag_active = True
-                if QApplication.overrideCursor() is None:
-                    QApplication.setOverrideCursor(QCursor(Qt.DragCopyCursor))
-                self.setStyleSheet(
-                    self.styleSheet()
-                    + """
-                    QMainWindow {
-                        border: 2px dashed rgba(99, 102, 241, 0.3);
-                    }
-                    """
-                )
-        return super().dragEnterEvent(event)
-
-    def dragLeaveEvent(self, event):
-        pos = self.mapFromGlobal(QCursor.pos())
-        if not self.rect().contains(pos):
-            self._drag_active = False
-            QApplication.restoreOverrideCursor()
-            self._update_style()
-        super().dragLeaveEvent(event)
-
-    def dropEvent(self, event: QDropEvent):
-        self._drag_active = False
-        QApplication.restoreOverrideCursor()
-        self._update_style()
-
-        if not event.mimeData().hasUrls():
+        urls = event.mimeData().urls() if event.mimeData().hasUrls() else []
+        if any(url.isLocalFile() for url in urls):
+            event.acceptProposedAction()
+        else:
             event.ignore()
-            return None
 
+    def dropEvent(self, event):
+        urls = event.mimeData().urls() if event.mimeData().hasUrls() else []
+        paths = [u.toLocalFile() for u in urls if u.isLocalFile()]
+        if not paths:
+            event.ignore()
+            return
         event.acceptProposedAction()
+        self._handle_import(paths)
 
-        file_paths = []
-        for url in event.mimeData().urls():
-            if url.isLocalFile():
-                file_paths.append(url.toLocalFile())
+    def _handle_import(self, file_paths):
+        from .formats.session import is_session_file
+        from .formats.reader import is_volume_file
 
-        if not file_paths:
-            return None
-
-        session_files = [f for f in file_paths if f.lower().endswith(".pickle")]
-        data_files = [f for f in file_paths if not f.lower().endswith(".pickle")]
+        session_files = [f for f in file_paths if is_session_file(f)]
+        volume_files = [
+            f for f in file_paths if not is_session_file(f) and is_volume_file(f)
+        ]
+        data_files = [
+            f for f in file_paths if not is_session_file(f) and not is_volume_file(f)
+        ]
 
         if session_files:
             if len(session_files) > 1:
-                QMessageBox.warning(
+                MosaicMessageBox.warning(
                     self,
                     "Multiple Session Files",
                     "Only one session file can be loaded at a time. ",
                 )
             self._load_session(session_files[0])
 
-        if len(data_files):
+        if volume_files:
+            remaining = self._triage_volumes(volume_files)
+            data_files.extend(remaining)
+
+        if data_files:
             self._open_files(data_files)
 
     def sizeHint(self):
@@ -285,26 +282,141 @@ class App(QMainWindow):
         return QSize(int(screen.width() * 0.95), int(screen.height() * 0.95))
 
     def show(self):
-        """Override show to position after Qt sizes the window."""
+        """Override show to restore saved geometry or use default size."""
+        if sys.platform == "darwin":
+            from .stylesheets import _get_nswindow, _apply_macos_titlebar
+
+            ns_win = _get_nswindow(self)
+            if ns_win:
+                _apply_macos_titlebar(ns_win, hide_title=True)
+
+        saved = Settings.ui.window_geometry
+        if saved and self.restoreGeometry(saved):
+            super().show()
+            return
+
         self.resize(self.sizeHint())
         super().show()
 
-        # Position after showing (when size is established)
         screen = QGuiApplication.primaryScreen().geometry()
         x = (screen.width() - self.width()) // 2
         y = (screen.height() - self.height()) // 2
         self.move(x, y)
 
-    def apply_render_settings(self):
-        self.renderer.SetBackground(
-            *[float(x) for x in Settings.rendering.background_color]
-        )
-        self.renderer_next_background = [
-            float(x) for x in Settings.rendering.background_color_alt
-        ]
+    def set_lighting_mode(self, mode: str = "simple"):
+        """Apply a lighting/effects mode to the renderer.
 
-        # Check how these settings perform
-        self.renderer.GradientBackgroundOff()
+        Parameters
+        ----------
+        mode: str
+            Can be one of 'simple', 'soft', 'full', 'flat', 'poster',
+            'silhouettes'
+        """
+        renderer = self.renderer
+
+        current_pass = renderer.GetPass()
+        if current_pass is not None:
+            current_pass.ReleaseGraphicsResources(self.render_window)
+        renderer.SetPass(None)
+
+        renderer.RemoveAllLights()
+        renderer.CreateLight()
+
+        actors = renderer.GetActors()
+        actors.InitTraversal()
+        for _ in range(actors.GetNumberOfItems()):
+            actors.GetNextActor().GetProperty().LightingOn()
+
+        if mode == "simple":
+            pass
+
+        elif mode == "soft":
+            renderer.RemoveAllLights()
+            light = vtk.vtkLight()
+            light.SetLightTypeToHeadlight()
+            light.SetAmbientColor(1.0, 1.0, 1.0)
+            light.SetDiffuseColor(0.6, 0.6, 0.6)
+            light.SetSpecularColor(0.1, 0.1, 0.1)
+            light.SetIntensity(1.5)
+            renderer.AddLight(light)
+
+            passes = vtk.vtkRenderStepsPass()
+            ssao = vtk.vtkSSAOPass()
+            ssao.SetDelegatePass(passes)
+            ssao.SetRadius(50.0)
+            ssao.SetKernelSize(128)
+            ssao.BlurOn()
+            renderer.SetPass(ssao)
+
+        elif mode == "full":
+            renderer.RemoveAllLights()
+            for pos, intensity, color in [
+                ((1, 1, 1), 0.8, (1.0, 1.0, 0.95)),
+                ((-1, 0.5, -0.5), 0.4, (0.3, 0.3, 0.4)),
+                ((0, -1, 0.5), 0.3, (0.2, 0.2, 0.25)),
+            ]:
+                light = vtk.vtkLight()
+                light.SetPosition(*pos)
+                light.SetColor(*color)
+                light.SetIntensity(intensity)
+                light.SetLightTypeToSceneLight()
+                renderer.AddLight(light)
+
+        elif mode == "flat":
+            actors = renderer.GetActors()
+            actors.InitTraversal()
+            for _ in range(actors.GetNumberOfItems()):
+                actors.GetNextActor().GetProperty().LightingOff()
+
+        elif mode == "poster":
+            renderer.RemoveAllLights()
+            for pos, intensity, color in [
+                ((1, 1, 0.5), 0.6, (1.0, 1.0, 1.0)),
+                ((-1, 0.5, -0.5), 0.4, (1.0, 1.0, 1.0)),
+                ((0, -1, 0.5), 0.3, (1.0, 1.0, 1.0)),
+            ]:
+                l = vtk.vtkLight()
+                l.SetPosition(*pos)
+                l.SetColor(*color)
+                l.SetIntensity(intensity)
+                l.SetLightTypeToSceneLight()
+                renderer.AddLight(l)
+
+            passes = vtk.vtkRenderStepsPass()
+            ssao = vtk.vtkSSAOPass()
+            ssao.SetDelegatePass(passes)
+            ssao.SetRadius(50.0)
+            ssao.SetKernelSize(128)
+            ssao.BlurOn()
+            renderer.SetPass(ssao)
+
+        elif mode == "silhouettes":
+            passes = vtk.vtkRenderStepsPass()
+            sobel = vtk.vtkSobelGradientMagnitudePass()
+            sobel.SetDelegatePass(passes)
+            renderer.SetPass(sobel)
+
+    def apply_render_settings(self):
+        dark = [float(x) for x in Settings.rendering.background_color]
+        light = [float(x) for x in Settings.rendering.background_color_alt]
+
+        # Preserve whichever background the user last selected (e.g. via 'd')
+        # so unrelated setting changes don't snap the viewport back to dark.
+        if getattr(self, "_use_alt_background", False):
+            active, inactive = light, dark
+        else:
+            active, inactive = dark, light
+
+        if Settings.rendering.use_gradient_background:
+            # VTK treats SetBackground as the bottom color and SetBackground2
+            # as the top — place dark at the top, light at the bottom.
+            self.renderer.SetBackground(*light)
+            self.renderer.SetBackground2(*dark)
+            self.renderer.GradientBackgroundOn()
+        else:
+            self.renderer.SetBackground(*active)
+            self.renderer.GradientBackgroundOff()
+        self.renderer_next_background = inactive
         self.renderer.SetUseDepthPeeling(Settings.rendering.use_depth_peeling)
         self.renderer.SetOcclusionRatio(Settings.rendering.occlusion_ratio)
         self.renderer.SetMaximumNumberOfPeels(Settings.rendering.max_depth_peels)
@@ -315,91 +427,75 @@ class App(QMainWindow):
         self.render_window.SetLineSmoothing(Settings.rendering.line_smoothing)
         self.render_window.SetPolygonSmoothing(Settings.rendering.polygon_smoothing)
         self.render_window.SetDesiredUpdateRate(Settings.rendering.target_fps)
+
+        self.set_lighting_mode(Settings.rendering.lighting_mode)
         self.render_window.Render()
 
         if not hasattr(self, "cdata"):
             return None
 
-        from .actor import ActorFactory
+        self.cdata.refresh_lod()
 
-        if not ActorFactory().is_synced():
-            ActorFactory().update_from_settings()
-            self.cdata.refresh_actors()
-
-        BackgroundTaskManager.instance()._initialize()
-
-    def _animate_tab_indicator(self, btn):
-        """Animate the tab indicator to the given button."""
-        from qtpy.QtGui import QFontMetrics
-
-        # Calculate text width
-        fm = QFontMetrics(btn.font())
-        text_width = fm.horizontalAdvance(btn.text())
-
-        # Center the indicator under the text
-        btn_center = btn.x() + btn.width() // 2
-        x = btn_center - text_width // 2
-        y = self.tab_bar.height() - 2
-
-        target_rect = QRect(x, y, text_width, 2)
-
-        if self.tab_indicator_anim.state() == QPropertyAnimation.State.Running:
-            self.tab_indicator_anim.stop()
-
-        self.tab_indicator_anim.setStartValue(self.tab_indicator.geometry())
-        self.tab_indicator_anim.setEndValue(target_rect)
-        self.tab_indicator_anim.start()
+        btm = BackgroundTaskManager.instance()
+        target_workers = int(Settings.rendering.parallel_worker)
+        if btm.num_workers != target_workers:
+            if btm.futures:
+                ret = MosaicMessageBox.question(
+                    self,
+                    "Active Tasks",
+                    f"{len(btm.futures)} task(s) still running. "
+                    "Changing worker count will cancel them. Continue?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                )
+                if ret != QMessageBox.StandardButton.Yes:
+                    Settings.rendering.parallel_worker = btm.num_workers
+                    panel = self.appearance_panel
+                    panel._workers_slider.blockSignals(True)
+                    panel._workers_slider.setValue(btm.num_workers)
+                    panel._workers_slider.blockSignals(False)
+                    return
+            btm._initialize()
 
     def handle_escape_key(self, *args, **kwargs):
-        """Handle escape key press - switch to viewing mode if not already in it."""
+        """Switch to viewing mode if not already in it."""
         self._transition_modes(self.cursor_handler.current_mode)
         self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
 
-    def on_key_press(self, obj, event):
+    def _on_vtk_key_press(self, obj, event):
         key = obj.GetKeyCode()
-
-        if key in ["x", "c", "z"]:
-            self.set_camera_view(key)
-        elif key == "v":
-            self.swap_camera_view_direction(key)
-        elif key in ["d"]:
-            current_color = self.renderer.GetBackground()
-            self.renderer.SetBackground(*self.renderer_next_background)
-            self.renderer_next_background = current_color
-            self.vtk_widget.GetRenderWindow().Render()
-        elif key in ["\x7f", "\x08"]:
-            self.cdata.data.remove()
-            self.cdata.models.remove()
-        elif key == "m":
-            self.cdata.data.merge()
-        elif key == "e":
-            self.cdata.highlight_clusters_from_selected_points()
-        elif key == "h":
-            self.cdata.visibility_unselected(visible=False)
-        elif key == "H":
-            self.cdata.visibility_unselected(visible=True)
-        elif key == "s":
-            self._transition_modes(ViewerModes.VIEWING)
-            self.cdata.swap_area_picker()
-            self.toggle_selection_menu()
-        elif key == "E":
-            self._transition_modes(ViewerModes.PICKING)
-        elif key == "a":
-            self._transition_modes(ViewerModes.DRAWING)
-        elif key == "A":
-            self._transition_modes(ViewerModes.CURVE)
-        elif key == "q":
-            self._transition_modes(ViewerModes.MESH_DELETE)
-        elif key == "Q":
-            self._transition_modes(ViewerModes.MESH_ADD)
-        elif key == "r":
+        if key == "r":
             self._transition_modes(ViewerModes.SELECTION)
+
+    def _send_vtk_key(self, key_char):
+        self.vtk_widget.setFocus()
+        self.interactor.SetKeyCode(key_char)
+        self.interactor.SetKeySym(key_char)
+        self.interactor.KeyPressEvent()
+        self.interactor.CharEvent()
+
+    def toggle_background(self):
+        self._use_alt_background = not getattr(self, "_use_alt_background", False)
+        current_color = self.renderer.GetBackground()
+        self.renderer.SetBackground(*self.renderer_next_background)
+        self.renderer_next_background = current_color
+        self.vtk_widget.GetRenderWindow().Render()
+
+    def toggle_interaction_target(self):
+        self._transition_modes(ViewerModes.VIEWING)
+        self.cdata.swap_area_picker()
+        self.toggle_selection_menu()
+
+    def remove_selected(self):
+        self.cdata.data.remove()
+        self.cdata.models.remove()
 
     def on_right_click(self, obj, event):
         self.cdata.data.deselect()
         self.cdata.models.deselect()
 
     def _transition_modes(self, new_mode):
+        self.vtk_widget.setFocus()
+
         current_mode = self.cursor_handler.current_mode
         if current_mode in (
             ViewerModes.MESH_ADD,
@@ -428,7 +524,8 @@ class App(QMainWindow):
             self.interactor.SetInteractorStyle(style)
             style.SetDefaultRenderer(self.renderer)
         elif new_mode == ViewerModes.SELECTION:
-            self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleRubberBandPick())
+            self.cdata._get_active_container().attach_area_picker()
+
         elif new_mode == ViewerModes.PICKING:
             self.cdata.activate_picking_mode()
         elif new_mode in (ViewerModes.MESH_ADD, ViewerModes.MESH_DELETE):
@@ -493,6 +590,9 @@ class App(QMainWindow):
         self._camera_direction = aligned_direction
         self.vtk_widget.GetRenderWindow().Render()
 
+        if hasattr(self, "camera_hud"):
+            self.camera_hud.set_angles(elevation, azimuth, pitch)
+
     def swap_camera_view_direction(self, view_key):
         view = getattr(self, "_camera_view", None)
         if view is None:
@@ -501,11 +601,55 @@ class App(QMainWindow):
         direction = getattr(self, "_camera_direction", True)
         return self.set_camera_view(view, not direction)
 
+    def _toggle_appearance_panel(self):
+        panel = self.appearance_panel
+        if panel.isVisible():
+            panel.hide()
+            return
+        m = panel._MARGIN
+        pos = self._tab_gear.mapToGlobal(self._tab_gear.rect().bottomRight())
+        panel.move(pos.x() - panel.width() + m, pos.y() + 4 - m)
+        panel.show()
+        panel.raise_()
+
+    def _on_theme_toggled(self, checked):
+        from .stylesheets import Colors, switch_theme
+
+        Settings.ui.theme_mode = "dark" if checked else "light"
+
+        self._use_alt_background = not checked
+        switch_theme(Colors.DARK if checked else Colors.LIGHT)
+
+        dark = [float(x) for x in Settings.rendering.background_color]
+        light = [float(x) for x in Settings.rendering.background_color_alt]
+
+        active, inactive = dark, light
+        if self._use_alt_background:
+            active, inactive = light, dark
+
+        self.renderer.SetBackground(*active)
+        self.renderer.GradientBackgroundOff()
+        self.renderer_next_background = inactive
+        self.renderer.Render()
+
+    def _on_theme_changed(self):
+        self._update_style()
+        self._main_splitter.setStyleSheet(
+            "QSplitter::handle { background: transparent; }"
+        )
+        self.ribbon_separator.setStyleSheet(f"background: {Colors.BORDER_DARK};")
+
+        self.tab_bar._on_theme_changed()
+        if hasattr(self, "status_indicator"):
+            self.status_indicator._on_theme_changed()
+        if hasattr(self, "_tab_gear"):
+            self._tab_gear.setIcon(icon("ph.sliders-thin", role="active"))
+
     def _update_style(self):
         self.setStyleSheet(
             f"""
             QMenuBar {{
-                border-bottom: 1px solid {Colors.TEXT_MUTED};
+                border-bottom: none;
             }}
             QMenuBar::item {{
                 padding: 4px 8px;
@@ -514,19 +658,13 @@ class App(QMainWindow):
                 background-color: {Colors.BG_HOVER};
                 border-radius: 4px;
             }}
-            QMenu {{
-                border-radius: 4px;
-                padding: 4px;
-            }}
-            QMenu::item {{
-                padding: 4px 24px 4px 8px;
-                border-radius: 4px;
-            }}
-            QMenu::item:selected {{
-                background-color: {Colors.BG_HOVER};
-            }}
         """
         )
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if sys.platform == "darwin" and hasattr(self, "tab_bar"):
+            self.tab_bar.setGeometry(0, 0, self.width(), 38)
 
     def changeEvent(self, event):
         if event.type() == QEvent.Type.PaletteChange:
@@ -537,6 +675,7 @@ class App(QMainWindow):
         self.legend = LegendWidget(self.renderer, self.interactor)
 
         self._setup_volume_viewer()
+        self._setup_camera_hud()
         self.cdata.data.render_update.connect(
             self.volume_viewer.primary.handle_projection_change
         )
@@ -546,7 +685,6 @@ class App(QMainWindow):
 
         self.cursor_handler = CursorModeHandler(self.vtk_widget)
         self.axes_widget = AxesWidget(self.renderer, self.interactor)
-        self.trajectory_player = TrajectoryPlayer(self.cdata)
         self.scale_bar = ScaleBarWidget(self.renderer, self.interactor)
         self.screenshot_manager = ScreenshotManager(self.vtk_widget)
         self.status_indicator = StatusIndicator(self)
@@ -557,42 +695,87 @@ class App(QMainWindow):
 
         self.status_indicator.connect_signals()
 
+        from .widgets.appsettings import AppSettingsPanel
+
+        # Gear button is connected after tab bar creation in __init__
+        self.appearance_panel = AppSettingsPanel(self)
+        self.appearance_panel.settingsChanged.connect(self.apply_render_settings)
+
         self._setup_trajectory_player()
+
+        self.viewport_placeholder = ViewportPlaceholder(
+            self.vtk_widget, actions=default_actions(self)
+        )
+        self.viewport_stack.addWidget(self.viewport_placeholder)
+        self.prime_viewport_placeholder()
+
+    def prime_viewport_placeholder(self):
+        """Show the placeholder and auto-hide once data arrives."""
+        self.viewport_stack.setCurrentWidget(self.viewport_placeholder)
+        self._placeholder_connections = []
+
+        def _on_data_arrived():
+            if (
+                len(self.cdata._data.data) > 0
+                or len(self.cdata._models.data) > 0
+                or self.volume_viewer.primary.volume is not None
+            ):
+                self.viewport_stack.setCurrentWidget(self.vtk_widget)
+                for sig in self._placeholder_connections:
+                    sig.disconnect(_on_data_arrived)
+                self._placeholder_connections.clear()
+
+        for sig in (
+            self.cdata.data.data_changed,
+            self.cdata.models.data_changed,
+            self.volume_viewer.primary.data_changed,
+        ):
+            sig.connect(_on_data_arrived)
+            self._placeholder_connections.append(sig)
 
     def setup_menu(self):
         self._update_style()
 
         menu_bar = self.menuBar()
 
-        file_menu = menu_bar.addMenu("File")
-        view_menu = menu_bar.addMenu("View")
-        interact_menu = menu_bar.addMenu("Actions")
-        preference_menu = menu_bar.addMenu("Preferences")
+        def _style_popup(m):
+            m.setWindowFlags(
+                m.windowFlags()
+                | Qt.WindowType.FramelessWindowHint
+                | Qt.WindowType.NoDropShadowWindowHint
+            )
+            m.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+            return m
 
-        # File menu actions
-        new_session_action = QAction("Load Session", self)
+        file_menu = _style_popup(menu_bar.addMenu("File"))
+        view_menu = _style_popup(menu_bar.addMenu("View"))
+        interact_menu = _style_popup(menu_bar.addMenu("Actions"))
+        preference_menu = _style_popup(menu_bar.addMenu("Preferences"))
+
+        new_session_action = QAction(icon("ph.folder-notch-open"), "Load Session", self)
         new_session_action.triggered.connect(self.load_session)
         new_session_action.setShortcut("Ctrl+N")
 
-        add_file_action = QAction("Open", self)
+        add_file_action = QAction(icon("ph.folder-open"), "Open", self)
         add_file_action.triggered.connect(self.open_files)
         add_file_action.setShortcut("Ctrl+O")
 
-        undo_action = QAction("Undo", self)
+        undo_action = QAction(icon("ph.arrow-u-up-left"), "Undo", self)
         undo_action.triggered.connect(
             lambda: (self.cdata.data.undo(), self.cdata.models.undo())
         )
         undo_action.setShortcut("Ctrl+Z")
 
-        save_file_action = QAction("Save Session", self)
+        save_file_action = QAction(icon("ph.floppy-disk"), "Save Session", self)
         save_file_action.triggered.connect(self.save_session)
         save_file_action.setShortcut("Ctrl+S")
 
-        close_file_action = QAction("Close Session", self)
-        close_file_action.triggered.connect(self.close_session)
+        close_file_action = QAction(icon("ph.x-circle"), "Close Session", self)
+        close_file_action.triggered.connect(lambda: self.close_session(True))
 
         self.recent_file_actions = []
-        self.recent_menu = QMenu("Recent Files", self)
+        self.recent_menu = _style_popup(QMenu("Recent Files", self))
+        self.recent_menu.setIcon(icon("ph.clock-counter-clockwise"))
         for i in range(Settings.ui.max_recent_files):
             action = QAction(self)
             action.setVisible(False)
@@ -602,32 +785,36 @@ class App(QMainWindow):
 
         self.update_recent_files_menu()
 
-        quit_action = QAction("Quit", self)
+        quit_action = QAction(icon("ph.sign-out"), "Quit", self)
         quit_action.setShortcut("Ctrl+Q")
         quit_action.triggered.connect(self.close)
 
-        screenshot_action = QAction("Save Viewer Screenshot", self)
+        screenshot_action = QAction(icon("ph.camera"), "Save Viewer Screenshot", self)
         screenshot_action.triggered.connect(lambda x: self.screenshot_manager.save())
         screenshot_action.setShortcut("Ctrl+P")
 
-        animation_action = QAction("Export Animation", self)
+        animation_action = QAction(icon("ph.film-strip"), "Export Animation", self)
         animation_action.triggered.connect(lambda x: self._animate())
         animation_action.setShortcut("Ctrl+E")
 
-        clipboard_action = QAction("Viewer Screenshot to Clipboard", self)
+        clipboard_action = QAction(
+            icon("ph.clipboard"), "Viewer Screenshot to Clipboard", self
+        )
         clipboard_action.triggered.connect(
             lambda x: self.screenshot_manager.copy_to_clipboard()
         )
         clipboard_action.setShortcut("Ctrl+Shift+C")
 
-        clipboard_window_action = QAction("Window Screenshot to Clipboard", self)
+        clipboard_window_action = QAction(
+            icon("ph.app-window"), "Window Screenshot to Clipboard", self
+        )
         clipboard_window_action.triggered.connect(
             lambda x: self.screenshot_manager.copy_to_clipboard(window=True)
         )
         clipboard_window_action.setShortcut("Ctrl+Shift+W")
 
-        # Setup axes control menu
-        axes_menu = QMenu("Axes", self)
+        axes_menu = _style_popup(QMenu("Axes", self))
+        axes_menu.setIcon(icon("ph.crosshair"))
         visible_action = QAction("Visible", self)
         visible_action.setCheckable(True)
         visible_action.setChecked(self.axes_widget.visible)
@@ -669,42 +856,21 @@ class App(QMainWindow):
         axes_menu.addAction(colored_action)
         axes_menu.addAction(arrow_action)
 
-        # Handle different camera angles
-        tilt_menu = QMenu("Camera", self)
-        self.tilt_dialog = TiltControlDialog(self)
-        show_tilt_control = QAction(
-            qta.icon("ph.sliders", color=Colors.ICON),
-            "Tilt Controls...",
-            self,
-        )
-        show_tilt_control.triggered.connect(self.tilt_dialog.show)
-        tilt_menu.addAction(show_tilt_control)
+        show_camera_hud = QAction(icon("ph.video-camera"), "Camera Angles", self)
+        show_camera_hud._on = False
 
-        tilt_menu.addSeparator()
-        tilt_group = QActionGroup(self)
-        tilt_group.setExclusive(True)
-        for angle in [0, 15, 30, 45, 60, 90]:
-            action = QAction(f"{angle}°", self)
-            action.triggered.connect(
-                lambda checked, a=angle: self.set_camera_view(
-                    getattr(self, "_camera_view", "x"),
-                    getattr(self, "_camera_direction", True),
-                    view_angle=a,
-                )
+        def _toggle_camera_hud():
+            show_camera_hud._on = not show_camera_hud._on
+            on = show_camera_hud._on
+            show_camera_hud.setIcon(
+                icon("ph.video-camera", role="primary" if on else "muted")
             )
-            tilt_menu.addAction(action)
+            self.camera_hud.setVisible(on)
 
-        tilt_menu.addSeparator()
-        reset_action = QAction(
-            qta.icon("ph.arrow-counter-clockwise", color=Colors.ICON),
-            "Reset Tilt",
-            self,
-        )
-        reset_action.setShortcut("Ctrl+T")
-        reset_action.triggered.connect(self.tilt_dialog.reset_tilt)
-        tilt_menu.addAction(reset_action)
+        show_camera_hud.triggered.connect(_toggle_camera_hud)
 
-        coloring_menu = QMenu("Coloring", self)
+        coloring_menu = _style_popup(QMenu("Coloring", self))
+        coloring_menu.setIcon(icon("ph.palette"))
         coloring_group = QActionGroup(self)
         coloring_group.setExclusive(True)
 
@@ -726,40 +892,45 @@ class App(QMainWindow):
         coloring_menu.addAction(self.color_default_action)
         coloring_menu.addAction(self.color_by_entity_action)
 
-        legend_bar_menu = QMenu("Legend", self)
-        legend_bar = QAction("Show", self)
-        legend_bar.setCheckable(True)
-        legend_bar.setChecked(False)
-        legend_bar.triggered.connect(
-            lambda checked: self.legend.show() if checked else self.legend.hide()
+        show_legend = QAction(icon("ph.chart-bar"), "Legend", self)
+        show_legend._on = False
+
+        def _toggle_legend():
+            show_legend._on = not show_legend._on
+            on = show_legend._on
+            show_legend.setIcon(icon("ph.chart-bar", role="primary" if on else "muted"))
+            self.legend.show() if on else self.legend.hide()
+
+        show_legend.triggered.connect(_toggle_legend)
+
+        self.volume_action = QAction(icon("ph.cube"), "Volume Viewer", self)
+        self.volume_action._on = False
+
+        def _toggle_volume():
+            self.volume_action._on = not self.volume_action._on
+            on = self.volume_action._on
+            self.volume_action.setIcon(
+                icon("ph.cube", role="primary" if on else "muted")
+            )
+            self._toggle_volume_dock(on)
+
+        self.volume_action.triggered.connect(_toggle_volume)
+
+        self.trajectory_action = QAction(
+            icon("ph.play-circle"), "Trajectory Player", self
         )
+        self.trajectory_action._on = False
 
-        orientation_menu = QMenu("Orientation", self)
-        vertical = QAction("Vertical", self)
-        vertical.triggered.connect(lambda: self.legend.set_orientation("vertical"))
-        horizontal = QAction("Horizontal", self)
-        horizontal.triggered.connect(lambda: self.legend.set_orientation("horizontal"))
+        def _toggle_trajectory():
+            self.trajectory_action._on = not self.trajectory_action._on
+            on = self.trajectory_action._on
+            self.trajectory_action.setIcon(
+                icon("ph.play-circle", role="primary" if on else "muted")
+            )
+            toggle_dock(self.trajectory_dock, on)
 
-        orientation_menu.addAction(vertical)
-        orientation_menu.addAction(horizontal)
-        legend_bar_menu.addAction(legend_bar)
-        legend_bar_menu.addMenu(orientation_menu)
+        self.trajectory_action.triggered.connect(_toggle_trajectory)
 
-        self.volume_action = QAction("Volume Viewer", self)
-        self.volume_action.setCheckable(True)
-        self.volume_action.setChecked(False)
-        self.volume_action.triggered.connect(
-            lambda checked: self.volume_dock.setVisible(checked)
-        )
-
-        self.trajectory_action = QAction("Trajectory Player", self)
-        self.trajectory_action.setCheckable(True)
-        self.trajectory_action.setChecked(False)
-        self.trajectory_action.triggered.connect(
-            lambda checked: self.trajectory_dock.setVisible(checked)
-        )
-
-        # Add actions to menus
         file_menu.addAction(add_file_action)
         file_menu.addMenu(self.recent_menu)
 
@@ -769,15 +940,22 @@ class App(QMainWindow):
         file_menu.addAction(close_file_action)
 
         file_menu.addSeparator()
-        batch_process_action = QAction("Batch Processing", self)
+        batch_process_action = QAction(icon("ph.stack"), "Batch Processing", self)
         batch_process_action.triggered.connect(self.open_batch_pipeline)
         batch_process_action.setShortcut("Ctrl+Shift+P")
 
-        batch_navigator_action = QAction("Batch Navigator", self)
-        batch_navigator_action.triggered.connect(self.open_batch_navigator)
-        batch_navigator_action.setShortcut("Ctrl+Shift+N")
+        self.batch_navigator_action = QAction(
+            icon("ph.compass"), "Batch Navigator", self
+        )
+        self.batch_navigator_action.triggered.connect(self.open_batch_navigator)
+        self.batch_navigator_action.setShortcut("Ctrl+Shift+N")
+
+        # czi_action = QAction(icon("ph.cloud"), "CZI Portal", self)
+        # czi_action.triggered.connect(self.open_czi_dialog)
+
         file_menu.addAction(batch_process_action)
-        file_menu.addAction(batch_navigator_action)
+        file_menu.addAction(self.batch_navigator_action)
+        # file_menu.addAction(czi_action)
 
         file_menu.addSeparator()
         file_menu.addAction(screenshot_action)
@@ -787,48 +965,52 @@ class App(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(quit_action)
 
-        show_scale_bar = QAction("Scale Bar", self)
-        show_scale_bar.setCheckable(True)
-        show_scale_bar.setChecked(False)
-        show_scale_bar.triggered.connect(
-            lambda checked: self.scale_bar.show() if checked else self.scale_bar.hide()
-        )
+        show_scale_bar = QAction(icon("ph.ruler"), "Scale Bar", self)
+        show_scale_bar._on = False
 
-        show_viewer_mode = QAction("Status Bar", self)
-        show_viewer_mode.setCheckable(True)
-        show_viewer_mode.setChecked(True)
-        show_viewer_mode.triggered.connect(
-            lambda checked: (
-                self.status_indicator.show()
-                if checked
-                else self.status_indicator.hide()
-            )
-        )
+        def _toggle_scale_bar():
+            show_scale_bar._on = not show_scale_bar._on
+            on = show_scale_bar._on
+            show_scale_bar.setIcon(icon("ph.ruler", role="primary" if on else "muted"))
+            self.scale_bar.show() if on else self.scale_bar.hide()
+
+        show_scale_bar.triggered.connect(_toggle_scale_bar)
+
+        show_viewer_mode = QAction(icon("ph.info", role="primary"), "Status Bar", self)
+        show_viewer_mode._on = True
+
+        def _toggle_status_bar():
+            show_viewer_mode._on = not show_viewer_mode._on
+            on = show_viewer_mode._on
+            show_viewer_mode.setIcon(icon("ph.info", role="primary" if on else "muted"))
+            self.status_indicator.show() if on else self.status_indicator.hide()
+
+        show_viewer_mode.triggered.connect(_toggle_status_bar)
 
         view_menu.addMenu(axes_menu)
-        view_menu.addMenu(tilt_menu)
-        view_menu.addMenu(legend_bar_menu)
         view_menu.addMenu(coloring_menu)
 
         view_menu.addSeparator()
+        view_menu.addAction(show_legend)
         view_menu.addAction(show_scale_bar)
         view_menu.addAction(show_viewer_mode)
+        view_menu.addAction(show_camera_hud)
 
         view_menu.addSeparator()
 
-        xy_action = QAction("XY-Plane", self)
-        xy_action.setText("Top View (XY)\tz")
-        xy_action.triggered.connect(lambda: self.simulate_key_press("z"))
-        yz_action = QAction("YZ-Plane", self)
-        yz_action.setText("Side View (YZ)\tx")
-        yz_action.triggered.connect(lambda: self.simulate_key_press("x"))
-        xz_action = QAction("XZ-Plane", self)
-        xz_action.setText("Front View (XZ)\tc")
-        xz_action.triggered.connect(lambda: self.simulate_key_press("c"))
+        xy_action = QAction("Top View (XY)", self)
+        xy_action.setShortcut(QKeySequence("Z"))
+        xy_action.triggered.connect(lambda: self.set_camera_view("z"))
+        yz_action = QAction("Side View (YZ)", self)
+        yz_action.setShortcut(QKeySequence("X"))
+        yz_action.triggered.connect(lambda: self.set_camera_view("x"))
+        xz_action = QAction("Front View (XZ)", self)
+        xz_action.setShortcut(QKeySequence("C"))
+        xz_action.triggered.connect(lambda: self.set_camera_view("c"))
 
-        flip_action = QAction("Flip View lambda", self)
-        flip_action.setText("Flip View Axis \tv")
-        flip_action.triggered.connect(lambda: self.simulate_key_press("v"))
+        flip_action = QAction(icon("ph.swap"), "Flip View Axis", self)
+        flip_action.setShortcut(QKeySequence("V"))
+        flip_action.triggered.connect(lambda: self.swap_camera_view_direction("v"))
 
         view_menu.addAction(xy_action)
         view_menu.addAction(yz_action)
@@ -840,7 +1022,8 @@ class App(QMainWindow):
         view_menu.addAction(self.trajectory_action)
         view_menu.addSeparator()
 
-        bbox_menu = QMenu("Bounding Boxes", self)
+        bbox_menu = _style_popup(QMenu("Bounding Boxes", self))
+        bbox_menu.setIcon(icon("ph.bounding-box"))
 
         self.computed_bbox = QAction("Dataset Bounds", self)
         self.computed_bbox.setCheckable(True)
@@ -880,68 +1063,105 @@ class App(QMainWindow):
         view_menu.addMenu(bbox_menu)
         view_menu.addSeparator()
 
-        show_settings = QAction("Appearance", self)
+        show_settings = QAction(icon("ph.gear"), "Appearance\tCtrl+,", self)
+        show_settings.setShortcut("Ctrl+,")
         show_settings.triggered.connect(self.show_app_settings)
         preference_menu.addAction(show_settings)
 
-        viewing_action = QAction("Viewing Mode\tEsc", self)
-        viewing_action.triggered.connect(lambda: self.handle_escape_key())
+        viewing_action = QAction(icon("ph.eye"), "Viewing Mode", self)
+        viewing_action.setShortcut(QKeySequence(Qt.Key.Key_Escape))
+        viewing_action.triggered.connect(self.handle_escape_key)
 
-        background_action = QAction("Toggle Background\td", self)
-        background_action.triggered.connect(lambda: self.simulate_key_press("d"))
+        background_action = QAction(icon("ph.circle-half"), "Toggle Background", self)
+        background_action.setShortcut(QKeySequence("D"))
+        background_action.triggered.connect(self.toggle_background)
 
-        selection_action = QAction("Point Selection\tr", self)
-        selection_action.triggered.connect(lambda: self.simulate_key_press("r"))
+        # TODO: Figure out why selection needs this extra treatment
+        selection_action = QAction(icon("ph.cursor"), "Point Selection", self)
+        selection_action.setShortcut(QKeySequence("R"))
+        selection_action.triggered.connect(lambda: self._send_vtk_key("r"))
 
-        expand_selection_action = QAction("Expand Selection\te", self)
-        expand_selection_action.triggered.connect(lambda: self.simulate_key_press("e"))
+        expand_selection_action = QAction(
+            icon("ph.arrows-out"), "Expand Selection", self
+        )
+        expand_selection_action.setShortcut(QKeySequence("E"))
+        expand_selection_action.triggered.connect(
+            self.cdata.highlight_clusters_from_selected_points
+        )
 
-        hide_unselected_action = QAction("Hide Unselected\th", self)
-        hide_unselected_action.triggered.connect(lambda: self.simulate_key_press("h"))
+        hide_unselected_action = QAction(icon("ph.eye-slash"), "Hide Unselected", self)
+        hide_unselected_action.setShortcut(QKeySequence("H"))
+        hide_unselected_action.triggered.connect(
+            lambda: self.cdata.visibility_unselected(visible=False)
+        )
 
-        show_unselected_action = QAction("Show Unselected\tShift+H", self)
-        show_unselected_action.triggered.connect(lambda: self.simulate_key_press("H"))
+        show_unselected_action = QAction(icon("ph.eye"), "Show Unselected", self)
+        show_unselected_action.setShortcut(QKeySequence("Shift+H"))
+        show_unselected_action.triggered.connect(
+            lambda: self.cdata.visibility_unselected(visible=True)
+        )
 
-        picking_action = QAction("Pick Objects\tShift+E", self)
-        picking_action.triggered.connect(lambda: self.simulate_key_press("E"))
+        picking_action = QAction(icon("ph.hand-pointing"), "Pick Objects", self)
+        picking_action.setShortcut(QKeySequence("Shift+E"))
+        picking_action.triggered.connect(
+            lambda: self._transition_modes(ViewerModes.PICKING)
+        )
 
-        remove_action = QAction("Remove Selection\tDelete", self)
-        remove_action.triggered.connect(lambda: self.simulate_key_press("\x7f"))
+        remove_action = QAction(icon("ph.trash"), "Remove Selection", self)
+        remove_action.setShortcuts(
+            [QKeySequence(Qt.Key.Key_Delete), QKeySequence(Qt.Key.Key_Backspace)]
+        )
+        remove_action.triggered.connect(self.remove_selected)
 
-        merge_action = QAction("Merge Selection", self)
-        merge_action.setText("Merge Selection\tm")
-        merge_action.triggered.connect(lambda: self.simulate_key_press("m"))
+        merge_action = QAction(icon("ph.git-merge"), "Merge Selection", self)
+        merge_action.setShortcut(QKeySequence("M"))
+        merge_action.triggered.connect(lambda: self.cdata.data.merge())
 
-        drawing_action = QAction("Free Hand Drawing", self)
-        drawing_action.setText("Free Hand Drawing\ta")
-        drawing_action.triggered.connect(lambda: self.simulate_key_press("a"))
+        drawing_action = QAction(icon("ph.pencil-line"), "Free Hand Drawing", self)
+        drawing_action.setShortcut(QKeySequence("A"))
+        drawing_action.triggered.connect(
+            lambda: self._transition_modes(ViewerModes.DRAWING)
+        )
 
-        curve_action = QAction("Curve Drawing\tShift+A", self)
-        curve_action.triggered.connect(lambda: self.simulate_key_press("A"))
+        curve_action = QAction(icon("ph.path"), "Curve Drawing", self)
+        curve_action.setShortcut(QKeySequence("Shift+A"))
+        curve_action.triggered.connect(
+            lambda: self._transition_modes(ViewerModes.CURVE)
+        )
 
-        mesh_delete_action = QAction("Delete Mesh Triangles\tq", self)
-        mesh_delete_action.triggered.connect(lambda: self.simulate_key_press("q"))
+        mesh_delete_action = QAction(icon("ph.eraser"), "Delete Mesh Triangles", self)
+        mesh_delete_action.setShortcut(QKeySequence("Q"))
+        mesh_delete_action.triggered.connect(
+            lambda: self._transition_modes(ViewerModes.MESH_DELETE)
+        )
 
-        mesh_add_action = QAction("Add Mesh Triangles\tShift+Q", self)
-        mesh_add_action.triggered.connect(lambda: self.simulate_key_press("m"))
+        mesh_add_action = QAction(icon("ph.polygon"), "Add Mesh Triangles", self)
+        mesh_add_action.setShortcut(QKeySequence("Shift+Q"))
+        mesh_add_action.triggered.connect(
+            lambda: self._transition_modes(ViewerModes.MESH_ADD)
+        )
 
-        interaction_target_menu = QMenu("Interaction Target", self)
+        interaction_target_menu = _style_popup(QMenu("Interaction Target", self))
         target_group = QActionGroup(self)
         target_group.setExclusive(True)
-        self.cluster_target_action = QAction("Clusters\ts", self)
+        self.cluster_target_action = QAction("Clusters", self)
         self.cluster_target_action.setCheckable(True)
         self.cluster_target_action.setChecked(True)
-        self.cluster_target_action.triggered.connect(
-            lambda: self.simulate_key_press("s")
-        )
+        self.cluster_target_action.triggered.connect(self.toggle_interaction_target)
         target_group.addAction(self.cluster_target_action)
 
-        self.model_target_action = QAction("Models\ts", self)
+        self.model_target_action = QAction("Models", self)
         self.model_target_action.setCheckable(True)
-        self.model_target_action.triggered.connect(lambda: self.simulate_key_press("s"))
+        self.model_target_action.triggered.connect(self.toggle_interaction_target)
         target_group.addAction(self.model_target_action)
+        swap_target_action = QAction("Swap Target", self)
+        swap_target_action.setShortcut(QKeySequence("S"))
+        swap_target_action.triggered.connect(self.toggle_interaction_target)
+
         interaction_target_menu.addAction(self.cluster_target_action)
         interaction_target_menu.addAction(self.model_target_action)
+        interaction_target_menu.addSeparator()
+        interaction_target_menu.addAction(swap_target_action)
 
         interact_menu.addAction(undo_action)
         interact_menu.addAction(viewing_action)
@@ -973,7 +1193,7 @@ class App(QMainWindow):
         """Open the PipelineBuilderDialog dialog."""
         from .parallel import submit_task_batch
         from .pipeline.executor import execute_run
-        from .pipeline.dialog import PipelineBuilderDialog
+        from .pipeline.builder import PipelineBuilderDialog
 
         dialog = PipelineBuilderDialog(self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
@@ -986,7 +1206,7 @@ class App(QMainWindow):
             skip_complete = settings.get("skip_complete", False)
             tasks.append(
                 {
-                    "name": f"pipeline_{run['run_id']}",
+                    "name": f"Pipeline {run['run_id']}",
                     "func": execute_run,
                     "callback": None,
                     "kwargs": {
@@ -1000,12 +1220,42 @@ class App(QMainWindow):
         submit_task_batch(tasks, max_concurrent=int(settings.get("workers", 4)))
 
     def open_batch_navigator(self):
-        """Open the batch navigator dialog."""
-        from .widgets.dock import create_or_toggle_dock
-        from .pipeline.dialog import BatchNavigatorDialog
+        """Toggle the batch navigator sessions pane in the sidebar."""
+        from .widgets.container_list import SessionListWidget
 
-        dialog = BatchNavigatorDialog(self)
-        create_or_toggle_dock(self, "batch_navigator", dialog)
+        if not hasattr(self, "_session_list_widget"):
+            self._session_list_widget = SessionListWidget(self.cdata)
+            self._session_list_widget.load_requested.connect(self._load_session)
+
+        widget = self._session_list_widget
+
+        if "Sessions" in self.list_wrapper._widgets:
+            widget.deactivate()
+            self.list_wrapper.remove_widget("Sessions")
+            self.batch_navigator_action.setIcon(icon("ph.compass", role="muted"))
+        else:
+            self.list_wrapper.add_widget("Sessions", widget)
+            widget.activate()
+            self.batch_navigator_action.setIcon(icon("ph.compass", role="primary"))
+
+    def open_czi_dialog(self):
+        """Open the CZI CryoET Data Portal browser."""
+        try:
+            from .czi.dialog import CZIPortalDialog
+
+            if getattr(self, "_czi_dialog", None) is not None:
+                self._czi_dialog.raise_()
+                self._czi_dialog.activateWindow()
+                return
+
+            self._czi_dialog = CZIPortalDialog(self)
+            self._czi_dialog.finished.connect(
+                lambda: setattr(self, "_czi_dialog", None)
+            )
+            self._czi_dialog.show()
+
+        except ImportError:
+            MosaicMessageBox.warning(self, "Error", "Failed to import CZI dialog.")
 
     def toggle_selection_menu(self):
         """Update the menu radio buttons to reflect current selection target."""
@@ -1016,27 +1266,6 @@ class App(QMainWindow):
             self.model_target_action.setChecked(True)
             self.status_indicator.update_status(target="Models")
 
-    def simulate_key_press(self, key):
-        self.vtk_widget.setFocus()
-
-        key_code = (
-            ord(key.upper())
-            if len(key) == 1
-            else getattr(Qt.Key, f"Key_{key}", ord(key))
-        )
-
-        key_press = QKeyEvent(
-            QEvent.Type.KeyPress, key_code, Qt.KeyboardModifier.NoModifier, key
-        )
-
-        key_release = QKeyEvent(
-            QEvent.Type.KeyRelease, key_code, Qt.KeyboardModifier.NoModifier, key
-        )
-
-        QApplication.postEvent(self.vtk_widget, key_press)
-        QApplication.postEvent(self.vtk_widget, key_release)
-        QApplication.processEvents()
-
     def _animate(self):
         from .widgets.dock import create_or_toggle_dock
         from mosaic.animation.compose import AnimationComposerDialog
@@ -1046,20 +1275,76 @@ class App(QMainWindow):
         )
         create_or_toggle_dock(self, "animation_composer", dialog)
 
+    def _setup_camera_hud(self):
+        from .widgets.camera_hud import CameraHUD
+
+        self.camera_hud = CameraHUD(parent=self)
+        self.camera_hud.attach(self)
+
     def _setup_volume_viewer(self):
-        self.volume_viewer = MultiVolumeViewer(self.vtk_widget, legend=self.legend)
-
-        self.volume_dock = QDockWidget(parent=self)
-        self.volume_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
-        self.volume_dock.setTitleBarWidget(QWidget())
-
-        self.volume_dock.setWidget(self.volume_viewer)
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea,
-            self.volume_dock,
-            Qt.Orientation.Vertical,
+        # HUD is a top-level translucent tool window that tracks the
+        # viewport, it is NOT added to any layout. See
+        # volume_viewer_hud.py for the rationale.
+        self.volume_viewer = VolumeViewerHUD(
+            self.vtk_widget, legend=self.legend, parent=self
         )
-        self.volume_dock.setVisible(False)
+        self.volume_viewer.attach_to_viewport(self.viewport_container)
+        self.cdata.register_session_hook(
+            collect=lambda: (
+                {"volume_paths": self.volume_viewer.recent_paths}
+                if self.volume_viewer.recent_paths
+                else {}
+            ),
+            restore=lambda meta: self.volume_viewer.set_recent_paths(
+                meta.get("volume_paths", [])
+            ),
+        )
+
+    def _load_volume_file(self, path: str) -> None:
+        """Show the volume dock if hidden and load *path* into the primary viewer."""
+        if not self.volume_viewer.isVisible():
+            self.volume_viewer.setVisible(True)
+            self.volume_action._on = True
+            self.volume_action.setIcon(icon("ph.cube", role="primary"))
+        try:
+            self.volume_viewer.primary.load_volume(path)
+        except Exception as e:
+            MosaicMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
+
+    def _triage_volumes(self, volume_paths: list) -> list:
+        """Classify volume files and prompt for density maps."""
+        from .formats.reader import is_likely_density_map
+
+        density_maps = []
+        segmentations = []
+        for path in volume_paths:
+            try:
+                if is_likely_density_map(path):
+                    density_maps.append(path)
+                else:
+                    segmentations.append(path)
+            except Exception:
+                segmentations.append(path)
+
+        if density_maps:
+            self._load_volume_files(density_maps)
+
+        return segmentations
+
+    def _load_volume_files(self, paths: list) -> None:
+        """Load each path into its own volume viewer."""
+        if not self.volume_viewer.isVisible():
+            self.volume_viewer.setVisible(True)
+            self.volume_action._on = True
+            self.volume_action.setIcon(icon("ph.cube", role="primary"))
+        for path in paths:
+            try:
+                self.volume_viewer.load_into_viewer(path)
+                self._add_file_to_recent(path)
+            except Exception as e:
+                MosaicMessageBox.warning(
+                    self, "Error", f"Failed to open volume:\n{path}\n\n{e}"
+                )
 
     def _setup_trajectory_player(self):
         self.trajectory_dock = QDockWidget(parent=self)
@@ -1078,13 +1363,10 @@ class App(QMainWindow):
         self.trajectory_dock.setVisible(False)
 
     def show_app_settings(self):
-        dialog = AppSettingsDialog(self)
-        dialog.settingsChanged.connect(self.apply_render_settings)
-        if dialog.exec() == 1:
-            return self.apply_render_settings()
+        self._toggle_appearance_panel()
 
     def _load_session(self, file_path: str):
-        self.close_session(show_warning=False, render=False)
+        self.close_session(render=False)
 
         try:
             self.cdata.load_session(file_path)
@@ -1092,17 +1374,17 @@ class App(QMainWindow):
             print(f"Error opening file: {e}")
             return -1
 
-        batch_navigator = getattr(self, "batch_navigator", None)
-        if batch_navigator is not None:
-            batch_navigator = batch_navigator.widget()
-            if file_path in batch_navigator.session_files:
-                batch_navigator.current_index = batch_navigator.session_files.index(
-                    file_path
-                )
+        if hasattr(self, "_session_list_widget"):
+            from .pipeline._utils import natural_sort_key
+
+            widget = self._session_list_widget
+            if file_path in widget.session_files:
+                widget.set_current(file_path)
             else:
-                batch_navigator.session_files.append(file_path)
-                batch_navigator.current_index = len(batch_navigator.session_files) - 1
-            batch_navigator._populate_session_list()
+                widget.session_files.append(file_path)
+                widget.session_files.sort(key=natural_sort_key)
+                widget._rebuild_items()
+                widget.set_current(file_path)
 
         self._add_file_to_recent(file_path)
 
@@ -1113,39 +1395,20 @@ class App(QMainWindow):
 
     def load_session(self):
         file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(self, "Open Session")
+        file_path, _ = file_dialog.getOpenFileName(
+            self,
+            "Open Session",
+            "",
+            "Session Files (*.pickle)",
+        )
         if not file_path:
             return -1
         return self._load_session(file_path)
 
-    def close_session(self, show_warning: bool = True, render: bool = True):
-
-        def _show_close_session_warning() -> bool:
-            msg_box = QMessageBox()
-            msg_box.setIcon(QMessageBox.Icon.Warning)
-            msg_box.setWindowTitle("Close Session")
-            msg_box.setText("Close Session Warning")
-            msg_box.setInformativeText(
-                "Are you sure you want to close the current session? "
-                "This action cannot be undone and all current work will be lost."
-            )
-            msg_box.setStandardButtons(
-                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel
-            )
-            msg_box.setDefaultButton(QMessageBox.StandardButton.Cancel)
-            msg_box.button(QMessageBox.StandardButton.Ok).setText("Close")
-            msg_box.button(QMessageBox.StandardButton.Cancel).setText("Keep")
-
-            result = msg_box.exec()
-            return result == QMessageBox.StandardButton.Ok
-
-        if show_warning:
-            if not _show_close_session_warning():
-                return None
-
-        batch_navigator = getattr(self, "batch_navigator", None)
-        if batch_navigator is not None:
-            batch_navigator.widget()._reset_selection()
+    def close_session(self, render: bool = True):
+        if hasattr(self, "_session_list_widget"):
+            self._session_list_widget.current_index = -1
+            self._session_list_widget._update_highlight()
 
         self.renderer.RemoveAllViewProps()
         self.volume_viewer.close()
@@ -1162,112 +1425,98 @@ class App(QMainWindow):
         self.cdata.reset()
         self.cdata.data.render(defer_render=True)
         self.cdata.models.render(defer_render=True)
+        self.prime_viewport_placeholder()
+
         if render:
             self.set_camera_view("z")
 
-    def _open_file(self, filename, parameters):
-        from .formats import open_file
-
-        offset = parameters.get("offset", 0)
-        scale = parameters.get("scale", 1)
-        sampling = parameters.get("sampling_rate", 1)
-
-        try:
-            container = open_file(filename)
-        except Exception as e:
-            if filename.endswith(".pickle"):
-                raise ValueError("Use Load Session to open session files.")
-            raise e
-
-        base, _ = basename(filename).split(extsep, 1)
-        use_index = len(container) > 1
-        if len(container) > 1000:
-            reply = QMessageBox.question(
-                self,
-                "Large number of objects detected",
-                f"File '{basename(filename)}' contains {len(container):,} objects.\n\n"
-                "This may indicate:\n"
-                "- Raw EM data instead of segmentations or meshes\n"
-                "- Incorrectly formatted file\n"
-                "- You are dealing with a large dataset\n"
-                "Processing will require considerable compute capabilities.\n\n"
-                "Do you want to continue?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-            if reply != QMessageBox.StandardButton.Yes:
-                return None
-
-        for index, data in enumerate(container):
-            # data.sampling is typically 1
-            scale_new = np.divide(scale, data.sampling)
-            data.vertices = np.multiply(np.subtract(data.vertices, offset), scale_new)
-
-            if data.vertices.shape[0] > 1e7:
-                if not show_large_file_warning():
-                    continue
-
-            container, interactor = self.cdata._data, self.cdata.data
-            geom_data = {
-                "points": data.vertices,
-                "normals": data.normals,
-                "sampling_rate": sampling,
-                "quaternions": data.quaternions,
-                "vertex_properties": data.vertex_properties,
-                "meta": {"name": base if not use_index else f"{index}_{base}"},
-            }
-
-            if data.faces is not None:
-                from .meshing import to_open3d
-                from .parametrization import TriangularMesh
-
-                container, interactor = self.cdata._models, self.cdata.models
-                geom_data["model"] = TriangularMesh(
-                    to_open3d(data.vertices, data.faces, data.normals)
-                )
-
-            geometry = container.get(interactor.add(**geom_data))
-            if data.faces is not None:
-                geometry.change_representation("surface")
-            elif parameters.get("render_as_segmentation", False):
-                from .geometry import SegmentationGeometry
-
-                seg = SegmentationGeometry(
-                    points=geometry.points,
-                    sampling_rate=geometry.sampling_rate,
-                    color=geometry._appearance.get("base_color", (0.7, 0.7, 0.7)),
-                    meta=geometry._meta,
-                )
-                container.update(geometry.uuid, seg)
-
-            data_shape = np.divide(data.shape, data.sampling)
-            if container.metadata.get("shape") is None:
-                container.metadata["shape"] = data_shape
-            container.metadata["shape"] = np.maximum(
-                container.metadata["shape"], data_shape
-            )
-
     def _open_files(self, filenames: List[str]):
-        dialog = ImportDataDialog(self)
+        from .formats.session import is_session_file
+
         if isinstance(filenames, str):
             filenames = [filenames]
 
+        session_hits = [f for f in filenames if is_session_file(f)]
+        if session_hits:
+            MosaicMessageBox.warning(
+                self,
+                "Session Files",
+                "Use Load Session to open session files:\n" + "\n".join(session_hits),
+            )
+            return -1
+
+        dialog = ImportDataDialog(self)
         dialog.set_files(filenames)
         if not dialog.exec():
             return -1
 
         file_parameters = dialog.get_all_parameters()
-        with ProgressDialog(filenames, title="Reading Files", parent=None) as pbar:
-            for filename in pbar:
-                self._open_file(filename, file_parameters[filename])
+
+        from .parallel import submit_io_task
+
+        submit_io_task(
+            "Reading Files",
+            _read_files_worker,
+            self._on_files_read,
+            self.cdata,
+            filenames,
+            file_parameters,
+        )
+
+    def _on_files_read(self, results):
+        """GUI-thread callback: surface errors, render, recentre camera."""
+        from .formats.parser import NotASegmentationError
+
+        density_paths = []
+        failures = []
+        for filename, outcome in results:
+            if isinstance(outcome, NotASegmentationError):
+                density_paths.append(filename)
+            elif isinstance(outcome, Exception):
+                failures.append((filename, str(outcome)))
+            else:
                 self._add_file_to_recent(filename)
 
         self.cdata.data.data_changed.emit()
         self.cdata.models.data_changed.emit()
-        self.cdata.data.render()
-        self.cdata.models.render()
+        self.cdata.data.render(defer_render=False)
+        self.cdata.models.render(defer_render=False)
+        self.set_camera_view("z")
 
-        # Make sure loaded objects are visible in scene
-        return self.set_camera_view("z")
+        if density_paths:
+            from pathlib import Path
+
+            listing = "\n".join(Path(p).name for p in density_paths)
+            box = MosaicMessageBox(self)
+            box.setWindowTitle("Not a Segmentation")
+            box.setIcon(QMessageBox.Icon.Question)
+            box.setText(
+                f"{len(density_paths)} file(s) contain more than 10 000 "
+                f"unique values and are likely density maps. "
+                f"Open in the Volume Viewer?"
+            )
+            box.setDetailedText(listing)
+            yes_btn = box.addButton("Yes", QMessageBox.ButtonRole.AcceptRole)
+            box.addButton("No", QMessageBox.ButtonRole.RejectRole)
+            box.setDefaultButton(yes_btn)
+            for btn in box.buttons():
+                if box.buttonRole(btn) == QMessageBox.ButtonRole.ActionRole:
+                    btn.setMinimumWidth(130)
+            box.exec()
+            if box.clickedButton() is yes_btn:
+                self._load_volume_files(density_paths)
+
+        if failures:
+            if len(failures) == 1:
+                fn, msg = failures[0]
+                MosaicMessageBox.warning(self, "Read Failed", f"{fn}\n\n{msg}")
+            else:
+                lines = [f"{len(failures)} file(s) failed:"]
+                for fn, msg in failures[:20]:
+                    lines.append(f"  {fn}: {msg}")
+                if len(failures) > 20:
+                    lines.append(f"  ... and {len(failures) - 20} more")
+                MosaicMessageBox.warning(self, "Read Failed", "\n".join(lines))
 
     def open_files(self):
         filenames, _ = QFileDialog.getOpenFileNames(self, "Import Files")
@@ -1276,11 +1525,47 @@ class App(QMainWindow):
 
         return self._open_files(filenames)
 
+    def _capture_thumbnail(self):
+        """Capture a PNG thumbnail cropped to visible data."""
+        from .animation._utils import (
+            compute_crop_context,
+            capture_cropped,
+            restore_window_size,
+        )
+        from qtpy.QtGui import QImage
+        from qtpy.QtCore import QBuffer, QIODevice
+
+        try:
+            rw = self.vtk_widget.GetRenderWindow()
+            ctx = compute_crop_context(rw, 320, 240)
+            if ctx is None:
+                return None
+            frame = capture_cropped(rw, ctx)
+            restore_window_size(rw, ctx)
+
+            h, w = frame.shape[:2]
+            channels = frame.shape[2] if frame.ndim == 3 else 1
+            fmt = (
+                QImage.Format.Format_RGBA8888
+                if channels == 4
+                else QImage.Format.Format_RGB888
+            )
+            img = QImage(frame.data, w, h, w * channels, fmt)
+            buf = QBuffer()
+            buf.open(QIODevice.OpenModeFlag.WriteOnly)
+            img.save(buf, "PNG")
+            return bytes(buf.data())
+        except Exception:
+            return None
+
     def save_session(self):
         file_dialog = QFileDialog()
         file_dialog.setDefaultSuffix("pickle")
         file_path, _ = file_dialog.getSaveFileName(
-            self, "Save File", "", "Pickle Files (*.pickle)"
+            self,
+            "Save File",
+            "",
+            "Session Files (*.pickle)",
         )
         if not file_path:
             return -1
@@ -1305,13 +1590,10 @@ class App(QMainWindow):
         self.recent_menu.setEnabled(len(files_to_show) > 0)
 
     def _add_file_to_recent(self, file_path):
-        if file_path in Settings.ui.recent_files:
-            return None
-
-        recent_files = [file_path] + list(Settings.ui.recent_files)
-        while len(recent_files) > Settings.ui.max_recent_files:
-            recent_files.pop()
-        Settings.ui.recent_files = list(dict.fromkeys(recent_files))
+        recent_files = [file_path] + [
+            f for f in Settings.ui.recent_files if f != file_path
+        ]
+        Settings.ui.recent_files = recent_files[: Settings.ui.max_recent_files]
 
         self.update_recent_files_menu()
 
@@ -1322,7 +1604,7 @@ class App(QMainWindow):
 
         file_path = action.data()
         if not os.path.exists(file_path):
-            QMessageBox.critical(self, "Error", f"{file_path} not found.")
+            MosaicMessageBox.critical(self, "Error", f"{file_path} not found.")
             recent_files = list(Settings.ui.recent_files)
             try:
                 recent_files.remove(file_path)
@@ -1331,7 +1613,9 @@ class App(QMainWindow):
             Settings.ui.recent_files = recent_files
             return self.update_recent_files_menu()
 
-        if file_path.endswith(".pickle"):
+        from .formats.session import is_session_file
+
+        if is_session_file(file_path):
             return self._load_session(file_path)
         return self._open_files([file_path])
 
@@ -1348,55 +1632,49 @@ class App(QMainWindow):
             dialog.exec()
 
         # We assign the thread to keep it alive
-        self.update_checker = UpdateChecker(__version__)
+        self.update_checker = UpdateChecker(__version__, parent=self)
         self.update_checker.update_available.connect(_show_update_dialog)
         self.update_checker.start()
 
 
-def show_large_file_warning() -> bool:
-    if Settings.warnings.suppress_large_file_warning:
-        return True
+def _read_files_worker(cdata, filenames, file_parameters):
+    """I/O worker: read each file into ``cdata`` and report progress.
 
-    msg_box = QMessageBox()
-    msg_box.setIcon(QMessageBox.Icon.Warning)
-    msg_box.setWindowTitle("Large File Detected")
+    Parameters
+    ----------
+    cdata : MosaicData
+        Application data layer. ``cdata.open_file`` mutates the raw
+        ``DataContainer`` instances in place; actor/render work is
+        deferred to the GUI callback.
+    filenames : list of str
+        Files to read, in order.
+    file_parameters : dict
+        Map of filename to per-file import parameters from
+        :class:`ImportDataDialog`.
 
-    msg_box.setText(
-        "Large File Warning\n\n"
-        "We found one or more files exceeding 10 million points."
-    )
+    Returns
+    -------
+    list of tuple
+        ``(filename, exception_or_None)`` per input file, in input order.
+    """
+    from pathlib import Path
+    from .parallel import report_progress
 
-    msg_box.setInformativeText(
-        "Please make sure this is a segmentation and not raw data. "
-        "If you are on a laptop without dedicated GPU, consider reducing the number "
-        "of points for a smooth experience using Segmentation > Downsample "
-        "or process in batches."
-    )
-
-    msg_box.setStandardButtons(
-        QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel
-    )
-    msg_box.setDefaultButton(QMessageBox.StandardButton.Ok)
-    msg_box.button(QMessageBox.StandardButton.Ok).setText("Accept")
-    msg_box.button(QMessageBox.StandardButton.Cancel).setText("Skip File")
-
-    help_button = msg_box.addButton("Help", QMessageBox.ButtonRole.HelpRole)
-
-    def open_documentation():
-        import webbrowser
-
-        webbrowser.open(
-            "https://kosinskilab.github.io/mosaic/tutorial/reference/troubleshooting.html#performance-issues"
-        )
-
-    help_button.clicked.connect(open_documentation)
-
-    checkbox = QCheckBox("Don't show this warning again")
-    msg_box.setCheckBox(checkbox)
-
-    result = msg_box.exec()
-
-    if checkbox.isChecked():
-        Settings.warnings.suppress_large_file_warning = True
-
-    return result == QMessageBox.StandardButton.Ok
+    results = []
+    total = len(filenames)
+    for i, fn in enumerate(filenames):
+        report_progress(current=i, total=total, message=Path(fn).name)
+        params = file_parameters.get(fn, {})
+        try:
+            cdata.open_file(
+                fn,
+                offset=params.get("offset", 0),
+                scale=params.get("scale", 1),
+                sampling_rate=params.get("sampling_rate", 1),
+                segmentation=params.get("render_as_segmentation", False),
+            )
+            results.append((fn, None))
+        except Exception as e:
+            results.append((fn, e))
+    report_progress(current=total, total=total)
+    return results

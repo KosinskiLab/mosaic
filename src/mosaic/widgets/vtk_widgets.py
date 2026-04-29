@@ -1,12 +1,13 @@
 """
 VTK-based widgets for 3D visualization.
 
-Copyright (c) 2024-2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 __all__ = [
+    "AXIS_COLORS",
     "LegendWidget",
     "ScaleBarWidget",
     "AxesWidget",
@@ -22,7 +23,10 @@ from vtk import (
     vtkAxesActor,
     vtkOrientationMarkerWidget,
 )
-from qtpy.QtWidgets import QMessageBox
+
+from ..stylesheets import Colors
+
+AXIS_COLORS = Colors.AXIS
 
 
 class LegendWidget:
@@ -57,10 +61,9 @@ class LegendWidget:
         self.widget.GetScalarBarRepresentation().SetShowBorder(False)
         self.widget.ProcessEventsOff()
 
-        self.title = None
-        self.visible = False
-        self.orientation = "vertical"
-        self.set_orientation(self.orientation)
+        self.scalar_bar.SetOrientationToVertical()
+        self.scalar_bar.SetTextPositionToPrecedeScalarBar()
+        self.scalar_bar.SetTextPad(-4)
 
         default_lut = vtk.vtkLookupTable()
         default_lut.SetHueRange(0.667, 0.0)
@@ -71,42 +74,24 @@ class LegendWidget:
         self.set_lookup_table(default_lut)
 
     def set_lookup_table(self, lut, title=""):
-        self.title = title
         self.scalar_bar.SetLookupTable(lut)
-        self.scalar_bar.SetTitle(title)
+        display_title = f"{title}\n" if title else title
+        self.scalar_bar.SetTitle(display_title)
 
         return self.interactor.Render()
 
-    def set_orientation(self, orientation):
-        is_vertical = orientation.lower() == "vertical"
-
-        self.orientation = "vertical"
-        if is_vertical:
-            self.scalar_bar.SetOrientationToVertical()
-            self.scalar_bar.SetTextPositionToPrecedeScalarBar()
-            self.scalar_bar.SetTextPad(-4)
-        else:
-            self.orientation = "horizontal"
-            self.scalar_bar.SetOrientationToHorizontal()
-            self.scalar_bar.SetTextPositionToSucceedScalarBar()
-            self.scalar_bar.SetTextPad(0)
-
-        self.interactor.Render()
-
     def show(self):
-        if self.visible:
+        if self.widget.GetEnabled():
             return None
 
         self.widget.On()
-        self.visible = True
         return self.interactor.Render()
 
     def hide(self):
-        if not self.visible:
+        if not self.widget.GetEnabled():
             return None
 
         self.widget.Off()
-        self.visible = False
         return self.interactor.Render()
 
 
@@ -114,7 +99,7 @@ class ScaleBarWidget:
     """VTK Scale Bar widget for adding distance indicators to the vtk viewer."""
 
     def __init__(
-        self, renderer: vtk.vtkRenderer, interactor: vtk.vtkRenderWindowInteractor
+        self, renderer: "vtk.vtkRenderer", interactor: "vtk.vtkRenderWindowInteractor"
     ):
         self.renderer = renderer
         self.interactor = interactor
@@ -296,19 +281,16 @@ class BoundingBoxManager:
 
     def _create_session_bounds(self):
         """Create session bounds from cdata.shape"""
-        if not hasattr(self.cdata, "shape") or self.cdata.shape is None:
-            QMessageBox.warning(
+        if (shape := self.cdata._data.metadata.get("physical_shape")) is None:
+            from .message_box import MosaicMessageBox
+
+            return MosaicMessageBox.warning(
                 None,
                 "Session Bound Unavailable",
-                "No session bounding box is available.\n\n"
-                "To use this feature, open a file using 'File > Load Session', "
-                "or a session saved after opening a file using Load Session. "
-                "This will provide the original volume boundaries, useful for instance "
-                "for volume segmentations.",
+                "Session box unavailable. Load some data first.",
             )
-            return
 
-        self.session_box_actor = create_bounding_box_actor(self.cdata.shape)
+        self.session_box_actor = create_bounding_box_actor(shape)
         self.renderer.AddActor(self.session_box_actor)
 
     def _create_dataset_bounds(self):
@@ -362,11 +344,10 @@ class AxesWidget:
             text_actor.SetTextScaleModeToNone()
             text_actor.GetTextProperty().SetFontSize(12)
 
-        # Create orientation marker widget
         self.orientation_marker = vtkOrientationMarkerWidget()
         self.orientation_marker.SetOrientationMarker(self.axes_actor)
         self.orientation_marker.SetInteractor(interactor)
-        self.orientation_marker.SetViewport(0.0, 0.0, 0.2, 0.2)
+        self.orientation_marker.SetViewport(0.0, 0.0, 0.15, 0.15)
         self.orientation_marker.SetEnabled(1)
         self.orientation_marker.InteractiveOff()
         self.orientation_marker.SetOutlineColor(0.93, 0.57, 0.13)
@@ -382,13 +363,9 @@ class AxesWidget:
 
     def set_colored(self, colored: bool):
         self.colored = colored
-
-        colors = [(0.5, 0.5, 0.5)] * 3
-        if self.colored:
-            colors = [(0.8, 0.2, 0.2), (0.26, 0.65, 0.44), (0.2, 0.4, 0.8)]
+        colors = [(0.5, 0.5, 0.5)] * 3 if not colored else AXIS_COLORS
 
         for index, axis in enumerate(["X", "Y", "Z"]):
-            # Color both shaft and tip for a cohesive modern look
             tip_prop = getattr(self.axes_actor, f"Get{axis}AxisTipProperty")()
             tip_prop.SetColor(*colors[index])
             shaft_prop = getattr(self.axes_actor, f"Get{axis}AxisShaftProperty")()

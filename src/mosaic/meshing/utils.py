@@ -1,7 +1,7 @@
 """
 Utilities for triangular meshes.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -16,7 +16,6 @@ from typing import List, Dict
 from tempfile import NamedTemporaryFile
 
 import numpy as np
-import open3d as o3d
 
 __all__ = [
     "to_open3d",
@@ -33,7 +32,9 @@ __all__ = [
 ]
 
 
-def to_open3d(vertices, faces, normals=None) -> o3d.geometry.TriangleMesh:
+def to_open3d(vertices, faces, normals=None):
+    import open3d as o3d
+
     ret = o3d.geometry.TriangleMesh()
     ret.vertices = o3d.utility.Vector3dVector(np.asarray(vertices, dtype=np.float64))
     ret.triangles = o3d.utility.Vector3iVector(np.asarray(faces, dtype=np.int32))
@@ -45,11 +46,13 @@ def to_open3d(vertices, faces, normals=None) -> o3d.geometry.TriangleMesh:
 
 
 def _compute_edge_lengths(filename):
+    import open3d as o3d
+
     mesh = o3d.io.read_triangle_mesh(filename)
     return compute_edge_lengths(mesh)
 
 
-def compute_edge_lengths(mesh: o3d.geometry.TriangleMesh) -> np.ndarray:
+def compute_edge_lengths(mesh) -> np.ndarray:
     return _edge_lengths(
         vertices=np.asarray(mesh.vertices),
         faces=np.asarray(mesh.triangles),
@@ -168,6 +171,8 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
 
     if not mesh.has_triangle_normals():
         mesh = mesh.compute_vertex_normals()
+
+    import open3d as o3d
 
     o3d.io.write_triangle_mesh(temp_mesh, mesh)
 
@@ -340,6 +345,8 @@ def fill_mesh(vertices, triangles, voxel_size):
     grid_min = vertices.min(axis=0) - padding
     grid_max = vertices.max(axis=0) + padding
     grid_shape = np.ceil((grid_max - grid_min) / voxel_size).astype(int)
+
+    import open3d as o3d
 
     scene = o3d.t.geometry.RaycastingScene()
     mesh_t = o3d.t.geometry.TriangleMesh.from_legacy(to_open3d(vertices, triangles))

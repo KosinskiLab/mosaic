@@ -1,7 +1,7 @@
 """
 Slider widgets for the GUI.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -27,6 +27,7 @@ class SliderRow(QWidget):
     """A row with label, slider, and value display."""
 
     valueChanged = Signal(float)
+    valueCommitted = Signal(float)
 
     def __init__(
         self,
@@ -40,10 +41,12 @@ class SliderRow(QWidget):
         steps: int = 100,
         exponent: float = 1.0,
         values: list = None,
+        formatter=None,
         parent=None,
     ):
         super().__init__(parent)
         self._values = values
+        self._formatter = formatter
         if values:
             self.min_val, self.max_val = 0, len(values) - 1
             self.steps = len(values) - 1
@@ -69,14 +72,14 @@ class SliderRow(QWidget):
         self.slider.setMaximum(self.steps)
         self.slider.setValue(self._value_to_slider(default))
         self.slider.valueChanged.connect(self._on_slider_changed)
+        self.slider.sliderReleased.connect(self._on_slider_released)
 
         self.value_label = QLabel()
-        self.value_label.setStyleSheet("QLabel { min-width: 45px; text-align: right;}")
-
         self.value_label.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
         self._update_value_label(default)
+        self._resize_label()
 
         if label_position == "left":
             layout.addWidget(self.label_widget, 0, Qt.AlignmentFlag.AlignVCenter)
@@ -108,9 +111,24 @@ class SliderRow(QWidget):
             ratio = 1.0 - (1.0 - ratio) ** self.exponent
         return self.min_val + ratio * (self.max_val - self.min_val)
 
+    def _resize_label(self):
+        fm = self.value_label.fontMetrics()
+        if self._formatter is not None:
+            candidates = self._values if self._values else [self.min_val, self.max_val]
+            max_text = max((self._formatter(v) for v in candidates), key=len)
+        elif self.decimals == 0:
+            max_text = "0" * len(str(int(self.max_val))) + self.suffix
+        else:
+            lo = f"{self.min_val:.{self.decimals}f}"
+            hi = f"{self.max_val:.{self.decimals}f}"
+            max_text = (lo if len(lo) > len(hi) else hi) + self.suffix
+        self.value_label.setFixedWidth(fm.horizontalAdvance(max_text) + 2)
+
     def _update_value_label(self, value: float):
         """Update the value label display."""
-        if self.decimals == 0:
+        if self._formatter is not None:
+            text = self._formatter(value)
+        elif self.decimals == 0:
             text = f"{int(value)}{self.suffix}"
         else:
             text = f"{value:.{self.decimals}f}{self.suffix}"
@@ -121,6 +139,10 @@ class SliderRow(QWidget):
         value = self._slider_to_value(pos)
         self._update_value_label(value)
         self.valueChanged.emit(value)
+
+    def _on_slider_released(self):
+        """Emit committed value when user releases the slider handle."""
+        self.valueCommitted.emit(self._slider_to_value(self.slider.value()))
 
     def value(self) -> float:
         """Get the current value."""
@@ -139,6 +161,7 @@ class SliderRow(QWidget):
             self.steps = max(1, int(max_val - min_val))
             self.slider.setMaximum(self.steps)
         self._update_value_label(self.value())
+        self._resize_label()
 
     def setEnabled(self, enabled: bool):
         """Enable or disable the widget."""
@@ -163,20 +186,26 @@ class DualHandleSlider(QWidget):
         self.setMinimumHeight(40)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-        # Track which handle is being dragged
         self.dragging_handle = None
         self.handle_size = 16
 
-        # Colors matching QSlider_style from stylesheets.py
-        self.groove_color = QColor("#e2e8f0")
+        self._apply_colors()
+
+    def _apply_colors(self):
+        """Set all colors from the current Colors palette."""
+        self.groove_color = QColor(Colors.BORDER_DARK)
         self.active_color = QColor(Colors.BORDER_HOVER)
-        self.handle_color = QColor("#ffffff")
+        self.handle_color = QColor(Colors.SURFACE)
         self.border_color = QColor(Colors.BORDER_DARK)
-        # Disabled colors
         self.groove_disabled = QColor(Colors.BG_TERTIARY)
         self.active_disabled = QColor(Colors.BORDER_DARK)
         self.handle_disabled = QColor(Colors.BG_SECONDARY)
-        self.border_disabled = QColor("#e2e8f0")
+        self.border_disabled = QColor(Colors.BORDER_DARK)
+
+    def _on_theme_changed(self):
+        """Re-create QColor instances from Colors after a theme switch."""
+        self._apply_colors()
+        self.update()
 
     def setRange(self, minimum, maximum):
         """Set the range of values the slider represents."""
@@ -230,7 +259,6 @@ class DualHandleSlider(QWidget):
             handle = self.handle_color
             border = self.border_color
 
-        # Draw track/groove
         track_y = self.height() // 2
         margin = self.handle_size
         track_width = self.width() - margin * 2
@@ -239,7 +267,6 @@ class DualHandleSlider(QWidget):
         painter.setBrush(QBrush(groove))
         painter.drawRoundedRect(margin, track_y - 2, track_width, 4, 2, 2)
 
-        # Draw active range
         lower_x = self._value_to_pixel(self.lower_pos)
         upper_x = self._value_to_pixel(self.upper_pos)
         range_width = upper_x - lower_x
@@ -266,7 +293,6 @@ class DualHandleSlider(QWidget):
         lower_x = self._value_to_pixel(self.lower_pos)
         upper_x = self._value_to_pixel(self.upper_pos)
 
-        # Check which handle is closer
         dist_to_lower = abs(x - lower_x)
         dist_to_upper = abs(x - upper_x)
 
@@ -332,6 +358,16 @@ class MiniHistogram(QWidget):
         self.placeholder_color = QColor(Colors.BORDER_DARK)
         self.placeholder_color.setAlpha(30)
 
+    def _on_theme_changed(self):
+        """Re-create QColor instances from Colors after a theme switch."""
+        self.hist_color = QColor(Colors.BORDER_HOVER)
+        self.hist_color.setAlpha(100)
+        self.selected_color = QColor(Colors.PRIMARY)
+        self.selected_color.setAlpha(160)
+        self.placeholder_color = QColor(Colors.BORDER_DARK)
+        self.placeholder_color.setAlpha(30)
+        self.update()
+
     def setData(self, values):
         """Compute histogram from values."""
         if values is None or len(values) == 0:
@@ -371,7 +407,6 @@ class MiniHistogram(QWidget):
         draw_width = width - 2 * self.margin
 
         if self._hist is None or len(self._hist) == 0:
-            # Draw placeholder
             painter.setPen(Qt.NoPen)
             painter.setBrush(QBrush(self.placeholder_color))
             painter.drawRect(self.margin, 0, draw_width, height)
@@ -423,6 +458,11 @@ class HistogramRangeSlider(QWidget):
 
         self._slider.rangeChanged.connect(self._on_range_changed)
         self._slider.rangeReleased.connect(self.rangeReleased)
+
+    def _on_theme_changed(self):
+        """Propagate theme change to child widgets."""
+        self._histogram._on_theme_changed()
+        self._slider._on_theme_changed()
 
     def _on_range_changed(self, lower, upper):
         self._histogram.setSelection(lower, upper)

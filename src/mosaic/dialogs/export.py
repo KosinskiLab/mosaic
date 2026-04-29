@@ -15,16 +15,9 @@ from qtpy.QtWidgets import (
     QLineEdit,
     QFileDialog,
 )
-import qtawesome as qta
-
+from ..icons import icon as _icon
 from ..widgets import DialogFooter, create_setting_widget, get_widget_value
-from ..stylesheets import (
-    QGroupBox_style,
-    QPushButton_style,
-    QLineEdit_style,
-    QCheckBox_style,
-    Colors,
-)
+from ..stylesheets import Colors, Typography
 
 
 class StyleableButton(QPushButton):
@@ -47,9 +40,8 @@ class StyleableButton(QPushButton):
         layout.setSpacing(4)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        icon = qta.icon(icon_name, color=Colors.ICON)
         icon_label = QLabel()
-        icon_label.setPixmap(icon.pixmap(icon_size, icon_size))
+        icon_label.setPixmap(_icon(icon_name).pixmap(icon_size, icon_size))
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(icon_label)
 
@@ -60,7 +52,9 @@ class StyleableButton(QPushButton):
         if description and not is_compact:
             desc_label = QLabel(description)
             desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            desc_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+            desc_label.setStyleSheet(
+                f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+            )
             desc_label.setWordWrap(True)
             layout.addWidget(desc_label)
 
@@ -99,7 +93,6 @@ class ExportDialog(QDialog):
         self.setWindowTitle("Export Data")
 
         self.names = names or []
-        self.resize(700, 460)
         self.file_names = [f"_{i}" for i in range(len(self.names))]
 
         if enabled_categories is None:
@@ -110,13 +103,13 @@ class ExportDialog(QDialog):
                 "icon": "ph.dots-nine",
                 "label": "Point Cloud",
                 "description": "Export coordinates and orientations.",
-                "formats": ["star", "tsv", "xyz"],
+                "formats": ["star", "ndjson", "xyz"],
             },
             "mesh": {
                 "icon": "ph.triangle",
                 "label": "Mesh",
                 "description": "Export as a surface mesh.",
-                "formats": ["obj", "stl", "ply"],
+                "formats": ["obj", "ply", "tsi"],
             },
             "volume": {
                 "icon": "ph.cube",
@@ -149,9 +142,18 @@ class ExportDialog(QDialog):
                 },
             },
             "tsv": {},
+            "ndjson": {},
             "obj": {},
-            "stl": {},
             "ply": {},
+            "tsi": {
+                "tsi_format": {
+                    "type": "boolean",
+                    "label": "TSI format",
+                    "description": "Use .tsi format with version header (otherwise .q)",
+                    "default": True,
+                    "parameter": "tsi_format",
+                },
+            },
         }
 
         self.selected_category = next(
@@ -170,9 +172,7 @@ class ExportDialog(QDialog):
         self.set_defaults(list(parameters.keys()), list(parameters.values()))
 
         self.setup_ui()
-        self.setStyleSheet(
-            QGroupBox_style + QPushButton_style + QLineEdit_style + QCheckBox_style
-        )
+        self.resize(700, 460)
 
     def set_defaults(self, keys, values):
         """Update default values for format settings"""
@@ -198,7 +198,7 @@ class ExportDialog(QDialog):
 
         content = QWidget()
         content_layout = QVBoxLayout(content)
-        content_layout.setContentsMargins(20, 20, 20, 10)
+        content_layout.setContentsMargins(10, 10, 10, 10)
         content_layout.setSpacing(16)
 
         export_group = QGroupBox("Export Type")
@@ -211,7 +211,6 @@ class ExportDialog(QDialog):
         self.setup_format_buttons()
         content_layout.addWidget(format_group)
 
-        # -- Bottom row: Settings | Output side by side --
         bottom_row = QHBoxLayout()
         bottom_row.setSpacing(16)
 
@@ -246,7 +245,7 @@ class ExportDialog(QDialog):
 
         self.preview_label = QLabel()
         self.preview_label.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: 12px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.LABEL}px;"
         )
         output_layout.addWidget(self.preview_label)
         self._update_preview()
@@ -260,10 +259,10 @@ class ExportDialog(QDialog):
 
         main_layout.addWidget(content, 1)
 
-        footer = DialogFooter(dialog=self, margin=(20, 10, 20, 10))
+        footer = DialogFooter(dialog=self, margin=(10, 10, 10, 10))
         self.export_button = footer.accept_button
         self.export_button.setText("Export")
-        self.export_button.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
+        self.export_button.setIcon(_icon("ph.download", role="primary"))
         main_layout.addWidget(footer)
 
     def _update_preview(self):
@@ -468,6 +467,9 @@ class ExportDialog(QDialog):
 
     def accept(self):
         ext = self.selected_format
+        if ext == "tsi":
+            settings = self.get_current_settings()
+            ext = "tsi" if settings.get("tsi_format", True) else "q"
         file_filter = f"{ext.upper()} Files (*.{ext})"
         path, _ = QFileDialog.getSaveFileName(self, "Export", "", file_filter)
 

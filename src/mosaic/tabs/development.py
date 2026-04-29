@@ -9,11 +9,11 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QSpinBox,
     QLabel,
-    QMessageBox,
     QFileDialog,
 )
 
 from ..widgets.ribbon import create_button
+from ..widgets import MosaicMessageBox
 
 
 class PerformanceMonitor:
@@ -83,7 +83,7 @@ class DevelopmentTab(QWidget):
         self.volume_viewer = kwargs.get("volume_viewer", None)
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(5)
+        layout.setSpacing(4)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.ribbon)
 
@@ -137,6 +137,21 @@ class DevelopmentTab(QWidget):
             geometry._data.Modified()
         self.cdata.data.render()
 
+    def _stream_test_zarr(self):
+        """Load a preset CZI tomogram via Zarr streaming."""
+        if self.volume_viewer is None:
+            return None
+        url = (
+            "s3://cryoet-data-portal-public/10473/"
+            "210610_Lamela1_Position_35/Reconstructions/"
+            "VoxelSpacing5.003/Tomograms/100/"
+            "210610_Lamela1_Position_35.zarr"
+        )
+        try:
+            self.volume_viewer.primary.load_volume(url)
+        except Exception as e:
+            print(f"Zarr streaming error: {e}")
+
     def show_ribbon(self):
         self.ribbon.clear()
         cluster_actions = [
@@ -162,6 +177,15 @@ class DevelopmentTab(QWidget):
             "Translate all geometries by offset",
         )
         self.ribbon.add_section("Translation", [translation_widget, translate_button])
+
+        zarr_button = create_button(
+            "Stream Zarr",
+            "mdi.cloud-download",
+            self,
+            self._stream_test_zarr,
+            "Stream a CZI tomogram via OME-Zarr",
+        )
+        self.ribbon.add_section("Zarr", [zarr_button])
 
         if _HAS_ANNOTATION:
             self.ribbon.add_section(
@@ -397,7 +421,7 @@ class DevelopmentTab(QWidget):
                 expected_spacing=expected_spacing,
             )
         except ValueError as e:
-            QMessageBox.warning(self, "Shape Mismatch", str(e))
+            MosaicMessageBox.warning(self, "Shape Mismatch", str(e))
             return
 
         if hasattr(annotation, "metadata") and annotation.metadata.get("labels"):
@@ -413,12 +437,13 @@ class DevelopmentTab(QWidget):
             self._overlay.annotation = annotation
             self._overlay.invalidate_lut()
             if self._overlay.active:
+                self._overlay._build_overlay()
                 self._overlay._refresh_overlay_slice()
 
     def _export_mask(self):
         annotation = self._overlay.annotation if self._overlay else None
         if annotation is None:
-            QMessageBox.information(self, "No Annotations", "Nothing to export.")
+            MosaicMessageBox.information(self, "No Annotations", "Nothing to export.")
             return
         path, _ = QFileDialog.getSaveFileName(
             self, "Export Annotation Mask", "", "NumPy Files (*.npz)"
@@ -433,13 +458,13 @@ class DevelopmentTab(QWidget):
 
     def _mask_to_clusters(self):
         if self._overlay is None or self._overlay.annotation is None:
-            QMessageBox.information(self, "No Annotations", "Nothing to convert.")
+            MosaicMessageBox.information(self, "No Annotations", "Nothing to convert.")
             return
         from ..geometry import Geometry
 
         active = self._labels.active
         if active is None:
-            QMessageBox.information(self, "No Label", "Select a label first.")
+            MosaicMessageBox.information(self, "No Label", "Select a label first.")
             return
 
         annotation = self._overlay.annotation
@@ -447,7 +472,9 @@ class DevelopmentTab(QWidget):
         mask = annotation.get_class_mask(active.id)
         coords = np.argwhere(mask > 0).astype(np.float32)
         if len(coords) == 0:
-            QMessageBox.information(self, "Empty", "Selected label has no annotations.")
+            MosaicMessageBox.information(
+                self, "Empty", "Selected label has no annotations."
+            )
             return
         points = coords * sampling
         geom = Geometry(points=points, sampling_rate=sampling)
@@ -459,7 +486,7 @@ class DevelopmentTab(QWidget):
 
     def _clusters_to_mask(self):
         if self._overlay is None or self._overlay.annotation is None:
-            QMessageBox.information(
+            MosaicMessageBox.information(
                 self,
                 "No Annotation Volume",
                 "Start annotation first to create a volume.",
@@ -467,7 +494,7 @@ class DevelopmentTab(QWidget):
             return
         geometries = self.cdata.data.get_selected_geometries()
         if not geometries:
-            QMessageBox.information(self, "No Selection", "Select clusters first.")
+            MosaicMessageBox.information(self, "No Selection", "Select clusters first.")
             return
         annotation = self._overlay.annotation
         sampling = annotation.sampling_rate
@@ -496,7 +523,7 @@ class DevelopmentTab(QWidget):
     def _clear_annotations(self):
         if self._overlay is None or self._overlay.annotation is None:
             return
-        ret = QMessageBox.question(
+        ret = MosaicMessageBox.question(
             self,
             "Clear Annotations",
             "Remove all annotations?",
@@ -528,7 +555,9 @@ class DevelopmentTab(QWidget):
         import tempfile
 
         if self._overlay is None or self._overlay.annotation is None:
-            QMessageBox.information(self, "No Annotations", "Annotate slices first.")
+            MosaicMessageBox.information(
+                self, "No Annotations", "Annotate slices first."
+            )
             return None
 
         fg_labels = self._labels.get_foreground_ids()
@@ -536,7 +565,7 @@ class DevelopmentTab(QWidget):
         if not fg_labels:
             active = self._labels.active
             if active is None:
-                QMessageBox.information(
+                MosaicMessageBox.information(
                     self, "No Label", f"Select a label to {action}."
                 )
                 return None
@@ -544,12 +573,14 @@ class DevelopmentTab(QWidget):
 
         tomogram_path = getattr(self.volume_viewer.primary, "source_path", None)
         if not tomogram_path:
-            QMessageBox.warning(self, "No Source Path", "Re-load the volume.")
+            MosaicMessageBox.warning(self, "No Source Path", "Re-load the volume.")
             return None
 
         output_dir = self._tool_panel.get_output_dir() if self._tool_panel else ""
         if not output_dir:
-            QMessageBox.information(self, "No Output", "Set an output directory first.")
+            MosaicMessageBox.information(
+                self, "No Output", "Set an output directory first."
+            )
             return None
 
         annotation = self._overlay.annotation
@@ -567,6 +598,7 @@ class DevelopmentTab(QWidget):
 
         from ..models.dataset import build_manifest
 
+        dense_masks = self._tool_panel is not None and self._tool_panel.dense_masks
         manifest = build_manifest(
             tomogram_path=tomogram_path,
             annotation_path=annotation_path,
@@ -575,6 +607,7 @@ class DevelopmentTab(QWidget):
             axis=axis,
             patch_size=annotation.patch_size,
             mode=mode,
+            dense_masks=dense_masks,
         )
 
         fg_names = [
@@ -616,7 +649,7 @@ class DevelopmentTab(QWidget):
 
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
-        QMessageBox.information(
+        MosaicMessageBox.information(
             self, "Done", f"Extracted {len(dataset)} patches to:\n{extract_dir}"
         )
 
@@ -672,15 +705,17 @@ class DevelopmentTab(QWidget):
         from ..parallel import submit_task
 
         def _on_complete(result):
-            import json
+            import torch, io
 
-            result["config"]["label_name"] = label_name
-            result["config"]["axis"] = axis
-            result["config"]["source_spacing"] = spacing
-            with open(save_path, "wb") as f:
-                f.write(result["model_bytes"])
-            with open(save_path.replace(".pt", ".json"), "w") as f:
-                json.dump(result["config"], f)
+            config = result["config"]
+            config["label_name"] = label_name
+            config["axis"] = axis
+            config["source_spacing"] = spacing
+            checkpoint = torch.load(
+                io.BytesIO(result["model_bytes"]), weights_only=False
+            )
+            checkpoint["config"] = config
+            torch.save(checkpoint, save_path)
             metrics = result["metrics"]
             if self._tool_panel is not None:
                 self._tool_panel.predict_status.setText(
@@ -716,20 +751,27 @@ class DevelopmentTab(QWidget):
     def _run_inference(self):
         model_path = self._tool_panel.get_model_path() if self._tool_panel else ""
         if not model_path:
-            QMessageBox.information(self, "No Model", "Select a model file.")
+            MosaicMessageBox.information(self, "No Model", "Select a model file.")
             return
 
-        import json, os
+        import torch
 
-        config_path = model_path.rsplit(".", 1)[0] + ".json"
-        if not os.path.exists(config_path):
-            QMessageBox.warning(self, "Missing Config", f"Expected: {config_path}")
+        try:
+            checkpoint = torch.load(model_path, map_location="cpu", weights_only=False)
+        except Exception as e:
+            MosaicMessageBox.warning(self, "Load Error", str(e))
             return
 
-        with open(model_path, "rb") as f:
-            model_bytes = f.read()
-        with open(config_path, "r") as f:
-            config = json.load(f)
+        if isinstance(checkpoint, dict) and "config" in checkpoint:
+            config = checkpoint["config"]
+        else:
+            MosaicMessageBox.warning(
+                self,
+                "Invalid Model",
+                "File does not contain an embedded config. "
+                "Re-train or use a checkpoint saved by this version.",
+            )
+            return
 
         volume = self._get_volume()
         if volume is not None and "source_spacing" in config:
@@ -737,7 +779,7 @@ class DevelopmentTab(QWidget):
             curr_sp = np.array(volume.GetSpacing())
             rel_diff = np.abs(train_sp - curr_sp) / np.maximum(train_sp, 1e-8)
             if np.any(rel_diff > 0.2):
-                ret = QMessageBox.question(
+                ret = MosaicMessageBox.question(
                     self,
                     "Spacing Mismatch",
                     f"Model trained at {train_sp.tolist()} but volume is "
@@ -800,7 +842,7 @@ class DevelopmentTab(QWidget):
             run_inference,
             _on_complete,
             volume_array,
-            model_bytes,
+            model_path,
             config,
             axis=axis,
         )

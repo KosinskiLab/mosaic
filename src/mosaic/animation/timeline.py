@@ -2,7 +2,8 @@ from qtpy.QtCore import Qt, QRect, Signal
 from qtpy.QtWidgets import QWidget, QScrollArea, QApplication
 from qtpy.QtGui import QPainter, QColor, QPen, QFont, QMouseEvent
 
-import qtawesome as qta
+from ..icons import icon
+from ..stylesheets import Colors, Typography
 
 
 class TimelineContent(QWidget):
@@ -94,7 +95,7 @@ class TimelineContent(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         font = QFont(painter.font())
-        font.setPointSize(8)
+        font.setPixelSize(Typography.CAPTION)
         painter.setFont(font)
 
         painter.setPen(QPen(Qt.GlobalColor.black, 1))
@@ -122,7 +123,7 @@ class TimelineContent(QWidget):
             first_visible_tick += frames_per_tick
 
         metadata_font = QFont(painter.font())
-        metadata_font.setPointSize(12)
+        metadata_font.setPixelSize(Typography.LABEL)
         painter.setFont(metadata_font)
 
         for frame in range(
@@ -171,11 +172,9 @@ class TimelineContent(QWidget):
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRoundedRect(track_rect, radius, radius)
 
-            # Draw left accent border
             accent_rect = QRect(int(x), track_y, 3, self.track_height - 10)
             painter.fillRect(accent_rect, track_color)
 
-            # Draw track name with track color
             if width > 40:
                 painter.setPen(track_color)
                 text_rect = QRect(
@@ -187,7 +186,6 @@ class TimelineContent(QWidget):
                     track.animation.name,
                 )
 
-            # Draw remove button if visible
             remove_x = int(end_x - self.remove_button_size - 5)
             remove_y = track_y + (self.track_height - 10 - self.remove_button_size) // 2
             if start_x < remove_x < self.width():
@@ -196,15 +194,17 @@ class TimelineContent(QWidget):
                     if self.hovered_remove_button == track.id
                     else QColor("#9ca3af")
                 )
-                icon = qta.icon("ph.trash", color=icon_color)
-                pixmap = icon.pixmap(self.remove_button_size, self.remove_button_size)
+                trash_icon = icon("ph.trash", color=icon_color)
+                pixmap = trash_icon.pixmap(
+                    self.remove_button_size, self.remove_button_size
+                )
                 painter.drawPixmap(remove_x, remove_y, pixmap)
 
             track_y += self.track_height
 
         playhead_x = self.frame_to_x(self.current_frame)
         if 0 <= playhead_x <= self.width():
-            painter.setPen(QPen(Qt.GlobalColor.red, 1))
+            painter.setPen(QPen(QColor(Colors.BORDER_HOVER), 1))
             painter.drawLine(int(playhead_x), 0, int(playhead_x), self.height())
 
     def mousePressEvent(self, event: QMouseEvent):
@@ -376,7 +376,6 @@ class TimelineWidget(QScrollArea):
 
     def set_current_frame(self, frame):
         self.content.set_current_frame(frame)
-        QApplication.processEvents()
 
     @property
     def selected_track(self):

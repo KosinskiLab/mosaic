@@ -1,5 +1,6 @@
 from functools import partial
 
+import warnings
 import numpy as np
 from qtpy.QtWidgets import QWidget, QVBoxLayout
 
@@ -13,6 +14,7 @@ from ..parallel import submit_task, submit_task_batch
 def _repair_mesh(
     geometry,
     max_hole_size=-1,
+    bridge_alpha=0.0,
     smoothness=0,
     curvature_weight=0,
     pressure=0,
@@ -22,9 +24,8 @@ def _repair_mesh(
 ):
     import igl
     from .. import meshing
+    from ..geometry import GeometryData
     from ..parametrization import TriangularMesh
-
-    fair = not (smoothness == 0 and curvature_weight == 0 and pressure == 0)
 
     model = geometry.model
     model.mesh.remove_non_manifold_edges()
@@ -33,47 +34,56 @@ def _repair_mesh(
     model.mesh.remove_unreferenced_vertices()
     model.mesh.remove_duplicated_vertices()
 
-    vs = model.vertices
-    fs = model.triangles
+    vs = np.asarray(model.mesh.vertices, dtype=np.float64).copy()
+    fs = np.asarray(model.mesh.triangles).copy()
+    n_original_fs = len(fs)
 
-    out_fs = meshing.close_holes(vs, fs, max_hole_size)
-    if fair:
-        hole_fids = np.arange(len(fs), len(out_fs))
+    if bridge_alpha > 0:
+        fs = meshing.bridge_boundaries(vs, fs, alpha=bridge_alpha)
 
+    new_fs = meshing.close_holes(vs, fs, max_hole_size)
+    hole_fids = np.arange(n_original_fs, len(new_fs))
+
+    if not (smoothness == 0 and curvature_weight == 0 and pressure == 0):
         try:
-            mesh = meshing.remesh(meshing.to_open3d(vs, out_fs))
+            mesh = meshing.remesh(meshing.to_open3d(vs, new_fs))
             new_vs = np.asarray(mesh.vertices, dtype=np.float64)
-            fs = np.asarray(mesh.triangles)
-        except (ValueError, RuntimeError):
-            new_vs, fs = vs, out_fs
-
-        if fair_all:
-            vids = np.arange(len(new_vs))
-        else:
+            new_fs = np.asarray(mesh.triangles)
             _, face_ids, _ = igl.point_mesh_squared_distance(
-                new_vs, vs, out_fs.astype(np.int64)
+                new_vs, vs, new_fs.astype(np.int64)
             )
             vids = np.where(np.isin(face_ids, hole_fids))[0]
 
-        vs = new_vs
+        except (ValueError, RuntimeError) as e:
+            warnings.warn(
+                f"Remeshing failed: {e}. Falling back to Liepa triangulation."
+            )
+            new_vs, new_fs, _ = meshing.repair.triangulation_refine_leipa(
+                vs, new_fs, hole_fids, np.sqrt(2)
+            )
+            vids = np.arange(len(vs), len(new_vs))
+
+        if fair_all:
+            vids = np.arange(len(new_vs))
+
         if len(vids) > 0:
             vs = meshing.fair_mesh(
-                vs,
-                fs,
+                new_vs,
+                new_fs,
                 vids,
                 smoothness=smoothness,
                 curvature_weight=curvature_weight,
                 pressure=pressure,
                 n_ring=boundary_ring,
             )
+        else:
+            vs = new_vs
 
     if flip_normals:
-        fs = fs[:, ::-1]
-
-    from ..geometry import GeometryData
+        new_fs = new_fs[:, ::-1]
 
     return GeometryData(
-        model=TriangularMesh(meshing.to_open3d(vs, fs)),
+        model=TriangularMesh(meshing.to_open3d(vs, new_fs)),
         sampling_rate=geometry.sampling_rate.copy(),
         meta=geometry._meta.copy(),
     )
@@ -189,7 +199,7 @@ class ModelTab(QWidget):
         self.legend = legend
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(5)
+        layout.setSpacing(4)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.ribbon)
 
@@ -203,28 +213,28 @@ class ModelTab(QWidget):
                 "ph.circle",
                 self,
                 partial(func, "sphere"),
-                "Fit to selected clusters",
+                "Fit sphere to selected clusters",
             ),
             create_button(
                 "Ellipse",
                 "ph.link-simple-horizontal-break",
                 self,
                 partial(func, "ellipsoid"),
-                "Fit to selected clusters",
+                "Fit ellipsoid to selected clusters",
             ),
             create_button(
                 "Cylinder",
                 "ph.hexagon",
                 self,
                 partial(func, "cylinder"),
-                "Fit to selected clusters",
+                "Fit cylinder to selected clusters",
             ),
             create_button(
                 "RBF",
                 "ph.dots-nine",
                 self,
                 partial(func, "rbf"),
-                "Fit to selected clusters",
+                "Fit radial basis function surface to selected clusters",
                 RBF_SETTINGS,
             ),
             create_button(
@@ -232,7 +242,7 @@ class ModelTab(QWidget):
                 "ph.triangle",
                 self,
                 func,
-                "Fit to selected clusters",
+                "Reconstruct triangular mesh from selected clusters",
                 MethodRegistry.settings_dict("fit"),
             ),
             create_button(
@@ -240,7 +250,7 @@ class ModelTab(QWidget):
                 "ph.line-segments",
                 self,
                 partial(func, "spline"),
-                "Fit to selected clusters",
+                "Fit spline curve to selected clusters",
                 SPLINE_SETTINGS,
             ),
         ]
@@ -252,7 +262,7 @@ class ModelTab(QWidget):
                 "ph.broadcast",
                 self,
                 self._sample_parallel,
-                "Generate points from fitted model",
+                "Sample points from fitted model",
                 SAMPLE_SETTINGS,
             ),
         ]
@@ -264,7 +274,7 @@ class ModelTab(QWidget):
                 "ph.wrench",
                 self,
                 self._repair_mesh_parallel,
-                "Fix holes and topology issues",
+                "Fix holes and topology issues in mesh",
                 REPAIR_SETTINGS,
             ),
             create_button(
@@ -272,7 +282,7 @@ class ModelTab(QWidget):
                 "ph.arrows-clockwise",
                 self,
                 self._remesh_parallel,
-                "Adjust resolution and quality",
+                "Remesh by edge length, decimation or subdivision",
                 MethodRegistry.settings_dict("remesh"),
             ),
             create_button(
@@ -280,7 +290,7 @@ class ModelTab(QWidget):
                 "ph.drop",
                 self,
                 self._smooth_parallel,
-                "Reduce surface noise",
+                "Smooth mesh surface",
                 MethodRegistry.settings_dict("smooth"),
             ),
             create_button(
@@ -296,7 +306,7 @@ class ModelTab(QWidget):
                 "ph.cube",
                 self,
                 self._fill_parallel,
-                "Fill the interior of a closed mesh with points",
+                "Fill closed mesh interior with points",
             ),
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
@@ -312,7 +322,7 @@ class ModelTab(QWidget):
         for new_geom in geom:
 
             if isinstance(new_geom, GeometryData):
-                new_geom = Geometry(**new_geom.to_dict())
+                new_geom = new_geom.to_geometry()
 
             if isinstance(new_geom.model, TriangularMesh):
                 new_geom.change_representation("surface")
@@ -342,74 +352,100 @@ class ModelTab(QWidget):
         return ret
 
     def _repair_mesh_parallel(self, **kwargs):
-        for geometry in self._get_selected_meshes():
-            submit_task(
-                "Repair Mesh",
-                _repair_mesh,
-                self._default_callback,
-                geometry._geometry_data,
-                **kwargs,
-            )
+        submit_task_batch(
+            [
+                {
+                    "name": "Repair Mesh",
+                    "func": _repair_mesh,
+                    "callback": self._default_callback,
+                    "args": (geometry._geometry_data,),
+                    "kwargs": kwargs,
+                }
+                for geometry in self._get_selected_meshes()
+            ]
+        )
 
     def _fit_parallel(self, method: str, *args, **kwargs):
         from ..operations import GeometryOperations
 
-        for geometry in self.cdata.data.get_selected_geometries():
-            submit_task(
-                "Parametrization",
-                GeometryOperations.fit,
-                self._default_callback,
-                geometry._geometry_data,
-                method,
-                **kwargs,
-            )
+        submit_task_batch(
+            [
+                {
+                    "name": "Parametrization",
+                    "func": GeometryOperations.fit,
+                    "callback": self._default_callback,
+                    "args": (geometry._geometry_data, method),
+                    "kwargs": kwargs,
+                }
+                for geometry in self.cdata.data.get_selected_geometries()
+            ]
+        )
 
     def _smooth_parallel(self, method, **kwargs):
         from ..operations import GeometryOperations
 
-        for geometry in self._get_selected_meshes():
-            submit_task(
-                "Smooth",
-                GeometryOperations.smooth,
-                self._default_callback,
-                geometry._geometry_data,
-                method,
-                **kwargs,
-            )
+        submit_task_batch(
+            [
+                {
+                    "name": "Smooth",
+                    "func": GeometryOperations.smooth,
+                    "callback": self._default_callback,
+                    "args": (geometry._geometry_data, method),
+                    "kwargs": kwargs,
+                }
+                for geometry in self._get_selected_meshes()
+            ]
+        )
 
     def _sample_parallel(self, sampling, method, normal_offset=0.0, **kwargs):
         from ..operations import GeometryOperations
 
-        for geometry in self.cdata.models.get_selected_geometries():
-            submit_task(
-                "Sample Fit",
-                GeometryOperations.sample,
-                self._default_callback,
-                geometry._geometry_data,
-                method=method,
-                sampling=sampling,
-                normal_offset=normal_offset,
-                **kwargs,
-            )
+        submit_task_batch(
+            [
+                {
+                    "name": "Sample Fit",
+                    "func": GeometryOperations.sample,
+                    "callback": self._default_callback,
+                    "args": (geometry._geometry_data,),
+                    "kwargs": {
+                        "method": method,
+                        "sampling": sampling,
+                        "normal_offset": normal_offset,
+                        **kwargs,
+                    },
+                }
+                for geometry in self.cdata.models.get_selected_geometries()
+            ]
+        )
 
     def _remesh_parallel(self, method, **kwargs):
         from ..operations import GeometryOperations
 
-        for geometry in self._get_selected_meshes():
-            submit_task(
-                "Remesh",
-                GeometryOperations.remesh,
-                self._default_callback,
-                geometry._geometry_data,
-                method,
-                **kwargs,
-            )
+        submit_task_batch(
+            [
+                {
+                    "name": "Remesh",
+                    "func": GeometryOperations.remesh,
+                    "callback": self._default_callback,
+                    "args": (geometry._geometry_data, method),
+                    "kwargs": kwargs,
+                }
+                for geometry in self._get_selected_meshes()
+            ]
+        )
 
     def _fill_parallel(self, **kwargs):
-        for geometry in self._get_selected_meshes():
-            submit_task(
-                "Fill Mesh", _fill_mesh, self._default_callback, geometry._geometry_data
-            )
+        submit_task_batch(
+            [
+                {
+                    "name": "Fill Mesh",
+                    "func": _fill_mesh,
+                    "callback": self._default_callback,
+                    "args": (geometry._geometry_data,),
+                }
+                for geometry in self._get_selected_meshes()
+            ]
+        )
 
     def _project_parallel(
         self,
@@ -419,15 +455,11 @@ class ModelTab(QWidget):
         partition: bool = False,
         **kwargs,
     ):
-        selected_meshes = self._get_selected_meshes()
-        if not selected_meshes:
-            raise ValueError("Please select at least one mesh for projection.")
-
         submit_task(
             "Project",
             _project,
             self._default_callback,
-            selected_meshes,
+            self._get_selected_meshes(),
             self.cdata.data.get_selected_geometries(),
             use_normals,
             invert_normals,
@@ -501,6 +533,18 @@ REPAIR_SETTINGS = {
             "min": -1.0,
             "default": -1.0,
             "description": "Maximum surface area of holes considered for triangulation.",
+        },
+        {
+            "label": "Bridge Alpha",
+            "parameter": "bridge_alpha",
+            "type": "float",
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.1,
+            "default": 0.0,
+            "description": "Alpha-shape parameter for bridging boundary vertices. "
+            "Connects disjoint components and bridges gaps Liepa cannot close. "
+            "0 disables bridging.",
         },
         {
             "label": "Flip Normals",

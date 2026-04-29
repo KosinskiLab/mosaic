@@ -1,7 +1,7 @@
 """
 Centralized settings configuration for Mosaic application.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -38,7 +38,7 @@ class SettingsProperty:
 
         obj._qsettings.setValue(self.key, value)
 
-    def _load_from_qsettings(self, qsettings: QSettings):
+    def _load_from_qsettings(self, qsettings: "QSettings"):
         """Load value from QSettings."""
         if not qsettings.contains(self.key):
             self._value = self.default
@@ -88,8 +88,8 @@ class SettingsCategory:
 class RenderingSettings:
     """VTK rendering configuration."""
 
-    background_color: Tuple[float, float, float] = (0.09, 0.10, 0.12)
-    background_color_alt: Tuple[float, float, float] = (0.97, 0.97, 0.96)
+    background_color: Tuple[float, float, float] = (0.094, 0.094, 0.106)
+    background_color_alt: Tuple[float, float, float] = (1.0, 1.0, 1.0)
     use_gradient_background: bool = False
     target_fps: float = 30.0
     parallel_worker: int = min(8, QThread.idealThreadCount() - 1)
@@ -101,12 +101,14 @@ class RenderingSettings:
     point_smoothing: bool = False
     line_smoothing: bool = False
     polygon_smoothing: bool = False
+    lighting_mode: str = "simple"
 
 
 @dataclass
 class UISettings:
     """User interface configuration."""
 
+    window_geometry: bytes = b""
     window_size_ratio: Tuple[float, float] = (0.9, 0.9)
     splitter_ratio: float = 0.85
     tab_height: int = 40
@@ -118,6 +120,8 @@ class UISettings:
     auto_save_session: bool = False
     auto_save_interval: int = 300
     skipped_version: str = ""
+    theme_mode: str = "system"
+    always_open_as_volume: bool = False
 
 
 @dataclass
@@ -130,7 +134,6 @@ class WidgetSettings:
     axes_arrows_visible: bool = True
     scale_bar_visible: bool = False
     legend_visible: bool = False
-    legend_orientation: str = "vertical"
     status_indicator_visible: bool = True
     volume_viewer_visible: bool = False
     trajectory_player_visible: bool = False
@@ -148,10 +151,14 @@ class WarningSettings:
 class vtkActorSettings:
     """vtkActor settings."""
 
-    preset: str = "high"
-    quality: str = "lod"
-    lod_points: int = int(5e6)
-    lod_points_size: int = int(3)
+    preset: str = "balanced"
+    point_budget: int = int(2e6)
+
+
+QUALITY_PRESETS = {
+    "ultra": {"point_budget": 0},
+    "balanced": {"point_budget": int(2e6)},
+}
 
 
 class SettingsManager:
@@ -165,6 +172,16 @@ class SettingsManager:
         self.widgets = SettingsCategory("widgets", WidgetSettings)
         self.warnings = SettingsCategory("warnings", WarningSettings)
         self.vtk = SettingsCategory("vtk", vtkActorSettings)
+
+        self._migrate_vtk_presets()
+
+    def _migrate_vtk_presets(self):
+        """Migrate removed or unrecognised vtk presets to balanced."""
+        if self.vtk.preset in ("ultra", "balanced"):
+            return None
+        self.vtk.preset = "balanced"
+        if self.vtk.point_budget <= 0:
+            self.vtk.point_budget = int(2e6)
 
     def reset_to_defaults(self, category: str = None):
         """Reset settings to defaults."""
@@ -181,6 +198,7 @@ class SettingsManager:
                 "rendering": RenderingSettings,
                 "ui": UISettings,
                 "widgets": WidgetSettings,
+                "vtk": vtkActorSettings,
             }
 
             if cat not in dataclass_map:

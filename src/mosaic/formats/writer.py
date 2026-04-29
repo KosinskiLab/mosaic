@@ -1,14 +1,9 @@
-import re
+import json
 from typing import Dict
+
 import numpy as np
 
 from ._utils import get_extension
-
-
-def _sanitize_filename(name):
-    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
-    name = re.sub(r"\s+", "_", name).strip(". ")
-    return name or "unnamed"
 
 
 class OrientationsWriter:
@@ -218,9 +213,9 @@ def write_geometries(
             f"geometries length ({len(geometries)})"
         )
 
-    mesh_formats = ("obj", "stl", "ply")
+    mesh_formats = ("obj", "stl", "ply", "tsi", "q")
     volume_formats = ("mrc", "em", "h5")
-    point_formats = ("tsv", "star", "xyz")
+    point_formats = ("tsv", "star", "xyz", "ndjson")
 
     file_format = format
 
@@ -262,11 +257,15 @@ def write_geometries(
         data["quaternions"].append(quaternions)
 
     if file_format in mesh_formats:
+        if not meshes:
+            raise ValueError("No geometries have a fitted mesh model to export.")
         if is_single:
-            from ..parametrization import merge
+            if len(meshes) == 1:
+                meshes[0].to_file(file_path)
+            else:
+                from ..parametrization import merge
 
-            mesh = merge(meshes)
-            mesh.to_file(file_path)
+                merge(meshes).to_file(file_path)
         else:
             for index, mesh in enumerate(meshes):
                 mesh.to_file(file_path[index])
@@ -314,6 +313,30 @@ def write_geometries(
     ]
     if is_single:
         data = {k: [np.concatenate(v)] for k, v in data.items()}
+
+    if file_format == "ndjson":
+        from ..utils import _quat_to_matrix
+
+        for index in range(len(data["points"])):
+            points = data["points"][index]
+            quats = data["quaternions"][index]
+            fname = file_path if is_single else file_path[index]
+            matrices = _quat_to_matrix(quats)
+            lines = []
+            for pt, mat in zip(points, matrices):
+                record = {
+                    "type": "orientedPoint",
+                    "location": {
+                        "x": float(pt[0]),
+                        "y": float(pt[1]),
+                        "z": float(pt[2]),
+                    },
+                    "xyz_rotation_matrix": mat.tolist(),
+                }
+                lines.append(json.dumps(record))
+            with open(fname, "w") as f:
+                f.write("\n".join(lines) + "\n")
+        return None
 
     if file_format == "xyz":
         for index, points in enumerate(data["points"]):

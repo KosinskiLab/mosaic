@@ -1,658 +1,582 @@
 """
-DTS screening analysis: time series parsing, trajectory comparison, fluctuations.
+DTS trajectory analysis compute dispatch.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import re
-import json
 from pathlib import Path
-from os.path import basename
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional
 
 import numpy as np
 
-from .screening import run_status
+from ._utils import (
+    parse_xvg,
+    write_xvg,
+    sanitize_label,
+    list_trajectory_files,
+    iter_frames,
+)
 
-__all__ = [
-    "parse_time_series",
-    "parse_run_time_series",
-    "load_screen_results",
-    "compute_trajectory_distance",
-    "compute_vertex_fluctuation",
-    "compute_trajectory_property",
-]
+__all__ = ["compute"]
 
 
-def _parse_xvg(path: str) -> Optional[Tuple[List[str], np.ndarray, Dict[str, str]]]:
-    """Parse an .xvg file into columns, data array, and metadata.
+def _build_stem(kind, **kwargs):
+    """Derive the cache file stem from analysis kind and parameters."""
+    if kind == "distance":
+        label = sanitize_label(kwargs.get("reference_label", "reference"))
+        suffix = "inv" if kwargs.get("invert", False) else "fwd"
+        return f"distance_{suffix}_{label}"
+    if kind == "fluctuation":
+        return f"rmsf_w{kwargs.get('window', 5)}"
+    if kind == "hmff_potential":
+        return "hmff_potential"
+    if kind == "bending_energy":
+        return "bending_energy"
+    stem = f"prop_{sanitize_label(kind)}"
+    for _, v in sorted(kwargs.items()):
+        if isinstance(v, (str, int, float)):
+            stem += f"_{sanitize_label(str(v))}"
+    return stem
 
-    Parameters
-    ----------
-    path : str
-        Path to .xvg file.
 
-    Returns
-    -------
-    tuple of (list of str, np.ndarray, dict) or None
-        Column names, data array, and metadata dict from ``# key: value``
-        header lines. Returns None if file not found or empty.
-    """
-    xvg_path = Path(path)
-    if not xvg_path.exists():
+def _read_cached(output_dir, stem, force):
+    """Read cached scalar + optional per-vertex result if available."""
+    if not output_dir or force:
         return None
-
-    column_names = []
-    data_lines = []
-    metadata = {}
-
-    with open(xvg_path, "r") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            if line.startswith("##"):
-                column_names = line.lstrip("#").strip().split()
-                continue
-            if line.startswith("#"):
-                # Parse metadata: "# key: value"
-                m = re.match(r"#\s*(\w+)\s*:\s*(.+)", line)
-                if m:
-                    metadata[m.group(1)] = m.group(2).strip()
-                continue
-            parts = line.split()
-            try:
-                data_lines.append([float(x) for x in parts])
-            except ValueError:
-                continue
-
-    if not data_lines:
-        return None
-
-    data = np.array(data_lines)
-    if not column_names:
-        column_names = [f"col_{i}" for i in range(data.shape[1])]
-
-    return column_names, data, metadata
-
-
-def _write_xvg(
-    path: str,
-    columns: List[str],
-    data: np.ndarray,
-    metadata: Optional[Dict[str, str]] = None,
-):
-    """Write data to an .xvg file.
-
-    Parameters
-    ----------
-    path : str
-        Output file path.
-    columns : list of str
-        Column header names.
-    data : np.ndarray
-        Data array (rows x cols).
-    metadata : dict, optional
-        Key-value pairs written as ``# key: value`` header lines.
-    """
-    xvg_path = Path(path)
-    xvg_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(xvg_path, "w") as f:
-        if metadata:
-            for key, value in metadata.items():
-                f.write(f"# {key}: {value}\n")
-        f.write("## " + "  ".join(columns) + "\n")
-        for row in data:
-            f.write("  ".join(f"{v:g}" for v in row) + "\n")
-
-
-def _sanitize_label(label: str) -> str:
-    """Sanitize a label for use in filenames."""
-    return re.sub(r"[^a-zA-Z0-9_-]", "_", label).strip("_").lower()
-
-
-def parse_time_series(run_dir: str) -> Optional[Tuple[List[str], np.ndarray]]:
-    """Parse ``dts-en.xvg`` energy time series from a DTS run directory.
-
-    Parameters
-    ----------
-    run_dir : str
-        Path to run directory.
-
-    Returns
-    -------
-    tuple of (list of str, np.ndarray) or None
-        Column names and data array, or None if file not found.
-    """
-    result = _parse_xvg(str(Path(run_dir) / "dts-en.xvg"))
+    result = parse_xvg(str(Path(output_dir) / "mosaic" / f"{stem}.xvg"))
     if result is None:
         return None
-    columns, data, _metadata = result
-    return columns, data
 
+    columns, data, metadata = result
+    col_name = columns[1] if len(columns) > 1 else "value"
 
-def parse_run_time_series(run_dir: str) -> List[Dict]:
-    """Scan a run directory for all .xvg time series files.
-
-    Reads ``{run_dir}/dts-en.xvg`` and all ``{run_dir}/mosaic/*.xvg`` files.
-
-    Parameters
-    ----------
-    run_dir : str
-        Path to run directory.
-
-    Returns
-    -------
-    list of dict
-        Each entry has ``source`` (file stem), ``columns`` (list of str),
-        ``data`` (np.ndarray), and ``metadata`` (dict).
-    """
-    series = []
-    run_path = Path(run_dir)
-
-    # Native DTS energy file
-    dts_en = run_path / "dts-en.xvg"
-    if dts_en.exists():
-        result = _parse_xvg(str(dts_en))
-        if result is not None:
-            columns, data, metadata = result
-            series.append(
-                {
-                    "source": "dts-en",
-                    "columns": columns,
-                    "data": data,
-                    "metadata": metadata,
-                }
-            )
-
-    # Computed mosaic results
-    mosaic_dir = run_path / "mosaic"
-    if mosaic_dir.is_dir():
-        for xvg_file in sorted(mosaic_dir.iterdir()):
-            if not xvg_file.is_file() or xvg_file.suffix != ".xvg":
-                continue
-            result = _parse_xvg(str(xvg_file))
-            if result is not None:
-                columns, data, metadata = result
-                series.append(
-                    {
-                        "source": xvg_file.stem,
-                        "columns": columns,
-                        "data": data,
-                        "metadata": metadata,
-                    }
-                )
-
-    return series
-
-
-def load_screen_results(screen_dir: str) -> Dict:
-    """Load all results from a screen directory.
-
-    Parameters
-    ----------
-    screen_dir : str
-        Path to screen directory.
-
-    Returns
-    -------
-    dict
-        Dictionary with parameter_names, runs list (each with run_id, params,
-        time_series as list of series dicts, status).
-    """
-    screen_path = Path(screen_dir)
-    summary_path = screen_path / "screen_summary.json"
-
-    if not summary_path.exists():
-        return {"parameter_names": [], "runs": []}
-
-    with open(summary_path, "r") as f:
-        summary = json.load(f)
-
-    runs = []
-    for run_info in summary["runs"]:
-        run_dir = screen_path / run_info["run_id"]
-
-        # Load params
-        params = run_info.get("parameters", {})
-        params_file = run_dir / "params.json"
-        if params_file.exists():
-            with open(params_file, "r") as f:
-                params = json.load(f)
-
-        # Parse all time series
-        time_series = parse_run_time_series(str(run_dir))
-
-        status = run_status(run_dir)
-
-        runs.append(
-            {
-                "run_id": run_info["run_id"],
-                "params": params,
-                "time_series": time_series,
-                "status": status,
-                "run_dir": str(run_dir),
-            }
-        )
+    per_vertex = None
+    vert = parse_xvg(str(Path(output_dir) / "mosaic" / f"{stem}_vertices.xvg"))
+    if vert is not None:
+        per_vertex = vert[1][:, 1:]
 
     return {
-        "parameter_names": summary.get("parameters", []),
-        "runs": runs,
+        "frames": data[:, 0],
+        "values": data[:, 1],
+        "per_vertex": per_vertex,
+        "column": col_name,
+        "metadata": metadata,
     }
 
 
-def _load_trajectory_frames(
-    trajectory_dir: str,
-) -> List[np.ndarray]:
-    """Load mesh frames from a TrajTSI directory.
+def _write_result(output_dir, stem, result):
+    """Write scalar + optional per-vertex XVG files."""
+    if not output_dir:
+        return None
 
-    Parameters
-    ----------
-    trajectory_dir : str
-        Path to TrajTSI directory.
+    mosaic_dir = Path(output_dir) / "mosaic"
+    frames = np.asarray(result["frames"], dtype=float)
+    metadata = result["metadata"]
 
-    Returns
-    -------
-    list of np.ndarray
-        List of vertex position arrays per frame.
-    """
-    from ..formats import open_file
-
-    traj_path = Path(trajectory_dir)
-    files = [
-        str(traj_path / x)
-        for x in sorted(traj_path.iterdir())
-        if x.suffix in (".tsi", ".vtu")
-        and x.name != "conf-1.vtu"
-        and re.search(r"\d+", x.name)
-    ]
-    files = sorted(files, key=lambda x: int(re.findall(r"\d+", basename(x))[0]))
-
-    frames = []
-    for filepath in files:
-        container = open_file(filepath)[0]
-        frames.append(container.vertices.copy())
-
-    return frames
-
-
-def compute_trajectory_distance(
-    trajectory_dir: str,
-    reference_points: np.ndarray,
-    scale_factor: float,
-    offset: np.ndarray,
-    metric: str = "rmse",
-    reference_label: str = "reference",
-    output_dir: Optional[str] = None,
-    force: bool = False,
-) -> Dict:
-    """Compute distance between trajectory frames and reference geometry.
-
-    Parameters
-    ----------
-    trajectory_dir : str
-        Path to TrajTSI directory.
-    reference_points : np.ndarray
-        Reference point cloud (N, 3).
-    scale_factor : float
-        Scale factor from mesh.txt.
-    offset : np.ndarray
-        Offset from mesh.txt.
-    metric : str
-        Distance metric: "rmse", "hausdorff", or "mean_distance".
-    reference_label : str
-        Human-readable reference name for file naming and metadata.
-    output_dir : str, optional
-        Run directory for writing cached .xvg files. If provided, writes
-        to ``{output_dir}/mosaic/``.
-    force : bool
-        Recompute even if cached files exist.
-
-    Returns
-    -------
-    dict
-        Dictionary with frame indices and distance values.
-    """
-    from scipy.spatial import KDTree
-
-    safe_label = _sanitize_label(reference_label)
-    scalar_stem = f"distance_{metric}_to_{safe_label}"
-
-    # Check cache
-    if output_dir and not force:
-        scalar_path = Path(output_dir) / "mosaic" / f"{scalar_stem}.xvg"
-        if scalar_path.exists():
-            result = _parse_xvg(str(scalar_path))
-            if result is not None:
-                columns, data, _meta = result
-                return {
-                    "frames": data[:, 0].astype(int).tolist(),
-                    "values": data[:, 1],
-                    "metric": metric,
-                }
-
-    frames = _load_trajectory_frames(trajectory_dir)
-    ref_tree = KDTree(reference_points)
-
-    frame_indices = []
-    scalar_values = []
-    per_vertex_rows = []
-
-    for i, frame_points in enumerate(frames):
-        transformed = np.divide(np.subtract(frame_points, offset), scale_factor)
-        distances, _ = ref_tree.query(transformed)
-
-        if metric == "rmse":
-            val = np.sqrt(np.mean(distances**2))
-        elif metric == "hausdorff":
-            rev_tree = KDTree(transformed)
-            rev_distances, _ = rev_tree.query(reference_points)
-            val = max(np.max(distances), np.max(rev_distances))
-        elif metric == "mean_distance":
-            val = np.mean(distances)
-        else:
-            val = np.sqrt(np.mean(distances**2))
-
-        frame_indices.append(i)
-        scalar_values.append(val)
-        per_vertex_rows.append(distances)
-
-    scalar_arr = np.array(scalar_values)
-
-    # Write cached files
-    if output_dir:
-        mosaic_dir = Path(output_dir) / "mosaic"
-
-        # Per-frame scalar
-        scalar_data = np.column_stack(
-            [np.array(frame_indices, dtype=float), scalar_arr]
-        )
-        _write_xvg(
-            str(mosaic_dir / f"{scalar_stem}.xvg"),
-            ["frame", metric],
-            scalar_data,
-            metadata={
-                "computation": "distance",
-                "reference": reference_label,
-                "metric": metric,
-            },
-        )
-
-        # Per-vertex per-frame
-        if per_vertex_rows:
-            n_verts = per_vertex_rows[0].shape[0]
-            vertex_cols = ["frame"] + [f"v{j}" for j in range(n_verts)]
-            vertex_data = np.column_stack(
-                [
-                    np.array(frame_indices, dtype=float).reshape(-1, 1),
-                    np.array(per_vertex_rows),
-                ]
-            )
-            _write_xvg(
-                str(mosaic_dir / f"{scalar_stem}_vertices.xvg"),
-                vertex_cols,
-                vertex_data,
-                metadata={
-                    "computation": "distance",
-                    "reference": reference_label,
-                    "metric": metric,
-                    "format": "per_vertex",
-                },
-            )
-
-    return {
-        "frames": frame_indices,
-        "values": scalar_arr,
-        "metric": metric,
-    }
-
-
-def compute_vertex_fluctuation(
-    trajectory_dir: str,
-    scale_factor: float,
-    offset: np.ndarray,
-    window: int = 5,
-    start_frame: Optional[int] = None,
-    end_frame: Optional[int] = None,
-    output_dir: Optional[str] = None,
-    force: bool = False,
-) -> Dict:
-    """Compute per-vertex positional standard deviation in a sliding window.
-
-    For each frame *t*, meshes within ``[t - window, t + window]`` are
-    collected as queries. :func:`~mosaic.properties.distance` is called
-    with ``aggregation="std"`` to obtain the per-vertex standard deviation
-    of nearest-neighbour distances to those window meshes.
-
-    Parameters
-    ----------
-    trajectory_dir : str
-        Path to TrajTSI directory.
-    scale_factor : float
-        Scale factor from mesh.txt.
-    offset : np.ndarray
-        Offset from mesh.txt.
-    window : int
-        Half-window size. Each frame uses ``2 * window + 1`` neighbours
-        (clamped at trajectory boundaries).
-    start_frame : int, optional
-        Start frame index (inclusive).
-    end_frame : int, optional
-        End frame index (exclusive).
-    output_dir : str, optional
-        Run directory for writing cached .xvg files.
-    force : bool
-        Recompute even if cached files exist.
-
-    Returns
-    -------
-    dict
-        Dictionary with ``per_vertex_std`` (n_frames, n_vertices),
-        ``mean_fluctuation`` (scalar), and ``per_frame_rmsf`` (n_frames,).
-    """
-    from ..geometry import Geometry
-    from ..properties import distance as geom_distance
-
-    stem = f"rmsf_w{window}"
-
-    # Check cache
-    if output_dir and not force:
-        scalar_path = Path(output_dir) / "mosaic" / f"{stem}.xvg"
-        if scalar_path.exists():
-            result = _parse_xvg(str(scalar_path))
-            if result is not None:
-                _columns, data, _meta = result
-                per_frame_rmsf = data[:, 1]
-
-                vert_path = Path(output_dir) / "mosaic" / f"{stem}_vertices.xvg"
-                per_vertex_std = np.zeros((len(per_frame_rmsf), 0))
-                if vert_path.exists():
-                    vresult = _parse_xvg(str(vert_path))
-                    if vresult is not None:
-                        per_vertex_std = vresult[1][:, 1:]
-
-                return {
-                    "per_vertex_std": per_vertex_std,
-                    "mean_fluctuation": float(np.mean(per_frame_rmsf)),
-                    "per_frame_rmsf": per_frame_rmsf,
-                }
-
-    frames = _load_trajectory_frames(trajectory_dir)
-
-    transformed = []
-    for frame_points in frames:
-        transformed.append(np.divide(np.subtract(frame_points, offset), scale_factor))
-
-    if start_frame is not None or end_frame is not None:
-        transformed = transformed[start_frame or 0 : end_frame or len(transformed)]
-
-    n_frames = len(transformed)
-    if n_frames < 2:
-        n_verts = transformed[0].shape[0] if transformed else 0
-        return {
-            "per_vertex_std": np.zeros((max(n_frames, 1), n_verts)),
-            "mean_fluctuation": 0.0,
-            "per_frame_rmsf": np.array([0.0]),
-        }
-
-    n_verts = transformed[0].shape[0]
-    per_vertex_std = np.empty((n_frames, n_verts), dtype=float)
-    per_frame_rmsf = np.empty(n_frames, dtype=float)
-
-    for t in range(n_frames):
-        lo = max(0, t - window)
-        hi = min(n_frames, t + window + 1)
-
-        geom = Geometry(points=transformed[t])
-        dists = []
-        for i in range(lo, hi):
-            if i == t:
-                continue
-            d = geom_distance(geom, queries=[transformed[i]])
-            if d is not None:
-                dists.append(d)
-
-        if dists:
-            per_vertex_std[t] = np.std(dists, axis=0)
-        else:
-            per_vertex_std[t] = np.zeros(n_verts)
-        per_frame_rmsf[t] = np.mean(per_vertex_std[t])
-
-    if output_dir:
-        mosaic_dir = Path(output_dir) / "mosaic"
-
-        frame_indices = np.arange(n_frames, dtype=float)
-        _write_xvg(
-            str(mosaic_dir / f"{stem}.xvg"),
-            ["frame", "rmsf"],
-            np.column_stack([frame_indices, per_frame_rmsf]),
-            metadata={"computation": "rmsf", "window": str(window)},
-        )
-
-        _write_xvg(
+    write_xvg(
+        str(mosaic_dir / f"{stem}.xvg"),
+        ["frame", result["column"]],
+        np.column_stack([frames, result["values"]]),
+        metadata=metadata,
+    )
+    if result.get("per_vertex") is not None:
+        pv = result["per_vertex"]
+        write_xvg(
             str(mosaic_dir / f"{stem}_vertices.xvg"),
-            ["frame"] + [f"v{j}" for j in range(n_verts)],
-            np.column_stack([frame_indices.reshape(-1, 1), per_vertex_std]),
-            metadata={
-                "computation": "rmsf",
-                "window": str(window),
-                "format": "per_vertex",
-            },
+            ["frame"] + [f"v{j}" for j in range(pv.shape[1])],
+            np.column_stack([frames.reshape(-1, 1), pv]),
+            metadata={**metadata, "format": "per_vertex"},
         )
 
-    return {
-        "per_vertex_std": per_vertex_std,
-        "mean_fluctuation": float(np.mean(per_frame_rmsf)),
-        "per_frame_rmsf": per_frame_rmsf,
-    }
 
-
-def compute_trajectory_property(
-    trajectory_dir: str,
-    property_name: str,
-    scale_factor: float,
-    offset: np.ndarray,
-    output_dir: Optional[str] = None,
-    force: bool = False,
-    **property_kwargs,
-) -> Dict:
-    """Compute a scalar mesh property for each frame in a trajectory.
-
-    Loads each frame, builds a :class:`~mosaic.geometry.Geometry` with a
-    :class:`~mosaic.parametrization.TriangularMesh` model, and calls
-    :meth:`~mosaic.properties.GeometryProperties.compute`.
-
-    Parameters
-    ----------
-    trajectory_dir : str
-        Path to TrajTSI directory.
-    property_name : str
-        Property key registered in ``GeometryProperties`` (e.g.
-        ``"mesh_area"``, ``"mesh_volume"``).
-    scale_factor : float
-        Scale factor from mesh.txt.
-    offset : np.ndarray
-        Offset from mesh.txt.
-    output_dir : str, optional
-        Run directory for writing cached .xvg files.
-    force : bool
-        Recompute even if cached files exist.
-    **property_kwargs
-        Extra keyword arguments forwarded to the property calculator.
-
-    Returns
-    -------
-    dict
-        Dictionary with ``frames`` and ``values`` arrays.
-    """
-    from ..geometry import Geometry
-    from ..properties import GeometryProperties
-    from ..formats import open_file
+def _build_mesh(points, faces):
+    """Build a TriangularMesh from points and faces."""
     from ..meshing import to_open3d
     from ..parametrization import TriangularMesh
 
-    safe_name = _sanitize_label(property_name)
-    for k, v in sorted(property_kwargs.items()):
-        safe_name += f"_{_sanitize_label(str(v))}"
-    stem = f"prop_{safe_name}"
+    return TriangularMesh(to_open3d(points, faces), repair=False)
 
-    if output_dir and not force:
-        cached = Path(output_dir) / "mosaic" / f"{stem}.xvg"
-        if cached.exists():
-            result = _parse_xvg(str(cached))
-            if result is not None:
-                _cols, data, _meta = result
-                return {"frames": data[:, 0].astype(int).tolist(), "values": data[:, 1]}
 
-    traj_path = Path(trajectory_dir)
-    files = sorted(
-        [
-            f
-            for f in traj_path.iterdir()
-            if f.suffix in (".tsi", ".vtu") and f.name != "conf-1.vtu"
-        ],
-        key=lambda f: int(re.findall(r"\d+", f.name)[0]),
-    )
+def compute(
+    trajectory_dir: str,
+    kind: str,
+    *,
+    scale: float,
+    offset: np.ndarray,
+    output_dir: Optional[str] = None,
+    force: bool = False,
+    **kwargs,
+) -> Dict:
+    """Run a trajectory analysis.
 
-    frame_indices = []
-    values = []
-    for i, filepath in enumerate(files):
-        container = open_file(str(filepath))[0]
-        points = np.divide(np.subtract(container.vertices, offset), scale_factor)
-        faces = container.faces.astype(int)
-        mesh = to_open3d(points, faces)
-        model = TriangularMesh(mesh, repair=False)
-        geom = Geometry(points=points, model=model)
+    Parameters
+    ----------
+    trajectory_dir : str
+        Path to TrajTSI or VTU_F directory.
+    kind : str
+        Analysis type: ``"distance"``, ``"fluctuation"``, or a mesh property
+        name like ``"mesh_area"`` or ``"mesh_volume"``.
+    scale : float
+        DTS scale factor.
+    offset : np.ndarray
+        DTS offset.
+    output_dir : str, optional
+        Run directory; results cached in ``{output_dir}/mosaic/``.
+    force : bool
+        Recompute even if cached.
+    **kwargs
+        Kind-specific parameters (see individual compute functions).
 
-        val = GeometryProperties.compute(property_name, geom, **property_kwargs)
+    Returns
+    -------
+    dict
+        ``frames`` (ndarray), ``values`` (ndarray), ``per_vertex``
+        (ndarray or None), ``column`` (str), ``metadata`` (dict).
+    """
+    stem = _build_stem(kind, **kwargs)
+
+    cached = _read_cached(output_dir, stem, force)
+    if cached is not None:
+        return cached
+
+    if kind == "distance":
+        result = _compute_distance(trajectory_dir, scale, offset, **kwargs)
+    elif kind == "fluctuation":
+        result = _compute_fluctuation(trajectory_dir, scale, offset, **kwargs)
+    elif kind == "hmff_potential":
+        result = _compute_hmff(
+            trajectory_dir, scale, offset, output_dir=output_dir, **kwargs
+        )
+    elif kind == "bending_energy":
+        result = _compute_bending_energy(
+            trajectory_dir, scale, offset, output_dir=output_dir, **kwargs
+        )
+    else:
+        result = _compute_property(trajectory_dir, kind, scale, offset, **kwargs)
+
+    _write_result(output_dir, stem, result)
+    return result
+
+
+def _compute_fluctuation(
+    trajectory_dir, scale, offset, window=5, start_frame=None, end_frame=None
+):
+    """Per-vertex positional fluctuation via sliding-window surface distance."""
+    from ..geometry import Geometry
+    from ..parallel import report_progress
+    from ..properties import GeometryProperties
+
+    start = start_frame
+    end = end_frame
+
+    all_frames = list(iter_frames(trajectory_dir, scale, offset))
+    all_frames = all_frames[start or 0 : end or len(all_frames)]
+    n_frames = len(all_frames)
+
+    if n_frames < 2:
+        n_verts = all_frames[0][0].shape[0] if all_frames else 0
+        return {
+            "frames": np.array([0.0]),
+            "values": np.array([0.0]),
+            "per_vertex": np.zeros((max(n_frames, 1), n_verts)),
+            "column": "rmsf",
+            "metadata": {"computation": "rmsf", "window": str(window)},
+        }
+
+    meshes = [
+        Geometry(model=_build_mesh(pts, faces)) for pts, faces, _, _ in all_frames
+    ]
+
+    per_vertex = []
+    for t in range(n_frames):
+        report_progress(current=t, total=n_frames)
+        source = Geometry(points=all_frames[t][0])
+        lo = max(0, t - window)
+        hi = min(n_frames, t + window + 1)
+        dists = [
+            GeometryProperties.compute("distance", source, queries=[meshes[i]])
+            for i in range(lo, hi)
+            if i != t
+        ]
+        n_verts = all_frames[t][0].shape[0]
+        per_vertex.append(np.std(dists, axis=0) if dists else np.zeros(n_verts))
+
+    per_vertex = np.array(per_vertex, dtype=float)
+
+    # Frames at boundaries have truncated windows and are not comparable
+    # to interior frames so we mark them as missing data.
+    per_vertex[:window] = np.nan
+    per_vertex[-window:] = np.nan
+
+    return {
+        "frames": np.arange(n_frames, dtype=float),
+        "values": np.nanmean(per_vertex, axis=1),
+        "per_vertex": per_vertex,
+        "column": "rmsf",
+        "metadata": {"computation": "rmsf", "window": str(window)},
+    }
+
+
+def _compute_distance(
+    trajectory_dir,
+    scale,
+    offset,
+    reference,
+    invert: bool = False,
+    **kwargs,
+):
+    """Per-frame distance between trajectory mesh and a reference geometry.
+
+    Parameters
+    ----------
+    trajectory_dir : str
+        Path to trajectory directory.
+    scale : float
+        DTS scale factor.
+    offset : np.ndarray
+        DTS offset.
+    reference : Geometry or np.ndarray
+        Reference point set or geometry to measure against.
+    invert : bool, optional
+        If ``False`` (default), measure reference → mesh: for each reference
+        point find the nearest mesh point. Robust to incomplete segmentations.
+        If ``True``, measure mesh → reference: for each mesh vertex find the
+        nearest reference point. Detects mesh drift into unsegmented regions;
+        returns per-vertex distances.
+
+    Returns
+    -------
+    dict
+        Standard analysis result dict. ``per_vertex`` is only populated when
+        ``invert=True``.
+    """
+    from ..geometry import Geometry
+    from ..parallel import report_progress
+    from ..properties import GeometryProperties
+
+    frame_indices, scalars, per_vertex = [], [], []
+    n_frames = len(list_trajectory_files(trajectory_dir))
+
+    for i, (pts, faces, _, _) in enumerate(iter_frames(trajectory_dir, scale, offset)):
+        report_progress(current=i, total=n_frames)
+        mesh = _build_mesh(pts, faces)
+        mesh_geom = Geometry(points=pts, model=mesh)
+
+        ref, query = mesh_geom, [reference]
+        if not invert:
+            ref, query = reference, [mesh_geom]
+
+        dist = GeometryProperties.compute("distance", ref, queries=query)
+        if dist is None:
+            continue
+
+        dist = np.asarray(dist)
+        frame_indices.append(i)
+        if invert:
+            per_vertex.append(dist)
+        scalars.append(float(np.mean(dist)))
+
+    return {
+        "frames": np.array(frame_indices, dtype=float),
+        "values": np.array(scalars),
+        "per_vertex": np.array(per_vertex) if per_vertex else None,
+        "column": "distance",
+        "metadata": {"computation": "distance", "invert": str(invert)},
+    }
+
+
+def _compute_property(trajectory_dir, property_name, scale, offset, **kwargs):
+    """Per-frame mesh property (area, volume, etc.)."""
+    from ..geometry import Geometry
+    from ..parallel import report_progress
+    from ..properties import GeometryProperties
+
+    frame_indices, scalars, per_vertex = [], [], []
+    n_frames = len(list_trajectory_files(trajectory_dir))
+    for i, (pts, faces, _, _) in enumerate(iter_frames(trajectory_dir, scale, offset)):
+        report_progress(current=i, total=n_frames)
+        mesh = _build_mesh(pts, faces)
+
+        val = GeometryProperties.compute(
+            property_name, Geometry(points=pts, model=mesh), **kwargs
+        )
         if val is None:
             continue
 
-        if hasattr(val, "__len__") and len(val) == 1:
-            val = float(val[0])
-        elif hasattr(val, "__len__"):
-            val = float(np.mean(val))
-        else:
-            val = float(val)
-
         frame_indices.append(i)
-        values.append(val)
+        if hasattr(val, "__len__") and len(val) > 1:
+            per_vertex.append(np.asarray(val))
+            scalars.append(float(np.mean(val)))
+        else:
+            scalars.append(float(val[0]) if hasattr(val, "__len__") else float(val))
 
-    values_arr = np.array(values)
+    return {
+        "frames": np.array(frame_indices, dtype=float),
+        "values": np.array(scalars),
+        "per_vertex": np.array(per_vertex) if per_vertex else None,
+        "column": property_name,
+        "metadata": {
+            "computation": property_name,
+            **{k: str(v) for k, v in kwargs.items()},
+        },
+    }
 
-    if output_dir:
-        mosaic_dir = Path(output_dir) / "mosaic"
-        _write_xvg(
-            str(mosaic_dir / f"{stem}.xvg"),
-            ["frame", property_name],
-            np.column_stack([np.array(frame_indices, dtype=float), values_arr]),
-            metadata={
-                "computation": property_name,
-                **{k: str(v) for k, v in property_kwargs.items()},
-            },
+
+def _vertex_bending_energy(vertices, triangles, kappa, kappa_g=0.0, c0=0.0):
+    """Compute per-vertex Helfrich bending energy.
+
+    Parameters
+    ----------
+    vertices : np.ndarray
+        Vertex positions, shape ``(N, 3)``.
+    triangles : np.ndarray
+        Triangle connectivity, shape ``(M, 3)``.
+    kappa : float
+        Bending rigidity (as in the DTS ``Kappa`` line).
+    kappa_g : float
+        Gaussian bending rigidity.
+    c0 : float
+        Spontaneous curvature.
+
+    Returns
+    -------
+    np.ndarray
+        Per-vertex bending energy, shape ``(N,)``.
+    """
+    import igl
+
+    vertices = np.asarray(vertices, dtype=np.float64)
+    triangles = np.asarray(triangles, dtype=np.int32)
+
+    _, _, pv1, pv2, _ = igl.principal_curvature(vertices, triangles, radius=5)
+
+    # Barycentric vertex area: each vertex gets 1/3 of each adjacent triangle
+    v0 = vertices[triangles[:, 0]]
+    v1 = vertices[triangles[:, 1]]
+    v2 = vertices[triangles[:, 2]]
+    tri_areas = np.linalg.norm(np.cross(v1 - v0, v2 - v0), axis=1) / 2.0
+
+    vertex_areas = np.zeros(len(vertices))
+    for j in range(3):
+        np.add.at(vertex_areas, triangles[:, j], tri_areas / 3.0)
+
+    # E_v = A * (kappa/2 * (2H - c0)^2 - kappa_g * K)
+    gaus = kappa_g * pv1 * pv2
+    mean = (kappa / 2.0) * (pv1 + pv2 - c0) ** 2
+    return (mean - gaus) * vertex_areas
+
+
+def _compute_bending_energy(trajectory_dir, scale, offset, output_dir=None, **kwargs):
+    """Per-frame bending energy from DTS config and trajectory meshes."""
+    from ..parallel import report_progress
+    from ._utils import parse_dts_content
+
+    run_dir = Path(output_dir) if output_dir else Path(trajectory_dir).parent
+    dts_file = run_dir / "input.dts"
+    if not dts_file.exists():
+        raise FileNotFoundError(f"DTS config not found: {dts_file}")
+
+    known, _ = parse_dts_content(dts_file.read_text())
+    kappa = float(known.get("kappa", 20.0))
+    kappa_g = float(known.get("kappa0", 0.0))
+    c0 = float(known.get("c0", 0.0))
+
+    n_frames = len(list_trajectory_files(trajectory_dir))
+    frame_indices, scalars, per_vertex = [], [], []
+
+    for i, (points, faces, _, _) in enumerate(
+        iter_frames(trajectory_dir, scale, offset)
+    ):
+        report_progress(current=i, total=n_frames)
+        pv = _vertex_bending_energy(points, faces, kappa, kappa_g, c0)
+        frame_indices.append(i)
+        scalars.append(float(pv.sum()))
+        per_vertex.append(pv)
+
+    return {
+        "frames": np.array(frame_indices, dtype=float),
+        "values": np.array(scalars),
+        "per_vertex": np.array(per_vertex) if per_vertex else None,
+        "column": "bending_energy",
+        "metadata": {
+            "computation": "bending_energy",
+            "kappa": str(kappa),
+            "kappa_g": str(kappa_g),
+            "c0": str(c0),
+        },
+    }
+
+
+def _hmff_potential(
+    vertices,
+    interpolator,
+    xi=5.0,
+    theta_min=0.0,
+    theta_max=1.0,
+    boundary_values=None,
+    padding=0.4,
+):
+    """Evaluate the HMFF potential for a set of vertices.
+
+    Parameters
+    ----------
+    vertices : np.ndarray
+        Vertex positions in voxel coordinates, shape ``(N, 3)``.
+    interpolator : RegularGridInterpolator
+        Interpolator over the density grid.
+    xi : float
+        Coupling strength.
+    theta_min : float
+        Minimum density threshold.
+    theta_max : float
+        Maximum density threshold.
+    boundary_values : np.ndarray, optional
+        Min-max normalized per-slice boundary values for out-of-bounds
+        vertices (see ``_compute_boundary_values``).
+    padding : float
+        Scaling factor for boundary fallback values.
+
+    Returns
+    -------
+    np.ndarray
+        Per-vertex HMFF potential.
+    """
+    theta = interpolator(vertices)
+
+    # Match FreeDTS VertexInScalarFieldPotential.cpp: all out-of-bounds
+    # vertices get padding * boundaryValues[z_clamped] * thetaMax
+    mask = np.isnan(theta)
+    if mask.any() and boundary_values is not None:
+        z_idx = np.clip(vertices[mask, 2].astype(int), 0, len(boundary_values) - 1)
+        theta[mask] = padding * boundary_values[z_idx] * theta_max
+
+    theta = np.minimum(theta, theta_max)
+    potential = xi * (1 - (theta - theta_min) / (theta_max - theta_min))
+    potential[theta < theta_min] = xi
+    return potential
+
+
+def _compute_boundary_values(data):
+    """Compute min-max normalized per-slice boundary values.
+
+    Matches the FreeDTS ``HarmonicPotentialCalculator`` constructor:
+    per-slice mean of absolute values, smoothed with neighbor averaging,
+    then min-max normalized to [0, 1].
+    """
+    # Per z-slice mean of absolute values
+    averages = np.abs(data).mean(axis=(0, 1))
+
+    # Neighbor-weighted smoothing (2-point at edges, 3-point interior)
+    smoothed = np.empty_like(averages)
+    smoothed[0] = (
+        (averages[0] + averages[1]) / 2.0 if len(averages) > 1 else averages[0]
+    )
+    smoothed[-1] = (
+        (averages[-2] + averages[-1]) / 2.0 if len(averages) > 1 else averages[-1]
+    )
+    for i in range(1, len(averages) - 1):
+        smoothed[i] = (averages[i - 1] + averages[i] + averages[i + 1]) / 3.0
+
+    # Min-max normalization
+    vmin, vmax = smoothed.min(), smoothed.max()
+    if vmax - vmin > 0:
+        smoothed = (smoothed - vmin) / (vmax - vmin)
+    else:
+        smoothed[:] = 0.5
+
+    return smoothed
+
+
+def _compute_hmff(trajectory_dir, scale, offset, output_dir=None, **kwargs):
+    """Per-frame HMFF potential energy from DTS config and density volume.
+
+    Parameters
+    ----------
+    trajectory_dir : str
+        Path to TrajTSI or VTU_F directory.
+    scale : float
+        DTS scale factor.
+    offset : np.ndarray
+        DTS offset.
+    output_dir : str, optional
+        Run directory containing ``input.dts``.
+    """
+    from scipy.interpolate import RegularGridInterpolator
+    from ..formats.parser import load_density
+    from ..parallel import report_progress
+    from ._utils import find_dts_file, parse_dts_content
+
+    run_dir = Path(output_dir) if output_dir else Path(trajectory_dir).parent
+    dts_file = find_dts_file(run_dir)
+    if dts_file is None:
+        raise FileNotFoundError(f"No DTS config found in {run_dir}")
+
+    known, _ = parse_dts_content(dts_file.read_text())
+
+    volume_path = known.get("volume_path")
+    if volume_path is None:
+        raise ValueError(
+            "No volume path found in DTS config — HMFF requires a density."
         )
+    if isinstance(volume_path, list):
+        volume_path = volume_path[0]
 
-    return {"frames": frame_indices, "values": values_arr}
+    volume_path = str((run_dir / volume_path).resolve())
+
+    xi = float(known.get("xi", 5.0))
+    invert = known.get("invert_contrast", False)
+
+    if "scale_factor" in known:
+        scale = float(known["scale_factor"])
+    if "offset" in known:
+        offset = np.array([float(x) for x in known["offset"].split(",")])
+
+    density = load_density(volume_path)
+    data = density.data.copy()
+    if invert:
+        data *= -1
+
+    sampling_rate = np.asarray(density.sampling_rate)
+    voxel_scale = 1.0 / (sampling_rate * scale)
+
+    theta_max = float(np.quantile(data, q=0.999))
+    boundary_values = _compute_boundary_values(data)
+
+    interpolator = RegularGridInterpolator(
+        tuple(np.arange(x) for x in data.shape),
+        data,
+        method="linear",
+        bounds_error=False,
+        fill_value=np.nan,
+    )
+
+    n_frames = len(list_trajectory_files(trajectory_dir))
+    frame_indices, scalars, per_vertex = [], [], []
+
+    for i, (points, _, _, _) in enumerate(iter_frames(trajectory_dir, 1.0, offset)):
+        report_progress(current=i, total=n_frames)
+        voxel_points = points * voxel_scale
+        pv = _hmff_potential(
+            voxel_points,
+            interpolator,
+            xi=xi,
+            theta_max=theta_max,
+            boundary_values=boundary_values,
+        )
+        frame_indices.append(i)
+        scalars.append(float(pv.sum()))
+        per_vertex.append(pv)
+
+    return {
+        "frames": np.array(frame_indices, dtype=float),
+        "values": np.array(scalars),
+        "per_vertex": np.array(per_vertex) if per_vertex else None,
+        "column": "hmff_energy",
+        "metadata": {
+            "computation": "hmff_potential",
+            "volume": str(volume_path),
+            "xi": str(xi),
+        },
+    }

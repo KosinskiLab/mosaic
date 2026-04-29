@@ -6,7 +6,6 @@ import numpy as np
 from tme import Density
 from qtpy.QtWidgets import (
     QDialog,
-    QTabWidget,
     QVBoxLayout,
     QLabel,
     QLineEdit,
@@ -18,12 +17,11 @@ from qtpy.QtWidgets import (
     QDoubleSpinBox,
     QWidget,
     QGridLayout,
-    QMessageBox,
+    QFormLayout,
 )
-import qtawesome as qta
-
-from ..widgets import PathSelector, DialogFooter
-from ..stylesheets import QPushButton_style, QScrollArea_style, QTabBar_style, Colors
+from ..icons import icon
+from ..stylesheets import Typography
+from ..widgets import PathSelector, DialogFooter, TabWidget, MosaicMessageBox
 
 
 class InputDataTab(QWidget):
@@ -32,45 +30,42 @@ class InputDataTab(QWidget):
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
-        # Create a scroll area
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
 
         self.output_group = QGroupBox("Working Directory")
-        self.output_layout = QVBoxLayout(self.output_group)
+        self.output_layout = QFormLayout(self.output_group)
 
         self.output_selector = PathSelector(
-            "Output Directory:", "Path to working directory", file_mode=False
+            placeholder="Path to working directory", mode="directory"
         )
-        self.output_layout.addWidget(self.output_selector)
+        self.output_layout.addRow("Output Directory:", self.output_selector)
         self.scroll_layout.addWidget(self.output_group)
 
-        # Target section
         self.target_group = QGroupBox("Target")
-        self.target_layout = QVBoxLayout(self.target_group)
-        self.tomogram_selector = PathSelector("Tomogram:", "Path to target")
-        self.target_layout.addWidget(self.tomogram_selector)
+        self.target_layout = QFormLayout(self.target_group)
+        self.tomogram_selector = PathSelector(placeholder="Path to target")
+        self.target_layout.addRow("Tomogram:", self.tomogram_selector)
 
-        self.target_mask_selector = PathSelector(
-            "Target Mask (Optional):", "Path to target mask"
-        )
-        self.target_layout.addWidget(self.target_mask_selector)
+        self.target_mask_selector = PathSelector(placeholder="Path to target mask")
+        self.target_layout.addRow("Target Mask (Optional):", self.target_mask_selector)
 
         self.scroll_layout.addWidget(self.target_group)
 
-        # Templates section
         self.template_group = QGroupBox("Template")
-        self.template_layout = QVBoxLayout(self.template_group)
-        self.template_selector = PathSelector("Template:", "Path to template")
-        self.template_layout.addWidget(self.template_selector)
-        self.template_mask_selector = PathSelector(
-            "Template Mask (Optional):", "Path to template mask"
+        self.template_layout = QFormLayout(self.template_group)
+        self.template_selector = PathSelector(placeholder="Path to template")
+        self.template_layout.addRow("Template:", self.template_selector)
+        self.template_mask_selector = PathSelector(placeholder="Path to template mask")
+        self.template_layout.addRow(
+            "Template Mask (Optional):", self.template_mask_selector
         )
-        self.template_layout.addWidget(self.template_mask_selector)
         self.scroll_layout.addWidget(self.template_group)
 
         self.scroll_layout.addStretch()
@@ -93,12 +88,14 @@ class PreprocessTab(QWidget):
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
 
         self.skip_group = QGroupBox("Control")
         self.skip_layout = QVBoxLayout(self.skip_group)
@@ -113,7 +110,6 @@ class PreprocessTab(QWidget):
         self.skip_layout.addWidget(self.skip_preprocessing_check)
         self.scroll_layout.addWidget(self.skip_group)
 
-        # Filters section
         self.preproc_filters_group = QGroupBox("Filters")
         self.preproc_filters_layout = QGridLayout(self.preproc_filters_group)
 
@@ -130,7 +126,9 @@ class PreprocessTab(QWidget):
         invert_template_label = QLabel("Contrast:")
         self.invert_template_check = QCheckBox("Invert template contrast")
         contrast_help = QLabel("Invert template contrast to match target contrast.")
-        contrast_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        contrast_help.setStyleSheet(
+            f"color: #64748b; font-size: {Typography.CAPTION}px;"
+        )
 
         self.preproc_filters_layout.addWidget(preproc_lowpass_label, 0, 0)
         self.preproc_filters_layout.addWidget(self.preproc_lowpass_input, 0, 1)
@@ -143,7 +141,6 @@ class PreprocessTab(QWidget):
         self.preproc_filters_layout.addWidget(contrast_help, 3, 1)
         self.scroll_layout.addWidget(self.preproc_filters_group)
 
-        # Alignment section (for constrained matching)
         self.alignment_group = QGroupBox("Alignment")
         self.alignment_layout = QGridLayout(self.alignment_group)
 
@@ -160,7 +157,7 @@ class PreprocessTab(QWidget):
         align_help = QLabel(
             "Templates including membrane typically align on eigenvector 2."
         )
-        align_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        align_help.setStyleSheet(f"color: #64748b; font-size: {Typography.CAPTION}px;")
 
         flip_axis_label = QLabel("Flip Template:")
         self.flip_axis_check = QCheckBox("Flip template along alignment axis")
@@ -207,14 +204,15 @@ class MatchingTab(QWidget):
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Angular Sampling section
         self.angular_group = QGroupBox("Sampling")
         self.angular_layout = QGridLayout(self.angular_group)
 
@@ -234,12 +232,12 @@ class MatchingTab(QWidget):
         self.angular_layout.addWidget(self.score_combo, 1, 1)
         self.scroll_layout.addWidget(self.angular_group)
 
-        # Constrained template matching
         self.orientation_group = QGroupBox("Constraints")
         self.orientation_layout = QGridLayout(self.orientation_group)
 
+        orientations_label = QLabel("Orientations File (Optional):")
         self.orientations_selector = PathSelector(
-            "Orientations File (Optional):", "Path to orientations file"
+            placeholder="Path to orientations file"
         )
 
         scaling_label = QLabel("Scaling:")
@@ -250,7 +248,9 @@ class MatchingTab(QWidget):
         scaling_help = QLabel(
             "2 if orientations are at 3 Apx and tomogram is at 6 Apx."
         )
-        scaling_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        scaling_help.setStyleSheet(
+            f"color: #64748b; font-size: {Typography.CAPTION}px;"
+        )
 
         rotational_uncertainty_label = QLabel("Rotational Uncertainty:")
         self.rotational_uncertainty = QLineEdit()
@@ -258,7 +258,9 @@ class MatchingTab(QWidget):
         rotational_uncertainty_help = QLabel(
             "Deviation from seed point normal in degrees."
         )
-        rotational_uncertainty_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        rotational_uncertainty_help.setStyleSheet(
+            f"color: #64748b; font-size: {Typography.CAPTION}px;"
+        )
 
         translational_uncertainty_label = QLabel("Translational Uncertainty:")
         self.translational_uncertainty = QLineEdit()
@@ -266,9 +268,12 @@ class MatchingTab(QWidget):
         translational_uncertainty_help = QLabel(
             "x, y, z deviation from seed point in voxels."
         )
-        translational_uncertainty_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        translational_uncertainty_help.setStyleSheet(
+            f"color: #64748b; font-size: {Typography.CAPTION}px;"
+        )
 
-        self.orientation_layout.addWidget(self.orientations_selector, 0, 0, 1, 2)
+        self.orientation_layout.addWidget(orientations_label, 0, 0)
+        self.orientation_layout.addWidget(self.orientations_selector, 0, 1)
         self.orientation_layout.addWidget(scaling_label, 1, 0)
         self.orientation_layout.addWidget(self.orientation_scaling, 1, 1)
         self.orientation_layout.addWidget(scaling_help, 2, 1)
@@ -282,12 +287,12 @@ class MatchingTab(QWidget):
         self.orientation_layout.addWidget(translational_uncertainty_help, 6, 1)
         self.scroll_layout.addWidget(self.orientation_group)
 
-        # Filters section
         self.filters_group = QGroupBox("Filters")
         self.filters_layout = QGridLayout(self.filters_group)
 
+        ctf_label = QLabel("CTF File:")
         self.ctf_file = PathSelector(
-            "CTF File:", "Can be a path to mdoc, warp xml or tomostar file."
+            placeholder="Can be a path to mdoc, warp xml or tomostar file."
         )
 
         lowpass_label = QLabel("Lowpass (Å):")
@@ -302,13 +307,13 @@ class MatchingTab(QWidget):
         self.tilt_input = QLineEdit()
         self.tilt_input.setPlaceholderText("e.g., 57,60")
         tilt_help = QLabel("Format: start_angle,stop_angle")
-        tilt_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        tilt_help.setStyleSheet(f"color: #64748b; font-size: {Typography.CAPTION}px;")
 
         axes_label = QLabel("Wedge Axes:")
         self.axes_input = QLineEdit()
         self.axes_input.setPlaceholderText("e.g., 2,0")
         axes_help = QLabel("Format: opening_axis,tilt_axis")
-        axes_help.setStyleSheet("color: #64748b; font-size: 10px;")
+        axes_help.setStyleSheet(f"color: #64748b; font-size: {Typography.CAPTION}px;")
 
         defocus_label = QLabel("Defocus (Å):")
         self.defocus_input = QLineEdit()
@@ -317,7 +322,8 @@ class MatchingTab(QWidget):
         whitening_label = QLabel("Spectral Whitening:")
         self.whitening_check = QCheckBox("Apply")
 
-        self.filters_layout.addWidget(self.ctf_file, 0, 0, 1, 2)
+        self.filters_layout.addWidget(ctf_label, 0, 0)
+        self.filters_layout.addWidget(self.ctf_file, 0, 1)
 
         self.filters_layout.addWidget(lowpass_label, 1, 0)
         self.filters_layout.addWidget(self.lowpass_input, 1, 1)
@@ -369,12 +375,14 @@ class PeakCallingTab(QWidget):
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
 
         self.peak_group = QGroupBox("Peak Properties")
         self.peak_layout = QGridLayout(self.peak_group)
@@ -389,13 +397,11 @@ class PeakCallingTab(QWidget):
             ]
         )
 
-        # Number of Peaks
         peaks_label = QLabel("Number of Peaks:")
         self.peaks_input = QSpinBox()
         self.peaks_input.setRange(1, 100000)
         self.peaks_input.setValue(1000)
 
-        # Minimum Distance
         distance_label = QLabel("Minimum Distance (voxels):")
         self.distance_input = QSpinBox()
         self.distance_input.setRange(1, 1000)
@@ -428,12 +434,14 @@ class ComputeTab(QWidget):
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
 
         self.compute_group = QGroupBox("Computation Settings")
         self.compute_layout = QGridLayout(self.compute_group)
@@ -476,13 +484,13 @@ class ComputeTab(QWidget):
 
 
 class TemplateMatchingDialog(QDialog):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.setWindowTitle("Pytme Setup")
         self.resize(650, 600)
 
         self.layout = QVBoxLayout(self)
-        self.tabs = QTabWidget()
+        self.tabs = TabWidget(tab_bar_margins=(0, 0, 0, 0))
 
         self.input_tab = InputDataTab()
         self.preprocess_tab = PreprocessTab()
@@ -490,27 +498,24 @@ class TemplateMatchingDialog(QDialog):
         self.peak_tab = PeakCallingTab()
         self.compute_tab = ComputeTab()
 
-        self.tabs.addTab(
-            self.input_tab, qta.icon("ph.file-arrow-down", color=Colors.ICON), "Data"
-        )
+        self.tabs.addTab(self.input_tab, "Data", icon("ph.file-arrow-down"))
         self.tabs.addTab(
             self.preprocess_tab,
-            qta.icon("ph.wrench", color=Colors.ICON),
             "Preprocess",
+            icon("ph.wrench"),
         )
-        self.tabs.addTab(
-            self.matching_tab, qta.icon("ph.sliders", color=Colors.ICON), "Matching"
-        )
+        self.tabs.addTab(self.matching_tab, "Matching", icon("ph.sliders"))
         self.tabs.addTab(
             self.peak_tab,
-            qta.icon("ph.magnifying-glass", color=Colors.ICON),
             "Peak Calling",
+            icon("ph.magnifying-glass"),
         )
         self.tabs.addTab(
             self.compute_tab,
-            qta.icon("ph.hard-drives", color=Colors.ICON),
             "Compute",
+            icon("ph.hard-drives"),
         )
+        self.tabs.finalize()
 
         self.layout.addWidget(self.tabs)
 
@@ -520,9 +525,9 @@ class TemplateMatchingDialog(QDialog):
             margin=(0, 10, 0, 0),
         )
         self.layout.addWidget(self.footer)
-        self.setStyleSheet(QTabBar_style + QPushButton_style + QScrollArea_style)
+        self.tabs.currentChanged.connect(self._update_help_text)
 
-    def update_help_text(self, index):
+    def _update_help_text(self, index):
         help_texts = [
             "Define target tomogram and template structures",
             "Create a template for template matching",
@@ -530,24 +535,23 @@ class TemplateMatchingDialog(QDialog):
             "Set up peak calling for candidate detection",
             "Configure computing resources and output",
         ]
-        self.help_text.setText(help_texts[index])
+        self.footer.info_label.setText(help_texts[index])
 
     def accept(self):
         data = self.input_tab.get_settings()
         preprocess = self.preprocess_tab.get_settings()
         peak_data = self.peak_tab.get_settings()
 
-        # Setup working directory
         directory = data.get("output_directory", "")
         if len(directory) == 0:
-            return QMessageBox.warning(
+            return MosaicMessageBox.warning(
                 self, "Error", "Missing working directory specification."
             )
 
         target_path = data.get("tomogram", "")
         template_path = data.get("template", "")
         if len(target_path) == 0 or len(template_path) == 0:
-            return QMessageBox.warning(
+            return MosaicMessageBox.warning(
                 self, "Error", "Missing template or tomogram path specification."
             )
 

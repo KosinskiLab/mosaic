@@ -1,23 +1,19 @@
-from qtpy.QtGui import QAction, QPainter, QPainterPath, QColor, QPen
-from qtpy.QtCore import Qt, QSize, Signal, QPoint, QTimer, QRectF
+from qtpy.QtGui import QPainter, QPainterPath, QColor, QPen
+from qtpy.QtCore import Qt, QSize, Signal, QPoint, QTimer, QRectF, QEvent
 from qtpy.QtWidgets import (
-    QToolBar,
     QWidget,
     QVBoxLayout,
     QLabel,
     QHBoxLayout,
-    QToolButton,
-    QMenu,
     QPushButton,
     QFrame,
-    QFormLayout,
+    QGridLayout,
     QSizePolicy,
     QApplication,
 )
-import qtawesome as qta
-
-from .settings import create_setting_widget, get_layout_widget_value
-from ..stylesheets import QPushButton_style, QToolButton_style, Colors
+from .settings import create_setting_widget
+from ..stylesheets import Colors, Typography
+from ..icons import icon
 
 
 class SettingsPanel(QFrame):
@@ -25,8 +21,11 @@ class SettingsPanel(QFrame):
 
     settings_applied = Signal(dict)
 
+    PANEL_WIDTH = 350
+    LABEL_COLUMN_WIDTH = 100
+
     def __init__(self, config, parent_button=None):
-        super().__init__(parent=None)
+        super().__init__(parent=parent_button.window() if parent_button else None)
         self.config = config.copy()
         self.parent_button = parent_button
 
@@ -35,17 +34,16 @@ class SettingsPanel(QFrame):
 
         self.method_widgets, self.current_method_widgets = {}, []
 
-        # Frameless popup window
         self.setWindowFlags(
-            Qt.WindowType.Popup
+            Qt.WindowType.Tool
             | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.NoDropShadowWindowHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
-        # Disable QFrame's default border drawing
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setLineWidth(0)
+        self.setFixedWidth(self.PANEL_WIDTH)
 
         self._setup_ui()
 
@@ -55,30 +53,21 @@ class SettingsPanel(QFrame):
         self.main_layout.setSpacing(0)
         self.main_layout.setContentsMargins(8, 0, 8, 8)
 
-        # Content container
         content = QWidget()
         content.setObjectName("settingsPanelContent")
         content_layout = QVBoxLayout(content)
-        content_layout.setSpacing(10)
-        content_layout.setContentsMargins(12, 12, 12, 12)
+        content_layout.setSpacing(8)
+        content_layout.setContentsMargins(12, 10, 12, 10)
 
-        # Title
-        title_text = self.config.get("title", "")
-        if title_text:
-            title = QLabel(title_text)
-            title.setStyleSheet(
-                f"font-weight: 500; font-size: 12px; color: {Colors.TEXT_SECONDARY}; "
-                "letter-spacing: 0.5px; text-transform: uppercase; "
-            )
-            content_layout.addWidget(title)
+        # Grid layout for settings (reliable vertical centering)
+        self.settings_grid = QGridLayout()
+        self.settings_grid.setSpacing(8)
+        self.settings_grid.setContentsMargins(0, 0, 0, 0)
+        self.settings_grid.setColumnMinimumWidth(0, self.LABEL_COLUMN_WIDTH)
+        self.settings_grid.setColumnStretch(0, 0)
+        self.settings_grid.setColumnStretch(1, 1)
+        self._grid_row = 0
 
-        # Single form layout for all settings (ensures column alignment)
-        self.settings_form = QFormLayout()
-        self.settings_form.setSpacing(12)
-        self.settings_form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.settings_form.setContentsMargins(0, 0, 0, 0)
-
-        # Check for method selector
         offset, self.method_combo = 0, None
         if self.config.get("settings"):
             base_settings = self.config["settings"][0]
@@ -91,11 +80,11 @@ class SettingsPanel(QFrame):
                 self.method_combo.setProperty(
                     "parameter", base_settings.get("parameter", "method")
                 )
-                self.settings_form.addRow("Method:", self.method_combo)
+                self._add_form_row("Method:", self.method_combo)
 
             for setting in self.config["settings"][offset:]:
                 widget = create_setting_widget(setting)
-                self.settings_form.addRow(f"{setting['label']}:", widget)
+                self._add_form_row(f"{setting['label']}:", widget)
 
         # Track where method-specific rows start
         self.method_row_start = None
@@ -106,19 +95,28 @@ class SettingsPanel(QFrame):
             separator.setStyleSheet(
                 f"background-color: {Colors.BG_PRESSED}; border: none"
             )
-            self.settings_form.addRow(separator)
-            self.method_row_start = self.settings_form.rowCount()
+            self.settings_grid.addWidget(separator, self._grid_row, 0, 1, 2)
+            self._grid_row += 1
+            self.method_row_start = self._grid_row
 
         settings_container = QWidget()
-        settings_container.setLayout(self.settings_form)
+        font = settings_container.font()
+        font.setPixelSize(Typography.LABEL)
+        settings_container.setFont(font)
+        settings_container.setLayout(self.settings_grid)
+
+        # Pin container to its sizeHint vertically so rows can't be squeezed;
+        # any surplus panel height falls through to the stretch below.
+        settings_container.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum
+        )
         content_layout.addWidget(settings_container)
 
         content_layout.addStretch()
 
-        # Apply button - uses platform palette colors
         apply_btn = QPushButton("Apply")
         apply_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        apply_btn.setStyleSheet(QPushButton_style)
+        apply_btn.setStyleSheet(f"QPushButton {{ font-size: {Typography.LABEL}px; }}")
 
         apply_btn.clicked.connect(self._apply_settings)
         content_layout.addWidget(apply_btn)
@@ -130,28 +128,59 @@ class SettingsPanel(QFrame):
 
         self.setFocusProxy(apply_btn)
 
+    def _add_form_row(self, label_text, widget):
+        label = QLabel(label_text)
+        self.settings_grid.addWidget(
+            label, self._grid_row, 0, Qt.AlignmentFlag.AlignVCenter
+        )
+        self.settings_grid.addWidget(
+            widget, self._grid_row, 1, Qt.AlignmentFlag.AlignVCenter
+        )
+        self._grid_row += 1
+
     def get_current_settings(self):
         ret = {}
         if self.method_combo is not None:
             name = self.method_combo.property("parameter")
             ret[name] = self.method_combo.currentText()
 
-        ret.update(get_layout_widget_value(self.settings_form))
+        # Iterate field widgets in column 1 of the grid
+        for row in range(self.settings_grid.rowCount()):
+            item = self.settings_grid.itemAtPosition(row, 1)
+            if not (item and item.widget()):
+                continue
+            widget = item.widget()
+            parameter = widget.property("parameter")
+            if parameter is None:
+                continue
+            from .settings import get_widget_value
+
+            ret[parameter] = get_widget_value(widget)
         return ret
 
     def update_method_settings(self, method):
         if self.method_row_start is None:
             return
 
-        # Remove existing method-specific rows
-        while self.settings_form.rowCount() > self.method_row_start:
-            self.settings_form.removeRow(self.method_row_start)
+        # Collect widgets to remove first, then remove them
+        to_remove = []
+        for row in range(self.method_row_start, self._grid_row):
+            for col in (0, 1):
+                item = self.settings_grid.itemAtPosition(row, col)
+                if item and item.widget():
+                    to_remove.append(item.widget())
+
+        for widget in to_remove:
+            self.settings_grid.removeWidget(widget)
+            widget.deleteLater()
+
+        self._grid_row = self.method_row_start
 
         self.current_method_widgets.clear()
         settings = self.config.get("method_settings", {}).get(method, [])
         for setting in settings:
             widget = create_setting_widget(setting)
-            self.settings_form.addRow(f"{setting['label']}:", widget)
+            self._add_form_row(f"{setting['label']}:", widget)
             self.current_method_widgets.append(widget)
 
         QTimer.singleShot(0, self.adjustSize)
@@ -166,8 +195,6 @@ class SettingsPanel(QFrame):
         self.parent_button = button
         self.adjustSize()
 
-        # Position below button, left-aligned with button's left edge
-        # The panel has 8px left margin, so offset by that amount
         btn_rect = button.rect()
         global_pos = button.mapToGlobal(QPoint(0, btn_rect.height()))
 
@@ -176,21 +203,45 @@ class SettingsPanel(QFrame):
         self.move(global_pos.x() - 8, global_pos.y() - 1)
         self.show()
 
-        # Notify button we're open
+        # Certain SettingsWidgets appear to draw focus. This pre-clears them.
+        focused = self.focusWidget()
+        if focused is not None:
+            focused.clearFocus()
+        QApplication.instance().installEventFilter(self)
+
         if hasattr(button, "_set_panel_open"):
             button._set_panel_open(True)
 
     def closeEvent(self, event):
+        app = QApplication.instance()
+        if app is not None:
+            app.removeEventFilter(self)
         if self.parent_button and hasattr(self.parent_button, "_set_panel_open"):
             self.parent_button._set_panel_open(False)
         super().closeEvent(event)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.MouseButtonPress:
+            if QApplication.activeModalWidget() is not None:
+                return False
+            click = event.globalPosition().toPoint()
+            if self.geometry().contains(click):
+                return False
+            if self.parent_button and self.parent_button.rect().contains(
+                self.parent_button.mapFromGlobal(click)
+            ):
+                return False
+            self.close()
+        elif event.type() == QEvent.Type.KeyPress:
+            if event.key() == Qt.Key.Key_Escape:
+                self.close()
+        return False
 
     def paintEvent(self, event):
         """Custom paint to draw connected border with button."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Use 0.5 pixel insets for crisp 1px border rendering with antialiasing
         margin = 8
         rect = QRectF(
             margin + 0.5,
@@ -200,16 +251,12 @@ class SettingsPanel(QFrame):
         )
         radius = 6.0
 
-        # Determine button overlap region (where top border is omitted)
         btn_width = self.parent_button.width() if self.parent_button else 0
         notch_right = min(rect.right(), float(btn_width))
 
-        # Build border path: open at top where button connects
-        # Start at top-left, go down left side, around bottom, up right side
         border_path = QPainterPath()
         border_path.moveTo(rect.left(), rect.top())
 
-        # Left side down to bottom-left corner
         border_path.lineTo(rect.left(), rect.bottom() - radius)
         border_path.arcTo(
             QRectF(rect.left(), rect.bottom() - radius * 2, radius * 2, radius * 2),
@@ -217,7 +264,6 @@ class SettingsPanel(QFrame):
             90,
         )
 
-        # Bottom edge to bottom-right corner
         border_path.lineTo(rect.right() - radius, rect.bottom())
         border_path.arcTo(
             QRectF(
@@ -230,9 +276,7 @@ class SettingsPanel(QFrame):
             90,
         )
 
-        # Right side: either with top-right corner or straight up
         if notch_right < rect.right() - radius:
-            # Panel is wider than button - draw top-right corner
             border_path.lineTo(rect.right(), rect.top() + radius)
             border_path.arcTo(
                 QRectF(rect.right() - radius * 2, rect.top(), radius * 2, radius * 2),
@@ -241,21 +285,16 @@ class SettingsPanel(QFrame):
             )
             border_path.lineTo(notch_right + radius + 1.5, rect.top())
         else:
-            # Button covers full width - no corner needed
             border_path.lineTo(rect.right(), rect.top())
 
-        # Close the border path to create a fill shape
-        # The top edge under the button gets filled but not stroked
         fill_path = QPainterPath(border_path)
         fill_path.lineTo(rect.left(), rect.top())
 
-        # Fill with platform window background color
         palette = QApplication.palette()
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(palette.window())
         painter.drawPath(fill_path)
 
-        # Draw border (stroke only, path is not closed at top)
         pen = QPen(QColor(Colors.BORDER_DARK))
         pen.setWidthF(1.0)
         painter.setPen(pen)
@@ -263,182 +302,277 @@ class SettingsPanel(QFrame):
         painter.drawPath(border_path)
 
 
-class SettingsToolButton(QToolButton):
-    """A tool button with an attached dropdown settings panel."""
+class RibbonButton(QPushButton):
+    """A ribbon push button with an optional attached dropdown settings panel.
+
+    Buttons with settings have two click zones: the main area executes the
+    action with current/default settings, while the chevron (▾) on the right
+    opens the settings panel.
+    """
+
+    CHEVRON_WIDTH = 24
 
     def __init__(
         self, text, icon_name, settings_config=None, parent=None, callback=None
     ):
-        super().__init__(parent)
+        self._has_settings = settings_config is not None
+        super().__init__(text, parent)
+
         self._panel_open = False
+        self._icon_name = icon_name
+        self._full_text = text
+        self._collapsed = False
+        self._full_width = None
+        self._collapsed_width = None
+        self._chevron_clicked = False
         self.callback = callback
+        self._settings_config = settings_config
         self.settings_panel = None
 
-        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-        self.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
-        self.setIcon(qta.icon(icon_name, color=Colors.ICON))
-        self.setText(text)
+        self.setFixedHeight(30)
+        self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setIcon(icon(icon_name, role="active"))
+        self.setIconSize(QSize(18, 18))
 
-        self.main_action = QAction(self.icon(), text, self)
-        if self.callback is not None:
-            self.main_action.triggered.connect(self._apply)
-        self.setDefaultAction(self.main_action)
+        if self._has_settings:
+            self.clicked.connect(self._handle_click)
+        elif callback is not None:
+            self.clicked.connect(self._apply)
 
-        if settings_config is not None:
-            self.settings_panel = SettingsPanel(settings_config, parent_button=self)
+        self._apply_style()
+
+    def _ensure_panel(self):
+        # Built lazily so the button is already attached to its real top-level
+        # window; this gives the Qt.Tool panel a valid transient parent on macOS
+        # and prevents a Dock-icon bounce on first show.
+        if self.settings_panel is None and self._has_settings:
+            self.settings_panel = SettingsPanel(
+                self._settings_config, parent_button=self
+            )
             self.settings_panel.settings_applied.connect(self._applied_settings)
-            # Create a dummy menu to enable the menu button, but we'll intercept clicks
-            self._dummy_menu = QMenu(self)
-            self.setMenu(self._dummy_menu)
+        return self.settings_panel
 
-        self._update_style()
+    def set_collapsed(self, collapsed):
+        if collapsed == self._collapsed:
+            return
+        self._collapsed = collapsed
+        self.setText("" if collapsed else self._full_text)
+
+    def _cache_widths(self):
+        if self._full_width is not None:
+            return
+        was = self._collapsed
+        self.set_collapsed(False)
+        self._full_width = self.sizeHint().width()
+        self.set_collapsed(True)
+        self._collapsed_width = self.sizeHint().width()
+        self.set_collapsed(was)
+
+    def _on_theme_changed(self):
+        self.setIcon(icon(self._icon_name, role="active"))
+        self._apply_style()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self._has_settings:
+            return None
+
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pen = QPen(QColor(Colors.TEXT_MUTED))
+        pen.setWidthF(1.2)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        cx = self.width() - 10
+        cy = self.height() / 2
+        path = QPainterPath()
+        path.moveTo(cx - 3, cy - 1.5)
+        path.lineTo(cx, cy + 1.5)
+        path.lineTo(cx + 3, cy - 1.5)
+        p.drawPath(path)
+        p.end()
+
+    def mousePressEvent(self, event):
+        if self._has_settings:
+            self._chevron_clicked = event.pos().x() >= self.width() - self.CHEVRON_WIDTH
+        super().mousePressEvent(event)
+
+    def _handle_click(self):
+        """Route click: chevron opens settings, main area executes with defaults."""
+        chevron = self._chevron_clicked
+        self._chevron_clicked = False
+        if chevron:
+            self._toggle_panel()
+        else:
+            self._apply()
 
     def _apply(self):
-        if self.settings_panel:
-            settings = self.settings_panel.get_current_settings()
+        if self._has_settings:
+            panel = self._ensure_panel()
+            settings = panel.get_current_settings()
             return self.callback(**settings) if self.callback else None
         return self.callback() if self.callback else None
 
     def _applied_settings(self, settings):
         return self.callback(**settings) if self.callback else None
 
+    def _toggle_panel(self):
+        panel = self._ensure_panel()
+        if self._panel_open:
+            panel.close()
+        else:
+            panel.showAtButton(self)
+
     def _set_panel_open(self, is_open):
         self._panel_open = is_open
-        self._update_style()
+        self._apply_style()
 
-    def _update_style(self):
-        """Update button style based on panel state."""
+    def _apply_style(self):
+        pad_r = 20 if self._has_settings else 8
         if self._panel_open:
             self.setStyleSheet(
                 f"""
-                QToolButton {{
-                    min-width: 52px;
-                    padding: 4px 6px;
+                QPushButton {{
+                    border: 1px solid {Colors.BORDER_DARK};
+                    border-bottom: 1px solid transparent;
                     border-top-left-radius: 6px;
                     border-top-right-radius: 6px;
                     border-bottom-left-radius: 0px;
                     border-bottom-right-radius: 0px;
-                    font-size: 11px;
-                    border: 1px solid {Colors.BORDER_DARK};
-                    border-bottom: none;
+                    padding: 4px {pad_r}px 4px 8px;
+                    font-size: {Typography.LABEL}px;
+                    color: {Colors.TEXT_SECONDARY};
                 }}
-                QToolButton::menu-indicator {{
-                    image: url(none);
-                    width: 0px;
-                }}
-                QToolButton::menu-button {{
-                    border: none;
-                    border-left: none;
-                    border-bottom: none;
-                    width: 14px;
-                    padding: 0px;
-                    margin: 0px;
-                    subcontrol-origin: padding;
-                    subcontrol-position: right center;
-                }}
-                """
-            )
-        else:
-            self.setStyleSheet(QToolButton_style)
-
-    def mousePressEvent(self, event):
-        """Intercept menu button clicks to show our panel instead."""
-        if self.settings_panel:
-            # Check if click is in the menu button region
-            opt_btn_width = 16
-            if event.pos().x() > self.width() - opt_btn_width:
-                if self._panel_open:
-                    self.settings_panel.close()
-                else:
-                    self.settings_panel.showAtButton(self)
-                return
-        super().mousePressEvent(event)
-
-
-# Keep SettingsMenu as alias for backward compatibility
-SettingsMenu = SettingsPanel
-
-
-class RibbonToolBar(QToolBar):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setIconSize(QSize(20, 20))
-        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setStyleSheet(
-            f"""
-            QToolBar {{
-                spacing: 16px;
-                padding: 12px 12px 12px 12px;
-                border-bottom: 1px solid {Colors.BG_PRESSED};
-            }}
-            QToolButton {{
-                min-width: 52px;
-                padding: 4px 6px;
-                border-radius: 6px;
-                font-size: 11px;
-                background: transparent;
-                border: 1px solid transparent;
-            }}
-            QToolButton:hover {{
-                background: {Colors.BG_HOVER}
-                border: 1px solid {Colors.BG_PRESSED};
-            }}
-            QToolButton:pressed {{
-                background: {Colors.BG_PRESSED};
-                border: 1px solid rgba(0, 0, 0, 0.12);
-            }}
-        """
-        )
-        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-
-    def add_section(self, title, actions):
-        if len(self.actions()) > 0:
-            separator = QFrame()
-            separator.setFrameShape(QFrame.Shape.VLine)
-            separator.setFixedWidth(2)
-            separator.setStyleSheet(
-                f"""
-                QFrame {{
-                    background: {Colors.BG_PRESSED};
-                    border: none;
-                    border-radius: 1px;
-                    margin-top: 4px;
-                    margin-bottom: 4px;
-                }}
+                QPushButton:focus {{ outline: none; }}
             """
             )
-            self.addWidget(separator)
+        else:
+            self.setStyleSheet(
+                f"""
+                QPushButton {{
+                    border: 1px solid transparent;
+                    background: transparent;
+                    border-radius: 6px;
+                    padding: 4px {pad_r}px 4px 8px;
+                    font-size: {Typography.LABEL}px;
+                    color: {Colors.TEXT_SECONDARY};
+                }}
+                QPushButton:hover {{
+                    background: {Colors.BG_HOVER};
+                }}
+                QPushButton:pressed {{
+                    background: {Colors.BG_PRESSED};
+                }}
+                QPushButton:focus {{ outline: none; }}
+            """
+            )
 
-        section = QWidget()
-        section_layout = QHBoxLayout(section)
-        section_layout.setContentsMargins(0, 0, 0, 0)
-        section_layout.setSpacing(4)
 
-        for action in actions:
-            section_layout.addWidget(action)
+class RibbonToolBar(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(42)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
-        self.addWidget(section)
+        self._layout = QHBoxLayout(self)
+        self._layout.setContentsMargins(8, 2, 8, 6)
+        self._layout.setSpacing(4)
+
+        self._sections = []
+        self._dividers = []
+        self._buttons = []
+
+    def minimumSizeHint(self):
+        return QSize(0, 42)
+
+    def clear(self):
+        while self._layout.count():
+            item = self._layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+                widget.deleteLater()
+        self._sections.clear()
+        self._dividers.clear()
+        self._buttons.clear()
+
+    def _on_theme_changed(self):
+        for div in self._dividers:
+            div.setStyleSheet(f"background: {Colors.BORDER_DARK}; border: none;")
+        for btn in self._buttons:
+            if hasattr(btn, "_on_theme_changed"):
+                btn._on_theme_changed()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_collapse()
+
+    def _update_collapse(self):
+        ribbon_buttons = [
+            b for b in reversed(self._buttons) if isinstance(b, RibbonButton)
+        ]
+        if not ribbon_buttons:
+            return None
+
+        for btn in ribbon_buttons:
+            btn._cache_widths()
+
+        margins = self._layout.contentsMargins()
+        available = self.width() - margins.left() - margins.right()
+        spacing = self._layout.spacing()
+        widget_count = len(self._buttons) + len(self._dividers)
+        needed = (
+            sum(
+                b._full_width if isinstance(b, RibbonButton) else b.sizeHint().width()
+                for b in self._buttons
+            )
+            + sum(d.width() for d in self._dividers)
+            + spacing * max(widget_count - 1, 0)
+        )
+
+        for btn in ribbon_buttons:
+            if needed <= available:
+                btn.set_collapsed(False)
+            else:
+                needed -= btn._full_width - btn._collapsed_width
+                btn.set_collapsed(True)
+
+    def add_section(self, title, actions):
+        if self._sections:
+            div = QFrame()
+            div.setFixedWidth(1)
+            div.setFixedHeight(28)
+            div.setStyleSheet(f"background: {Colors.BORDER_DARK}; border: none;")
+            self._layout.addWidget(div)
+            self._dividers.append(div)
+
+        for widget in actions:
+            self._layout.addWidget(widget)
+            self._buttons.append(widget)
+
+        self._sections.append(title)
+
+        # Keep stretch at the end
+        self._layout.addStretch()
+        # Remove the previous stretch (second-to-last item) if it exists
+        if self._layout.count() > len(self._buttons) + len(self._dividers) + 1:
+            # Find and remove extra stretches — keep only the last one
+            for i in range(self._layout.count() - 2, -1, -1):
+                item = self._layout.itemAt(i)
+                if item and item.spacerItem() and not item.widget():
+                    self._layout.takeAt(i)
+                    break
 
 
 def create_button(
     text, icon_name, parent=None, callback=None, tooltip=None, settings_config=None
 ):
-    if settings_config:
-        button = SettingsToolButton(
-            text, icon_name, settings_config, parent=parent, callback=callback
-        )
-    else:
-        action = QAction(qta.icon(icon_name, color=Colors.ICON), text, parent)
-        button = QToolButton()
-        button.setDefaultAction(action)
-        button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-        if callback:
-            button.triggered.connect(callback)
-
-    button.setStyleSheet(QToolButton_style)
-    button.setIconSize(QSize(20, 20))
+    button = RibbonButton(
+        text, icon_name, settings_config, parent=parent, callback=callback
+    )
     if tooltip:
         button.setToolTip(tooltip)
     return button

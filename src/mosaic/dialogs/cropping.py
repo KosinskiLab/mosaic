@@ -1,7 +1,7 @@
 """
 Distance-based cropping dialog for filtering points by proximity.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -15,29 +15,18 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QPushButton,
     QTreeWidget,
-    QRadioButton,
-    QButtonGroup,
     QGroupBox,
     QFrame,
-    QMessageBox,
 )
-import qtawesome as qta
-
+from ..icons import icon
+from ..stylesheets import Colors, Typography
 from ..widgets.container_list import ContainerTreeWidget, StyledTreeWidgetItem
-from ..stylesheets import (
-    QGroupBox_style,
-    QPushButton_style,
-    QScrollArea_style,
-    HelpLabel_style,
-    Colors,
-)
+from ..widgets.segmented_control import SegmentedControl
+from ..widgets import MosaicMessageBox
 
 
 class DistanceCropDialog(QDialog):
     """Dialog for cropping geometry points based on distance to reference objects.
-
-    This dialog can be displayed as a dock widget for interactive preview
-    of points that would be removed/kept by the distance crop operation.
 
     Parameters
     ----------
@@ -62,28 +51,22 @@ class DistanceCropDialog(QDialog):
         self.setMinimumWidth(320)
         self.setMaximumWidth(420)
         self.setup_ui()
-        self.setStyleSheet(
-            QGroupBox_style
-            + QPushButton_style
-            + QScrollArea_style
-            + """
-            QRadioButton {
-                spacing: 5px;
-            }
-            QRadioButton::indicator {
-                width: 18px;
-                height: 18px;
-            }
-            """
-        )
 
     def setup_ui(self):
+
+        HelpLabel_style = f"""
+            QLabel {{
+                color: {Colors.TEXT_MUTED};
+                font-size: {Typography.LABEL}px;
+                border-top: 0px;
+            }}
+        """
+
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(10)
-        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setContentsMargins(10, 0, 10, 10)
 
-        # Crop Target panel - objects to be cropped
-        crop_panel = QGroupBox("Crop Target")
+        crop_panel = QGroupBox("Target")
         crop_layout = QVBoxLayout(crop_panel)
         crop_layout.setSpacing(6)
 
@@ -91,7 +74,7 @@ class DistanceCropDialog(QDialog):
         crop_description.setStyleSheet(HelpLabel_style)
         crop_layout.addWidget(crop_description)
 
-        self.crop_tree = ContainerTreeWidget(border=False)
+        self.crop_tree = ContainerTreeWidget()
         self.crop_tree.tree_widget.setSelectionMode(
             QTreeWidget.SelectionMode.ExtendedSelection
         )
@@ -99,8 +82,7 @@ class DistanceCropDialog(QDialog):
 
         main_layout.addWidget(crop_panel, 1)
 
-        # Distance Reference panel - objects to compute distance to
-        ref_panel = QGroupBox("Distance Reference")
+        ref_panel = QGroupBox("Reference")
         ref_layout = QVBoxLayout(ref_panel)
         ref_layout.setSpacing(6)
 
@@ -108,7 +90,7 @@ class DistanceCropDialog(QDialog):
         ref_description.setStyleSheet(HelpLabel_style)
         ref_layout.addWidget(ref_description)
 
-        self.ref_tree = ContainerTreeWidget(border=False)
+        self.ref_tree = ContainerTreeWidget()
         self.ref_tree.tree_widget.setSelectionMode(
             QTreeWidget.SelectionMode.ExtendedSelection
         )
@@ -116,12 +98,10 @@ class DistanceCropDialog(QDialog):
 
         main_layout.addWidget(ref_panel, 1)
 
-        # Settings panel
         settings_group = QGroupBox("Settings")
         settings_layout = QVBoxLayout(settings_group)
         settings_layout.setSpacing(8)
 
-        # Distance input row
         distance_layout = QHBoxLayout()
         distance_label = QLabel("Max Distance:")
         distance_layout.addWidget(distance_label)
@@ -137,41 +117,23 @@ class DistanceCropDialog(QDialog):
         distance_layout.addWidget(self.distance_input)
         settings_layout.addLayout(distance_layout)
 
-        # Direction radio buttons row
         direction_layout = QHBoxLayout()
         direction_label = QLabel("Keep:")
         direction_layout.addWidget(direction_label)
         direction_layout.addStretch()
 
-        self.comparison_group = QButtonGroup()
-
-        radio_container = QFrame()
-        radio_layout = QHBoxLayout(radio_container)
-        radio_layout.setContentsMargins(0, 0, 0, 0)
-        radio_layout.setSpacing(12)
-
-        self.smaller_radio = QRadioButton("Within")
-        self.smaller_radio.setChecked(True)
-        self.larger_radio = QRadioButton("Outside")
-        self.comparison_group.addButton(self.smaller_radio)
-        self.comparison_group.addButton(self.larger_radio)
-
-        radio_layout.addWidget(self.smaller_radio)
-        radio_layout.addWidget(self.larger_radio)
-
-        direction_layout.addWidget(radio_container)
+        self.direction_control = SegmentedControl(["Within", "Outside"], default=0)
+        direction_layout.addWidget(self.direction_control)
         settings_layout.addLayout(direction_layout)
 
         main_layout.addWidget(settings_group)
 
-        # Footer with Preview, Cancel, and Crop buttons
         footer = QFrame()
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(0, 8, 0, 0)
 
         self.preview_button = QPushButton("Preview")
-        self.preview_button.setIcon(qta.icon("ph.eye", color=Colors.ICON))
-        self.preview_button.setStyleSheet(QPushButton_style)
+        self.preview_button.setIcon(icon("ph.eye"))
         self.preview_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.preview_button.clicked.connect(self._on_preview)
         footer_layout.addWidget(self.preview_button)
@@ -179,15 +141,13 @@ class DistanceCropDialog(QDialog):
         footer_layout.addStretch()
 
         self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setIcon(qta.icon("ph.x", color=Colors.ICON))
-        self.cancel_button.setStyleSheet(QPushButton_style)
+        self.cancel_button.setIcon(icon("ph.x"))
         self.cancel_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.cancel_button.clicked.connect(self.reject)
         footer_layout.addWidget(self.cancel_button)
 
         self.crop_button = QPushButton("Crop")
-        self.crop_button.setIcon(qta.icon("ph.scissors", color=Colors.PRIMARY))
-        self.crop_button.setStyleSheet(QPushButton_style)
+        self.crop_button.setIcon(icon("ph.scissors", role="primary"))
         self.crop_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.crop_button.clicked.connect(self.accept)
         footer_layout.addWidget(self.crop_button)
@@ -223,12 +183,10 @@ class DistanceCropDialog(QDialog):
         """Populate the reference tree with both clusters and models (flat, no groups)."""
         self.ref_tree.tree_widget.clear()
 
-        # Add clusters
         for name, obj in self.cdata.format_datalist("data"):
             item = StyledTreeWidgetItem(name, obj.visible, {"object": obj, **obj._meta})
             self.ref_tree.tree_widget.addTopLevelItem(item)
 
-        # Add models
         for name, obj in self.cdata.format_datalist("models"):
             item = StyledTreeWidgetItem(name, obj.visible, {"object": obj, **obj._meta})
             self.ref_tree.tree_widget.addTopLevelItem(item)
@@ -242,20 +200,18 @@ class DistanceCropDialog(QDialog):
             Dictionary with sources, targets, distance, keep_smaller keys,
             or None if validation fails.
         """
-        # Get sources from tree widget
         sources = []
         for item in self.crop_tree.selected_items():
             if "object" in item.metadata:
                 sources.append(item.metadata["object"])
 
-        # Get targets from reference tree
         targets = []
         for item in self.ref_tree.selected_items():
             if "object" in item.metadata:
                 targets.append(item.metadata["object"])
 
         if not sources:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self,
                 "Selection Required",
                 "Please select at least one object to crop.",
@@ -263,7 +219,7 @@ class DistanceCropDialog(QDialog):
             return None
 
         if not targets:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self,
                 "Selection Required",
                 "Please select at least one distance reference.",
@@ -274,7 +230,7 @@ class DistanceCropDialog(QDialog):
             "sources": sources,
             "targets": targets,
             "distance": self.distance_input.value(),
-            "keep_smaller": self.smaller_radio.isChecked(),
+            "keep_smaller": self.direction_control.currentText() == "Within",
         }
 
     def _on_preview(self):

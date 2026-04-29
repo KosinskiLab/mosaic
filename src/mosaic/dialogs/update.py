@@ -1,15 +1,16 @@
 """
 Update checker
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from sys import executable, argv
 
-from qtpy.QtCore import QThread, Signal
+from qtpy.QtCore import Qt, QThread, Signal
 from qtpy.QtWidgets import QMessageBox, QCheckBox, QApplication
+from ..widgets import MosaicMessageBox
 
 from ..__version__ import __version__
 
@@ -19,8 +20,8 @@ class UpdateChecker(QThread):
 
     update_available = Signal(str, str)  # latest_version, release_notes
 
-    def __init__(self, current_version: str = __version__):
-        super().__init__()
+    def __init__(self, current_version: str = __version__, parent=None):
+        super().__init__(parent)
         self.current_version = str(current_version)
         self.repo_url = (
             "https://api.github.com/repos/KosinskiLab/mosaic/releases/latest"
@@ -47,7 +48,7 @@ class UpdateChecker(QThread):
             pass  # Dont bother handling network issues
 
 
-class UpdateDialog(QMessageBox):
+class UpdateDialog(MosaicMessageBox):
     """Dialog to show update information using QMessageBox."""
 
     def __init__(self, current_version, latest_version, release_notes, parent=None):
@@ -55,6 +56,7 @@ class UpdateDialog(QMessageBox):
 
         self.setIcon(QMessageBox.Icon.Information)
         self.setWindowTitle("Update")
+        self.setTextFormat(Qt.TextFormat.MarkdownText)
 
         self.setText(
             f"Mosaic {latest_version} available\n\n"
@@ -104,20 +106,17 @@ class UpdateDialog(QMessageBox):
             )
 
             if result.returncode == 0:
-                msg_box = QMessageBox(self.parent())
-                msg_box.setIcon(QMessageBox.Icon.Information)
-                msg_box.setWindowTitle("Update Successful")
-                msg_box.setText("Mosaic has been updated successfully!")
-                msg_box.setInformativeText(
-                    "The application will now restart to use the new version."
+                MosaicMessageBox.information(
+                    self.parent(),
+                    "Update Successful",
+                    "Mosaic has been updated successfully!\n\n"
+                    "The application will now restart to use the new version.",
                 )
-                msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-                msg_box.exec()
 
                 self.update_result = "success"
                 self._restart_application()
             else:
-                QMessageBox.warning(
+                MosaicMessageBox.warning(
                     self.parent(),
                     "Update Failed",
                     f"The update failed. Please run manually in your terminal:\n\n"
@@ -125,7 +124,7 @@ class UpdateDialog(QMessageBox):
                     f"Error: {result.stderr}",
                 )
         except Exception as e:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self.parent(),
                 "Update Failed",
                 f"Could not run update command.\n\n"

@@ -55,6 +55,7 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+docs/superpowers
 docs/reference/rst
 
 # PyBuilder
@@ -73,3 +74,7 @@ pytest.ini
 src/mosaic/mcp
 src/mosaic/scripts/mcp_server.py
 src/mosaic/models/
+src/mosaic/czi/
+src/mosaic/onboarding/
+.superpowers/
+packaging/

@@ -1,6 +1,5 @@
 from typing import Dict
 
-from qtpy.QtCore import QLocale
 from qtpy.QtGui import QDoubleValidator
 from qtpy.QtWidgets import (
     QSpinBox,
@@ -11,35 +10,37 @@ from qtpy.QtWidgets import (
     QLineEdit,
 )
 
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
+
+__all__ = [
+    "format_tooltip",
+    "create_setting_widget",
+    "get_widget_value",
+    "set_widget_value",
+    "get_layout_widget_value",
+]
 
 
-def format_tooltip(label=None, description="", default=None, notes=None, **kwargs):
-    if label is None:
+def format_tooltip(description=None, default=None, notes=None, **kwargs):
+    if description is None and default is None and notes is None:
         return ""
 
-    label = str(label).title().replace("_", " ")
-    tooltip = f"""
-    <div class="tooltip">
-        <span style='font-size: 11pt; font-weight: 600; color: #2c3e50;'>{label}</span>
-        <p style='margin: 6px 0; color: #34495e;'>{description}</p>
-    """
-    if default is not None:
-        tooltip += f"""
-        <p style='margin: 6px 0;'>
-            <span style='color: #6b7280;'>Default:</span>
-            <span style='color: rgba(99, 102, 241, 1.0);'>{default}</span>
-        </p>
-        """
-
+    lines = []
+    if description is not None:
+        lines.append(
+            f"<span style='font-size: {Typography.SMALL}px;'>{description}</span>"
+        )
+    if default is not None and lines:
+        lines.append(
+            f"<br><br><span style='font-size: {Typography.CAPTION}px;'>Default: </span>"
+            f"<span style='font-size: {Typography.CAPTION}px; color: {Colors.PRIMARY};'>{default}</span>"
+        )
     if notes:
-        tooltip += f"""
-        <p style='margin: 6px 0; color: #95a5a6; font-style: italic;'>
-            Note: {notes}
-        </p>
-        """
-    tooltip += "</div>"
-    return tooltip
+        sep = "<br><br>" if lines else ""
+        lines.append(
+            f"{sep}<span style='font-size: {Typography.CAPTION}px;'>Note: {notes}</span>"
+        )
+    return "".join(lines)
 
 
 def create_setting_widget(setting: Dict):
@@ -57,15 +58,23 @@ def create_setting_widget(setting: Dict):
             widget.setSpecialValueText(setting.get("special_text", "Auto"))
     elif setting["type"] == "select":
         widget = QComboBox()
-        widget.addItems(setting["options"])
+        option_values = setting.get("option_values")
+        if option_values is not None:
+            for text, value in zip(setting["options"], option_values):
+                widget.addItem(text, userData=value)
+        else:
+            widget.addItems(setting["options"])
         if "default" in setting:
             set_widget_value(widget, setting["default"])
     elif setting["type"] == "PathSelector":
         from . import PathSelector
 
+        mode = setting.get("mode", "file")
+        if "file_mode" in setting and "mode" not in setting:
+            mode = "file" if setting["file_mode"] else "directory"
         widget = PathSelector(
-            placeholder=setting.get("placeholder", None),
-            file_mode=setting.get("file_mode", True),
+            placeholder=setting.get("description", None),
+            mode=mode,
         )
         if "default" in setting:
             set_widget_value(widget, setting["default"])
@@ -82,7 +91,6 @@ def create_setting_widget(setting: Dict):
         widget.setProperty("setting_type", setting["type"])
         if not isinstance(default_value, str) and setting["type"] != "float_list":
             validator = QDoubleValidator()
-            validator.setLocale(QLocale.c())
             validator.setNotation(QDoubleValidator.Notation.StandardNotation)
             validator.setBottom(float(setting.get("min", 0.0)))
             widget.setValidator(validator)
@@ -91,6 +99,7 @@ def create_setting_widget(setting: Dict):
     else:
         raise ValueError(f"Could not create widget from {setting}.")
 
+    widget.setFixedHeight(Colors.WIDGET_HEIGHT)
     widget.setToolTip(format_tooltip(**setting))
     widget.setProperty("parameter", setting.get("parameter", None))
     return widget
@@ -102,6 +111,9 @@ def get_widget_value(widget):
     if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
         return widget.value()
     elif isinstance(widget, QComboBox):
+        data = widget.currentData()
+        if data is not None:
+            return data
         return widget.currentText()
     elif isinstance(widget, QCheckBox):
         return widget.isChecked()
@@ -109,9 +121,9 @@ def get_widget_value(widget):
         validator = widget.validator()
         value = widget.text().strip()
         if validator:
-            return float(value.replace(",", "."))
+            return float(value)
         if widget.property("setting_type") == "float_list":
-            return [float(x.strip().replace(",", ".")) for x in value.split(";")]
+            return [float(x.strip()) for x in value.split(";")]
         return value
     elif isinstance(widget, PathSelector):
         return widget.get_path()
@@ -128,6 +140,11 @@ def set_widget_value(widget, value):
     if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
         widget.setValue(value)
     elif isinstance(widget, QComboBox):
+        # Try matching by item data first (e.g. UUID-backed combo boxes)
+        for i in range(widget.count()):
+            if widget.itemData(i) == value:
+                widget.setCurrentIndex(i)
+                return
         widget.setCurrentText(str(value))
     elif isinstance(widget, QCheckBox):
         widget.setChecked(bool(value))

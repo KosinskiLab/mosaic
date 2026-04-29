@@ -16,9 +16,8 @@ from qtpy.QtWidgets import (
     QPushButton,
     QSizePolicy,
 )
-import qtawesome as qta
-
 from mosaic.widgets import create_setting_widget
+from mosaic.icons import icon
 from mosaic.stylesheets import Colors
 
 
@@ -39,7 +38,6 @@ class AnimationSettings(QGroupBox):
         main_layout.setContentsMargins(10, 14, 10, 10)
         main_layout.setSpacing(10)
 
-        # Name row with enabled checkbox
         name_layout = QHBoxLayout()
         name_layout.setSpacing(8)
         self.name_edit = QLineEdit()
@@ -56,7 +54,6 @@ class AnimationSettings(QGroupBox):
         name_layout.addWidget(self.enabled_check)
         main_layout.addLayout(name_layout)
 
-        # Frame controls in compact grid: Start | Duration | Rate
         frame_layout = QGridLayout()
         frame_layout.setSpacing(4)
         frame_layout.setColumnStretch(1, 1)
@@ -66,6 +63,7 @@ class AnimationSettings(QGroupBox):
         frame_layout.addWidget(QLabel("Start:"), 0, 0)
         self.global_start_spin = QSpinBox()
         self.global_start_spin.setRange(0, 2 << 29)
+        self.global_start_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.global_start_spin.setMinimumWidth(0)
         self.global_start_spin.valueChanged.connect(
             lambda x: self.on_change(x, "global_start_frame")
@@ -75,6 +73,7 @@ class AnimationSettings(QGroupBox):
         frame_layout.addWidget(QLabel("Len:"), 0, 2)
         self.stop_spin = QSpinBox()
         self.stop_spin.setRange(1, 2 << 29)
+        self.stop_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.stop_spin.setMinimumWidth(0)
         self.stop_spin.valueChanged.connect(self._on_duration_changed)
         frame_layout.addWidget(self.stop_spin, 0, 3)
@@ -85,6 +84,7 @@ class AnimationSettings(QGroupBox):
         self.rate_spin.setValue(1.0)
         self.rate_spin.setSingleStep(0.1)
         self.rate_spin.setDecimals(1)
+        self.rate_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.rate_spin.setMinimumWidth(0)
         self.rate_spin.valueChanged.connect(self._on_rate_changed)
         frame_layout.addWidget(self.rate_spin, 0, 5)
@@ -93,13 +93,11 @@ class AnimationSettings(QGroupBox):
 
         main_layout.addLayout(frame_layout)
 
-        # Separator
         separator = QWidget()
         separator.setFixedHeight(1)
         separator.setStyleSheet("background-color: #d1d5db;")
         main_layout.addWidget(separator)
 
-        # Parameters with better spacing
         params_label = QLabel("Parameters")
         params_label.setStyleSheet("font-weight: 500; color: #6b7280;")
         main_layout.addWidget(params_label)
@@ -115,9 +113,12 @@ class AnimationSettings(QGroupBox):
     def _on_duration_changed(self, value):
         """Handle duration change - update rate to match."""
         if self._base_duration > 0:
+            rate = self._base_duration / value
             self.rate_spin.blockSignals(True)
-            self.rate_spin.setValue(self._base_duration / value)
+            self.rate_spin.setValue(rate)
             self.rate_spin.blockSignals(False)
+            if self.animation:
+                self.animation.rate = rate
         self.on_change(value, "stop_frame")
 
     def _on_rate_changed(self, rate):
@@ -127,6 +128,8 @@ class AnimationSettings(QGroupBox):
             self.stop_spin.blockSignals(True)
             self.stop_spin.setValue(new_duration)
             self.stop_spin.blockSignals(False)
+            if self.animation:
+                self.animation.rate = rate
             self.on_change(new_duration, "stop_frame")
 
     def set_animation(self, animation):
@@ -147,9 +150,11 @@ class AnimationSettings(QGroupBox):
         self.stop_spin.setValue(animation.stop_frame)
         self.enabled_check.setChecked(animation.enabled)
 
-        # Set base duration and rate
-        self._base_duration = animation.stop_frame
-        self.rate_spin.setValue(1.0)
+        if animation._base_duration is not None:
+            self._base_duration = animation._base_duration
+        else:
+            self._base_duration = animation.stop_frame * animation.rate
+        self.rate_spin.setValue(animation.rate)
 
         for widget in [
             self.name_edit,
@@ -160,7 +165,6 @@ class AnimationSettings(QGroupBox):
         ]:
             widget.blockSignals(False)
 
-        # Clear and rebuild parameters
         while self.params_layout.rowCount() > 0:
             self.params_layout.removeRow(0)
         self.parameter_widgets.clear()
@@ -181,18 +185,24 @@ class AnimationSettings(QGroupBox):
             else:
                 widget = create_setting_widget(widget_settings)
 
-            signal = None
-            if isinstance(widget, QComboBox):
-                signal = widget.currentTextChanged
-            elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
-                signal = widget.valueChanged
-            elif isinstance(widget, QLineEdit):
-                signal = widget.textChanged
-
             label = widget_settings["label"]
 
-            if signal is not None:
-                signal.connect(lambda x, lab=label: self.on_change(x, lab))
+            if isinstance(widget, QComboBox):
+                # Use currentIndexChanged so we can resolve item data (e.g. UUID)
+                widget.currentIndexChanged.connect(
+                    lambda idx, w=widget, lab=label: self.on_change(
+                        (
+                            w.itemData(idx)
+                            if w.itemData(idx) is not None
+                            else w.itemText(idx)
+                        ),
+                        lab,
+                    )
+                )
+            elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
+                widget.valueChanged.connect(lambda x, lab=label: self.on_change(x, lab))
+            elif isinstance(widget, QLineEdit):
+                widget.textChanged.connect(lambda x, lab=label: self.on_change(x, lab))
 
             label_clean = label.title().replace("_", " ")
             self.params_layout.addRow(f"{label_clean}:", widget)
@@ -207,6 +217,16 @@ class AnimationSettings(QGroupBox):
             setattr(self.animation, key, value)
         else:
             self.animation.update_parameters(**{key: value})
+
+        # Data range changes update stop_frame; sync the UI
+        if key in ("data_start", "data_stop"):
+            self._base_duration = self.animation._base_duration or self._base_duration
+            self.stop_spin.blockSignals(True)
+            self.stop_spin.setValue(self.animation.stop_frame)
+            self.stop_spin.blockSignals(False)
+            self.rate_spin.blockSignals(True)
+            self.rate_spin.setValue(self.animation.rate)
+            self.rate_spin.blockSignals(False)
 
         self.animationChanged.emit({key: value})
 
@@ -243,7 +263,6 @@ class ExportDialog(QDialog):
         layout.setSpacing(16)
         layout.setContentsMargins(16, 16, 16, 16)
 
-        # === Output Format ===
         format_group = QGroupBox("Output Format")
         format_layout = QGridLayout(format_group)
         format_layout.setSpacing(8)
@@ -251,7 +270,7 @@ class ExportDialog(QDialog):
 
         format_layout.addWidget(QLabel("Format:"), 0, 0)
         self.format_combo = QComboBox()
-        self.format_combo.addItems(["MP4", "AVI", "PNG Sequence"])
+        self.format_combo.addItems(["MP4", "AVI", "WebM", "PNG Sequence"])
         self.format_combo.currentTextChanged.connect(self._on_format_changed)
         format_layout.addWidget(self.format_combo, 0, 1)
 
@@ -264,7 +283,6 @@ class ExportDialog(QDialog):
 
         layout.addWidget(format_group)
 
-        # === Resolution ===
         resolution_group = QGroupBox("Resolution")
         resolution_layout = QGridLayout(resolution_group)
         resolution_layout.setSpacing(8)
@@ -292,11 +310,9 @@ class ExportDialog(QDialog):
         self.height_spin.setSingleStep(2)
         resolution_layout.addWidget(self.height_spin, 1, 3)
 
-        # Propgate changes
         self._on_resolution_preset_changed(list(self.RESOLUTION_PRESETS.keys())[0])
         layout.addWidget(resolution_group)
 
-        # === Render Quality ===
         quality_group = QGroupBox("Render Quality")
         quality_layout = QGridLayout(quality_group)
         quality_layout.setSpacing(8)
@@ -319,7 +335,6 @@ class ExportDialog(QDialog):
 
         layout.addWidget(quality_group)
 
-        # === Timing ===
         timing_group = QGroupBox("Timing")
         timing_layout = QGridLayout(timing_group)
         timing_layout.setSpacing(8)
@@ -352,19 +367,18 @@ class ExportDialog(QDialog):
 
         layout.addWidget(timing_group)
 
-        # === Buttons ===
         button_layout = QHBoxLayout()
         button_layout.setSpacing(8)
 
         cancel_btn = QPushButton("Cancel")
-        cancel_btn.setIcon(qta.icon("ph.x", color=Colors.ICON))
+        cancel_btn.setIcon(icon("ph.x", role="muted"))
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
 
         button_layout.addStretch()
 
         export_btn = QPushButton("Export")
-        export_btn.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
+        export_btn.setIcon(icon("ph.download", role="primary"))
         export_btn.setDefault(True)
         export_btn.clicked.connect(self.accept)
         button_layout.addWidget(export_btn)

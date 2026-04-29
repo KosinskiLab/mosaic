@@ -4,7 +4,7 @@ Command registry and built-in commands for the Mosaic scripting interface.
 Commands are auto-registered from :class:`mosaic.operations.GeometryOperations`
 and :class:`mosaic.properties.GeometryProperties`.
 
-Copyright (c) 2026 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -19,9 +19,10 @@ from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
-from .parser import ParsedCommand
-from .theme import BOX_PANEL, BOX_TABLE, get_console
 from ..registry import _UNSET
+from .parser import ParsedCommand
+from ..formats.session import is_session_file
+from .theme import BOX_PANEL, BOX_TABLE, get_console
 
 __all__ = ["Command", "CommandRegistry"]
 
@@ -103,6 +104,13 @@ class CommandRegistry:
             Command output.
         """
         from ..registry import MethodRegistry
+
+        # "measure help" / "measure distance help" → "help measure [distance]"
+        if parsed.args and parsed.args[-1] == "help":
+            parsed = ParsedCommand(
+                verb="help",
+                args=[parsed.verb] + parsed.args[:-1],
+            )
 
         cmd = cls.get(parsed.verb)
         if cmd is None:
@@ -277,21 +285,44 @@ def _applied_text(op_name: str, created: list, session) -> Text:
     return t
 
 
-def _is_session_file(filepath: str) -> bool:
-    """Return True if *filepath* has a session file extension."""
-    import os
+def _expand_brace_range(pattern: str):
+    """Expand bash-style ``{start..end}`` or ``{start..end..step}``.
 
-    return os.path.splitext(filepath)[1].lower() == ".pickle"
+    Returns a list of expanded strings, or *None* when no brace range
+    is present.  Zero-padding is preserved when the start or end value
+    has leading zeros (matching bash behaviour).
+    """
+    import re
+
+    m = re.search(r"\{(\d+)\.\.(\d+)(?:\.\.(\d+))?\}", pattern)
+    if m is None:
+        return None
+    prefix, suffix = pattern[: m.start()], pattern[m.end() :]
+    start_s, end_s = m.group(1), m.group(2)
+    start, end = int(start_s), int(end_s)
+    step = int(m.group(3)) if m.group(3) else 1
+    width = max(len(start_s), len(end_s))
+    pad = start_s.startswith("0") or end_s.startswith("0")
+    fmt = f"{{:0{width}d}}" if pad else "{}"
+    return [f"{prefix}{fmt.format(i)}{suffix}" for i in range(start, end + 1, step)]
+
+
+def _natsort_key(path: str):
+    """Sort key that orders embedded numbers numerically."""
+    import re
+
+    return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", path)]
 
 
 def _cmd_open(session, parsed: ParsedCommand):
     import glob as _glob
+    from pathlib import Path
 
     filepath = parsed.kwargs.pop("filepath", None)
     if filepath is None:
         return _usage_line(_usage_for("open"))
 
-    if _is_session_file(filepath):
+    if is_session_file(filepath):
         persist = parsed.kwargs.pop("persist", True)
         session.load_session(filepath, persist=persist)
         if persist:
@@ -302,8 +333,19 @@ def _cmd_open(session, parsed: ParsedCommand):
 
     persist = parsed.kwargs.get("persist", True)
 
-    if any(c in filepath for c in ("*", "?", "[")):
-        paths = sorted(_glob.glob(filepath, recursive="**" in filepath))
+    expanded = _expand_brace_range(filepath)
+    is_multi = expanded is not None or any(c in filepath for c in ("*", "?", "["))
+
+    if is_multi:
+        candidates = expanded if expanded is not None else [filepath]
+        paths = []
+        for pat in candidates:
+            if any(c in pat for c in ("*", "?", "[")):
+                paths.extend(_glob.glob(pat, recursive="**" in pat))
+            elif Path(pat).exists():
+                paths.append(pat)
+
+        paths = sorted(paths, key=_natsort_key)
         if not paths:
             return _error_panel(f"No files matching: {filepath}")
         all_indices = []
@@ -337,7 +379,7 @@ def _cmd_save(session, parsed: ParsedCommand):
     if filepath is None:
         return _usage_line(_usage_for("save"))
 
-    if _is_session_file(filepath):
+    if is_session_file(filepath):
         session.save_session(filepath)
         return _success_text("Session saved  ", filepath)
 
@@ -570,7 +612,10 @@ def _registry_method_listing(op_name: str):
         Text(),
         table,
         Text(),
-        Text(f"Type 'help {op_name} <method>' for parameters.", style="mosaic.muted"),
+        Text(
+            f"Type '{op_name} <method> help' for parameters.",
+            style="mosaic.muted",
+        ),
     )
 
 
@@ -669,7 +714,13 @@ def _cmd_help(session, parsed: ParsedCommand):
         parts.append(Rule(group_name, style="mosaic.rule", align="left"))
         parts.append(table)
 
-    parts += [Text(), Text("Type 'help <command>' for details.", style="mosaic.muted")]
+    parts += [
+        Text(),
+        Text(
+            "Type 'help <command>' or '<command> help' for details.",
+            style="mosaic.muted",
+        ),
+    ]
 
     return _help_panel("Mosaic Commands", *parts)
 
@@ -875,13 +926,219 @@ def _cmd_merge(session, parsed: ParsedCommand):
     return _success_text(f"Merged {len(geometries)} geometries  ", f"→ #{idx}")
 
 
+def _cmd_dts_screen(session, parsed: ParsedCommand):
+    from pathlib import Path
+
+    dts_file = parsed.kwargs.pop("dts", None) or (
+        parsed.args[0] if parsed.args else None
+    )
+    if not dts_file:
+        return _error_panel("Provide a DTS config file.")
+    dts_file = Path(dts_file).resolve()
+    if not dts_file.exists():
+        return _error_panel(f"DTS file not found: {dts_file}")
+
+    mesh = parsed.kwargs.pop("mesh", None) or (
+        parsed.args[1] if len(parsed.args) > 1 else None
+    )
+    if not mesh:
+        return _error_panel("Provide a mesh file.")
+    mesh = Path(mesh).resolve()
+    if not mesh.exists():
+        return _error_panel(f"Mesh file not found: {mesh}")
+
+    output_dir = parsed.kwargs.pop("output", None) or (
+        parsed.args[2] if len(parsed.args) > 2 else None
+    )
+    if not output_dir:
+        return _error_panel("Provide an output directory.")
+    output_dir = str(Path(output_dir).resolve())
+
+    from ..dts import generate_screen
+
+    result = generate_screen(
+        output_dir=output_dir,
+        mesh=str(mesh),
+        dts_content=dts_file.read_text(encoding="utf-8"),
+    )
+
+    return _success_text(
+        f"DTS screen: {result['total_runs']} run(s)  ",
+        f"({result['new_runs']} new) → {output_dir}",
+    )
+
+
+# def _cmd_ingest(session, parsed: ParsedCommand):
+#     from ..czi.ingest import download, summarize, sessions_from_directory
+
+#     action = parsed.args[0] if parsed.args else None
+#     filepath = parsed.kwargs.pop("filepath", None)
+
+#     if action is None or filepath is None:
+#         return _usage_line(_usage_for("ingest"))
+
+#     if action == "info":
+#         rows = summarize(filepath)
+#         if not rows:
+#             return _error_panel("No runs found.")
+#         table = Table(box=BOX_TABLE, show_header=True, show_edge=False, pad_edge=True)
+#         table.add_column("#", style="mosaic.param")
+#         table.add_column("ID", style="mosaic.data")
+#         table.add_column("Name", style="mosaic.data")
+#         table.add_column("Annotations", style="mosaic.muted")
+#         table.add_column("Tomograms", style="mosaic.muted")
+#         for row in rows:
+#             table.add_row(
+#                 str(row["index"]),
+#                 row["run_id"],
+#                 row["name"],
+#                 ", ".join(row["annotations"]) or "(none)",
+#                 ", ".join(row["tomograms"]) or "(none)",
+#             )
+#         return table
+
+#     if action == "download":
+#         max_workers = parsed.kwargs.pop("max_workers", 4)
+#         n = download(filepath, max_workers=max_workers)
+#         return _success_text(f"Downloaded {n} file(s)  ", filepath)
+
+#     if action == "create":
+#         output_dir = parsed.kwargs.pop("output_dir", None)
+#         created = sessions_from_directory(filepath, output_dir=output_dir)
+#         if not created:
+#             return _error_panel("No runs found.")
+#         return _success_text(f"Created {len(created)} session(s)", "")
+
+#     return _error_panel(f"Unknown action: {action}")
+
+
+def _cmd_dts_analysis(session, parsed: ParsedCommand):
+    import numpy as np
+    from pathlib import Path
+
+    if not parsed.args:
+        return _registry_method_listing("dts-analysis")
+
+    method_name = parsed.args[0]
+
+    _KIND_MAP = {
+        "hmff_energy": "hmff_potential",
+        "bending_energy": "bending_energy",
+        "fluctuation": "fluctuation",
+        "distance": "distance",
+        "mesh_area": "mesh_area",
+        "mesh_volume": "mesh_volume",
+    }
+    kind = _KIND_MAP.get(method_name)
+    if kind is None:
+        available = ", ".join(_KIND_MAP.keys())
+        return _error_panel(f"Unknown method: {method_name!r}. Available: {available}")
+
+    kwargs = _resolve_kwargs(session, parsed.kwargs)
+
+    run_path_str = kwargs.pop("run", None)
+    if not run_path_str:
+        return _error_panel("Provide a run directory: run=<path>")
+
+    run_path = Path(str(run_path_str)).resolve()
+    if not run_path.exists():
+        return _error_panel(f"Run directory not found: {run_path}")
+
+    force = bool(kwargs.pop("force", False))
+
+    if kind == "distance":
+        reference = kwargs.pop("reference", None)
+        if reference is None:
+            return _error_panel(
+                "Distance requires a reference geometry: reference=<target>"
+            )
+        if isinstance(reference, (list, tuple)):
+            reference = reference[0]
+        kwargs["reference"] = reference
+
+        all_geoms = session._all_geometries()
+        if reference in all_geoms:
+            label = session._geometry_name(reference, all_geoms.index(reference))
+        else:
+            label = getattr(reference, "_meta", {}).get("name", "reference")
+        kwargs.setdefault("reference_label", label)
+        kwargs["invert"] = bool(kwargs.pop("invert", False))
+
+    from ..dts._utils import resolve_trajectory_dir, find_dts_file, parse_dts_content
+    from ..dts import compute
+
+    traj_dir = resolve_trajectory_dir(run_path)
+    if traj_dir is None:
+        return _error_panel(f"No trajectory directory found in: {run_path}")
+
+    dts_file = find_dts_file(run_path)
+    if dts_file is not None:
+        known, _ = parse_dts_content(dts_file.read_text())
+        scale = float(known.get("scale_factor", 1.0))
+        try:
+            offset = np.array(
+                [float(x) for x in str(known.get("offset", "0,0,0")).split(",")]
+            )
+        except (ValueError, AttributeError):
+            offset = np.zeros(3)
+    else:
+        scale, offset = 1.0, np.zeros(3)
+
+    try:
+        result = compute(
+            trajectory_dir=str(traj_dir),
+            kind=kind,
+            scale=scale,
+            offset=offset,
+            output_dir=str(run_path),
+            force=force,
+            **kwargs,
+        )
+    except Exception as exc:
+        return _error_panel(str(exc))
+
+    values = result["values"]
+    n_frames = len(values)
+    if n_frames == 0:
+        return _error_panel("No frames computed.")
+
+    col_name = result["column"]
+
+    table = Table(
+        box=BOX_TABLE,
+        show_header=True,
+        show_edge=False,
+        pad_edge=True,
+        padding=(0, 1),
+        caption=f"[mosaic.muted]{col_name}  ·  {n_frames} frames",
+        caption_style="",
+    )
+    table.add_column("Stat", style="mosaic.param", no_wrap=True)
+    table.add_column("Value", justify="right", style="mosaic.data")
+
+    table.add_row("Mean", f"{np.nanmean(values):.6g}")
+    table.add_row("Std", f"{np.nanstd(values):.6g}")
+    table.add_row("Min", f"{np.nanmin(values):.6g}")
+    table.add_row("Max", f"{np.nanmax(values):.6g}")
+    if n_frames >= 2:
+        table.add_row("First frame", f"{values[0]:.6g}")
+        table.add_row("Last frame", f"{values[-1]:.6g}")
+
+    return table
+
+
 def _register_builtins():
     """Register all built-in and auto-discovered commands."""
     from ..operations import GeometryOperations
     from ..registry import MethodRegistry
 
     for name, handler, desc, group in [
-        ("open", _cmd_open, "Load geometries or session from file", "I/O"),
+        (
+            "open",
+            _cmd_open,
+            "Open files or session (session clears current state)",
+            "I/O",
+        ),
         ("save", _cmd_save, "Save geometries or session to file", "I/O"),
         ("list", _cmd_list, "List all loaded geometries", "Session"),
         ("measure", _cmd_measure, "Compute a geometry property", "Analysis"),
@@ -944,6 +1201,24 @@ def _register_builtins():
             usage,
             group="Operations",
         )
+
+    for name, handler, desc, group in [
+        (
+            "dts-screen",
+            _cmd_dts_screen,
+            "Generate DTS parameter screen from config file",
+            "Analysis",
+        ),
+        (
+            "dts-analysis",
+            _cmd_dts_analysis,
+            "Compute DTS trajectory metrics for a run directory",
+            "Analysis",
+        ),
+    ]:
+        op = MethodRegistry.get(name)
+        usage = op.build_usage() if op is not None else name
+        CommandRegistry.register(name, handler, desc, usage, group=group)
 
     # Override auto-generated handlers for in-place operations
     CommandRegistry.register(

@@ -1,8 +1,7 @@
 """
-Implements VolumeViewer, which provides overlays volumeetric data with
-the corresponding point cloud segmentations.
+Implements volume viewer widget.
 
-Copyright (c) 2024-2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -10,7 +9,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from contextlib import contextmanager
 
 import vtk
-import numpy as np
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -19,17 +17,73 @@ from qtpy.QtWidgets import (
     QPushButton,
     QFileDialog,
     QLabel,
-    QGroupBox,
 )
-import qtawesome as qta
+from ..icons import icon as _icon_factory
+from .message_box import MosaicMessageBox
 
 from qtpy.QtCore import Signal
 from vtkmodules.util import numpy_support
 
-from .sliders import SliderRow, DualHandleSlider
-from .colors import ColorMapSelector
-from ..stylesheets import QPushButton_style, Colors
 from ..utils import Throttle
+from ..stylesheets import Colors
+from .colors import ColorMapSelector
+from .sliders import SliderRow, DualHandleSlider
+
+_VTK_READERS = {
+    ".mrc": "vtkMRCReader",
+    ".nii": "vtkNIFTIImageReader",
+    ".nii.gz": "vtkNIFTIImageReader",
+    ".nrrd": "vtkNrrdReader",
+}
+
+_VTK_MRC_MODES = {0, 1, 2, 6}
+
+
+def _load_vtk_image(filepath):
+    """Load *filepath* via a native VTK reader, or return *None*."""
+    import struct
+
+    lower = filepath.lower()
+    cls_name = next(
+        (name for ext, name in _VTK_READERS.items() if lower.endswith(ext)),
+        None,
+    )
+    if cls_name is None:
+        return None
+
+    if cls_name == "vtkMRCReader":
+        try:
+            with open(filepath, "rb") as fh:
+                fh.seek(12)
+                if struct.unpack("<i", fh.read(4))[0] not in _VTK_MRC_MODES:
+                    return None
+        except Exception:
+            return None
+
+    cls = getattr(vtk, cls_name, None)
+    if cls is None:
+        return None
+
+    reader = cls()
+    reader.SetFileName(filepath)
+    reader.Update()
+    return reader.GetOutput()
+
+
+def _load_density_image(filepath):
+    """Load *filepath* via load_density and wrap in a vtkImageData."""
+    from ..formats.parser import load_density
+
+    density = load_density(filepath, use_memmap=True)
+    image = vtk.vtkImageData()
+    image.SetDimensions(density.shape)
+    image.SetSpacing(density.sampling_rate)
+    image.GetPointData().SetScalars(
+        numpy_support.numpy_to_vtk(
+            density.data.ravel(order="F"), deep=False, array_type=vtk.VTK_FLOAT
+        )
+    )
+    return image
 
 
 class VolumeViewer(QWidget):
@@ -40,7 +94,6 @@ class VolumeViewer(QWidget):
         self._rendering_suspended = False
         self.vtk_widget = vtk_widget
         self.legend = legend
-
         self.renderer = (
             self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
         )
@@ -48,27 +101,46 @@ class VolumeViewer(QWidget):
         self.slice_mapper = vtk.vtkImageSliceMapper()
         self.slice = vtk.vtkImageSlice()
         self._source_path = None
-        self.volume = None
+        self._volume = None
+        self._streaming = False
+        self._zarr_source = None
+        self._scalar_range = (0.0, 1.0)
+        self._orientation_mapping = {"X": 0, "Y": 1, "Z": 2}
+        self.is_visible = True
+        self.current_palette = "gray"
+        self.clipping_plane = vtk.vtkPlane()
+        self.clipping_direction = 1
+
+        self._build_ui()
+
+    def _build_ui(self):
 
         self.open_button = QPushButton("Load")
         self.open_button.clicked.connect(self.open_volume)
+        self.open_button.setStyleSheet(
+            "QPushButton { border-top-right-radius: 0;"
+            " border-bottom-right-radius: 0; margin-right: 0; }"
+        )
+
+        self._path_combo = QComboBox()
+        self._path_combo.setFixedWidth(20)
+        self._path_combo.setStyleSheet(
+            "QComboBox { border-top-left-radius: 0;"
+            " border-bottom-left-radius: 0; border-left: none; }"
+        )
+        self._path_combo.activated.connect(self._on_path_selected)
+
         self.close_button = QPushButton("Close")
         self.close_button.clicked.connect(self.close_volume)
 
-        self.is_visible = True
-        self.visibility_button = QPushButton()
-        self.visibility_button.setIcon(qta.icon("ph.eye", color=Colors.ICON))
-        self.visibility_button.setFixedWidth(30)
-        self.visibility_button.setToolTip("Toggle volume visibility")
-        self.visibility_button.clicked.connect(self.toggle_visibility)
-        self.visibility_button.setEnabled(False)
-
-        self.auto_contrast_button = QPushButton()
-        self.auto_contrast_button.setIcon(qta.icon("ph.magic-wand", color=Colors.ICON))
-        self.auto_contrast_button.setFixedWidth(30)
-        self.auto_contrast_button.setToolTip("Auto contrast (percentile-based)")
-        self.auto_contrast_button.clicked.connect(lambda: self.auto_contrast())
-        self.auto_contrast_button.setEnabled(False)
+        self.visibility_button = self._icon_button(
+            "ph.eye", "Toggle volume visibility", self.toggle_visibility
+        )
+        self.auto_contrast_button = self._icon_button(
+            "ph.magic-wand",
+            "Auto contrast (percentile-based)",
+            lambda: self.auto_contrast(),
+        )
 
         self.slice_row = SliderRow(
             label="Slice",
@@ -78,24 +150,20 @@ class VolumeViewer(QWidget):
             decimals=0,
             label_position="right",
         )
-        self.slice_row.setEnabled(False)
-        self._slice_throttle = Throttle(self._on_slice_changed, interval_ms=50)
+        self._slice_throttle = Throttle(
+            lambda v: self.update_slice(int(v)), interval_ms=30
+        )
         self.slice_row.valueChanged.connect(self._slice_throttle)
 
         self.orientation_selector = QComboBox()
         self.orientation_selector.addItems(["X", "Y", "Z"])
-
-        # Save that extra click
         self.orientation_selector.setCurrentText("Z")
-        self._orientation_mapping = {"X": 0, "Y": 1, "Z": 2}
         self.orientation_selector.currentTextChanged.connect(self.change_orientation)
-        self.orientation_selector.setEnabled(False)
 
-        self.current_palette = "gray"
         self.color_selector = ColorMapSelector(default=self.current_palette)
         self.color_selector.setMinimumWidth(120)
+        self.color_selector.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.color_selector.colormapChanged.connect(self.change_color_palette)
-        self.color_selector.setEnabled(False)
 
         self.contrast_label = QLabel("Contrast:")
         self.contrast_slider = DualHandleSlider()
@@ -105,10 +173,8 @@ class VolumeViewer(QWidget):
             self.update_contrast_and_gamma, interval_ms=50
         )
         self.contrast_slider.rangeChanged.connect(self._contrast_throttle)
-        self.contrast_slider.setEnabled(False)
         self.contrast_value_label = QLabel("0.00 - 1.00")
-        self.contrast_value_label.setFixedWidth(80)
-        self.contrast_value_label.setEnabled(False)
+        self.contrast_value_label.setFixedWidth(70)
 
         self.gamma_row = SliderRow(
             label="Gamma",
@@ -118,26 +184,29 @@ class VolumeViewer(QWidget):
             decimals=2,
             label_position="right",
         )
-        self.gamma_row.setEnabled(False)
         self.gamma_row.valueChanged.connect(self._contrast_throttle)
 
         self.project_selector = QComboBox()
         self.project_selector.addItems(["Off", "Project +", "Project -"])
-        self.project_selector.setEnabled(False)
         self.project_selector.currentTextChanged.connect(self.handle_projection_change)
-        self.clipping_plane = vtk.vtkPlane()
-        self.clipping_direction = 1
 
         self.controls_layout = QHBoxLayout()
-        self.controls_layout.addWidget(self.open_button)
+
+        load_group = QHBoxLayout()
+        load_group.setSpacing(0)
+        load_group.setContentsMargins(0, 0, 0, 0)
+        load_group.addWidget(self.open_button)
+        load_group.addWidget(self._path_combo)
+        self.controls_layout.addLayout(load_group)
+
         self.controls_layout.addWidget(self.close_button)
         self.controls_layout.addWidget(self.orientation_selector)
         self.controls_layout.addWidget(self.color_selector)
         self.controls_layout.addWidget(self.visibility_button)
         self.controls_layout.addWidget(self.auto_contrast_button)
-        self.controls_layout.addWidget(self.slice_row, 1)
-        self.controls_layout.addWidget(self.contrast_slider, 1)
+        self.controls_layout.addWidget(self.slice_row, 2)
         self.controls_layout.addWidget(self.contrast_label)
+        self.controls_layout.addWidget(self.contrast_slider, 1)
         self.controls_layout.addWidget(self.contrast_value_label)
         self.controls_layout.addWidget(self.gamma_row, 1)
         self.controls_layout.addWidget(self.project_selector)
@@ -160,22 +229,15 @@ class VolumeViewer(QWidget):
         layout = QVBoxLayout(self)
         layout.addLayout(self.controls_layout)
         self.setLayout(layout)
-        self.setStyleSheet(QPushButton_style)
 
-    def toggle_visibility(self):
-        """Toggle the visibility of the volume slice"""
-        return self.set_visibility(not self.slice.GetVisibility())
-
-    def set_visibility(self, visible: bool):
-        self.is_visible = visible
-        self.slice.SetVisibility(self.is_visible)
-        self.visibility_button.setIcon(qta.icon("ph.eye-slash", color=Colors.ICON))
-        self.visibility_button.setToolTip("Show volume")
-        if self.is_visible:
-            self.visibility_button.setIcon(qta.icon("ph.eye", color=Colors.ICON))
-            self.visibility_button.setToolTip("Hide volume")
-
-        self._render()
+    def _icon_button(self, icon_name, tooltip, callback):
+        btn = QPushButton()
+        btn.setIcon(_icon_factory(icon_name, role="muted"))
+        btn.setFixedWidth(30)
+        btn.setToolTip(tooltip)
+        btn.clicked.connect(callback)
+        btn.setEnabled(False)
+        return btn
 
     @property
     def volume(self):
@@ -186,19 +248,99 @@ class VolumeViewer(QWidget):
         self._volume = volume
         self.data_changed.emit()
 
-    def open_volume(self):
-        if self.volume is not None:
-            self.close_volume()
+    @property
+    def source_path(self):
+        return self._source_path
 
-        file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(self, "Open Volume")
+    def load_volume(self, source):
+        """Load a volume from a local file path or remote Zarr URL."""
+        if self.volume is not None:
+            self._close_volume()
+
+        self._source_path = source
+        if isinstance(source, str) and (
+            source.startswith("s3://") or source.endswith(".zarr")
+        ):
+            return self._load_zarr(source)
+
+        self.volume = _load_vtk_image(source)
+        if self.volume is None:
+            self.volume = _load_density_image(source)
+
+        self.slice_mapper.SetInputData(self.volume)
+        self.slice_mapper.StreamingOff()
+        self._setup_after_load()
+
+    def _load_zarr(self, source):
+        from ..formats.stream import open_omezarr
+
+        self._streaming = True
+        self._zarr_source, info = open_omezarr(source)
+        self._zarr_source.set_on_chunk_ready(self._on_zarr_slice_ready)
+
+        z, y, x = self._zarr_source.shape
+        self.volume = vtk.vtkImageData()
+        self.volume.SetDimensions(x, y, z)
+        self.volume.SetSpacing(*self._zarr_source.spacing)
+        self.slice_mapper.SetInputConnection(self._zarr_source.GetOutputPort())
+        self.slice_mapper.StreamingOn()
+        self._setup_after_load()
+        self._install_lod_observer()
+
+    def swap_volume(self, new_volume):
+        """Replace the current volume with a pre-built vtkImageData."""
+        self._remove_lod_observer()
+        self._streaming = False
+        self._zarr_source = None
+        self.volume = new_volume
+        self.slice_mapper.SetInputData(self.volume)
+        self.slice_mapper.StreamingOff()
+        self._setup_after_load()
+
+    def _rebuild_load_menu(self, paths=None):
+        import os
+
+        self._path_combo.blockSignals(True)
+        self._path_combo.clear()
+        for path in paths or []:
+            self._path_combo.addItem(os.path.basename(path), path)
+        self._path_combo.setCurrentIndex(-1)
+        self._path_combo.blockSignals(False)
+
+    def _on_path_selected(self, index):
+        path = self._path_combo.itemData(index)
+        if path:
+            self._load_from_path(path)
+        self._path_combo.setCurrentIndex(-1)
+
+    def _load_from_path(self, path):
+        try:
+            self.load_volume(path)
+        except Exception as e:
+            MosaicMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
+
+    def open_volume(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open Volume")
         if not file_path:
             return -1
 
         try:
             self.load_volume(file_path)
         except Exception as e:
-            print(f"Error opening volume: {e}")
+            MosaicMessageBox.warning(self, "Error", f"Failed to open volume:\n{e}")
+
+    def _close_volume(self):
+        self._remove_lod_observer()
+        self._source_path = None
+        self.volume = None
+        self._streaming = False
+        self._zarr_source = None
+        self._scalar_range = (0.0, 1.0)
+
+        self.renderer.RemoveViewProp(self.slice)
+        self.slice.SetMapper(None)
+        self.slice_mapper = vtk.vtkImageSliceMapper()
+        self.slice = vtk.vtkImageSlice()
 
     def close_volume(self):
         if self.volume is None:
@@ -208,30 +350,22 @@ class VolumeViewer(QWidget):
         self.contrast_value_label.setText("0.00 - 1.00")
         self.gamma_row.setValue(1.0)
         self.orientation_selector.setCurrentText("Z")
-        self.color_selector.setCurrentText("gray")
-
         self.project_selector.setCurrentText("Off")
+        self.set_visibility(False)
 
-        self._source_path = None
-        self.volume = None
-        self.renderer.RemoveViewProp(self.slice)
-        self.slice.SetMapper(None)
-        self.slice_mapper = vtk.vtkImageSliceMapper()
-        self.slice = vtk.vtkImageSlice()
-
-        # Reset to initial state
-        self.set_visibility(True)
+        self._close_volume()
         self.change_widget_state(is_enabled=False)
-
         self._render()
-
-    def change_widget_state(self, is_enabled: bool = False):
-        for widget in self.editable_widgets:
-            widget.setEnabled(is_enabled)
 
     def _render(self):
         if not self._rendering_suspended:
             self.vtk_widget.GetRenderWindow().Render()
+
+    def _on_zarr_slice_ready(self, *_):
+        if self._zarr_source is not None:
+            self._zarr_source.Modified()
+        self._render()
+        self.auto_contrast()
 
     @contextmanager
     def _suspend_rendering(self):
@@ -242,46 +376,33 @@ class VolumeViewer(QWidget):
             self._rendering_suspended = False
             self._render()
 
-    @property
-    def source_path(self):
-        """Path to the currently loaded volume file, or None."""
-        return self._source_path
-
-    def load_volume(self, file_path):
-        from ..formats.parser import load_density
-
-        self._source_path = file_path
-        volume = load_density(file_path, use_memmap=True)
-        self.volume = vtk.vtkImageData()
-        self.volume.SetDimensions(volume.shape)
-        self.volume.SetSpacing(volume.sampling_rate)
-
-        volume = numpy_support.numpy_to_vtk(
-            volume.data.ravel(order="F"), deep=False, array_type=vtk.VTK_FLOAT
-        )
-        self.volume.GetPointData().SetScalars(volume)
-        self.swap_volume(self.volume)
-
-    def swap_volume(self, new_volume):
+    def _setup_after_load(self):
         with self._suspend_rendering():
-            self.volume = new_volume
-            self.slice_mapper.SetInputData(self.volume)
-
             self.change_orientation(self.orientation_selector.currentText())
-
             self.slice.SetMapper(self.slice_mapper)
             self.renderer.AddViewProp(self.slice)
-
             self.change_widget_state(is_enabled=True)
             self.auto_contrast()
+            self.set_visibility(True)
             self.renderer.ResetCamera()
 
-    def _on_slice_changed(self, value: float):
-        """Handle slice row value change (converts float to int)."""
-        self.update_slice(int(value))
+    def change_widget_state(self, is_enabled: bool = False):
+        for widget in self.editable_widgets:
+            widget.setEnabled(is_enabled)
+
+    def toggle_visibility(self):
+        return self.set_visibility(not self.slice.GetVisibility())
+
+    def set_visibility(self, visible: bool):
+        self.is_visible = visible
+        self.slice.SetVisibility(visible)
+        icon = "ph.eye" if visible else "ph.eye-slash"
+        tip = "Hide volume" if visible else "Show volume"
+        self.visibility_button.setIcon(_icon_factory(icon, role="muted"))
+        self.visibility_button.setToolTip(tip)
+        self._render()
 
     def set_slice(self, slice_number: int):
-        """Set slice update slider avoid throttling."""
         self.slice_row.slider.blockSignals(True)
         self.slice_row.setValue(slice_number)
         self.slice_row.slider.blockSignals(False)
@@ -294,13 +415,11 @@ class VolumeViewer(QWidget):
 
     def change_orientation(self, orientation):
         dimensions = self.get_dimensions()
-
-        if orientation == "X":
-            self.slice_mapper.SetOrientationToX()
-        elif orientation == "Y":
-            self.slice_mapper.SetOrientationToY()
-        elif orientation == "Z":
-            self.slice_mapper.SetOrientationToZ()
+        {
+            "X": self.slice_mapper.SetOrientationToX,
+            "Y": self.slice_mapper.SetOrientationToY,
+            "Z": self.slice_mapper.SetOrientationToZ,
+        }.get(orientation, lambda: None)()
 
         self._orientation = orientation
         dim = self._orientation_mapping.get(orientation, 0)
@@ -310,7 +429,6 @@ class VolumeViewer(QWidget):
         self.slice_row.setValue(mid)
         self.slice_mapper.SetSliceNumber(mid)
         self.update_clipping_plane()
-
         self._render()
 
     def get_slice(self):
@@ -330,56 +448,60 @@ class VolumeViewer(QWidget):
         self.update_contrast_and_gamma()
         self._render()
 
-    def auto_contrast(self, low_pct: float = 0.01, high_pct: float = 99.9):
-        """Set contrast from percentile thresholds of the current slice.
-
-        Parameters
-        ----------
-        low_pct : float
-            Lower percentile for clipping (default 0.01).
-        high_pct : float
-            Upper percentile for clipping (default 99.9).
-        """
+    def _current_slice_extractor(self):
+        """Return a vtkExtractVOI configured for the current slice."""
         if self.volume is None:
-            return
+            return None
 
         dims = self.volume.GetDimensions()
         dim = self._orientation_mapping[self.orientation_selector.currentText()]
-        slice_idx = self.slice_mapper.GetSliceNumber()
+        idx = self.slice_mapper.GetSliceNumber()
 
         voi = [0, dims[0] - 1, 0, dims[1] - 1, 0, dims[2] - 1]
-        voi[2 * dim] = slice_idx
-        voi[2 * dim + 1] = slice_idx
+        voi[2 * dim] = idx
+        voi[2 * dim + 1] = idx
 
         extractor = vtk.vtkExtractVOI()
-        extractor.SetInputData(self.volume)
+        if self._streaming and self._zarr_source is not None:
+            extractor.SetInputConnection(self._zarr_source.GetOutputPort())
+        else:
+            extractor.SetInputData(self.volume)
         extractor.SetVOI(*voi)
-        extractor.Update()
+        return extractor
 
-        slice_arr = numpy_support.vtk_to_numpy(
-            extractor.GetOutput().GetPointData().GetScalars()
-        )
-
-        low_val, high_val = np.percentile(slice_arr, [low_pct, high_pct])
-        min_value, max_value = self.volume.GetScalarRange()
-        value_range = max_value - min_value
-
-        if value_range <= 0:
+    def auto_contrast(self, low_pct: float = 0.01, high_pct: float = 99.9):
+        """Set contrast from percentile thresholds of the current slice."""
+        extractor = self._current_slice_extractor()
+        if extractor is None:
             return
 
-        low_pos = 100.0 * (low_val - min_value) / value_range
-        high_pos = 100.0 * (high_val - min_value) / value_range
+        stats = vtk.vtkImageHistogramStatistics()
+        stats.SetInputConnection(extractor.GetOutputPort())
+        stats.SetAutoRangePercentiles(low_pct, high_pct)
+        stats.Update()
 
-        self.contrast_slider.setValues(
-            max(0, min(100, low_pos)), max(0, min(100, high_pos))
-        )
+        min_value, max_value = stats.GetMinimum(), stats.GetMaximum()
+        self._scalar_range = (min_value, max_value)
+
+        low_val, high_val = stats.GetAutoRange()
+        if low_val == high_val:
+            high_val = max_value
+
+        value_range = max_value - min_value
+        if value_range <= 0:
+            return None
+
+        import numpy as np
+
+        low_pos = np.clip(100.0 * (low_val - min_value) / value_range, 0, 100)
+        high_pos = np.clip(100.0 * (high_val - min_value) / value_range, 0, 100)
+        self.contrast_slider.setValues(low_pos, high_pos)
         self.update_contrast_and_gamma()
 
     def update_contrast_and_gamma(self, *args):
         from ..utils import cmap_to_vtkctf
 
-        scalar_range = self.volume.GetScalarRange()
-        min_value, max_value = scalar_range
+        min_value, max_value = getattr(self, "_scalar_range", (0.0, 1.0))
         value_range = max_value - min_value
 
         min_contrast = self.contrast_slider.lower_pos / 100.0
@@ -399,20 +521,18 @@ class VolumeViewer(QWidget):
         if self.legend is not None:
             self.legend.set_lookup_table(ctf, "Volume")
 
-        self.slice.GetProperty().SetLookupTable(ctf)
-        self.slice.GetProperty().SetUseLookupTableScalarRange(True)
-
-        self.slice.GetProperty().SetColorWindow(value_range)
-        self.slice.GetProperty().SetColorLevel(min_value + value_range / 2)
-
+        prop = self.slice.GetProperty()
+        prop.SetLookupTable(ctf)
+        prop.SetUseLookupTableScalarRange(True)
+        prop.SetColorWindow(value_range)
+        prop.SetColorLevel(min_value + value_range / 2)
         self._render()
 
     def update_clipping_plane(self):
         if self.volume is None or self.project_selector.currentText() == "Off":
-            return None
+            return
 
         dim = self._orientation_mapping.get(self.orientation_selector.currentText(), 0)
-
         pos = int(self.slice_row.value())
         origin, spacing = self.volume.GetOrigin()[dim], self.volume.GetSpacing()[dim]
         normal = [0 if i != dim else self.clipping_direction for i in range(3)]
@@ -423,7 +543,7 @@ class VolumeViewer(QWidget):
 
     def remove_existing_clipping_plane(self, mapper):
         if (planes := mapper.GetClippingPlanes()) is None:
-            return None
+            return
 
         planes.InitTraversal()
         for j in range(planes.GetNumberOfItems()):
@@ -442,139 +562,76 @@ class VolumeViewer(QWidget):
         for i in range(actors.GetNumberOfItems()):
             actor = actors.GetNextActor()
             mapper = actor.GetMapper()
-
             self.remove_existing_clipping_plane(mapper)
             if state == "Off":
                 continue
-
             self.clipping_direction = 1 if state == "Project +" else -1
             self.update_clipping_plane()
             mapper.AddClippingPlane(self.clipping_plane)
 
         self._render()
 
+    def _world_per_pixel(self):
+        camera = self.renderer.GetActiveCamera()
+        render_window = self.vtk_widget.GetRenderWindow()
+        _, _, w, h = self.renderer.GetViewport()
+        win_w, win_h = render_window.GetSize()
+        viewport_h = int(h * win_h)
+        if viewport_h == 0:
+            return 1.0
+        return 2.0 * camera.GetParallelScale() / viewport_h
 
-class MultiVolumeViewer(QWidget):
-    """Container widget for managing multiple VolumeViewer instances"""
+    def _on_camera_interaction(self, obj=None, event=None):
+        if not self._streaming or self._zarr_source is None:
+            return
+        from ..formats.stream import pick_level
 
-    def __init__(self, vtk_widget, legend=None, parent=None):
-        super().__init__(parent)
+        wpp = self._world_per_pixel()
+        spacings = self._zarr_source.level_spacings
+        new_level = pick_level(spacings, wpp)
+        if new_level == self._zarr_source.level:
+            return
+        self._switch_zarr_level(new_level)
 
-        self.vtk_widget = vtk_widget
-        self.legend = legend
-
-        self.setStyleSheet(
-            """
-            QPushButton:hover {
-                background-color: #f3f4f6;
-            }
-        """
+    def _switch_zarr_level(self, new_level):
+        old_shape = self._zarr_source.shape
+        old_slice = self.slice_mapper.GetSliceNumber()
+        old_dim = self._orientation_mapping.get(
+            self.orientation_selector.currentText(), 0
         )
 
-        self.layout = QVBoxLayout(self)
-        self.layout.setSpacing(0)
-        self.layout.setContentsMargins(4, 4, 4, 4)
+        self._zarr_source.set_level(new_level)
+        self._zarr_source.Modified()
 
-        self.viewer_group = QGroupBox("Volume Viewer")
-        self.viewer_layout = QVBoxLayout(self.viewer_group)
-        self.layout.addWidget(self.viewer_group)
-        self.viewer_layout.setSpacing(4)
-        self.viewer_layout.setContentsMargins(0, 4, 0, 4)
+        new_shape = self._zarr_source.shape
+        z, y, x = new_shape
+        self.volume.SetDimensions(x, y, z)
+        self.volume.SetSpacing(*self._zarr_source.spacing)
 
-        self.primary = VolumeViewer(self.vtk_widget, self.legend)
-        current_margins = self.primary.layout().contentsMargins()
-        self.primary.layout().setContentsMargins(
-            current_margins.left(), 0, current_margins.right(), 0
-        )
-        self.primary_margins = self.primary.layout().contentsMargins()
-        self.viewer_layout.addWidget(self.primary)
-        # self.layout.addWidget(self.primary)
+        ratio = new_shape[old_dim] / old_shape[old_dim] if old_shape[old_dim] else 1
+        new_slice = int(old_slice * ratio)
 
-        add_button = QPushButton()
-        add_button.setIcon(qta.icon("ph.plus", color=Colors.ICON))
-        add_button.setFixedWidth(30)
-        add_button.clicked.connect(self.add_viewer)
-        self.primary.controls_layout.addWidget(add_button)
-        self.primary.close_button.clicked.connect(self._promote_new_primary)
+        dims = (x, y, z)
+        dim = self._orientation_mapping.get(self.orientation_selector.currentText(), 0)
+        self.slice_row.blockSignals(True)
+        self.slice_row.setRange(0, dims[dim] - 1)
+        self.slice_row.setValue(new_slice)
+        self.slice_row.blockSignals(False)
 
-        self.additional_viewers = []
+        self.slice_mapper.SetSliceNumber(new_slice)
+        self._render()
 
-    def add_viewer(self):
-        """Add a new VolumeViewer instance"""
-        new_viewer = VolumeViewer(self.vtk_widget, self.legend)
-        new_viewer.layout().setContentsMargins(self.primary_margins)
-
-        remove_button = QPushButton()
-        remove_button.setIcon(qta.icon("ph.trash", color=Colors.ICON))
-        remove_button.setFixedWidth(30)
-        remove_button.clicked.connect(lambda: self.remove_viewer(new_viewer))
-        new_viewer.controls_layout.addWidget(remove_button)
-
-        if self.primary.volume is not None:
-            new_viewer.volume = self.primary.volume
-            new_viewer.change_widget_state(True)
-            new_viewer.change_color_palette("gray")
-            new_viewer.update_contrast_and_gamma()
-
-        self._copy_from_primary(new_viewer)
-        self.additional_viewers.append(new_viewer)
-        self.viewer_layout.addWidget(new_viewer)
-
-    def remove_viewer(self, viewer):
-        """Remove a specific viewer"""
-        if viewer in self.additional_viewers:
-            self.additional_viewers.remove(viewer)
-            viewer.close_volume()
-            viewer.deleteLater()
-
-    def close(self):
-        for viewer in self.additional_viewers:
-            viewer.close_volume()
-        try:
-            self.primary.close_button.clicked.disconnect(self._promote_new_primary)
-        except TypeError:
-            pass
-        self.primary.close_volume()
-
-    def _copy_from_primary(self, new_viewer: VolumeViewer) -> int:
-        volume = self.primary.volume
-        if volume is None:
-            new_viewer.change_widget_state(False)
-            return 0
-
-        return new_viewer.swap_volume(volume)
-
-    def _promote_new_primary(self) -> int:
-        viewers = [
-            x for x in self.additional_viewers if getattr(x, "volume") is not None
+    def _install_lod_observer(self):
+        interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
+        cb = lambda obj, evt: self._on_camera_interaction()
+        self._lod_observer_ids = [
+            interactor.AddObserver("MouseWheelForwardEvent", cb),
+            interactor.AddObserver("MouseWheelBackwardEvent", cb),
         ]
 
-        if not len(viewers):
-            return None
-
-        new_primary = viewers[0]
-
-        # Copy all state from the viewer being promoted
-        self.primary._source_path = new_primary._source_path
-        self.primary.swap_volume(new_primary.volume)
-        self.primary.change_orientation(new_primary.get_orientation())
-        self.primary.update_slice(new_primary.get_slice())
-        self.primary.handle_projection_change(new_primary.get_projection())
-
-        # Copy visual settings
-        self.primary.color_selector.setCurrentText(
-            new_primary.color_selector.currentText()
-        )
-        self.primary.contrast_slider.setValues(
-            new_primary.contrast_slider.lower_pos,
-            new_primary.contrast_slider.upper_pos,
-        )
-        self.primary.contrast_value_label.setText(
-            new_primary.contrast_value_label.text()
-        )
-        self.primary.gamma_row.setValue(new_primary.gamma_row.value())
-
-        if new_primary.is_visible != self.primary.is_visible:
-            self.primary.toggle_visibility()
-
-        self.remove_viewer(new_primary)
+    def _remove_lod_observer(self):
+        if hasattr(self, "_lod_observer_ids"):
+            interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
+            for oid in self._lod_observer_ids:
+                interactor.RemoveObserver(oid)
+            del self._lod_observer_ids

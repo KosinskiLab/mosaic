@@ -1,7 +1,7 @@
 """
 Modulate visual properties of Geometry objects.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -18,21 +18,12 @@ from qtpy.QtWidgets import (
     QDialog,
     QPushButton,
     QFileDialog,
-    QRadioButton,
     QWidget,
     QLabel,
     QGroupBox,
     QApplication,
 )
-import qtawesome as qta
-
-from ..stylesheets import (
-    QPushButton_style,
-    QSpinBox_style,
-    QLineEdit_style,
-    QGroupBox_style,
-    Colors,
-)
+from ..icons import icon
 from ..widgets import (
     DialogFooter,
     create_setting_widget,
@@ -40,6 +31,7 @@ from ..widgets import (
     ColorPickerRow,
     SliderRow,
 )
+from ..widgets.segmented_control import SegmentedControl
 
 
 class GeometryPropertiesDialog(QDialog):
@@ -87,12 +79,10 @@ class GeometryPropertiesDialog(QDialog):
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(16, 12, 16, 8)
+        main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(12)
 
-        # === APPEARANCE SECTION ===
         appearance_group = QGroupBox("Appearance")
-        appearance_group.setStyleSheet(QGroupBox_style)
         appearance_layout = QVBoxLayout(appearance_group)
         appearance_layout.setSpacing(12)
 
@@ -113,7 +103,6 @@ class GeometryPropertiesDialog(QDialog):
                 "default": self.initial_properties.get("size", 8),
             }
         )
-        self.size_spin.setStyleSheet(QSpinBox_style)
         self.size_spin.setFixedWidth(80)
         self.size_spin.setToolTip("Size of points in the representation")
         point_size_layout.addWidget(self.size_spin)
@@ -142,11 +131,33 @@ class GeometryPropertiesDialog(QDialog):
         self.highlight_color_picker.setToolTip("Color when geometry is selected")
         appearance_layout.addWidget(self.highlight_color_picker)
 
+        interp_row = QWidget()
+        interp_layout = QHBoxLayout(interp_row)
+        interp_layout.setContentsMargins(0, 0, 0, 0)
+        interp_layout.setSpacing(12)
+
+        interp_label = QLabel("Shading")
+        interp_layout.addWidget(interp_label)
+        interp_layout.addStretch()
+
+        interp_labels = ["Flat", "Gouraud", "Phong"]
+        current_interp = self.initial_properties.get("interpolation", "gouraud")
+        interp_idx = next(
+            (i for i, l in enumerate(interp_labels) if l.lower() == current_interp), 1
+        )
+        self._interpolation_control = SegmentedControl(
+            interp_labels, default=interp_idx
+        )
+        self._interpolation_control.setToolTip(
+            "Surface shading. Flat for faceted, Gouraud for smooth, Phong \n"
+            "for per-pixel smooth with sharper highlights on meshes."
+        )
+        interp_layout.addWidget(self._interpolation_control)
+        appearance_layout.addWidget(interp_row)
+
         main_layout.addWidget(appearance_group)
 
-        # === LIGHTING SECTION ===
         lighting_group = QGroupBox("Lighting")
-        lighting_group.setStyleSheet(QGroupBox_style)
         lighting_layout = QVBoxLayout(lighting_group)
         lighting_layout.setSpacing(12)
 
@@ -186,9 +197,7 @@ class GeometryPropertiesDialog(QDialog):
 
         main_layout.addWidget(lighting_group)
 
-        # === MODEL SECTION ===
         model_group = QGroupBox("Model")
-        model_group.setStyleSheet(QGroupBox_style)
         model_layout = QVBoxLayout(model_group)
         model_layout.setSpacing(12)
 
@@ -203,16 +212,14 @@ class GeometryPropertiesDialog(QDialog):
         browse_layout.addStretch()
 
         self.browse_button = QPushButton("Browse...")
-        self.browse_button.setIcon(qta.icon("ph.folder-open", color=Colors.ICON))
-        self.browse_button.setStyleSheet(QPushButton_style)
+        self.browse_button.setIcon(icon("ph.folder-open"))
         self.browse_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.browse_button.setToolTip("Select a density map file")
         self.browse_button.clicked.connect(self.browse_volume)
         browse_layout.addWidget(self.browse_button)
 
         self.attach_button = QPushButton("Reattach")
-        self.attach_button.setIcon(qta.icon("ph.link", color=Colors.ICON))
-        self.attach_button.setStyleSheet(QPushButton_style)
+        self.attach_button.setIcon(icon("ph.link"))
         self.attach_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.attach_button.setEnabled(self.volume_path is not None)
         self.attach_button.setToolTip("Recompute isosurface from the density map")
@@ -229,20 +236,11 @@ class GeometryPropertiesDialog(QDialog):
         scale_layout.addWidget(scale_label)
         scale_layout.addStretch()
 
-        self.scale_positive = QRadioButton("+1")
-        self.scale_positive.setToolTip("Use positive density values")
-        self.scale_negative = QRadioButton("-1")
-        self.scale_negative.setToolTip("Invert density (for negative stain maps)")
-        if self.initial_properties.get("volume_scale", 0) >= 0:
-            self.scale_positive.setChecked(True)
-        else:
-            self.scale_negative.setChecked(True)
-
-        scale_layout.addWidget(self.scale_positive)
-        scale_layout.addWidget(self.scale_negative)
-
-        self.scale_positive.setEnabled(self.volume_path is not None)
-        self.scale_negative.setEnabled(self.volume_path is not None)
+        default_idx = 1 if self.initial_properties.get("volume_scale", 0) < 0 else 0
+        self.scale_control = SegmentedControl(["Native", "Invert"], default=default_idx)
+        self.scale_control.setToolTip("Keep original density contrast or invert it")
+        self.scale_control.setEnabled(self.volume_path is not None)
+        scale_layout.addWidget(self.scale_control)
 
         model_layout.addWidget(scale_row)
 
@@ -264,9 +262,7 @@ class GeometryPropertiesDialog(QDialog):
 
         main_layout.addWidget(model_group)
 
-        # === SAMPLING SECTION ===
         sampling_group = QGroupBox("Sampling")
-        sampling_group.setStyleSheet(QGroupBox_style)
         sampling_rate = self.initial_properties.get("sampling_rate", (1.0, 1.0, 1.0))
 
         sampling_layout = QHBoxLayout(sampling_group)
@@ -280,34 +276,27 @@ class GeometryPropertiesDialog(QDialog):
         sampling_layout.addWidget(QLabel("X"))
         self.sampling_x = create_setting_widget(base | {"default": sampling_rate[0]})
         self.sampling_x.setMinimumWidth(min_width)
-        self.sampling_x.setStyleSheet(QLineEdit_style)
         self.sampling_x.setToolTip(sampling_tooltip)
         sampling_layout.addWidget(self.sampling_x)
 
         sampling_layout.addWidget(QLabel("Y"))
         self.sampling_y = create_setting_widget(base | {"default": sampling_rate[1]})
         self.sampling_y.setMinimumWidth(min_width)
-        self.sampling_y.setStyleSheet(QLineEdit_style)
         self.sampling_y.setToolTip(sampling_tooltip)
         sampling_layout.addWidget(self.sampling_y)
 
         sampling_layout.addWidget(QLabel("Z"))
         self.sampling_z = create_setting_widget(base | {"default": sampling_rate[2]})
         self.sampling_z.setMinimumWidth(min_width)
-        self.sampling_z.setStyleSheet(QLineEdit_style)
         self.sampling_z.setToolTip(sampling_tooltip)
         sampling_layout.addWidget(self.sampling_z)
 
         main_layout.addWidget(sampling_group)
 
-        # Footer: Reset | [stretch] | Cancel | Done
         footer = DialogFooter(dialog=self, margin=(0, 0, 0, 0))
 
         self.reset_button = QPushButton("Reset")
-        self.reset_button.setIcon(
-            qta.icon("ph.arrow-counter-clockwise", color=Colors.ICON)
-        )
-        self.reset_button.setStyleSheet(QPushButton_style)
+        self.reset_button.setIcon(icon("ph.arrow-counter-clockwise"))
         self.reset_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.reset_button.clicked.connect(self._reset_to_defaults)
         footer.layout().insertWidget(0, self.reset_button)
@@ -325,9 +314,11 @@ class GeometryPropertiesDialog(QDialog):
         self.ambient_slider.valueChanged.connect(self._emit_throttle)
         self.diffuse_slider.valueChanged.connect(self._emit_throttle)
         self.specular_slider.valueChanged.connect(self._emit_throttle)
+        self._interpolation_control.selectionChanged.connect(
+            lambda _: self.emit_parameters()
+        )
         self.isovalue_slider.valueChanged.connect(self._emit_throttle)
-        self.scale_positive.toggled.connect(self.emit_parameters)
-        self.scale_negative.toggled.connect(self.emit_parameters)
+        self.scale_control.selectionChanged.connect(lambda _: self.emit_parameters())
         self.sampling_x.textChanged.connect(self.emit_parameters)
         self.sampling_y.textChanged.connect(self.emit_parameters)
         self.sampling_z.textChanged.connect(self.emit_parameters)
@@ -348,10 +339,16 @@ class GeometryPropertiesDialog(QDialog):
     def _reset_to_defaults(self):
         """Reset all values to initial properties."""
         self.size_spin.setValue(self.initial_properties.get("size", 8))
-        self.opacity_slider.setValue(self.initial_properties.get("opacity", 0.3))
+        self.opacity_slider.setValue(self.initial_properties.get("opacity", 1.0))
         self.ambient_slider.setValue(self.initial_properties.get("ambient", 0.3))
-        self.diffuse_slider.setValue(self.initial_properties.get("diffuse", 0.3))
-        self.specular_slider.setValue(self.initial_properties.get("specular", 0.3))
+        self.diffuse_slider.setValue(self.initial_properties.get("diffuse", 0.7))
+        self.specular_slider.setValue(self.initial_properties.get("specular", 0.2))
+
+        interp = self.initial_properties.get("interpolation", "gouraud")
+        interp_idx = next(
+            (i for i, l in enumerate(["flat", "gouraud", "phong"]) if l == interp), 1
+        )
+        self._interpolation_control._select(interp_idx)
 
         self.base_color_picker.set_color(
             self.initial_properties.get("base_color", BASE_COLOR)
@@ -376,16 +373,13 @@ class GeometryPropertiesDialog(QDialog):
         if not file_name:
             return
 
-        # Auto determine scale
         self.volume_path = file_name
         volume = load_density(self.volume_path)
         non_negative = (volume.data > 0).sum()
         if non_negative < volume.data.size // 2:
-            self.scale_negative.setChecked(True)
+            self.scale_control._select(1)
 
-        # Enable volume controls
-        self.scale_positive.setEnabled(True)
-        self.scale_negative.setEnabled(True)
+        self.scale_control.setEnabled(True)
         self.isovalue_slider.setEnabled(True)
         self.attach_button.setEnabled(True)
 
@@ -399,9 +393,10 @@ class GeometryPropertiesDialog(QDialog):
             "ambient": self.ambient_slider.value(),
             "diffuse": self.diffuse_slider.value(),
             "specular": self.specular_slider.value(),
+            "interpolation": self._interpolation_control.currentText().lower(),
             "base_color": self.base_color_picker.get_color(),
             "highlight_color": self.highlight_color_picker.get_color(),
-            "scale": -1 if self.scale_negative.isChecked() else 1,
+            "scale": -1 if self.scale_control.currentText() == "Invert" else 1,
             "isovalue_percentile": self.isovalue_slider.value(),
             "volume_path": self.volume_path,
             "reattach_volume": False,

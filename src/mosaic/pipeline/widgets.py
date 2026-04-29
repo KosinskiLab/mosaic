@@ -1,12 +1,15 @@
 """
 UI widgets for pipeline builder.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import uuid
+from qtpy.QtGui import QFont
+from qtpy.QtCore import Qt, Signal, QTimer
+
 from qtpy.QtWidgets import (
     QFrame,
     QVBoxLayout,
@@ -21,9 +24,8 @@ from qtpy.QtWidgets import (
     QTreeWidgetItem,
     QSizePolicy,
     QCheckBox,
+    QAbstractItemView,
 )
-from qtpy.QtCore import Qt, Signal
-from qtpy.QtGui import QFont
 
 from ..dialogs import ImportDataDialog
 from ..widgets.settings import (
@@ -36,7 +38,7 @@ from ..widgets.container_list import ContainerListWidget, StyledTreeWidgetItem
 
 
 from ._utils import strip_filepath, natural_sort_key
-from ..stylesheets import Colors
+from ..stylesheets import Colors, Typography
 
 _COLS = 3  # logical parameter columns (actual grid columns = _COLS * 2)
 
@@ -47,25 +49,22 @@ def _make_grid():
     grid.setHorizontalSpacing(6)
     grid.setVerticalSpacing(6)
     for i in range(_COLS):
-        grid.setColumnStretch(i * 2, 0)  # label: natural width
-        grid.setColumnStretch(i * 2 + 1, 1)  # widget: stretch to fill
+        grid.setColumnStretch(i * 2, 0)
+        grid.setColumnStretch(i * 2 + 1, 1)
     return grid
 
 
 def _add_to_grid(grid, label_text, widget, row, col, wide=False):
     """Add a label: widget pair to the grid at the given logical column."""
     label = QLabel(f"{label_text}:")
-    label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
-
     widget.setFixedHeight(Colors.WIDGET_HEIGHT)
 
+    width, gcol = 1, 2 * col
     if wide:
-        grid.addWidget(label, row, 0)
-        grid.addWidget(widget, row, 1, 1, _COLS * 2 - 1)
-    else:
-        gcol = col * 2
-        grid.addWidget(label, row, gcol)
-        grid.addWidget(widget, row, gcol + 1)
+        width = _COLS * 2 - 1
+
+    grid.addWidget(label, row, gcol)
+    grid.addWidget(widget, row, gcol + 1, 1, width)
 
 
 def _pack_settings_into_grid(grid, settings_list, start_row=0):
@@ -77,24 +76,13 @@ def _pack_settings_into_grid(grid, settings_list, start_row=0):
         wide = setting.get("type") == "PathSelector"
         widget = create_setting_widget(setting)
 
-        if wide:
-            if col != 0:
-                row += 1
-                col = 0
-            _add_to_grid(grid, setting["label"], widget, row, 0, wide=True)
-            row += 1
-            col = 0
-        else:
-            _add_to_grid(grid, setting["label"], widget, row, col)
-            col += 1
-            if col >= _COLS:
-                col = 0
-                row += 1
+        if wide or col >= _COLS:
+            col, row = 0, row + int(col != 0)
 
-        param_name = setting.get("parameter")
-        if param_name:
+        _add_to_grid(grid, setting["label"], widget, row, col, wide=wide)
+        if param_name := setting.get("parameter"):
             widgets[param_name] = widget
-
+        col += 1
     return widgets, row if col == 0 else row + 1
 
 
@@ -106,6 +94,7 @@ def _clear_grid_from_row(grid, start_row):
         r, _c, _rs, _cs = grid.getItemPosition(i)
         if r >= start_row:
             to_remove.append(item)
+
     for item in to_remove:
         grid.removeItem(item)
         if item.widget():
@@ -149,14 +138,14 @@ class OperationCardWidget(QFrame):
         super().mousePressEvent(event)
 
     def setup_ui(self):
-        import qtawesome as qta
+        from ..icons import icon
 
         self.setStyleSheet(
             f"""
             OperationCardWidget {{
                 border: 1px solid {Colors.BORDER_DARK};
                 border-left: 4px solid {self.category_color};
-                border-radius: 6px;
+                border-radius: {Colors.RADIUS}px;
                 background-color: transparent;
             }}
         """
@@ -171,15 +160,13 @@ class OperationCardWidget(QFrame):
 
         icon_label = QLabel()
         icon_label.setPixmap(
-            qta.icon(self.operation_info["icon"], color=self.category_color).pixmap(
-                20, 20
-            )
+            icon(self.operation_info["icon"], color=self.category_color).pixmap(20, 20)
         )
         header_layout.addWidget(icon_label)
 
         title = QLabel(self.operation_name)
         title_font = QFont()
-        title_font.setPointSize(13)
+        title_font.setPixelSize(Typography.BODY)
         title_font.setBold(True)
         title.setFont(title_font)
         title.setStyleSheet(f"color: {self.category_color};")
@@ -187,7 +174,7 @@ class OperationCardWidget(QFrame):
         header_layout.addStretch()
 
         self.expand_btn = QPushButton()
-        self.expand_btn.setIcon(qta.icon("ph.caret-down", color=Colors.TEXT_MUTED))
+        self.expand_btn.setIcon(icon("ph.caret-down", role="muted"))
         self.expand_btn.setFixedSize(28, 28)
         self.expand_btn.setStyleSheet(
             f"QPushButton {{ border: none}} QPushButton:hover {{ background: {Colors.BG_TERTIARY}; border-radius: 12px; }}"
@@ -196,7 +183,7 @@ class OperationCardWidget(QFrame):
         header_layout.addWidget(self.expand_btn)
 
         close_btn = QPushButton()
-        close_btn.setIcon(qta.icon("ph.x", color=Colors.TEXT_MUTED))
+        close_btn.setIcon(icon("ph.x", role="muted"))
         close_btn.setFixedSize(28, 28)
         close_btn.setStyleSheet(
             f"QPushButton {{ border: none}} QPushButton:hover {{ background: {Colors.BG_TERTIARY}; border-radius: 12px; }}"
@@ -207,13 +194,15 @@ class OperationCardWidget(QFrame):
         layout.addLayout(header_layout)
 
         self.desc = QLabel(self.operation_info["description"])
-        self.desc.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+        self.desc.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+        )
         self.desc.setWordWrap(True)
         layout.addWidget(self.desc)
 
         self.params_summary = QLabel("No parameters set")
         self.params_summary.setStyleSheet(
-            f"color: {Colors.ICON_MUTED}; font-size: 11px; font-style: italic;"
+            f"color: {Colors.ICON_MUTED}; font-size: {Typography.SMALL}px; font-style: italic;"
         )
         self.params_summary.setWordWrap(True)
         layout.addWidget(self.params_summary)
@@ -314,7 +303,7 @@ class OperationCardWidget(QFrame):
             count_layout.addStretch()
             file_layout.addLayout(count_layout)
 
-            self.file_list = ContainerListWidget(border=False)
+            self.file_list = ContainerListWidget()
             self.file_list.setMinimumHeight(150)
             self.file_list.setMaximumHeight(300)
             file_layout.addWidget(self.file_list)
@@ -331,16 +320,17 @@ class OperationCardWidget(QFrame):
             params_btn.setEnabled(False)
             self.params_btn = params_btn
             settings_outer.addWidget(params_btn)
-        else:
-            if len(settings) == 0:
-                return None
+            return None
 
-            self._add_base_settings(settings)
-            if hasattr(self, "method_settings_config") and self.method_settings_config:
-                self._add_method_settings_section()
+        self._add_base_settings(settings)
+        if hasattr(self, "method_settings_config") and self.method_settings_config:
+            self._add_method_settings_section()
 
     def _add_base_settings(self, settings):
         """Add base operation settings to the grid layout."""
+        if len(settings) == 0:
+            return None
+
         self.method_combo = None
         base_settings = settings["settings"][0] if settings["settings"] else None
 
@@ -355,7 +345,6 @@ class OperationCardWidget(QFrame):
                 self.method_combo,
                 self._grid_row,
                 0,
-                wide=True,
             )
             self._settings_widgets[param_name] = self.method_combo
             self._grid_row += 1
@@ -378,7 +367,7 @@ class OperationCardWidget(QFrame):
     def _update_method_settings(self, method):
         """Update method-specific settings based on selected method."""
         if not hasattr(self, "_method_start_row"):
-            return
+            return None
 
         # Remove old method parameter widgets from tracking
         if hasattr(self, "_last_method_params"):
@@ -395,10 +384,10 @@ class OperationCardWidget(QFrame):
 
         if method_settings:
             # Separator with method name
-            separator = QLabel(f"  {method} Settings")
+            separator = QLabel(f" {method} Settings")
             separator.setFixedHeight(Colors.WIDGET_HEIGHT)
             separator.setStyleSheet(
-                f"color: {Colors.TEXT_SECONDARY}; font-size: 11px;"
+                f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
                 f"border-top: 1px solid {Colors.BORDER_DARK};"
                 f"padding-top: 6px;"
             )
@@ -414,12 +403,17 @@ class OperationCardWidget(QFrame):
             self._settings_widgets.update(new_widgets)
 
         self.settings_changed.emit()
+        QTimer.singleShot(0, self._adjust_height)
+
+    def _adjust_height(self):
+        if self.expanded:
+            self.resize(self.width(), self.sizeHint().height())
 
     def _select_input_files(self):
         """Open file dialog to select files."""
         files, _ = QFileDialog.getOpenFileNames(self, "Select Input Files")
         if not files:
-            return
+            return None
 
         self.input_files = sorted(files, key=natural_sort_key)
         self._update_file_list()
@@ -452,7 +446,7 @@ class OperationCardWidget(QFrame):
     def _configure_parameters(self):
         """Open dialog to configure import parameters for each file."""
         if not self.input_files:
-            return
+            return None
 
         dialog = ImportDataDialog(self)
         dialog.set_files(self.input_files)
@@ -475,13 +469,13 @@ class OperationCardWidget(QFrame):
 
     def toggle_settings(self):
         """Expand/collapse settings panel."""
-        import qtawesome as qta
+        from ..icons import icon
 
         self.expanded = not self.expanded
         self.settings_container.setVisible(self.expanded)
 
-        icon = "ph.caret-up" if self.expanded else "ph.caret-down"
-        self.expand_btn.setIcon(qta.icon(icon, color=Colors.TEXT_MUTED))
+        icon_name = "ph.caret-up" if self.expanded else "ph.caret-down"
+        self.expand_btn.setIcon(icon(icon_name, role="muted"))
 
         self.update_summary()
         self.desc.setVisible(not self.expanded)
@@ -520,7 +514,6 @@ class OperationCardWidget(QFrame):
     def set_settings(self, settings):
         """Set operation settings from config."""
 
-        # Restore graph metadata
         self.node_id = settings.get("id", self.node_id)
         self.input_nodes = settings.get("inputs", [])
 
@@ -579,6 +572,10 @@ class PipelineTreeWidget(QTreeWidget):
         self.setAcceptDrops(False)
 
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.verticalScrollBar().setSingleStep(12)
+        self.setViewportMargins(0, 0, 6, 0)
         self.setStyleSheet(
             """
             QTreeWidget {
@@ -595,14 +592,33 @@ class PipelineTreeWidget(QTreeWidget):
         """
         )
 
+        self._add_tail_spacer()
+
+    def _add_tail_spacer(self):
+        self._tail_spacer = QTreeWidgetItem()
+        self.addTopLevelItem(self._tail_spacer)
+        spacer = QWidget()
+        spacer.setFixedHeight(120)
+        spacer.setStyleSheet("background: transparent;")
+        self.setItemWidget(self._tail_spacer, 0, spacer)
+
+    def clear(self):
+        super().clear()
+        self._add_tail_spacer()
+
+    def _insert_before_spacer(self, item):
+        idx = self.indexOfTopLevelItem(self._tail_spacer)
+        self.insertTopLevelItem(idx, item)
+
     def add_operation_card(self, card_widget):
         """Add operation card to list."""
 
-        import qtawesome as qta
+        from ..icons import icon_pixmap
 
-        if self.topLevelItemCount() > 0:
+        spacer_idx = self.indexOfTopLevelItem(self._tail_spacer)
+        if spacer_idx > 0:
             separator_item = QTreeWidgetItem()
-            self.addTopLevelItem(separator_item)
+            self._insert_before_spacer(separator_item)
 
             separator = QWidget()
             layout = QHBoxLayout(separator)
@@ -612,9 +628,7 @@ class PipelineTreeWidget(QTreeWidget):
             layout.addStretch()
 
             icon_label = QLabel()
-            icon_label.setPixmap(
-                qta.icon("ph.caret-down", color=Colors.ICON_MUTED).pixmap(20, 20)
-            )
+            icon_label.setPixmap(icon_pixmap("ph.caret-down", 20, role="muted"))
             icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             layout.addWidget(icon_label)
             layout.addStretch()
@@ -624,7 +638,7 @@ class PipelineTreeWidget(QTreeWidget):
             self.setItemWidget(separator_item, 0, separator)
 
         item = QTreeWidgetItem()
-        self.addTopLevelItem(item)
+        self._insert_before_spacer(item)
         self.setItemWidget(item, 0, card_widget)
 
         card_widget.removed.connect(lambda w: self._remove_card(item))
@@ -665,16 +679,19 @@ class PipelineTreeWidget(QTreeWidget):
 
         # Remove preceding separator if it exists
         if card_index > 0:
-            prev_index = card_index - 1
-            prev_widget = self.itemWidget(self.topLevelItem(prev_index), 0)
-            if prev_widget and not isinstance(prev_widget, OperationCardWidget):
-                self.takeTopLevelItem(prev_index)
+            prev_item = self.topLevelItem(card_index - 1)
+            if prev_item is not self._tail_spacer:
+                prev_widget = self.itemWidget(prev_item, 0)
+                if prev_widget and not isinstance(prev_widget, OperationCardWidget):
+                    self.takeTopLevelItem(card_index - 1)
 
         # If this was the first card, also remove the separator connecting to the next
         if card_index == 0:
-            next_widget = self.itemWidget(self.topLevelItem(card_index), 0)
-            if next_widget and not isinstance(next_widget, OperationCardWidget):
-                self.takeTopLevelItem(card_index)
+            next_item = self.topLevelItem(card_index)
+            if next_item is not self._tail_spacer:
+                next_widget = self.itemWidget(next_item, 0)
+                if next_widget and not isinstance(next_widget, OperationCardWidget):
+                    self.takeTopLevelItem(card_index)
 
         self.pipeline_changed.emit()
 
@@ -686,7 +703,6 @@ class PipelineTreeWidget(QTreeWidget):
         for i in range(self.topLevelItemCount()):
             widget = self.itemWidget(self.topLevelItem(i), 0)
 
-            # Skip separator widgets
             if not isinstance(widget, OperationCardWidget):
                 continue
 

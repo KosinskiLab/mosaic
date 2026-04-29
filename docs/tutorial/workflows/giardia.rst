@@ -8,13 +8,12 @@ This guide outlines strategies for analyzing *in situ* membrane segmentations us
 Segmentation
 ------------
 
-Load your segmentation via **File > Load Session**. If you don't have one, follow the :ref:`membrane segmentation guide <membrane-segmentation>`.
+Load your segmentation via **File > Open** or drag and drop it into the viewport. If you don't have one, follow the :ref:`membrane segmentation guide <membrane-segmentation>`.
 
-.. tip::
+For large datasets, adjust the interaction point budget via the **Settings** button (top-right gear icon). *Ultra* disables interaction decimation entirely; *Balanced* lets you set a point budget with a slider.
 
-	**Load Session** sets default values that optimize downstream processing and export.
-
-For large datasets, adjust point rendering in **Preferences > Appearance** (Linux: High preset; macOS: Ultra or Adaptive).
+.. versionchanged:: v1.3.0
+   Rendering presets were simplified to *Ultra* (no LOD) and *Balanced* (configurable point budget). The settings moved from **Preferences > Appearance** to the **Settings** button in the toolbar.
 
 .. figure:: ../../_static/tutorial/giardia/data.png
    :width: 100 %
@@ -29,16 +28,12 @@ Connected Components
 Separate the dataset into disjoint membrane partitions:
 
 1. Select the segmentation in the *Object Browser*
-2. In the **Segmentation** tab, configure **Cluster**:
+2. In the **Segmentation** tab, click **Cluster** and configure:
 
-   - Method: Connected Components
-   - Use Points: Check
-   - Drop Noise: Check
-   - Distance: -1.0
+   - Method: *Connected Components*
+   - Use Points: Check, Drop Noise: Check, Distance: Auto (-1.0)
 
-3. Click *Apply*
-
-Color by entity (View > Coloring > By Entity) to distinguish components.
+You can color objects by entity using View > Coloring > By Entity.
 
 .. figure:: ../../_static/tutorial/giardia/components.png
    :width: 100 %
@@ -48,7 +43,7 @@ Color by entity (View > Coloring > By Entity) to distinguish components.
 
 .. tip::
 
-	Distance -1 uses single-voxel connectivity. Increase to merge components separated by multiple voxels.
+	Distance defaults to single-voxel connectivity derived from the object's sampling rate. Increase it to bridge gaps of multiple voxels.
 
 
 Refinement
@@ -66,9 +61,7 @@ Remove small erroneous clusters using size-based filtering:
 
    Size-based cluster filtering
 
-.. tip::
-
-	Manual editing is available via Actions > Pick Objects and Actions > Point Selection (or keyboard shortcuts). Use **Trim** for lamella editing.
+You can also interact with data directly through the viewport. Press **r** to activate crosshair selection for picking points or regions, and **e** to pick individual geometries. For lamella-style editing, use the **Trim** tool.
 
 
 Clustering
@@ -82,7 +75,10 @@ Envelope Extraction
 Optionally thin membranes to their envelope first, reducing computation and improving separation:
 
 1. Select the target cluster
-2. Configure **Cluster**: Method: *Envelope*, Use Points: Check, Distance: -1.0, click *Apply*
+2. Click **Cluster** and configure:
+
+   - Method: *Envelope*
+   - Use Points: Check, Distance: Auto (-1.0)
 
 .. note::
 
@@ -105,7 +101,7 @@ Optionally thin membranes to their envelope first, reducing computation and impr
 Leiden Clustering
 ^^^^^^^^^^^^^^^^^
 
-Leiden clustering uses graph connectivity to separate membrane systems. The resolution parameter controls fineness — start at -7.3 and increase in steps of 1.0.
+Leiden clustering uses graph connectivity to separate membrane systems. Whenever you have an object whose parts should be separable based on shape imposed by local connectivity, Leiden is a good choice. The resolution parameter controls fineness, start at -7.3 and increase in steps of 1.0.
 
 Here, resolution -7.3 yielded two clusters. Repeating at -6.3 for each produces the results below. Merge the resulting clusters into distinct membrane systems by selection.
 
@@ -139,20 +135,24 @@ Repeat for the remainder of the dataset.
 Meshing
 -------
 
-Fit triangular meshes to analyze geometric properties:
+Meshing algorithms reconstruct a surface from a set of input points. Dense segmentations (hundreds of thousands of voxels) should almost never be meshed directly (unless you are using the Flying Edges method, which operates on voxel grids natively). The high point density doesn't improve the mesh and makes computation unnecessarily slow. Instead, reduce the input first using for instance:
+
+- **Skeletonize** (Segmentation tab) to extract the structural center or boundary of the membrane, typically reducing point count by an order of magnitude while preserving shape.
+- **Downsample > Center of Mass** (Segmentation tab) to merge nearby points into centroids at a controllable radius, producing uniform spacing without changing the geometry's extent.
+
+Either produces a lightweight point cloud that meshes quickly and cleanly.
+
+Fit triangular meshes to the reduced point clouds:
 
 1. Select membrane clusters in the **Object Browser**
-2. In **Parametrization**, configure **Mesh**:
+2. In the **Parametrization** tab, click **Mesh** and configure:
 
-   - Method: Alpha Shape
-   - Smoothness: 1.0, Curvature Weight: 1.0
-   - Pressure: 0.0
+   - Method: *Alpha Shape*
+   - Smoothness: 1.0, Curvature Weight: 1.0, Pressure: 0.0
    - Boundary Ring: 1, Alpha: 1.0
 
    .. versionchanged:: v1.2.1
-      Elastic Weight renamed to Smoothness (rescaled). Volume Weight renamed to Pressure. Neighbors, Scaling Factor, and Distance were removed. Curvature Weight: 10.0  is sensible pre 1.2.1.
-
-3. Click *Apply*
+      Elastic Weight renamed to Smoothness (rescaled). Volume Weight renamed to Pressure. Neighbors, Scaling Factor, and Distance were removed. Curvature Weight: 10.0 is sensible pre 1.2.1.
 
 .. list-table::
    :widths: 50 50
@@ -168,7 +168,7 @@ Fit triangular meshes to analyze geometric properties:
 
           Membrane meshes
 
-Alpha shapes work well for convex membrane morphologies. For non-convex membranes, use Ball Pivoting (e.g. with core-thinning via **Segmentation > Skeletonize** at radius 40, then Ball Pivoting at radius 50). Poisson reconstruction also produces complete meshes using a different completion strategy.
+Alpha shapes work well for convex membrane morphologies. For non-convex membranes, use Ball Pivoting (e.g. with core-thinning via **Skeletonize** at radius 40, then Ball Pivoting at radius 50). Poisson reconstruction also produces complete meshes using a different completion strategy.
 
 .. versionchanged:: v1.1.0
    **Thin** was renamed to **Skeletonize**.

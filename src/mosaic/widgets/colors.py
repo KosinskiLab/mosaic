@@ -1,7 +1,7 @@
 """
 Widgets for visualization of color maps.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -20,9 +20,8 @@ from qtpy.QtWidgets import (
     QMenu,
     QWidgetAction,
 )
-import qtawesome as qta
-
-from ..stylesheets import Colors, QPushButton_style
+from ..icons import icon
+from ..stylesheets import Colors, Typography
 
 __all__ = [
     "ColorMapSelector",
@@ -70,6 +69,9 @@ def generate_gradient_colors(cmap_name: str, n_colors: int = 10) -> List[QColor]
     """Generate a list of QColors from a matplotlib colormap."""
     from ..utils import get_cmap
 
+    # When using this function in an animated widget its a good idea to pre
+    # import get_cmap to avoid stutter
+
     cmap = get_cmap(cmap_name)
     count = min(n_colors, cmap.N)
 
@@ -110,13 +112,19 @@ class ColormapMenuItem(QWidget):
         # Use underMouse() for reliable hover detection with QWidgetAction
         if self.underMouse():
             path = QPainterPath()
-            path.addRoundedRect(rect.x(), rect.y(), rect.width(), rect.height(), 4, 4)
+            path.addRoundedRect(
+                rect.x(),
+                rect.y(),
+                rect.width(),
+                rect.height(),
+                Colors.RADIUS,
+                Colors.RADIUS,
+            )
 
-            hover_color = QColor(0, 0, 0, 15)
+            hover_color = QColor(0, 0, 0, int(0.06 * 255))
             painter.fillPath(path, QBrush(hover_color))
 
-            # Add border matching QMenu::item:selected
-            pen = QPen(QColor(0, 0, 0, 20))
+            pen = QPen(QColor(Colors.BORDER_DARK))
             pen.setWidth(1)
             painter.setPen(pen)
             painter.drawPath(path)
@@ -131,7 +139,6 @@ class ColormapMenuItem(QWidget):
             self.cmap_name,
         )
 
-        # Draw gradient preview
         gradient_rect = QRect(rect.width() - 108, 5, 100, rect.height() - 10)
         colors = generate_gradient_colors(self.cmap_name, 10)
 
@@ -143,11 +150,6 @@ class ColormapMenuItem(QWidget):
             gradient.setColorAt(i / (len(colors) - 1), color)
 
         painter.fillRect(gradient_rect, gradient)
-
-        pen = QPen(self.palette().mid().color())
-        pen.setWidth(1)
-        painter.setPen(pen)
-        painter.drawRect(gradient_rect)
 
         painter.end()
 
@@ -173,11 +175,7 @@ class ColorMapSelector(QPushButton):
 
     def _setup_ui(self):
         self.setStyleSheet(
-            QPushButton_style
-            + """
-            QPushButton:focus {
-                outline: none;
-            }
+            """
             QPushButton::menu-indicator {
                 image: none;
                 width: 0;
@@ -193,9 +191,21 @@ class ColorMapSelector(QPushButton):
     def _build_menu(self):
         """Build the hierarchical menu with category submenus."""
         menu = QMenu(self)
+        menu.setWindowFlags(
+            menu.windowFlags()
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint
+        )
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         for category, colormaps in self._categories.items():
             submenu = QMenu(category, menu)
+            submenu.setWindowFlags(
+                submenu.windowFlags()
+                | Qt.WindowType.FramelessWindowHint
+                | Qt.WindowType.NoDropShadowWindowHint
+            )
+            submenu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
             for cmap_name in colormaps:
                 action = QWidgetAction(submenu)
@@ -242,7 +252,6 @@ class ColorMapSelector(QPushButton):
             max(font_metrics.horizontalAdvance(n) for n in all_names) + padding
         )
 
-        # Draw colormap name with proper left padding
         text_rect = QRect(padding, 0, text_area_width, rect.height())
         painter.setPen(self.palette().text().color())
         painter.drawText(
@@ -251,7 +260,6 @@ class ColorMapSelector(QPushButton):
             self._current_cmap,
         )
 
-        # Draw gradient preview filling the remaining space
         gradient_left = text_area_width + spacing
         gradient_width = rect.width() - gradient_left - padding
         gradient_rect = QRect(
@@ -296,7 +304,6 @@ class ColorSwatch(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Draw color fill
         r, g, b = [int(c * 255) for c in self.color]
         painter.setBrush(QColor(r, g, b))
 
@@ -351,19 +358,17 @@ class ColorPickerRow(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        # Label
         label_widget = QLabel(label)
         label_widget.setStyleSheet(
             f"""
             QLabel {{
-                font-size: 13px;
+                font-size: {Typography.BODY}px;
                 color: {Colors.TEXT_PRIMARY};
             }}
         """
         )
         layout.addWidget(label_widget)
 
-        # Swatches row
         swatches_layout = QHBoxLayout()
         swatches_layout.setContentsMargins(0, 0, 0, 0)
         swatches_layout.setSpacing(6)
@@ -376,10 +381,8 @@ class ColorPickerRow(QWidget):
 
         swatches_layout.addStretch()
 
-        # Custom color button
         self.custom_btn = QPushButton("Custom")
-        self.custom_btn.setIcon(qta.icon("ph.eyedropper", color=Colors.ICON))
-        self.custom_btn.setStyleSheet(QPushButton_style)
+        self.custom_btn.setIcon(icon("ph.eyedropper", role="muted"))
         self.custom_btn.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.custom_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.custom_btn.clicked.connect(self._open_color_dialog)
@@ -415,6 +418,22 @@ class ColorPickerRow(QWidget):
     def get_color(self) -> tuple:
         """Get the current color as (r, g, b) floats."""
         return self.current_color
+
+    def _on_theme_changed(self):
+        """Re-apply label stylesheet and custom-button icon after a theme switch."""
+        # Re-apply label stylesheet
+        label_widget = self.findChild(QLabel)
+        if label_widget is not None:
+            label_widget.setStyleSheet(
+                f"""
+                QLabel {{
+                    font-size: {Typography.BODY}px;
+                    color: {Colors.TEXT_PRIMARY};
+                }}
+            """
+            )
+        # Re-create the custom-color-picker button icon
+        self.custom_btn.setIcon(icon("ph.eyedropper", role="muted"))
 
     def set_color(self, color: tuple):
         """Set the current color."""

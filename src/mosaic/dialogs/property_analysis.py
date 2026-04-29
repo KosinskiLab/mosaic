@@ -1,7 +1,7 @@
 """
 Dialog to analyze and interactively visualize properties of Geometry objects.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -22,36 +22,42 @@ from qtpy.QtWidgets import (
     QPushButton,
     QFormLayout,
     QWidget,
-    QMessageBox,
-    QTabWidget,
     QTableWidget,
     QHeaderView,
     QTableWidgetItem,
+    QTreeWidgetItem,
     QFileDialog,
     QDoubleSpinBox,
+    QStackedWidget,
+    QAbstractItemView,
 )
 import pyqtgraph as pg
-import qtawesome as qta
 
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+from ..utils import Throttle
+from ..stylesheets import Colors
+from ..icons import icon as _icon
+from ..widgets.settings import get_widget_value
 from ..widgets import (
     ContainerTreeWidget,
     StyledListWidgetItem,
     ColorMapSelector,
     HistogramRangeSlider,
+    TabWidget,
     generate_gradient_colors,
+    MosaicMessageBox,
 )
-from ..utils import Throttle
-from ..widgets.settings import get_widget_value, set_widget_value
-from ..stylesheets import (
-    QPushButton_style,
-    QScrollArea_style,
-    QTabBar_style,
-    QTable_style,
-    Colors,
-)
+
+
+def to_numeric(arr):
+    """Encode a numpy array to float64, factorising string/object dtypes."""
+    arr = np.asarray(arr)
+    if arr.dtype.kind in ("U", "S", "O"):
+        _, codes = np.unique(arr, return_inverse=True)
+        return codes.astype(np.float64)
+    return arr.astype(np.float64, copy=False)
 
 
 @dataclass
@@ -145,47 +151,24 @@ class PropertyCache:
             return False
 
 
+def _make_uuid_to_items(geometries):
+    """Build a uuid-to-StyledTreeWidgetItem map from geometry pairs."""
+    return {
+        obj.uuid: StyledListWidgetItem(geometry=obj, visible=obj.visible)
+        for _, obj in geometries
+    }
+
+
 def _populate_list(geometries, tree_state=None):
-    target_list = ContainerTreeWidget(border=False)
+    target_list = ContainerTreeWidget()
     target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
 
-    def _make_item(name, obj):
-        item = StyledListWidgetItem(name, obj.visible, obj._meta.get("info"))
-        item.setData(Qt.ItemDataRole.UserRole, obj)
-        return item
+    uuid_to_items = _make_uuid_to_items(geometries)
 
-    if tree_state is None:
-        for name, obj in geometries:
-            target_list.addItem(_make_item(name, obj))
-        return target_list
-
-    uuid_map = {obj.uuid: (name, obj) for name, obj in geometries}
-    added = set()
-
-    for root_uuid in tree_state.root_items:
-        if root_uuid in tree_state.group_names:
-            group_name = tree_state.group_names[root_uuid]
-            member_uuids = [
-                u for u in tree_state.groups.get(root_uuid, []) if u in uuid_map
-            ]
-            if not member_uuids:
-                continue
-
-            group_item = target_list.create_group(group_name)
-            for uuid in member_uuids:
-                name, obj = uuid_map[uuid]
-                group_item.addChild(_make_item(name, obj))
-                added.add(uuid)
-        elif root_uuid in uuid_map:
-            name, obj = uuid_map[root_uuid]
-            target_list.addItem(_make_item(name, obj))
-            added.add(root_uuid)
-
-    # Add any remaining geometries not present in the tree state
-    for name, obj in geometries:
-        if obj.uuid not in added:
-            target_list.addItem(_make_item(name, obj))
-
+    if tree_state is not None:
+        target_list.apply_state(tree_state, uuid_to_items)
+    else:
+        target_list.update(uuid_to_items)
     return target_list
 
 
@@ -193,6 +176,7 @@ def _build_type_combo_option(dlg, key, items):
     """Add a QComboBox option row with given key and items."""
     combo = QComboBox()
     combo.addItems(items)
+    combo.setFixedHeight(Colors.WIDGET_HEIGHT)
     dlg.property_options_layout.addRow("Type:", combo)
     dlg.option_widgets[key] = combo
 
@@ -210,6 +194,7 @@ def _build_vertex_properties_options(dlg):
 
     options = QComboBox()
     options.addItems(sorted(list(properties)))
+    options.setFixedHeight(Colors.WIDGET_HEIGHT)
     dlg.property_options_layout.addRow("Type:", options)
     dlg.option_widgets["name"] = options
 
@@ -280,6 +265,7 @@ def _build_thickness_options(dlg):
     smoothing_spin.setValue(0.0)
     smoothing_spin.setDecimals(1)
     smoothing_spin.setSingleStep(1.0)
+    smoothing_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
     smoothing_spin.setToolTip(
         "Radius for Gaussian-weighted spatial smoothing (0 = no smoothing)"
     )
@@ -296,7 +282,6 @@ def _build_tomogram_options(dlg):
 
     path_selector = PathSelector(
         placeholder="Path to tomogram (MRC, EM, MAP, ...)",
-        file_mode=True,
     )
     dlg.property_options_layout.addRow("Tomogram:", path_selector)
     dlg.option_widgets["file_path"] = path_selector
@@ -305,6 +290,7 @@ def _build_tomogram_options(dlg):
     texture_size.setRange(256, 2048)
     texture_size.setValue(512)
     texture_size.setSingleStep(128)
+    texture_size.setFixedHeight(Colors.WIDGET_HEIGHT)
     texture_size.setToolTip(
         "Texture resolution in pixels. Larger meshes require larger textures to "
         "maintain texture resolution."
@@ -316,6 +302,7 @@ def _build_tomogram_options(dlg):
     spline_order = QSpinBox()
     spline_order.setRange(1, 5)
     spline_order.setValue(3)
+    spline_order.setFixedHeight(Colors.WIDGET_HEIGHT)
     spline_order.setToolTip(
         "Spline interpolation order for tomogram sampling. "
         "1 = linear (fast), 3 = cubic (smooth, default), 5 = quintic."
@@ -407,12 +394,7 @@ class ColorScaleSettingsDialog(QDialog):
     """Dialog for configuring color scale thresholds"""
 
     def __init__(self, parent=None):
-        from ..icons import (
-            dialog_accept_icon,
-            dialog_reject_icon,
-            dialog_margin,
-            footer_margin,
-        )
+        from ..icons import dialog_accept_icon, dialog_reject_icon
 
         super().__init__(parent)
         self.setWindowTitle("Color Scale Settings")
@@ -420,30 +402,27 @@ class ColorScaleSettingsDialog(QDialog):
 
         self._dialog_accept_icon = dialog_accept_icon
         self._dialog_reject_icon = dialog_reject_icon
-        self._dialog_margin = dialog_margin
-        self._footer_margin = footer_margin
+        self._dialog_margin = (10, 10, 10, 10)
+        self._footer_margin = (0, 10, 0, 0)
 
-        # Default threshold values
         self.lower_enabled = False
         self.upper_enabled = False
         self.lower_value = 0.0
         self.upper_value = 1.0
 
         self._setup_ui()
-        self.setStyleSheet(QPushButton_style)
 
     def sizeHint(self):
         return QSize(400, 350)
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(*self._dialog_margin)
+        layout.setContentsMargins(10, 0, 10, 10)
+        # layout.setContentsMargins(*self._dialog_margin)
 
-        # Threshold settings group
         threshold_group = QGroupBox("Threshold Settings")
         threshold_layout = QVBoxLayout(threshold_group)
 
-        # Lower threshold
         self.lower_checkbox = QCheckBox("Enable Lower Threshold")
         self.lower_checkbox.stateChanged.connect(self._update_spinbox_states)
         threshold_layout.addWidget(self.lower_checkbox)
@@ -455,10 +434,10 @@ class ColorScaleSettingsDialog(QDialog):
         self.lower_spinbox.setDecimals(6)
         self.lower_spinbox.setValue(0.0)
         self.lower_spinbox.setEnabled(False)
+        self.lower_spinbox.setFixedHeight(Colors.WIDGET_HEIGHT)
         lower_value_layout.addRow("Minimum Value:", self.lower_spinbox)
         threshold_layout.addLayout(lower_value_layout)
 
-        # Upper threshold
         self.upper_checkbox = QCheckBox("Enable Upper Threshold")
         self.upper_checkbox.stateChanged.connect(self._update_spinbox_states)
         threshold_layout.addWidget(self.upper_checkbox)
@@ -470,12 +449,12 @@ class ColorScaleSettingsDialog(QDialog):
         self.upper_spinbox.setDecimals(6)
         self.upper_spinbox.setValue(1.0)
         self.upper_spinbox.setEnabled(False)
+        self.upper_spinbox.setFixedHeight(Colors.WIDGET_HEIGHT)
         upper_value_layout.addRow("Maximum Value:", self.upper_spinbox)
         threshold_layout.addLayout(upper_value_layout)
 
         layout.addWidget(threshold_group)
 
-        # Buttons
         button_layout = QHBoxLayout()
         button_layout.setContentsMargins(*self._footer_margin)
 
@@ -580,33 +559,18 @@ class PropertyAnalysisDialog(QDialog):
         self.setWindowTitle("Property Analysis")
 
         self.legend = legend
-        self.setWindowFlags(Qt.WindowType.Window)
-
         self._setup_ui()
-        self.setStyleSheet(
-            QTabBar_style + QTable_style + QPushButton_style + QScrollArea_style
-        )
 
-        self._known_tree_states = self._snapshot_tree_states()
         self.cdata.data.vtk_pre_render.connect(self._on_render_update)
         self.cdata.models.vtk_pre_render.connect(self._on_render_update)
-
-    def _snapshot_tree_states(self):
-        """Snapshot both container tree states for change detection."""
-        return (
-            self.cdata.get_tree_state("data"),
-            self.cdata.get_tree_state("models"),
-        )
+        self.cdata.data.data_changed.connect(self._refresh_target_lists)
+        self.cdata.models.data_changed.connect(self._refresh_target_lists)
 
     def _on_render_update(self):
         """Re-apply properties when models are re-rendered."""
         self.cdata.data.blockSignals(True)
         self.cdata.models.blockSignals(True)
         try:
-            current = self._snapshot_tree_states()
-            if current != self._known_tree_states:
-                self._known_tree_states = current
-                self._update_property_list()
             if self.live_update_checkbox.isChecked():
                 self._preview(render=False)
                 self._update_plot()
@@ -617,11 +581,30 @@ class PropertyAnalysisDialog(QDialog):
             self.cdata.data.blockSignals(False)
             self.cdata.models.blockSignals(False)
 
+    def _refresh_target_lists(self):
+        """Incrementally update any active target list with current geometries."""
+        if (target_list := self.option_widgets.get("queries")) is None:
+            return None
+        if (data_source := getattr(target_list, "_data_source", None)) is None:
+            return None
+        kwargs = getattr(target_list, "_data_kwargs", {})
+        geometries = self.cdata.format_datalist(data_source, **kwargs)
+        uuid_to_items = _make_uuid_to_items(geometries)
+        target_list.update(uuid_to_items)
+
     def closeEvent(self, event):
-        """Disconnect when dialog closes"""
+        """Disconnect signals and restore textured geometries when dialog closes."""
+        if hasattr(self, "plot_widget"):
+            self.plot_widget.close()
+
+        for sampler in getattr(self, "_texture_samplers", {}).values():
+            sampler.cleanup()
+
         try:
             self.cdata.data.vtk_pre_render.disconnect(self._on_render_update)
             self.cdata.models.vtk_pre_render.disconnect(self._on_render_update)
+            self.cdata.data.data_changed.disconnect(self._refresh_target_lists)
+            self.cdata.models.data_changed.disconnect(self._refresh_target_lists)
         except Exception:
             pass
         super().closeEvent(event)
@@ -641,10 +624,12 @@ class PropertyAnalysisDialog(QDialog):
         k_start = QSpinBox()
         k_start.setRange(1, 255)
         k_start.setValue(1)
+        k_start.setFixedHeight(Colors.WIDGET_HEIGHT)
 
         k_end = QSpinBox()
         k_end.setRange(1, 255)
         k_end.setValue(1)
+        k_end.setFixedHeight(Colors.WIDGET_HEIGHT)
 
         k_start.valueChanged.connect(lambda x: k_end.setRange(x, 255))
 
@@ -658,6 +643,7 @@ class PropertyAnalysisDialog(QDialog):
         aggregation_layout.addWidget(QLabel("Aggregation:"))
         aggregation_combo = QComboBox()
         aggregation_combo.addItems(["Mean", "Min", "Max", "Median"])
+        aggregation_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
         aggregation_layout.addWidget(aggregation_combo)
         layout.addLayout(aggregation_layout)
 
@@ -673,11 +659,13 @@ class PropertyAnalysisDialog(QDialog):
         """
         curvature_combo = QComboBox()
         curvature_combo.addItems(["Mean", "Gaussian"])
+        curvature_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
         layout.addRow("Method:", curvature_combo)
 
         radius_spin = QSpinBox()
         radius_spin.setRange(1, 20)
         radius_spin.setValue(5)
+        radius_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
         layout.addRow("Radius:", radius_spin)
 
         return curvature_combo, radius_spin
@@ -699,6 +687,8 @@ class PropertyAnalysisDialog(QDialog):
         target_list = _populate_list(
             self.cdata.format_datalist(data_source, **kwargs), tree_state
         )
+        target_list._data_source = data_source
+        target_list._data_kwargs = kwargs
         layout.addWidget(target_list)
 
         compare_all = None
@@ -715,12 +705,8 @@ class PropertyAnalysisDialog(QDialog):
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.tabs_container = QWidget()
-        tabs_layout = QVBoxLayout(self.tabs_container)
-        tabs_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.tabs_widget = QTabWidget()
         self.visualization_tab = QWidget()
         self.analysis_tab = QWidget()
         self.statistics_tab = QWidget()
@@ -729,23 +715,14 @@ class PropertyAnalysisDialog(QDialog):
         self._setup_analysis_tab()
         self._setup_statistics_tab()
 
-        self.tabs_widget.addTab(
-            self.visualization_tab,
-            qta.icon("ph.paint-brush", color=Colors.ICON),
-            "Visualize",
-        )
-        self.tabs_widget.addTab(
-            self.analysis_tab,
-            qta.icon("ph.chart-line", color=Colors.ICON),
-            "Distribution",
-        )
-        self.tabs_widget.addTab(
-            self.statistics_tab,
-            qta.icon("ph.chart-bar", color=Colors.ICON),
-            "Statistics",
-        )
-        self.tabs_widget.currentChanged.connect(self._update_tab)
-        main_layout.addWidget(self.tabs_widget)
+        self._tabs = TabWidget(tab_bar_margins=(0, 0, 0, 0))
+        self._tabs.addTab(self.visualization_tab, "Visualize", _icon("ph.paint-brush"))
+        self._tabs.addTab(self.analysis_tab, "Distribution", _icon("ph.chart-line"))
+        self._tabs.addTab(self.statistics_tab, "Statistics", _icon("ph.chart-bar"))
+        self._tabs.finalize()
+        self._tabs.currentChanged.connect(self._switch_tab)
+
+        main_layout.addWidget(self._tabs)
 
     def _create_colormap_combo(self, with_settings_button=False):
         """Create a colormap combo widget with optional settings button"""
@@ -762,9 +739,9 @@ class PropertyAnalysisDialog(QDialog):
 
         if with_settings_button:
             settings_btn = QPushButton()
-            settings_btn.setIcon(qta.icon("ph.gear", color=Colors.ICON))
+            settings_btn.setIcon(_icon("ph.gear"))
             settings_btn.setToolTip("Color Scale Settings")
-            settings_btn.setFixedSize(28, 28)
+            settings_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
             settings_btn.clicked.connect(_open_colormap_settings)
             return colormap, settings_btn
         return colormap
@@ -776,7 +753,6 @@ class PropertyAnalysisDialog(QDialog):
         layout = QVBoxLayout(self.visualization_tab)
         layout.setSpacing(6)
 
-        # Property group
         property_group = QGroupBox("Property")
         property_layout = QVBoxLayout()
         property_layout.setSpacing(4)
@@ -787,12 +763,14 @@ class PropertyAnalysisDialog(QDialog):
         self.category_combo.addItems(
             ["Distance", "Mesh", "Geometric", "Projection", "Custom"]
         )
+        self.category_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.category_combo.currentTextChanged.connect(self._update_property_list)
         category_layout.addWidget(self.category_combo)
 
         category_layout.addSpacing(15)
         category_layout.addWidget(QLabel("Property:"))
         self.property_combo = QComboBox()
+        self.property_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.property_combo.currentTextChanged.connect(self._update_options)
         category_layout.addWidget(self.property_combo, 1)
         property_layout.addLayout(category_layout)
@@ -811,14 +789,25 @@ class PropertyAnalysisDialog(QDialog):
         filter_main_layout.setContentsMargins(8, 4, 8, 4)
         filter_main_layout.setSpacing(8)
 
-        # Left column: histogram and slider
+        self.filter_stack = QStackedWidget()
+
         self.filter_slider = HistogramRangeSlider()
         self.filter_slider.rangeReleased.connect(self._on_filter_changed)
         self._filter_throttle = Throttle(self._on_filter_changed, interval_ms=100)
         self.filter_slider.rangeChanged.connect(self._on_filter_dragging)
-        filter_main_layout.addWidget(self.filter_slider, 1)
+        self.filter_stack.addWidget(self.filter_slider)
 
-        # Right column: buttons at bottom
+        self.category_filter_list = ContainerTreeWidget()
+        self.category_filter_list.setSelectionMode(
+            QListWidget.SelectionMode.ExtendedSelection
+        )
+        self.category_filter_list.itemSelectionChanged.connect(
+            lambda: self._on_filter_changed(0, 0)
+        )
+        self.filter_stack.addWidget(self.category_filter_list)
+
+        filter_main_layout.addWidget(self.filter_stack, 1)
+
         filter_btn_layout = QVBoxLayout()
         filter_btn_layout.setContentsMargins(0, 0, 0, 0)
         filter_btn_layout.setSpacing(4)
@@ -831,24 +820,32 @@ class PropertyAnalysisDialog(QDialog):
 
         self.reset_filter_btn = QPushButton("Reset")
         self.reset_filter_btn.setIcon(
-            qta.icon("ph.arrow-counter-clockwise", color=Colors.PRIMARY)
+            _icon("ph.arrow-counter-clockwise", role="primary")
         )
         self.reset_filter_btn.setToolTip("Reset filter to show all points")
         self.reset_filter_btn.clicked.connect(self._reset_filter)
         filter_btn_layout.addWidget(self.reset_filter_btn)
 
         self.extract_btn = QPushButton("Extract")
-        self.extract_btn.setIcon(qta.icon("ph.selection", color=Colors.PRIMARY))
+        self.extract_btn.setIcon(_icon("ph.selection", role="primary"))
         self.extract_btn.setToolTip("Create new object from points within filter range")
         self.extract_btn.clicked.connect(self._extract_filtered)
         filter_btn_layout.addWidget(self.extract_btn)
+
+        self.split_btn = QPushButton("Split")
+        self.split_btn.setIcon(_icon("ph.git-fork", role="primary"))
+        self.split_btn.setToolTip(
+            "Split each object into separate objects per category"
+        )
+        self.split_btn.clicked.connect(self._split_by_category)
+        self.split_btn.hide()
+        filter_btn_layout.addWidget(self.split_btn)
 
         filter_main_layout.addLayout(filter_btn_layout)
 
         filter_group.setFixedHeight(150)
         layout.addWidget(filter_group)
 
-        # Options group
         options_group = QGroupBox("Visualization")
         options_layout = QVBoxLayout(options_group)
         options_layout.setSpacing(4)
@@ -921,10 +918,9 @@ class PropertyAnalysisDialog(QDialog):
 
         layout.addWidget(options_group)
 
-        # Dialog Control Buttons
         button_layout = QHBoxLayout()
         refresh_btn = QPushButton("Refresh")
-        refresh_btn.setIcon(qta.icon("ph.arrow-clockwise", color=Colors.PRIMARY))
+        refresh_btn.setIcon(_icon("ph.arrow-clockwise", role="primary"))
         refresh_btn.clicked.connect(self._preview)
         button_layout.addWidget(refresh_btn)
 
@@ -939,7 +935,7 @@ class PropertyAnalysisDialog(QDialog):
         button_layout.addStretch()
 
         self.visualize_export_btn = QPushButton("Export")
-        self.visualize_export_btn.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
+        self.visualize_export_btn.setIcon(_icon("ph.download", role="primary"))
         self.visualize_export_btn.clicked.connect(self._export_data)
         button_layout.addWidget(self.visualize_export_btn)
 
@@ -956,7 +952,6 @@ class PropertyAnalysisDialog(QDialog):
 
         layout = QVBoxLayout(self.analysis_tab)
 
-        # Plot type buttons
         header_layout = QHBoxLayout()
         header_layout.addStretch()
 
@@ -969,19 +964,19 @@ class PropertyAnalysisDialog(QDialog):
 
         self.bar_btn = QPushButton()
         self.bar_btn.setToolTip("Histogram")
-        self.bar_btn.setFixedSize(28, 28)
+        self.bar_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
         self.bar_btn.clicked.connect(lambda: self._set_plot_type("Histogram"))
         self.plot_type_buttons["Histogram"] = (self.bar_btn, "ph.chart-bar")
 
         self.density_btn = QPushButton()
         self.density_btn.setToolTip("Density")
-        self.density_btn.setFixedSize(28, 28)
+        self.density_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
         self.density_btn.clicked.connect(lambda: self._set_plot_type("Density"))
         self.plot_type_buttons["Density"] = (self.density_btn, "ph.cell-signal-full")
 
         self.line_btn = QPushButton()
         self.line_btn.setToolTip("Line Chart")
-        self.line_btn.setFixedSize(28, 28)
+        self.line_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
         self.line_btn.clicked.connect(lambda: self._set_plot_type("Line"))
         self.plot_type_buttons["Line"] = (self.line_btn, "ph.chart-line")
 
@@ -993,7 +988,6 @@ class PropertyAnalysisDialog(QDialog):
         header_layout.addLayout(plot_type_layout)
         layout.addLayout(header_layout)
 
-        # Plot widget
         self.plot_widget = pg.GraphicsLayoutWidget(self)
         self.plot_widget.setBackground(None)
         self.plot_widget.ci.setContentsMargins(0, 0, 0, 0)
@@ -1006,6 +1000,7 @@ class PropertyAnalysisDialog(QDialog):
         self.plot_title = QLabel("Stratification")
         self.plot_mode_combo = QComboBox()
         self.plot_mode_combo.addItems(["Combined", "Separate"])
+        self.plot_mode_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.plot_mode_combo.currentTextChanged.connect(self._update_plot)
         strat_layout.addWidget(self.plot_title)
         strat_layout.addWidget(self.plot_mode_combo)
@@ -1016,6 +1011,7 @@ class PropertyAnalysisDialog(QDialog):
         self.alpha_slider = QSpinBox()
         self.alpha_slider.setRange(0, 255)
         self.alpha_slider.setValue(128)
+        self.alpha_slider.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.alpha_slider.valueChanged.connect(self._update_plot_throttle)
         alpha_layout.addWidget(self.alpha_slider)
         options_layout.addLayout(alpha_layout)
@@ -1034,12 +1030,11 @@ class PropertyAnalysisDialog(QDialog):
         layout.addWidget(self.plot_widget)
         layout.addWidget(options_group)
 
-        # Dialog Control Buttons
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
         self.analysis_export_btn = QPushButton("Export Plot")
-        self.analysis_export_btn.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
+        self.analysis_export_btn.setIcon(_icon("ph.download", role="primary"))
         self.analysis_export_btn.clicked.connect(self._export_plot)
         button_layout.addWidget(self.analysis_export_btn)
 
@@ -1055,12 +1050,17 @@ class PropertyAnalysisDialog(QDialog):
         layout = QVBoxLayout(self.statistics_tab)
 
         self.stats_table = QTableWidget()
+        self.stats_table.setAlternatingRowColors(True)
+        self.stats_table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.stats_table.setSortingEnabled(True)
+        self.stats_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
         self.stats_table.setColumnCount(5)
         self.stats_table.setHorizontalHeaderLabels(
             ["Object", "Min", "Max", "Mean", "Std Dev"]
-        )
-        self.stats_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
         )
 
         layout.addWidget(self.stats_table)
@@ -1069,9 +1069,7 @@ class PropertyAnalysisDialog(QDialog):
         button_layout.addStretch()
 
         self.statistics_export_btn = QPushButton("Export Statistics")
-        self.statistics_export_btn.setIcon(
-            qta.icon("ph.download", color=Colors.PRIMARY)
-        )
+        self.statistics_export_btn.setIcon(_icon("ph.download", role="primary"))
         self.statistics_export_btn.clicked.connect(self._export_statistics)
         button_layout.addWidget(self.statistics_export_btn)
 
@@ -1103,17 +1101,6 @@ class PropertyAnalysisDialog(QDialog):
         if property_name is None:
             property_name = self.property_combo.currentText()
 
-        self._previous_parameters = {}
-        if hasattr(self, "option_widgets"):
-            self._previous_parameters = {
-                k: (
-                    get_widget_value(w)
-                    if not isinstance(w, (QListWidget, ContainerTreeWidget))
-                    else [x.metadata.get("uuid") for x in w.selected_items()]
-                )
-                for k, w in self.option_widgets.items()
-            }
-
         while self.property_options_layout.rowCount() > 0:
             self.property_options_layout.removeRow(0)
 
@@ -1121,20 +1108,6 @@ class PropertyAnalysisDialog(QDialog):
         builder = _OPTION_BUILDERS.get(property_name)
         if builder is not None:
             builder(self)
-
-        # Restore previous parameter values
-        for k, widget in self.option_widgets.items():
-            if k in self._previous_parameters:
-                value = self._previous_parameters[k]
-
-                widget.blockSignals(True)
-                if isinstance(widget, (QListWidget, ContainerTreeWidget)):
-                    widget.set_selection(value)
-                    continue
-                set_widget_value(widget, value)
-                widget.blockSignals(False)
-
-        self._previous_parameters = {}
 
     def toggle_all_targets(self, state, target_list):
         target_list.setEnabled(not bool(state))
@@ -1159,22 +1132,17 @@ class PropertyAnalysisDialog(QDialog):
             *self.cdata.format_datalist("models", selected=selected),
         ]
 
+    def _interactor_for(self, geometry):
+        """Return the interactor (data or models) that owns *geometry*."""
+        if self.cdata._models.get(geometry.uuid) is not None:
+            return self.cdata.models
+        return self.cdata.data
+
     def _get_or_create_texture_sampler(
         self, geometry, file_path: str, texture_size: int, interpolation_order: int
     ):
         """Get cached TextureSampler or create a new one."""
-        import vtk as _vtk
         from .. import meshing
-
-        if isinstance(geometry.actor, (_vtk.vtkLODActor, _vtk.vtkQuadricLODActor)):
-            QMessageBox.warning(
-                self,
-                "Texture Error",
-                "Texture mapping requires the 'Ultra' rendering quality preset. "
-                "LOD actors (used by other presets) do not support VTK textures.\n\n"
-                "Change the preset under Preferences > Appearance > Preset.",
-            )
-            return None
 
         if not hasattr(self, "_texture_samplers"):
             self._texture_samplers = {}
@@ -1202,7 +1170,7 @@ class PropertyAnalysisDialog(QDialog):
                 )
                 self._texture_samplers[cache_key] = sampler
             except Exception as e:
-                QMessageBox.warning(self, "Texture Error", str(e))
+                MosaicMessageBox.warning(self, "Texture Error", str(e))
                 return None
 
         return self._texture_samplers[cache_key]
@@ -1298,8 +1266,16 @@ class PropertyAnalysisDialog(QDialog):
                 if value is not None:
                     self._cache.set(geometry, parameters, value)
             except Exception as e:
-                QMessageBox.warning(self, "Error", str(e))
+                MosaicMessageBox.warning(self, "Error", str(e))
                 return None
+
+    def _is_categorical(self, geometries):
+        """Check whether the current cached property values are categorical."""
+        for g in geometries:
+            v = self._cache.get_value(g.uuid)
+            if v is not None and isinstance(v, np.ndarray):
+                return v.dtype.kind in ("U", "S", "O")
+        return False
 
     def _get_transformed_properties(self, geometries):
         """Apply the full visualization transform pipeline to cached properties.
@@ -1308,31 +1284,32 @@ class PropertyAnalysisDialog(QDialog):
         order as ``_preview`` so that filter operations work on consistent values.
         """
         properties = {
-            g.uuid: self._cache.get_value(g.uuid)
+            g.uuid: to_numeric(self._cache.get_value(g.uuid))
             for g in geometries
             if self._cache.get_value(g.uuid) is not None
         }
         if self.normalize_checkbox.isChecked():
             properties = {
                 k: (
-                    (v - np.min(v)) / (np.max(v) - np.min(v))
-                    if (np.max(v) - np.min(v)) > 0
+                    (v - np.nanmin(v)) / (np.nanmax(v) - np.nanmin(v))
+                    if (np.nanmax(v) - np.nanmin(v)) > 0
                     else v
                 )
                 for k, v in properties.items()
             }
 
         if self.quantile_checkbox.isChecked():
-            all_curvatures = np.concatenate(
+            scalars = np.concatenate(
                 [np.asarray(v).flatten() for v in properties.values()]
             )
-            valid_curvatures = all_curvatures[~np.isnan(all_curvatures)]
-            n_bins = min(valid_curvatures.size // 10, 100)
-            bins = np.percentile(valid_curvatures, np.linspace(0, 100, n_bins + 1))
-            properties = {k: np.digitize(v, bins) - 1 for k, v in properties.items()}
-
-        properties = self._apply_threshold_clipping(properties)
-        return properties
+            scalars = scalars[~np.isnan(scalars)]
+            n_bins = min(scalars.size // 10, 100)
+            if n_bins > 0 and scalars.size > 0:
+                bins = np.percentile(scalars, np.linspace(0, 100, n_bins + 1))
+                properties = {
+                    k: np.digitize(v, bins) - 1 for k, v in properties.items()
+                }
+        return self._apply_threshold_clipping(properties)
 
     def _apply_threshold_clipping(self, properties):
         """Apply threshold clipping to property values"""
@@ -1394,8 +1371,8 @@ class PropertyAnalysisDialog(QDialog):
         if len(values) == 0:
             return None
 
-        max_value = np.max([np.max(x) for x in values])
-        min_value = np.min([np.min(x) for x in values])
+        max_value = np.nanmax([np.nanmax(x) for x in values])
+        min_value = np.nanmin([np.nanmin(x) for x in values])
         gamma = self.gamma_row.value()
         lut, lut_range = cmap_to_vtkctf(
             colormap, max_value, min_value=min_value, gamma=gamma
@@ -1406,11 +1383,36 @@ class PropertyAnalysisDialog(QDialog):
                 continue
             geometry.set_scalars(metric, lut, lut_range)
 
-        self.legend.set_lookup_table(lut, self.property_combo.currentText())
+        legend_label = self.property_combo.currentText()
+        name_widget = self.option_widgets.get("name")
+        if name_widget is not None:
+            legend_label = name_widget.currentText()
+        self.legend.set_lookup_table(lut, legend_label)
 
-        # Update filter slider with all property values
-        all_values = np.concatenate([np.asarray(v).flatten() for v in values])
-        self.filter_slider.setData(all_values)
+        # Update filter widget — category checklist or histogram slider
+        categorical = self._is_categorical(geometries)
+        if categorical:
+            raw_values = [
+                self._cache.get_value(g.uuid)
+                for g in geometries
+                if self._cache.get_value(g.uuid) is not None
+            ]
+            all_labels = np.unique(
+                np.concatenate([np.asarray(v).flatten() for v in raw_values])
+            )
+            self.category_filter_list.blockSignals(True)
+            self.category_filter_list.clear()
+            for label in all_labels:
+                self.category_filter_list.addItem(QTreeWidgetItem([str(label)]))
+            self.category_filter_list.selectAll()
+            self.category_filter_list.blockSignals(False)
+            self.filter_stack.setCurrentWidget(self.category_filter_list)
+            self.split_btn.show()
+        else:
+            all_values = np.concatenate([np.asarray(v).flatten() for v in values])
+            self.filter_slider.setData(all_values)
+            self.filter_stack.setCurrentWidget(self.filter_slider)
+            self.split_btn.hide()
 
         if render:
             self.render()
@@ -1433,6 +1435,10 @@ class PropertyAnalysisDialog(QDialog):
             self.cdata.data.blockSignals(False)
             self.cdata.models.blockSignals(False)
 
+    def _get_selected_categories(self):
+        """Return the set of selected label strings from the category filter."""
+        return {item.text(0) for item in self.category_filter_list.selectedItems()}
+
     def _on_filter_changed(self, lower, upper):
         """Hide points outside the filter range using transparent LUT colors."""
         from ..utils import cmap_to_vtkctf
@@ -1444,17 +1450,39 @@ class PropertyAnalysisDialog(QDialog):
         colormap = self._get_colormap()
         properties = self._get_transformed_properties(geometries)
 
-        lut, lut_range = cmap_to_vtkctf(
-            colormap, upper, min_value=lower, transparent_range=True
-        )
-        self.legend.set_lookup_table(lut, self.property_combo.currentText())
-        for geometry in geometries:
-            values = properties.get(geometry.uuid)
-            if values is None:
-                continue
-
-            values = np.asarray(values).flatten()
-            geometry.set_scalars(values, lut, lut_range)
+        if self._is_categorical(geometries):
+            checked = self._get_selected_categories()
+            values = [x for x in properties.values() if x is not None]
+            if not values:
+                return
+            max_code = np.nanmax([np.nanmax(x) for x in values])
+            lut, lut_range = cmap_to_vtkctf(
+                colormap, max_code, min_value=0.0, transparent_range=True
+            )
+            for geometry in geometries:
+                raw = self._cache.get_value(geometry.uuid)
+                coded = properties.get(geometry.uuid)
+                if raw is None or coded is None:
+                    continue
+                raw_flat = np.asarray(raw).flatten()
+                visible = np.array([str(v) in checked for v in raw_flat])
+                display = np.where(visible, coded, -1.0)
+                geometry.set_scalars(display, lut, lut_range)
+        else:
+            lut, lut_range = cmap_to_vtkctf(
+                colormap, upper, min_value=lower, transparent_range=True
+            )
+            legend_label = self.property_combo.currentText()
+            name_widget = self.option_widgets.get("name")
+            if name_widget is not None:
+                legend_label = name_widget.currentText()
+            self.legend.set_lookup_table(lut, legend_label)
+            for geometry in geometries:
+                values = properties.get(geometry.uuid)
+                if values is None:
+                    continue
+                values = np.asarray(values).flatten()
+                geometry.set_scalars(values, lut, lut_range)
 
         self.render()
 
@@ -1466,54 +1494,112 @@ class PropertyAnalysisDialog(QDialog):
 
     def _reset_filter(self):
         """Reset filter to show all points."""
-        self.filter_slider._slider.setValues(
-            self.filter_slider._slider.min_val,
-            self.filter_slider._slider.max_val,
-        )
-        self.filter_slider._histogram.setSelection(
-            self.filter_slider._slider.min_val,
-            self.filter_slider._slider.max_val,
-        )
+        if self.filter_stack.currentWidget() is self.category_filter_list:
+            self.category_filter_list.blockSignals(True)
+            self.category_filter_list.selectAll()
+            self.category_filter_list.blockSignals(False)
+        else:
+            self.filter_slider._slider.setValues(
+                self.filter_slider._slider.min_val,
+                self.filter_slider._slider.max_val,
+            )
+            self.filter_slider._histogram.setSelection(
+                self.filter_slider._slider.min_val,
+                self.filter_slider._slider.max_val,
+            )
         self._preview()
 
     def _extract_filtered(self):
         """Create new geometry from points within filter range."""
-        lower, upper = self.filter_slider.getRange()
         geometries = self._get_selected_geometries()
 
         if not geometries:
-            QMessageBox.warning(self, "No Selection", "Please select geometry first.")
+            MosaicMessageBox.warning(
+                self, "No Selection", "Please select geometry first."
+            )
             return
 
-        properties = self._get_transformed_properties(geometries)
+        categorical = self._is_categorical(geometries)
 
-        extracted_any = False
+        dirty_interactors = set()
         for geometry in geometries:
-            values = properties.get(geometry.uuid)
-            if values is None:
-                continue
-
-            values = np.asarray(values).flatten()
-            mask = (values >= lower) & (values <= upper)
+            if categorical:
+                raw = self._cache.get_value(geometry.uuid)
+                if raw is None:
+                    continue
+                checked = self._get_selected_categories()
+                raw_flat = np.asarray(raw).flatten()
+                mask = np.array([str(v) in checked for v in raw_flat])
+            else:
+                lower, upper = self.filter_slider.getRange()
+                properties = self._get_transformed_properties(geometries)
+                values = properties.get(geometry.uuid)
+                if values is None:
+                    continue
+                values = np.asarray(values).flatten()
+                mask = (values >= lower) & (values <= upper)
 
             if not mask.any():
                 continue
 
-            # Create subset geometry
             subset = geometry[mask]
             if subset.get_number_of_points() > 0:
-                self.cdata.data.add(subset)
-                extracted_any = True
+                interactor = self._interactor_for(geometry)
+                interactor.add(subset)
+                dirty_interactors.add(id(interactor))
 
-        if extracted_any:
-            self.cdata.data.render()
+        if dirty_interactors:
+            if id(self.cdata.data) in dirty_interactors:
+                self.cdata.data.render()
+            if id(self.cdata.models) in dirty_interactors:
+                self.cdata.models.render()
         else:
-            QMessageBox.information(
+            MosaicMessageBox.information(
                 self, "No Points", "No points fall within the selected range."
             )
 
+    def _split_by_category(self):
+        """Split each selected geometry into one object per unique category."""
+        geometries = self._get_selected_geometries()
+        if not geometries:
+            MosaicMessageBox.warning(
+                self, "No Selection", "Please select geometry first."
+            )
+            return
+
+        if not self._is_categorical(geometries):
+            return
+
+        dirty_interactors = set()
+        for geometry in geometries:
+            raw = self._cache.get_value(geometry.uuid)
+            if raw is None:
+                continue
+
+            raw_flat = np.asarray(raw).flatten()
+            parent_name = geometry._meta.get("name", "Object")
+            interactor = self._interactor_for(geometry)
+
+            for label in np.unique(raw_flat):
+                mask = raw_flat == label
+                subset = geometry[mask]
+                if subset.get_number_of_points() == 0:
+                    continue
+                subset._meta["name"] = f"{parent_name}_{label}"
+                interactor.add(subset)
+                dirty_interactors.add(id(interactor))
+
+        if dirty_interactors:
+            if id(self.cdata.data) in dirty_interactors:
+                self.cdata.data.render()
+            if id(self.cdata.models) in dirty_interactors:
+                self.cdata.models.render()
+
+    def _switch_tab(self, index):
+        self._update_tab()
+
     def _update_tab(self):
-        current_tab_index = self.tabs_widget.currentIndex()
+        current_tab_index = self._tabs.currentIndex()
 
         self.plot_widget.clear()
         QTimer.singleShot(
@@ -1542,11 +1628,12 @@ class PropertyAnalysisDialog(QDialog):
                 continue
 
             row_count += 1
+            value = to_numeric(value)
             self._set_stat_cell(index, 0, item_text)
-            self._set_stat_cell(index, 1, str(np.round(np.min(value), n_decimals)))
-            self._set_stat_cell(index, 2, str(np.round(np.max(value), n_decimals)))
-            self._set_stat_cell(index, 3, str(np.round(np.mean(value), n_decimals)))
-            self._set_stat_cell(index, 4, str(np.round(np.std(value), n_decimals)))
+            self._set_stat_cell(index, 1, str(np.round(np.nanmin(value), n_decimals)))
+            self._set_stat_cell(index, 2, str(np.round(np.nanmax(value), n_decimals)))
+            self._set_stat_cell(index, 3, str(np.round(np.nanmean(value), n_decimals)))
+            self._set_stat_cell(index, 4, str(np.round(np.nanstd(value), n_decimals)))
         self.stats_table.setRowCount(row_count)
 
     def _set_plot_type(self, plot_type):
@@ -1558,8 +1645,7 @@ class PropertyAnalysisDialog(QDialog):
         """Update plot type button icons and styling based on selection state."""
         for plot_type, (btn, icon_name) in self.plot_type_buttons.items():
             is_selected = plot_type == self.current_plot_type
-            icon_color = Colors.PRIMARY if is_selected else Colors.ICON
-            btn.setIcon(qta.icon(icon_name, color=icon_color))
+            btn.setIcon(_icon(icon_name, role="primary" if is_selected else "muted"))
 
             if is_selected:
                 btn.setStyleSheet(
@@ -1588,7 +1674,7 @@ class PropertyAnalysisDialog(QDialog):
 
     def _update_plot(self):
         """Update the plot based on the current property and selected objects"""
-        if self.tabs_widget.currentIndex() != 1:
+        if self._tabs.currentIndex() != 1:
             return None
 
         selected_items = self._get_selection()
@@ -1606,6 +1692,7 @@ class PropertyAnalysisDialog(QDialog):
         all_values = []
         for i, (item_text, obj) in enumerate(selected_items):
             if (values := self._cache.get_value(obj.uuid)) is not None:
+                values = to_numeric(values)
                 all_values.append(values)
                 data_series.append((item_text, obj, values, colors[i % len(colors)]))
 
@@ -1616,7 +1703,7 @@ class PropertyAnalysisDialog(QDialog):
             self.plot_widget.setUpdatesEnabled(False)
 
             self.plot_widget.clear()
-            all_scalar = not isinstance(all_values[0], np.ndarray)
+            all_scalar = np.asarray(all_values[0]).ndim == 0
             if all_scalar:
                 all_values = np.asarray(all_values)
                 self._create_categorical_plot(data_series, all_values, plot_type)
@@ -1677,6 +1764,10 @@ class PropertyAnalysisDialog(QDialog):
         bar_width=None,
     ):
         """Create a single pyqtgraph item for the given plot type."""
+        values = np.asarray(values).flatten()
+        values = values[~np.isnan(values)]
+        if values.size == 0:
+            return None
         if plot_type == "Histogram":
             hist, edges = np.histogram(values, bins=bins)
             x = (edges[:-1] + edges[1:]) / 2
@@ -1721,12 +1812,18 @@ class PropertyAnalysisDialog(QDialog):
         bins, x_range = None, None
         if plot_type == "Histogram":
             all_data = np.concatenate(all_values)
+            all_data = all_data[~np.isnan(all_data)]
+            if all_data.size == 0:
+                return None
             bins = np.histogram_bin_edges(all_data, bins="auto")
             y_label = "Frequency"
             x_label = property_name
         elif plot_type == "Density":
             all_data = np.concatenate(all_values)
-            x_min, x_max = np.min(all_data), np.max(all_data)
+            all_data = all_data[~np.isnan(all_data)]
+            if all_data.size == 0:
+                return None
+            x_min, x_max = np.nanmin(all_data), np.nanmax(all_data)
             x_range = np.linspace(x_min, x_max, 500)
             y_label = "Density"
             x_label = property_name
@@ -1743,6 +1840,8 @@ class PropertyAnalysisDialog(QDialog):
             plot = self.plot_widget.addPlot(row=0, col=0)
             plot.setLabel("left", y_label)
             plot.setLabel("bottom", x_label)
+            plot.setClipToView(True)
+            plot.setDownsampling(auto=True, mode="peak")
 
             plot.disableAutoRange()
             plot.addLegend(offset=(-10, 10))
@@ -1770,12 +1869,13 @@ class PropertyAnalysisDialog(QDialog):
                         offset=bar_offset,
                         bar_width=bar_width,
                     )
-                    plot.addItem(item)
+                    if item is not None:
+                        plot.addItem(item)
                 except Exception as e:
                     warnings.warn(f"Error creating plot for {name}: {e}")
 
             plot.enableAutoRange()
-            plot.autoRange()
+            QTimer.singleShot(0, plot.autoRange)
             return None
 
         # For separate plots mode
@@ -1784,6 +1884,8 @@ class PropertyAnalysisDialog(QDialog):
             plot.setTitle(name)
             plot.setLabel("left", y_label)
             plot.setLabel("bottom", x_label)
+            plot.setClipToView(True)
+            plot.setDownsampling(auto=True, mode="peak")
 
             try:
                 item = self._create_plot_item(
@@ -1793,7 +1895,8 @@ class PropertyAnalysisDialog(QDialog):
                     bins=bins,
                     x_range=x_range,
                 )
-                plot.addItem(item)
+                if item is not None:
+                    plot.addItem(item)
             except Exception as e:
                 warnings.warn(f"Error creating plot for {name}: {e}")
 
@@ -1805,15 +1908,17 @@ class PropertyAnalysisDialog(QDialog):
 
         try:
             export_func(file_path)
-            QMessageBox.information(self, "Success", f"{title} completed successfully")
+            MosaicMessageBox.information(
+                self, "Success", f"{title} completed successfully"
+            )
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to export: {str(e)}")
+            MosaicMessageBox.critical(self, "Error", f"Failed to export: {str(e)}")
 
     def _export_data(self):
         """Export analysis data to a CSV file."""
         selected_items = self._get_selection()
         if not selected_items:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Selection", "Please select at least one object."
             )
             return

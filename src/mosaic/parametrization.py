@@ -6,7 +6,7 @@ Children of the underlying abstract Parametrization class, also define
 means for equidistant sampling and computation of normal vectors.
 Furthermore, there are amenable to native python pickling.
 
-Copyright (c) 2023-2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -17,7 +17,6 @@ from abc import ABC, abstractmethod
 
 import igl
 import numpy as np
-import open3d as o3d
 from scipy import optimize, interpolate
 
 from . import meshing, utils
@@ -27,9 +26,10 @@ __all__ = [
     "Ellipsoid",
     "Cylinder",
     "RBF",
-    "TriangularMesh",
+    "BallPivoting",
     "PoissonMesh",
     "AlphaShape",
+    "ShrinkWrap",
     "FlyingEdges",
     "SplineCurve",
 ]
@@ -824,6 +824,19 @@ class TriangularMesh(Parametrization):
             self.mesh.remove_duplicated_vertices()
 
     def to_file(self, file_path):
+        from os.path import splitext
+
+        ext = splitext(file_path)[1].lower()
+        if ext in (".tsi", ".q"):
+            from .meshing.utils import to_tsi
+            from .formats.writer import write_topology_file
+
+            data = to_tsi(self.vertices, self.triangles, margin=20)
+            write_topology_file(file_path, data, tsi_format=(ext == ".tsi"))
+            return
+
+        import open3d as o3d
+
         o3d.io.write_triangle_mesh(file_path, self.mesh)
 
     def subset(self, idx):
@@ -841,6 +854,8 @@ class TriangularMesh(Parametrization):
 
     @classmethod
     def from_file(cls, file_path):
+        import open3d as o3d
+
         return cls(mesh=o3d.io.read_triangle_mesh(file_path), repair=False)
 
     def __getstate__(self):
@@ -855,6 +870,8 @@ class TriangularMesh(Parametrization):
         return {k: v.copy() for k, v in state.items()}
 
     def __setstate__(self, state):
+        import open3d as o3d
+
         mesh = meshing.to_open3d(state["vertices"], state["triangles"])
         attrs = ("vertex_normals", "vertex_colors", "triangle_normals")
         for attr in attrs:
@@ -912,12 +929,16 @@ class TriangularMesh(Parametrization):
         return _sample_from_mesh(mesh, n_samples, mesh_init_factor)
 
     def _setup_rayscene(self):
+        import open3d as o3d
+
         mesh = o3d.t.geometry.TriangleMesh.from_legacy(self.mesh)
         scene = o3d.t.geometry.RaycastingScene()
         scene_id = scene.add_triangles(mesh)
         return scene, scene_id
 
     def compute_normal(self, points: np.ndarray) -> np.ndarray:
+        import open3d as o3d
+
         self.mesh.compute_triangle_normals()
 
         scene, _ = self._setup_rayscene()
@@ -1005,6 +1026,8 @@ class TriangularMesh(Parametrization):
         triangles : np.ndarray, optional
             Triangle indices hit by projection.
         """
+        import open3d as o3d
+
         self.mesh.compute_vertex_normals()
         self.mesh.compute_triangle_normals()
 
@@ -1255,8 +1278,9 @@ class BallPivoting(TriangularMesh):
         curvature_weight: float = 0.0,
         pressure: float = 0.0,
         n_smoothing: int = 5,
-        k_neighbors=50,
+        k_neighbors=15,
         boundary_ring: int = 0,
+        normals: np.ndarray = None,
         **kwargs,
     ) -> "BallPivoting":
         """
@@ -1287,21 +1311,33 @@ class BallPivoting(TriangularMesh):
             Taubin smoothing iterations applied after mesh creation.
         k_neighbors : int
             Number of neighbors for normal estimation. Decrease for
-            small point clouds.
+            small point clouds. Ignored when ``normals`` is given.
         boundary_ring : int
             Number of vertex rings around inferred hole vertices to
             include in fairing.
+        normals : np.ndarray, optional
+            Precomputed per-point normals with shape (n, 3). When
+            provided, internal normal estimation is skipped.
 
         Returns
         -------
         BallPivoting
             Reconstructed surface mesh.
         """
+        import open3d as o3d
+
         radii = np.asarray(radii).reshape(-1)
         radii = radii[radii > 0]
 
         positions = np.asarray(positions, dtype=np.float64)
-        pcd = utils.compute_normals(positions, k=k_neighbors, return_pcd=True)
+        if normals is None:
+            pcd = utils.compute_normals(positions, k=k_neighbors, return_pcd=True)
+        else:
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(positions)
+            pcd.normals = o3d.utility.Vector3dVector(
+                np.asarray(normals, dtype=np.float64)
+            )
         mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
             pcd, o3d.utility.DoubleVector(radii)
         )
@@ -1342,13 +1378,21 @@ class BallPivoting(TriangularMesh):
             mesh = meshing.remesh(meshing.to_open3d(vs, out_fs), target_edge_length)
             new_vs = np.asarray(mesh.vertices, dtype=np.float64)
             new_fs = np.asarray(mesh.triangles)
-        except (ValueError, RuntimeError):
-            new_vs, new_fs = vs, out_fs
 
-        _, face_ids, _ = igl.point_mesh_squared_distance(
-            new_vs, vs, out_fs.astype(np.int64)
-        )
-        vids = np.where(np.isin(face_ids, hole_fids))[0]
+            _, face_ids, _ = igl.point_mesh_squared_distance(
+                new_vs, vs, out_fs.astype(np.int64)
+            )
+            vids = np.where(np.isin(face_ids, hole_fids))[0]
+        except (ValueError, RuntimeError) as e:
+            warnings.warn(
+                f"Remeshing failed: {e}. Falling back to Liepa triangulation."
+            )
+            add_fids = np.arange(len(fs), len(out_fs))
+            nv = len(vs)
+            new_vs, new_fs, _ = meshing.repair.triangulation_refine_leipa(
+                vs, out_fs, add_fids, np.sqrt(2)
+            )
+            vids = np.arange(nv, len(new_vs))
 
         if len(vids) > 0:
             new_vs = meshing.fair_mesh(
@@ -1374,6 +1418,7 @@ class PoissonMesh(TriangularMesh):
         deldist: float = 1.5,
         density_quantile: float = 0.0,
         n_threads: int = 1,
+        normals: np.ndarray = None,
         **kwargs,
     ) -> "PoissonMesh":
         """
@@ -1389,7 +1434,8 @@ class PoissonMesh(TriangularMesh):
             Depth of the octree used for reconstruction. Higher values
             capture finer detail but are slower.
         k_neighbors : int
-            Number of neighbors for normal estimation.
+            Number of neighbors for normal estimation. Ignored when
+            ``normals`` is given.
         deldist : float
             Drop mesh vertices further than this distance from the
             input point cloud (in original coordinates).
@@ -1399,20 +1445,30 @@ class PoissonMesh(TriangularMesh):
         n_threads : int
             Number of threads for Poisson reconstruction. Set to -1
             to use all available cores.
+        normals : np.ndarray, optional
+            Precomputed per-point normals with shape (n, 3). When
+            provided, internal normal estimation is skipped.
 
         Returns
         -------
         PoissonMesh
             Reconstructed surface mesh.
         """
+        import open3d as o3d
+
         positions = np.asarray(positions, dtype=np.float64)
 
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(positions / voxel_size)
-        pcd.estimate_normals(
-            search_param=o3d.geometry.KDTreeSearchParamKNN(knn=k_neighbors)
-        )
-        pcd.orient_normals_consistent_tangent_plane(k=k_neighbors)
+        if normals is None:
+            pcd.estimate_normals(
+                search_param=o3d.geometry.KDTreeSearchParamKNN(knn=k_neighbors)
+            )
+            pcd.orient_normals_consistent_tangent_plane(k=k_neighbors)
+        else:
+            pcd.normals = o3d.utility.Vector3dVector(
+                np.asarray(normals, dtype=np.float64)
+            )
 
         mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
             pcd,
@@ -1451,15 +1507,6 @@ class PoissonMesh(TriangularMesh):
 
 
 class AlphaShape(TriangularMesh):
-    """
-    Represent a point cloud as triangular mesh.
-
-    Parameters
-    ----------
-    mesh : open3d.cpu.pybind.geometry.TriangleMesh
-        Triangular mesh.
-    """
-
     @classmethod
     def fit(
         cls,
@@ -1505,6 +1552,8 @@ class AlphaShape(TriangularMesh):
         AlphaShape
             Reconstructed surface mesh.
         """
+        import open3d as o3d
+
         positions = np.asarray(positions, dtype=np.float64)
 
         scale = positions.max()
@@ -1567,16 +1616,180 @@ class AlphaShape(TriangularMesh):
         return cls(mesh=meshing.to_open3d(vs, fs))
 
 
+class ShrinkWrap(TriangularMesh):
+    @classmethod
+    def fit(
+        cls,
+        positions: np.ndarray,
+        voxel_size: float = 1,
+        max_iter: int = 100,
+        k_neighbors: int = 8,
+        target_edge_length: float = -1,
+        smoothness: float = 0.0,
+        curvature_weight: float = 0.0,
+        pressure: float = 0.0,
+        boundary_ring: int = 0,
+        tol: float = -1,
+        normals: np.ndarray = None,
+        bridge_gaps: bool = True,
+        **kwargs,
+    ) -> "ShrinkWrap":
+        """
+        Shrink-wrap surface reconstruction via Reach for the Spheres [1]_.
+
+        Notes
+        -----
+        Starts from the convex hull of the input points and deforms it
+        inward toward the point cloud under a topology-preserving,
+        self-intersection-free flow. A final isotropic remeshing and
+        fairing pass smooths out local artefacts left by the flow.
+
+        The flow is sensitive to non-uniform sampling and noise in the
+        input -- raw segmentation point clouds often produce sharp
+        spikes where neighbouring samples disagree on the local normal.
+        Best results come from inputs that are relatively clean and
+        roughly equidistantly spaced, e.g. points sampled from an
+        intermediate mesh reconstruction rather than the raw cloud.
+
+        References
+        ----------
+        .. [1] Sellán, Batty, Stein. "Reach For the Spheres: Tangency-aware
+           surface reconstruction of SDFs." SIGGRAPH Asia 2023.
+
+        Parameters
+        ----------
+        positions : np.ndarray
+            Point coordinates with shape (n, 3).
+        voxel_size : float
+            Sampling rate of the input point cloud.
+        max_iter : int
+            Maximum flow iterations.
+        k_neighbors : int
+            Neighbourhood size for normal estimation and orientation.
+            Ignored when ``normals`` is given.
+        target_edge_length : float
+            Target edge length for the post-processing remesher, in the
+            same units as ``positions``. ``-1`` uses the median edge
+            length of the flowed mesh.
+        smoothness : float
+            Balance between position anchoring and curvature minimisation
+            during fairing. 0 disables fairing.
+        curvature_weight : float
+            Weight for triharmonic (higher-order smoothing) energy.
+        pressure : float
+            Internal mesh pressure along vertex normals.
+        boundary_ring : int
+            Number of vertex rings around inferred vertices to include in fairing.
+        tol : float
+            Tangency tolerance for the flow. ``< 0`` uses the default.
+        normals : np.ndarray, optional
+            Precomputed per-point normals with shape (n, 3). When
+            provided, internal normal estimation and the radial
+            outward-flip are skipped and the supplied normals are
+            trusted for the SDF sign.
+        bridge_gaps : bool
+            Augment the point cloud with hull-surface samples in
+            regions with no nearby data, so the SDF has a coherent
+            zero crossing across gaps and the mesh bridges them
+            instead of diving through.
+
+        Returns
+        -------
+        ShrinkWrap
+            Reconstructed surface mesh.
+        """
+        import gpytoolbox as gpy
+        from scipy.spatial import cKDTree
+
+        positions = np.asarray(positions, dtype=np.float64)
+        positions_orig = positions
+
+        center = positions.mean(axis=0)
+        positions = positions - center
+        scale = float(np.abs(positions).max())
+        positions = positions / scale
+
+        hull_shape = AlphaShape.fit(positions, alpha=1)
+        hull = hull_shape.mesh
+        V0 = np.asarray(hull.vertices, dtype=np.float64)
+        F0 = np.asarray(hull.triangles, dtype=np.int64)
+
+        if normals is None:
+            normals = utils.compute_normals(
+                positions, k=k_neighbors, assume_single_object=True
+            )
+        else:
+            normals = np.asarray(normals, dtype=np.float64)
+
+        if bridge_gaps:
+            hull.compute_vertex_normals()
+
+            real_tree = cKDTree(positions)
+            mean_nn = float(real_tree.query(positions, k=2)[0][:, 1].mean())
+            n_hull_samples = hull_shape.points_per_sampling(mean_nn)
+
+            pcd_hull = hull.sample_points_uniformly(number_of_points=n_hull_samples)
+            hull_pts = np.asarray(pcd_hull.points, dtype=np.float64)
+            hull_normals = np.asarray(pcd_hull.normals, dtype=np.float64)
+
+            _, idx = real_tree.query(hull_pts, k=1)
+            sign_hull = np.sign(
+                np.einsum("ij,ij->i", hull_pts - positions[idx], normals[idx])
+            )
+            keep = sign_hull == -1
+            positions = np.concatenate([positions, hull_pts[keep]], axis=0)
+            normals = np.concatenate([normals, hull_normals[keep]], axis=0)
+
+        tree = cKDTree(positions)
+
+        def sdf(Q):
+            d, idx = tree.query(Q, k=1)
+            sign = np.sign(np.einsum("ij,ij->i", Q - positions[idx], normals[idx]))
+            sign = np.where(sign == 0, 1.0, sign)
+            return d * sign
+
+        V, F = gpy.reach_for_the_spheres(
+            U=positions,
+            sdf=sdf,
+            V=V0,
+            F=F0,
+            max_iter=max_iter,
+            tol=tol if tol > 0 else None,
+        )
+
+        mesh = meshing.to_open3d(V * scale + center, F)
+
+        if smoothness == 0 and curvature_weight == 0 and pressure == 0:
+            return cls(mesh=mesh)
+
+        mesh = meshing.remesh(mesh, target_edge_length)
+        vs = np.asarray(mesh.vertices, dtype=np.float64)
+        fs = np.asarray(mesh.triangles)
+
+        distances, _ = utils.find_closest_points(positions_orig, vs)
+        edge_length = (
+            target_edge_length
+            if target_edge_length > 0
+            else float(np.median(meshing.compute_edge_lengths(mesh)))
+        )
+        vids = np.where(distances > edge_length / 2.0)[0]
+
+        if len(vids) == 0:
+            return cls(mesh=meshing.to_open3d(vs, fs))
+
+        vs = meshing.fair_mesh(
+            vs,
+            fs,
+            vids,
+            smoothness=smoothness,
+            curvature_weight=curvature_weight,
+            pressure=pressure,
+            n_ring=boundary_ring,
+        )
+        return cls(mesh=meshing.to_open3d(vs, fs))
+
+
 class FlyingEdges(TriangularMesh):
-    """
-    Represent a point cloud as triangular mesh.
-
-    Parameters
-    ----------
-    mesh : open3d.cpu.pybind.geometry.TriangleMesh
-        Triangular mesh.
-    """
-
     @classmethod
     def fit(
         cls,
@@ -1638,7 +1851,7 @@ class FlyingEdges(TriangularMesh):
         flying_edges.ComputeNormalsOn()
         flying_edges.Update()
 
-        # Convert 0-100 strength to VTK pass_band using log scale
+        # Convert 0-100 strength to VTK pass_band
         pass_band = 2.0 * 10 ** (-np.clip(smoothing_strength, 0, 100) / 25.0)
 
         smoother = vtk.vtkWindowedSincPolyDataFilter()
@@ -1730,6 +1943,7 @@ PARAMETRIZATION_TYPE = {
     "poisson": PoissonMesh,
     "rbf": RBF,
     "alpha_shape": AlphaShape,
+    "shrink_wrap": ShrinkWrap,
     "spline": SplineCurve,
     "flying_edges": FlyingEdges,
 }

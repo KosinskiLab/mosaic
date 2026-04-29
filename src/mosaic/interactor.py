@@ -3,7 +3,7 @@ Implemenents DataContainerInteractor and LinkedDataContainerInteractor,
 which mediate interaction between the GUI and underlying DataContainers.
 This includes selection, editing and rendering.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -17,9 +17,9 @@ from qtpy.QtGui import QAction
 from qtpy.QtWidgets import (
     QListWidget,
     QMenu,
-    QMessageBox,
     QDialog,
 )
+from .widgets import MosaicMessageBox
 from qtpy.QtCore import (
     Qt,
     QObject,
@@ -84,8 +84,7 @@ class DataContainerInteractor(QObject):
     def attach_area_picker(self):
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         if self.interactor is None:
-            print("Initialize an Interactor first.")
-            return None
+            raise ValueError("Initialize an Interactor first.")
         self.area_picker = vtk.vtkAreaPicker()
         style = vtk.vtkInteractorStyleRubberBandPick()
 
@@ -140,15 +139,16 @@ class DataContainerInteractor(QObject):
         return super().eventFilter(watched_obj, event)
 
     def _on_item_renamed(self, item):
-        if (uuid := item.metadata.get("uuid")) is None:
+        if item.metadata.get("uuid") is None:
             return None
 
-        if (geometry := self.container.get(uuid)) is not None:
-            # Consider adding bidrecitional uuid lookup to render instead
-            if item.text() != geometry._meta.get("name"):
-                geometry._meta["name"] = item.text()
-                self.data_changed.emit()
-                self.render()
+        # setData already wrote the new name to geometry._meta;
+        # detect whether the stored metadata name diverged (i.e. a rename)
+        current_name = item.text(0)
+        if current_name != item.metadata.get("name"):
+            item.metadata["name"] = current_name
+            self.data_changed.emit()
+            self.render()
 
     def next_color(self):
         if not hasattr(self, "colors"):
@@ -308,6 +308,9 @@ class DataContainerInteractor(QObject):
                 continue
 
             points = geometry.points
+            if len(points) == 0:
+                continue
+
             mask = (
                 (points[:, 0] >= frustum_min[0])
                 & (points[:, 0] <= frustum_max[0])
@@ -352,17 +355,18 @@ class DataContainerInteractor(QObject):
 
         # Make sure right click also selects group members
         self.data_list._select_group_children(item)
-        context_menu = QMenu(self.data_list)
+        context_menu = QMenu(self.data_list.window())
         context_menu.setWindowFlags(
             context_menu.windowFlags()
-            | Qt.FramelessWindowHint
-            | Qt.NoDropShadowWindowHint
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint
         )
-        context_menu.setAttribute(Qt.WA_TranslucentBackground)
+        context_menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         show_action = QAction("Show", self.data_list)
         show_action.triggered.connect(lambda: self.visibility(visible=True))
         context_menu.addAction(show_action)
+
         hide_action = QAction("Hide", self.data_list)
         hide_action.triggered.connect(lambda: self.visibility(visible=False))
         context_menu.addAction(hide_action)
@@ -420,10 +424,10 @@ class DataContainerInteractor(QObject):
         representation_menu = QMenu("Representation", context_menu)
         representation_menu.setWindowFlags(
             representation_menu.windowFlags()
-            | Qt.FramelessWindowHint
-            | Qt.NoDropShadowWindowHint
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint
         )
-        representation_menu.setAttribute(Qt.WA_TranslucentBackground)
+        representation_menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         for format_name in formats:
             if format_name is None:
@@ -457,6 +461,17 @@ class DataContainerInteractor(QObject):
         context_menu.addMenu(representation_menu)
 
         context_menu.addSeparator()
+
+        from .geometry import GeometryTrajectory
+
+        trajectories = [g for g in selected if isinstance(g, GeometryTrajectory)]
+        if len(trajectories) == 1:
+            extract_action = QAction("Extract Frame", self.data_list)
+            extract_action.triggered.connect(
+                lambda: self._extract_trajectory_frame(trajectories[0])
+            )
+            context_menu.addAction(extract_action)
+
         export_menu = QAction("Export As", self.data_list)
         export_menu.triggered.connect(lambda: self._handle_export())
         context_menu.addAction(export_menu)
@@ -466,6 +481,16 @@ class DataContainerInteractor(QObject):
         context_menu.addAction(properties_action)
 
         context_menu.exec(self.data_list.mapToGlobal(position))
+
+    def _extract_trajectory_frame(self, trajectory):
+        from .geometry import Geometry
+
+        model = trajectory.model
+        geometry = Geometry(model=model, sampling_rate=trajectory.sampling_rate)
+        geometry._set_faces(model.triangles)
+        geometry.change_representation("mesh")
+        self.add(geometry)
+        self.render()
 
     def _handle_export(self, *args, **kwargs):
         from .dialogs import ExportDialog
@@ -500,7 +525,7 @@ class DataContainerInteractor(QObject):
         names = [g._meta.get("name", f"Geometry {i}") for i, g in enumerate(geometries)]
 
         dialog = ExportDialog(
-            parent=None,
+            parent=self.vtk_widget.window(),
             enabled_categories=enabled_categories,
             parameters={
                 "shape": shape,
@@ -513,27 +538,41 @@ class DataContainerInteractor(QObject):
         return dialog.exec()
 
     def _wrap_export(self, export_data):
+        from os.path import splitext
+        from .geometry import Geometry, GeometryTrajectory
+
         file_path = export_data.pop("file_path", None)
         if not file_path:
             return -1
 
         export_data.pop("category", None)
+        export_data.pop("tsi_format", None)
 
-        if "shape" not in export_data:
-            if (shape := self.container.metadata.get("shape")) is not None:
-                sampling = self.container.metadata.get("sampling_rate", 1)
-                export_data["shape"] = tuple(
-                    np.rint(np.divide(shape, sampling)).astype(int)
-                )
+        geometries = self.get_selected_geometries()
+        has_trajectory = any(isinstance(g, GeometryTrajectory) for g in geometries)
+
+        if has_trajectory:
+            ref = file_path if isinstance(file_path, str) else file_path[0]
+            base, ext = splitext(ref)
+            expanded = []
+            for geom in geometries:
+                if not isinstance(geom, GeometryTrajectory):
+                    expanded.append(geom)
+                    continue
+                for frame in geom._trajectory:
+                    model = frame.get("fit")
+                    if model is None:
+                        continue
+                    g = Geometry(model=model, sampling_rate=geom.sampling_rate)
+                    g._set_faces(model.triangles)
+                    expanded.append(g)
+            file_path = [f"{base}_{i:06d}{ext}" for i in range(len(expanded))]
+            geometries = expanded
 
         try:
-            write_geometries(
-                self.get_selected_geometries(),
-                file_path,
-                **export_data,
-            )
+            write_geometries(geometries, file_path, **export_data)
         except Exception as e:
-            QMessageBox.warning(None, "Error", str(e))
+            MosaicMessageBox.warning(None, "Error", str(e))
         return None
 
     def _show_properties_dialog(self) -> int:
@@ -605,17 +644,10 @@ class DataContainerInteractor(QObject):
             if name is None:
                 name = f"{self.prefix} {i}"
 
-            info = {
-                "item_type": geometry.geometry_type,
-                "name": name,
-                "uuid": geometry.uuid,
-            }
-
             geometry._meta["name"] = name
-            geometry._meta["info"] = info
 
             item = StyledTreeWidgetItem(
-                name, geometry.visible, info, editable=True, parent=None
+                geometry=geometry, visible=geometry.visible, editable=True
             )
             uuid_to_items[geometry.uuid] = item
         return uuid_to_items
@@ -624,7 +656,7 @@ class DataContainerInteractor(QObject):
         """Synchronize vtk actors and tree data structure with subsequent render."""
         renderer = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
-        current_actors = set(self.container.get_actors())
+        current_actors = set(self.container.get_actors(include_lod=True))
         actors_to_remove = self.rendered_actors - current_actors
         for actor in actors_to_remove:
             renderer.RemoveViewProp(actor)
@@ -800,12 +832,12 @@ class DataContainerInteractor(QObject):
         return self.render()
 
     def update(self, container, tree_state=None):
-        """Update container with new data and optionally restore tree structure.
+        """Replace the underlying container and rebuild the tree.
 
         Parameters
         ----------
         container : :py:class:`mosaic.container.DataContainer`
-            Container with new data
+            Container with new data.
         tree_state : TreeState, optional
             Tree structure to restore. If None, items added to root.
         """
@@ -814,12 +846,13 @@ class DataContainerInteractor(QObject):
                 f"Can not update {type(self.container)} using {type(container)}."
             )
 
-        self.container.clear()
-        self.container.metadata.update(container.metadata)
-        _ = [self.add(x) for x in container.data]
+        self.rendered_actors.clear()
+        self.container = container
 
         if tree_state is not None:
             self.data_list.apply_state(tree_state, self._uuid_to_items())
+        else:
+            self.data_list.update(self._uuid_to_items())
 
         self.data_changed.emit()
 
@@ -874,7 +907,7 @@ for op_name, config in _GEOMETRY_OPERATIONS.items():
 
                     for new_geom in ret:
                         if isinstance(new_geom, GeometryData):
-                            new_geom = Geometry(**new_geom.to_dict())
+                            new_geom = new_geom.to_geometry()
                         self.add(new_geom)
 
                     if remove_orig:
@@ -934,8 +967,12 @@ def _compute_frustum_bound(plane_normals, plane_origins, tol=1e-6):
 
 def _points_in_frustum(points, plane_normals, plane_origins):
     offsets = (plane_origins * plane_normals).sum(axis=1)
-    distances = points @ plane_normals.T - offsets
-    return np.all(distances <= 0, axis=1)
+    mask = np.ones(len(points), dtype=bool)
+    for i in range(len(plane_normals)):
+        mask[mask] = points[mask] @ plane_normals[i] - offsets[i] <= 0
+        if not mask.any():
+            break
+    return mask
 
 
 def _bounds_in_frustum(bounds, plane_normals, plane_origins):

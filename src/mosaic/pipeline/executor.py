@@ -1,7 +1,7 @@
 """
 REPL-based pipeline execution engine.
 
-Copyright (c) 2026 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -77,6 +77,9 @@ def generate_runs(pipeline_config):
     if not import_nodes:
         raise ValueError("Pipeline must start with an Import Files operation")
 
+    import_nodes = [
+        node for node in nodes if node.get("operation_id") == "import_batch"
+    ]
     if len(import_nodes) > 1:
         raise ValueError("Pipeline currently supports only one Import Files operation")
 
@@ -160,7 +163,9 @@ def compile_run(run_config: dict) -> List[Tuple[str, str]]:
         if op_id == "import_batch":
             input_file = settings.get("input_file", run_config["input_file"])
             params = run_config.get("input_params", {})
-            if input_file.endswith(".pickle"):
+            from ..formats.session import is_session_file
+
+            if is_session_file(input_file):
                 parts = [f"open {shlex.quote(input_file)}"]
             else:
                 parts = [f"open {shlex.quote(input_file)}"]

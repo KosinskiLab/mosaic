@@ -1,61 +1,35 @@
 """
 IO methods to parse a variety of file formats.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import struct
 import warnings
+from io import BytesIO
 from string import ascii_lowercase
 from dataclasses import dataclass
-import xml.etree.ElementTree as ET
 from typing import List, Dict, Any, Optional
 
 import numpy as np
-from scipy.spatial.transform import Rotation
-
-from .. import meshing
-from ..utils import volume_to_points, compute_bounding_box, NORMAL_REFERENCE
+from gzip import open as gzip_open
 
 
-def _parse_data_array(data_array: ET.Element, dtype: type = float) -> np.ndarray:
+class NotASegmentationError(ValueError):
+    """Raised when a volume cannot be interpreted as a segmentation.
+
+    The sampled unique-value count exceeded ``max_cluster``, indicating
+    the file is most likely a density map rather than a label map. The
+    caller should offer to render it as a volume instead.
     """
-    Parse a DataArray element into a numpy array.
-
-    Parameters
-    ----------
-    data_array : ET.Element
-        XML element containing array data.
-    dtype : type, optional
-        Data type for parsing, by default float.
-
-    Returns
-    -------
-    np.ndarray
-        Parsed numpy array.
-    """
-    rows = [row.strip() for row in data_array.text.strip().split("\n") if row.strip()]
-    parsed_rows = [[dtype(x) for x in row.split()] for row in rows]
-    data = np.array(parsed_rows)
-    return np.squeeze(data)
 
 
-def _parse_dtype(xml_element) -> object:
-    """
-    Determine data type from XML element type attribute.
-
-    Parameters
-    ----------
-    xml_element : ET.Element
-        XML element to parse type from.
-
-    Returns
-    -------
-    object
-        Data type (float or int).
-    """
-    return float if xml_element.get("type", "").startswith("Float") else int
+def is_gzipped(filename: str) -> bool:
+    """Check if a file is a gzip file by reading its magic number."""
+    with open(filename, "rb") as f:
+        return f.read(2) == b"\x1f\x8b"
 
 
 @dataclass
@@ -122,6 +96,8 @@ class GeometryDataContainer:
     sampling: List[float] = (1, 1, 1)
 
     def __post_init__(self):
+        from ..utils import compute_bounding_box, NORMAL_REFERENCE
+
         dtype_map = {
             "vertices": np.float32,
             "normals": np.float32,
@@ -152,7 +128,8 @@ class GeometryDataContainer:
             setattr(self, attr_name, self._to_dtype(attr, dtype))
 
         if self.shape is None:
-            self.shape, _ = compute_bounding_box(self.vertices)
+            shape, starts = compute_bounding_box(self.vertices)
+            self.shape = np.add(shape, starts)
 
         if len(self.vertices) != len(self.normals):
             raise ValueError("Normals need to be specified for each vertex set.")
@@ -348,6 +325,8 @@ def _read_orientations(filename: str):
         Dictionary containing vertices, normals, and quaternions.
     """
     from tme import Orientations
+    from scipy.spatial.transform import Rotation
+    from ..utils import NORMAL_REFERENCE
 
     data = Orientations.from_file(filename)
 
@@ -358,16 +337,24 @@ def _read_orientations(filename: str):
     quaternions = angles.as_quat(scalar_first=True)
     indices = [np.where(data.details == x) for x in np.unique(data.details)]
 
+    # Collect extra per-particle metadata when available (pytme >= 0.3.4)
+    extra_metadata = getattr(data, "metadata", None) or {}
+    extra_metadata = {
+        k: v
+        for k, v in extra_metadata.items()
+        if isinstance(v, np.ndarray) and v.shape[0] == data.translations.shape[0]
+    }
+
     try:
-        vertex_properties = [
-            VertexPropertyContainer(
-                {
-                    "pytme_score": data.scores[x],
-                    "entity": data.details[x],
-                }
-            )
-            for x in indices
-        ]
+        vertex_properties = []
+        for x in indices:
+            props = {
+                "pytme_score": data.scores[x],
+                "entity": data.details[x],
+            }
+            for key, val in extra_metadata.items():
+                props[key] = val[x]
+            vertex_properties.append(VertexPropertyContainer(props))
     except Exception:
         vertex_properties = None
 
@@ -493,6 +480,8 @@ def read_tsi(filename: str) -> GeometryDataContainer:
     GeometryDataContainer
         Parsed geometry data container.
     """
+    from .. import meshing
+
     data = _read_tsi_file(filename)
     mesh = meshing.utils.to_open3d(data["vertices"][:, 1:4], data["faces"][:, 1:4])
     vertex_properties = {}
@@ -523,6 +512,8 @@ def read_vtu(filename: str) -> GeometryDataContainer:
     GeometryDataContainer
         Parsed geometry data container.
     """
+    from .. import meshing
+
     data = _read_vtu_file(filename)
     mesh = meshing.utils.to_open3d(data["points"], data["connectivity"])
     return _return_mesh(mesh, vertex_properties=data.get("point_data", {}))
@@ -563,13 +554,12 @@ def _return_mesh(mesh, vertex_properties: dict = None) -> GeometryDataContainer:
     GeometryDataContainer
         Converted geometry data container.
     """
-    if not mesh.has_vertex_normals():
-        mesh.compute_vertex_normals()
-
     return GeometryDataContainer(
         vertices=[np.asarray(mesh.vertices)],
         faces=[np.asarray(mesh.triangles)],
-        normals=[np.asarray(mesh.vertex_normals)],
+        normals=[
+            np.asarray(mesh.vertex_normals) if mesh.has_vertex_normals() else None
+        ],
         vertex_properties=[VertexPropertyContainer(vertex_properties)],
     )
 
@@ -596,7 +586,7 @@ def read_structure(filename: str) -> GeometryDataContainer:
 
 def read_volume(filename: str):
     """
-    Read 3D volume data and convert to point cloud.
+    Read 3D volume data and convert to point clouds.
 
     Parameters
     ----------
@@ -608,15 +598,155 @@ def read_volume(filename: str):
     GeometryDataContainer
         Parsed geometry data container.
     """
-    volume = load_density(filename)
+    data, dims, spacing, axis_order = read_mrc_flat(filename)
+    if data is not None:
+        ret = points_from_flat_array(data, dims)
 
-    shape = np.multiply(volume.shape, volume.sampling_rate)
-    ret = volume_to_points(
-        volume.data, volume.sampling_rate, reverse_order=False, max_cluster=10000
-    )
-    return GeometryDataContainer(
-        vertices=ret, shape=shape, sampling=volume.sampling_rate
-    )
+        if axis_order != (0, 1, 2):
+            perm = np.argsort(axis_order)
+            ret = [pts[:, perm] for pts in ret]
+
+        shape = np.asarray(dims, dtype=np.float32)
+    else:
+        volume = load_density(filename, use_memmap=False)
+        spacing = np.asarray(volume.sampling_rate, dtype=np.float32)
+        ret = points_from_flat_array(volume.data.ravel(), volume.shape)
+        shape = np.asarray(volume.shape, dtype=np.float32)
+    return GeometryDataContainer(vertices=ret, shape=shape, sampling=spacing)
+
+
+def read_mrc_dtype(filepath):
+    """Return the NumPy dtype of an MRC file from its header, or None.
+
+    Only reads the first 1024 bytes. Returns None for non-MRC files or
+    unrecognised mode values.
+    """
+    _MRC_DTYPES = {
+        0: np.int8,
+        1: np.int16,
+        2: np.float32,
+        4: np.complex64,
+        6: np.uint16,
+        12: np.float16,
+    }
+
+    opener = gzip_open if is_gzipped(filepath) else open
+    with opener(filepath, "rb") as fh:
+        header = fh.read(1024)
+
+    if len(header) < 1024 or header[208:212] != b"MAP ":
+        return None
+
+    nc_le = struct.unpack_from("<i", header, 0)[0]
+    endian = "<" if 0 < nc_le < 65536 else ">"
+    mode = struct.unpack_from(f"{endian}i", header, 12)[0]
+    return _MRC_DTYPES.get(mode)
+
+
+def read_mrc_flat(filepath):
+    """Read an MRC file into a flat buffer.
+
+    Returns
+    -------
+    tuple
+        ``(array, dims, spacing, axis_order)`` or
+        ``(None, None, None, None)``.
+    """
+    _MRC_DTYPES = {
+        0: np.int8,
+        1: np.int16,
+        2: np.float32,
+        4: np.complex64,
+        6: np.uint16,
+        12: np.float16,
+    }
+
+    opener = gzip_open if is_gzipped(filepath) else open
+    with opener(filepath, "rb") as fh:
+        if is_gzipped(filepath):
+            fh = BytesIO(fh.read())
+
+        header = fh.read(1024)
+        if len(header) < 1024 or header[208:212] != b"MAP ":
+            return (None, None, None, None)
+
+        nc_le = struct.unpack_from("<i", header, 0)[0]
+        endian = "<" if 0 < nc_le < 65536 else ">"
+
+        grid = struct.unpack_from(f"{endian}3i", header, 0)
+        mode = struct.unpack_from(f"{endian}i", header, 12)[0]
+        cell = struct.unpack_from(f"{endian}3f", header, 40)
+        mapc, mapr, maps = struct.unpack_from(f"{endian}3i", header, 64)
+        nsymbt = struct.unpack_from(f"{endian}i", header, 92)[0]
+
+        if (dtype := _MRC_DTYPES.get(mode)) is None:
+            return (None, None, None, None)
+
+        if not (1 <= mapc <= 3 and 1 <= mapr <= 3 and 1 <= maps <= 3):
+            mapc, mapr, maps = 1, 2, 3
+
+        axis_order = (mapc - 1, mapr - 1, maps - 1)
+        spacing = np.array(
+            [cell[a] / max(grid[i], 1) for i, a in enumerate(axis_order)],
+            dtype=np.float32,
+        )
+
+        fh.seek(1024 + nsymbt)
+        data = np.frombuffer(fh.read(), dtype=dtype)
+        if endian == ">":
+            data = data.byteswap().newbyteorder("=")
+
+        return data, grid, spacing, axis_order
+
+
+def points_from_flat_array(arr, dims, max_cluster=10000):
+    """Extract per-label point clouds from a flat voxel array.
+
+    Parameters
+    ----------
+    arr : ndarray
+        Flat 1D array of voxel labels.
+    dims : tuple
+        Volume dimensions ``(nx, ny, nz)``.
+    max_cluster : int
+        Reject if more unique sampled values than this.
+
+    Returns
+    -------
+    list of ndarray
+        One ``(N, 3)`` float32 point array of voxel indices per label.
+
+    Raises
+    ------
+    NotASegmentationError
+        If the sampled unique-value count exceeds ``max_cluster``.
+    """
+    rng = np.random.default_rng()
+    sample = arr[rng.integers(0, arr.size, size=min(125_000, arr.size))]
+    unique_count = len(np.unique(sample))
+    if unique_count > max_cluster:
+        raise NotASegmentationError(
+            f"Found {unique_count} unique values (limit: {max_cluster}). "
+            f"This looks like a density map, not a segmentation."
+        )
+
+    flat = np.where(arr != 0)[0]
+    if flat.size == 0:
+        return []
+
+    labels = arr[flat]
+    order = labels.argsort(kind="stable")
+    sorted_labels = labels[order]
+
+    coords = np.array(
+        np.unravel_index(flat[order], dims, order="F"),
+        dtype=np.float32,
+    ).T
+
+    splits = np.flatnonzero(np.diff(sorted_labels)) + 1
+    bounds = np.concatenate([[0], splits, [len(order)]])
+
+    return [coords[bounds[i] : bounds[i + 1]] for i in range(len(bounds) - 1)]
 
 
 def _read_tsi_file(file_path: str) -> Dict:
@@ -686,7 +816,7 @@ def _read_tsi_file(file_path: str) -> Dict:
 
 def _read_vtu_file(file_path: str) -> Dict:
     """
-    Parse a VTK XML file into a dictionary of numpy arrays.
+    Parse a VTK XML UnstructuredGrid file into a dictionary of numpy arrays.
 
     Parameters
     ----------
@@ -698,40 +828,46 @@ def _read_vtu_file(file_path: str) -> Dict:
     Dict
         Topology file content.
     """
-    with open(file_path, mode="r") as ifile:
-        data = ifile.read()
+    import vtk
+    from vtk.util.numpy_support import vtk_to_numpy
 
-    root = ET.fromstring(data)
-    piece = root.find(".//Piece")
+    reader = vtk.vtkXMLUnstructuredGridReader()
+    reader.SetFileName(file_path)
+    reader.Update()
+    grid = reader.GetOutput()
 
-    result = {
-        "num_points": int(piece.get("NumberOfPoints")),
-        "num_cells": int(piece.get("NumberOfCells")),
-        "point_data": {},
-        "points": None,
-        "connectivity": None,
-        "offsets": None,
-        "types": None,
+    points = vtk_to_numpy(grid.GetPoints().GetData())
+    cells = grid.GetCells()
+    connectivity = vtk_to_numpy(cells.GetConnectivityArray())
+
+    # vtkCellArray offsets are length num_cells+1 with a leading 0. The legacy
+    # XML representation stores only the trailing offsets.
+    offsets = vtk_to_numpy(cells.GetOffsetsArray())[1:]
+    types = vtk_to_numpy(grid.GetCellTypes())
+
+    if offsets.size:
+        starts = np.concatenate(([0], offsets[:-1]))
+        strides = offsets - starts
+        if np.all(strides == strides[0]):
+            connectivity = connectivity.reshape(-1, int(strides[0]))
+
+    pd = grid.GetPointData()
+    point_data: Dict[str, np.ndarray] = {}
+    for i in range(pd.GetNumberOfArrays()):
+        arr = vtk_to_numpy(pd.GetArray(i))
+        if arr.ndim == 2 and arr.shape[1] == 1:
+            arr = arr.reshape(-1)
+        point_data[pd.GetArrayName(i)] = arr
+
+    return {
+        "num_points": grid.GetNumberOfPoints(),
+        "num_cells": grid.GetNumberOfCells(),
+        "point_data": point_data,
+        "points": points,
+        "connectivity": connectivity,
+        "offsets": offsets,
+        "types": types,
     }
-
-    # Parse point data arrays
-    if (point_data := piece.find("PointData")) is not None:
-        for array in point_data.findall("DataArray"):
-            data_type = _parse_dtype(array)
-            result["point_data"][array.get("Name")] = _parse_data_array(
-                array, data_type
-            )
-
-    if (points_array := piece.find(".//Points/DataArray")) is not None:
-        data_type = _parse_dtype(points_array)
-        result["points"] = _parse_data_array(points_array, data_type)
-
-    if (cells := piece.find("Cells")) is not None:
-        for array in cells.findall("DataArray"):
-            data_type = _parse_dtype(array)
-            result[array.get("Name")] = _parse_data_array(array, data_type)
-
-    return result
 
 
 def load_density(filename: str, **kwargs):
@@ -762,3 +898,80 @@ def load_density(filename: str, **kwargs):
         volume.sampling_rate = 1
 
     return volume
+
+
+def read_ndjson(filename: str) -> GeometryDataContainer:
+    """Read a newline-delimited JSON annotation file.
+
+    Supports OrientedPoint (with rotation matrices), Point, and
+    InstanceSegmentation records.  The shape type is inferred from
+    the first record.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the ndjson file.
+
+    Returns
+    -------
+    GeometryDataContainer
+        Parsed geometry data container.
+    """
+    import json
+    from scipy.spatial.transform import Rotation
+    from ..utils import NORMAL_REFERENCE
+
+    records = []
+    with open(filename, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                records.append(json.loads(line))
+
+    if not records:
+        return GeometryDataContainer(vertices=[np.empty((0, 3), dtype=np.float32)])
+
+    first = records[0]
+
+    if "xyz_rotation_matrix" in first:
+        points = np.array(
+            [
+                [r["location"]["x"], r["location"]["y"], r["location"]["z"]]
+                for r in records
+            ],
+            dtype=np.float32,
+        )
+        rotations = Rotation.from_matrix(
+            np.array([r["xyz_rotation_matrix"] for r in records], dtype=np.float64)
+        )
+        return GeometryDataContainer(
+            vertices=[points],
+            normals=[rotations.apply(NORMAL_REFERENCE).astype(np.float32)],
+            quaternions=[rotations.as_quat(scalar_first=True).astype(np.float32)],
+        )
+
+    if "instance_id" in first:
+        instances = {}
+        for r in records:
+            iid = r.get("instance_id", 0)
+            loc = r["location"]
+            instances.setdefault(iid, []).append([loc["x"], loc["y"], loc["z"]])
+        vertices, properties = [], []
+        for iid in sorted(instances):
+            pts = np.array(instances[iid], dtype=np.float32)
+            vertices.append(pts)
+            properties.append(
+                VertexPropertyContainer(
+                    {"instance_id": np.full(len(pts), iid, dtype=np.int32)}
+                )
+            )
+        return GeometryDataContainer(
+            vertices=vertices,
+            vertex_properties=properties,
+        )
+
+    points = np.array(
+        [[r["location"]["x"], r["location"]["y"], r["location"]["z"]] for r in records],
+        dtype=np.float32,
+    )
+    return GeometryDataContainer(vertices=[points])

@@ -14,7 +14,7 @@ __all__ = ["mesh_to_cg"]
 
 
 def mesh_to_cg(
-    mesh,
+    geometry_data,
     output_directory: str,
     inclusions: List[Dict],
     edge_length: float = 40.0,
@@ -23,7 +23,7 @@ def mesh_to_cg(
 ) -> bool:
     from ..parametrization import TriangularMesh
 
-    mesh = remesh(mesh, edge_length)
+    mesh = remesh(geometry_data.model.mesh, edge_length)
 
     vertex_maps = []
     for protein in inclusions:

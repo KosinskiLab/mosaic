@@ -1,7 +1,7 @@
 """
 Utility functions.
 
-Copyright (c) 2023-2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -9,11 +9,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from typing import List, Optional, Callable
 
 import numpy as np
-from qtpy.QtCore import QTimer
-from scipy import ndimage
-from scipy.spatial import KDTree
-from scipy.sparse import coo_matrix
-from scipy.sparse.csgraph import connected_components as sparse_connected_components
 
 __all__ = [
     "points_to_volume",
@@ -64,6 +59,8 @@ class Throttle:
     """
 
     def __init__(self, func: Callable, interval_ms: int = 100):
+        from qtpy.QtCore import QTimer
+
         self._func = func
         self._timer = QTimer()
         self._timer.setSingleShot(True)
@@ -192,32 +189,46 @@ def volume_to_points(
                 "Make sure you are opening a segmentation."
             )
 
-    points = np.flatnonzero(mask)
-    clusters, cluster_indices = np.unique(volume.flat[points], return_inverse=True)
-    if max_cluster is not None and clusters.size > max_cluster:
+    flat_indices = np.flatnonzero(mask)
+    labels = volume.flat[flat_indices]
+
+    n_clusters = int(labels.max())
+    if max_cluster is not None and n_clusters > max_cluster:
         raise ValueError(
-            f"Found {clusters.size} clusters (max: {max_cluster}). \n"
+            f"Found {n_clusters} clusters (max: {max_cluster}). \n"
             "Make sure you are opening a segmentation."
         )
 
-    points = np.array(np.unravel_index(points, volume.shape), dtype=np.float32).T
+    # Sort by label once, then split
+    order = labels.argsort(kind="stable")
+    sorted_labels = labels[order]
+
+    coords = np.array(
+        np.unravel_index(flat_indices[order], volume.shape), dtype=np.float32
+    ).T
+    np.multiply(coords, sampling_rate, out=coords)
+
+    splits = np.flatnonzero(np.diff(sorted_labels)) + 1
+    boundaries = np.concatenate([[0], splits, [len(order)]])
 
     ret = []
-    for index in range(len(clusters)):
-        cl_points = points[cluster_indices == index]
+    for i in range(len(boundaries) - 1):
+        cl_points = coords[boundaries[i] : boundaries[i + 1]]
 
         if reverse_order:
-            indices = np.ravel_multi_index(
-                cl_points[:, ::-1].T.astype(np.intp), volume.shape[::-1]
-            )
+            inv_sr = np.divide(1.0, sampling_rate)
+            voxel_coords = np.rint(np.multiply(cl_points, inv_sr)).astype(np.intp)
+            indices = np.ravel_multi_index(voxel_coords[:, ::-1].T, volume.shape[::-1])
             cl_points = cl_points[np.argsort(indices)]
 
-        cl_points = np.multiply(cl_points, sampling_rate, out=cl_points)
         ret.append(cl_points)
     return ret
 
 
 def _get_adjacency_matrix(points, symmetric: bool = False, eps: float = 0.0):
+    from scipy.spatial import KDTree
+    from scipy.sparse import coo_matrix
+
     # Leafsize needs to be tuned depending on the structure of the input data.
     # Points typically originates from voxel membrane segmentation on regular grids.
     # Leaf sizes between 8 - 16 work reasonably well.
@@ -257,6 +268,8 @@ def connected_components(data, **kwargs):
     ndarray
         Cluster labels.
     """
+    from scipy.sparse.csgraph import connected_components as sparse_connected_components
+
     adjacency = _get_adjacency_matrix(data)
     return sparse_connected_components(adjacency, directed=False, return_labels=True)[1]
 
@@ -424,6 +437,8 @@ def eigenvalue_outlier_removal(points, k_neighbors=20, thresh=0.05):
     ----------
     .. [1]  https://github.com/denabazazian/Edge_Extraction/blob/master/Difference_Eigenvalues.py
     """
+    from scipy.spatial import KDTree
+
     tree = KDTree(points)
     distances, indices = tree.query(points, k=k_neighbors + 1, workers=-1)
 
@@ -472,6 +487,27 @@ def statistical_outlier_removal(points, k_neighbors=20, thresh=2.0):
 
 
 def find_closest_points(positions1, positions2, k=1):
+    """
+    Find the k nearest points in ``positions1`` for each point in ``positions2``.
+
+    Parameters
+    ----------
+    positions1 : array_like
+        Reference point set queried against, shape (M, D).
+    positions2 : array_like
+        Query points, shape (N, D).
+    k : int, optional
+        Number of nearest neighbors to return, by default 1.
+
+    Returns
+    -------
+    distances : ndarray
+        Distances to the nearest neighbors.
+    indices : ndarray
+        Indices into ``positions1`` of the nearest neighbors.
+    """
+    from scipy.spatial import KDTree
+
     positions1, positions2 = np.asarray(positions1), np.asarray(positions2)
 
     tree = KDTree(positions1)
@@ -479,26 +515,128 @@ def find_closest_points(positions1, positions2, k=1):
 
 
 def find_closest_points_cutoff(positions1, positions2, cutoff=1):
+    """
+    Find all points in ``positions1`` within ``cutoff`` of each point in ``positions2``.
+
+    Parameters
+    ----------
+    positions1 : array_like
+        Reference point set queried against, shape (M, D).
+    positions2 : array_like
+        Query points, shape (N, D).
+    cutoff : float, optional
+        Maximum distance for a point to be considered a neighbor, by default 1.
+
+    Returns
+    -------
+    list of list of int
+        For each query point in ``positions2``, the indices of points in
+        ``positions1`` lying within ``cutoff``.
+    """
+    from scipy.spatial import KDTree
+
     positions1, positions2 = np.asarray(positions1), np.asarray(positions2)
 
     tree = KDTree(positions1)
     return tree.query_ball_point(positions2, cutoff)
 
 
-def compute_normals(points: np.ndarray, k: int = 15, return_pcd: bool = False):
+def compute_normals(
+    points: np.ndarray,
+    k: int = 15,
+    return_pcd: bool = False,
+    assume_single_object: bool = False,
+):
+    """
+    Estimate oriented surface normals for a point cloud.
+
+    Normals are estimated locally, normalized, and propagated through a minimum
+    spanning tree for tangent-plane consistency. When ``assume_single_object`` is
+    enabled, per-component sign ambiguity is resolved by comparison against the
+    outward-facing normals of the convex hull.
+
+    Parameters
+    ----------
+    points : np.ndarray
+        Input point cloud, shape (N, 3).
+    k : int, optional
+        Number of neighbors used when orienting normals along the tangent plane,
+        by default 15.
+    return_pcd : bool, optional
+        If True, return the underlying ``open3d.geometry.PointCloud`` instead
+        of the raw normal array. Default is False.
+    assume_single_object : bool, optional
+        If True, assume the points sample a single closed surface and flip
+        connected components whose normals disagree with the convex hull
+        orientation. Default is False.
+
+    Returns
+    -------
+    np.ndarray or open3d.geometry.PointCloud
+        Array of normals with shape (N, 3), or the point cloud object when
+        ``return_pcd`` is True.
+    """
     import open3d as o3d
+    from scipy.spatial import cKDTree
 
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points)
     pcd.estimate_normals()
     pcd.normalize_normals()
     pcd.orient_normals_consistent_tangent_plane(k=k)
+
+    if assume_single_object:
+        # MST gives each connected patch internally consistent orientation
+        # but an arbitrary global sign. Cluster into components with Leiden
+        # at ~2 * mean NN, then for each component flip the whole group if
+        # the majority of its normals disagree with the outward-facing
+        # normal of the nearest convex-hull triangle.
+        hull_mesh, _ = pcd.compute_convex_hull()
+        scene = o3d.t.geometry.RaycastingScene()
+        scene.add_triangles(o3d.t.geometry.TriangleMesh.from_legacy(hull_mesh))
+        pts32 = np.asarray(points, dtype=np.float32)
+        res = scene.compute_closest_points(o3d.core.Tensor(pts32))
+        hull_n = res["primitive_normals"].numpy().astype(np.float64)
+
+        normals = np.asarray(pcd.normals, dtype=np.float64)
+        dots = np.einsum("ij,ij->i", normals, hull_n)
+
+        mean_nn = float(cKDTree(points).query(points, k=2)[0][:, 1].mean())
+        labels = leiden_clustering(points * (np.sqrt(3) / (2.0 * mean_nn)))
+        for lbl in np.unique(labels):
+            mask = labels == lbl
+            if dots[mask].mean() < 0:
+                normals[mask] = -normals[mask]
+        pcd.normals = o3d.utility.Vector3dVector(normals)
+
     if return_pcd:
         return pcd
     return np.asarray(pcd.normals)
 
 
 def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
+    """
+    Cluster points by iterative center-of-mass aggregation within a cutoff.
+
+    Random unassigned points are used as seeds. For each seed, all unassigned
+    neighbors within ``cutoff`` are grouped and replaced by their center of mass.
+    The process repeats until every point has been assigned.
+
+    Parameters
+    ----------
+    positions : np.ndarray
+        Input point coordinates, shape (N, D).
+    cutoff : float or np.ndarray
+        Neighborhood radius used to form each cluster. If an array is provided,
+        its maximum value is used.
+
+    Returns
+    -------
+    np.ndarray
+        Cluster center coordinates, shape (K, D).
+    """
+    from scipy.spatial import KDTree
+
     if not isinstance(positions, np.ndarray):
         positions = np.array(positions)
 
@@ -527,8 +665,25 @@ def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
 
 
 def compute_bounding_box(points: List[np.ndarray]) -> List[float]:
+    """
+    Compute the axis-aligned bounding box enclosing a collection of point clouds.
+
+    Parameters
+    ----------
+    points : list of np.ndarray
+        Point clouds, each of shape (N_i, D). Empty arrays are ignored.
+
+    Returns
+    -------
+    extent : np.ndarray
+        Per-axis size of the bounding box, shape (D,). Returns a tuple of zeros
+        if no non-empty point cloud is provided.
+    origin : np.ndarray
+        Per-axis minimum corner of the bounding box, shape (D,).
+    """
+    points = [p for p in points if p.shape[0] > 0]
     if len(points) == 0:
-        return (0, 0, 0)
+        return (0, 0, 0), np.zeros(3)
     starts = points[0].min(axis=0)
     stops = points[0].max(axis=0)
     for point in points[1:]:
@@ -541,6 +696,22 @@ def compute_bounding_box(points: List[np.ndarray]) -> List[float]:
 
 
 def get_cmap(*args, **kwargs):
+    """
+    Retrieve a matplotlib colormap by name.
+
+    Thin wrapper around :func:`matplotlib.pyplot.get_cmap` that defers the
+    matplotlib import until first use.
+
+    Parameters
+    ----------
+    *args, **kwargs
+        Forwarded to :func:`matplotlib.pyplot.get_cmap`.
+
+    Returns
+    -------
+    matplotlib.colors.Colormap
+        The requested colormap.
+    """
     from matplotlib.pyplot import get_cmap
 
     return get_cmap(*args, **kwargs)
@@ -705,7 +876,6 @@ def _align_vectors_to_quat(vec1: np.ndarray, vec2: np.ndarray) -> np.ndarray:
         quaternions[normal, 0] = w
         quaternions[normal, 1:] = xyz
 
-    # Opposite
     if np.any(opposite):
         for i in np.where(opposite)[0]:
             v = vec1[i]
@@ -827,6 +997,21 @@ def quat_to_euler(
 
 
 def apply_quat(quaternions, target=NORMAL_REFERENCE):
+    """
+    Rotate a target vector by a set of quaternions.
+
+    Parameters
+    ----------
+    quaternions : np.ndarray
+        Quaternions in scalar-first format [w, x, y, z], shape (N, 4).
+    target : array_like, optional
+        Vector to be rotated, shape (3,). Defaults to :data:`NORMAL_REFERENCE`.
+
+    Returns
+    -------
+    np.ndarray
+        Rotated vectors, shape (N, 3).
+    """
     return _quat_to_matrix(quaternions) @ target
 
 
@@ -870,6 +1055,8 @@ def skeletonize(
     we created this implementation, which produces very similar results but optimized
     for CPU runtime, numerical stability, and small memory footprint.
     """
+    from scipy import ndimage
+
     dist = -ndimage.distance_transform_edt(mask)
     if mode in ("outer", "inner"):
         mode = "boundary"

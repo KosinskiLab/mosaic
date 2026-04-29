@@ -4,7 +4,7 @@ Unified method and parameter registry for Mosaic operations.
 Defines parameters once; derives GUI settings dicts, REPL help,
 and display-name resolution from a single source of truth.
 
-Copyright (c) 2026 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -357,8 +357,8 @@ _K_NEIGHBORS = Param(
     label="Neighbors",
     default=15,
     min=1,
-    description="Number of neighbors for normal estimations.",
-    notes="Consider decreasing this value for small point clouds.",
+    description="Estimate normals using this many neighbors.",
+    notes="If the object has normals, most methods will ignore this parameter.",
 )
 
 
@@ -368,6 +368,7 @@ _CURVATURE_WEIGHT = Param(
     default=0.0,
     min=-(2**28),
     decimals=6,
+    step=0.1,
     label="Curvature Weight",
     description="Controls propagation of mesh curvature.",
 )
@@ -389,6 +390,7 @@ _SMOOTHNESS = Param(
     min=0.0,
     max=1.0,
     decimals=6,
+    step=0.1,
     label="Smoothness",
     description=(
         "Balance between position anchoring and curvature minimization. "
@@ -401,6 +403,7 @@ _PRESSURE = Param(
     "float",
     default=0.0,
     decimals=6,
+    step=0.1,
     label="Pressure",
     description="Internal mesh pressure along vertex normals.",
 )
@@ -730,7 +733,7 @@ MethodRegistry.register(
 MethodRegistry.register(
     Operation(
         name="open",
-        description="Load geometries or session from file.",
+        description="Open files or session (session clears current state).",
         targets=False,
         common_params=(
             Param("filepath", "path", description="Path to the input file."),
@@ -738,19 +741,19 @@ MethodRegistry.register(
                 "offset",
                 "float",
                 default=0,
-                description="Coordinate offset to subtract from vertices.",
+                description="Coordinate offset subtracted from scaled vertices. Accepts a scalar or comma-separated per-axis values.",
             ),
             Param(
                 "scale",
                 "float",
                 default=None,
-                description="Scale factor applied after offset. Defaults to the file's native sampling rate.",
+                description="Scale factor applied to raw vertices. Defaults to the file's native sampling rate. Accepts a scalar or comma-separated per-axis values.",
             ),
             Param(
                 "sampling_rate",
                 "float",
                 default=None,
-                description="Override the file's native sampling rate.",
+                description="Override the file's native sampling rate. Accepts a scalar or comma-separated per-axis values.",
             ),
         ),
     )
@@ -759,14 +762,30 @@ MethodRegistry.register(
 MethodRegistry.register(
     Operation(
         name="save",
-        description="Save geometries or session to file.",
+        description="Save geometries or session (.pickle) to file.",
         common_params=(
-            Param("filepath", "path", description="Path to the output file."),
+            Param(
+                "filepath",
+                "path",
+                description="Output path.",
+            ),
             Param(
                 "format",
                 "str",
                 default=None,
-                options=("star", "tsv", "xyz", "obj", "stl", "ply", "mrc", "em", "h5"),
+                options=(
+                    "star",
+                    "tsv",
+                    "xyz",
+                    "obj",
+                    "stl",
+                    "ply",
+                    "mrc",
+                    "em",
+                    "h5",
+                    "mosaic",
+                    "pickle",
+                ),
                 description="Output file format.",
             ),
             Param(
@@ -854,6 +873,174 @@ MethodRegistry.register(
                 default="table",
                 options=("table", "ids"),
                 description="Output format. Use format=ids for $(list ...) substitution.",
+            ),
+        ),
+    )
+)
+
+MethodRegistry.register(
+    Operation(
+        name="dts-screen",
+        description="Generate a DTS parameter screen from a config file.",
+        targets=False,
+        common_params=(
+            Param(
+                "dts",
+                "path",
+                description="Path to DTS config file with.",
+            ),
+            Param(
+                "mesh",
+                "path",
+                description="Path to the input mesh file (.tsi, .q).",
+            ),
+            Param(
+                "output",
+                "path",
+                description="Output directory for the generated screen.",
+            ),
+        ),
+    )
+)
+
+MethodRegistry.register(
+    Operation(
+        name="dts-analysis",
+        description="Compute DTS trajectory metrics for a run or screen directory.",
+        targets=False,
+        common_params=(
+            Param(
+                "run",
+                "path",
+                description="Path to a DTS run or screen directory.",
+                file_mode=False,
+            ),
+            Param(
+                "force",
+                "bool",
+                default=False,
+                description="Recompute even if cached results exist.",
+            ),
+        ),
+        methods=(
+            Method(
+                display_name="HMFF Energy",
+                internal_name="hmff_energy",
+                description="Per-frame HMFF potential energy from density coupling.",
+                gui=False,
+            ),
+            Method(
+                display_name="Bending Energy",
+                internal_name="bending_energy",
+                description="Per-frame Helfrich bending energy.",
+                gui=False,
+            ),
+            Method(
+                display_name="Fluctuation",
+                internal_name="fluctuation",
+                description="Per-vertex positional fluctuation (RMSF).",
+                params=(
+                    Param(
+                        "window",
+                        "int",
+                        default=5,
+                        min=1,
+                        description="Half-window size for RMSF.",
+                    ),
+                    Param(
+                        "start_frame",
+                        "int",
+                        default=None,
+                        description="First frame index (inclusive).",
+                    ),
+                    Param(
+                        "end_frame",
+                        "int",
+                        default=None,
+                        description="Last frame index (exclusive).",
+                    ),
+                ),
+                gui=False,
+            ),
+            Method(
+                display_name="Distance",
+                internal_name="distance",
+                description="Per-frame mean distance between a reference geometry and the trajectory mesh.",
+                params=(
+                    Param(
+                        "reference", "str", description="Reference geometry (e.g. #0)."
+                    ),
+                    Param(
+                        "invert",
+                        "bool",
+                        default=False,
+                        description=(
+                            "If false (default), measure reference → mesh. "
+                            "If true, measure mesh → reference."
+                        ),
+                    ),
+                ),
+                gui=False,
+            ),
+            Method(
+                display_name="Mesh Area",
+                internal_name="mesh_area",
+                description="Per-frame total mesh surface area.",
+                gui=False,
+            ),
+            Method(
+                display_name="Mesh Volume",
+                internal_name="mesh_volume",
+                description="Per-frame total mesh volume.",
+                gui=False,
+            ),
+        ),
+    )
+)
+
+MethodRegistry.register(
+    Operation(
+        name="ingest",
+        description="Manage CZI CryoET portal data.",
+        targets=False,
+        common_params=(
+            Param("filepath", "path", description="Directory or manifest.json path."),
+        ),
+        methods=(
+            Method(
+                display_name="Info",
+                internal_name="info",
+                description="Show available runs, annotations, and tomograms.",
+                gui=False,
+            ),
+            Method(
+                display_name="Download",
+                internal_name="download",
+                description="Download missing files from manifest.",
+                params=(
+                    Param(
+                        "max_workers",
+                        "int",
+                        default=4,
+                        description="Parallel download threads.",
+                    ),
+                ),
+                gui=False,
+            ),
+            Method(
+                display_name="Create",
+                internal_name="create",
+                description="Create session files from downloaded data.",
+                params=(
+                    Param(
+                        "output_dir",
+                        "path",
+                        default=None,
+                        file_mode=False,
+                        description="Output directory. Defaults to input directory.",
+                    ),
+                ),
+                gui=False,
             ),
         ),
     )

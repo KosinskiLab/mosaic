@@ -1,7 +1,7 @@
 """
 Main pipeline builder dialog.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -20,26 +20,22 @@ from qtpy.QtWidgets import (
     QScrollArea,
     QSpinBox,
     QFileDialog,
-    QMessageBox,
     QCheckBox,
 )
-from qtpy.QtCore import Qt, QSize
+from qtpy.QtCore import Qt
 from qtpy.QtGui import QFont
 
 from .executor import generate_runs
-from ._utils import natural_sort_key, strip_filepath
-from .operations import OPERATION_CATEGORIES, PIPELINE_PRESETS
 from .widgets import OperationCardWidget, PipelineTreeWidget
+from .operations import OPERATION_CATEGORIES, PIPELINE_PRESETS
 
-from ..__version__ import __version__
 from ..settings import Settings
+from ..widgets import MosaicMessageBox
 from ..widgets.settings import format_tooltip
-from ..widgets import SearchWidget, ContainerListWidget
-from ..widgets.container_list import StyledTreeWidgetItem
-from ..stylesheets import Colors, QPushButton_style, QScrollArea_style
+from ..stylesheets import Colors, Typography
 
 
-__all__ = ["BatchNavigatorDialog", "PipelineBuilderDialog"]
+__all__ = ["PipelineBuilderDialog"]
 
 
 class PipelineBuilderDialog(QDialog):
@@ -49,20 +45,18 @@ class PipelineBuilderDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Pipeline Builder")
         self.setMinimumSize(1100, 750)
-        self.resize(1300, 850)
+        self.resize(1200, 850)
         self.setup_ui()
-        self.setStyleSheet(QScrollArea_style + QPushButton_style)
 
     def setup_ui(self):
-        import qtawesome as qta
-        from ..icons import dialog_accept_icon, dialog_reject_icon
+        from ..icons import dialog_accept_icon, dialog_reject_icon, icon
 
         self.pipeline_tree = PipelineTreeWidget()
         self.pipeline_tree.pipeline_changed.connect(self._update_library_state)
 
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(12)
-        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
         content_splitter = QWidget()
         content_layout = QHBoxLayout(content_splitter)
@@ -78,6 +72,7 @@ class PipelineBuilderDialog(QDialog):
         library_scroll = QScrollArea()
         library_scroll.setWidgetResizable(True)
         library_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        library_scroll.verticalScrollBar().setSingleStep(12)
 
         self.library_widget = self._create_library()
         library_scroll.setWidget(self.library_widget)
@@ -92,7 +87,9 @@ class PipelineBuilderDialog(QDialog):
         workflow_layout.setSpacing(8)
 
         info_label = QLabel("Operations to execute in sequence")
-        info_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+        info_label.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+        )
         info_label.setWordWrap(True)
         workflow_layout.addWidget(info_label)
 
@@ -110,26 +107,19 @@ class PipelineBuilderDialog(QDialog):
         presets_container = QVBoxLayout()
         presets_container.setSpacing(8)
 
-        presets_label = QLabel("Common Workflow Configurations:")
-        presets_label.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_MUTED};")
-        presets_container.addWidget(presets_label)
-
         presets_layout = QHBoxLayout()
 
         preset_buttons = [
-            ("Clear", "ph.x-circle", Colors.CATEGORY["clear"]),
-            ("Import", "ph.file-arrow-up", Colors.CATEGORY["import"]),
-            ("Cleanup", "ph.wrench", Colors.CATEGORY["cleanup"]),
-            ("Meshing", "ph.triangle", Colors.CATEGORY["meshing"]),
-            ("Particle Picking", "ph.crosshair", Colors.CATEGORY["particle_picking"]),
+            ("Clear", "ph.x-circle"),
+            ("Import", "ph.file-arrow-up"),
+            ("Cleanup", "ph.wrench"),
+            ("Meshing", "ph.triangle"),
+            ("Particle Picking", "ph.crosshair"),
         ]
 
         self.preset_buttons = {}
-        for idx, (name, icon, color) in enumerate(preset_buttons):
+        for idx, (name, _) in enumerate(preset_buttons):
             btn = QPushButton(name)
-            btn.setIcon(qta.icon(icon, color=color))
-            btn.setIconSize(QSize(24, 24))
-            btn.setFixedHeight(32)
 
             preset_key = name.replace("\n", " ")
             btn.clicked.connect(lambda checked, n=preset_key: self._load_preset(n))
@@ -144,8 +134,6 @@ class PipelineBuilderDialog(QDialog):
         workers_layout = QHBoxLayout()
         workers_layout.setSpacing(8)
 
-        workers_vbox = QVBoxLayout()
-        workers_vbox.setSpacing(4)
         workers_label = QLabel("Parallel Workers:")
         workers_label.setToolTip(
             format_tooltip(
@@ -155,7 +143,6 @@ class PipelineBuilderDialog(QDialog):
                 "outputs are saved, calculate approximately 8GB of RAM per worker.",
             )
         )
-        workers_label.setStyleSheet(f"font-size: 11px; color: {Colors.TEXT_MUTED};")
         self.workers_spin = QSpinBox()
         self.workers_spin.setMinimum(1)
         self.workers_spin.setMaximum(Settings.rendering.parallel_worker)
@@ -163,12 +150,11 @@ class PipelineBuilderDialog(QDialog):
             int(getattr(Settings.rendering, "parallel_worker", 4))
         )
         self.workers_spin.setFixedWidth(80)
-        self.workers_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
-        workers_vbox.addWidget(workers_label)
-        workers_vbox.addWidget(self.workers_spin)
+        workers_layout.addWidget(workers_label)
+        workers_layout.addWidget(self.workers_spin)
 
-        skip_vbox = QVBoxLayout()
-        skip_vbox.setSpacing(4)
+        workers_layout.addSpacing(15)
+
         skip_complete_label = QLabel("Skip Complete:")
         skip_complete_label.setToolTip(
             format_tooltip(
@@ -176,16 +162,10 @@ class PipelineBuilderDialog(QDialog):
                 description="Skip runs where output files already exist.",
             )
         )
-        skip_complete_label.setStyleSheet(
-            f"font-size: 11px; color: {Colors.TEXT_MUTED};"
-        )
         self.skip_complete = QCheckBox()
-        self.skip_complete.setFixedHeight(Colors.WIDGET_HEIGHT)
-        skip_vbox.addWidget(skip_complete_label)
-        skip_vbox.addWidget(self.skip_complete)
+        workers_layout.addWidget(skip_complete_label)
+        workers_layout.addWidget(self.skip_complete)
 
-        workers_layout.addLayout(workers_vbox)
-        workers_layout.addLayout(skip_vbox)
         workers_layout.addStretch()
 
         workers_group.setLayout(workers_layout)
@@ -199,17 +179,17 @@ class PipelineBuilderDialog(QDialog):
 
         load_btn = QPushButton("Load Pipeline")
         load_btn.clicked.connect(self._load_config)
-        load_btn.setIcon(qta.icon("ph.upload", color=Colors.PRIMARY))
+        load_btn.setIcon(icon("ph.upload", role="primary"))
         footer_layout.addWidget(load_btn)
 
         export_btn = QPushButton("Export Pipeline")
         export_btn.clicked.connect(self._export_config)
-        export_btn.setIcon(qta.icon("ph.download", color=Colors.PRIMARY))
+        export_btn.setIcon(icon("ph.download", role="primary"))
         footer_layout.addWidget(export_btn)
 
         validate_btn = QPushButton("Validate Pipeline")
         validate_btn.clicked.connect(self._validate_pipeline)
-        validate_btn.setIcon(qta.icon("ph.check", color=Colors.PRIMARY))
+        validate_btn.setIcon(icon("ph.check", role="primary"))
         footer_layout.addWidget(validate_btn)
 
         footer_layout.addStretch()
@@ -232,11 +212,13 @@ class PipelineBuilderDialog(QDialog):
 
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(0, 0, 8, 0)
         layout.setSpacing(8)
 
         info_label = QLabel("Select operations to add to your pipeline")
-        info_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+        info_label.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+        )
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
 
@@ -245,7 +227,7 @@ class PipelineBuilderDialog(QDialog):
             cat_header = QLabel(category["title"])
             cat_header_font = QFont()
             cat_header_font.setBold(True)
-            cat_header_font.setPointSize(11)
+            cat_header_font.setPixelSize(Typography.SMALL)
             cat_header.setFont(cat_header_font)
             cat_header.setStyleSheet(f"color: {category['color']}; margin-top: 8px;")
             layout.addWidget(cat_header)
@@ -269,7 +251,7 @@ class PipelineBuilderDialog(QDialog):
 
     def _create_library_button(self, name, info, color):
         """Create compact button for library operation."""
-        import qtawesome as qta
+        from ..icons import icon, icon_pixmap
 
         btn = QPushButton()
         btn.setFixedHeight(50)
@@ -296,27 +278,29 @@ class PipelineBuilderDialog(QDialog):
         btn_layout.setContentsMargins(4, 4, 4, 4)
 
         icon_label = QLabel()
-        icon_label.setPixmap(qta.icon(info["icon"], color=color).pixmap(20, 20))
+        icon_label.setPixmap(icon(info["icon"], color=color).pixmap(20, 20))
         btn_layout.addWidget(icon_label)
 
         text_layout = QVBoxLayout()
         text_layout.setSpacing(2)
 
         name_label = QLabel(name)
-        name_label.setStyleSheet(f"color: {color}; font-weight: 600; font-size: 11px;")
+        name_label.setStyleSheet(
+            f"color: {color}; font-weight: 600; font-size: {Typography.SMALL}px;"
+        )
         text_layout.addWidget(name_label)
 
         desc_label = QLabel(info["description"])
-        desc_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px;")
+        desc_label.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+        )
         desc_label.setWordWrap(True)
 
         text_layout.addWidget(desc_label)
         btn_layout.addLayout(text_layout, 1)
 
         add_icon_label = QLabel()
-        add_icon_label.setPixmap(
-            qta.icon("ph.plus", color=Colors.ICON_MUTED).pixmap(14, 14)
-        )
+        add_icon_label.setPixmap(icon_pixmap("ph.plus", 14, role="muted"))
         btn_layout.addWidget(add_icon_label)
 
         btn.setLayout(btn_layout)
@@ -433,7 +417,7 @@ class PipelineBuilderDialog(QDialog):
             with open(filename, "r") as f:
                 config = json.load(f)
         except (json.JSONDecodeError, IOError) as e:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "Load Error", f"Failed to load configuration: {str(e)}"
             )
             return None
@@ -471,7 +455,7 @@ class PipelineBuilderDialog(QDialog):
             self.skip_complete.setChecked(bool(config["skip_complete"]))
 
         if total_ops != valid_ops:
-            QMessageBox.information(
+            MosaicMessageBox.information(
                 self,
                 "Import Failed",
                 f"Imported {valid_ops} of {total_ops} operations.",
@@ -486,16 +470,19 @@ class PipelineBuilderDialog(QDialog):
         if not filename:
             return None
 
+        if not filename.endswith(".json"):
+            filename += ".json"
+
         try:
             config = self.get_pipeline_config()
             with open(filename, "w") as f:
                 json.dump(config, f, indent=2)
 
-            QMessageBox.information(
+            MosaicMessageBox.information(
                 self, "Export Success", f"Configuration exported to {filename}"
             )
         except IOError as e:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "Export Error", f"Failed to export configuration: {str(e)}"
             )
 
@@ -505,7 +492,7 @@ class PipelineBuilderDialog(QDialog):
             config = self.get_pipeline_config()
             runs = generate_runs(config)
 
-            QMessageBox.information(
+            MosaicMessageBox.information(
                 self,
                 "Validation Success",
                 f"Pipeline is valid!\n\n"
@@ -514,7 +501,7 @@ class PipelineBuilderDialog(QDialog):
                 f"- No cycles detected",
             )
         except Exception as e:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "Validation Failed", f"Pipeline validation failed:\n\n{str(e)}"
             )
 
@@ -531,7 +518,7 @@ class PipelineBuilderDialog(QDialog):
             config = self.get_pipeline_config()
             self.pipeline_runs = generate_runs(config)
         except Exception as e:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "Pipeline Error", f"Failed to generate runs:\n\n{str(e)}"
             )
             return None
@@ -540,6 +527,8 @@ class PipelineBuilderDialog(QDialog):
 
     def get_pipeline_config(self):
         """Get complete pipeline configuration in graph format."""
+        from ..__version__ import __version__
+
         return {
             "version": __version__,
             "format": "directed_graph",
@@ -551,240 +540,3 @@ class PipelineBuilderDialog(QDialog):
                 "created_with": "Mosaic Pipeline Builder",
             },
         }
-
-
-class BatchNavigatorDialog(QWidget):
-    """Widget for navigating through batch-created sessions."""
-
-    def __init__(self, main_window, parent=None):
-        super().__init__(parent)
-        self.main_window = main_window
-        self.current_index = -1
-
-        self._session_modified = False
-        self.setWindowTitle("Batch Navigator")
-
-        self.session_files = []
-
-        self.setup_ui()
-        self.setStyleSheet(QPushButton_style + QScrollArea_style)
-
-        if hasattr(main_window, "cdata"):
-            main_window.cdata.data.data_changed.connect(self._mark_modified)
-            main_window.cdata.models.data_changed.connect(self._mark_modified)
-
-    def _mark_modified(self):
-        """Mark current session as modified."""
-        self._session_modified = True
-
-    def setup_ui(self):
-        import qtawesome as qta
-
-        self.setMinimumWidth(280)
-
-        layout = QVBoxLayout(self)
-        layout.setSpacing(10)
-        layout.setContentsMargins(10, 10, 10, 10)
-
-        count = len(self.session_files)
-        self.sessions_group = QGroupBox(f"{count} Session{'s' if count != 1 else ''}")
-        sessions_layout = QVBoxLayout(self.sessions_group)
-        sessions_layout.setSpacing(8)
-
-        self.search_widget = SearchWidget(placeholder="Search sessions...")
-        self.search_widget.searchTextChanged.connect(self._filter_sessions)
-
-        self.session_list = ContainerListWidget(border=False)
-        self.session_list.tree_widget.setSelectionMode(
-            self.session_list.tree_widget.SelectionMode.SingleSelection
-        )
-        self.session_list.tree_widget.itemClicked.connect(self._on_item_clicked)
-
-        self._populate_session_list()
-
-        self.auto_save_checkbox = QCheckBox("Auto-save when switching")
-        self.auto_save_checkbox.setChecked(True)
-        self.auto_save_checkbox.setToolTip(
-            "Automatically save the current session when switching to another"
-        )
-
-        # Top bar with search and action buttons
-        top_bar = QHBoxLayout()
-        top_bar.setSpacing(8)
-        top_bar.setContentsMargins(0, 0, 0, 0)
-        top_bar.addWidget(self.search_widget, 1)
-
-        self.add_btn = QPushButton()
-        self.add_btn.setIcon(qta.icon("ph.file-arrow-up", color=Colors.ICON))
-        self.add_btn.setToolTip("Add session files to the list")
-        self.add_btn.clicked.connect(self._add_sessions)
-        self.add_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
-
-        self.clear_btn = QPushButton()
-        self.clear_btn.setIcon(qta.icon("ph.x", color=Colors.ICON))
-        self.clear_btn.setToolTip("Remove all sessions from the list")
-        self.clear_btn.clicked.connect(self._clear_sessions)
-        self.clear_btn.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
-
-        top_bar.addWidget(self.add_btn)
-        top_bar.addWidget(self.clear_btn)
-
-        sessions_layout.addLayout(top_bar)
-        sessions_layout.addWidget(self.session_list, 1)
-        sessions_layout.addWidget(self.auto_save_checkbox)
-        layout.addWidget(self.sessions_group, 1)
-
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(8)
-
-        self.discard_btn = QPushButton("Reload")
-        self.discard_btn.setIcon(
-            qta.icon("ph.arrow-counter-clockwise", color=Colors.ICON)
-        )
-        self.discard_btn.clicked.connect(self._discard_changes)
-        self.discard_btn.setToolTip(
-            "Reload current session, discarding unsaved changes"
-        )
-
-        self.save_btn = QPushButton("Save")
-        self.save_btn.setToolTip("Save current session to disk")
-        self.save_btn.setIcon(qta.icon("ph.floppy-disk", color=Colors.ICON))
-        self.save_btn.clicked.connect(self._save_current)
-
-        button_layout.addWidget(self.discard_btn, 1)
-        button_layout.addWidget(self.save_btn, 1)
-        layout.addLayout(button_layout)
-
-    def _populate_session_list(self):
-        """Populate the session list widget."""
-        self.session_list.tree_widget.clear()
-
-        for i, filepath in enumerate(self.session_files):
-            item = StyledTreeWidgetItem(
-                strip_filepath(filepath),
-                visible=(i == self.current_index),
-                metadata={"index": i, "filepath": filepath},
-            )
-            self.session_list.tree_widget.addTopLevelItem(item)
-
-        count = len(self.session_files)
-        self.sessions_group.setTitle(f"{count} Session{'s' if count != 1 else ''}")
-
-    def _reset_selection(self):
-        self.current_index = -1
-        self.session_list.tree_widget.clearSelection()
-        self._update_session_list()
-
-    def _remove_session_at_index(self, index):
-        """Remove a session from the list."""
-        if not (0 <= index < len(self.session_files)):
-            return
-
-        self.session_files.pop(index)
-
-        # If we removed the current session, reset
-        if index == self.current_index:
-            self._reset_selection()
-        # If we removed a session before the current, adjust index
-        elif index < self.current_index:
-            self.current_index -= 1
-            self._populate_session_list()
-        else:
-            self._populate_session_list()
-
-    def _update_session_list(self):
-        """Update visibility state of items in the list."""
-        for i in range(self.session_list.tree_widget.topLevelItemCount()):
-            item = self.session_list.tree_widget.topLevelItem(i)
-            item.set_visible(i == self.current_index)
-
-    def _filter_sessions(self, search_text):
-        """Filter session list based on search text."""
-        search_text = search_text.lower()
-
-        for i in range(self.session_list.tree_widget.topLevelItemCount()):
-            item = self.session_list.tree_widget.topLevelItem(i)
-            filename = strip_filepath(item.metadata.get("filepath", "")).lower()
-
-            matches = search_text in filename if search_text else True
-            item.setHidden(not matches)
-
-    def _on_item_clicked(self, item):
-        """Handle single click on session item"""
-        index = item.metadata.get("index", -1)
-        if index >= 0 and index != self.current_index:
-            self._switch_to_session(index)
-
-    def _load_session_at_index(self, index):
-        """Load a session file at the given index."""
-        if not 0 <= index < len(self.session_files):
-            return
-
-        filepath = self.session_files[index]
-        self.main_window._load_session(filepath)
-        self.current_index = index
-
-        self._update_session_list()
-
-    def _switch_to_session(self, new_index):
-        """Switch to a different session, auto-saving current one if enabled."""
-        if new_index == self.current_index:
-            return
-
-        if self.auto_save_checkbox.isChecked():
-            self._save_current()
-        self._load_session_at_index(new_index)
-        self._session_modified = False
-
-    def _save_current(self):
-        """Save the currently loaded session."""
-        if self.current_index < 0:
-            return None
-
-        if self._session_modified:
-            filepath = self.session_files[self.current_index]
-            self.main_window.cdata.to_file(filepath)
-
-    def _discard_changes(self):
-        """Discard changes by reloading the current session."""
-        if self.current_index < 0:
-            return
-
-        reply = QMessageBox.question(
-            self,
-            "Discard Changes",
-            "Reload the current session and discard all unsaved changes?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            self._load_session_at_index(self.current_index)
-
-    def _clear_sessions(self):
-        """Remove all sessions from the list."""
-        self._save_current()
-        self.session_files.clear()
-        self.current_index = -1
-        self._populate_session_list()
-
-    def _add_sessions(self):
-        """Add session files via file dialog, deduplicating paths."""
-        filepaths, _ = QFileDialog.getOpenFileNames(
-            self, "Add Session Files", "", "Pickle Files (*.pickle)"
-        )
-        if not filepaths:
-            return
-
-        existing = set(self.session_files)
-        for fp in filepaths:
-            if fp not in existing:
-                self.session_files.append(fp)
-                existing.add(fp)
-
-        self.session_files.sort(key=natural_sort_key)
-        self._populate_session_list()
-
-    def close(self):
-        """Handle widget close, saving current session if auto-save is enabled."""
-        self._save_current()
-        super().close()

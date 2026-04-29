@@ -7,7 +7,7 @@ from qtpy.QtWidgets import (
     QFrame,
     QDialog,
 )
-from ..stylesheets import HelpLabel_style, QPushButton_style
+from ..stylesheets import Colors, Typography
 
 
 class DialogFooter(QFrame):
@@ -17,6 +17,14 @@ class DialogFooter(QFrame):
         super().__init__()
 
         from mosaic.icons import dialog_reject_icon, dialog_accept_icon, info_icon
+
+        HelpLabel_style = f"""
+            QLabel {{
+                color: {Colors.TEXT_MUTED};
+                font-size: {Typography.LABEL}px;
+                border-top: 0px;
+            }}
+        """
 
         # left, top, right, bottom
         layout = QHBoxLayout(self)
@@ -29,6 +37,7 @@ class DialogFooter(QFrame):
             info.setStyleSheet(HelpLabel_style)
             info_label = QLabel(info_text)
             info_label.setStyleSheet(HelpLabel_style)
+            self.info_label = info_label
 
             layout.addWidget(info)
             layout.addWidget(info_label)
@@ -46,4 +55,3 @@ class DialogFooter(QFrame):
 
         layout.addWidget(self.reject_button)
         layout.addWidget(self.accept_button)
-        self.setStyleSheet(QPushButton_style)

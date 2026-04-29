@@ -1,14 +1,13 @@
-import re
-from os import listdir
+import functools
 from typing import Union
-from os.path import join, exists, basename
+from os.path import exists, basename, normpath
 
 import numpy as np
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QMessageBox, QApplication, QFileDialog
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QApplication, QFileDialog
 
 from ..parallel import submit_task
 from ..widgets.ribbon import create_button
-from ..dialogs import getExistingDirectory
+from ..widgets import MosaicMessageBox
 
 
 class IntelligenceTab(QWidget):
@@ -18,17 +17,16 @@ class IntelligenceTab(QWidget):
         self.ribbon = ribbon
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(5)
+        layout.setSpacing(4)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.ribbon)
 
     def show_ribbon(self):
         from ..segmentation import MEMBRAIN_SETTINGS
-        from ..dialogs import TemplateMatchingDialog
 
         self.ribbon.clear()
 
-        hmff_actions = [
+        dts_actions = [
             create_button(
                 "Equilibrate",
                 "ph.faders",
@@ -37,21 +35,18 @@ class IntelligenceTab(QWidget):
                 "Prepare mesh for DTS simulation",
             ),
             create_button(
-                "HMFF", "ph.gear", self, self._setup_hmff, "Configure HMFF simulation"
+                "DTS",
+                "ph.grid-four",
+                self,
+                self._screen_parameters,
+                "Setup and analyze DTS simulations.",
             ),
-            # create_button(
-            #     "Screen",
-            #     "ph.grid-four",
-            #     self,
-            #     self._screen_parameters,
-            #     "DTS parameter screening",
-            # ),
             create_button(
                 "Trajectory",
                 "ph.path",
                 self,
                 self._import_trajectory,
-                "Load simulation trajectory",
+                "Load DTS simulation trajectory",
                 IMPORT_SETTINGS,
             ),
             create_button(
@@ -62,14 +57,14 @@ class IntelligenceTab(QWidget):
                 "Backmap DTS to Martini representation",
             ),
         ]
-        self.ribbon.add_section("DTS Simulation", hmff_actions)
+        self.ribbon.add_section("DTS Simulation", dts_actions)
 
         detection_actions = [
             create_button(
                 "Template Match",
                 "ph.magnifying-glass",
                 self,
-                lambda: TemplateMatchingDialog().exec_(),
+                self._match_template,
                 "Identify proteins by template matching",
             ),
             create_button(
@@ -83,25 +78,33 @@ class IntelligenceTab(QWidget):
         ]
         self.ribbon.add_section("Detection", detection_actions)
 
+    def _match_template(self):
+        from qtpy.QtWidgets import QApplication
+        from ..dialogs import TemplateMatchingDialog
+
+        dialog = TemplateMatchingDialog(parent=QApplication.activeWindow())
+        return dialog.exec_()
+
     def _equilibrate_fit(self):
-        from ..dialogs import MeshEquilibrationDialog
+        from ..dts._equilibration_dialog import MeshEquilibrationDialog
         from ..meshing import equilibrate_fit
 
         geometries = self.cdata.models.get_selected_geometries()
-        if len(geometries) != 1:
+        if len(geometries) == 0:
+            msg = "A mesh needs for equilibration needs to be selected."
+            return MosaicMessageBox.warning(self, "Error", msg)
+        elif len(geometries) > 1:
             msg = "Can only equilibrate a single mesh at a time."
-            return QMessageBox.warning(self, "Error", msg)
+            return MosaicMessageBox.warning(self, "Error", msg)
 
         geometry = geometries[0]
         if not hasattr(geometry.model, "mesh"):
             msg = f"{geometry} is not a triangular mesh."
-            return QMessageBox.warning(self, "Error", msg)
+            return MosaicMessageBox.warning(self, "Error", msg)
 
-        directory = getExistingDirectory(self, caption="Select or create directory")
-        if not directory:
-            return None
+        from qtpy.QtWidgets import QApplication
 
-        dialog = MeshEquilibrationDialog(None)
+        dialog = MeshEquilibrationDialog(QApplication.activeWindow())
         if not dialog.exec():
             return -1
 
@@ -110,139 +113,81 @@ class IntelligenceTab(QWidget):
             equilibrate_fit,
             None,
             geometry,
-            directory,
+            dialog.get_output_directory(),
             dialog.get_parameters(),
-        )
-
-    def _setup_hmff(self):
-        from ..meshing import setup_hmff
-        from ..dialogs import HMFFDialog
-
-        directory = getExistingDirectory(
-            self, caption="Select directory with equilibrated meshes."
-        )
-        if not directory:
-            return None
-
-        mesh_config = join(directory, "mesh.txt")
-        if not exists(mesh_config):
-            msg = f"Missing mesh_config at {mesh_config}. Most likely {directory} "
-            "is not a valid directory created by Equilibrate Mesh."
-            return QMessageBox.warning(self, "Error", msg)
-
-        with open(mesh_config, mode="r", encoding="utf-8") as infile:
-            data = [x.strip() for x in infile.read().split("\n")]
-            data = [x.split("\t") for x in data if len(x)]
-
-        headers = data.pop(0)
-        ret = {header: list(column) for header, column in zip(headers, zip(*data))}
-
-        if not all(t in ret.keys() for t in ("file", "scale_factor", "offset")):
-            print(
-                "mesh_config is malformated. Expected file, scale_factor, "
-                f"offset columns, got {', '.join(list(ret.keys()))}."
-            )
-            return -1
-
-        dialog = HMFFDialog(None, mesh_options=ret["file"])
-        if not dialog.exec():
-            return -1
-
-        submit_task(
-            "HMFF Setup",
-            setup_hmff,
-            None,
-            ret,
-            directory=directory,
-            **dialog.get_parameters(),
         )
 
     def _import_trajectory(
         self,
+        directory: str = "",
         scale: float = 1.0,
         offset: Union[str, float] = 0.0,
         drop_pbc: bool = False,
         **kwargs,
     ):
-        from ..meshing import to_open3d
-        from ..formats import open_file
-        from ..dialogs import ProgressDialog
-        from ..geometry import GeometryTrajectory
-        from ..parametrization import TriangularMesh
-
-        directory = getExistingDirectory(
-            self, caption="Select directory with DTS trajectory"
+        from ..dts._utils import (
+            list_trajectory_files,
+            build_trajectory_frames,
         )
-        if not directory:
-            return None
+        from ..parallel import submit_io_task
+        from qtpy.QtWidgets import QApplication
 
-        files = [
-            join(directory, x)
-            for x in listdir(directory)
-            if x.endswith(".tsi") or x.endswith(".vtu") and x != "conf-1.vtu"
-        ]
-        files = sorted(files, key=lambda x: int(re.findall(r"\d+", basename(x))[0]))
-        if len(files) == 0:
-            QMessageBox.warning(self, "Error", f"No meshes found at: {directory}.")
-            return None
+        if not directory:
+            return MosaicMessageBox.warning(
+                QApplication.activeWindow(),
+                "Error",
+                "Trajectory directory needs to be specified.",
+            )
 
         if isinstance(offset, str):
             try:
                 offset = np.array([float(x) for x in offset.split(",")])
             except Exception:
-                QMessageBox.warning(
-                    self,
+                return MosaicMessageBox.warning(
+                    QApplication.activeWindow(),
                     "Error",
                     "Offset should be a single or three comma-separated floats.",
                 )
 
-        ret = []
-        with ProgressDialog(files, title="Importing Trajectory", parent=None) as pbar:
-            for index, filename in enumerate(pbar):
-                container = open_file(filename)[0]
-                faces = container.faces.astype(int)
-                points = np.divide(np.subtract(container.vertices, offset), scale)
+        files = list_trajectory_files(directory)
+        if not files:
+            return MosaicMessageBox.warning(
+                QApplication.activeWindow(),
+                "Error",
+                f"No meshes found at: {directory}.",
+            )
 
-                if drop_pbc:
-                    from ..meshing.utils import _edge_lengths
+        name = basename(normpath(directory)) or "trajectory"
 
-                    points_norm = points - points.min(axis=0)
+        submit_io_task(
+            "Import trajectory",
+            build_trajectory_frames,
+            functools.partial(self._on_trajectory_loaded, scale=scale, name=name),
+            directory,
+            scale,
+            offset,
+            None,
+            drop_pbc,
+        )
 
-                    box_stop = points_norm.max(axis=0)
-                    points_pbc = np.mod(points_norm, 0.85 * box_stop)
+    def _on_trajectory_loaded(self, frames, scale: float, name: str):
+        """GUI-thread callback: construct GeometryTrajectory and add it."""
+        if not frames or self.cdata is None:
+            return
 
-                    dist_regular = _edge_lengths(points_norm, faces)
-                    dist_pbc = _edge_lengths(points_pbc, faces)
+        from ..geometry import GeometryTrajectory
 
-                    keep = np.all(dist_pbc >= dist_regular, axis=-1)
-                    faces = faces[keep]
-
-                # Avoid detecting PBC as ill-defined meshes
-                fit = TriangularMesh(to_open3d(points, faces), repair=False)
-
-                ret.append(
-                    {
-                        "fit": fit,
-                        "filename": filename,
-                        "name": basename(directory),
-                        "vertex_properties": container.vertex_properties,
-                    }
-                )
-
-        base = ret[0]["fit"]
         trajectory = GeometryTrajectory(
-            points=base.vertices.copy(),
-            normals=base.compute_vertex_normals().copy(),
             sampling_rate=1 / scale,
-            meta=ret[0].copy(),
-            trajectory=ret,
-            vertex_properties=ret[0]["vertex_properties"],
-            model=base,
+            trajectory=frames,
+            model=frames[0]["fit"],
+            vertex_properties=frames[0].get("vertex_properties"),
+            meta={"name": name},
         )
         trajectory.change_representation("mesh")
-        self.cdata._models.add(trajectory)
+        self.cdata.models.add(trajectory)
         self.cdata.models.data_changed.emit()
-        return self.cdata.models.render()
+        self.cdata.models.render()
 
     def _screen_parameters(self):
         from ..dialogs import DTSScreeningDialog
@@ -254,18 +199,18 @@ class IntelligenceTab(QWidget):
         self._screen_dialog = dialog
 
     def _map_fit(self):
-        from ..meshing import mesh_to_cg
         from ..dialogs import MeshMappingDialog
-
-        directory = getExistingDirectory(self, caption="Select output directory")
-        if not directory:
-            return None
+        from qtpy.QtWidgets import QApplication
 
         fits = self.cdata.format_datalist("models", mesh_only=True)
         clusters = self.cdata.format_datalist("data")
-        dialog = MeshMappingDialog(fits=fits, clusters=clusters)
+        dialog = MeshMappingDialog(
+            fits=fits, clusters=clusters, parent=QApplication.activeWindow()
+        )
         if not dialog.exec():
             return -1
+
+        from ..meshing import mesh_to_cg
 
         fit, edge_length, mappings, cast_ray, flip = dialog.get_parameters()
 
@@ -273,8 +218,9 @@ class IntelligenceTab(QWidget):
             "Coarse graining",
             mesh_to_cg,
             None,
+            fit._geometry_data,
             edge_length=edge_length,
-            output_directory=directory,
+            output_directory=dialog.get_output_directory(),
             inclusions=mappings,
             include_normals=cast_ray,
             flip_normals=flip,
@@ -287,7 +233,7 @@ class IntelligenceTab(QWidget):
 
         def _callback(output_name: str):
             if output_name is None:
-                return QMessageBox.warning(
+                return MosaicMessageBox.warning(
                     None, "Error", "No segmentation was created."
                 )
 
@@ -299,7 +245,7 @@ class IntelligenceTab(QWidget):
             container = open_file(output_name)
             for data in container:
                 self.cdata.data.add(
-                    points=data.vertices,
+                    points=np.multiply(data.vertices, data.sampling),
                     normals=data.normals,
                     sampling_rate=data.sampling,
                 )
@@ -318,7 +264,9 @@ class IntelligenceTab(QWidget):
             return None
 
         if not exists(kwargs.get("model_path", "")):
-            return QMessageBox.warning(None, "Error", "Missing path to membrain model.")
+            return MosaicMessageBox.warning(
+                None, "Error", "Missing path to membrain model."
+            )
 
         return self._run_membrain(tomogram_path=file_name, **kwargs)
 
@@ -326,6 +274,13 @@ class IntelligenceTab(QWidget):
 IMPORT_SETTINGS = {
     "title": "Settings",
     "settings": [
+        {
+            "label": "Trajectory",
+            "parameter": "directory",
+            "type": "PathSelector",
+            "mode": "directory",
+            "description": "Trajectory directory",
+        },
         {
             "label": "Scale",
             "parameter": "scale",

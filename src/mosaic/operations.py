@@ -1,7 +1,7 @@
 """
 Processing of Geometry objects.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -254,16 +254,18 @@ def downsample(geometry, method: str = "radius", **kwargs):
 
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(points)
-        pcd.normals = o3d.utility.Vector3dVector(normals)
+        if normals is not None:
+            pcd.normals = o3d.utility.Vector3dVector(normals)
 
         pcd = pcd.voxel_down_sample(**kwargs)
         points = np.asarray(pcd.points)
-        normals = np.asarray(pcd.normals)
+        normals = np.asarray(pcd.normals) if normals is not None else None
     elif method == "number":
         size = kwargs.get("size", 1000)
         size = min(size, points.shape[0])
         keep = np.random.choice(range(points.shape[0]), replace=False, size=size)
-        points, normals = points[keep], normals[keep]
+        points = points[keep]
+        normals = normals[keep] if normals is not None else None
     elif method in ("center_of_mass", "center of mass"):
         cutoff = kwargs.get("radius", None)
         if cutoff is None:
@@ -593,18 +595,17 @@ def cluster(
         points = geometry.points
 
     # Prepare feature data for clustering
-    data = points
-    if use_points and use_normals:
-        data = np.concatenate((points, geometry.normals), axis=1)
-    elif not use_points and use_normals:
-        data = geometry.normals
+    data, normals = points, geometry.normals
+    if use_points and use_normals and normals is not None:
+        data = np.concatenate((points, normals), axis=1)
+    elif not use_points and use_normals and normals is not None:
+        data = normals
 
     labels = func(data, **kwargs)
     unique_labels = np.unique(labels)
     if len(unique_labels) > 10000:
         raise ValueError("Found more than 10k clusters. Try coarser clustering.")
 
-    # Create geometry objects for each cluster
     ret = []
     for label in unique_labels:
         if label == -1 and drop_noise:
@@ -713,16 +714,26 @@ def remove_outliers(geometry, method: str = "statistical", **kwargs):
                     label="Neighbors",
                     description="Number of neighboring points for normal estimation.",
                 ),
+                Param(
+                    "assume_single_object",
+                    "bool",
+                    default=False,
+                    label="Single Object",
+                    description="Orient normals outward against the convex hull, "
+                    "deciding the flip per Leiden-clustered component. Use when "
+                    "the points represent one coherent surface.",
+                ),
             ),
         ),
         Method("Flip", "flip"),
+        Method("Remove", "remove"),
     ),
 )
 def compute_normals(
     geometry, method: str = "Compute", k: int = 15, **kwargs
 ) -> Optional:
     """
-    Compute or flip point normals.
+    Compute, flip, or remove point normals.
 
     Parameters
     ----------
@@ -732,6 +743,7 @@ def compute_normals(
         Normal computation method. Options are:
         - 'Compute' : Calculate new normals from point neighborhoods
         - 'Flip' : Reverse existing normal directions
+        - 'Remove' : Clear any existing normal vectors
         Default is 'Compute'.
     k : int, optional
         Number of neighbors to consider for normal computation.
@@ -747,13 +759,25 @@ def compute_normals(
     from .utils import compute_normals
 
     method = MethodRegistry.resolve_method("compute_normals", method)
+    if method == "remove":
+        result = geometry[...]
+        result.normals = None
+        return result
+
     if method == "flip":
-        geometry.normals = geometry.normals * -1
+        if geometry.normals is None:
+            raise ValueError("Geometry has no normal vectors.")
+        normals = geometry.normals * -1
     elif method == "compute":
-        geometry.normals = compute_normals(geometry.points, k=k, **kwargs)
+        normals = compute_normals(geometry.points, k=k, **kwargs)
     else:
-        raise ValueError(f"Unsupported method '{method}'. Use 'compute' or 'flip'.")
-    return duplicate(geometry)
+        raise ValueError(
+            f"Unsupported method '{method}'. Use 'compute', 'flip', or 'remove'."
+        )
+
+    result = geometry[...]
+    result.normals = normals
+    return result
 
 
 @operation()
@@ -962,7 +986,6 @@ def remesh(geometry, method: str, **kwargs):
                     min=1,
                     label="Iterations",
                     description="Number of smoothing iterations.",
-                    notes="Taubin filter prevents mesh shrinkage.",
                 ),
             ),
         ),
@@ -977,7 +1000,6 @@ def remesh(geometry, method: str, **kwargs):
                     min=1,
                     label="Iterations",
                     description="Number of smoothing iterations.",
-                    notes="May lead to mesh shrinkage with high counts.",
                 ),
             ),
         ),
@@ -1015,6 +1037,7 @@ def smooth(geometry, method: str, **kwargs):
         - 'Taubin' : Volume-preserving Taubin smoothing
         - 'Laplacian' : Laplacian mesh smoothing
         - 'Average' : Simple neighbor averaging
+        - 'Fair' : Polyharmonic mesh deformation
 
     Returns
     -------
@@ -1064,6 +1087,7 @@ def smooth(geometry, method: str, **kwargs):
                     "alpha",
                     "float",
                     default=1.0,
+                    step=0.1,
                     description="Alpha-shape parameter.",
                     notes="Large values yield coarser features.",
                 ),
@@ -1073,7 +1097,7 @@ def smooth(geometry, method: str, **kwargs):
                     default=-1.0,
                     min=-1.0,
                     label="Edge Length",
-                    description="Target edge length for remeshing. -1 uses median.",
+                    description="Edge length for remeshing. -1 uses median.",
                 ),
                 *_FAIRING_PARAMS,
             ),
@@ -1096,7 +1120,7 @@ def smooth(geometry, method: str, **kwargs):
                     default=-1.0,
                     min=-1.0,
                     label="Edge Length",
-                    description="Target edge length for remeshing. -1 uses median.",
+                    description="Edge length for remeshing. -1 uses median.",
                 ),
                 *_FAIRING_PARAMS,
             ),
@@ -1171,6 +1195,44 @@ def smooth(geometry, method: str, **kwargs):
                 ),
             ),
         ),
+        Method(
+            "Shrink Wrap",
+            "shrink_wrap",
+            description="Deforms the convex hull toward the points under a "
+            "topology-preserving, self-intersection-free flow. Best on clean, "
+            "roughly equidistant point clouds (e.g. resampled from a mesh) -- "
+            "raw segmentation data often produces spikes.",
+            params=(
+                Param(
+                    "max_iter",
+                    "int",
+                    default=100,
+                    min=1,
+                    label="Max Iterations",
+                    description="Maximum number of flow iterations.",
+                ),
+                Param(
+                    "bridge_gaps",
+                    "bool",
+                    default=False,
+                    label="Bridge Gaps",
+                    description="Augment the point cloud with hull-surface "
+                    "samples in regions with no nearby data so the mesh "
+                    "bridges gaps instead of diving through them.",
+                ),
+                _K_NEIGHBORS,
+                Param(
+                    "target_edge_length",
+                    "float",
+                    default=-1.0,
+                    min=-1.0,
+                    label="Edge Length",
+                    description="Target edge length for the post-fairing "
+                    "remesh, in input units. -1 uses median of the flowed mesh.",
+                ),
+                *_FAIRING_PARAMS,
+            ),
+        ),
         Method("Sphere", "sphere", gui=False),
         Method("Ellipsoid", "ellipsoid", gui=False),
         Method("Cylinder", "cylinder", gui=False),
@@ -1231,6 +1293,7 @@ def fit(geometry, method: str, **kwargs):
         - 'ball_pivoting' : Ball pivoting surface reconstruction
         - 'poisson' : Poisson surface reconstruction
         - 'flying_edges' : Flying edges isosurface extraction
+        - 'shrink_wrap' : Topology-preserving deformation (Reach for the Spheres)
         - 'sphere' : Least-squares sphere
         - 'ellipsoid' : Ellipsoid via eigenvalue decomposition
         - 'cylinder' : Cylinder via PCA and constrained optimization
@@ -1270,6 +1333,19 @@ def fit(geometry, method: str, **kwargs):
     n = geometry.get_number_of_points()
     if n < 15 and method in ("sphere", "ellipsoid", "cylinder"):
         raise ValueError(f"Insufficient points for {method} ({n} < 15).")
+
+    if geometry.has_normals:
+        from .utils import NORMAL_REFERENCE
+
+        geom_normals = geometry.normals
+        # Skip stored normals if they look like the NORMAL_REFERENCE fallback
+        # (i.e. the geometry has no meaningful orientation data) -- passing
+        # them along would override the fit method's own normal estimation
+        # with a degenerate all-identical field. Sample a capped prefix since
+        # normals are typically set in bulk and a full scan isn't needed.
+        sample = geom_normals[: min(50, len(geom_normals))]
+        if not np.all(sample == NORMAL_REFERENCE):
+            kwargs.setdefault("normals", geom_normals)
 
     fit = fit_object.fit(geometry.points, **kwargs)
     if hasattr(fit, "mesh"):

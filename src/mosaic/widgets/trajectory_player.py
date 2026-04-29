@@ -1,3 +1,11 @@
+"""
+Trajectory player for DTS simulations.
+
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
+
+Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
+"""
+
 from qtpy.QtCore import Qt, QTimer, Signal
 from qtpy.QtWidgets import (
     QWidget,
@@ -7,357 +15,259 @@ from qtpy.QtWidgets import (
     QSlider,
     QLabel,
     QFrame,
-    QSizePolicy,
-    QGroupBox,
 )
-import qtawesome as qta
 
-from ..stylesheets import QSlider_style, Colors
+from ..icons import icon
+from ..stylesheets import Colors, Typography
 from ..utils import Throttle
 
+__all__ = ["TrajectoryPlayer"]
 
-class TimelineBar(QWidget):
-    """A custom widget that combines a slider with a visual timeline bar."""
-
-    valueChanged = Signal(int)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        # Container for the slider to control its width
-        self.slider_container = QWidget()
-        container_layout = QHBoxLayout(self.slider_container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
-        container_layout.setSpacing(0)
-
-        self.slider = QSlider(Qt.Orientation.Horizontal)
-        self.slider.valueChanged.connect(self.valueChanged.emit)
-
-        self.slider.setStyleSheet(QSlider_style)
-        container_layout.addWidget(self.slider)
-        layout.addWidget(self.slider_container, 1)
-
-        self.spacer = QWidget()
-        self.spacer.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
-        )
-        self.spacer.setStyleSheet("background: transparent;")
-        layout.addWidget(self.spacer, 0)
-
-    def setRange(self, min_val, max_val):
-        self.slider.setRange(min_val, max_val)
-
-    def setValue(self, value):
-        self.slider.setValue(value)
-
-    def value(self):
-        return self.slider.value()
-
-    def setRelativeWidth(self, frames, max_frames):
-        """Set the width of the timeline relative to the maximum number of frames."""
-        if max_frames > 0:
-            ratio = frames / max_frames
-            total_width = self.width()
-
-            self.spacer.setFixedWidth(int(total_width * (1 - ratio)))
-            self.updateGeometry()
+SPEED_STEPS = (0.5, 1.0, 2.0, 4.0)
+SPEED_LABELS = (".5×", "1×", "2×", "4×")
+BASE_INTERVAL_MS = 100
 
 
 class TrajectoryRow(QFrame):
-    """Represents a single trajectory row with integrated timeline."""
+    """Single trajectory: play/pause · name · slider · frame counter · speed."""
 
     frameChanged = Signal()
 
-    def __init__(self, trajectory, max_frames, parent=None):
+    def __init__(self, trajectory, parent=None):
         super().__init__(parent)
         self.trajectory = trajectory
-        self.max_frames = max_frames
         self.current_frame = 0
-        self.setup_ui()
+        self._playing = False
+        self._speed_idx = 1
 
-    def set_maxframes(self, max_frames: int):
-        self.max_frames = max_frames
-        self.timeline.setRelativeWidth(self.trajectory.frames, self.max_frames)
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._advance)
 
-    def set_name_from_trajectory(self, trajectory):
-        try:
-            name = trajectory._meta.get("name", "Unnamed Trajectory")
-            self.name_label.setText(name)
-        except Exception:
-            pass
+        self.setFixedHeight(28)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(6)
 
-    def setup_ui(self):
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(8)
+        # Play / pause
+        self._play_btn = QPushButton()
+        self._play_btn.setFixedSize(22, 22)
+        self._play_btn.setFlat(True)
+        self._play_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._play_btn.clicked.connect(self._toggle_play)
+        self._update_play_icon()
+        lay.addWidget(self._play_btn)
 
-        self.name_label = QLabel()
-        self.name_label.setMinimumWidth(150)
-        self.name_label.setMaximumWidth(200)
-        self.set_name_from_trajectory(self.trajectory)
-        layout.addWidget(self.name_label)
+        # Name
+        self._name_label = QLabel()
+        self._name_label.setFixedWidth(120)
+        self._set_name_from_trajectory(trajectory)
+        lay.addWidget(self._name_label)
 
-        # Center: Timeline with integrated slider
-        self.timeline = TimelineBar()
-        self.timeline.setRange(0, self.trajectory.frames - 1)
-        self._frame_throttle = Throttle(self._update_frame, interval_ms=50)
-        self.timeline.valueChanged.connect(self._frame_throttle)
-        self.set_maxframes(self.max_frames)
-        layout.addWidget(self.timeline, 1)
+        # Slider — inherits global Mosaic QSlider stylesheet
+        self._slider = QSlider(Qt.Orientation.Horizontal)
+        self._slider.setRange(0, max(trajectory.frames - 1, 0))
+        self._slider.setValue(0)
+        self._frame_throttle = Throttle(self._on_slider, interval_ms=50)
+        self._slider.valueChanged.connect(self._frame_throttle)
+        lay.addWidget(self._slider, 1)
 
-        # Right side: Frame counter
-        self.frame_label = QLabel(f"0/{self.trajectory.frames-1}")
-        self.frame_label.setMinimumWidth(70)
-        self.frame_label.setAlignment(
+        # Frame counter
+        self._frame_label = QLabel(self._frame_text())
+        self._frame_label.setMinimumWidth(60)
+        self._frame_label.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
-        layout.addWidget(self.frame_label, 0)
+        lay.addWidget(self._frame_label)
 
-    def showEvent(self, event):
-        """Update timeline when widget becomes visible."""
-        super().showEvent(event)
-        self.timeline.setRelativeWidth(self.trajectory.frames, self.max_frames)
+        # Speed button
+        self._speed_btn = QPushButton(self._speed_text())
+        self._speed_btn.setFixedSize(40, 22)
+        self._speed_btn.setFlat(True)
+        self._speed_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._speed_btn.clicked.connect(self._cycle_speed)
+        lay.addWidget(self._speed_btn)
+
+        self._apply_styles()
 
     def set_frame(self, frame_idx):
         """Set frame programmatically, bypassing the slider throttle."""
-        self.timeline.slider.blockSignals(True)
-        self.timeline.setValue(frame_idx)
-        self.timeline.slider.blockSignals(False)
+        frame_idx = max(0, min(frame_idx, self.trajectory.frames - 1))
+        self._slider.blockSignals(True)
+        self._slider.setValue(frame_idx)
+        self._slider.blockSignals(False)
         self._update_frame(frame_idx)
 
+    def set_name_from_trajectory(self, trajectory):
+        self._set_name_from_trajectory(trajectory)
+
+    def _set_name_from_trajectory(self, trajectory):
+        try:
+            name = trajectory._meta.get("name", "Unnamed Trajectory")
+            self._name_label.setText(name)
+        except Exception:
+            pass
+
+    def _frame_text(self):
+        return f"{self.current_frame}/{max(self.trajectory.frames - 1, 0)}"
+
+    def _speed_text(self):
+        return SPEED_LABELS[self._speed_idx]
+
+    def _on_slider(self, value):
+        self._update_frame(value)
+
     def _update_frame(self, frame_idx):
-        """Update the displayed frame using the trajectory's display_frame method."""
-
-        update = self.trajectory.display_frame(frame_idx)
-        if not update:
-            return None
-
+        if not self.trajectory.display_frame(frame_idx):
+            return
         self.current_frame = frame_idx
-        self.frame_label.setText(f"{frame_idx}/{self.trajectory.frames-1}")
+        self._frame_label.setText(self._frame_text())
         self.frameChanged.emit()
+
+    def _toggle_play(self):
+        self._playing = not self._playing
+        if self._playing:
+            interval = int(BASE_INTERVAL_MS / SPEED_STEPS[self._speed_idx])
+            self._timer.start(interval)
+        else:
+            self._timer.stop()
+        self._update_play_icon()
+
+    def _advance(self):
+        if self.current_frame < self.trajectory.frames - 1:
+            next_frame = self.current_frame + 1
+            self._slider.blockSignals(True)
+            self._slider.setValue(next_frame)
+            self._slider.blockSignals(False)
+            self._update_frame(next_frame)
+        else:
+            self._playing = False
+            self._timer.stop()
+            self._update_play_icon()
+
+    def _cycle_speed(self):
+        self._speed_idx = (self._speed_idx + 1) % len(SPEED_STEPS)
+        self._speed_btn.setText(self._speed_text())
+        if self._playing:
+            self._timer.setInterval(
+                int(BASE_INTERVAL_MS / SPEED_STEPS[self._speed_idx])
+            )
+
+    def _update_play_icon(self):
+        name = "ph.pause" if self._playing else "ph.play"
+        role = "muted" if self._playing else "primary"
+        self._play_btn.setIcon(icon(name, role=role))
+
+    def _apply_styles(self):
+        self._play_btn.setStyleSheet(
+            f"""
+            QPushButton {{
+                border: none; background: transparent;
+                border-radius: 4px;
+            }}
+            QPushButton:hover {{ background: {Colors.BG_HOVER}; }}
+        """
+        )
+        self._name_label.setStyleSheet(
+            f"""
+            font-size: {Typography.SMALL}px;
+            color: {Colors.TEXT_SECONDARY};
+        """
+        )
+        self._frame_label.setStyleSheet(
+            f"""
+            font-size: {Typography.SMALL}px;
+            color: {Colors.TEXT_MUTED};
+        """
+        )
+        self._speed_btn.setStyleSheet(
+            f"""
+            QPushButton {{
+                border: none; background: transparent;
+                border-radius: 3px;
+                font-size: {Typography.SMALL}px;
+                color: {Colors.TEXT_MUTED};
+            }}
+            QPushButton:hover {{
+                background: {Colors.BG_HOVER};
+                color: {Colors.TEXT_SECONDARY};
+            }}
+        """
+        )
 
 
 class TrajectoryPlayer(QWidget):
+    """Container for trajectory rows — no header, no group box."""
+
     def __init__(self, cdata, parent=None):
         super().__init__(parent)
         self.cdata = cdata
-        self.current_frame = 0
-        self.play_timer = QTimer()
-        self.play_timer.timeout.connect(self.next_frame)
-        self.play_timer.setInterval(100)
 
         self.cdata.models.data_changed.connect(self.update_trajectories)
-        self.setup_ui()
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(10, 10, 10, 10)
+        lay.setSpacing(2)
+
+        self._placeholder = QLabel("Import a trajectory to display here")
+        self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lay.addWidget(self._placeholder)
+
+        self._rows_layout = QVBoxLayout()
+        self._rows_layout.setContentsMargins(0, 0, 0, 0)
+        self._rows_layout.setSpacing(2)
+        lay.addLayout(self._rows_layout)
+
+        self._apply_styles()
         self.update_trajectories()
-
-        self.playing = False
-
-    @property
-    def playing(self):
-        return self._playing
-
-    @playing.setter
-    def playing(self, playing: bool):
-        self._playing = playing
-        if not hasattr(self, "play_button"):
-            return None
-
-        if not playing:
-            self.play_button.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
-        else:
-            self.play_button.setIcon(qta.icon("ph.pause", color=Colors.ICON))
 
     @property
     def trajectories(self):
         ret = []
-        for i in range(self.rows_layout.count()):
-            ret.append(self.rows_layout.itemAt(i).widget())
+        for i in range(self._rows_layout.count()):
+            widget = self._rows_layout.itemAt(i).widget()
+            if widget is not None:
+                ret.append(widget)
         return ret
 
-    def setup_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(4, 4, 4, 4)
-        main_layout.setSpacing(0)
-
-        group = QGroupBox("Trajectory Player")
-        group_layout = QVBoxLayout(group)
-        group_layout.setSpacing(4)
-        group_layout.setContentsMargins(0, 4, 0, 4)
-
-        main_layout.addWidget(group)
-
-        # Controls section with frame counter on right
-        controls_container = QWidget()
-        controls_layout = QHBoxLayout(controls_container)
-        controls_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Center-aligned play controls
-        play_controls = QWidget()
-        play_layout = QHBoxLayout(play_controls)
-        play_layout.setContentsMargins(0, 0, 0, 8)
-        play_layout.setSpacing(4)
-        play_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        button_size = 32
-        self.first_button = QPushButton()
-        self.first_button.setIcon(qta.icon("ph.skip-back", color=Colors.ICON))
-        self.first_button.setFixedSize(button_size, button_size)
-        self.first_button.clicked.connect(lambda: self.sync_frame(0))
-
-        self.prev_button = QPushButton(autoRepeat=True)
-        self.prev_button.setIcon(qta.icon("ph.rewind", color=Colors.ICON))
-        self.prev_button.setFixedSize(button_size, button_size)
-        self.prev_button.clicked.connect(self.prev_frame)
-
-        self.play_button = QPushButton()
-        self.play_button.setIcon(qta.icon("ph.play", color=Colors.PRIMARY))
-        self.play_button.setFixedSize(button_size, button_size)
-        self.play_button.clicked.connect(self.toggle_play)
-
-        self.next_button = QPushButton(autoRepeat=True)
-        self.next_button.setIcon(qta.icon("ph.fast-forward", color=Colors.ICON))
-        self.next_button.setFixedSize(button_size, button_size)
-        self.next_button.clicked.connect(self.next_frame)
-
-        self.last_button = QPushButton()
-        self.last_button.setIcon(qta.icon("ph.skip-forward", color=Colors.ICON))
-        self.last_button.setFixedSize(button_size, button_size)
-        self.last_button.clicked.connect(lambda: self.sync_frame(self.max_frame()))
-
-        for button in [
-            self.first_button,
-            self.prev_button,
-            self.play_button,
-            self.next_button,
-            self.last_button,
-        ]:
-            button.setStyleSheet(
-                """
-                QPushButton {
-                    border: none;
-                    border-radius: 16px;
-                    padding: 8px;
-                }
-                QPushButton:hover {
-                    background-color: #f3f4f6;
-                }
-                QPushButton:pressed {
-                    background-color: #e5e7eb;
-                }
-            """
-            )
-            play_layout.addWidget(button)
-
-        controls_layout.addStretch()
-        controls_layout.addWidget(play_controls)
-        controls_layout.addStretch()
-
-        # Frame counter on right with consistent width
-        frame_container = QWidget()
-        frame_layout = QHBoxLayout(frame_container)
-        frame_layout.setContentsMargins(4, 0, 4, 0)
-
-        self.current_frame_label = QLabel("0/0")
-        self.current_frame_label.setMinimumWidth(70)  # Match trajectory row label width
-        self.current_frame_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
-        frame_layout.addWidget(self.current_frame_label)
-
-        controls_layout.addWidget(frame_container)
-
-        group_layout.addWidget(controls_container)
-
-        self.trajectory_area = QWidget()
-        self.trajectory_area.setLayout(QHBoxLayout())
-        self.trajectory_area.layout().setContentsMargins(0, 0, 0, 0)
-        self.trajectory_area.layout().setSpacing(0)
-
-        # Trajectories container
-        self.rows_widget = QWidget()
-        self.rows_layout = QVBoxLayout(self.rows_widget)
-        self.rows_layout.setContentsMargins(0, 0, 0, 0)
-        self.rows_layout.setSpacing(2)
-        self.trajectory_area.layout().addWidget(self.rows_widget)
-
-        # Need a container for proper overlay positioning
-        trajectory_container = QWidget()
-        container_layout = QVBoxLayout(trajectory_container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
-        container_layout.addWidget(self.trajectory_area)
-
-        group_layout.addWidget(trajectory_container, 1)
-
     def update_trajectories(self):
-        """Update trajectories from MosaicData models."""
+        """Update trajectory rows from MosaicData models."""
         from ..geometry import GeometryTrajectory
 
-        geometry_trajectories = [
+        trajectories = [
             model
             for model in self.cdata._models.data
             if isinstance(model, GeometryTrajectory)
         ]
 
-        max_frames = 0
-        if len(geometry_trajectories):
-            max_frames = max(t.frames for t in geometry_trajectories)
-
-        # Remove trajectories that no longer exist
-        for i in reversed(range(self.rows_layout.count())):
-            widget = self.rows_layout.itemAt(i).widget()
+        for i in reversed(range(self._rows_layout.count())):
+            widget = self._rows_layout.itemAt(i).widget()
+            if widget is None:
+                continue
             try:
-                index = geometry_trajectories.index(widget.trajectory)
-                trajectory = geometry_trajectories.pop(index)
+                index = trajectories.index(widget.trajectory)
+                trajectory = trajectories.pop(index)
                 widget.set_name_from_trajectory(trajectory)
-                if max_frames != 0:
-                    widget.set_maxframes(max_frames)
             except (IndexError, ValueError):
-                self.rows_layout.itemAt(i).widget().setParent(None)
+                widget.setParent(None)
 
-        if max_frames == 0:
-            self.current_frame_label.setText("0/0")
-            return None
+        for model in trajectories:
+            row = TrajectoryRow(model)
+            row.frameChanged.connect(lambda: self.cdata.models._highlight_selection())
+            self._rows_layout.addWidget(row)
 
-        # Add new trajectories
-        for model in geometry_trajectories:
-            row = TrajectoryRow(model, max_frames)
-            row.frameChanged.connect(lambda: self.cdata.models.render_vtk())
-            self.rows_layout.addWidget(row)
-        self.current_frame_label.setText(f"0/{max_frames-1}")
+        has_rows = self._rows_layout.count() > 0
+        self._placeholder.setVisible(not has_rows)
 
-    def sync_frame(self, frame_idx, from_row=False):
-        """Synchronize frame across all trajectories."""
-        self.current_frame = frame_idx
-        self.current_frame_label.setText(f"{frame_idx}/{self.max_frame() - 1}")
+    def _apply_styles(self):
+        self._placeholder.setStyleSheet(
+            f"""
+            font-size: {Typography.SMALL}px;
+            color: {Colors.TEXT_MUTED};
+        """
+        )
 
-        for trajectory in self.trajectories:
-            trajectory.set_frame(frame_idx)
-
-    def toggle_play(self):
-        """Toggle playback state."""
-        self.playing = not self.playing
-        if self.playing:
-            return self.play_timer.start()
-
-        self.play_timer.stop()
-
-    def max_frame(self):
-        if len(self.trajectories) == 0:
-            return 0
-        return max(t.trajectory.frames for t in self.trajectories)
-
-    def next_frame(self):
-        """Advance to next frame."""
-        if self.current_frame < self.max_frame() - 1:
-            return self.sync_frame(self.current_frame + 1)
-
-        self.play_timer.stop()
-        self.playing = False
-
-    def prev_frame(self):
-        """Go to previous frame."""
-        if self.current_frame > 0:
-            self.sync_frame(self.current_frame - 1)
+    def _on_theme_changed(self):
+        self._apply_styles()
+        for row in self.trajectories:
+            row._update_play_icon()
+            row._apply_styles()

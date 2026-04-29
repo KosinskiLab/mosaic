@@ -5,7 +5,7 @@ Headless session manager for the Mosaic scripting interface.
 managing two :class:`~mosaic.container.DataContainer` instances (point clouds
 and fitted models) without Qt or VTK rendering dependencies.
 
-Copyright (c) 2026 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -20,8 +20,7 @@ from typing import List, Optional
 import numpy as np
 
 from ..container import DataContainer
-from ..parallel import _init_worker, _wrap_task
-from ..widgets.container_list import TreeStateData, TreeState
+from ..tree_state import TreeStateData, TreeState
 
 __all__ = ["Session"]
 
@@ -42,6 +41,7 @@ class Session:
         self._models = DataContainer(highlight_color=(0.2, 0.4, 0.8))
         self._data_tree = TreeStateData()
         self._models_tree = TreeStateData()
+        self._metadata: dict = {}
         self._order: list = []
         self._last_results: list = []
         self._log: List[str] = []
@@ -136,6 +136,7 @@ class Session:
         scale=None,
         sampling_rate=None,
         persist=True,
+        segmentation=False,
         **kwargs,
     ) -> List[int]:
         """Load geometries from a file.
@@ -145,15 +146,20 @@ class Session:
         filepath : str
             Path to the input file.
         offset : float or array-like, optional
-            Coordinate offset to subtract from vertices (default 0).
+            Coordinate offset subtracted from scaled vertices as
+            ``vertices * scale - offset`` (default 0).
         scale : float or array-like, optional
-            Scale factor applied after offset. Defaults to the file's
-            native sampling rate (matching GUI behavior).
+            Scale factor applied to raw vertices. Defaults to the file's
+            native sampling rate, which converts voxel-index vertices
+            returned by volume loaders into physical units.
         sampling_rate : float, optional
             Override the file's native sampling rate.
         persist : bool, optional
             When ``True`` (default), add geometries to session containers.
             When ``False``, geometries are only available via ``@last``.
+        segmentation : bool, optional
+            When ``True``, treat the volume as a segmentation and extract
+            surface meshes via VTK's FlyingEdges3D.
         **kwargs
             Additional arguments passed to ``open_file()``.
 
@@ -162,82 +168,150 @@ class Session:
         list of int
             Global indices of the newly added geometries.
         """
+        from ..formats.reader import is_volume_file
+
+        if segmentation and is_volume_file(filepath):
+            return self._open_segmentation(filepath, sampling_rate, persist)
+
+        return self._open_generic(
+            filepath,
+            offset=offset,
+            scale=scale,
+            sampling_rate=sampling_rate,
+            persist=persist,
+            **kwargs,
+        )
+
+    def _open_segmentation(self, filepath, sampling_rate=None, persist=True):
+        """Open a volume as SegmentationGeometry from point clouds."""
+        from ..formats import open_file
+        from ..geometry import SegmentationGeometry
+
+        container = open_file(filepath)
+        base = os.path.basename(filepath).split(".", 1)[0]
+        use_index = len(container) > 1
+
+        geoms, indices = [], []
+        shape = self._data.metadata.get("shape", None)
+        physical_shape = self._data.metadata.get("physical_shape", None)
+        for index, data in enumerate(container):
+            effective_sampling = (
+                sampling_rate if sampling_rate is not None else data.sampling
+            )
+            name = f"{index}_{base}" if use_index else base
+            geom = SegmentationGeometry(
+                points=np.multiply(data.vertices, data.sampling),
+                sampling_rate=effective_sampling,
+                meta={"name": name},
+            )
+            if persist:
+                idx = self._data.add(geom)
+                geom = list(self._data.data)[idx]
+                self._order.append(geom)
+                indices.append(len(self._order) - 1)
+
+            geoms.append(geom)
+            self._counter += 1
+
+            data_shape = np.asarray(data.shape)
+            if shape is None:
+                shape = data_shape
+            shape = np.maximum(shape, data_shape)
+
+            physical_data_shape = np.multiply(data_shape, effective_sampling)
+            if physical_shape is None:
+                physical_shape = physical_data_shape
+            physical_shape = np.maximum(physical_shape, physical_data_shape)
+
+        if persist and shape is not None:
+            self._data.metadata["shape"] = shape
+            self._data.metadata["physical_shape"] = physical_shape
+
+        self._last_results = geoms
+        return indices
+
+    def _open_generic(
+        self,
+        filepath,
+        offset=0,
+        scale=None,
+        sampling_rate=None,
+        persist=True,
+        **kwargs,
+    ):
+        """Load geometries via the format parsers (generic path)."""
         from ..formats import open_file
         from ..geometry import Geometry
-        from ..parametrization import TriangularMesh
 
         container = open_file(filepath, **kwargs)
         base = os.path.basename(filepath).split(".", 1)[0]
         use_index = len(container) > 1
 
-        shape = None
-        indices = []
-        opened_geoms = []
-        effective_sampling = 1
+        indices, geoms = [], []
+        shape = self._data.metadata.get("shape", None)
+        physical_shape = self._data.metadata.get("physical_shape", None)
         for index, data in enumerate(container):
             effective_scale = scale if scale is not None else data.sampling
-            effective_sampling = (
-                sampling_rate if sampling_rate is not None else data.sampling
+            sampling = sampling_rate if sampling_rate is not None else data.sampling
+
+            data.vertices = np.multiply(
+                data.vertices, effective_scale, out=data.vertices
             )
-
-            # Apply coordinate transforms
-            scale_new = np.divide(effective_scale, data.sampling)
             data.vertices = np.subtract(data.vertices, offset, out=data.vertices)
-            data.vertices = np.multiply(data.vertices, scale_new, out=data.vertices)
 
-            # Track shape metadata
-            data_shape = np.divide(data.shape, data.sampling)
+            data_shape = np.asarray(data.shape)
             if shape is None:
                 shape = data_shape
             shape = np.maximum(shape, data_shape)
+
+            physical_data_shape = np.multiply(data_shape, effective_scale)
+            if physical_shape is None:
+                physical_shape = physical_data_shape
+            physical_shape = np.maximum(physical_shape, physical_data_shape)
 
             is_mesh = data.faces is not None
             mesh_model = None
             if is_mesh:
                 from ..meshing import to_open3d
+                from ..parametrization import TriangularMesh
 
                 mesh_model = TriangularMesh(to_open3d(data.vertices, data.faces))
 
+            kw = {
+                "model": mesh_model,
+                "sampling_rate": sampling,
+                "vertex_properties": data.vertex_properties,
+            }
+            data_container = self._models
+            if not is_mesh:
+                data_container = self._data
+                kw |= {
+                    "points": data.vertices,
+                    "normals": data.normals,
+                    "quaternions": data.quaternions,
+                }
+
             if persist:
-                if is_mesh:
-                    idx = self._models.add(
-                        model=mesh_model,
-                        sampling_rate=effective_sampling,
-                    )
-                    geom = list(self._models.data)[idx]
-                else:
-                    idx = self._data.add(
-                        points=data.vertices,
-                        normals=data.normals,
-                        quaternions=data.quaternions,
-                        sampling_rate=effective_sampling,
-                        vertex_properties=data.vertex_properties,
-                    )
-                    geom = list(self._data.data)[idx]
+                idx = data_container.add(**kw)
+                geom = data_container.get(idx)
 
                 self._order.append(geom)
                 indices.append(len(self._order) - 1)
             else:
-                geom = Geometry(
-                    points=data.vertices,
-                    normals=data.normals,
-                    quaternions=data.quaternions,
-                    sampling_rate=effective_sampling,
-                    vertex_properties=data.vertex_properties,
-                    model=mesh_model,
-                )
+                geom = Geometry(**kw)
 
             if is_mesh:
                 geom.change_representation("surface")
 
             geom._meta["name"] = f"{index}_{base}" if use_index else base
-            opened_geoms.append(geom)
+            geoms.append(geom)
             self._counter += 1
 
         if persist and shape is not None:
             self._data.metadata["shape"] = shape
+            self._data.metadata["physical_shape"] = physical_shape
 
-        self._last_results = opened_geoms
+        self._last_results = geoms
         return indices
 
     def save(self, geometries: list, filepath: str, **kwargs) -> None:
@@ -261,11 +335,20 @@ class Session:
 
         if export_parameters.get("shape") is None:
             export_parameters["shape"] = self._data.metadata.get("shape")
-
         write_geometries(geometries, filepath, **export_parameters)
 
-    def save_session(self, filepath: str) -> None:
-        """Pickle the session state to *filepath*."""
+    def save_session(self, filepath: str, sections: dict = None) -> None:
+        """Save session state to *filepath*.
+
+        Parameters
+        ----------
+        filepath : str
+            Destination file path.
+        sections : dict, optional
+            Extra sections to include in the file, mapping section names to
+            ``(encoding, data)`` tuples (e.g. ``{"thumbnail": ("png", bytes)}``).
+            Ignored for ``.pickle`` files.
+        """
         state = {
             "shape": self._data.metadata.get("shape"),
             "_data": self._data,
@@ -273,22 +356,47 @@ class Session:
             "_data_tree": self._data_tree,
             "_models_tree": self._models_tree,
         }
-        with open(filepath, "wb") as fh:
-            pickle.dump(state, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        if filepath.endswith(".pickle"):
+            with open(filepath, "wb") as fh:
+                pickle.dump(state, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        else:
+            from ..formats.session import write_session
+
+            merged = dict(self._metadata)
+            if sections:
+                merged.update(sections)
+            write_session(filepath, state, sections=merged or None)
 
     def load_session(self, filepath: str, persist: bool = True) -> None:
-        """Restore session state from a pickle file.
+        """Restore session state from a session file.
+
+        Handles both ``.pickle`` and indexed ``.mosaic`` formats.
 
         Parameters
         ----------
         filepath : str
-            Path to the pickle file.
+            Path to the session file.
         persist : bool, optional
             When ``True`` (default), replace the current session state.
             When ``False``, geometries are only available via ``@last``.
         """
-        with open(filepath, "rb") as fh:
-            state = pickle.load(fh)
+        from ..formats.session import (
+            open_session,
+            read_session_index,
+            read_session_section,
+        )
+
+        state = open_session(filepath)
+
+        index = read_session_index(filepath)
+        sections = {}
+        for name, info in index.get("sections", {}).items():
+            if name == "state":
+                continue
+            data = read_session_section(filepath, name)
+            if data is not None:
+                sections[name] = (info["encoding"], data)
+        self._metadata = sections
 
         loaded_data = state.get("_data", state.get("data", DataContainer()))
         loaded_models = state.get(
@@ -298,7 +406,7 @@ class Session:
 
         if not persist:
             self._last_results = list(loaded_data.data) + list(loaded_models.data)
-            return
+            return None
 
         self._data = loaded_data
         self._models = loaded_models
@@ -340,6 +448,8 @@ class Session:
         errors : list of (int, Exception)
             Index and exception for each failed geometry.
         """
+        from ..parallel import _init_worker, _wrap_task
+
         workers = int(kwargs.pop("workers", 1))
         pool = ProcessPoolExecutor(max_workers=workers, initializer=_init_worker)
         futures = {
@@ -445,7 +555,7 @@ class Session:
 
             for new_geom in result:
                 if isinstance(new_geom, GeometryData):
-                    new_geom = Geometry(**new_geom.to_dict())
+                    new_geom = new_geom.to_geometry()
                 if new_geom.model is not None:
                     new_geom.change_representation("surface")
                 if persist:

@@ -1,7 +1,7 @@
 """
 Operation definitions and categories for pipeline builder.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -28,7 +28,7 @@ OPERATION_CATEGORIES = {
         "operations": {
             "Import Files": {
                 "id": "import_batch",
-                "description": "Import multiple files for processing",
+                "description": "Import files for processing",
                 "icon": "ph.file-arrow-down",
                 "has_output": True,
                 "input_type": None,
@@ -240,7 +240,7 @@ OPERATION_CATEGORIES = {
                             "type": "PathSelector",
                             "file_mode": False,
                             "placeholder": "Select output directory",
-                        }
+                        },
                     ],
                 },
             },

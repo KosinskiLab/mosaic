@@ -1,7 +1,7 @@
 """
 Animation composer dialog for creating timeline-based animations.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -12,6 +12,7 @@ from typing import Dict, List, Any
 from uuid import uuid4
 
 import imageio
+from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
 from qtpy.QtCore import Qt, QTimer, QSize
 from qtpy.QtGui import QKeySequence, QShortcut
 from qtpy.QtWidgets import (
@@ -25,34 +26,19 @@ from qtpy.QtWidgets import (
     QSpinBox,
     QGroupBox,
     QFileDialog,
-    QMessageBox,
     QApplication,
     QSizePolicy,
     QCheckBox,
 )
-import qtawesome as qta
-
 from .timeline import TimelineWidget
 from .animations import AnimationType, BaseAnimation
 from .settings import AnimationSettings, ExportDialog
-from ._utils import FrameWriter, capture_frame
+from ._utils import FrameWriter, capture_frame, read_frame
 
-from ..__version__ import __version__
+from ..icons import icon
 from ..utils import Throttle
-from ..stylesheets import (
-    QMessageBox_style,
-    QLineEdit_style,
-    QSpinBox_style,
-    QDoubleSpinBox_style,
-    QComboBox_style,
-    QCheckBox_style,
-    QSlider_style,
-    QGroupBox_style,
-    QListWidget_style,
-    QPushButton_style,
-    QScrollArea_style,
-    Colors,
-)
+from ..stylesheets import Colors
+from ..widgets import MosaicMessageBox
 
 
 @dataclass
@@ -68,6 +54,7 @@ class AnimationComposerDialog(QDialog):
     FORMAT_SETTINGS = {
         "MP4": {"ext": ".mp4", "video": True},
         "AVI": {"ext": ".avi", "video": True},
+        "WebM": {"ext": ".webm", "video": True},
         "PNG Sequence": {"ext": ".png", "video": False},
     }
 
@@ -80,7 +67,7 @@ class AnimationComposerDialog(QDialog):
         self.is_playing = False
         self.is_looping = False
         self.playback_fps = 30
-        self.timer = QTimer()
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self._advance_frame)
 
         self.cdata = cdata
@@ -90,72 +77,54 @@ class AnimationComposerDialog(QDialog):
         self._setup_ui()
         self._setup_shortcuts()
 
-        self.setStyleSheet(
-            QMessageBox_style
-            + QLineEdit_style
-            + QSpinBox_style
-            + QDoubleSpinBox_style
-            + QComboBox_style
-            + QCheckBox_style
-            + QSlider_style
-            + QGroupBox_style
-            + QListWidget_style
-            + QPushButton_style
-            + QScrollArea_style
-        )
-
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.setContentsMargins(8, 0, 8, 8)
         main_layout.setSpacing(8)
 
-        # Icon toolbar for project actions
         toolbar = QWidget()
         toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(0, 0, 0, 0)
         toolbar_layout.setSpacing(4)
 
-        for icon, tooltip, callback in [
+        for icon_name, tooltip, callback in [
             ("ph.folder-open", "Load project", self.load_project),
             ("ph.floppy-disk", "Save project", self.save_project),
             ("ph.trash", "Clear all tracks", self.clear_all_tracks),
             ("ph.export", "Export animation", self.export_animation),
         ]:
             btn = QToolButton()
-            btn.setIcon(qta.icon(icon, color=Colors.ICON))
+            btn.setIcon(icon(icon_name, role="muted"))
             btn.setToolTip(tooltip)
             btn.setIconSize(QSize(20, 20))
             btn.clicked.connect(callback)
             toolbar_layout.addWidget(btn)
 
-        toolbar_layout.addStretch()
-
-        # Loop checkbox
         self.loop_checkbox = QCheckBox("Loop")
-        self.loop_checkbox.setToolTip("Loop playback (L)")
+        self.loop_checkbox.setToolTip("Loop playback")
         self.loop_checkbox.stateChanged.connect(self._on_loop_changed)
+        toolbar_layout.addStretch()
         toolbar_layout.addWidget(self.loop_checkbox)
 
         main_layout.addWidget(toolbar)
 
-        # Playback controls
         controls = QWidget()
         controls_layout = QHBoxLayout(controls)
         controls_layout.setContentsMargins(0, 0, 0, 0)
         controls_layout.setSpacing(4)
 
         back_btn = QToolButton()
-        back_btn.setIcon(qta.icon("ph.skip-back"))
+        back_btn.setIcon(icon("ph.skip-back", role="muted"))
         back_btn.setToolTip("Go to start (Home)")
         back_btn.clicked.connect(lambda: self.set_current_frame(0))
 
         self.play_btn = QToolButton()
-        self.play_btn.setIcon(qta.icon("ph.play"))
+        self.play_btn.setIcon(icon("ph.play", role="primary"))
         self.play_btn.setToolTip("Play/Pause (Space)")
         self.play_btn.clicked.connect(self.toggle_play)
 
         forward_btn = QToolButton()
-        forward_btn.setIcon(qta.icon("ph.skip-forward"))
+        forward_btn.setIcon(icon("ph.skip-forward", role="muted"))
         forward_btn.setToolTip("Go to end (End)")
         forward_btn.clicked.connect(self._go_to_end)
 
@@ -167,12 +136,12 @@ class AnimationComposerDialog(QDialog):
 
         self.frame_spin = QSpinBox()
         self.frame_spin.setRange(0, 2 << 29)
+        self.frame_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.frame_spin.valueChanged.connect(self._frame_throttle)
         controls_layout.addWidget(self.frame_spin, 1)
 
         main_layout.addWidget(controls)
 
-        # Timeline
         self.timeline = TimelineWidget()
         self.timeline.content.trackSelected.connect(self._on_track_selected)
         self.timeline.frameMoved.connect(self._frame_throttle)
@@ -184,7 +153,6 @@ class AnimationComposerDialog(QDialog):
         )
         main_layout.addWidget(self.timeline, 1)
 
-        # Presets group
         presets_group = QGroupBox("Presets")
         presets_layout = QVBoxLayout(presets_group)
         presets_layout.setContentsMargins(8, 12, 8, 8)
@@ -203,6 +171,7 @@ class AnimationComposerDialog(QDialog):
         ]:
             btn = QPushButton(name)
             btn.setToolTip(tooltip)
+            btn.setFixedHeight(Colors.WIDGET_HEIGHT)
             btn.clicked.connect(lambda _, p=preset_type: self._load_preset(p))
             presets_row.addWidget(btn)
         presets_layout.addLayout(presets_row)
@@ -219,11 +188,11 @@ class AnimationComposerDialog(QDialog):
         for i, anim_type in enumerate(anim_types):
             btn = QPushButton(anim_type.value["name"])
             btn.setToolTip(anim_type.value.get("description", ""))
+            btn.setFixedHeight(Colors.WIDGET_HEIGHT)
             btn.clicked.connect(lambda _, t=anim_type: self.add_animation(t))
             anims_layout.addWidget(btn, i // cols, i % cols)
         main_layout.addWidget(anims_group)
 
-        # Track settings
         self.properties_panel = AnimationSettings()
         self.properties_panel.animationChanged.connect(self._on_animation_changed)
         main_layout.addWidget(self.properties_panel)
@@ -256,7 +225,7 @@ class AnimationComposerDialog(QDialog):
         ]
 
         if not trajectories:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self,
                 "No Trajectories",
                 "No trajectory data found. Load a trajectory first.",
@@ -268,14 +237,14 @@ class AnimationComposerDialog(QDialog):
     def _load_slices_preset(self):
         """Load preset for volume slice animation."""
         if self.volume_viewer is None:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Volume", "No volume viewer available for slice animation."
             )
             return
 
         volume = getattr(self.volume_viewer.primary, "volume", None)
         if volume is None:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Volume", "No volume loaded. Load a volume first."
             )
             return
@@ -291,26 +260,24 @@ class AnimationComposerDialog(QDialog):
         3. Slices back through the volume (backward)
         """
         if self.volume_viewer is None:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Volume", "No volume viewer available for reveal flythrough."
             )
             return
 
         volume = getattr(self.volume_viewer.primary, "volume", None)
         if volume is None:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Volume", "No volume loaded. Load a volume first."
             )
             return
 
-        # Get all actor object IDs
         all_objects = []
         for _, obj in self.cdata.format_datalist("data"):
             all_objects.append(id(obj))
         for _, obj in self.cdata.format_datalist("models"):
             all_objects.append(id(obj))
 
-        # 1. Hide all actors at the start (instant opacity to 0)
         hide_anim = self.add_animation(AnimationType.VISIBILITY)
         if hide_anim:
             hide_anim.name = "Hide Actors"
@@ -323,13 +290,11 @@ class AnimationComposerDialog(QDialog):
             hide_anim.start_frame = 0
             hide_anim.stop_frame = 1
 
-        # 2. Volume slice forward
         forward_slice = self.add_animation(AnimationType.SLICE)
         if forward_slice:
             forward_slice.name = "Slice Forward"
             forward_slice.update_parameters(direction="forward")
 
-        # 3. Reveal all actors at midpoint (instant opacity to 1)
         reveal_anim = self.add_animation(AnimationType.VISIBILITY)
         if reveal_anim:
             reveal_anim.name = "Reveal Actors"
@@ -348,7 +313,6 @@ class AnimationComposerDialog(QDialog):
             backward_slice.name = "Slice Backward"
             backward_slice.update_parameters(direction="backward")
 
-        # Update timeline
         self.timeline.set_tracks(self.tracks)
 
     def add_animation(self, anim_type: AnimationType):
@@ -365,7 +329,7 @@ class AnimationComposerDialog(QDialog):
                 name=f"{anim_type.value['name']} {len(self.tracks) + 1}",
             )
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to create animation: {e}")
+            MosaicMessageBox.warning(self, "Error", f"Failed to create animation: {e}")
             return None
 
         track = Track(
@@ -479,11 +443,11 @@ class AnimationComposerDialog(QDialog):
 
         if self.is_playing:
             self._set_preview_visibility(False)
-            self.play_btn.setIcon(qta.icon("ph.pause"))
+            self.play_btn.setIcon(icon("ph.pause", role="muted"))
             self.timer.start(1000 // self.playback_fps)
         else:
             self._set_preview_visibility(True)
-            self.play_btn.setIcon(qta.icon("ph.play"))
+            self.play_btn.setIcon(icon("ph.play", role="primary"))
             self.timer.stop()
 
     def _advance_frame(self):
@@ -508,23 +472,18 @@ class AnimationComposerDialog(QDialog):
 
     def _setup_shortcuts(self):
         """Setup keyboard shortcuts."""
-        # Spacebar for play/pause
         play_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Space), self)
         play_shortcut.activated.connect(self.toggle_play)
 
-        # L for loop toggle
         loop_shortcut = QShortcut(QKeySequence(Qt.Key.Key_L), self)
         loop_shortcut.activated.connect(self._toggle_loop)
 
-        # Home for go to start
         home_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Home), self)
         home_shortcut.activated.connect(lambda: self.set_current_frame(0))
 
-        # End for go to end
         end_shortcut = QShortcut(QKeySequence(Qt.Key.Key_End), self)
         end_shortcut.activated.connect(self._go_to_end)
 
-        # Left/Right arrow for frame stepping
         left_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Left), self)
         left_shortcut.activated.connect(
             lambda: self.set_current_frame(self.current_frame - 1)
@@ -549,7 +508,7 @@ class AnimationComposerDialog(QDialog):
         if not self.tracks:
             return
 
-        reply = QMessageBox.question(
+        reply = MosaicMessageBox.question(
             self,
             "Clear All Tracks",
             "Are you sure you want to remove all animation tracks?",
@@ -573,7 +532,7 @@ class AnimationComposerDialog(QDialog):
     def export_animation(self):
         """Export the animation with current settings."""
         if not self.tracks:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Animation", "Add at least one animation track before export."
             )
             return
@@ -581,16 +540,14 @@ class AnimationComposerDialog(QDialog):
         # Get current render window dimensions
         render_window = self.vtk_widget.GetRenderWindow()
         if render_window is None:
-            QMessageBox.warning(self, "Error", "No render window available.")
+            MosaicMessageBox.warning(self, "Error", "No render window available.")
             return
 
         current_size = render_window.GetSize()
 
-        # Pause playback during export
         if self.is_playing:
             self.toggle_play()
 
-        # Show export dialog
         total_frames = self._get_total_frames()
         dialog = ExportDialog(
             total_frames=total_frames,
@@ -599,20 +556,21 @@ class AnimationComposerDialog(QDialog):
             parent=self,
         )
         if not dialog.exec():
-            return
+            return None
 
         settings = dialog.get_settings()
         format_name = settings["format"]
         format_settings = self.FORMAT_SETTINGS.get(format_name, {})
         ext = format_settings.get("ext", ".mp4")
         is_video = format_settings.get("video", True)
+        transparent_bg = format_name in ("WebM", "PNG Sequence")
 
         filename, _ = QFileDialog.getSaveFileName(
             self, "Save Animation", "", f"Animation (*{ext})"
         )
 
         if not filename:
-            return
+            return None
 
         if not filename.endswith(ext):
             filename += ext
@@ -628,7 +586,7 @@ class AnimationComposerDialog(QDialog):
         multisamples = settings["multisamples"]
 
         if start_frame >= end_frame:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "Invalid Range", "Start frame must be less than end frame."
             )
             return
@@ -638,6 +596,8 @@ class AnimationComposerDialog(QDialog):
         # Store original state
         original_frame = self.current_frame
         original_size = render_window.GetSize()
+        original_multisamples = render_window.GetMultiSamples()
+        original_alpha = render_window.GetAlphaBitPlanes()
 
         # Use target dimensions from dialog, ensure even for video encoding
         width = target_width
@@ -646,82 +606,105 @@ class AnimationComposerDialog(QDialog):
             height += height % 2
             width += width % 2
 
-        # Setup writer
         if is_video:
-            quality_val = max(min(quality / 10.0, 10), 1)
-            writer = imageio.get_writer(
-                filename, mode="I", fps=fps, quality=quality_val, macro_block_size=None
-            )
+            writer_kwargs = dict(mode="I", fps=fps, macro_block_size=None)
+            if format_name == "WebM":
+                # VP9 uses CRF for quality control (0=lossless, 63=worst)
+                crf = int(63 * (1 - quality / 100))
+                writer_kwargs.update(
+                    codec="libvpx-vp9",
+                    pixelformat="yuva420p",
+                    output_params=["-crf", str(crf), "-b:v", "0"],
+                )
+            else:
+                writer_kwargs["quality"] = max(min(quality / 10.0, 10), 1)
+            writer = imageio.get_writer(filename, **writer_kwargs)
         else:
             writer = FrameWriter(filename)
 
-        try:
-            from mosaic.dialogs import ProgressDialog
+        from mosaic.widgets.status_indicator import StatusIndicator
 
+        indicator = StatusIndicator.instance()
+        n_frames = len(frames)
+
+        try:
             self._set_preview_visibility(False)
             render_window.SetOffScreenRendering(1)
-
-            # Store original multisamples and apply export settings
-            original_multisamples = render_window.GetMultiSamples()
             render_window.SetMultiSamples(multisamples)
+            render_window.SetAlphaBitPlanes(1 if transparent_bg else 0)
 
-            # Set render window to target dimensions
-            # capture_frame will handle magnification (render larger, then downscale)
-            render_window.SetSize(width, height)
+            render_width = width * magnification
+            render_height = height * magnification
+            render_window.SetSize(render_width, render_height)
             render_window.Render()
 
-            with ProgressDialog(frames, title="Exporting Animation") as progress:
-                for frame_idx in progress:
-                    self.set_current_frame(frame_idx)
-                    render_window.Render()
+            window_to_image = vtkWindowToImageFilter()
+            window_to_image.SetInput(render_window)
+            window_to_image.SetInputBufferTypeToRGBA()
+            window_to_image.SetScale(1)
+            window_to_image.ReadFrontBufferOff()
+            window_to_image.ShouldRerenderOff()
 
-                    frame = self._capture_frame(
-                        transparent_bg=not is_video, magnification=magnification
-                    )
-                    writer.append_data(frame)
-                    QApplication.processEvents()
+            if indicator is not None:
+                indicator.show_progress("Exporting Animation", total=n_frames)
+
+            for i, frame_idx in enumerate(frames):
+                self.set_current_frame(frame_idx)
+
+                frame = read_frame(
+                    window_to_image,
+                    width,
+                    height,
+                    magnification,
+                    transparent_bg,
+                )
+                writer.append_data(frame)
+
+                if indicator is not None:
+                    indicator.update_progress(i + 1, n_frames)
+                QApplication.processEvents()
 
             writer.close()
-            render_window.SetMultiSamples(original_multisamples)
 
-            QMessageBox.information(
+            MosaicMessageBox.information(
                 self, "Export Complete", f"Animation saved to:\n{filename}"
             )
 
         except Exception as e:
-            QMessageBox.warning(self, "Export Error", f"Failed to export: {e}")
+            MosaicMessageBox.warning(self, "Export Error", f"Failed to export: {e}")
 
         finally:
+            if indicator is not None:
+                indicator.hide_progress()
             self._set_preview_visibility(True)
+            render_window.SetAlphaBitPlanes(original_alpha)
+            render_window.SetMultiSamples(original_multisamples)
             render_window.SetOffScreenRendering(0)
             render_window.SetSize(*original_size)
             render_window.Render()
             self.set_current_frame(original_frame)
-            # Note: Don't restore playback state - export is a deliberate user action
 
     def save_project(self):
         """Save the animation project to a JSON file."""
         if not self.tracks:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Animation", "Add at least one animation track before saving."
             )
-            return
+            return None
 
         filename, _ = QFileDialog.getSaveFileName(
             self, "Save Animation Project", "", "Animation Project (*.manim)"
         )
 
         if not filename:
-            return
+            return None
 
         if not filename.endswith(".manim"):
             filename += ".manim"
 
-        project_data = {
-            "version": __version__,
-            "tracks": [],
-        }
+        from ..__version__ import __version__
 
+        project_data = {"version": __version__, "tracks": []}
         for track in self.tracks:
             anim = track.animation
             anim_type = None
@@ -738,6 +721,7 @@ class AnimationComposerDialog(QDialog):
                 "start_frame": anim.start_frame,
                 "stop_frame": anim.stop_frame,
                 "stride": anim.stride,
+                "rate": anim.rate,
                 "parameters": self._serialize_parameters(anim.parameters),
             }
             project_data["tracks"].append(track_data)
@@ -746,11 +730,11 @@ class AnimationComposerDialog(QDialog):
             with open(filename, "w") as f:
                 json.dump(project_data, f, indent=2)
 
-            QMessageBox.information(
+            MosaicMessageBox.information(
                 self, "Project Saved", f"Animation project saved to:\n{filename}"
             )
         except Exception as e:
-            QMessageBox.warning(self, "Save Error", f"Failed to save project: {e}")
+            MosaicMessageBox.warning(self, "Save Error", f"Failed to save project: {e}")
 
     def _serialize_parameters(self, params: Dict) -> Dict:
         """Convert parameters to JSON-serializable format."""
@@ -786,7 +770,6 @@ class AnimationComposerDialog(QDialog):
         if not filename:
             return
 
-        # Pause playback during load
         if self.is_playing:
             self.toggle_play()
 
@@ -794,7 +777,9 @@ class AnimationComposerDialog(QDialog):
             with open(filename, "r") as f:
                 project_data = json.load(f)
         except Exception as e:
-            QMessageBox.warning(self, "Load Error", f"Failed to read project file: {e}")
+            MosaicMessageBox.warning(
+                self, "Load Error", f"Failed to read project file: {e}"
+            )
             return
 
         self._cleanup_tracks()
@@ -808,7 +793,7 @@ class AnimationComposerDialog(QDialog):
             try:
                 anim_type = AnimationType[anim_type_name]
             except KeyError:
-                QMessageBox.warning(
+                MosaicMessageBox.warning(
                     self,
                     "Unknown Animation",
                     f"Unknown animation type: {anim_type_name}",
@@ -827,13 +812,15 @@ class AnimationComposerDialog(QDialog):
                     name=track_data.get("name", anim_type.value["name"]),
                 )
 
+                # Restore parameters first so data_start/data_stop set
+                # _base_duration before we override stop_frame/rate
+                for key, value in track_data.get("parameters", {}).items():
+                    animation.update_parameters(**{key: value})
+
                 animation.start_frame = track_data.get("start_frame", 0)
                 animation.stop_frame = track_data.get("stop_frame", 100)
                 animation.stride = track_data.get("stride", 1)
-
-                # Restore parameters
-                for key, value in track_data.get("parameters", {}).items():
-                    animation.update_parameters(**{key: value})
+                animation.rate = track_data.get("rate", 1.0)
 
                 track = Track(
                     id=str(uuid4()),
@@ -843,7 +830,7 @@ class AnimationComposerDialog(QDialog):
                 self.tracks.append(track)
 
             except Exception as e:
-                QMessageBox.warning(
+                MosaicMessageBox.warning(
                     self, "Load Error", f"Failed to create animation: {e}"
                 )
                 continue
@@ -853,7 +840,7 @@ class AnimationComposerDialog(QDialog):
         if self.tracks:
             self._on_track_selected(self.tracks[0].id)
 
-        QMessageBox.information(
+        MosaicMessageBox.information(
             self,
             "Project Loaded",
             f"Loaded {len(self.tracks)} animation track(s) from:\n{filename}",

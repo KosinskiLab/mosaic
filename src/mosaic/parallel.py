@@ -1,7 +1,7 @@
 """
 Parallel backend for offloading compute heavy tasks.
 
-Copyright (c) 2025 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -11,6 +11,7 @@ import sys
 import uuid
 import queue
 import warnings
+import threading
 import concurrent
 import multiprocessing
 from enum import Enum
@@ -18,7 +19,6 @@ from typing import Callable, Any, Dict, Optional
 from dataclasses import dataclass
 
 from .settings import Settings
-from qtpy.QtWidgets import QMessageBox
 from qtpy.QtCore import QObject, Signal, QTimer
 
 
@@ -28,6 +28,7 @@ __all__ = [
     "report_progress",
     "submit_task",
     "submit_task_batch",
+    "submit_io_task",
 ]
 
 # Worker-side globals (set by initializer, used by worker functions)
@@ -35,6 +36,9 @@ _worker_queue: Optional[multiprocessing.Queue] = None
 _worker_task_id: Optional[str] = None
 _original_stdout: Optional[io.TextIOBase] = None
 _original_stderr: Optional[io.TextIOBase] = None
+
+# I/O worker-side thread-local context (set by _wrap_io_task).
+_IO_WORKER_CONTEXT = threading.local()
 
 
 class MessageType(Enum):
@@ -167,6 +171,41 @@ def _init_worker_with_queue(progress_queue: multiprocessing.Queue):
     sys.stderr = QueueStream(progress_queue, MessageType.STDERR, _original_stderr)
 
 
+def _format_captured_warnings(warning_list) -> Optional[str]:
+    """
+    Format a list of captured warnings into the wire-format string.
+
+    Filters out citation notices and ``DeprecationWarning`` entries — these
+    are noisy and not actionable for the user. Returns ``None`` when nothing
+    relevant was captured.
+    """
+    warning_msg = ""
+    for warning_item in warning_list:
+        if "citation" in str(warning_item.message).lower():
+            continue
+        if warning_item.category is DeprecationWarning:
+            continue
+        warning_msg += f"{warning_item.category.__name__}: {warning_item.message}\n"
+    return warning_msg.rstrip() if warning_msg else None
+
+
+def _run_with_warning_capture(func, *args, **kwargs) -> Dict[str, Any]:
+    """
+    Execute ``func`` with warnings captured, returning the completion dict.
+
+    Shared between :func:`_wrap_task` (process-backed) and
+    :func:`_wrap_io_task` (thread-backed) — both need identical
+    ``{"result", "warnings"}`` output semantics.
+    """
+    with warnings.catch_warnings(record=True) as warning_list:
+        warnings.simplefilter("always")
+        result = func(*args, **kwargs)
+        return {
+            "result": result,
+            "warnings": _format_captured_warnings(warning_list),
+        }
+
+
 def _wrap_task(func, task_id, *args, **kwargs):
     """
     Wrapper that sets task context and captures warnings.
@@ -180,26 +219,7 @@ def _wrap_task(func, task_id, *args, **kwargs):
     try:
         sys.stdout.flush()
         sys.stderr.flush()
-
-        with warnings.catch_warnings(record=True) as warning_list:
-            warnings.simplefilter("always")
-
-            result = func(*args, **kwargs)
-
-            warning_msg = ""
-            for warning_item in warning_list:
-                if "citation" in str(warning_item.message).lower():
-                    continue
-                if warning_item.category is DeprecationWarning:
-                    continue
-                warning_msg += (
-                    f"{warning_item.category.__name__}: {warning_item.message}\n"
-                )
-
-            return {
-                "result": result,
-                "warnings": warning_msg.rstrip() if warning_msg else None,
-            }
+        return _run_with_warning_capture(func, *args, **kwargs)
     finally:
         try:
             sys.stdout.flush()
@@ -209,19 +229,87 @@ def _wrap_task(func, task_id, *args, **kwargs):
         _worker_task_id = None
 
 
-def _default_handler(task_id, task_name, msg, is_warning=False):
-    readable_name = task_name.replace("_", " ").title()
-    icon = QMessageBox.Icon.Warning if is_warning else QMessageBox.Icon.Critical
-    title = "Operation Warning" if is_warning else "Operation Failed"
-    text = f"{readable_name} {'Completed with Warnings' if is_warning else 'Failed with Errors'}"
+def _wrap_io_task(func, task_id, *args, **kwargs):
+    """
+    Wrapper for I/O tasks running in the main process on a worker thread.
 
-    msg_box = QMessageBox()
-    msg_box.setIcon(icon)
-    msg_box.setWindowTitle(title)
-    msg_box.setText(text)
-    msg_box.setInformativeText(str(msg))
-    msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-    msg_box.exec()
+    Sets the thread-local context used by :func:`report_progress`, captures
+    warnings the same way :func:`_wrap_task` does, and returns the
+    ``{"result", "warnings"}`` dict the completion handler expects.
+    """
+    _IO_WORKER_CONTEXT.task_id = task_id
+    try:
+        return _run_with_warning_capture(func, *args, **kwargs)
+    finally:
+        _IO_WORKER_CONTEXT.task_id = None
+
+
+_pending_messages = []
+_message_timer = None
+
+
+def _default_handler(task_id, task_name, msg, is_warning=False):
+    global _message_timer
+
+    _pending_messages.append((task_name, str(msg), is_warning))
+
+    if _message_timer is None:
+        _message_timer = QTimer()
+        _message_timer.setSingleShot(True)
+        _message_timer.timeout.connect(_flush_messages)
+
+    _message_timer.start(300)
+
+
+def _flush_messages():
+    from qtpy.QtWidgets import QMessageBox
+    from .widgets import MosaicMessageBox
+
+    if not _pending_messages:
+        return
+
+    warnings = [(n, m) for n, m, w in _pending_messages if w]
+    errors = [(n, m) for n, m, w in _pending_messages if not w]
+    _pending_messages.clear()
+
+    for items, is_warning in [(errors, False), (warnings, True)]:
+        if not items:
+            continue
+
+        icon = QMessageBox.Icon.Warning if is_warning else QMessageBox.Icon.Critical
+        title = "Operation Warning" if is_warning else "Operation Failed"
+
+        if len(items) == 1:
+            name, msg = items[0]
+            text = f"{name.replace('_', ' ').title()} "
+            text += "completed with warnings" if is_warning else "failed"
+            first_line = (msg.strip().splitlines()[0][:300] if msg else "") or ""
+            detail = msg or ""
+        else:
+            suffix = "completed with warnings" if is_warning else "failed"
+            text = f"{len(items)} tasks {suffix}"
+            first_msg = next((m for _, m in items if m), "")
+            first_line = (
+                first_msg.strip().splitlines()[0][:300] if first_msg else ""
+            ) or ""
+            lines = []
+            for n, m in items[:20]:
+                lines.append(f"  {n}: {m}" if m else f"  {n}")
+            if len(items) > 20:
+                lines.append(f"  ... and {len(items) - 20} more")
+            detail = "\n".join(lines)
+
+        box = MosaicMessageBox(icon, title, text, QMessageBox.StandardButton.Ok)
+        if first_line:
+            box.setInformativeText(first_line)
+        if detail:
+            box.setDetailedText(detail)
+            text += "\n\nSee details for full error messages."
+            box.setText(text)
+        for btn in box.buttons():
+            if box.buttonRole(btn) == QMessageBox.ButtonRole.ActionRole:
+                btn.setMinimumWidth(130)
+        box.exec()
 
 
 class BackgroundTaskManager(QObject):
@@ -251,6 +339,7 @@ class BackgroundTaskManager(QObject):
         self.task_queue: list = []
         self.task_info: Dict[str, Dict[str, Any]] = {}
         self.futures: Dict[str, concurrent.futures.Future] = {}
+        self.io_futures: Dict[str, concurrent.futures.Future] = {}
 
         # Batch limits
         self.batch_limits: Dict[str, int] = {}
@@ -262,7 +351,7 @@ class BackgroundTaskManager(QObject):
 
         self._initialize()
 
-        self.timer = QTimer()
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self._process_tasks)
         self.timer.start(500)
 
@@ -271,40 +360,56 @@ class BackgroundTaskManager(QObject):
 
     def _initialize(self):
         """Initialize or reinitialize executors."""
-        for task_id in list(self.futures.keys()):
+
+        all_futures = list(self.futures.items()) + list(self.io_futures.items())
+
+        for task_id, future in all_futures:
             if task_id in self.task_info:
                 task_name = self.task_info[task_id]["name"]
                 self.task_failed.emit(
                     task_id,
                     task_name,
-                    "Task cancelled: executor was broken by worker crash",
+                    "Task cancelled: executor restart",
                 )
-            if task_id in self.futures:
-                try:
-                    self.futures[task_id].cancel()
-                except Exception:
-                    pass
+            try:
+                future.cancel()
+            except Exception:
+                pass
 
         self._shutdown()
 
-        # Create manager for shared queue
-        self._manager = multiprocessing.Manager()
-        self._progress_queue = self._manager.Queue()
+        mp_ctx = multiprocessing.get_context("spawn")
+        self._progress_queue = mp_ctx.Queue()
 
         # TODO: See how 15 works out now that pymeshlab is gone
+        self.num_workers = int(Settings.rendering.parallel_worker)
         self.executor = concurrent.futures.ProcessPoolExecutor(
-            mp_context=multiprocessing.get_context("spawn"),
-            max_workers=int(Settings.rendering.parallel_worker),
+            mp_context=mp_ctx,
+            max_workers=self.num_workers,
             max_tasks_per_child=15,
             initializer=_init_worker_with_queue,
             initargs=(self._progress_queue,),
         )
 
-        self.running_tasks.emit(len(self.futures))
+        # I/O (thread) executor for file-bound work.
+        self.io_executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=4,
+            thread_name_prefix="mosaic-io",
+        )
+
+        self.running_tasks.emit(len(self.futures) + len(self.io_futures))
+
+        if hasattr(self, "timer"):
+            self.timer.start(500)
 
     def _shutdown(self):
         """Clean shutdown of executors and queues."""
+        if hasattr(self, "timer"):
+            self.timer.stop()
+
         self.futures.clear()
+        self.io_futures.clear()
+
         self.task_info.clear()
         self.task_queue.clear()
         self.batch_limits.clear()
@@ -318,17 +423,23 @@ class BackgroundTaskManager(QObject):
             pass
 
         try:
-            if hasattr(self, "_manager"):
-                self._manager.shutdown()
+            self.io_executor.shutdown(wait=False, cancel_futures=True)
         except Exception:
             pass
+
+        if hasattr(self, "_progress_queue"):
+            try:
+                self._progress_queue.cancel_join_thread()
+                self._progress_queue.close()
+            except Exception:
+                pass
 
     def _process_tasks(self):
         """Timer callback: process queue, check completed, submit new tasks."""
         self._poll_progress_queue()
         self._check_completed_tasks()
         self._submit_queued_tasks()
-        self.running_tasks.emit(len(self.futures))
+        self.running_tasks.emit(len(self.futures) + len(self.io_futures))
 
     def _poll_progress_queue(self):
         """Drain the progress queue and emit appropriate signals."""
@@ -372,6 +483,49 @@ class BackgroundTaskManager(QObject):
             except Exception:
                 break
 
+    def _enqueue(
+        self,
+        name: str,
+        func: Callable,
+        callback: Callable,
+        batch_id: str,
+        args: tuple,
+        kwargs: dict,
+        is_io: bool,
+    ) -> str:
+        """Shared queue-insertion path for submit_task and submit_io_task."""
+        task_id = str(uuid.uuid4())
+
+        self.task_queue.append(
+            {
+                "task_id": task_id,
+                "batch_id": batch_id,
+                "name": name,
+                "func": func,
+                "args": args,
+                "kwargs": kwargs or {},
+                "callback": callback,
+                "is_io": is_io,
+            }
+        )
+
+        self.task_info[task_id] = {
+            "name": name,
+            "batch_id": batch_id,
+            "status": "queued",
+            "is_io": is_io,
+        }
+
+        self._task_stdout[task_id] = []
+        self._task_stderr[task_id] = []
+
+        if len(self.task_info) > 1000:
+            oldest = next(iter(self.task_info))
+            self.task_info.pop(oldest, None)
+
+        self.task_queued.emit(task_id, name)
+        return task_id
+
     def submit_task(
         self,
         name: str,
@@ -398,35 +552,19 @@ class BackgroundTaskManager(QObject):
         kwargs: dict, optional
             Kwargs to pass to func.
         """
-        task_id = str(uuid.uuid4())
+        return self._enqueue(name, func, callback, batch_id, args, kwargs, is_io=False)
 
-        self.task_queue.append(
-            {
-                "task_id": task_id,
-                "batch_id": batch_id,
-                "name": name,
-                "func": func,
-                "args": args,
-                "kwargs": kwargs or {},
-                "callback": callback,
-            }
-        )
-
-        self.task_info[task_id] = {
-            "name": name,
-            "batch_id": batch_id,
-            "status": "queued",
-        }
-
-        self._task_stdout[task_id] = []
-        self._task_stderr[task_id] = []
-
-        if len(self.task_info) > 1000:
-            oldest = next(iter(self.task_info))
-            self.task_info.pop(oldest, None)
-
-        self.task_queued.emit(task_id, name)
-        return task_id
+    def submit_io_task(
+        self,
+        name: str,
+        func: Callable,
+        callback: Callable = None,
+        batch_id: str = None,
+        args: tuple = (),
+        kwargs: dict = None,
+    ) -> str:
+        """Submit a thread-backed I/O task."""
+        return self._enqueue(name, func, callback, batch_id, args, kwargs, is_io=True)
 
     def submit_task_batch(
         self,
@@ -499,9 +637,10 @@ class BackgroundTaskManager(QObject):
             self._submit_from_queue(task)
 
     def _submit_from_queue(self, task):
-        """Submit a queued task to the executor."""
+        """Submit a queued task to the appropriate executor."""
         task_id = task["task_id"]
         batch_id = task["batch_id"]
+        is_io = task.get("is_io", False)
 
         if batch_id is not None and batch_id in self.batch_running:
             self.batch_running[batch_id].add(task_id)
@@ -511,74 +650,83 @@ class BackgroundTaskManager(QObject):
             "callback": task["callback"],
             "batch_id": batch_id,
             "status": "running",
+            "is_io": is_io,
         }
 
-        future = self.executor.submit(
-            _wrap_task,
+        exc, reg, dec = self.executor, self.futures, _wrap_task
+        if is_io:
+            exc, reg, dec = self.io_executor, self.io_futures, _wrap_io_task
+
+        reg[task_id] = exc.submit(
+            dec,
             task["func"],
             task_id,
             *task["args"],
             **task["kwargs"],
         )
-        self.futures[task_id] = future
         self.task_started.emit(task_id, task["name"])
 
     def _check_completed_tasks(self):
-        """Check for completed futures and handle results."""
+        """Check for completed futures in both executors and handle results."""
         completed_tasks = []
         executor_broken = False
 
-        for task_id, future in self.futures.items():
-            if future.done():
-                task_info = self.task_info.get(task_id)
-                if not task_info:
-                    completed_tasks.append(task_id)
-                    continue
+        all_futures = list(self.futures.items()) + list(self.io_futures.items())
 
-                task_name = task_info["name"]
-                task_info["status"] = "failed"
-                batch_id = task_info.get("batch_id")
+        for task_id, future in all_futures:
+            if not future.done():
+                continue
 
-                try:
-                    ret = future.result()
-
-                    result = ret["result"]
-                    warnings_msg = ret["warnings"]
-
-                    task_info["status"] = "completed"
-                    task_info["stdout"] = "".join(self._task_stdout.get(task_id, []))
-                    task_info["stderr"] = "".join(self._task_stderr.get(task_id, []))
-
-                    self.task_completed.emit(task_id, task_name, result)
-
-                    if task_info["callback"]:
-                        task_info["callback"](result)
-
-                    if warnings_msg is not None:
-                        self.task_warning.emit(task_id, task_name, warnings_msg)
-
-                except concurrent.futures.process.BrokenProcessPool as e:
-                    error_msg = f"Worker process died unexpectedly: {str(e)}"
-                    self.task_failed.emit(task_id, task_name, error_msg)
-                    executor_broken = True
-
-                except Exception as e:
-                    error_msg = str(e)
-                    self.task_failed.emit(task_id, task_name, error_msg)
-
-                if batch_id is not None and batch_id in self.batch_running:
-                    self.batch_running[batch_id].discard(task_id)
-
+            task_info = self.task_info.get(task_id)
+            if not task_info:
                 completed_tasks.append(task_id)
+                continue
+
+            task_name = task_info["name"]
+            task_info["status"] = "failed"
+            batch_id = task_info.get("batch_id")
+
+            try:
+                ret = future.result()
+
+                result = ret["result"]
+                warnings_msg = ret["warnings"]
+
+                task_info["status"] = "completed"
+                task_info["stdout"] = "".join(self._task_stdout.get(task_id, []))
+                task_info["stderr"] = "".join(self._task_stderr.get(task_id, []))
+
+                self.task_completed.emit(task_id, task_name, result)
+
+                if task_info["callback"]:
+                    task_info["callback"](result)
+
+                if warnings_msg is not None:
+                    self.task_warning.emit(task_id, task_name, warnings_msg)
+
+            except concurrent.futures.process.BrokenProcessPool as e:
+                error_msg = f"Worker process died unexpectedly: {str(e)}"
+                self.task_failed.emit(task_id, task_name, error_msg)
+                executor_broken = True
+
+            except Exception as e:
+                error_msg = str(e)
+                self.task_failed.emit(task_id, task_name, error_msg)
+
+            if batch_id is not None and batch_id in self.batch_running:
+                self.batch_running[batch_id].discard(task_id)
+
+            completed_tasks.append(task_id)
 
         for task_id in completed_tasks:
             _ = self.futures.pop(task_id, None)
+            _ = self.io_futures.pop(task_id, None)
             _ = self._task_stdout.pop(task_id, None)
             _ = self._task_stderr.pop(task_id, None)
 
             if task_id in self.task_info:
                 task_info = self.task_info.pop(task_id)
-                _keys = ("stdout", "stderr", "status", "name")
+                _keys = ("stdout", "stderr", "status", "name", "is_io")
                 self.task_info[task_id] = {k: task_info.get(k) for k in _keys}
 
         if executor_broken:
@@ -624,7 +772,7 @@ class BackgroundTaskManager(QObject):
         bool
             True if the task was cancelled, False if it's already running.
         """
-        future = self.futures.get(task_id)
+        future = self.futures.get(task_id) or self.io_futures.get(task_id)
         if future is None:
             return False
 
@@ -664,6 +812,12 @@ def submit_task_batch(tasks, max_concurrent=None, batch_id=None):
     )
 
 
+def submit_io_task(name, func, callback=None, *args, **kwargs):
+    return BackgroundTaskManager.instance().submit_io_task(
+        name, func, callback, args=args, kwargs=kwargs
+    )
+
+
 def report_progress(
     progress: float = None,
     message: str = None,
@@ -673,41 +827,61 @@ def report_progress(
     """
     Report progress from within a worker function.
 
-    Parameters
-    ----------
-    progress : float, optional
-        Progress as a fraction (0.0 to 1.0).
-    message : str, optional
-        Status message to display.
-    current : int, optional
-        Current step number (alternative to progress fraction).
-    total : int, optional
-        Total number of steps (used with current).
+    Works in both process workers (messages sent via the multiprocessing
+    queue) and I/O thread workers (Qt signals emitted directly).  No-op
+    when called outside any worker context.
     """
     global _worker_queue, _worker_task_id
 
-    if not _worker_queue or not _worker_task_id:
+    # Process-worker context
+    if _worker_queue is not None and _worker_task_id is not None:
+        try:
+            if message is not None:
+                _worker_queue.put_nowait(
+                    WorkerMessage(
+                        task_id=_worker_task_id,
+                        type=MessageType.MESSAGE,
+                        value=message,
+                    )
+                )
+
+            if progress is not None or current is not None:
+                _worker_queue.put_nowait(
+                    WorkerMessage(
+                        task_id=_worker_task_id,
+                        type=MessageType.PROGRESS,
+                        value=progress,
+                        current=current,
+                        total=total,
+                    )
+                )
+        except Exception:
+            pass
+        return
+
+    # I/O thread-worker context
+    task_id = getattr(_IO_WORKER_CONTEXT, "task_id", None)
+    if task_id is None:
         return
 
     try:
-        if message is not None:
-            _worker_queue.put_nowait(
-                WorkerMessage(
-                    task_id=_worker_task_id,
-                    type=MessageType.MESSAGE,
-                    value=message,
-                )
-            )
-
-        if progress is not None or current is not None:
-            _worker_queue.put_nowait(
-                WorkerMessage(
-                    task_id=_worker_task_id,
-                    type=MessageType.PROGRESS,
-                    value=progress,
-                    current=current,
-                    total=total,
-                )
-            )
+        mgr = BackgroundTaskManager.instance()
     except Exception:
-        pass
+        return
+
+    # The "name" value at task_info[task_id] is preserved across the dict
+    # replacements in _submit_from_queue and _check_completed_tasks. CPython
+    # dict reads are GIL-atomic, so this lookup is safe from a worker thread.
+    name = (mgr.task_info.get(task_id) or {}).get("name", "Unknown")
+
+    if message is not None:
+        mgr.task_message.emit(task_id, name, message)
+
+    if progress is not None or current is not None:
+        if progress is not None:
+            frac = progress
+        elif total:
+            frac = (current or 0) / total
+        else:
+            frac = 0.0
+        mgr.task_progress.emit(task_id, name, frac, current or 0, total or 0)

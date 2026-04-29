@@ -1,3 +1,36 @@
+# Release Notes v1.2.4
+
+Version 1.2.4 makes Mosaic run better on laptops and machines without dedicated GPUs and improving the DTS simulation workflow.
+
+## Features
+
+- Geometries now switch rendering detail. Scenes with large numbers of points are significantly faster on laptops and machines without a dedicated GPU. This can be configured in Preferences > Appearance > Render > Balanced or the icon in the top right.
+- Shrink Wrap as new mesh generation method that wraps a surface around point cloud data, which handles cases where alpha shapes fail.
+- The DTS dialog has been simplified and restructured to make setting up simulations, adjusting parameters, and analyzing trajectories straightforward.
+- Volume viewer loads faster, renders as a viewport overlay, and supports OME-Zarr arrays.
+
+## Improvements
+
+- Faster animations, several macOS and Linux compatibility fixes.
+- General design refresh: updated typography, expanded icon set, and layout improvements throughout.
+
+## Bug Fixes
+
+- Fixed backmapping bugs.
+- Fixed import error in `MeshEditInteractorStyle`.
+
+## Breaking Changes
+
+- The HMFF dialog has been removed. HMFF simulation setup continues through the DTS dialog.
+
+## Installation
+
+```bash
+pip install -U mosaic-gui==1.2.4
+```
+
+---
+
 # Release Notes v1.2.2
 
 Version 1.2.2 introduces an interactive shell for scriptable control, along with mesh processing improvements and dependency cleanup.

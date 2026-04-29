@@ -1,11 +1,12 @@
 """
 Utilities for repair of triangular meshes.
 
-Hole filling were adapted from https://github.com/kentechx/hole-filling
-and are distributed under MIT license. This origin is indicated as
-reference for the respective functions.
+Hole filling and Leipa triangulation were adapted from
+https://github.com/kentechx/hole-filling and are distributed under
+MIT license. This origin is indicated as reference for the
+respective functions.
 
-Copyright (c) 2024 European Molecular Biology Laboratory
+Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
@@ -18,7 +19,13 @@ import scipy.sparse
 
 _epsilon = 1e-16
 
-__all__ = ["fair_mesh", "get_ring_vertices", "close_holes"]
+__all__ = [
+    "fair_mesh",
+    "get_ring_vertices",
+    "close_holes",
+    "bridge_boundaries",
+    "triangulation_refine_leipa",
+]
 
 
 def _close_hole(vs: np.ndarray, fs: np.ndarray, hole_vids, fast=True) -> np.ndarray:
@@ -158,8 +165,80 @@ def close_holes(
         if hole_len_thr >= 0 and hole_edge_len > hole_len_thr:
             break
         out_fs = _close_hole(vs, out_fs, b, fast)
-
     return out_fs
+
+
+def bridge_boundaries(vs: np.ndarray, fs: np.ndarray, alpha: float) -> np.ndarray:
+    """Close mesh topology by bridging boundary vertices via an alpha shape.
+
+    Unlike Liepa hole filling, which triangulates a single boundary loop,
+    this computes an alpha shape over all boundary vertices and appends
+    its faces to the input mesh. Can connect disjoint components and
+    bridge multiple loops simultaneously.
+
+    Parameters
+    ----------
+    vs : ndarray, shape (N, 3)
+        Vertex coordinates.
+    fs : ndarray, shape (M, 3)
+        Face indices.
+    alpha : float
+        Alpha-shape parameter. Same units as
+        :class:`~mosaic.parametrization.AlphaShape`.
+
+    Returns
+    -------
+    ndarray, shape (K, 3)
+        Face indices with bridging faces appended.
+    """
+    from scipy.spatial import cKDTree
+    from ..parametrization import AlphaShape
+
+    fs = np.asarray(fs, dtype=np.int64)
+    if len(fs) == 0 or alpha <= 0:
+        return fs.copy()
+
+    boundary_edges = np.sort(igl.boundary_facets(fs)[0], axis=1)
+    if len(boundary_edges) == 0:
+        return fs.copy()
+    boundary_vids = np.unique(boundary_edges)
+
+    boundary_vs = vs[boundary_vids].astype(np.float64)
+
+    try:
+        alpha_mesh = AlphaShape.fit(boundary_vs, alpha=alpha).mesh
+    except Exception:
+        return fs.copy()
+
+    a_vs = np.asarray(alpha_mesh.vertices, dtype=np.float64)
+    a_fs = np.asarray(alpha_mesh.triangles, dtype=np.int64)
+    if len(a_fs) == 0:
+        return fs.copy()
+
+    # open3d drops unreferenced vertices during cleanup, so map back by
+    # proximity -- alpha shape does not move input points.
+    tree = cKDTree(boundary_vs)
+    _, local = tree.query(a_vs, k=1)
+    mapped = boundary_vids[local][a_fs]
+
+    # A bridging face must touch an existing boundary edge -- this discards
+    # the opposite hemisphere of the alpha shape and any interior duplicates.
+    be_set = {tuple(e) for e in boundary_edges.tolist()}
+    e1 = np.sort(mapped[:, [0, 1]], axis=1).tolist()
+    e2 = np.sort(mapped[:, [1, 2]], axis=1).tolist()
+    e3 = np.sort(mapped[:, [2, 0]], axis=1).tolist()
+    touches = np.array(
+        [
+            tuple(a) in be_set or tuple(b) in be_set or tuple(c) in be_set
+            for a, b, c in zip(e1, e2, e3)
+        ]
+    )
+
+    new_faces = mapped[touches]
+    if len(new_faces) == 0:
+        return fs.copy()
+
+    return np.concatenate([fs, new_faces.astype(fs.dtype)], axis=0)
 
 
 def get_mollified_edge_length(
@@ -349,6 +428,115 @@ def fair_mesh(
         out_vs = _fair_mesh(out_vs, fs, vids, **fair_kwargs)
 
     return out_vs * vs_scale + vs_center
+
+
+def triangulation_refine_leipa(
+    vs: np.ndarray, fs: np.ndarray, fids: np.ndarray, density_factor: float = np.sqrt(2)
+):
+    """
+    Refine triangles using barycentric subdivision and Delaunay triangulation
+    using Liepa's hole filling algorithm [1].
+
+    Parameters
+    ----------
+    vs : ndarray, shape (N, 3)
+        Vertex coordinates.
+    fs : ndarray, shape (M, 3)
+        Face indices.
+    fids : ndarray, shape (K,)
+        Indices of faces to refine.
+    density_factor : float, optional
+        Controls subdivision density. Default is sqrt(2).
+
+    Returns
+    -------
+    out_vs : ndarray, shape (N+P, 3)
+        Output vertices, with new vertices appended.
+    out_fs : ndarray, shape (M+Q, 3)
+        Output faces, with new faces appended.
+    FI : ndarray, shape (M,)
+        Maps original face indices to refined face indices.
+        FI[i] = -1 indicates face i was deleted.
+
+    References
+    ----------
+    .. [1] Code adapted from https://github.com/kentechx/hole-filling.
+    .. [2] Liepa, P. "Filling holes in meshes." (2003)
+    """
+    out_vs = np.copy(vs)
+    out_fs = np.copy(fs)
+
+    if fids is None or len(fids) == 0:
+        return out_vs, out_fs, np.arange(len(fs))
+
+    # initialize sigma
+    edges = igl.edges(
+        np.delete(out_fs, fids, axis=0)
+    )  # calculate the edge length without faces to be refined
+    edges = np.concatenate([edges, edges[:, [1, 0]]], axis=0)
+    edge_lengths = np.linalg.norm(out_vs[edges[:, 0]] - out_vs[edges[:, 1]], axis=-1)
+    edge_length_vids = edges[:, 0]
+    v_degrees = np.bincount(edge_length_vids, minlength=len(out_vs))
+    v_sigma = np.zeros(len(out_vs))
+    v_sigma[v_degrees > 0] = (
+        np.bincount(edge_length_vids, weights=edge_lengths, minlength=len(out_vs))[
+            v_degrees > 0
+        ]
+        / v_degrees[v_degrees > 0]
+    )
+    if np.any(v_sigma == 0):
+        v_sigma[v_sigma == 0] = np.median(v_sigma[v_sigma != 0])
+
+    all_sel_fids = np.copy(fids)
+    for _ in range(100):
+        # calculate sigma of face centers
+        vc_sigma = v_sigma[out_fs].mean(axis=1)  # nf
+
+        # check edge length
+        s = density_factor * np.linalg.norm(
+            out_vs[out_fs[all_sel_fids]].mean(1, keepdims=True)
+            - out_vs[out_fs[all_sel_fids]],
+            axis=-1,
+        )
+        cond = np.all(
+            np.logical_and(
+                s > vc_sigma[all_sel_fids, None], s > v_sigma[out_fs[all_sel_fids]]
+            ),
+            axis=1,
+        )
+        sel_fids = all_sel_fids[cond]  # need to subdivide
+
+        if len(sel_fids) == 0:
+            break
+
+        out_vs, added_fs = igl.false_barycentric_subdivision(out_vs, out_fs[sel_fids])
+
+        # update v_sigma after subdivision
+        v_sigma = np.concatenate([v_sigma, vc_sigma[sel_fids]], axis=0)
+        assert len(v_sigma) == len(out_vs)
+
+        # delete old faces from out_fs and all_sel_fids
+        out_fs[sel_fids] = -1
+        all_sel_fids = np.setdiff1d(all_sel_fids, sel_fids)
+
+        # add new vertices, faces & update selection
+        out_fs = np.concatenate([out_fs, added_fs], axis=0)
+        sel_fids = np.arange(len(out_fs) - len(added_fs), len(out_fs))
+        all_sel_fids = np.concatenate([all_sel_fids, sel_fids], axis=0)
+
+        edge_length = get_mollified_edge_length(out_vs, out_fs[all_sel_fids])
+        _, add_fs, *_ = igl.intrinsic_delaunay_triangulation(
+            edge_length.astype("f8"), out_fs[all_sel_fids]
+        )
+        out_fs[all_sel_fids] = add_fs
+
+    # update FI, remove deleted faces
+    FI = np.arange(len(fs))
+    FI[out_fs[: len(fs), 0] < 0] = -1
+    idx = np.where(FI >= 0)[0]
+    FI[idx] = np.arange(len(idx))
+    out_fs = out_fs[out_fs[:, 0] >= 0]
+    return out_vs, out_fs, FI
 
 
 def _robust_laplacian(

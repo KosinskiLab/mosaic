@@ -18,6 +18,8 @@ _module_map = {
         "fair_mesh",
         "get_ring_vertices",
         "close_holes",
+        "bridge_boundaries",
+        "triangulation_refine_leipa",
     ],
     ".volume": [
         "mesh_volume",
@@ -26,7 +28,7 @@ _module_map = {
         "MeshMerger",
         "MeshSimplifier",
     ],
-    ".hmff": ["equilibrate_fit", "setup_hmff"],
+    ".hmff": ["equilibrate_fit"],
     ".coarse_graining": ["mesh_to_cg"],
     ".texture": ["TextureSampler"],
 }
