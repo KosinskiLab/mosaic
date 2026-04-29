@@ -13,11 +13,10 @@ from qtpy.QtWidgets import (
     QGroupBox,
     QFrame,
     QLineEdit,
-    QMessageBox,
     QCheckBox,
 )
 from ..icons import icon
-from ..widgets import DialogFooter, PathSelector
+from ..widgets import DialogFooter, PathSelector, MosaicMessageBox
 
 
 class MeshMappingRow(QWidget):
@@ -182,7 +181,7 @@ class MeshMappingDialog(QDialog):
         try:
             Path(path).mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self,
                 "Invalid Output Directory",
                 f"Cannot use '{path}':\n{exc}",
@@ -190,7 +189,7 @@ class MeshMappingDialog(QDialog):
             return
 
         if not self.fit_combo.currentText():
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "Validation Error", "Please select a surface fit."
             )
             return
@@ -203,7 +202,7 @@ class MeshMappingDialog(QDialog):
                 break
 
         if not valid_mappings:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self,
                 "Validation Error",
                 "Please add at least one valid cluster mapping.",

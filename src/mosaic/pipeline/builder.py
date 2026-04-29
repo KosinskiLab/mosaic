@@ -20,18 +20,17 @@ from qtpy.QtWidgets import (
     QScrollArea,
     QSpinBox,
     QFileDialog,
-    QMessageBox,
     QCheckBox,
 )
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QFont
 
 from .executor import generate_runs
-from .operations import OPERATION_CATEGORIES, PIPELINE_PRESETS
 from .widgets import OperationCardWidget, PipelineTreeWidget
+from .operations import OPERATION_CATEGORIES, PIPELINE_PRESETS
 
-from ..__version__ import __version__
 from ..settings import Settings
+from ..widgets import MosaicMessageBox
 from ..widgets.settings import format_tooltip
 from ..stylesheets import Colors, Typography
 
@@ -418,7 +417,7 @@ class PipelineBuilderDialog(QDialog):
             with open(filename, "r") as f:
                 config = json.load(f)
         except (json.JSONDecodeError, IOError) as e:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "Load Error", f"Failed to load configuration: {str(e)}"
             )
             return None
@@ -456,7 +455,7 @@ class PipelineBuilderDialog(QDialog):
             self.skip_complete.setChecked(bool(config["skip_complete"]))
 
         if total_ops != valid_ops:
-            QMessageBox.information(
+            MosaicMessageBox.information(
                 self,
                 "Import Failed",
                 f"Imported {valid_ops} of {total_ops} operations.",
@@ -479,11 +478,11 @@ class PipelineBuilderDialog(QDialog):
             with open(filename, "w") as f:
                 json.dump(config, f, indent=2)
 
-            QMessageBox.information(
+            MosaicMessageBox.information(
                 self, "Export Success", f"Configuration exported to {filename}"
             )
         except IOError as e:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "Export Error", f"Failed to export configuration: {str(e)}"
             )
 
@@ -493,7 +492,7 @@ class PipelineBuilderDialog(QDialog):
             config = self.get_pipeline_config()
             runs = generate_runs(config)
 
-            QMessageBox.information(
+            MosaicMessageBox.information(
                 self,
                 "Validation Success",
                 f"Pipeline is valid!\n\n"
@@ -502,7 +501,7 @@ class PipelineBuilderDialog(QDialog):
                 f"- No cycles detected",
             )
         except Exception as e:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "Validation Failed", f"Pipeline validation failed:\n\n{str(e)}"
             )
 
@@ -519,7 +518,7 @@ class PipelineBuilderDialog(QDialog):
             config = self.get_pipeline_config()
             self.pipeline_runs = generate_runs(config)
         except Exception as e:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "Pipeline Error", f"Failed to generate runs:\n\n{str(e)}"
             )
             return None
@@ -528,6 +527,8 @@ class PipelineBuilderDialog(QDialog):
 
     def get_pipeline_config(self):
         """Get complete pipeline configuration in graph format."""
+        from ..__version__ import __version__
+
         return {
             "version": __version__,
             "format": "directed_graph",

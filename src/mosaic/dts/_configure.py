@@ -20,7 +20,6 @@ from qtpy.QtWidgets import (
     QPushButton,
     QFormLayout,
     QWidget,
-    QMessageBox,
     QGroupBox,
     QScrollArea,
     QLineEdit,
@@ -30,7 +29,7 @@ from qtpy.QtWidgets import (
 )
 import pyqtgraph as pg
 
-from ..widgets import PathSelector, generate_gradient_colors
+from ..widgets import PathSelector, generate_gradient_colors, MosaicMessageBox
 from ..icons import icon
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
 from ..stylesheets import Colors, Typography
@@ -264,7 +263,7 @@ class ConfigurePanel(QScrollArea):
                 "Lowpass:",
                 {
                     "type": "float",
-                    "min": 0.0,
+                    "min": -1.0,
                     "max": 10000.0,
                     "default": 140.0,
                     "step": 1.0,
@@ -275,7 +274,7 @@ class ConfigurePanel(QScrollArea):
                 "Highpass:",
                 {
                     "type": "float",
-                    "min": 0.0,
+                    "min": -1.0,
                     "max": 10000.0,
                     "default": 900.0,
                     "step": 1.0,
@@ -922,6 +921,8 @@ class ConfigurePanel(QScrollArea):
             ):
                 val = get_widget_value(self._param_widgets[k])
                 if val is not None and str(val).strip():
+                    if isinstance(val, (int, float)) and val < 0:
+                        continue
                     parts.append(f"{short}={val}")
             if parts:
                 content = ";@filter " + " ".join(parts) + "\n" + content
@@ -936,28 +937,29 @@ class ConfigurePanel(QScrollArea):
         mesh = get_widget_value(self._mesh_path) or None
 
         if output is None:
-            return QMessageBox.warning(
+            return MosaicMessageBox.warning(
                 self, "Error", "Output dir needs to be specified."
             )
 
         if mesh is None:
-            return QMessageBox.warning(
+            return MosaicMessageBox.warning(
                 self, "Error", "Mesh path needs to be specified."
             )
 
         output = Path(output)
         mesh_name = _setup_screen_dir(output, mesh)
         (output / "screen.dts").write_text(content, encoding="utf-8")
-        (output / "topol.top").write_text(f"{output / mesh_name} 1\n", encoding="utf-8")
 
     def _run_screen(self):
         mesh = str(get_widget_value(self._mesh_path) or "")
         if not mesh or not Path(mesh).exists():
-            return QMessageBox.warning(self, "Error", "Select a mesh file.")
+            return MosaicMessageBox.warning(self, "Error", "Select a mesh file.")
 
         output = str(get_widget_value(self._output_dir) or "")
         if not output:
-            return QMessageBox.warning(self, "Error", "Select an output directory.")
+            return MosaicMessageBox.warning(
+                self, "Error", "Select an output directory."
+            )
 
         return self._generate_screen(mesh, output)
 

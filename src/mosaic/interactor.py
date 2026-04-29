@@ -17,9 +17,9 @@ from qtpy.QtGui import QAction
 from qtpy.QtWidgets import (
     QListWidget,
     QMenu,
-    QMessageBox,
     QDialog,
 )
+from .widgets import MosaicMessageBox
 from qtpy.QtCore import (
     Qt,
     QObject,
@@ -572,7 +572,7 @@ class DataContainerInteractor(QObject):
         try:
             write_geometries(geometries, file_path, **export_data)
         except Exception as e:
-            QMessageBox.warning(None, "Error", str(e))
+            MosaicMessageBox.warning(None, "Error", str(e))
         return None
 
     def _show_properties_dialog(self) -> int:

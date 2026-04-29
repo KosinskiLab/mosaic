@@ -33,6 +33,7 @@ _module_map = {
         "StyledTreeWidgetItem",
     ],
     ".status_indicator": ["StatusIndicator", "CursorModeHandler", "ViewerModes"],
+    ".message_box": ["MosaicMessageBox"],
     ".appsettings": ["AppSettingsPanel"],
     ".tabs": ["TabBar", "TabWidget"],
     ".settings": [

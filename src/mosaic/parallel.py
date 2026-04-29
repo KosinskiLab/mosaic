@@ -263,6 +263,7 @@ def _default_handler(task_id, task_name, msg, is_warning=False):
 
 def _flush_messages():
     from qtpy.QtWidgets import QMessageBox
+    from .widgets import MosaicMessageBox
 
     if not _pending_messages:
         return
@@ -298,7 +299,7 @@ def _flush_messages():
                 lines.append(f"  ... and {len(items) - 20} more")
             detail = "\n".join(lines)
 
-        box = QMessageBox(icon, title, text, QMessageBox.StandardButton.Ok)
+        box = MosaicMessageBox(icon, title, text, QMessageBox.StandardButton.Ok)
         if first_line:
             box.setInformativeText(first_line)
         if detail:

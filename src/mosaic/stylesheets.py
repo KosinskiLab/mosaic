@@ -320,6 +320,7 @@ def _build_QCheckBox_style():
     QCheckBox {{
         spacing: 5px;
         background-color: transparent;
+        outline: none;
     }}
     QCheckBox::indicator {{
         width: 18px;
@@ -443,15 +444,6 @@ def _build_QListWidget_style():
     }}
     QListWidget::item:selected {{
         font-weight: 500;
-    }}
-    QListWidget QLineEdit, QTreeWidget QLineEdit {{
-        background-color: palette(base);
-        border: 1px solid {Colors.PRIMARY};
-        border-radius: {Colors.RADIUS}px;
-        padding: 0px 3px;
-        margin: 0px 8px;
-        selection-background-color: {Colors.alpha("PRIMARY", 0.6)};
-        font-size: {Typography.BODY}px;
     }}
 """
 

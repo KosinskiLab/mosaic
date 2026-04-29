@@ -26,7 +26,8 @@ def _build_stem(kind, **kwargs):
     """Derive the cache file stem from analysis kind and parameters."""
     if kind == "distance":
         label = sanitize_label(kwargs.get("reference_label", "reference"))
-        return f"distance_to_{label}"
+        suffix = "inv" if kwargs.get("invert", False) else "fwd"
+        return f"distance_{suffix}_{label}"
     if kind == "fluctuation":
         return f"rmsf_w{kwargs.get('window', 5)}"
     if kind == "hmff_potential":
@@ -140,7 +141,9 @@ def compute(
     if cached is not None:
         return cached
 
-    if kind == "fluctuation":
+    if kind == "distance":
+        result = _compute_distance(trajectory_dir, scale, offset, **kwargs)
+    elif kind == "fluctuation":
         result = _compute_fluctuation(trajectory_dir, scale, offset, **kwargs)
     elif kind == "hmff_potential":
         result = _compute_hmff(
@@ -216,8 +219,76 @@ def _compute_fluctuation(
     }
 
 
+def _compute_distance(
+    trajectory_dir,
+    scale,
+    offset,
+    reference,
+    invert: bool = False,
+    **kwargs,
+):
+    """Per-frame distance between trajectory mesh and a reference geometry.
+
+    Parameters
+    ----------
+    trajectory_dir : str
+        Path to trajectory directory.
+    scale : float
+        DTS scale factor.
+    offset : np.ndarray
+        DTS offset.
+    reference : Geometry or np.ndarray
+        Reference point set or geometry to measure against.
+    invert : bool, optional
+        If ``False`` (default), measure reference → mesh: for each reference
+        point find the nearest mesh point. Robust to incomplete segmentations.
+        If ``True``, measure mesh → reference: for each mesh vertex find the
+        nearest reference point. Detects mesh drift into unsegmented regions;
+        returns per-vertex distances.
+
+    Returns
+    -------
+    dict
+        Standard analysis result dict. ``per_vertex`` is only populated when
+        ``invert=True``.
+    """
+    from ..geometry import Geometry
+    from ..parallel import report_progress
+    from ..properties import GeometryProperties
+
+    frame_indices, scalars, per_vertex = [], [], []
+    n_frames = len(list_trajectory_files(trajectory_dir))
+
+    for i, (pts, faces, _, _) in enumerate(iter_frames(trajectory_dir, scale, offset)):
+        report_progress(current=i, total=n_frames)
+        mesh = _build_mesh(pts, faces)
+        mesh_geom = Geometry(points=pts, model=mesh)
+
+        ref, query = mesh_geom, [reference]
+        if not invert:
+            ref, query = reference, [mesh_geom]
+
+        dist = GeometryProperties.compute("distance", ref, queries=query)
+        if dist is None:
+            continue
+
+        dist = np.asarray(dist)
+        frame_indices.append(i)
+        if invert:
+            per_vertex.append(dist)
+        scalars.append(float(np.mean(dist)))
+
+    return {
+        "frames": np.array(frame_indices, dtype=float),
+        "values": np.array(scalars),
+        "per_vertex": np.array(per_vertex) if per_vertex else None,
+        "column": "distance",
+        "metadata": {"computation": "distance", "invert": str(invert)},
+    }
+
+
 def _compute_property(trajectory_dir, property_name, scale, offset, **kwargs):
-    """Per-frame mesh property (area, volume, distance, etc.)."""
+    """Per-frame mesh property (area, volume, etc.)."""
     from ..geometry import Geometry
     from ..parallel import report_progress
     from ..properties import GeometryProperties
@@ -278,13 +349,6 @@ def _vertex_bending_energy(vertices, triangles, kappa, kappa_g=0.0, c0=0.0):
 
     vertices = np.asarray(vertices, dtype=np.float64)
     triangles = np.asarray(triangles, dtype=np.int32)
-
-    # TODO: Check the useKring interface changes
-
-    # From parametrization.py
-    # pd1, pd2, pv1, pv2, bad_vs = igl.principal_curvature(
-    #     self.vertices, self.triangles, radius=radius, useKring=use_k_ring
-    # )
 
     _, _, pv1, pv2, _ = igl.principal_curvature(vertices, triangles, radius=5)
 
@@ -382,8 +446,7 @@ def _hmff_potential(
     theta = interpolator(vertices)
 
     # Match FreeDTS VertexInScalarFieldPotential.cpp: all out-of-bounds
-    # vertices get padding * boundaryValues[z_clamped] * thetaMax,
-    # with z clamped to [0, nz - 1].
+    # vertices get padding * boundaryValues[z_clamped] * thetaMax
     mask = np.isnan(theta)
     if mask.any() and boundary_values is not None:
         z_idx = np.clip(vertices[mask, 2].astype(int), 0, len(boundary_values) - 1)

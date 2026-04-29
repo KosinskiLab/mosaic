@@ -905,6 +905,101 @@ MethodRegistry.register(
 
 MethodRegistry.register(
     Operation(
+        name="dts-analysis",
+        description="Compute DTS trajectory metrics for a run or screen directory.",
+        targets=False,
+        common_params=(
+            Param(
+                "run",
+                "path",
+                description="Path to a DTS run or screen directory.",
+                file_mode=False,
+            ),
+            Param(
+                "force",
+                "bool",
+                default=False,
+                description="Recompute even if cached results exist.",
+            ),
+        ),
+        methods=(
+            Method(
+                display_name="HMFF Energy",
+                internal_name="hmff_energy",
+                description="Per-frame HMFF potential energy from density coupling.",
+                gui=False,
+            ),
+            Method(
+                display_name="Bending Energy",
+                internal_name="bending_energy",
+                description="Per-frame Helfrich bending energy.",
+                gui=False,
+            ),
+            Method(
+                display_name="Fluctuation",
+                internal_name="fluctuation",
+                description="Per-vertex positional fluctuation (RMSF).",
+                params=(
+                    Param(
+                        "window",
+                        "int",
+                        default=5,
+                        min=1,
+                        description="Half-window size for RMSF.",
+                    ),
+                    Param(
+                        "start_frame",
+                        "int",
+                        default=None,
+                        description="First frame index (inclusive).",
+                    ),
+                    Param(
+                        "end_frame",
+                        "int",
+                        default=None,
+                        description="Last frame index (exclusive).",
+                    ),
+                ),
+                gui=False,
+            ),
+            Method(
+                display_name="Distance",
+                internal_name="distance",
+                description="Per-frame mean distance between a reference geometry and the trajectory mesh.",
+                params=(
+                    Param(
+                        "reference", "str", description="Reference geometry (e.g. #0)."
+                    ),
+                    Param(
+                        "invert",
+                        "bool",
+                        default=False,
+                        description=(
+                            "If false (default), measure reference → mesh. "
+                            "If true, measure mesh → reference."
+                        ),
+                    ),
+                ),
+                gui=False,
+            ),
+            Method(
+                display_name="Mesh Area",
+                internal_name="mesh_area",
+                description="Per-frame total mesh surface area.",
+                gui=False,
+            ),
+            Method(
+                display_name="Mesh Volume",
+                internal_name="mesh_volume",
+                description="Per-frame total mesh volume.",
+                gui=False,
+            ),
+        ),
+    )
+)
+
+MethodRegistry.register(
+    Operation(
         name="ingest",
         description="Manage CZI CryoET portal data.",
         targets=False,

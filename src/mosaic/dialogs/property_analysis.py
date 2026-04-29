@@ -22,7 +22,6 @@ from qtpy.QtWidgets import (
     QPushButton,
     QFormLayout,
     QWidget,
-    QMessageBox,
     QTableWidget,
     QHeaderView,
     QTableWidgetItem,
@@ -30,6 +29,7 @@ from qtpy.QtWidgets import (
     QFileDialog,
     QDoubleSpinBox,
     QStackedWidget,
+    QAbstractItemView,
 )
 import pyqtgraph as pg
 
@@ -47,6 +47,7 @@ from ..widgets import (
     HistogramRangeSlider,
     TabWidget,
     generate_gradient_colors,
+    MosaicMessageBox,
 )
 
 
@@ -168,7 +169,6 @@ def _populate_list(geometries, tree_state=None):
         target_list.apply_state(tree_state, uuid_to_items)
     else:
         target_list.update(uuid_to_items)
-
     return target_list
 
 
@@ -583,12 +583,10 @@ class PropertyAnalysisDialog(QDialog):
 
     def _refresh_target_lists(self):
         """Incrementally update any active target list with current geometries."""
-        target_list = self.option_widgets.get("queries")
-        if target_list is None:
-            return
-        data_source = getattr(target_list, "_data_source", None)
-        if data_source is None:
-            return
+        if (target_list := self.option_widgets.get("queries")) is None:
+            return None
+        if (data_source := getattr(target_list, "_data_source", None)) is None:
+            return None
         kwargs = getattr(target_list, "_data_kwargs", {})
         geometries = self.cdata.format_datalist(data_source, **kwargs)
         uuid_to_items = _make_uuid_to_items(geometries)
@@ -596,6 +594,9 @@ class PropertyAnalysisDialog(QDialog):
 
     def closeEvent(self, event):
         """Disconnect signals and restore textured geometries when dialog closes."""
+        if hasattr(self, "plot_widget"):
+            self.plot_widget.close()
+
         for sampler in getattr(self, "_texture_samplers", {}).values():
             sampler.cleanup()
 
@@ -1049,12 +1050,17 @@ class PropertyAnalysisDialog(QDialog):
         layout = QVBoxLayout(self.statistics_tab)
 
         self.stats_table = QTableWidget()
+        self.stats_table.setAlternatingRowColors(True)
+        self.stats_table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.stats_table.setSortingEnabled(True)
+        self.stats_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
         self.stats_table.setColumnCount(5)
         self.stats_table.setHorizontalHeaderLabels(
             ["Object", "Min", "Max", "Mean", "Std Dev"]
-        )
-        self.stats_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
         )
 
         layout.addWidget(self.stats_table)
@@ -1164,7 +1170,7 @@ class PropertyAnalysisDialog(QDialog):
                 )
                 self._texture_samplers[cache_key] = sampler
             except Exception as e:
-                QMessageBox.warning(self, "Texture Error", str(e))
+                MosaicMessageBox.warning(self, "Texture Error", str(e))
                 return None
 
         return self._texture_samplers[cache_key]
@@ -1260,7 +1266,7 @@ class PropertyAnalysisDialog(QDialog):
                 if value is not None:
                     self._cache.set(geometry, parameters, value)
             except Exception as e:
-                QMessageBox.warning(self, "Error", str(e))
+                MosaicMessageBox.warning(self, "Error", str(e))
                 return None
 
     def _is_categorical(self, geometries):
@@ -1508,7 +1514,9 @@ class PropertyAnalysisDialog(QDialog):
         geometries = self._get_selected_geometries()
 
         if not geometries:
-            QMessageBox.warning(self, "No Selection", "Please select geometry first.")
+            MosaicMessageBox.warning(
+                self, "No Selection", "Please select geometry first."
+            )
             return
 
         categorical = self._is_categorical(geometries)
@@ -1546,7 +1554,7 @@ class PropertyAnalysisDialog(QDialog):
             if id(self.cdata.models) in dirty_interactors:
                 self.cdata.models.render()
         else:
-            QMessageBox.information(
+            MosaicMessageBox.information(
                 self, "No Points", "No points fall within the selected range."
             )
 
@@ -1554,7 +1562,9 @@ class PropertyAnalysisDialog(QDialog):
         """Split each selected geometry into one object per unique category."""
         geometries = self._get_selected_geometries()
         if not geometries:
-            QMessageBox.warning(self, "No Selection", "Please select geometry first.")
+            MosaicMessageBox.warning(
+                self, "No Selection", "Please select geometry first."
+            )
             return
 
         if not self._is_categorical(geometries):
@@ -1898,15 +1908,17 @@ class PropertyAnalysisDialog(QDialog):
 
         try:
             export_func(file_path)
-            QMessageBox.information(self, "Success", f"{title} completed successfully")
+            MosaicMessageBox.information(
+                self, "Success", f"{title} completed successfully"
+            )
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to export: {str(e)}")
+            MosaicMessageBox.critical(self, "Error", f"Failed to export: {str(e)}")
 
     def _export_data(self):
         """Export analysis data to a CSV file."""
         selected_items = self._get_selection()
         if not selected_items:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self, "No Selection", "Please select at least one object."
             )
             return

@@ -6,6 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import re
 import json
 import shutil
 import textwrap
@@ -77,6 +78,11 @@ def _filter_single_volume(
 
     data = Density.from_file(volume_path)
     sampling, origin = data.sampling_rate, data.origin
+
+    if lowpass_cutoff is not None and lowpass_cutoff < 0:
+        lowpass_cutoff = None
+    if highpass_cutoff is not None and highpass_cutoff < 0:
+        highpass_cutoff = None
 
     bpf = BandPassFilter(
         lowpass=lowpass_cutoff,
@@ -559,6 +565,10 @@ def _merge_parameters(old_summary, new_parameters):
     return merged
 
 
+def _natural_sort_key(s: str):
+    return [int(c) if c.isdigit() else c for c in re.split(r"(\d+)", s)]
+
+
 def _is_run_directory(path: Path) -> bool:
     """Return True if *path* looks like a DTS run directory."""
     if not path.is_dir():
@@ -763,13 +773,14 @@ def get_screen_status(screen_dir: str) -> List[Dict]:
     if summary_path.exists():
         with open(summary_path, "r") as f:
             summary = json.load(f)
-        return [_run_info(root / r["run_id"]) for r in summary["runs"]]
+        runs = sorted(summary["runs"], key=lambda r: _natural_sort_key(r["run_id"]))
+        return [_run_info(root / r["run_id"]) for r in runs]
 
     if _is_run_directory(root):
         return [_run_info(root)]
 
     subdirs = sorted(
         [d for d in root.iterdir() if _is_run_directory(d)],
-        key=lambda d: d.name,
+        key=lambda d: _natural_sort_key(d.name),
     )
     return [_run_info(d) for d in subdirs]

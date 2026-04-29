@@ -638,9 +638,13 @@ class AnalysisPanel(QWidget):
     def _export_plot(self):
         from qtpy.QtWidgets import QFileDialog
 
+        win = self.window()
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Plot", "", "PNG (*.png);;SVG (*.svg)"
+            win, "Export Plot", "", "PNG (*.png);;SVG (*.svg)"
         )
+        if win is not None:
+            win.raise_()
+            win.activateWindow()
         if not path:
             return
 
@@ -655,9 +659,13 @@ class AnalysisPanel(QWidget):
     def _export_data(self):
         from qtpy.QtWidgets import QFileDialog
 
+        win = self.window()
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Data", "", "CSV (*.csv);;TSV (*.tsv)"
+            win, "Export Data", "", "CSV (*.csv);;TSV (*.tsv)"
         )
+        if win is not None:
+            win.raise_()
+            win.activateWindow()
         if not path:
             return
 
@@ -685,9 +693,9 @@ class AnalysisPanel(QWidget):
                         parts.append(str(y[frame_i]))
                         f.write(sep.join(parts) + "\n")
         except Exception as e:
-            from qtpy.QtWidgets import QMessageBox
+            from ..widgets import MosaicMessageBox
 
-            QMessageBox.warning(self, "Export Error", str(e))
+            MosaicMessageBox.warning(self, "Export Error", str(e))
 
     def _export_statistics(self):
         from qtpy.QtWidgets import QFileDialog
@@ -696,9 +704,13 @@ class AnalysisPanel(QWidget):
         if tbl.rowCount() == 0:
             return
 
+        win = self.window()
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Statistics", "", "CSV (*.csv);;TSV (*.tsv)"
+            win, "Export Statistics", "", "CSV (*.csv);;TSV (*.tsv)"
         )
+        if win is not None:
+            win.raise_()
+            win.activateWindow()
         if not path:
             return
 
@@ -712,3 +724,7 @@ class AnalysisPanel(QWidget):
                     item = tbl.item(row, col)
                     parts.append(item.text() if item else "")
                 f.write(sep.join(parts) + "\n")
+
+    def closeEvent(self, event):
+        self._plot_widget.close()
+        super().closeEvent(event)

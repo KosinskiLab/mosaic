@@ -17,12 +17,11 @@ from qtpy.QtWidgets import (
     QGroupBox,
     QPushButton,
     QWidget,
-    QMessageBox,
 )
 
 from ..icons import icon
 from ..stylesheets import Colors
-from ..widgets import DialogFooter, PathSelector
+from ..widgets import DialogFooter, PathSelector, MosaicMessageBox
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
 
 
@@ -213,7 +212,7 @@ class MeshEquilibrationDialog(QDialog):
         try:
             Path(path).mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            QMessageBox.warning(
+            MosaicMessageBox.warning(
                 self,
                 "Invalid Output Directory",
                 f"Cannot use '{path}':\n{exc}",

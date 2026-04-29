@@ -21,7 +21,6 @@ from qtpy.QtWidgets import (
     QGroupBox,
     QTextEdit,
     QProgressBar,
-    QMessageBox,
     QApplication,
 )
 from qtpy.QtGui import QTextCursor, QPainter, QColor, QPen, QPainterPath
@@ -665,16 +664,13 @@ class StatusIndicator:
         if cancelled and card is not None:
             card.mark_cancelled()
         elif not cancelled:
-            from ..stylesheets import _build_QMessageBox_style
+            from .message_box import MosaicMessageBox
 
-            box = QMessageBox(self.task_monitor)
-            box.setWindowTitle("Cannot Cancel")
-            box.setIcon(QMessageBox.Icon.Warning)
-            box.setText(f"Task '{task_name}' cannot be cancelled.")
-            box.setStandardButtons(QMessageBox.StandardButton.Yes)
-            box.setDefaultButton(QMessageBox.StandardButton.Yes)
-            box.setStyleSheet(_build_QMessageBox_style())
-            box.exec()
+            MosaicMessageBox.warning(
+                self.task_monitor,
+                "Cannot Cancel",
+                f"Task '{task_name}' cannot be cancelled.",
+            )
 
     def _on_clear_finished_requested(self):
         """Handle clear finished tasks request from dialog."""

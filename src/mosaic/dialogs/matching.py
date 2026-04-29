@@ -18,11 +18,10 @@ from qtpy.QtWidgets import (
     QWidget,
     QGridLayout,
     QFormLayout,
-    QMessageBox,
 )
 from ..icons import icon
 from ..stylesheets import Typography
-from ..widgets import PathSelector, DialogFooter, TabWidget
+from ..widgets import PathSelector, DialogFooter, TabWidget, MosaicMessageBox
 
 
 class InputDataTab(QWidget):
@@ -545,14 +544,14 @@ class TemplateMatchingDialog(QDialog):
 
         directory = data.get("output_directory", "")
         if len(directory) == 0:
-            return QMessageBox.warning(
+            return MosaicMessageBox.warning(
                 self, "Error", "Missing working directory specification."
             )
 
         target_path = data.get("tomogram", "")
         template_path = data.get("template", "")
         if len(target_path) == 0 or len(template_path) == 0:
-            return QMessageBox.warning(
+            return MosaicMessageBox.warning(
                 self, "Error", "Missing template or tomogram path specification."
             )
 

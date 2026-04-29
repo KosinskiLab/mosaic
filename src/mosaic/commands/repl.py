@@ -382,11 +382,6 @@ class MosaicREPL:
         )
         self._console.print()
 
-        self._console.print(
-            "This is a new Mosaic feature and might have rough edges.\n",
-            style="mosaic.warning",
-        )
-
     @staticmethod
     def _build_prompt() -> str:
         """Build a readline-safe prompt string."""

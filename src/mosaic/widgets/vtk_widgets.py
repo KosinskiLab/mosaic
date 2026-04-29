@@ -282,17 +282,13 @@ class BoundingBoxManager:
     def _create_session_bounds(self):
         """Create session bounds from cdata.shape"""
         if (shape := self.cdata._data.metadata.get("physical_shape")) is None:
-            from qtpy.QtWidgets import QMessageBox
-            from ..stylesheets import _build_QMessageBox_style
+            from .message_box import MosaicMessageBox
 
-            box = QMessageBox(None)
-            box.setWindowTitle("Session Bound Unavailable")
-            box.setIcon(QMessageBox.Icon.Warning)
-            box.setText("Session box unavailable. Load some data first.")
-            box.setStandardButtons(QMessageBox.StandardButton.Yes)
-            box.setDefaultButton(QMessageBox.StandardButton.Yes)
-            box.setStyleSheet(_build_QMessageBox_style())
-            return box.exec()
+            return MosaicMessageBox.warning(
+                None,
+                "Session Bound Unavailable",
+                "Session box unavailable. Load some data first.",
+            )
 
         self.session_box_actor = create_bounding_box_actor(shape)
         self.renderer.AddActor(self.session_box_actor)

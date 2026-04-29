@@ -276,6 +276,7 @@ class HistogramDialog(QDialog):
 
     def closeEvent(self, event):
         """Disconnect when dialog closes"""
+        self.histogram_widget.histogram_plot.close()
         try:
             self.cdata.data.render_update.disconnect(self.update_histogram)
             self.histogram_widget.cutoff_changed.disconnect(self._on_cutoff_changed)

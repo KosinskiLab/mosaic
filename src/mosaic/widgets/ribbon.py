@@ -515,7 +515,7 @@ class RibbonToolBar(QWidget):
             b for b in reversed(self._buttons) if isinstance(b, RibbonButton)
         ]
         if not ribbon_buttons:
-            return
+            return None
 
         for btn in ribbon_buttons:
             btn._cache_widths()

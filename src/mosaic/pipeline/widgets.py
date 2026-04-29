@@ -7,6 +7,9 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import uuid
+from qtpy.QtGui import QFont
+from qtpy.QtCore import Qt, Signal, QTimer
+
 from qtpy.QtWidgets import (
     QFrame,
     QVBoxLayout,
@@ -23,8 +26,6 @@ from qtpy.QtWidgets import (
     QCheckBox,
     QAbstractItemView,
 )
-from qtpy.QtCore import Qt, Signal
-from qtpy.QtGui import QFont
 
 from ..dialogs import ImportDataDialog
 from ..widgets.settings import (
@@ -48,24 +49,22 @@ def _make_grid():
     grid.setHorizontalSpacing(6)
     grid.setVerticalSpacing(6)
     for i in range(_COLS):
-        grid.setColumnStretch(i * 2, 0)  # label: natural width
-        grid.setColumnStretch(i * 2 + 1, 1)  # widget: stretch to fill
+        grid.setColumnStretch(i * 2, 0)
+        grid.setColumnStretch(i * 2 + 1, 1)
     return grid
 
 
 def _add_to_grid(grid, label_text, widget, row, col, wide=False):
     """Add a label: widget pair to the grid at the given logical column."""
     label = QLabel(f"{label_text}:")
-
     widget.setFixedHeight(Colors.WIDGET_HEIGHT)
 
+    width, gcol = 1, 2 * col
     if wide:
-        grid.addWidget(label, row, 0)
-        grid.addWidget(widget, row, 1, 1, _COLS * 2 - 1)
-    else:
-        gcol = col * 2
-        grid.addWidget(label, row, gcol)
-        grid.addWidget(widget, row, gcol + 1)
+        width = _COLS * 2 - 1
+
+    grid.addWidget(label, row, gcol)
+    grid.addWidget(widget, row, gcol + 1, 1, width)
 
 
 def _pack_settings_into_grid(grid, settings_list, start_row=0):
@@ -77,24 +76,13 @@ def _pack_settings_into_grid(grid, settings_list, start_row=0):
         wide = setting.get("type") == "PathSelector"
         widget = create_setting_widget(setting)
 
-        if wide:
-            if col != 0:
-                row += 1
-                col = 0
-            _add_to_grid(grid, setting["label"], widget, row, 0, wide=True)
-            row += 1
-            col = 0
-        else:
-            _add_to_grid(grid, setting["label"], widget, row, col)
-            col += 1
-            if col >= _COLS:
-                col = 0
-                row += 1
+        if wide or col >= _COLS:
+            col, row = 0, row + int(col != 0)
 
-        param_name = setting.get("parameter")
-        if param_name:
+        _add_to_grid(grid, setting["label"], widget, row, col, wide=wide)
+        if param_name := setting.get("parameter"):
             widgets[param_name] = widget
-
+        col += 1
     return widgets, row if col == 0 else row + 1
 
 
@@ -106,6 +94,7 @@ def _clear_grid_from_row(grid, start_row):
         r, _c, _rs, _cs = grid.getItemPosition(i)
         if r >= start_row:
             to_remove.append(item)
+
     for item in to_remove:
         grid.removeItem(item)
         if item.widget():
@@ -156,7 +145,7 @@ class OperationCardWidget(QFrame):
             OperationCardWidget {{
                 border: 1px solid {Colors.BORDER_DARK};
                 border-left: 4px solid {self.category_color};
-                border-radius: 6px;
+                border-radius: {Colors.RADIUS}px;
                 background-color: transparent;
             }}
         """
@@ -331,23 +320,23 @@ class OperationCardWidget(QFrame):
             params_btn.setEnabled(False)
             self.params_btn = params_btn
             settings_outer.addWidget(params_btn)
-        else:
-            if len(settings) == 0:
-                return None
+            return None
 
-            self._add_base_settings(settings)
-            if hasattr(self, "method_settings_config") and self.method_settings_config:
-                self._add_method_settings_section()
+        self._add_base_settings(settings)
+        if hasattr(self, "method_settings_config") and self.method_settings_config:
+            self._add_method_settings_section()
 
     def _add_base_settings(self, settings):
         """Add base operation settings to the grid layout."""
+        if len(settings) == 0:
+            return None
+
         self.method_combo = None
         base_settings = settings["settings"][0] if settings["settings"] else None
 
         if base_settings and "options" in base_settings:
             self.method_combo = create_setting_widget(base_settings)
             self.method_combo.currentTextChanged.connect(self._update_method_settings)
-            self.method_combo.setMaximumWidth(220)
             param_name = base_settings.get("parameter", "method")
             self.method_combo.setProperty("parameter", param_name)
             _add_to_grid(
@@ -356,7 +345,6 @@ class OperationCardWidget(QFrame):
                 self.method_combo,
                 self._grid_row,
                 0,
-                wide=True,
             )
             self._settings_widgets[param_name] = self.method_combo
             self._grid_row += 1
@@ -379,7 +367,7 @@ class OperationCardWidget(QFrame):
     def _update_method_settings(self, method):
         """Update method-specific settings based on selected method."""
         if not hasattr(self, "_method_start_row"):
-            return
+            return None
 
         # Remove old method parameter widgets from tracking
         if hasattr(self, "_last_method_params"):
@@ -396,7 +384,7 @@ class OperationCardWidget(QFrame):
 
         if method_settings:
             # Separator with method name
-            separator = QLabel(f"  {method} Settings")
+            separator = QLabel(f" {method} Settings")
             separator.setFixedHeight(Colors.WIDGET_HEIGHT)
             separator.setStyleSheet(
                 f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
@@ -415,12 +403,17 @@ class OperationCardWidget(QFrame):
             self._settings_widgets.update(new_widgets)
 
         self.settings_changed.emit()
+        QTimer.singleShot(0, self._adjust_height)
+
+    def _adjust_height(self):
+        if self.expanded:
+            self.resize(self.width(), self.sizeHint().height())
 
     def _select_input_files(self):
         """Open file dialog to select files."""
         files, _ = QFileDialog.getOpenFileNames(self, "Select Input Files")
         if not files:
-            return
+            return None
 
         self.input_files = sorted(files, key=natural_sort_key)
         self._update_file_list()
@@ -453,7 +446,7 @@ class OperationCardWidget(QFrame):
     def _configure_parameters(self):
         """Open dialog to configure import parameters for each file."""
         if not self.input_files:
-            return
+            return None
 
         dialog = ImportDataDialog(self)
         dialog.set_files(self.input_files)
@@ -521,7 +514,6 @@ class OperationCardWidget(QFrame):
     def set_settings(self, settings):
         """Set operation settings from config."""
 
-        # Restore graph metadata
         self.node_id = settings.get("id", self.node_id)
         self.input_nodes = settings.get("inputs", [])
 
