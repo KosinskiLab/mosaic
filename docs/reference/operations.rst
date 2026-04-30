@@ -5,15 +5,6 @@ Operations
 
 The ``operations`` module provides a collection of geometry processing functions for point cloud and mesh manipulation. These operations handle common tasks like clustering, filtering, resampling, and surface fitting.
 
-Decorator
-~~~~~~~~~
-
-.. autosummary::
-   :toctree: rst
-
-   use_point_data
-
-
 Point Cloud Processing
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -25,7 +16,6 @@ Operations for filtering, resampling, and extracting features from point clouds.
    downsample
    remove_outliers
    skeletonize
-   crop
 
 
 Clustering
