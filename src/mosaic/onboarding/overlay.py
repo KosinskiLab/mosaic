@@ -20,7 +20,15 @@ from qtpy.QtCore import (
     QTimer,
     QCoreApplication,
 )
-from qtpy.QtGui import QPainter, QColor, QPainterPath, QBrush, QPen, QMouseEvent
+from qtpy.QtGui import (
+    QPainter,
+    QColor,
+    QPainterPath,
+    QBrush,
+    QPen,
+    QMouseEvent,
+    QRegion,
+)
 from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -212,6 +220,7 @@ class SpotlightOverlay(QWidget):
                         self._spotlight_rect = QRect(
                             local, self._spotlight_global.size()
                         )
+                        self._update_input_mask()
                         self.update()
         elif obj is self._spotlight_widget and event.type() in (
             QEvent.Type.Resize,
@@ -253,10 +262,6 @@ class SpotlightOverlay(QWidget):
         self._dim_enabled = dim
         self._highlight_padding = padding
 
-        # When not dimming, let clicks pass through naturally; no need to
-        # forward through the spotlight rect.
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, not dim)
-
         self._sync_geometry()
 
         widget_rect = widget.rect()
@@ -271,7 +276,50 @@ class SpotlightOverlay(QWidget):
         )
 
         self._position_tooltip(position)
+        self._update_input_mask()
         self.update()
+
+    def _update_input_mask(self):
+        """Define which pixels absorb mouse input via a region mask.
+
+        Toggling ``WA_TransparentForMouseEvents`` on a top-level
+        translucent window has no effect on X11 once the window is
+        shown, so click pass-through must come from the window mask.
+        The mask hole is inset slightly relative to the painted
+        rounded subtraction so the antialiased visible edge stays
+        inside the mask region; the mask's own 1-bit straight edge
+        sits in pixels that are transparent on both sides and is
+        invisible.
+        """
+        if self._spotlight_rect is None:
+            self.clearMask()
+            return
+
+        if self._dim_enabled:
+            # Inset must keep the mask-hole corners inside the painted
+            # rounded curve (radius 8) and inside the inner edge of the
+            # 2px spotlight border. (8 - inset) * sqrt(2) <= 7 gives
+            # inset >= ~3.1; rounding up to 4 leaves room for AA.
+            inset = 4
+            hole = self._spotlight_rect.adjusted(inset, inset, -inset, -inset)
+            region = QRegion(self.rect()).subtracted(QRegion(hole))
+        else:
+            region = QRegion()
+            if self._show_spotlight:
+                outer = QRegion(self._spotlight_rect.adjusted(-3, -3, 3, 3))
+                inner = QRegion(self._spotlight_rect.adjusted(3, 3, -3, -3))
+                region = outer.subtracted(inner)
+
+        if self._tooltip.isVisible():
+            region = region.united(QRegion(self._tooltip.geometry()))
+
+        if region.isEmpty():
+            # An empty region resolves to clearMask() on some platforms,
+            # which would make the entire window absorb input again.
+            # A 1x1 mask off-screen keeps the window effectively click-through.
+            region = QRegion(-1, -1, 1, 1)
+
+        self.setMask(region)
 
     def _position_tooltip(self, position: str):
         if self._spotlight_rect is None:
