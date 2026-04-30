@@ -75,6 +75,5 @@ src/mosaic/mcp
 src/mosaic/scripts/mcp_server.py
 src/mosaic/models/
 src/mosaic/czi/
-src/mosaic/onboarding/
 .superpowers/
 packaging/

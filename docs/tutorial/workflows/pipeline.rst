@@ -2,17 +2,13 @@
 Batch Processing
 ==================
 
+.. versionadded:: 1.1.0
+
 This tutorial demonstrates how to build reproducible pipelines that process entire cryo-ET datasets automatically. Starting from membrane segmentations, we generate seed points for constrained template matching.
-
-.. note::
-
-   Batch processing is available from version 1.1.0 of Mosaic.
 
 
 Requirements
 ------------
-
-Install Mosaic according to the :doc:`installation instructions <../installation>`.
 
 This tutorial assumes voxel-level membrane segmentations are available, with one file per tomogram:
 

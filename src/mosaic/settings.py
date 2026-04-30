@@ -122,6 +122,7 @@ class UISettings:
     skipped_version: str = ""
     theme_mode: str = "system"
     always_open_as_volume: bool = False
+    onboarding_done: bool = False
 
 
 @dataclass

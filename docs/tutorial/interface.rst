@@ -1,15 +1,15 @@
-========
-Concepts
-========
+=========
+Interface
+=========
 
-This section introduces the fundamental concepts behind Mosaic and explains the main components of the user interface.
+This page describes the Mosaic UI layout and interaction modes.
 
 UI Layout
 ---------
 
 The Mosaic interface consists of several key components:
 
-1. **Menu Bar**: Access to file operations, view settings and help (on macOS its in the top menu)
+1. **Menu Bar**: Access to file operations, view settings and help (on macOS it's in the top menu)
 2. **Tab Bar**: Switches between major functional areas
 
    - **Segmentation**: Work with point cloud data and analyze object properties
@@ -30,7 +30,7 @@ The Mosaic interface consists of several key components:
 
 Additional dock widgets such as the *Volume Viewer* will be displayed at the bottom of the window.
 
-.. figure:: ../../_static/tutorial/mosaic_layout.png
+.. figure:: ../_static/tutorial/mosaic_layout.png
    :width: 100%
    :align: center
 
@@ -39,13 +39,13 @@ Additional dock widgets such as the *Volume Viewer* will be displayed at the bot
 Object Browser
 --------------
 
-.. figure:: ../../_static/tutorial/mosaic_object_browser.png
+.. figure:: ../_static/tutorial/mosaic_object_browser.png
    :width: 40%
    :align: right
 
    Object Browser
 
-The *Object Browser* is your central hub for managing all data in Mosaic. It displays all loaded objects in two main categories:
+The *Object Browser* lists all loaded objects in two categories:
 
 - **Clusters**: Point cloud objects, e.g. a segmentation, where each point is defined by:
 
@@ -71,7 +71,7 @@ The search field at the top can be used to filter objects in both categories sim
 Context Menu
 ------------
 
-.. figure:: ../../_static/tutorial/mosaic_context.png
+.. figure:: ../_static/tutorial/mosaic_context.png
    :width: 50%
    :align: right
 
@@ -84,7 +84,28 @@ Right-click any object in the *Object Browser* to access:
 - **Group/Ungroup**: Group collections of objects
 - **Representation**: Modify how objects appear
 - **Export**: Save to various formats
-- **Properties**: Set rendering properties.
+- **Properties**: Set rendering properties (see Properties Dialog below).
+
+Properties Dialog
+^^^^^^^^^^^^^^^^^
+
+You can modify the visual properties of items in the **Object Browser**. Right-click on one (or multiple) elements and click the **Properties** entry to bring up the dialog window displayed below.
+
+.. figure:: ../_static/tutorial/properties_dialog.png
+   :width: 50%
+   :align: right
+
+   Properties dialog.
+
+The properties tab is structured based on:
+
+- **Appearance**: Set color and rendering options of objects.
+- **Lighting**: Change the lighting of the scene.
+- **Model**: Replace points with volumetric models in corresponding orientation.
+- **Sampling**: Modify the sampling rate of the underlying objects.
+
+.. tip::
+   When selecting multiple objects the same settings will be applied to all of them.
 
 
 Status Bar
@@ -139,9 +160,9 @@ Expand any task to view its output. Use *Clear Finished* to remove completed and
 Coordinate System
 -----------------
 
-Mosaic does not handle spatial units internally. Instead, imported data is immediately transformed into a consistent reference frame based on the sampling rate (typically Ångstroms for molecular data). This sampling rate is provided by the user or can be extracted from the header of particular file formats, e.g., mrc files.
+Mosaic stores coordinates in physical units (typically Ångstroms for molecular data) by multiplying voxel coordinates by the sampling rate on import. The sampling rate is provided by the user or extracted from the file header for formats like mrc.
 
-Assuming a segmentation is loaded from an mrc file with a sampling rate of 6.80 Ångstroms per voxel, Mosaic will multiply the voxel coordinates with the sampling rate. Therefore, the internal scale would be in Ångstroms. The sampling rate also affects:
+For example, a segmentation loaded from an mrc file with sampling rate 6.80 Å/voxel ends up scaled to Ångstroms. The sampling rate also affects:
 
 - Display size
 - Filtering operations
@@ -156,7 +177,60 @@ Mosaic uses a right-handed coordinate system:
 
 The standard orientation is (0, 0, 1).
 
+Auxiliary Panels
+----------------
+
+Dock panels complement the main tabs: the Volume Viewer for inspecting volumetric data, and the Trajectory Player for navigating DTS simulation results over time.
+
+Volume Viewer
+^^^^^^^^^^^^^
+
+The Volume Viewer displays volume slices alongside the 3D scene.
+
+.. figure:: ../_static/tutorial/volume_viewer.png
+  :width: 100 %
+  :align: center
+
+  Mosaic session with Volume Viewer highlighted at the bottom.
+
+To activate the viewer and load a volume:
+
+1. Select **View > Volume Viewer** from the menu
+2. The Volume Viewer panel appears at the bottom of the screen
+3. In the Volume Viewer panel, click **Open**
+4. Navigate to your volume file
+5. Select the file and click **Open**
+
+You can modify the visualization using the dedicated display controls:
+
+- **Slice slider**: Browse through volume slices
+- **Orientation selector**: Switch between X, Y, Z views
+- **Min/Max contrast sliders**: Set display range
+- **Gamma slider**: Adjust contrast curve
+- **Color palette**: Change visualization (gray, viridis, magma, etc.)
+- **Projection modes**:
+
+  - **Off**: Current slice only
+  - **Project +/-**: Show structures in slice direction
+- **+**: Add another volume viewer
+
+.. tip::
+  The **+** button will add a new row with a viewer displaying the same volume. However, you can also render other volumes by using the **Open** button of the newly added viewer and selecting a volume of your choice.
+
+.. _trajectory-player:
+
+Trajectory Player
+^^^^^^^^^^^^^^^^^
+
+The Trajectory Player navigates through DTS trajectory time points. Trajectories are loaded from the :doc:`Intelligence tab <tabs/intelligence>` (see the Trajectory section there for loading instructions and supported formats).
+
+To open the player, select **View > Trajectory Player**. Each row corresponds to a distinct trajectory with independent controls.
+
+.. tip::
+
+  Duplicating a trajectory object will not create a new trajectory but rather an object representing the current time point.
+
 Next Steps
 ----------
 
-Now that you understand the basic concepts and layout of Mosaic, proceed to the :doc:`Working with Data <data/import_export>` section to learn how to handle different data types.
+Now that you understand the layout of Mosaic, proceed to :doc:`file_operations` to learn how to load, save, and export data.

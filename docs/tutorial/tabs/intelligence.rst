@@ -135,7 +135,7 @@ Imports and visualizes DTS simulation results:
 
 .. tip::
 
-    Use **View > Trajectory Player** to navigate through time points.
+    Use the :ref:`Trajectory Player <trajectory-player>` to navigate through time points.
 
 Backmapping
 -----------

@@ -6,8 +6,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from qtpy.QtGui import QColor, QPen, QCursor, QPainter
 from qtpy.QtCore import Qt, QEvent, QTimer, QPoint, QCoreApplication
-from qtpy.QtGui import QColor, QPen, QCursor, QFont, QPainter
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
