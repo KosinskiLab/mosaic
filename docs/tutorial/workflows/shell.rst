@@ -2,15 +2,13 @@
 Scripting Interface
 ===================
 
+.. versionadded:: 1.2.1
+
 The Mosaic Shell provides headless access to most GUI operations and allows composing them into reproducible scripting workflows for remote servers and automated pipelines.
 
 .. code-block:: bash
 
    mosaic-shell
-
-.. note::
-
-   The scripting interface is available from version 1.2.1 of Mosaic.
 
 
 Getting Started

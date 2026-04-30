@@ -67,7 +67,22 @@ def _load_vtk_image(filepath):
     reader = cls()
     reader.SetFileName(filepath)
     reader.Update()
-    return reader.GetOutput()
+
+    output = reader.GetOutput()
+    if output is None or output.GetNumberOfPoints() == 0:
+        return None
+
+    # Some readers (e.g. vtkMRCReader) use NXSTART/NYSTART/NZSTART to produce
+    # a centered, non-zero-based extent.  Normalize to (0, nx-1, ...) so that
+    # slice-index arithmetic in the viewer stays consistent.
+    extent = output.GetExtent()
+    if extent[0] != 0 or extent[2] != 0 or extent[4] != 0:
+        normalizer = vtk.vtkImageChangeInformation()
+        normalizer.SetInputData(output)
+        normalizer.SetExtentTranslation(-extent[0], -extent[2], -extent[4])
+        normalizer.Update()
+        output = normalizer.GetOutput()
+    return output
 
 
 def _load_density_image(filepath):
@@ -138,7 +153,7 @@ class VolumeViewer(QWidget):
         )
         self.auto_contrast_button = self._icon_button(
             "ph.magic-wand",
-            "Auto contrast (percentile-based)",
+            "Auto contrast",
             lambda: self.auto_contrast(),
         )
 

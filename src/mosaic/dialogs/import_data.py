@@ -90,25 +90,24 @@ class ImportDataDialog(QDialog):
         grid_layout.addWidget(self.y_label, 0, 2)
         grid_layout.addWidget(self.z_label, 0, 3)
 
-        scale_label = QLabel("Scale Factor:")
-        scale_input = {
-            "label": "Scale Factor",
+        sampling_label = QLabel("Sampling Rate:")
+        sampling_settings = {
+            "label": "Sampling Rate",
             "type": "text",
-            "min": 0.0,
+            "min": 1e-8,
             "max": 1e32,
             "default": 1.0,
-            "description": "Scale imported data by points times scale.",
+            "description": "Set sampling rate of imported data.",
         }
-        self.scale_x = create_setting_widget(scale_input)
-        self.scale_y = create_setting_widget(scale_input)
-        self.scale_z = create_setting_widget(scale_input)
+        self.sampling_x = create_setting_widget(sampling_settings)
+        self.sampling_y = create_setting_widget(sampling_settings)
+        self.sampling_z = create_setting_widget(sampling_settings)
 
-        grid_layout.addWidget(scale_label, 1, 0)
-        grid_layout.addWidget(self.scale_x, 1, 1)
-        grid_layout.addWidget(self.scale_y, 1, 2)
-        grid_layout.addWidget(self.scale_z, 1, 3)
+        grid_layout.addWidget(sampling_label, 1, 0)
+        grid_layout.addWidget(self.sampling_x, 1, 1)
+        grid_layout.addWidget(self.sampling_y, 1, 2)
+        grid_layout.addWidget(self.sampling_z, 1, 3)
 
-        # Offset inputs
         offset_label = QLabel("Offset:")
         offset_settings = {
             "label": "Offset",
@@ -127,24 +126,23 @@ class ImportDataDialog(QDialog):
         grid_layout.addWidget(self.offset_y, 2, 2)
         grid_layout.addWidget(self.offset_z, 2, 3)
 
-        # Sampling rate inputs
-        sampling_label = QLabel("Sampling Rate:")
-        sampling_settings = {
-            "label": "Sampling Rate",
+        self.scale_label = scale_label = QLabel("Scale Factor:")
+        scale_input = {
+            "label": "Scale Factor",
             "type": "text",
-            "min": 1e-8,
+            "min": 0.0,
             "max": 1e32,
             "default": 1.0,
-            "description": "Set sampling rate of imported data.",
+            "description": "Scale imported data by points times scale.",
         }
-        self.sampling_x = create_setting_widget(sampling_settings)
-        self.sampling_y = create_setting_widget(sampling_settings)
-        self.sampling_z = create_setting_widget(sampling_settings)
+        self.scale_x = create_setting_widget(scale_input)
+        self.scale_y = create_setting_widget(scale_input)
+        self.scale_z = create_setting_widget(scale_input)
 
-        grid_layout.addWidget(sampling_label, 3, 0)
-        grid_layout.addWidget(self.sampling_x, 3, 1)
-        grid_layout.addWidget(self.sampling_y, 3, 2)
-        grid_layout.addWidget(self.sampling_z, 3, 3)
+        grid_layout.addWidget(scale_label, 3, 0)
+        grid_layout.addWidget(self.scale_x, 3, 1)
+        grid_layout.addWidget(self.scale_y, 3, 2)
+        grid_layout.addWidget(self.scale_z, 3, 3)
 
         checkbox_layout = QHBoxLayout()
         checkbox_layout.setSpacing(0)
@@ -177,6 +175,21 @@ class ImportDataDialog(QDialog):
         checkbox_layout.addWidget(segmentation_label)
         checkbox_layout.addSpacing(20)
         checkbox_layout.addWidget(self.segmentation_checkbox)
+
+        override_label = QLabel("Override Scale Factor")
+        override_settings = {
+            "label": "Override Scale Factor",
+            "type": "boolean",
+            "default": False,
+            "description": "Set scale factor independently from sampling rate.",
+        }
+        self.override_checkbox = create_setting_widget(override_settings)
+        self.override_checkbox.toggled.connect(self.toggle_override_mode)
+        self.override_checkbox.setChecked(False)
+
+        checkbox_layout.addWidget(override_label)
+        checkbox_layout.addSpacing(20)
+        checkbox_layout.addWidget(self.override_checkbox)
 
         checkbox_layout.addStretch()
 
@@ -241,6 +254,7 @@ class ImportDataDialog(QDialog):
         offset_label.setFixedWidth(max_label_width)
         sampling_label.setFixedWidth(max_label_width)
 
+        self.toggle_override_mode(False)
         self.toggle_per_axis_mode(False)
         self.accept_button.setFocus()
 
@@ -249,8 +263,9 @@ class ImportDataDialog(QDialog):
         self.y_label.setVisible(checked)
         self.z_label.setVisible(checked)
 
-        self.scale_y.setVisible(checked)
-        self.scale_z.setVisible(checked)
+        override = self.override_checkbox.isChecked()
+        self.scale_y.setVisible(checked and override)
+        self.scale_z.setVisible(checked and override)
         self.offset_y.setVisible(checked)
         self.offset_z.setVisible(checked)
         self.sampling_y.setVisible(checked)
@@ -259,6 +274,18 @@ class ImportDataDialog(QDialog):
         self.grid_layout.setColumnStretch(1, 1)
         self.grid_layout.setColumnStretch(2, 1 if checked else 0)
         self.grid_layout.setColumnStretch(3, 1 if checked else 0)
+
+    def toggle_override_mode(self, checked):
+        per_axis = self.axis_checkbox.isChecked()
+        self.scale_label.setVisible(checked)
+        self.scale_x.setVisible(checked)
+        self.scale_y.setVisible(checked and per_axis)
+        self.scale_z.setVisible(checked and per_axis)
+
+        if checked:
+            self.scale_x.setText(self.sampling_x.text())
+            self.scale_y.setText(self.sampling_y.text())
+            self.scale_z.setText(self.sampling_z.text())
 
     def _propagate_value(self, text, y_input, z_input):
         y_input.setText(text)
@@ -279,16 +306,14 @@ class ImportDataDialog(QDialog):
             extension = get_extension(file)[1:]
             if extension in FORMAT_MAPPING.get(read_volume):
                 shape, sampling_rate = _load_density_header(file)
-                self.scale_x.setText(f"{sampling_rate[0]:g}")
                 self.sampling_x.setText(f"{sampling_rate[0]:g}")
-
-                self.scale_y.setText(f"{sampling_rate[1]:g}")
                 self.sampling_y.setText(f"{sampling_rate[1]:g}")
-
-                self.scale_z.setText(f"{sampling_rate[2]:g}")
                 self.sampling_z.setText(f"{sampling_rate[2]:g}")
 
             self.file_parameters[file] = self._get_current_parameters()
+
+        # Otherwise show() will display parameters of last file
+        self.load_file_parameters(self.filenames[0])
 
     def update_file_display(self):
         from os.path import basename
@@ -296,7 +321,7 @@ class ImportDataDialog(QDialog):
         if not self.filenames:
             self.filename_label.setText("No files selected")
             self.progress_label.setText("File 0 of 0")
-            return
+            return None
 
         filename = self.filenames[self.current_file_index]
         self.filename_label.setText(basename(filename))
@@ -314,23 +339,30 @@ class ImportDataDialog(QDialog):
             self.file_parameters[current_file] = self._get_current_parameters()
 
     def _get_current_parameters(self):
-        return {
-            "scale": (
+        sampling = (
+            get_widget_value(self.sampling_x),
+            get_widget_value(self.sampling_y),
+            get_widget_value(self.sampling_z),
+        )
+        override = get_widget_value(self.override_checkbox)
+        if override:
+            scale = (
                 get_widget_value(self.scale_x),
                 get_widget_value(self.scale_y),
                 get_widget_value(self.scale_z),
-            ),
+            )
+        else:
+            scale = sampling
+        return {
+            "scale": scale,
             "offset": (
                 get_widget_value(self.offset_x),
                 get_widget_value(self.offset_y),
                 get_widget_value(self.offset_z),
             ),
-            "sampling_rate": (
-                get_widget_value(self.sampling_x),
-                get_widget_value(self.sampling_y),
-                get_widget_value(self.sampling_z),
-            ),
+            "sampling_rate": sampling,
             "render_as_segmentation": get_widget_value(self.segmentation_checkbox),
+            "override": override,
         }
 
     def load_file_parameters(self, filename):
@@ -342,18 +374,31 @@ class ImportDataDialog(QDialog):
         scale = params["scale"]
         offset = params["offset"]
         sampling_rate = params["sampling_rate"]
+        override = params.get("override", False)
 
-        set_widget_value(self.scale_x, str(scale[0]))
-        set_widget_value(self.scale_y, str(scale[1]))
-        set_widget_value(self.scale_z, str(scale[2]))
+        set_widget_value(self.sampling_x, str(sampling_rate[0]))
+        set_widget_value(self.sampling_y, str(sampling_rate[1]))
+        set_widget_value(self.sampling_z, str(sampling_rate[2]))
 
         set_widget_value(self.offset_x, str(offset[0]))
         set_widget_value(self.offset_y, str(offset[1]))
         set_widget_value(self.offset_z, str(offset[2]))
 
-        set_widget_value(self.sampling_x, str(sampling_rate[0]))
-        set_widget_value(self.sampling_y, str(sampling_rate[1]))
-        set_widget_value(self.sampling_z, str(sampling_rate[2]))
+        # Restore override state without firing toggle_override_mode (which would
+        # overwrite the saved scale values below with a re-pre-fill from sampling).
+        self.override_checkbox.blockSignals(True)
+        self.override_checkbox.setChecked(override)
+        self.override_checkbox.blockSignals(False)
+
+        per_axis = self.axis_checkbox.isChecked()
+        self.scale_label.setVisible(override)
+        self.scale_x.setVisible(override)
+        self.scale_y.setVisible(override and per_axis)
+        self.scale_z.setVisible(override and per_axis)
+
+        set_widget_value(self.scale_x, str(scale[0]))
+        set_widget_value(self.scale_y, str(scale[1]))
+        set_widget_value(self.scale_z, str(scale[2]))
 
     def next_file(self):
         self.save_current_parameters()

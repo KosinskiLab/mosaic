@@ -34,6 +34,27 @@ except Exception:
     HAS_ONBOARDING = False
 
 
+def _prompt_first_launch(window):
+    from qtpy.QtWidgets import QMessageBox
+    from mosaic.widgets import MosaicMessageBox
+    from mosaic.settings import Settings
+    from mosaic.onboarding import launch_onboarding
+
+    box = MosaicMessageBox(window)
+    box.setWindowTitle("Welcome to Mosaic")
+    box.setIcon(QMessageBox.Icon.Question)
+    box.setText("Hey, looks like it's your first time here!\n\nWant a quick tour?")
+    yes_btn = box.addButton("Sure, let's go", QMessageBox.ButtonRole.AcceptRole)
+    box.addButton("Maybe later", QMessageBox.ButtonRole.RejectRole)
+    box.setDefaultButton(yes_btn)
+    box.exec()
+
+    Settings.ui.onboarding_done = True
+
+    if box.clickedButton() is yes_btn:
+        launch_onboarding(window, "basics")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", action="version", version=f"{__version__}")
@@ -93,10 +114,13 @@ def main():
     window = App()
     window.show()
 
-    if HAS_ONBOARDING and args.onboard:
+    if HAS_ONBOARDING:
         from qtpy.QtCore import QTimer
 
-        QTimer.singleShot(200, lambda: launch_onboarding(window, args.onboard))
+        if args.onboard:
+            QTimer.singleShot(200, lambda: launch_onboarding(window, args.onboard))
+        elif not Settings.ui.onboarding_done:
+            QTimer.singleShot(500, lambda: _prompt_first_launch(window))
 
     sys.exit(app.exec())
 
