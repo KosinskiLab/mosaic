@@ -56,7 +56,7 @@ autodoc_inherit_docstrings = True
 autodoc_typehints_format = "short"
 autodoc_typehints = "none"
 
-# templates_path = ["_templates"]
+templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "pydata_sphinx_theme"

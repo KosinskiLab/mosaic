@@ -12,9 +12,8 @@
    .. rubric:: {{ _('Attributes') }}
 
    .. autosummary::
-      :toctree:
       {% for item in attributes %}
-         {% if not item.startswith('_') %}
+         {% if not item.startswith('_') and not item in inherited_members %}
             {{ name }}.{{ item }}
          {% endif %}
       {%- endfor %}
@@ -27,7 +26,6 @@
    .. rubric:: {{ _('Methods') }}
 
    .. autosummary::
-      :toctree:
       {% for item in methods %}
          {% if not item.startswith('_') and not item in inherited_members %}
             {{ name }}.{{ item }}

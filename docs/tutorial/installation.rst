@@ -10,11 +10,7 @@ Prerequisites
 -------------
 
 - **Python**: 3.11+ (3.11 recommended)
-- **Operating System**:
-
-  - Linux (recommended)
-  - macOS (some performance limitations noted below)
-  - Windows 10+ (not tested but principally supported)
+- **Operating System**: Linux and macOS are tested. Windows is untested.
 - **Hardware**:
 
   - Standard consumer laptops (8GB RAM recommended)

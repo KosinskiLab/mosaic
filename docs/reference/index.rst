@@ -7,6 +7,7 @@ API
 
    data_structures/geometry
    data_structures/container
+   data_structures/session
    data_structures/data
    data_structures/interactor
 

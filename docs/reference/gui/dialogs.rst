@@ -19,7 +19,6 @@ Analysis Dialogs
 .. autosummary::
    :toctree: ../rst/
 
-   DistanceAnalysisDialog
    PropertyAnalysisDialog
    HistogramDialog
    GeometryPropertiesDialog
@@ -29,20 +28,8 @@ Processing Configuration
 .. autosummary::
    :toctree: ../rst/
 
-   MeshEquilibrationDialog
-   HMFFDialog
    TemplateMatchingDialog
    MeshMappingDialog
-
-Utility Dialogs
-~~~~~~~~~~~~~~~
-.. autosummary::
-   :toctree: ../rst/
-
-   ProgressDialog
-   TiltControlDialog
-   KeybindsDialog
-   ParameterDialog
 
 Distance Operations
 ~~~~~~~~~~~~~~~~~~~
@@ -50,3 +37,18 @@ Distance Operations
    :toctree: ../rst/
 
    DistanceCropDialog
+
+
+DTS Dialogs
+~~~~~~~~~~~
+
+.. currentmodule:: mosaic.dts
+
+Dialogs that configure the FreeDTS-based mesh equilibration and screening
+workflows.
+
+.. autosummary::
+   :toctree: ../rst/
+
+   MeshEquilibrationDialog
+   DTSScreeningDialog
