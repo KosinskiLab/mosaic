@@ -39,6 +39,19 @@ from qtpy.QtWidgets import (
 )
 
 
+# Spotlight geometry. _MASK_INSET keeps the rectangular mask hole's
+# corners inside the painted rounded curve and inside the inner edge
+# of the border stroke: (r - inset) * sqrt(2) <= r - 1 yields
+# inset >= r * (1 - 1/sqrt(2)) + 1/sqrt(2) ≈ 3.05 for r=8.
+_SPOTLIGHT_RADIUS = 8
+_BORDER_WIDTH = 2
+_BORDER_COLOR = QColor(99, 102, 241, 180)
+_DIM_COLOR = QColor(0, 0, 0, 153)
+_MASK_INSET = 4
+_MASK_RING = 3
+_TOOLTIP_MARGIN = 16
+
+
 class TooltipPanel(QFrame):
     action_clicked = Signal()
 
@@ -48,21 +61,21 @@ class TooltipPanel(QFrame):
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setFixedWidth(320)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 16, 20, 16)
-        layout.setSpacing(8)
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(20, 16, 20, 16)
+        self._layout.setSpacing(8)
 
         self._title = QLabel()
         self._title.setObjectName("onboarding_title")
         self._title.setWordWrap(True)
-        layout.addWidget(self._title)
+        self._layout.addWidget(self._title)
 
         self._body = QLabel()
         self._body.setObjectName("onboarding_body")
         self._body.setWordWrap(True)
-        layout.addWidget(self._body)
+        self._layout.addWidget(self._body)
 
-        layout.addSpacing(8)
+        self._layout.addSpacing(8)
 
         bottom = QHBoxLayout()
         bottom.setSpacing(8)
@@ -79,7 +92,7 @@ class TooltipPanel(QFrame):
         self._action_btn.clicked.connect(self.action_clicked.emit)
         bottom.addWidget(self._action_btn)
 
-        layout.addLayout(bottom)
+        self._layout.addLayout(bottom)
 
         self._apply_style()
 
@@ -127,21 +140,31 @@ class TooltipPanel(QFrame):
         self._body.setText(body)
         self._progress.setText(progress)
         self._action_btn.setText(button_text)
-        # 320px wide, 20px side margins, 16px top/bottom, 8px layout spacing
-        inner_w = 280
-        h = (
-            16
-            + self._title.heightForWidth(inner_w)
-            + 8
-            + self._body.heightForWidth(inner_w)
-            + 8
-            + 8  # addSpacing between body and bottom row
-            + max(
-                self._progress.sizeHint().height(), self._action_btn.sizeHint().height()
-            )
-            + 16
+
+        # Sum heights directly off each widget. `QBoxLayout.heightForWidth`
+        # depends on a setupGeom() pass that hasn't run before first show,
+        # so it returns wrong values here. `QLabel.heightForWidth` is
+        # geometry-independent.
+        margins = self._layout.contentsMargins()
+        spacing = self._layout.spacing()
+        inner_w = self.minimumWidth() - margins.left() - margins.right()
+        bottom_h = max(
+            self._progress.sizeHint().height(), self._action_btn.sizeHint().height()
         )
-        self.setFixedHeight(h)
+        self.setFixedHeight(
+            margins.top()
+            + self._title.heightForWidth(inner_w)
+            + spacing
+            + self._body.heightForWidth(inner_w)
+            + spacing
+            + 8  # layout.addSpacing(8) before the bottom row
+            + spacing
+            + bottom_h
+            + margins.bottom()
+        )
+
+    def set_action_text(self, text: str):
+        self._action_btn.setText(text)
 
     def set_action_enabled(self, enabled: bool):
         self._action_btn.setEnabled(enabled)
@@ -152,6 +175,7 @@ class SpotlightOverlay(QWidget):
     """Top-level translucent window that dims everything except a spotlight hole."""
 
     skip_requested = Signal()
+    action_clicked = Signal()
 
     def __init__(self, parent: QWidget):
         super().__init__(
@@ -168,7 +192,6 @@ class SpotlightOverlay(QWidget):
         self._spotlight_rect: QRect | None = None
         self._spotlight_global: QRect | None = None
         self._highlight_padding = 8
-        self._dim_color = QColor(0, 0, 0, 153)
         self._dim_enabled = True
         self._spotlight_widget: QWidget | None = None
         self._spotlight_position: str = "auto"
@@ -179,8 +202,9 @@ class SpotlightOverlay(QWidget):
         self._spotlight_resize_timer.setInterval(0)
         self._spotlight_resize_timer.timeout.connect(self._reapply_spotlight)
 
-        self._tooltip = TooltipPanel(self)
-        self._tooltip.hide()
+        self.tooltip = TooltipPanel(self)
+        self.tooltip.hide()
+        self.tooltip.action_clicked.connect(self.action_clicked.emit)
 
         self._host.installEventFilter(self)
         self.hide()
@@ -295,23 +319,32 @@ class SpotlightOverlay(QWidget):
             self.clearMask()
             return
 
+        # Clip the spotlight to the window before insetting so the mask's
+        # straight edges sit inside the painted rounded curve at every
+        # corner, including corners that fall on the window border. The
+        # painter uses the same intersection in `paintEvent` for the
+        # dim cut-out and the border stroke.
+        sr = self._spotlight_rect.intersected(self.rect())
+        if sr.isEmpty():
+            self.clearMask()
+            return
+
         if self._dim_enabled:
-            # Inset must keep the mask-hole corners inside the painted
-            # rounded curve (radius 8) and inside the inner edge of the
-            # 2px spotlight border. (8 - inset) * sqrt(2) <= 7 gives
-            # inset >= ~3.1; rounding up to 4 leaves room for AA.
-            inset = 4
-            hole = self._spotlight_rect.adjusted(inset, inset, -inset, -inset)
+            hole = sr.adjusted(_MASK_INSET, _MASK_INSET, -_MASK_INSET, -_MASK_INSET)
             region = QRegion(self.rect()).subtracted(QRegion(hole))
         else:
             region = QRegion()
             if self._show_spotlight:
-                outer = QRegion(self._spotlight_rect.adjusted(-3, -3, 3, 3))
-                inner = QRegion(self._spotlight_rect.adjusted(3, 3, -3, -3))
+                outer = QRegion(
+                    sr.adjusted(-_MASK_RING, -_MASK_RING, _MASK_RING, _MASK_RING)
+                ).intersected(QRegion(self.rect()))
+                inner = QRegion(
+                    sr.adjusted(_MASK_RING, _MASK_RING, -_MASK_RING, -_MASK_RING)
+                )
                 region = outer.subtracted(inner)
 
-        if self._tooltip.isVisible():
-            region = region.united(QRegion(self._tooltip.geometry()))
+        if self.tooltip.isVisible():
+            region = region.united(QRegion(self.tooltip.geometry()))
 
         if region.isEmpty():
             # An empty region resolves to clearMask() on some platforms,
@@ -325,58 +358,41 @@ class SpotlightOverlay(QWidget):
         if self._spotlight_rect is None:
             return
 
-        self._tooltip.adjustSize()
-        tip_size = self._tooltip.size()
+        self.tooltip.adjustSize()
+        tip = self.tooltip.size()
         sr = self._spotlight_rect
-        parent_rect = self.rect()
-        margin = 16
+        pr = self.rect()
+        m = _TOOLTIP_MARGIN
 
+        cx_sr = sr.center().x() - tip.width() // 2
+        cy_sr = sr.center().y() - tip.height() // 2
         candidates = {
-            "right": QPoint(
-                sr.right() + margin,
-                sr.center().y() - tip_size.height() // 2,
-            ),
-            "below": QPoint(
-                sr.center().x() - tip_size.width() // 2,
-                sr.bottom() + margin,
-            ),
-            "left": QPoint(
-                sr.left() - tip_size.width() - margin,
-                sr.center().y() - tip_size.height() // 2,
-            ),
-            "above": QPoint(
-                sr.center().x() - tip_size.width() // 2,
-                sr.top() - tip_size.height() - margin,
-            ),
+            "right": QPoint(sr.right() + m, cy_sr),
+            "below": QPoint(cx_sr, sr.bottom() + m),
+            "left": QPoint(sr.left() - tip.width() - m, cy_sr),
+            "above": QPoint(cx_sr, sr.top() - tip.height() - m),
             "center": QPoint(
-                parent_rect.center().x() - tip_size.width() // 2,
-                parent_rect.center().y() - tip_size.height() // 2,
+                pr.center().x() - tip.width() // 2,
+                pr.center().y() - tip.height() // 2,
             ),
         }
 
-        if position == "auto":
-            order = ["right", "below", "left", "above"]
-        else:
-            order = [position, "right", "below", "left", "above"]
+        order = ["right", "below", "left", "above"]
+        if position != "auto":
+            order = [position] + [s for s in order if s != position]
 
         for key in order:
             pos = candidates[key]
-            tip_rect = QRect(pos, tip_size)
-            if parent_rect.contains(tip_rect):
-                self._tooltip.move(pos)
-                self._tooltip.show()
+            if pr.contains(QRect(pos, tip)):
+                self.tooltip.move(pos)
+                self.tooltip.show()
                 return
 
-        # Nothing fits perfectly so clamp to stay in bounds
         pos = candidates[order[0]]
-        pos.setX(
-            max(margin, min(pos.x(), parent_rect.width() - tip_size.width() - margin))
-        )
-        pos.setY(
-            max(margin, min(pos.y(), parent_rect.height() - tip_size.height() - margin))
-        )
-        self._tooltip.move(pos)
-        self._tooltip.show()
+        pos.setX(max(m, min(pos.x(), pr.width() - tip.width() - m)))
+        pos.setY(max(m, min(pos.y(), pr.height() - tip.height() - m)))
+        self.tooltip.move(pos)
+        self.tooltip.show()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -395,17 +411,16 @@ class SpotlightOverlay(QWidget):
             if self._spotlight_rect:
                 sr = QRectF(self._spotlight_rect.intersected(self.rect()))
                 hole = QPainterPath()
-                hole.addRoundedRect(sr, 8, 8)
+                hole.addRoundedRect(sr, _SPOTLIGHT_RADIUS, _SPOTLIGHT_RADIUS)
                 path = path.subtracted(hole)
 
-            painter.fillPath(path, QBrush(self._dim_color))
+            painter.fillPath(path, QBrush(_DIM_COLOR))
 
         if self._show_spotlight and self._spotlight_rect:
             sr = QRectF(self._spotlight_rect.intersected(self.rect()))
             border_path = QPainterPath()
-            border_path.addRoundedRect(sr, 8, 8)
-            pen = QPen(QColor(99, 102, 241, 180), 2)
-            painter.setPen(pen)
+            border_path.addRoundedRect(sr, _SPOTLIGHT_RADIUS, _SPOTLIGHT_RADIUS)
+            painter.setPen(QPen(_BORDER_COLOR, _BORDER_WIDTH))
             painter.drawPath(border_path)
 
         painter.end()
