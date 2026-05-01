@@ -157,11 +157,9 @@ class MosaicData:
 
         self._lod_restore_timer.stop()
         self.shape = None
-        self.data.update(DataContainer())
-        self.models.update(DataContainer(highlight_color=(0.2, 0.4, 0.8)))
 
-        self._session._data = self._data = self.data.container
-        self._session._models = self._models = self.models.container
+        self.data.clear()
+        self.models.clear()
 
     def _setup_interaction_lod(self, vtk_widget):
         """Register VTK interaction observers for point-budget LOD."""

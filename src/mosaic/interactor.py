@@ -77,6 +77,11 @@ class DataContainerInteractor(QObject):
                 uuids.append(uuid)
         return uuids
 
+    def clear(self):
+        self.point_selection.clear()
+        self.container.clear()
+        self.render(defer_render=True)
+
     def get_selected_geometries(self):
         ret = [self.container.get(uuid) for uuid in self._get_selected_uuids()]
         return [x for x in ret if x is not None]
