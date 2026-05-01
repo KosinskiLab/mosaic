@@ -6,7 +6,6 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import copy
 from typing import Callable, Literal
 from dataclasses import dataclass, field
 
@@ -47,14 +46,14 @@ class OnboardingChapter:
         pass
 
     def snapshot(self, key: str) -> None:
-        """Stash a deep copy of the current data + models geometries under *key*."""
+        """Stash a copy of the current data + models geometries under *key*."""
         if self._main_window is None:
             return None
 
         cdata = self._main_window.cdata
         self._stash[key] = (
-            copy.deepcopy(list(cdata.data.container.data)),
-            copy.deepcopy(list(cdata.models.container.data)),
+            [x[...] for x in cdata.data.container.data],
+            [x[...] for x in cdata.models.container.data],
         )
 
     def restore(self, key: str) -> None:
@@ -66,16 +65,16 @@ class OnboardingChapter:
         cdata = self._main_window.cdata
 
         cdata.data.container.clear()
-        for g in copy.deepcopy(data_geoms):
-            cdata.data.container.add(g)
+        for g in data_geoms:
+            cdata.data.container.add(g[...])
 
         cdata.models.container.clear()
-        for g in copy.deepcopy(model_geoms):
-            cdata.models.container.add(g)
+        for g in model_geoms:
+            cdata.models.container.add(g[...])
 
         cdata.data.data_changed.emit()
         cdata.models.data_changed.emit()
-        cdata.data.render(defer_render=True)
+        cdata.data.render(defer_render=False)
         cdata.models.render(defer_render=False)
 
     def transition(

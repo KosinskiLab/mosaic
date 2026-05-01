@@ -51,9 +51,6 @@ class BasicsChapter(OnboardingChapter):
     def __init__(self):
         super().__init__()
         self._data_dir: Path | None = None
-        self._segmentation_loaded = False
-        self._proteins_loaded = False
-        self._volume_loaded = False
 
     def _download(self, parent) -> bool:
         from mosaic.widgets import MosaicMessageBox
@@ -193,21 +190,13 @@ class BasicsChapter(OnboardingChapter):
         assert self._data_dir is not None
         return all((self._data_dir / rel).exists() for _, rel in _DOWNLOADS)
 
-    def _gate(self, flag: str):
-        """Return ``(data_dir, main_window)`` and arm *flag*, or None if already run."""
-        if getattr(self, flag) or self._data_dir is None or self._main_window is None:
-            return None
-        setattr(self, flag, True)
-        return self._data_dir, self._main_window
-
     def _ensure_segmentation_loaded(self) -> None:
-        gated = self._gate("_segmentation_loaded")
-        if gated is None:
+        if self._data_dir is None or self._main_window is None:
             return None
-        data_dir, window = gated
+        window = self._main_window
         window.cdata.reset()
 
-        seg = data_dir / "segmentation.mrc"
+        seg = self._data_dir / "segmentation.mrc"
         if seg.exists():
             window.cdata.open_file(
                 str(seg), sampling_rate=_SAMPLING_RATE, scale=_SAMPLING_RATE
@@ -218,32 +207,33 @@ class BasicsChapter(OnboardingChapter):
         window.set_camera_view("z")
 
     def _ensure_proteins_loaded(self) -> None:
-        gated = self._gate("_proteins_loaded")
-        if gated is None:
+        if self._data_dir is None or self._main_window is None:
             return None
-        data_dir, window = gated
 
-        for star in (
-            data_dir / "ha_coordinates.star",
-            data_dir / "na_coordinates.star",
-        ):
+        container = self._main_window.cdata.data.container
+
+        # Not bullet proof but helpful
+        names = [geom._meta.get("name", "") for geom in container.data]
+        for species in ("ha_coordinates", "na_coordinates"):
+            if species in names:
+                continue
+
+            star = self._data_dir / f"{species}.star"
             if star.exists():
-                window.cdata.open_file(
+                self._main_window.cdata.open_file(
                     str(star), sampling_rate=_SAMPLING_RATE, scale=_SAMPLING_RATE
                 )
 
-        window.cdata.data.data_changed.emit()
-        window.cdata.data.render(defer_render=False)
+        self._main_window.cdata.data.data_changed.emit()
+        self._main_window.cdata.data.render(defer_render=False)
 
     def _ensure_volume_loaded(self) -> None:
-        gated = self._gate("_volume_loaded")
-        if gated is None:
+        if self._data_dir is None or self._main_window is None:
             return None
-        data_dir, window = gated
 
-        tomogram = data_dir / "tomogram_solvated_ctf_noise.mrc"
+        tomogram = self._data_dir / "tomogram_solvated_ctf_noise.mrc"
         if tomogram.exists():
-            window._load_volume_file(str(tomogram))
+            self._main_window._load_volume_file(str(tomogram))
 
     def _switch_to_segmentation_tab(self) -> None:
         if self._main_window is not None:
@@ -271,6 +261,7 @@ class BasicsChapter(OnboardingChapter):
                 template_path = self._data_dir / template
                 if not template_path.exists():
                     continue
+
                 params = dict(geom._appearance)
                 params["volume_path"] = str(template_path)
                 params["scale"] = -1.0
@@ -312,9 +303,11 @@ class BasicsChapter(OnboardingChapter):
         """Before meshing: hide everything else, select the most recent (downsampled) cluster."""
         if self._main_window is None:
             return None
+
         container = self._main_window.cdata.data.container
         if not len(container.data):
             return None
+
         latest = container.data[-1]
         for geom in container.data:
             geom.set_visibility(geom.uuid == latest.uuid)
@@ -326,18 +319,14 @@ class BasicsChapter(OnboardingChapter):
         """After meshing: select the just-created mesh in Models."""
         if self._main_window is None:
             return None
+
         models = self._main_window.cdata.models.container
         if not len(models.data):
             return None
+
         latest = models.data[-1]
         self._main_window.cdata.models.set_selection_by_uuid([latest.uuid])
         self._main_window.cdata.models.data_changed.emit()
-
-    def _reload_proteins(self) -> None:
-        # Reset the load guard so transition() can retrigger a fresh load
-        # even after a snapshot restore swapped state out from under it.
-        self._proteins_loaded = False
-        self._ensure_proteins_loaded()
 
     def setup(self, main_window) -> None:
         self._data_dir = Path.cwd() / "mosaic_basics"
@@ -345,7 +334,7 @@ class BasicsChapter(OnboardingChapter):
 
         if not self._files_present() and not self._download(main_window):
             self._data_dir = None
-            return
+            return None
 
         super().setup(main_window)
 
@@ -399,6 +388,8 @@ class BasicsChapter(OnboardingChapter):
                     transform=self._ensure_segmentation_loaded,
                     snapshot="segmentation",
                 ),
+                # Avoid messing with file browser
+                dim=False,
             ),
             OnboardingStep(
                 id="open_volume",
@@ -411,6 +402,8 @@ class BasicsChapter(OnboardingChapter):
                 ),
                 position="auto",
                 before_next=self._ensure_volume_loaded,
+                # Avoid messing with file browser
+                dim=False,
             ),
             OnboardingStep(
                 id="volume_browse",
@@ -477,7 +470,7 @@ class BasicsChapter(OnboardingChapter):
                 target="tabs[0][0].histogram_dock",
                 title="Drop the Small Clusters",
                 body=(
-                    "Drag the slider so only clusters with more than 300,000 points "
+                    "Drag the slider so only clusters with less than 300,000 points "
                     "stay selected. That keeps the outer and inner membranes and "
                     "drops the noise.\n\n"
                     "Then click Remove in the ribbon to drop everything else."
@@ -579,7 +572,7 @@ class BasicsChapter(OnboardingChapter):
                 position="right",
                 dim=False,
                 before_next=self.transition(
-                    transform=self._reload_proteins,
+                    transform=self._ensure_proteins_loaded,
                     snapshot="proteins",
                 ),
             ),
@@ -656,10 +649,10 @@ class BasicsChapter(OnboardingChapter):
             OnboardingStep(
                 id="settings_panel",
                 target="appearance_panel",
-                title="Lighting, Themes, LOD",
+                title="Lighting, Themes, Rendering",
                 body=(
-                    "Switch presets, tweak lighting, and tune the LOD system here.\n\n"
-                    "LOD drops detail during interaction so high point counts stay "
+                    "Switch presets, tweak lighting, and tune the rendering system here.\n\n"
+                    "Rendering mode Balanced drops detail during interaction so high point counts stay "
                     "smooth, handy on laptops."
                 ),
                 position="left",

@@ -375,13 +375,14 @@ class GeometryPropertiesDialog(QDialog):
 
         self.volume_path = file_name
         volume = load_density(self.volume_path)
-        non_negative = (volume.data > 0).sum()
-        if non_negative < volume.data.size // 2:
-            self.scale_control._select(1)
 
         self.scale_control.setEnabled(True)
         self.isovalue_slider.setEnabled(True)
         self.attach_button.setEnabled(True)
+
+        non_negative = (volume.data > 0).sum()
+        invert = non_negative < volume.data.size // 2
+        self.scale_control._select(1 if invert else 0)
 
         self.emit_parameters()
 

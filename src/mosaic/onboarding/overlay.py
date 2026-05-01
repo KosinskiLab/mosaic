@@ -30,6 +30,7 @@ from qtpy.QtGui import (
     QRegion,
 )
 from qtpy.QtWidgets import (
+    QApplication,
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -179,16 +180,15 @@ class SpotlightOverlay(QWidget):
 
     def __init__(self, parent: QWidget):
         super().__init__(
-            None,
-            Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Tool,
+            parent,
+            Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool,
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setMouseTracking(True)
 
         self._host = parent
+        self._was_visible = False
         self._spotlight_rect: QRect | None = None
         self._spotlight_global: QRect | None = None
         self._highlight_padding = 8
@@ -207,7 +207,21 @@ class SpotlightOverlay(QWidget):
         self.tooltip.action_clicked.connect(self.action_clicked.emit)
 
         self._host.installEventFilter(self)
+        QApplication.instance().applicationStateChanged.connect(
+            self._on_application_state_changed
+        )
         self.hide()
+
+    def _on_application_state_changed(self, state):
+        if state == Qt.ApplicationState.ApplicationActive:
+            if self._was_visible:
+                self._was_visible = False
+                self.show()
+                self.raise_()
+        elif state == Qt.ApplicationState.ApplicationInactive:
+            if self.isVisible():
+                self._was_visible = True
+                self.hide()
 
     def activate(self):
         self._sync_geometry()
@@ -216,6 +230,7 @@ class SpotlightOverlay(QWidget):
 
     def deactivate(self):
         self.hide()
+        self._was_visible = False
         self._spotlight_rect = None
         self._spotlight_global = None
         if self._spotlight_widget is not None:
