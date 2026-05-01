@@ -193,55 +193,57 @@ class BasicsChapter(OnboardingChapter):
         assert self._data_dir is not None
         return all((self._data_dir / rel).exists() for _, rel in _DOWNLOADS)
 
-    def _ensure_segmentation_loaded(self) -> None:
-        if (
-            self._segmentation_loaded
-            or self._data_dir is None
-            or self._main_window is None
-        ):
+    def _gate(self, flag: str):
+        """Return ``(data_dir, main_window)`` and arm *flag*, or None if already run."""
+        if getattr(self, flag) or self._data_dir is None or self._main_window is None:
             return None
-        self._segmentation_loaded = True
-        self._main_window.cdata.reset()
+        setattr(self, flag, True)
+        return self._data_dir, self._main_window
 
-        seg = self._data_dir / "segmentation.mrc"
+    def _ensure_segmentation_loaded(self) -> None:
+        gated = self._gate("_segmentation_loaded")
+        if gated is None:
+            return None
+        data_dir, window = gated
+        window.cdata.reset()
+
+        seg = data_dir / "segmentation.mrc"
         if seg.exists():
-            self._main_window.cdata.open_file(
-                str(seg),
-                sampling_rate=_SAMPLING_RATE,
-                scale=_SAMPLING_RATE,
+            window.cdata.open_file(
+                str(seg), sampling_rate=_SAMPLING_RATE, scale=_SAMPLING_RATE
             )
 
-        self._main_window.cdata.data.data_changed.emit()
-        self._main_window.cdata.data.render(defer_render=False)
-        self._main_window.set_camera_view("z")
+        window.cdata.data.data_changed.emit()
+        window.cdata.data.render(defer_render=False)
+        window.set_camera_view("z")
 
     def _ensure_proteins_loaded(self) -> None:
-        if self._proteins_loaded or self._data_dir is None or self._main_window is None:
+        gated = self._gate("_proteins_loaded")
+        if gated is None:
             return None
-        self._proteins_loaded = True
+        data_dir, window = gated
 
         for star in (
-            self._data_dir / "ha_coordinates.star",
-            self._data_dir / "na_coordinates.star",
+            data_dir / "ha_coordinates.star",
+            data_dir / "na_coordinates.star",
         ):
             if star.exists():
-                self._main_window.cdata.open_file(
-                    str(star),
-                    sampling_rate=_SAMPLING_RATE,
-                    scale=_SAMPLING_RATE,
+                window.cdata.open_file(
+                    str(star), sampling_rate=_SAMPLING_RATE, scale=_SAMPLING_RATE
                 )
 
-        self._main_window.cdata.data.data_changed.emit()
-        self._main_window.cdata.data.render(defer_render=False)
+        window.cdata.data.data_changed.emit()
+        window.cdata.data.render(defer_render=False)
 
     def _ensure_volume_loaded(self) -> None:
-        if self._volume_loaded or self._data_dir is None or self._main_window is None:
-            return
-        self._volume_loaded = True
+        gated = self._gate("_volume_loaded")
+        if gated is None:
+            return None
+        data_dir, window = gated
 
-        tomogram = self._data_dir / "tomogram_solvated_ctf_noise.mrc"
+        tomogram = data_dir / "tomogram_solvated_ctf_noise.mrc"
         if tomogram.exists():
-            self._main_window._load_volume_file(str(tomogram))
+            window._load_volume_file(str(tomogram))
 
     def _switch_to_segmentation_tab(self) -> None:
         if self._main_window is not None:

@@ -56,7 +56,7 @@ class OnboardingController(QObject):
         self._window = main_window
         self._overlay = SpotlightOverlay(main_window)
         self._overlay.skip_requested.connect(self.finish)
-        self._overlay._tooltip.action_clicked.connect(self.advance)
+        self._overlay.action_clicked.connect(self.advance)
 
         self._chapter: OnboardingChapter | None = None
         self._steps: list[OnboardingStep] = []
@@ -84,13 +84,13 @@ class OnboardingController(QObject):
         )
 
         progress = f"{self._current_index + 1} / {len(self._steps)}"
-        self._overlay._tooltip.set_content(step.title, step.body, progress, button_text)
+        self._overlay.tooltip.set_content(step.title, step.body, progress, button_text)
         self._overlay.spotlight(
             target, step.highlight_padding, step.position, step.show_spotlight, step.dim
         )
 
         gated = step.mode == "action" and step.completion_signal is not None
-        self._overlay._tooltip.set_action_enabled(not (gated and step.auto_advance))
+        self._overlay.tooltip.set_action_enabled(not (gated and step.auto_advance))
         if gated:
             self._connect_signal(step.completion_signal)
 
@@ -114,8 +114,8 @@ class OnboardingController(QObject):
         if step.auto_advance:
             self.advance()
         else:
-            self._overlay._tooltip.set_action_enabled(True)
-            self._overlay._tooltip._action_btn.setText("Next")
+            self._overlay.tooltip.set_action_enabled(True)
+            self._overlay.tooltip.set_action_text("Next")
 
     def advance(self):
         step = self._steps[self._current_index]
