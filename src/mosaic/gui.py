@@ -959,8 +959,12 @@ class App(QMainWindow):
 
         file_menu.addSeparator()
         file_menu.addAction(screenshot_action)
-        file_menu.addAction(clipboard_action)
-        file_menu.addAction(clipboard_window_action)
+
+        # Broken on macOS
+        if sys.platform != "darwin":
+            file_menu.addAction(clipboard_action)
+            file_menu.addAction(clipboard_window_action)
+
         file_menu.addAction(animation_action)
         file_menu.addSeparator()
         file_menu.addAction(quit_action)

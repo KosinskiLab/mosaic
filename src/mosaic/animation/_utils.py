@@ -288,7 +288,7 @@ class ScreenshotManager:
         )
 
         clipboard = QGuiApplication.clipboard()
-        clipboard.setImage(q_image.copy())
+        clipboard.setImage(q_image)
 
     def capture(
         self,
@@ -337,20 +337,14 @@ class ScreenshotManager:
             top_window = top_window.parent()
 
         pixmap = top_window.grab()
-        image = pixmap.toImage().convertToFormat(QImage.Format.Format_RGBA8888)
+        image = pixmap.toImage().convertToFormat(QImage.Format.Format_RGB888)
 
         width = image.width()
         height = image.height()
-        bpl = image.bytesPerLine()
         ptr = image.constBits()
-        ptr.setsize(height * bpl)
+        ptr.setsize(height * width * 3)
 
-        window_arr = (
-            np.frombuffer(ptr, np.uint8)
-            .reshape(height, bpl)[:, : width * 4]
-            .reshape(height, width, 4)[:, :, :3]
-            .copy()
-        )
+        window_arr = np.frombuffer(ptr, np.uint8).reshape(height, width, 3).copy()
         window_img = Image.fromarray(window_arr, "RGB")
 
         vtk_img = self.capture(transparent_bg=False, magnification=1, multisamples=0)
