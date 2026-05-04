@@ -1,9 +1,6 @@
 """
 Semi-modal spotlight overlay for onboarding.
 
-Uses a top-level translucent window so the overlay renders above VTK's
-OpenGL surface, which would otherwise paint over any sibling QWidget.
-
 Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
@@ -38,6 +35,8 @@ from qtpy.QtWidgets import (
     QPushButton,
     QFrame,
 )
+
+__all__ = ["SpotlightOverlay"]
 
 
 # Spotlight geometry. _MASK_INSET keeps the rectangular mask hole's

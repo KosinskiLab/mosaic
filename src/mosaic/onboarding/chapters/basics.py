@@ -24,6 +24,8 @@ from qtpy.QtWidgets import (
 from . import register
 from ..base import OnboardingChapter, OnboardingStep
 
+__all__ = ["BasicsChapter"]
+
 _BASE = "https://oc.embl.de/index.php/s/KhbLe0Y1JI61ct8/download"
 _DOWNLOADS = (
     (
