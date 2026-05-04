@@ -23,6 +23,7 @@ _module_map = {
         "compute",
     ],
     ".dialog": ["DTSScreeningDialog"],
+    ".equilibration_dialog": ["MeshEquilibrationDialog"],
 }
 
 _lazy_imports = {}

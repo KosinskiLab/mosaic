@@ -7,24 +7,9 @@ User Guide
 
    installation
    quickstart
-   concepts
 
 .. toctree::
-   :caption: Working with Data
-
-   data/import_export
-   data/sessions
-   data/special
-
-.. toctree::
-   :caption: Feature Tabs
-
-   tabs/segmentation
-   tabs/parametrization
-   tabs/intelligence
-
-.. toctree::
-   :caption: Practical Workflows
+   :caption: Tutorials
 
    workflows/iav
    workflows/giardia
@@ -32,13 +17,16 @@ User Guide
    workflows/shell
 
 .. toctree::
+   :caption: UI Reference
+
+   interface
+   file_operations
+   tabs/index
+
+.. toctree::
    :caption: Reference
 
    reference/formats
    reference/troubleshooting
    reference/issues
-
-.. toctree::
-   :caption: Further Information
-
    misc/license

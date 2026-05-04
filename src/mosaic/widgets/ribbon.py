@@ -499,6 +499,14 @@ class RibbonToolBar(QWidget):
         self._dividers.clear()
         self._buttons.clear()
 
+    def button(self, name):
+        for btn in self._buttons:
+            if isinstance(btn, RibbonButton) and btn._full_text == name:
+                return btn
+        # Fallback so callers (e.g. onboarding overlay) can still highlight
+        # *something* when the ribbon contents differ from what was expected.
+        return self
+
     def _on_theme_changed(self):
         for div in self._dividers:
             div.setStyleSheet(f"background: {Colors.BORDER_DARK}; border: none;")

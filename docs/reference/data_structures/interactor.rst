@@ -3,68 +3,94 @@ DataContainerInteractor
 
 .. currentmodule:: mosaic.interactor
 
-The `DataContainerInteractor` class mediates between the GUI interface and underlying DataContainer, handling user interactions, visual representation, and data operations within the Mosaic application's 3D viewport.
+:class:`DataContainerInteractor` mediates between a
+:class:`~mosaic.container.DataContainer` and the GUI: it owns the VTK pickers,
+the tree-widget representation of the container, and the geometry operations
+exposed in the ribbon.  :class:`~mosaic.data.MosaicData` holds two of them,
+``data`` for point clouds and ``models`` for fitted models.
+
 
 Constructor
 ~~~~~~~~~~~
+
 .. autosummary::
    :toctree: ../rst/
    :nosignatures:
 
    DataContainerInteractor
 
+
 Interaction Modes
 ~~~~~~~~~~~~~~~~~
+
+The interactor switches between three pointer modes (viewing, drawing, and
+picking) and owns the area picker used for box selection.
+
 .. autosummary::
    :toctree: ../rst/
 
    DataContainerInteractor.attach_area_picker
    DataContainerInteractor.activate_viewing_mode
-   DataContainerInteractor.toggle_drawing_mode
-   DataContainerInteractor.toggle_picking_mode
+   DataContainerInteractor.activate_drawing_mode
+   DataContainerInteractor.activate_picking_mode
 
-Selection Management
-~~~~~~~~~~~~~~~~~~~~
+
+Selection
+~~~~~~~~~
+
 .. autosummary::
    :toctree: ../rst/
 
+   DataContainerInteractor.get_selected_geometries
    DataContainerInteractor.set_selection_by_uuid
    DataContainerInteractor.deselect
    DataContainerInteractor.deselect_points
    DataContainerInteractor.highlight_selected_points
    DataContainerInteractor.highlight_clusters_from_selected_points
 
+
 Data Management
 ~~~~~~~~~~~~~~~
+
 .. autosummary::
    :toctree: ../rst/
 
    DataContainerInteractor.add
+   DataContainerInteractor.add_selection
    DataContainerInteractor.merge
    DataContainerInteractor.remove
+   DataContainerInteractor.update
+   DataContainerInteractor.undo
 
 
 Geometry Operations
 ~~~~~~~~~~~~~~~~~~~
+
+These methods are dispatched to :class:`~mosaic.operations.GeometryOperations`
+via the operation registry. They apply the named operation to every selected
+geometry, optionally as a background task.
+
 .. autosummary::
    :toctree: ../rst/
 
    DataContainerInteractor.cluster
-   DataContainerInteractor.remove_outliers
-   DataContainerInteractor.decimate
+   DataContainerInteractor.skeletonize
    DataContainerInteractor.downsample
-   DataContainerInteractor.crop_cluster
-   DataContainerInteractor.trim
+   DataContainerInteractor.remove_outliers
+   DataContainerInteractor.compute_normals
    DataContainerInteractor.duplicate
+   DataContainerInteractor.visibility
 
 
-Visualization Control
-~~~~~~~~~~~~~~~~~~~~~
+Visualization
+~~~~~~~~~~~~~
+
 .. autosummary::
    :toctree: ../rst/
 
-   DataContainerInteractor.change_visibility
-   DataContainerInteractor.toggle_visibility
+   DataContainerInteractor.next_color
+   DataContainerInteractor.set_coloring_mode
    DataContainerInteractor.change_representation
    DataContainerInteractor.render
    DataContainerInteractor.render_vtk
+   DataContainerInteractor.refresh_actors

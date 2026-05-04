@@ -221,4 +221,4 @@ Pickle (.pickle)
 
 See Also
 ========
-:doc:`../data/import_export` for import and export options
+:doc:`../file_operations` for import and export options

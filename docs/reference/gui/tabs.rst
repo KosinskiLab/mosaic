@@ -20,8 +20,6 @@ Segmentation Operations
    :toctree: ../rst/
 
    SegmentationTab.show_ribbon
-   PlaneTrimmer
-   ClusterTransformer
 
 Modeling Operations
 ~~~~~~~~~~~~~~~~~~~

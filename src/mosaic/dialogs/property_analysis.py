@@ -919,7 +919,7 @@ class PropertyAnalysisDialog(QDialog):
         layout.addWidget(options_group)
 
         button_layout = QHBoxLayout()
-        refresh_btn = QPushButton("Refresh")
+        refresh_btn = QPushButton("Compute")
         refresh_btn.setIcon(_icon("ph.arrow-clockwise", role="primary"))
         refresh_btn.clicked.connect(self._preview)
         button_layout.addWidget(refresh_btn)

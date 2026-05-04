@@ -86,7 +86,7 @@ class IntelligenceTab(QWidget):
         return dialog.exec_()
 
     def _equilibrate_fit(self):
-        from ..dts._equilibration_dialog import MeshEquilibrationDialog
+        from ..dts.equilibration_dialog import MeshEquilibrationDialog
         from ..meshing import equilibrate_fit
 
         geometries = self.cdata.models.get_selected_geometries()

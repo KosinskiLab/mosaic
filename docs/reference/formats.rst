@@ -1,50 +1,87 @@
 Formats
 =======
+
 .. currentmodule:: mosaic.formats
 
-The `formats` module provides comprehensive file I/O capabilities for various scientific data formats commonly used in microscopy and structural biology.
+The :mod:`mosaic.formats` module provides file I/O for the geometry, density,
+and session formats used throughout Mosaic.  Most user code only needs the
+high-level entry points :func:`open_file`, :func:`open_session`, and
+:func:`write_session`; the lower-level container types are listed for
+completeness.
 
-Core Functions
-~~~~~~~~~~~~~~
+
+Reading
+~~~~~~~
+
+:func:`open_file` dispatches to the right parser based on the file extension
+and returns a :class:`GeometryDataContainer` of one or more entities.
+
 .. autosummary::
    :toctree: rst
 
    open_file
-   open_session
 
-Data Container Classes
-~~~~~~~~~~~~~~~~~~~~~~
-.. autosummary::
-   :toctree: rst
-   :nosignatures:
 
-   DataObject
-   DataContainer
-
-Writers
+Writing
 ~~~~~~~
+
 .. autosummary::
    :toctree: rst
 
    OrientationsWriter
    write_density
 
-Parser
-======
-.. currentmodule:: mosaic.formats.parser
 
-The `parser` module handles loading and processing of density maps and volumetric data from various file formats.
+Session Files
+~~~~~~~~~~~~~
 
-Density Loading
+Mosaic sessions are written in an indexed binary format that bundles the
+pickled application state with optional auxiliary sections (thumbnails,
+metadata, …).  The helpers below read and write those archives.
+
+.. autosummary::
+   :toctree: rst
+
+   is_session_file
+   open_session
+   write_session
+   read_session_index
+   read_session_meta
+   read_session_section
+
+
+Streaming
+~~~~~~~~~
+
+Helpers for chunked, level-of-detail access to OME-Zarr volumes.
+
+.. autosummary::
+   :toctree: rst
+
+   open_omezarr
+   ZarrImageSource
+
+
+Data Containers
 ~~~~~~~~~~~~~~~
+
+In-memory representations returned by the parsers.  ``GeometryDataContainer``
+groups one or more geometry entities, while ``VertexPropertyContainer`` carries
+per-vertex scalar fields alongside them.
+
 .. autosummary::
    :toctree: rst
+   :nosignatures:
 
-   load_density
+   GeometryDataContainer
+   VertexPropertyContainer
 
-Volume Processing
-~~~~~~~~~~~~~~~~~
+
+Exceptions
+~~~~~~~~~~
+
 .. autosummary::
    :toctree: rst
+   :nosignatures:
 
-   volume_to_pointcloud
+   NotASegmentationError

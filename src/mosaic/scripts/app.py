@@ -11,8 +11,8 @@ import signal
 import argparse
 from importlib_resources import files
 
-from qtpy.QtCore import Qt, QLocale
 from qtpy.QtWidgets import QApplication
+from qtpy.QtCore import Qt, QLocale, QTimer
 from qtpy.QtGui import QIcon, QFont, QFontDatabase, QFontInfo
 
 from mosaic import __version__
@@ -25,29 +25,43 @@ from mosaic.stylesheets import (
     build_appstyle,
 )
 
-try:
-    from mosaic.onboarding.chapters import all_chapters
+
+def _prompt_first_launch(window):
+    from qtpy.QtWidgets import QMessageBox
+    from mosaic.widgets import MosaicMessageBox
+    from mosaic.settings import Settings
     from mosaic.onboarding import launch_onboarding
 
-    HAS_ONBOARDING = True
-except Exception:
-    HAS_ONBOARDING = False
+    box = MosaicMessageBox(window)
+    box.setWindowTitle("Welcome to Mosaic")
+    box.setIcon(QMessageBox.Icon.Question)
+    box.setText("Hey, looks like it's your first time here!\n\nWant a quick tour?")
+    yes_btn = box.addButton("Sure, let's go", QMessageBox.ButtonRole.AcceptRole)
+    box.addButton("Maybe later", QMessageBox.ButtonRole.RejectRole)
+    box.setDefaultButton(yes_btn)
+    box.exec()
+
+    Settings.ui.onboarding_done = True
+
+    if box.clickedButton() is yes_btn:
+        launch_onboarding(window, "basics")
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", action="version", version=f"{__version__}")
-    if HAS_ONBOARDING:
-        parser.add_argument(
-            "--onboard",
-            nargs="?",
-            const="__list__",
-            metavar="CHAPTER",
-            help="Launch onboarding walkthrough. Run without argument to list chapters.",
-        )
+    parser.add_argument(
+        "--onboard",
+        nargs="?",
+        const="__list__",
+        metavar="CHAPTER",
+        help="Launch onboarding walkthrough. Run without argument to list chapters.",
+    )
     args = parser.parse_args()
 
-    if HAS_ONBOARDING and args.onboard == "__list__":
+    from mosaic.onboarding import launch_onboarding, all_chapters
+
+    if args.onboard == "__list__":
         print("\nAvailable onboarding chapters:\n")
         for ch in all_chapters():
             print(f"  {ch.id:<20} {ch.description}")
@@ -93,10 +107,10 @@ def main():
     window = App()
     window.show()
 
-    if HAS_ONBOARDING and args.onboard:
-        from qtpy.QtCore import QTimer
-
+    if args.onboard:
         QTimer.singleShot(200, lambda: launch_onboarding(window, args.onboard))
+    elif not Settings.ui.onboarding_done:
+        QTimer.singleShot(500, lambda: _prompt_first_launch(window))
 
     sys.exit(app.exec())
 
