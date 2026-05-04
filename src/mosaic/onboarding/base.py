@@ -9,6 +9,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from typing import Callable, Literal
 from dataclasses import dataclass, field
 
+__all__ = ["OnboardingStep", "OnboardingChapter"]
+
 
 @dataclass
 class OnboardingStep:

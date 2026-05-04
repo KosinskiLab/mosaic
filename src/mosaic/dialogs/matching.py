@@ -476,9 +476,10 @@ class ComputeTab(QWidget):
         self.layout.addWidget(self.scroll_area)
 
     def get_settings(self):
+        memory_text = self.memory_input.text().strip() or "85"
         return {
             "cores": self.cores_input.value(),
-            "memory": float(self.memory_input.text()) / 100,
+            "memory": float(memory_text) / 100,
             "backend": self.backend_combo.currentText(),
         }
 
@@ -702,7 +703,7 @@ class TemplateMatchingDialog(QDialog):
 
             echo "Starting template matching pipeline..."
 
-            # Set up environment - modify as needed
+            # Set up environment. Modify as needed
             # source activate your_env
 
             if [ "{preprocess['skip_preprocessing']}" = "True" ]; then

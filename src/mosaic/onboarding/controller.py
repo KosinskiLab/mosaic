@@ -13,6 +13,7 @@ from qtpy.QtCore import QObject, Signal
 from .overlay import SpotlightOverlay
 from .base import OnboardingChapter, OnboardingStep
 
+__all__ = ["OnboardingController"]
 
 _CALL_PATTERN = re.compile(r"^(\w+)\(\s*(?:(['\"])([^'\"]*)\2)?\s*\)$")
 _INDEX_PATTERN = re.compile(r"^(\w+)((?:\[[^\[\]]+\])+)$")
