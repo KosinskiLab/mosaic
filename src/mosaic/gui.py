@@ -1341,6 +1341,7 @@ class App(QMainWindow):
             self.volume_viewer.setVisible(True)
             self.volume_action._on = True
             self.volume_action.setIcon(icon("ph.cube", role="primary"))
+
         for path in paths:
             try:
                 self.volume_viewer.load_into_viewer(path)

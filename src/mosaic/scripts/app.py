@@ -61,9 +61,14 @@ def main():
 
     from mosaic.onboarding import launch_onboarding, all_chapters
 
-    if args.onboard == "__list__":
+    chapters = {ch.id: ch for ch in all_chapters()}
+
+    if args.onboard and args.onboard not in chapters:
+        if args.onboard != "__list__":
+            print(f"error: unknown onboarding chapter '{args.onboard}'.")
+
         print("\nAvailable onboarding chapters:\n")
-        for ch in all_chapters():
+        for ch in chapters.values():
             print(f"  {ch.id:<20} {ch.description}")
         print("\nUsage: mosaic --onboard <chapter>\n")
         sys.exit(0)
