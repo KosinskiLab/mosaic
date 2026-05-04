@@ -5,6 +5,7 @@ Version 1.2.4 makes Mosaic run better on laptops and machines without dedicated 
 ## Features
 
 - Geometries now switch rendering detail. Scenes with large numbers of points are significantly faster on laptops and machines without a dedicated GPU. This can be configured in Preferences > Appearance > Render > Balanced or the icon in the top right.
+- Onboarding workflow system, including a practical walkthrough for basic features.
 - Shrink Wrap as new mesh generation method that wraps a surface around point cloud data, which handles cases where alpha shapes fail.
 - The DTS dialog has been simplified and restructured to make setting up simulations, adjusting parameters, and analyzing trajectories straightforward.
 - Volume viewer loads faster, renders as a viewport overlay, and supports OME-Zarr arrays.

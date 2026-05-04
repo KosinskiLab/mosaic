@@ -29,7 +29,7 @@ Import tomograms, segment membranes, build surface meshes, localize proteins, me
 
 **See it work:** The [IAV tutorial](https://kosinskilab.github.io/mosaic/tutorial/workflows/iav.html) walks through a real analysis start to finish. About 30 minutes hands-on.
 
-Need to prep for MD? Export Martini-compatible coarse-grained systems with positioned proteins. Run HMFF to refine membrane shapes using both your experimental density and physics. Send the result straight to GROMACS.
+Need to prep for MD? Export Martini-compatible coarse-grained systems with positioned proteins. Run HMFF to simulate biomembranes using both your experimental density and physics. Send the result straight to GROMACS.
 
 <p align="center">
   <img src="docs/_static/tutorial/mosaic_overview.png" alt="Mosaic GUI Interface">
@@ -43,6 +43,12 @@ Once your workflow is dialed in, use the [pipeline builder](https://kosinskilab.
 mosaic-pipeline config.json
 ```
 
+Working on a remote server or composing custom workflows? The [Mosaic shell](https://kosinskilab.github.io/mosaic/tutorial/workflows/shell.html) exposes most GUI operations as commands you can run interactively or replay from a script:
+
+```bash
+mosaic-shell workflow.sh
+```
+
 ## Installation
 
 Mosaic requires Python 3.11 or higher. Install with pip:
@@ -52,7 +58,9 @@ pip install mosaic-gui
 mosaic &
 ```
 
-The graphical interface launches immediately. For advanced installation options see the [installation guide](https://kosinskilab.github.io/mosaic/tutorial/installation.html).
+The first launch takes a bit longer than subsequent starts. A short interactive tour then walks through the basics, about five minutes. Re-run any time with `mosaic --onboard basics`.
+
+See the [installation guide](https://kosinskilab.github.io/mosaic/tutorial/installation.html) for full instructions.
 
 ## Citation
 
