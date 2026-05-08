@@ -190,8 +190,7 @@ class ContainerTreeWidget(QFrame):
                 background-color: palette(base);
                 border: 1px solid {Colors.PRIMARY};
                 border-radius: {Colors.RADIUS}px;
-                padding: 0px 3px;
-                margin: 0px 8px;
+                padding: 0px 1px;
                 selection-background-color: {Colors.alpha("PRIMARY", 0.6)};
                 font-size: {Typography.BODY}px;
             }}
@@ -519,7 +518,6 @@ class GroupTreeWidgetItem(QTreeWidgetItem):
     def __init__(self, name: str, parent=None):
         super().__init__(parent, [name])
         self.group_name = name
-        self.arrow_color = "#6b7280"
 
         self.update_icon()
 
@@ -542,7 +540,7 @@ class GroupTreeWidgetItem(QTreeWidgetItem):
         svg_template = f"""
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
                 <rect width="18" height="18" fill="transparent" />
-                <path stroke="{self.arrow_color}" stroke-width="2" fill="none" d="{path}" />
+                <path stroke="{Colors.TEXT_MUTED}" stroke-width="2" fill="none" d="{path}" />
             </svg>"""
 
         svg_bytes = QByteArray(svg_template.encode())
@@ -607,8 +605,6 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
             super().setData(0, Qt.ItemDataRole.UserRole, geometry)
 
         self.original_color = self.foreground(0)
-        self.visible_color = QColor(99, 102, 241)
-        self.invisible_color = QColor(128, 128, 128)
 
         self.metadata = metadata or {}
 
@@ -650,14 +646,15 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
         else:
             icon_name = "mdi.scatter-plot"
 
-        color = self.visible_color if visible else self.invisible_color
-        icon = _icon_factory(icon_name, color=color.name(), scale_factor=0.85)
+        color = Colors.PRIMARY if visible else Colors.TEXT_MUTED
+        icon = _icon_factory(icon_name, color=color, scale_factor=0.85)
         self.setIcon(0, icon)
 
     def set_visible(self, visible):
         """Update visibility state and icon."""
         self.update_icon(visible)
-        self.setForeground(0, self.original_color if visible else self.invisible_color)
+        foreground = self.original_color if visible else QColor(Colors.TEXT_MUTED)
+        self.setForeground(0, foreground)
 
     def text(self, column=0):
         return super().text(column)
@@ -699,11 +696,22 @@ class MetadataItemDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+    @staticmethod
+    def _indent_for(index):
+        return 6 if index.parent().isValid() else 0
+
+    def updateEditorGeometry(self, editor, option, index):
+        indent = self._indent_for(index)
+        icon = index.data(Qt.ItemDataRole.DecorationRole)
+        has_icon = icon is not None and not icon.isNull()
+        text_left = 12 + 20 + 4 if has_icon else 12
+        editor.setGeometry(option.rect.adjusted(text_left + indent - 4, 2, 0, -2))
+
     def paint(self, painter, option, index):
         tree_widget = self.parent()
         item = tree_widget.itemFromIndex(index)
 
-        indent = 6 if index.parent().isValid() else 0
+        indent = self._indent_for(index)
 
         # Calculate content rect extending to right edge
         content_rect = QRect(
@@ -725,7 +733,9 @@ class MetadataItemDelegate(QStyledItemDelegate):
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(content_rect, 6, 6)
         elif is_hovered:
-            painter.setBrush(QColor(0, 0, 0, int(0.06 * 255)))
+            hover = QColor(Colors.TEXT_PRIMARY)
+            hover.setAlphaF(0.06)
+            painter.setBrush(hover)
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(content_rect, 6, 6)
         painter.restore()

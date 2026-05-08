@@ -68,11 +68,11 @@ class StyleableButton(QPushButton):
                 text-align: center;
             }}
             QPushButton:checked {{
-                border: 1px solid #4f46e5;
+                border: 1px solid {Colors.PRIMARY};
             }}
             QPushButton:hover:!checked {{
-                background: rgba(0, 0, 0, 0.06);
-                border: 1px solid rgba(0, 0, 0, 0.08);
+                background: {Colors.BG_HOVER};
+                border: 1px solid {Colors.BORDER_HOVER};
             }}
         """
         )
@@ -281,7 +281,7 @@ class ExportDialog(QDialog):
 
         if has_dupes:
             self.preview_label.setText(
-                '<span style="color: #dc2626;">'
+                f'<span style="color: {Colors.ERROR};">'
                 "Pattern produces duplicate filenames</span>"
             )
             return
@@ -371,7 +371,9 @@ class ExportDialog(QDialog):
             no_settings_label = QLabel(
                 "No additional settings available for this format."
             )
-            no_settings_label.setStyleSheet("color: #6b7280; font-style: italic;")
+            no_settings_label.setStyleSheet(
+                f"color: {Colors.TEXT_MUTED}; font-style: italic;"
+            )
             self.settings_layout.addWidget(no_settings_label)
             return
 

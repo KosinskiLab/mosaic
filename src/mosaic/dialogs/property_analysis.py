@@ -412,13 +412,9 @@ class ColorScaleSettingsDialog(QDialog):
 
         self._setup_ui()
 
-    def sizeHint(self):
-        return QSize(400, 350)
-
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 0, 10, 10)
-        # layout.setContentsMargins(*self._dialog_margin)
 
         threshold_group = QGroupBox("Threshold Settings")
         threshold_layout = QVBoxLayout(threshold_group)
@@ -565,6 +561,9 @@ class PropertyAnalysisDialog(QDialog):
         self.cdata.models.vtk_pre_render.connect(self._on_render_update)
         self.cdata.data.data_changed.connect(self._refresh_target_lists)
         self.cdata.models.data_changed.connect(self._refresh_target_lists)
+
+    def sizeHint(self):
+        return QSize(350, 600)
 
     def _on_render_update(self):
         """Re-apply properties when models are re-rendered."""
@@ -939,17 +938,11 @@ class PropertyAnalysisDialog(QDialog):
         self.visualize_export_btn.clicked.connect(self._export_data)
         button_layout.addWidget(self.visualize_export_btn)
 
-        apply_btn = QPushButton("Done")
-        apply_btn.setIcon(dialog_accept_icon)
-        apply_btn.clicked.connect(self.close)
-        button_layout.addWidget(apply_btn)
         layout.addLayout(button_layout)
 
         self._update_property_list("Distance")
 
     def _setup_analysis_tab(self):
-        from ..icons import dialog_accept_icon
-
         layout = QVBoxLayout(self.analysis_tab)
 
         header_layout = QHBoxLayout()
@@ -1031,6 +1024,10 @@ class PropertyAnalysisDialog(QDialog):
         layout.addWidget(options_group)
 
         button_layout = QHBoxLayout()
+        refresh_btn = QPushButton("Refresh")
+        refresh_btn.setIcon(_icon("ph.arrow-clockwise", role="primary"))
+        refresh_btn.clicked.connect(self._update_plot)
+        button_layout.addWidget(refresh_btn)
         button_layout.addStretch()
 
         self.analysis_export_btn = QPushButton("Export Plot")
@@ -1038,15 +1035,9 @@ class PropertyAnalysisDialog(QDialog):
         self.analysis_export_btn.clicked.connect(self._export_plot)
         button_layout.addWidget(self.analysis_export_btn)
 
-        apply_btn = QPushButton("Done")
-        apply_btn.setIcon(dialog_accept_icon)
-        apply_btn.clicked.connect(self.close)
-        button_layout.addWidget(apply_btn)
         layout.addLayout(button_layout)
 
     def _setup_statistics_tab(self):
-        from ..icons import dialog_accept_icon
-
         layout = QVBoxLayout(self.statistics_tab)
 
         self.stats_table = QTableWidget()
@@ -1066,6 +1057,10 @@ class PropertyAnalysisDialog(QDialog):
         layout.addWidget(self.stats_table)
 
         button_layout = QHBoxLayout()
+        refresh_btn = QPushButton("Refresh")
+        refresh_btn.setIcon(_icon("ph.arrow-clockwise", role="primary"))
+        refresh_btn.clicked.connect(self._update_statistics)
+        button_layout.addWidget(refresh_btn)
         button_layout.addStretch()
 
         self.statistics_export_btn = QPushButton("Export Statistics")
@@ -1073,10 +1068,6 @@ class PropertyAnalysisDialog(QDialog):
         self.statistics_export_btn.clicked.connect(self._export_statistics)
         button_layout.addWidget(self.statistics_export_btn)
 
-        apply_btn = QPushButton("Done")
-        apply_btn.setIcon(dialog_accept_icon)
-        apply_btn.clicked.connect(self.close)
-        button_layout.addWidget(apply_btn)
         layout.addLayout(button_layout)
 
     def _update_property_list(self, category: str = None):

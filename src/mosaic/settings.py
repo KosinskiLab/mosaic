@@ -119,10 +119,10 @@ class UISettings:
     max_recent_files: int = 10
     auto_save_session: bool = False
     auto_save_interval: int = 300
-    skipped_version: str = ""
     theme_mode: str = "system"
     always_open_as_volume: bool = False
     onboarding_done: bool = False
+    skipped_version: str = ""
 
 
 @dataclass

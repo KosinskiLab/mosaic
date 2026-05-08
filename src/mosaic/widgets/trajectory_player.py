@@ -248,7 +248,7 @@ class TrajectoryPlayer(QWidget):
                 trajectory = trajectories.pop(index)
                 widget.set_name_from_trajectory(trajectory)
             except (IndexError, ValueError):
-                widget.setParent(None)
+                self._discard_row(widget)
 
         for model in trajectories:
             row = TrajectoryRow(model)
@@ -257,6 +257,19 @@ class TrajectoryPlayer(QWidget):
 
         has_rows = self._rows_layout.count() > 0
         self._placeholder.setVisible(not has_rows)
+
+    def clear(self):
+        """Drop all trajectory rows and stop their timers."""
+        for i in reversed(range(self._rows_layout.count())):
+            widget = self._rows_layout.itemAt(i).widget()
+            if widget is not None:
+                self._discard_row(widget)
+        self._placeholder.setVisible(True)
+
+    def _discard_row(self, widget):
+        widget._timer.stop()
+        widget.setParent(None)
+        widget.deleteLater()
 
     def _apply_styles(self):
         self._placeholder.setStyleSheet(

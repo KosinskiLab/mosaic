@@ -60,6 +60,7 @@ from .widgets import (
     LegendWidget,
     ScaleBarWidget,
     ObjectBrowserSidebar,
+    UpdatePill,
     ViewerModes,
     StatusIndicator,
     CursorModeHandler,
@@ -158,6 +159,10 @@ class App(QMainWindow):
             QPushButton:focus {{ outline: none; }}
         """
         )
+        self.update_pill = UpdatePill()
+        self.update_pill.update_clicked.connect(self._show_update_dialog)
+        self.tab_bar._layout.addWidget(self.update_pill)
+
         self.theme_toggle = ThemeToggle()
         self.theme_toggle.set_initial_state(Colors.is_dark())
         self.theme_toggle.toggled.connect(self._on_theme_toggled)
@@ -343,7 +348,7 @@ class App(QMainWindow):
             passes = vtk.vtkRenderStepsPass()
             ssao = vtk.vtkSSAOPass()
             ssao.SetDelegatePass(passes)
-            ssao.SetRadius(50.0)
+            ssao.SetRadius(self._ssao_radius(renderer))
             ssao.SetKernelSize(128)
             ssao.BlurOn()
             renderer.SetPass(ssao)
@@ -359,7 +364,7 @@ class App(QMainWindow):
                 light.SetPosition(*pos)
                 light.SetColor(*color)
                 light.SetIntensity(intensity)
-                light.SetLightTypeToSceneLight()
+                light.SetLightTypeToCameraLight()
                 renderer.AddLight(light)
 
         elif mode == "flat":
@@ -379,13 +384,13 @@ class App(QMainWindow):
                 l.SetPosition(*pos)
                 l.SetColor(*color)
                 l.SetIntensity(intensity)
-                l.SetLightTypeToSceneLight()
+                l.SetLightTypeToCameraLight()
                 renderer.AddLight(l)
 
             passes = vtk.vtkRenderStepsPass()
             ssao = vtk.vtkSSAOPass()
             ssao.SetDelegatePass(passes)
-            ssao.SetRadius(50.0)
+            ssao.SetRadius(self._ssao_radius(renderer))
             ssao.SetKernelSize(128)
             ssao.BlurOn()
             renderer.SetPass(ssao)
@@ -395,6 +400,16 @@ class App(QMainWindow):
             sobel = vtk.vtkSobelGradientMagnitudePass()
             sobel.SetDelegatePass(passes)
             renderer.SetPass(sobel)
+
+    @staticmethod
+    def _ssao_radius(renderer, fraction: float = 0.02, fallback: float = 50.0):
+        # SSAO radius is in world units, so a fixed value over- or under-shoots
+        # depending on data scale. Tie it to the visible scene diagonal.
+        bounds = renderer.ComputeVisiblePropBounds()
+        diag = max(bounds[1] - bounds[0], bounds[3] - bounds[2], bounds[5] - bounds[4])
+        if diag <= 0:
+            return fallback
+        return fraction * diag
 
     def apply_render_settings(self):
         dark = [float(x) for x in Settings.rendering.background_color]
@@ -642,6 +657,8 @@ class App(QMainWindow):
         self.tab_bar._on_theme_changed()
         if hasattr(self, "status_indicator"):
             self.status_indicator._on_theme_changed()
+        if hasattr(self, "update_pill"):
+            self.update_pill._on_theme_changed()
         if hasattr(self, "_tab_gear"):
             self._tab_gear.setIcon(icon("ph.sliders-thin", role="active"))
 
@@ -1418,6 +1435,8 @@ class App(QMainWindow):
         self.renderer.RemoveAllViewProps()
         self.volume_viewer.close()
 
+        self.bbox_manager.reset()
+        self.trajectory_player.clear()
         self.dataset_bbox.setChecked(False)
         self.computed_bbox.setChecked(False)
 
@@ -1625,21 +1644,26 @@ class App(QMainWindow):
         return self._open_files([file_path])
 
     def _check_for_updates(self):
-        from .dialogs import UpdateChecker, UpdateDialog
+        from .dialogs import UpdateChecker
         from .__version__ import __version__
-
-        def _show_update_dialog(latest_version, release_notes):
-            if Settings.ui.skipped_version == latest_version:
-                return None
-            dialog = UpdateDialog(
-                __version__, latest_version, release_notes, parent=self
-            )
-            dialog.exec()
 
         # We assign the thread to keep it alive
         self.update_checker = UpdateChecker(__version__, parent=self)
-        self.update_checker.update_available.connect(_show_update_dialog)
+        self.update_checker.update_available.connect(self._on_update_available)
         self.update_checker.start()
+
+    def _on_update_available(self, latest_version: str, release_notes: str):
+        from .settings import Settings
+
+        self.update_pill.show_update(latest_version, release_notes)
+        if Settings.ui.skipped_version != latest_version:
+            self._show_update_dialog(latest_version, release_notes)
+
+    def _show_update_dialog(self, latest_version: str, release_notes: str = ""):
+        from .dialogs import UpdateDialog
+        from .__version__ import __version__
+
+        UpdateDialog(__version__, latest_version, release_notes, parent=self).exec()
 
 
 def _read_files_worker(cdata, filenames, file_parameters):

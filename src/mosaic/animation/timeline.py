@@ -98,7 +98,11 @@ class TimelineContent(QWidget):
         font.setPixelSize(Typography.CAPTION)
         painter.setFont(font)
 
-        painter.setPen(QPen(Qt.GlobalColor.black, 1))
+        divider_color = QColor(Colors.BORDER_DARK)
+        tick_color = QColor(Colors.BORDER_HOVER)
+        text_color = QColor(Colors.TEXT_SECONDARY)
+
+        painter.setPen(QPen(divider_color, 1))
         painter.drawLine(0, self.ruler_height, self.width(), self.ruler_height)
 
         view_range = self.view_end_frame - self.view_start_frame
@@ -135,12 +139,14 @@ class TimelineContent(QWidget):
             if x < 0 or x > self.width():
                 continue
 
+            painter.setPen(QPen(tick_color, 1))
             painter.drawLine(int(x), self.ruler_height - 5, int(x), self.ruler_height)
 
             label = str(frame)
             text_width = painter.fontMetrics().horizontalAdvance(label)
             text_x = x - text_width / 2
             if text_x > 0 and text_x + text_width < self.width() - 5:
+                painter.setPen(QPen(text_color, 1))
                 painter.drawText(
                     int(text_x), 5, text_width, 20, Qt.AlignmentFlag.AlignCenter, label
                 )
@@ -192,7 +198,7 @@ class TimelineContent(QWidget):
                 icon_color = (
                     track_color
                     if self.hovered_remove_button == track.id
-                    else QColor("#9ca3af")
+                    else QColor(Colors.TEXT_MUTED)
                 )
                 trash_icon = icon("ph.trash", color=icon_color)
                 pixmap = trash_icon.pixmap(

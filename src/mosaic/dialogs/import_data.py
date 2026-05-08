@@ -9,30 +9,8 @@ from qtpy.QtWidgets import (
     QGroupBox,
 )
 
+from ..formats._utils import read_density_header, read_star_header
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
-
-
-def _load_density_header(filename: str):
-
-    import numpy as np
-    from ..formats.parser import load_density
-
-    try:
-        import mrcfile
-
-        with mrcfile.open(filename, header_only=True, permissive=True) as mrc:
-            data_shape = mrc.header.nz, mrc.header.ny, mrc.header.nx
-            sampling_rate = mrc.voxel_size.astype(
-                [("x", "<f4"), ("y", "<f4"), ("z", "<f4")]
-            ).view(("<f4", 3))
-            sampling_rate = np.array(sampling_rate)[::1]
-        return data_shape[::1], sampling_rate[::1]
-
-    # Fallback for cases supported by Density.from_file and not mrcfile
-    except Exception as e:
-        print(e)
-        density = load_density(filename)
-        return density.data.shape, density.sampling_rate
 
 
 class ImportDataDialog(QDialog):
@@ -294,7 +272,7 @@ class ImportDataDialog(QDialog):
     def set_files(self, filenames):
         from ..formats._utils import get_extension
         from ..formats.reader import FORMAT_MAPPING
-        from ..formats.parser import read_volume
+        from ..formats.parser import read_volume, read_star
 
         self.filenames = filenames
         self.current_file_index = 0
@@ -305,10 +283,22 @@ class ImportDataDialog(QDialog):
         for file in filenames:
             extension = get_extension(file)[1:]
             if extension in FORMAT_MAPPING.get(read_volume):
-                shape, sampling_rate = _load_density_header(file)
+                shape, sampling_rate = read_density_header(file)
                 self.sampling_x.setText(f"{sampling_rate[0]:g}")
                 self.sampling_y.setText(f"{sampling_rate[1]:g}")
                 self.sampling_z.setText(f"{sampling_rate[2]:g}")
+            elif extension in FORMAT_MAPPING.get(read_star):
+                info = read_star_header(file)
+                px = info.get("pixel_size")
+                if px:
+                    self.sampling_x.setText(f"{px:g}")
+                    self.sampling_y.setText(f"{px:g}")
+                    self.sampling_z.setText(f"{px:g}")
+                if info.get("centered") and px:
+                    self.override_checkbox.setChecked(True)
+                    self.scale_x.setText("1")
+                    self.scale_y.setText("1")
+                    self.scale_z.setText("1")
 
             self.file_parameters[file] = self._get_current_parameters()
 

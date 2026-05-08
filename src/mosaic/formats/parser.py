@@ -380,7 +380,13 @@ def read_star(filename: str):
     GeometryDataContainer
         Parsed geometry data container.
     """
-    return GeometryDataContainer(**_read_orientations(filename))
+    from ._utils import read_star_header
+
+    kwargs = _read_orientations(filename)
+    pixel_size = read_star_header(filename).get("pixel_size")
+    if pixel_size:
+        kwargs["sampling"] = (pixel_size, pixel_size, pixel_size)
+    return GeometryDataContainer(**kwargs)
 
 
 def read_txt(filename: str):

@@ -486,6 +486,10 @@ class Geometry:
                 if copy:
                     state[key] = state[key].copy()
 
+        model = state.get("model")
+        if model is not None and hasattr(model, "subset"):
+            state["model"] = model.subset(idx)
+
         parent_lod = self._lod_indices
 
         ret = self

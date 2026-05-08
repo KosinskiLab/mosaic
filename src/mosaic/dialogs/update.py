@@ -8,93 +8,169 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from sys import executable, argv
 
-from qtpy.QtCore import Qt, QThread, Signal
-from qtpy.QtWidgets import QMessageBox, QCheckBox, QApplication
-from ..widgets import MosaicMessageBox
+from qtpy.QtCore import Qt, QThread, QUrl, Signal
+from qtpy.QtGui import QDesktopServices
+from qtpy.QtWidgets import (
+    QApplication,
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTextBrowser,
+    QVBoxLayout,
+)
 
+from ..stylesheets import Colors, Typography
+from ..widgets import MosaicMessageBox
 from ..__version__ import __version__
 
 
-class UpdateChecker(QThread):
-    """Background thread to check for updates without blocking UI."""
+_GITHUB_RELEASE_URL = "https://github.com/KosinskiLab/mosaic/releases/tag/v{version}"
+_GITHUB_LATEST_API = "https://api.github.com/repos/KosinskiLab/mosaic/releases/latest"
 
-    update_available = Signal(str, str)  # latest_version, release_notes
+
+class UpdateChecker(QThread):
+    """Background thread to check GitHub for the latest release."""
+
+    update_available = Signal(str, str)
 
     def __init__(self, current_version: str = __version__, parent=None):
         super().__init__(parent)
         self.current_version = str(current_version)
-        self.repo_url = (
-            "https://api.github.com/repos/KosinskiLab/mosaic/releases/latest"
-        )
+        self.api_url = _GITHUB_LATEST_API
 
     def run(self):
-        """Check GitHub for latest release."""
         import json
         import urllib.request
         from packaging import version
 
         try:
-            req = urllib.request.Request(self.repo_url)
+            req = urllib.request.Request(self.api_url)
             req.add_header("User-Agent", "Mosaic-Update-Checker")
 
             with urllib.request.urlopen(req, timeout=5) as response:
                 data = json.loads(response.read().decode())
-                latest = data["tag_name"].lstrip("v")
-                notes = data.get("body", "No release notes available.")
 
-                if version.parse(latest) > version.parse(self.current_version):
-                    self.update_available.emit(latest, notes)
+            latest = str(data.get("tag_name", "")).lstrip("v")
+            if not latest:
+                return None
+
+            latest_v = version.parse(latest)
+            if latest_v.is_prerelease:
+                return None
+            if latest_v <= version.parse(self.current_version):
+                return None
+
+            notes = data.get("body") or ""
+            self.update_available.emit(latest, notes)
         except Exception:
             pass  # Dont bother handling network issues
 
 
-class UpdateDialog(MosaicMessageBox):
-    """Dialog to show update information using QMessageBox."""
+class UpdateDialog(QDialog):
+    """Lightweight update dialog with rendered release notes."""
 
-    def __init__(self, current_version, latest_version, release_notes, parent=None):
+    def __init__(
+        self,
+        current_version: str,
+        latest_version: str,
+        release_notes: str = "",
+        parent=None,
+    ):
         super().__init__(parent)
+        self.setWindowTitle("Update available")
+        self.setModal(True)
+        self.setMinimumSize(520, 400)
+        self.resize(650, 550)
 
-        self.setIcon(QMessageBox.Icon.Information)
-        self.setWindowTitle("Update")
-        self.setTextFormat(Qt.TextFormat.MarkdownText)
-
-        self.setText(
-            f"Mosaic {latest_version} available\n\n"
-            f"Current version: {current_version}\n"
-        )
-
-        self.setInformativeText(release_notes)
-
-        self.setStandardButtons(
-            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Ignore
-        )
-        self.setDefaultButton(QMessageBox.StandardButton.Ok)
-
-        self.button(QMessageBox.StandardButton.Ok).setText("Update Now")
-        self.button(QMessageBox.StandardButton.Ignore).setText("Skip")
-
-        self._checkbox = QCheckBox("Don't show this update again", self)
-        self.setCheckBox(self._checkbox)
-
-        self.latest_version = latest_version
+        self._current = current_version
+        self._latest = latest_version
+        self._notes = (release_notes or "").strip()
+        self._release_url = _GITHUB_RELEASE_URL.format(version=latest_version)
         self.update_result = None
 
-    def exec(self):
-        """Execute dialog and handle result."""
-        result = super().exec()
+        root = QVBoxLayout(self)
+        root.setContentsMargins(28, 24, 28, 20)
+        root.setSpacing(6)
 
-        if self.checkBox().isChecked():
-            from ..settings import Settings
+        header = QLabel(
+            f"<span style='font-weight:600;color:{Colors.TEXT_PRIMARY};'>"
+            f"Mosaic {latest_version} available</span> "
+            f"<span style='color:{Colors.TEXT_SECONDARY};'>"
+            f"(you have {current_version})</span>"
+        )
+        header.setTextFormat(Qt.TextFormat.RichText)
+        header.setStyleSheet(f"font-size: {Typography.BODY}px;")
+        root.addWidget(header)
 
-            Settings.ui.skipped_version = self.latest_version
+        if self._notes:
+            root.addSpacing(14)
+            root.addWidget(self._build_notes_view(), 1)
+        else:
+            root.addStretch(1)
 
-        if result == QMessageBox.StandardButton.Ok:
-            self._run_update()
+        root.addSpacing(16)
 
-        return result
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
+
+        notes_btn = QPushButton("Open on GitHub")
+        notes_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        notes_btn.clicked.connect(self._open_release_notes)
+        notes_btn.setStyleSheet(self._link_btn_style())
+        btn_row.addWidget(notes_btn)
+        btn_row.addStretch()
+
+        skip_btn = QPushButton("Skip")
+        skip_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        skip_btn.clicked.connect(self.reject)
+        skip_btn.setStyleSheet(self._secondary_btn_style())
+        btn_row.addWidget(skip_btn)
+
+        update_btn = QPushButton("Update Now")
+        update_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        update_btn.setDefault(True)
+        update_btn.clicked.connect(self._on_update_clicked)
+        update_btn.setStyleSheet(self._primary_btn_style())
+        btn_row.addWidget(update_btn)
+
+        root.addLayout(btn_row)
+        self.setStyleSheet(f"QDialog {{ background: {Colors.SURFACE}; }}")
+
+    def _build_notes_view(self) -> QTextBrowser:
+        view = QTextBrowser()
+        view.setOpenExternalLinks(True)
+        view.setLineWrapMode(QTextBrowser.LineWrapMode.WidgetWidth)
+        view.setMarkdown(self._notes)
+        view.setMinimumHeight(280)
+        view.setStyleSheet(
+            f"""
+            QTextBrowser {{
+                background: palette(base);
+                border: 1px solid {Colors.BORDER_DARK};
+                border-radius: 6px;
+                padding: 10px 12px;
+                color: {Colors.TEXT_PRIMARY};
+                font-size: {Typography.BODY}px;
+            }}
+            """
+        )
+        return view
+
+    def reject(self):
+        from ..settings import Settings
+
+        Settings.ui.skipped_version = self._latest
+        super().reject()
+
+    def _open_release_notes(self):
+        QDesktopServices.openUrl(QUrl(self._release_url))
+
+    def _on_update_clicked(self):
+        self.accept()
+        self._run_update()
 
     def _run_update(self):
-        """Run update command."""
         from subprocess import run
 
         try:
@@ -112,7 +188,6 @@ class UpdateDialog(MosaicMessageBox):
                     "Mosaic has been updated successfully!\n\n"
                     "The application will now restart to use the new version.",
                 )
-
                 self.update_result = "success"
                 self._restart_application()
             else:
@@ -134,9 +209,54 @@ class UpdateDialog(MosaicMessageBox):
             )
 
     def _restart_application(self):
-        """Restart the application."""
         from subprocess import Popen
 
         app = QApplication.instance()
         Popen([executable] + argv)
         app.quit()
+
+    def _primary_btn_style(self) -> str:
+        return f"""
+            QPushButton {{
+                background: {Colors.PRIMARY};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 7px 18px;
+                font-size: {Typography.BODY}px;
+                font-weight: 500;
+            }}
+            QPushButton:hover {{ background: {Colors.alpha("PRIMARY", 0.85)}; }}
+            QPushButton:pressed {{ background: {Colors.PRIMARY}; }}
+            QPushButton:focus {{ outline: none; }}
+        """
+
+    def _secondary_btn_style(self) -> str:
+        return f"""
+            QPushButton {{
+                background: transparent;
+                color: {Colors.TEXT_SECONDARY};
+                border: 1px solid {Colors.BORDER_DARK};
+                border-radius: 6px;
+                padding: 7px 18px;
+                font-size: {Typography.BODY}px;
+            }}
+            QPushButton:hover {{
+                border-color: {Colors.BORDER_HOVER};
+                color: {Colors.TEXT_PRIMARY};
+            }}
+            QPushButton:focus {{ outline: none; }}
+        """
+
+    def _link_btn_style(self) -> str:
+        return f"""
+            QPushButton {{
+                background: transparent;
+                border: none;
+                color: {Colors.TEXT_SECONDARY};
+                padding: 6px 4px;
+                font-size: {Typography.BODY}px;
+            }}
+            QPushButton:hover {{ color: {Colors.PRIMARY}; }}
+            QPushButton:focus {{ outline: none; }}
+        """

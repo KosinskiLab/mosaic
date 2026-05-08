@@ -257,6 +257,20 @@ class BoundingBoxManager:
         self.object_box_actors.clear()
         self.renderer.GetRenderWindow().Render()
 
+    def reset(self):
+        """Drop all bounding box actors and references."""
+        for actor in self.object_box_actors:
+            self.renderer.RemoveActor(actor)
+        self.object_box_actors.clear()
+
+        if self.dataset_box_actor:
+            self.renderer.RemoveActor(self.dataset_box_actor)
+            self.dataset_box_actor = None
+
+        if self.session_box_actor:
+            self.renderer.RemoveActor(self.session_box_actor)
+            self.session_box_actor = None
+
     def show_dataset_bounds(self, visible):
         """Toggle bounding box computed from all loaded data"""
         if visible:

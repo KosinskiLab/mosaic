@@ -6,6 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import re
 from typing import Callable, Optional
 
 import numpy as np
@@ -30,12 +31,10 @@ from qtpy.QtWidgets import (
 )
 import pyqtgraph as pg
 
-from ..widgets import ColorMapSelector, generate_gradient_colors
-from ..stylesheets import Colors, Typography
 from ..icons import icon
 from ..utils import Throttle
-import re
-
+from ..stylesheets import Colors, Typography
+from ..widgets import ColorMapSelector, generate_gradient_colors
 from ..dts._utils import collect_available_metrics, extract_metric_series
 
 

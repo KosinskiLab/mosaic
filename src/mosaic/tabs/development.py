@@ -10,6 +10,7 @@ from qtpy.QtWidgets import (
     QSpinBox,
     QLabel,
     QFileDialog,
+    QMessageBox,
 )
 
 from ..widgets.ribbon import create_button
@@ -277,6 +278,13 @@ class DevelopmentTab(QWidget):
 
         if getattr(self, "_tool_dock", None) is not None:
             self._deactivate_overlay()
+            try:
+                if self.volume_viewer is not None:
+                    self.volume_viewer.primary.data_changed.disconnect(
+                        self._on_volume_loaded
+                    )
+            except (TypeError, RuntimeError):
+                pass
             create_or_toggle_dock(self, "_tool_dock", None)
             self._tool_panel = None
             return
@@ -479,8 +487,7 @@ class DevelopmentTab(QWidget):
         points = coords * sampling
         geom = Geometry(points=points, sampling_rate=sampling)
         geom._meta["name"] = active.name
-        r, g, b = active.color
-        geom._appearance["color"] = (r, g, b)
+        geom.set_appearance(base_color=tuple(active.color))
         self.cdata.data.add(geom)
         self.cdata.data.render()
 

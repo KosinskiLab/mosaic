@@ -832,8 +832,7 @@ class TriangularMesh(Parametrization):
             from .formats.writer import write_topology_file
 
             data = to_tsi(self.vertices, self.triangles, margin=20)
-            write_topology_file(file_path, data, tsi_format=(ext == ".tsi"))
-            return
+            return write_topology_file(file_path, data, tsi_format=(ext == ".tsi"))
 
         import open3d as o3d
 

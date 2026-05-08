@@ -60,7 +60,17 @@ _REF_VIEW_UPS = {
 
 
 def _decompose_angles(camera, view_key, aligned_direction):
-    """Compute (elevation, azimuth, pitch) from camera state."""
+    """Recover (elevation, azimuth, pitch) consistent with ``set_camera_view``.
+
+    set_camera_view applies ``M = R_z(elev) * R_y(az) * R_x(pitch)`` to the
+    per-view reference position and view-up vectors. We reconstruct ``M`` from
+    the camera state and decompose it as ZYX Euler angles.
+    """
+    pos_init = _REF_DIRECTIONS.get(view_key)
+    view_init = _REF_VIEW_UPS.get(view_key)
+    if pos_init is None or view_init is None:
+        return 0, 0, 0
+
     position = np.array(camera.GetPosition())
     focal = np.array(camera.GetFocalPoint())
     direction = position - focal
@@ -70,49 +80,32 @@ def _decompose_angles(camera, view_key, aligned_direction):
     direction /= norm
     if not aligned_direction:
         direction = -direction
+    view_up = np.array(camera.GetViewUp())
 
-    ref = _REF_DIRECTIONS.get(view_key)
-    if ref is None:
+    # M maps {pos_init, view_init, pos_init x view_init} to
+    # {direction, view_up, direction x view_up}; recover it via M = B_out * B_in^-1.
+    third_in = np.cross(pos_init, view_init)
+    third_out = np.cross(direction, view_up)
+    B_in = np.column_stack([pos_init, view_init, third_in])
+    B_out = np.column_stack([direction, view_up, third_out])
+
+    try:
+        rot = B_out @ np.linalg.inv(B_in)
+    except np.linalg.LinAlgError:
         return 0, 0, 0
 
-    # Compute azimuth from the Y component relative to reference
-    # For the ZYX Euler decomposition of the rotation R that maps ref to direction,
-    # we use spherical-like decomposition relative to the reference frame.
-    # Build an orthonormal reference frame from ref direction.
-    ref_n = ref / np.linalg.norm(ref)
-    ref_up = _REF_VIEW_UPS[view_key].copy()
-    ref_up = ref_up - np.dot(ref_up, ref_n) * ref_n
-    ref_up /= np.linalg.norm(ref_up)
-    ref_right = np.cross(ref_up, ref_n)
-
-    # Project current direction into reference frame
-    dx = np.dot(direction, ref_right)
-    dy = np.dot(direction, ref_up)
-    dz = np.dot(direction, ref_n)
-
-    # Azimut is rotation in right-forward, elevation in up-forward plane
-    azimuth = np.degrees(np.arctan2(dx, dz))
-    elevation = np.degrees(np.arctan2(dy, np.sqrt(dx * dx + dz * dz)))
-    view_up = np.array(camera.GetViewUp())
-    fwd = direction
-
-    right = np.cross(fwd, ref_up)
-    right_norm = np.linalg.norm(right)
-    if right_norm < 1e-12:
-        right = ref_right
+    sin_az = float(np.clip(-rot[2, 0], -1.0, 1.0))
+    azimuth = np.degrees(np.arcsin(sin_az))
+    cos_az = np.sqrt(max(0.0, 1.0 - sin_az * sin_az))
+    if cos_az > 1e-6:
+        elevation = np.degrees(np.arctan2(rot[1, 0], rot[0, 0]))
+        pitch = np.degrees(np.arctan2(rot[2, 1], rot[2, 2]))
     else:
-        right /= right_norm
-
-    expected_up = np.cross(right, fwd)
-    expected_up_norm = np.linalg.norm(expected_up)
-    if expected_up_norm < 1e-12:
-        return elevation, azimuth, 0
-    expected_up /= expected_up_norm
-
-    # Pitch is the angle between expected_up and actual view_up around fwd
-    cos_pitch = np.clip(np.dot(view_up, expected_up), -1, 1)
-    sin_pitch = np.dot(np.cross(expected_up, view_up), fwd)
-    pitch = np.degrees(np.arctan2(sin_pitch, cos_pitch))
+        # Gimbal lock at azimuth = +/-90 degrees. Pin elevation to zero and
+        # absorb the remaining rotation into pitch.
+        elevation = 0.0
+        sign = 1.0 if sin_az >= 0 else -1.0
+        pitch = np.degrees(np.arctan2(sign * rot[0, 1], rot[1, 1]))
 
     return (
         int(np.clip(round(elevation), -180, 180)),
@@ -153,6 +146,8 @@ class CameraHUD(QWidget):
         self._hovered = False
         self._app = None
         self._updating_from_camera = False
+        self._last_direction = None
+        self._last_view_up = None
 
         self._throttle_camera = Throttle(self._push_to_camera, interval_ms=30)
 
@@ -165,11 +160,20 @@ class CameraHUD(QWidget):
         main.setSpacing(4)
 
         self._rows = {}
+        # Azimuth is bounded to [-90, 90] because the ZYX Euler decomposition
+        # is only unique within that range; the back hemisphere is reachable
+        # via elevation and pitch (or by mouse-rotating the scene).
+        axis_ranges = {
+            "elevation": (-180, 180),
+            "azimuth": (-90, 90),
+            "pitch": (-180, 180),
+        }
         for axis, label in [("elevation", "E"), ("azimuth", "A"), ("pitch", "P")]:
+            lo, hi = axis_ranges[axis]
             row = SliderRow(
                 label,
-                min_val=-180,
-                max_val=180,
+                min_val=lo,
+                max_val=hi,
                 default=0,
                 decimals=0,
                 suffix="\u00b0",
@@ -200,6 +204,19 @@ class CameraHUD(QWidget):
             int(self._rows["azimuth"].value()),
             int(self._rows["pitch"].value()),
         )
+        self._cache_camera_orientation()
+
+    def _cache_camera_orientation(self):
+        """Snapshot the camera's current direction and view-up for change detection."""
+        if self._app is None:
+            return
+        camera = self._app.renderer.GetActiveCamera()
+        pos = np.array(camera.GetPosition())
+        focal = np.array(camera.GetFocalPoint())
+        d = pos - focal
+        n = np.linalg.norm(d)
+        self._last_direction = d / n if n > 1e-12 else None
+        self._last_view_up = np.array(camera.GetViewUp())
 
     def set_angles(self, elevation=0, azimuth=0, pitch=0):
         """Update displayed angles (called from camera observer)."""
@@ -250,8 +267,30 @@ class CameraHUD(QWidget):
         view_key = getattr(self._app, "_camera_view", None)
         if view_key is None:
             return
-        aligned = getattr(self._app, "_camera_direction", True)
         camera = self._app.renderer.GetActiveCamera()
+
+        # Pan/zoom preserve direction and view-up; only true rotation should
+        # overwrite the slider state. This also avoids the canonical ZYX
+        # decomposition folding |azimuth| > 90 into an alternate representation.
+        pos = np.array(camera.GetPosition())
+        focal = np.array(camera.GetFocalPoint())
+        d = pos - focal
+        n = np.linalg.norm(d)
+        if n < 1e-12:
+            return
+        d /= n
+        view_up = np.array(camera.GetViewUp())
+        if (
+            self._last_direction is not None
+            and self._last_view_up is not None
+            and np.allclose(d, self._last_direction, atol=1e-4)
+            and np.allclose(view_up, self._last_view_up, atol=1e-4)
+        ):
+            return
+        self._last_direction = d
+        self._last_view_up = view_up
+
+        aligned = getattr(self._app, "_camera_direction", True)
         elevation, azimuth, pitch = _decompose_angles(camera, view_key, aligned)
         self._app._camera_elevation = elevation
         self._app._camera_azimuth = azimuth

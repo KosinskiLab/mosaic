@@ -25,7 +25,6 @@ from qtpy.QtWidgets import (
     QLineEdit,
     QPlainTextEdit,
     QStackedWidget,
-    QFileDialog,
 )
 import pyqtgraph as pg
 

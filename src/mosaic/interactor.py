@@ -615,6 +615,7 @@ class DataContainerInteractor(QObject):
         return 1
 
     def _show_batch_rename_dialog(self) -> int:
+        from qtpy.QtWidgets import QApplication
         from .dialogs import BatchRenameDialog
 
         items = self.data_list.selected_items()
@@ -624,7 +625,9 @@ class DataContainerInteractor(QObject):
         uuids = [item.metadata.get("uuid") for item in items]
         current_names = [item.text() for item in items]
 
-        dialog = BatchRenameDialog(names=current_names)
+        dialog = BatchRenameDialog(
+            names=current_names, parent=QApplication.activeWindow()
+        )
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return -1
 

@@ -29,9 +29,9 @@ import pyqtgraph as pg
 
 from ._utils import find_dts_file, parse_dts_content
 from ..icons import icon, icon_button
-from ._configure import ConfigurePanel
-from ._compute_panel import ComputePanel
-from ._analysis_panel import AnalysisPanel
+from .configure_panel import ConfigurePanel
+from .compute_panel import ComputePanel
+from .analysis_panel import AnalysisPanel
 from ..stylesheets import Colors, Typography
 from ..widgets.settings import get_widget_value
 from ..widgets import PathSelector, SearchWidget, TabWidget, MosaicMessageBox

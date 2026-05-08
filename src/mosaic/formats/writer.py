@@ -3,7 +3,7 @@ from typing import Dict
 
 import numpy as np
 
-from ._utils import get_extension
+from ._utils import get_extension, write_star_header
 
 
 class OrientationsWriter:
@@ -231,6 +231,7 @@ def write_geometries(
     meshes = []
     center, orientation_kwargs = 0, {}
     data = {"points": [], "quaternions": []}
+    pixel_sizes = []
     for index, geometry in enumerate(geometries):
         if file_format in mesh_formats:
             if not hasattr(geometry.model, "mesh"):
@@ -246,6 +247,7 @@ def write_geometries(
             quaternions = normals_to_rot(normals, scalar_first=True)
 
         geom_sampling = sampling if sampling is not None else geometry.sampling_rate
+        pixel_sizes.append(float(np.mean(geom_sampling)))
         if relion_5_format:
             center = np.divide(shape, 2).astype(int) if shape is not None else 0
             center = np.multiply(center, geom_sampling)
@@ -313,6 +315,7 @@ def write_geometries(
     ]
     if is_single:
         data = {k: [np.concatenate(v)] for k, v in data.items()}
+        pixel_sizes = pixel_sizes[:1]
 
     if file_format == "ndjson":
         from ..utils import _quat_to_matrix
@@ -349,3 +352,5 @@ def write_geometries(
         orientations = OrientationsWriter(**{k: v[index] for k, v in data.items()})
         fname = file_path if is_single else file_path[index]
         orientations.to_file(fname, file_format=file_format, **orientation_kwargs)
+        if file_format == "star":
+            write_star_header(fname, pixel_sizes[index])
