@@ -20,7 +20,6 @@ class ImportDataDialog(QDialog):
         self.filenames = []
         self.file_parameters = {}
         self.setup_ui()
-        self.resize(590, 350)
 
     def setup_ui(self):
         from ..icons import (

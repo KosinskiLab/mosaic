@@ -1,7 +1,7 @@
 import time
 
 import numpy as np
-from qtpy.QtCore import Qt, QEvent
+from qtpy.QtCore import Qt, QEvent, QTimer
 from qtpy.QtGui import QCursor
 from qtpy.QtWidgets import (
     QWidget,
@@ -232,24 +232,51 @@ class DevelopmentTab(QWidget):
 
         if event.type() in (QEvent.Type.ShortcutOverride, QEvent.Type.KeyPress):
             is_action = event.type() == QEvent.Type.KeyPress
+            key = event.key()
+            mods = event.modifiers()
 
-            if event.key() == Qt.Key.Key_Escape:
+            if key == Qt.Key.Key_Escape:
                 if is_action:
                     self._switch_tool("navigate")
                 event.accept()
                 return True
 
-            if (
-                event.key() == Qt.Key.Key_Z
-                and event.modifiers() == Qt.KeyboardModifier.ControlModifier
-            ):
+            if key == Qt.Key.Key_Z and mods == Qt.KeyboardModifier.ControlModifier:
                 if is_action:
                     self._undo()
                 event.accept()
                 return True
 
-            tool = self._KEY_TO_TOOL.get(event.key())
-            if tool is not None and not event.modifiers():
+            if key == Qt.Key.Key_Z and mods == (
+                Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
+            ):
+                if is_action:
+                    self._redo()
+                event.accept()
+                return True
+
+            if key in (Qt.Key.Key_BracketLeft, Qt.Key.Key_BracketRight) and not mods:
+                if is_action:
+                    delta = -1 if key == Qt.Key.Key_BracketLeft else 1
+                    self._step_slice(delta)
+                event.accept()
+                return True
+
+            if key in (Qt.Key.Key_BraceLeft, Qt.Key.Key_BraceRight):
+                if is_action:
+                    delta = -10 if key == Qt.Key.Key_BraceLeft else 10
+                    self._step_slice(delta)
+                event.accept()
+                return True
+
+            if Qt.Key.Key_1 <= key <= Qt.Key.Key_9 and not mods:
+                if is_action:
+                    self._activate_label_index(key - Qt.Key.Key_1)
+                event.accept()
+                return True
+
+            tool = self._KEY_TO_TOOL.get(key)
+            if tool is not None and not mods:
                 if is_action:
                     self._switch_tool(tool)
                 event.accept()
@@ -258,14 +285,18 @@ class DevelopmentTab(QWidget):
         return super().eventFilter(obj, event)
 
     def _undo(self):
-        if self._overlay is None or self._overlay.annotation is None:
+        if self._overlay is None:
             return
-        if self._overlay.annotation.undo():
-            self._overlay._refresh_overlay_slice()
+        self._overlay.undo()
+
+    def _redo(self):
+        if self._overlay is None:
+            return
+        self._overlay.redo()
 
     def _switch_tool(self, tool_id):
-        if self._tool_panel is not None and tool_id in self._tool_panel._tool_buttons:
-            self._tool_panel._tool_buttons[tool_id].setChecked(True)
+        if self._tool_panel is not None:
+            self._tool_panel.set_active_tool(tool_id)
         self._on_tool_changed(tool_id)
 
     def _get_volume(self):
@@ -308,6 +339,7 @@ class DevelopmentTab(QWidget):
                 self._on_threshold_changed
             )
             self._tool_panel.predict_btn.clicked.connect(self._run_inference)
+            self._tool_panel.tint_strength_changed.connect(self._on_tint_changed)
 
         self._tool_panel.refresh_labels()
         create_or_toggle_dock(self, "_tool_dock", self._tool_panel)
@@ -351,6 +383,8 @@ class DevelopmentTab(QWidget):
 
         self._overlay.activate(self._overlay.annotation, self._labels)
         self._overlay.tool_panel = self._tool_panel
+        if self._tool_panel is not None:
+            self._overlay.set_tint_strength(self._tool_panel.tint_slider.value())
         vtk_widget.installEventFilter(self)
 
     def _deactivate_overlay(self):
@@ -371,7 +405,10 @@ class DevelopmentTab(QWidget):
         self._prediction_label_id = None
         if self._overlay is not None and self._overlay.active:
             self._overlay.deactivate()
-        self._activate_overlay()
+        # VolumeViewer emits data_changed before _setup_after_load wires the
+        # slice mapper, sets slice_row to mid, and resets the camera. Defer
+        # activation to the next tick so we read fully-settled state.
+        QTimer.singleShot(0, self._activate_overlay)
 
     def _on_threshold_changed(self, value):
         """Re-threshold cached logits and update the overlay."""
@@ -381,14 +418,30 @@ class DevelopmentTab(QWidget):
             return
 
         threshold = self._tool_panel.logit_threshold if self._tool_panel else 0.0
-        layer = self._overlay.annotation._get_layer(self._prediction_label_id)
+        layer = self._overlay.annotation.get_layer(self._prediction_label_id)
         layer[:] = self._cached_logits > threshold
         if self._overlay.active:
             self._overlay._refresh_overlay_slice()
 
     def _on_brush_changed(self, value):
         if self._overlay is not None:
-            self._overlay._brush_radius = float(value)
+            self._overlay._brush_diameter = max(1, int(value))
+
+    def _on_tint_changed(self, value):
+        if self._overlay is not None:
+            self._overlay.set_tint_strength(value)
+
+    def _step_slice(self, delta: int):
+        if self.volume_viewer is None:
+            return
+        primary = self.volume_viewer.primary
+        primary.slice_row.setValue(int(primary.slice_row.value()) + int(delta))
+
+    def _activate_label_index(self, index: int):
+        if self._tool_panel is None:
+            return
+        if 0 <= index < self._tool_panel.label_list.count():
+            self._tool_panel.label_list.setCurrentRow(index)
 
     def _on_tool_changed(self, tool_id):
         if tool_id != "navigate" and (
@@ -435,9 +488,13 @@ class DevelopmentTab(QWidget):
         if hasattr(annotation, "metadata") and annotation.metadata.get("labels"):
             stored_labels = LabelManager.from_dict(annotation.metadata["labels"])
             for label in stored_labels:
-                if self._labels.get_label(label.id) is None:
-                    self._labels._labels[label.id] = label
-                    self._labels._next_id = max(self._labels._next_id, label.id + 1)
+                self._labels.add_label_with_id(
+                    label.id,
+                    label.name,
+                    label.color,
+                    label.visible,
+                    label.role,
+                )
             if self._tool_panel is not None:
                 self._tool_panel.refresh_labels()
 
@@ -519,7 +576,7 @@ class DevelopmentTab(QWidget):
                 & (voxels[:, 2] < shape[2])
             )
             voxels = voxels[valid]
-            layer = annotation._get_layer(label_id)
+            layer = annotation.get_layer(label_id)
             layer[voxels[:, 0], voxels[:, 1], voxels[:, 2]] = True
         if self._tool_panel is not None:
             self._tool_panel.refresh_labels()
@@ -538,6 +595,9 @@ class DevelopmentTab(QWidget):
         )
         if ret == QMessageBox.StandardButton.Yes:
             self._overlay.annotation.clear()
+            self._labels.clear()
+            if self._tool_panel is not None:
+                self._tool_panel.refresh_labels()
             if self._overlay.active:
                 self._overlay._refresh_overlay_slice()
 
@@ -820,7 +880,7 @@ class DevelopmentTab(QWidget):
             ):
                 pred_label_id = self._labels.add_label(pred_name)
                 self._prediction_label_id = pred_label_id
-                layer = self._overlay.annotation._get_layer(pred_label_id)
+                layer = self._overlay.annotation.get_layer(pred_label_id)
                 layer[mask] = True
                 if self._tool_panel is not None:
                     self._tool_panel.refresh_labels()

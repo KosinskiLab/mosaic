@@ -47,6 +47,20 @@ _EXTRA_CONFIG_PLACEHOLDER = (
 )
 
 
+class _AutoSizedStack(QStackedWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.currentChanged.connect(lambda _: self.updateGeometry())
+
+    def sizeHint(self):
+        w = self.currentWidget()
+        return w.sizeHint() if w is not None else super().sizeHint()
+
+    def minimumSizeHint(self):
+        w = self.currentWidget()
+        return w.minimumSizeHint() if w is not None else super().minimumSizeHint()
+
+
 class ConfigurePanel(QScrollArea):
     """Configure tab: parameter groups with screening toggle + preview plot.
 
@@ -406,7 +420,7 @@ class ConfigurePanel(QScrollArea):
 
         parent_form.addRow(f"{coupling_def['label']}:", header)
 
-        mode_stack = QStackedWidget()
+        mode_stack = _AutoSizedStack()
         mode_param_keys = {}
 
         for mode_name, params in coupling_def["modes"].items():

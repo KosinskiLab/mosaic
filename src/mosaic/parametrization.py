@@ -427,20 +427,23 @@ class Cylinder(Parametrization):
             Initial guess for cylinder radius.
         """
         center = np.mean(positions, axis=0)
-        positions_centered = positions - center
+        positions = positions - center
 
-        cov_mat = np.cov(positions_centered, rowvar=False)
+        cov_mat = np.cov(positions, rowvar=False)
         evals, evecs = np.linalg.eigh(cov_mat)
 
-        sort_idx = np.argsort(evals)[::-1]
-        evals = evals[sort_idx]
-        evecs = evecs[:, sort_idx]
+        best = None
+        for i in range(3):
+            direction = evecs[:, i]
+            perp = positions - np.outer(positions @ direction, direction)
 
-        direction = evecs[:, -1]
+            perp_norms = np.linalg.norm(perp, axis=1)
+            radius = np.sqrt(np.mean(perp_norms**2))
+            residual = np.sum((perp_norms - radius) ** 2)
+            if best is None or residual < best[0]:
+                best = (residual, direction, radius)
 
-        proj_matrix = np.eye(3) - np.outer(direction, direction)
-        projected_points = positions_centered @ proj_matrix
-        radius = np.mean(np.linalg.norm(projected_points, axis=1))
+        _, direction, radius = best
         return center, direction, radius
 
     @classmethod

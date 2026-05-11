@@ -104,6 +104,7 @@ class App(QMainWindow):
 
         self.cdata = MosaicData(self.vtk_widget)
         self.cdata.thumbnail_provider = self._capture_thumbnail
+        self._current_session_path = None
 
         self.renderer = vtk.vtkRenderer()
         self.render_window = self.vtk_widget.GetRenderWindow()
@@ -787,6 +788,12 @@ class App(QMainWindow):
         save_file_action.triggered.connect(self.save_session)
         save_file_action.setShortcut("Ctrl+S")
 
+        save_file_as_action = QAction(
+            icon("ph.floppy-disk-back"), "Save Session As...", self
+        )
+        save_file_as_action.triggered.connect(self.save_session_as)
+        save_file_as_action.setShortcut("Ctrl+Shift+S")
+
         close_file_action = QAction(icon("ph.x-circle"), "Close Session", self)
         close_file_action.triggered.connect(lambda: self.close_session(True))
 
@@ -954,6 +961,7 @@ class App(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(new_session_action)
         file_menu.addAction(save_file_action)
+        file_menu.addAction(save_file_as_action)
         file_menu.addAction(close_file_action)
 
         file_menu.addSeparator()
@@ -1409,6 +1417,7 @@ class App(QMainWindow):
                 widget.set_current(file_path)
 
         self._add_file_to_recent(file_path)
+        self._current_session_path = file_path
 
         self.cdata.data.render(defer_render=True)
         self.cdata.models.render(defer_render=True)
@@ -1449,6 +1458,7 @@ class App(QMainWindow):
         self.cdata.reset()
         self.cdata.data.render(defer_render=True)
         self.cdata.models.render(defer_render=True)
+        self._current_session_path = None
         self.prime_viewport_placeholder()
 
         if render:
@@ -1583,12 +1593,18 @@ class App(QMainWindow):
             return None
 
     def save_session(self):
+        if self._current_session_path:
+            self.cdata.to_file(self._current_session_path)
+            return None
+        return self.save_session_as()
+
+    def save_session_as(self):
         file_dialog = QFileDialog()
         file_dialog.setDefaultSuffix("pickle")
         file_path, _ = file_dialog.getSaveFileName(
             self,
             "Save File",
-            "",
+            self._current_session_path or "",
             "Session Files (*.pickle)",
         )
         if not file_path:
@@ -1597,6 +1613,8 @@ class App(QMainWindow):
         if not file_path.lower().endswith(".pickle"):
             file_path += ".pickle"
         self.cdata.to_file(file_path)
+        self._current_session_path = file_path
+        self._add_file_to_recent(file_path)
 
     def update_recent_files_menu(self):
         Settings.ui.recent_files = [x for x in Settings.ui.recent_files if exists(x)]
