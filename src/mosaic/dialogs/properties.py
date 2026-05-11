@@ -34,6 +34,13 @@ from ..widgets import (
 from ..widgets.segmented_control import SegmentedControl
 
 
+def tuple_or_value(v):
+    """Coerce scalars to a 3-tuple of themselves; pass tuples through."""
+    if isinstance(v, (tuple, list)):
+        return tuple(v)
+    return (v, v, v)
+
+
 class GeometryPropertiesDialog(QDialog):
     parametersChanged = Signal(dict)
 
@@ -43,12 +50,30 @@ class GeometryPropertiesDialog(QDialog):
         self.setFixedWidth(400)
         self.parameters = {}
 
-        self.base_color = initial_properties.get("base_color", BASE_COLOR)
-        self.highlight_color = initial_properties.get(
+        if initial_properties is None:
+            property_list = [{}]
+        elif isinstance(initial_properties, dict):
+            property_list = [initial_properties]
+        else:
+            property_list = list(initial_properties) or [{}]
+
+        self._property_list = property_list
+        self.initial_properties = property_list[0]
+
+        # Seed values for widgets default to the first geometry's values; the
+        # mixed-field logic below decides whether they actually display as such.
+        self.base_color = self.initial_properties.get("base_color", BASE_COLOR)
+        self.highlight_color = self.initial_properties.get(
             "highlight_color", (0.8, 0.2, 0.2)
         )
-        self.initial_properties = initial_properties or {}
+
+        self._touched: set[str] = set()
+        self._initially_unanimous: set[str] = set()
+        self._indeterminate_widgets: set = set()
+
         self.volume_path = self.initial_properties.get("volume_path", None)
+        if self._field_is_mixed("volume_path"):
+            self.volume_path = None
         try:
             if not exists(self.volume_path):
                 self.volume_path = None
@@ -57,10 +82,92 @@ class GeometryPropertiesDialog(QDialog):
 
         self.setup_ui()
         self.connect_signals()
+        self._apply_initial_mix_state()
+
+    def _field_values(self, field: str):
+        """Return the list of values for a field across input dicts."""
+        import numpy as np
+
+        sentinel = object()
+        values = []
+        for props in self._property_list:
+            v = props.get(field, sentinel)
+            if v is sentinel:
+                continue
+            if isinstance(v, np.ndarray):
+                v = tuple(v.tolist())
+            values.append(v)
+        return values
+
+    def _field_is_mixed(self, field: str) -> bool:
+        values = self._field_values(field)
+        if not values:
+            return False
+        first = values[0]
+        return any(v != first for v in values[1:])
+
+    def _apply_initial_mix_state(self) -> None:
+        """Mark widgets indeterminate for fields with multiple values across
+        the input dicts, and remember which fields were unanimous at open."""
+
+        widget_map = {
+            "opacity": self.opacity_slider,
+            "ambient": self.ambient_slider,
+            "diffuse": self.diffuse_slider,
+            "specular": self.specular_slider,
+            "interpolation": self._interpolation_control,
+            "base_color": self.base_color_picker,
+            "highlight_color": self.highlight_color_picker,
+            "isovalue_percentile": self.isovalue_slider,
+        }
+        for field, widget in widget_map.items():
+            if self._field_is_mixed(field):
+                widget.set_indeterminate()
+            elif self._field_values(field):
+                self._initially_unanimous.add(field)
+
+        if self._field_is_mixed("size"):
+            self.size_spin.setSpecialValueText(" ")
+            self.size_spin.blockSignals(True)
+            self.size_spin.setValue(self.size_spin.minimum())
+            self.size_spin.blockSignals(False)
+            self._indeterminate_widgets.add(self.size_spin)
+        elif self._field_values("size"):
+            self._initially_unanimous.add("size")
+
+        axis_widgets = {
+            "_sampling_x": self.sampling_x,
+            "_sampling_y": self.sampling_y,
+            "_sampling_z": self.sampling_z,
+        }
+        sampling_values = self._field_values("sampling_rate")
+        for axis_idx, (key, widget) in enumerate(axis_widgets.items()):
+            axis_vals = {tuple_or_value(v)[axis_idx] for v in sampling_values}
+            if len(axis_vals) > 1:
+                self._indeterminate_widgets.add(widget)
+                widget.setText("")
+            elif axis_vals:
+                self._initially_unanimous.add(key)
+
+        scale_values = self._field_values("volume_scale")
+        if scale_values:
+            signs = {-1 if v < 0 else 1 for v in scale_values}
+            if len(signs) > 1:
+                self.scale_control.set_indeterminate()
+            else:
+                self._initially_unanimous.add("scale")
+
+    def _widget_is_indeterminate(self, widget) -> bool:
+        """Indeterminate check that works for both widget-owned and dialog-tracked widgets."""
+        if hasattr(widget, "is_indeterminate"):
+            return widget.is_indeterminate()
+        return widget in self._indeterminate_widgets
 
     def showEvent(self, event):
         """Position the dialog on the left side of the parent window."""
         super().showEvent(event)
+
+        self.setFocus(Qt.FocusReason.OtherFocusReason)
 
         # Find the main window
         main_window = self.parent().window() if self.parent() else None
@@ -309,27 +416,70 @@ class GeometryPropertiesDialog(QDialog):
         self._emit_throttle = Throttle(
             lambda *args: self.emit_parameters(), interval_ms=150
         )
-        self.size_spin.valueChanged.connect(self._emit_throttle)
-        self.opacity_slider.valueChanged.connect(self._emit_throttle)
-        self.ambient_slider.valueChanged.connect(self._emit_throttle)
-        self.diffuse_slider.valueChanged.connect(self._emit_throttle)
-        self.specular_slider.valueChanged.connect(self._emit_throttle)
+
+        def mark_and_throttle(field):
+            return lambda *_: (self._touched.add(field), self._emit_throttle())
+
+        def mark_and_emit(field):
+            return lambda *_: (self._touched.add(field), self.emit_parameters())
+
+        self.size_spin.valueChanged.connect(self._on_size_changed)
+        self.opacity_slider.valueChanged.connect(mark_and_throttle("opacity"))
+        self.ambient_slider.valueChanged.connect(mark_and_throttle("ambient"))
+        self.diffuse_slider.valueChanged.connect(mark_and_throttle("diffuse"))
+        self.specular_slider.valueChanged.connect(mark_and_throttle("specular"))
         self._interpolation_control.selectionChanged.connect(
-            lambda _: self.emit_parameters()
+            mark_and_emit("interpolation")
         )
-        self.isovalue_slider.valueChanged.connect(self._emit_throttle)
-        self.scale_control.selectionChanged.connect(lambda _: self.emit_parameters())
-        self.sampling_x.textChanged.connect(self.emit_parameters)
-        self.sampling_y.textChanged.connect(self.emit_parameters)
-        self.sampling_z.textChanged.connect(self.emit_parameters)
-        self.base_color_picker.colorChanged.connect(self.emit_parameters)
-        self.highlight_color_picker.colorChanged.connect(self.emit_parameters)
+        self.isovalue_slider.valueChanged.connect(
+            mark_and_throttle("isovalue_percentile")
+        )
+        self.scale_control.selectionChanged.connect(mark_and_emit("scale"))
+        self.sampling_x.textChanged.connect(self._on_sampling_x_changed)
+        self.sampling_y.textChanged.connect(self._on_sampling_y_changed)
+        self.sampling_z.textChanged.connect(self._on_sampling_z_changed)
+        self.base_color_picker.colorChanged.connect(mark_and_emit("base_color"))
+        self.highlight_color_picker.colorChanged.connect(
+            mark_and_emit("highlight_color")
+        )
 
         self.attach_button.clicked.connect(self.reattach_emit)
 
+    def _on_size_changed(self, _value):
+        if self.size_spin in self._indeterminate_widgets:
+            self._indeterminate_widgets.discard(self.size_spin)
+            self.size_spin.setSpecialValueText("")
+        self._touched.add("size")
+        self._emit_throttle()
+
+    def _on_sampling_changed(self, widget, axis_key: str):
+        if widget in self._indeterminate_widgets:
+            # Programmatic clears send empty text; only the user typing a value
+            # should clear the indeterminate state.
+            if widget.text() == "":
+                return
+            self._indeterminate_widgets.discard(widget)
+            widget.setPlaceholderText("")
+        self._touched.add(axis_key)
+        self._emit_throttle()
+
+    def _on_sampling_x_changed(self, _text):
+        self._on_sampling_changed(self.sampling_x, "_sampling_x")
+
+    def _on_sampling_y_changed(self, _text):
+        self._on_sampling_changed(self.sampling_y, "_sampling_y")
+
+    def _on_sampling_z_changed(self, _text):
+        self._on_sampling_changed(self.sampling_z, "_sampling_z")
+
     def reattach_emit(self):
         parameters = self.get_parameters()
-        parameters["reattach_volume"] = True
+        if self.volume_path is not None:
+            parameters["volume_path"] = self.volume_path
+            parameters["reattach_volume"] = True
+            parameters["scale"] = (
+                -1 if self.scale_control.currentText() == "Invert" else 1
+            )
         self.parametersChanged.emit(parameters)
 
     def emit_parameters(self):
@@ -337,30 +487,42 @@ class GeometryPropertiesDialog(QDialog):
         self.parametersChanged.emit(parameters)
 
     def _reset_to_defaults(self):
-        """Reset all values to initial properties."""
-        self.size_spin.setValue(self.initial_properties.get("size", 8))
-        self.opacity_slider.setValue(self.initial_properties.get("opacity", 1.0))
-        self.ambient_slider.setValue(self.initial_properties.get("ambient", 0.3))
-        self.diffuse_slider.setValue(self.initial_properties.get("diffuse", 0.7))
-        self.specular_slider.setValue(self.initial_properties.get("specular", 0.2))
+        """Reset every widget to its factory default and broadcast to all selected geometries."""
+        self.size_spin.setValue(8)
+        self.opacity_slider.setValue(1.0)
+        self.ambient_slider.setValue(0.3)
+        self.diffuse_slider.setValue(0.7)
+        self.specular_slider.setValue(0.2)
+        self._interpolation_control._select(1)  # gouraud
+        self.base_color_picker.set_color(BASE_COLOR)
+        self.highlight_color_picker.set_color((0.8, 0.2, 0.2))
+        self.isovalue_slider.setValue(99.5)
+        self.sampling_x.setText("1.0")
+        self.sampling_y.setText("1.0")
+        self.sampling_z.setText("1.0")
 
-        interp = self.initial_properties.get("interpolation", "gouraud")
-        interp_idx = next(
-            (i for i, l in enumerate(["flat", "gouraud", "phong"]) if l == interp), 1
-        )
-        self._interpolation_control._select(interp_idx)
+        self._indeterminate_widgets.clear()
+        self.size_spin.setSpecialValueText("")
+        self.sampling_x.setPlaceholderText("")
+        self.sampling_y.setPlaceholderText("")
+        self.sampling_z.setPlaceholderText("")
 
-        self.base_color_picker.set_color(
-            self.initial_properties.get("base_color", BASE_COLOR)
+        self._touched.update(
+            {
+                "size",
+                "opacity",
+                "ambient",
+                "diffuse",
+                "specular",
+                "interpolation",
+                "base_color",
+                "highlight_color",
+                "isovalue_percentile",
+                "_sampling_x",
+                "_sampling_y",
+                "_sampling_z",
+            }
         )
-        self.highlight_color_picker.set_color(
-            self.initial_properties.get("highlight_color", (0.8, 0.2, 0.2))
-        )
-
-        sampling_rate = self.initial_properties.get("sampling_rate", (1.0, 1.0, 1.0))
-        self.sampling_x.setText(str(sampling_rate[0]))
-        self.sampling_y.setText(str(sampling_rate[1]))
-        self.sampling_z.setText(str(sampling_rate[2]))
 
         self.emit_parameters()
 
@@ -383,27 +545,66 @@ class GeometryPropertiesDialog(QDialog):
         non_negative = (volume.data > 0).sum()
         invert = non_negative < volume.data.size // 2
         self.scale_control._select(1 if invert else 0)
+        self._touched.add("scale")
 
-        self.emit_parameters()
+        parameters = self.get_parameters()
+        parameters["volume_path"] = self.volume_path
+        parameters["scale"] = -1 if invert else 1
+        self.parametersChanged.emit(parameters)
 
     def get_parameters(self) -> dict:
-        """Return current parameters."""
-        return {
-            "size": get_widget_value(self.size_spin),
-            "opacity": self.opacity_slider.value(),
-            "ambient": self.ambient_slider.value(),
-            "diffuse": self.diffuse_slider.value(),
-            "specular": self.specular_slider.value(),
-            "interpolation": self._interpolation_control.currentText().lower(),
-            "base_color": self.base_color_picker.get_color(),
-            "highlight_color": self.highlight_color_picker.get_color(),
-            "scale": -1 if self.scale_control.currentText() == "Invert" else 1,
-            "isovalue_percentile": self.isovalue_slider.value(),
-            "volume_path": self.volume_path,
-            "reattach_volume": False,
-            "sampling_rate": (
+        """
+        Return the partial parameter dict for the current dialog state.
+
+        A field is included only if its widget is determinate and the field
+        was either touched by the user or unanimous across selected
+        geometries at dialog open.
+        """
+        out: dict = {}
+
+        def include(field, widget, getter):
+            if self._widget_is_indeterminate(widget):
+                return
+            if field not in self._touched and field not in self._initially_unanimous:
+                return
+            out[field] = getter()
+
+        include("size", self.size_spin, lambda: get_widget_value(self.size_spin))
+        include("opacity", self.opacity_slider, self.opacity_slider.value)
+        include("ambient", self.ambient_slider, self.ambient_slider.value)
+        include("diffuse", self.diffuse_slider, self.diffuse_slider.value)
+        include("specular", self.specular_slider, self.specular_slider.value)
+        include(
+            "interpolation",
+            self._interpolation_control,
+            lambda: self._interpolation_control.currentText().lower(),
+        )
+        include("base_color", self.base_color_picker, self.base_color_picker.get_color)
+        include(
+            "highlight_color",
+            self.highlight_color_picker,
+            self.highlight_color_picker.get_color,
+        )
+        include("isovalue_percentile", self.isovalue_slider, self.isovalue_slider.value)
+
+        include(
+            "scale",
+            self.scale_control,
+            lambda: -1 if self.scale_control.currentText() == "Invert" else 1,
+        )
+
+        axes = [
+            ("_sampling_x", self.sampling_x),
+            ("_sampling_y", self.sampling_y),
+            ("_sampling_z", self.sampling_z),
+        ]
+        if all(not self._widget_is_indeterminate(w) for _, w in axes) and any(
+            k in self._touched or k in self._initially_unanimous for k, _ in axes
+        ):
+            out["sampling_rate"] = (
                 float(get_widget_value(self.sampling_x)),
                 float(get_widget_value(self.sampling_y)),
                 float(get_widget_value(self.sampling_z)),
-            ),
-        }
+            )
+
+        return out

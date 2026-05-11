@@ -18,6 +18,7 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QVBoxLayout,
     QLabel,
+    QGraphicsOpacityEffect,
 )
 
 from ..stylesheets import Colors
@@ -58,6 +59,7 @@ class SliderRow(QWidget):
         self.decimals = 0 if values else decimals
         self.suffix = suffix
         self.exponent = exponent
+        self._indeterminate = False
         self._setup_ui(label, default, label_position)
 
     def _setup_ui(self, label: str, default: float, label_position: str = "left"):
@@ -136,6 +138,7 @@ class SliderRow(QWidget):
 
     def _on_slider_changed(self, pos: int):
         """Handle slider value change."""
+        self._clear_indeterminate()
         value = self._slider_to_value(pos)
         self._update_value_label(value)
         self.valueChanged.emit(value)
@@ -150,6 +153,7 @@ class SliderRow(QWidget):
 
     def setValue(self, value: float):
         """Set the current value."""
+        self._clear_indeterminate()
         self.slider.setValue(self._value_to_slider(value))
         self._update_value_label(value)
 
@@ -169,6 +173,23 @@ class SliderRow(QWidget):
         self.label_widget.setEnabled(enabled)
         self.slider.setEnabled(enabled)
         self.value_label.setEnabled(enabled)
+
+    def set_indeterminate(self) -> None:
+        """Show the slider in a 'multiple values' visual state."""
+        self._indeterminate = True
+        self.value_label.setText("")
+        effect = QGraphicsOpacityEffect(self.slider)
+        effect.setOpacity(0.5)
+        self.slider.setGraphicsEffect(effect)
+
+    def is_indeterminate(self) -> bool:
+        """Return whether the slider is in the indeterminate (multiple values) state."""
+        return self._indeterminate
+
+    def _clear_indeterminate(self) -> None:
+        if self._indeterminate:
+            self._indeterminate = False
+            self.slider.setGraphicsEffect(None)
 
 
 class DualHandleSlider(QWidget):

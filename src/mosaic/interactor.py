@@ -587,31 +587,67 @@ class DataContainerInteractor(QObject):
         if not len(uuids):
             return -1
 
-        geometry = self.container.get(uuids[0])
-        base_parameters = geometry._appearance.copy()
-        base_parameters["sampling_rate"] = geometry.sampling_rate
-        base_parameters.setdefault("highlight_color", self.container.highlight_color)
+        snapshots: dict = {}
+        property_list: list = []
+        for uuid in uuids:
+            geometry = self.container.get(uuid)
+            if geometry is None:
+                continue
+            appearance = geometry._appearance.copy()
+            appearance["sampling_rate"] = geometry.sampling_rate
+            appearance.setdefault("highlight_color", self.container.highlight_color)
+            # volume_scale and volume_path live on geometry._meta, not _appearance;
+            # surface them so the dialog can detect Native/Invert mixing.
+            if "volume_scale" in geometry._meta:
+                appearance["volume_scale"] = geometry._meta["volume_scale"]
+            if "volume_path" in geometry._meta:
+                appearance["volume_path"] = geometry._meta["volume_path"]
+            snapshots[uuid] = appearance
+            property_list.append(appearance)
 
-        dialog = GeometryPropertiesDialog(initial_properties=base_parameters)
+        if not snapshots:
+            return -1
+
+        dialog = GeometryPropertiesDialog(initial_properties=property_list)
 
         def on_parameters_changed(parameters):
-            sampling_rate = parameters.pop("sampling_rate")
-            full_render = self.container.update_appearance(uuids, parameters)
-            for uuid in uuids:
-                if (geometry := self.container.get(uuid)) is None:
-                    continue
-                geometry.sampling_rate = sampling_rate
+            sampling_rate = parameters.pop("sampling_rate", None)
+            full_render = False
+            if parameters:
+                full_render = self.container.update_appearance(uuids, parameters)
+            if sampling_rate is not None:
+                for uuid in uuids:
+                    if (geometry := self.container.get(uuid)) is None:
+                        continue
+                    geometry.sampling_rate = sampling_rate
 
             if full_render:
                 self.render()
 
-            # Make sure selection is maintained and invoke render_vtk afterwards
             self.set_selection_by_uuid(uuids)
 
         dialog.parametersChanged.connect(on_parameters_changed)
 
-        if dialog.exec() == QDialog.DialogCode.Rejected:
-            on_parameters_changed(base_parameters)
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Rejected:
+            full_render = False
+            for uuid, snap in snapshots.items():
+                snap = snap.copy()
+                sampling_rate = snap.pop("sampling_rate", None)
+                # volume_path / volume_scale belong to _meta; strip them so the
+                # cancel-restore doesn't trigger a spurious volume reload.
+                snap.pop("volume_path", None)
+                snap.pop("volume_scale", None)
+                if self.container.update_appearance([uuid], snap):
+                    full_render = True
+                if (
+                    sampling_rate is not None
+                    and (geom := self.container.get(uuid)) is not None
+                ):
+                    geom.sampling_rate = sampling_rate
+            if full_render:
+                self.render()
+            self.set_selection_by_uuid(uuids)
         return 1
 
     def _show_batch_rename_dialog(self) -> int:

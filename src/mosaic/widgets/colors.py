@@ -350,6 +350,7 @@ class ColorPickerRow(QWidget):
             preset_colors if preset_colors is not None else self.DEFAULT_PRESETS
         )
         self.swatches = []
+        self._indeterminate = False
         self._setup_ui(label)
         self._update_selection()
 
@@ -358,8 +359,9 @@ class ColorPickerRow(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        label_widget = QLabel(label)
-        label_widget.setStyleSheet(
+        self._label_text = label
+        self._label_widget = QLabel(label)
+        self._label_widget.setStyleSheet(
             f"""
             QLabel {{
                 font-size: {Typography.BODY}px;
@@ -367,7 +369,7 @@ class ColorPickerRow(QWidget):
             }}
         """
         )
-        layout.addWidget(label_widget)
+        layout.addWidget(self._label_widget)
 
         swatches_layout = QHBoxLayout()
         swatches_layout.setContentsMargins(0, 0, 0, 0)
@@ -392,6 +394,7 @@ class ColorPickerRow(QWidget):
 
     def _select_color(self, color: tuple):
         """Select a preset color."""
+        self._clear_indeterminate()
         self.current_color = color
         self._update_selection()
         self.colorChanged.emit(color)
@@ -411,6 +414,7 @@ class ColorPickerRow(QWidget):
         color = QColorDialog.getColor(QColor(r, g, b), self)
         if color.isValid():
             new_color = (color.red() / 255, color.green() / 255, color.blue() / 255)
+            self._clear_indeterminate()
             self.current_color = new_color
             self._update_selection()
             self.colorChanged.emit(new_color)
@@ -421,21 +425,31 @@ class ColorPickerRow(QWidget):
 
     def _on_theme_changed(self):
         """Re-apply label stylesheet and custom-button icon after a theme switch."""
-        # Re-apply label stylesheet
-        label_widget = self.findChild(QLabel)
-        if label_widget is not None:
-            label_widget.setStyleSheet(
-                f"""
-                QLabel {{
-                    font-size: {Typography.BODY}px;
-                    color: {Colors.TEXT_PRIMARY};
-                }}
-            """
-            )
-        # Re-create the custom-color-picker button icon
+        self._label_widget.setStyleSheet(
+            f"""
+            QLabel {{
+                font-size: {Typography.BODY}px;
+                color: {Colors.TEXT_PRIMARY};
+            }}
+        """
+        )
         self.custom_btn.setIcon(icon("ph.eyedropper", role="muted"))
+
+    def set_indeterminate(self) -> None:
+        """Put the picker into a 'multiple values' visual state."""
+        self._indeterminate = True
+        for swatch in self.swatches:
+            swatch.set_selected(False)
+
+    def is_indeterminate(self) -> bool:
+        """Return whether the widget is in the indeterminate (multiple values) state."""
+        return self._indeterminate
+
+    def _clear_indeterminate(self) -> None:
+        self._indeterminate = False
 
     def set_color(self, color: tuple):
         """Set the current color."""
+        self._clear_indeterminate()
         self.current_color = color
         self._update_selection()

@@ -301,9 +301,9 @@ class DataContainer:
 
             sampling = density.sampling_rate
             volume = density.data * scale
+            parameters.setdefault("isovalue_percentile", 99.5)
 
         full_render = False
-        parameters["isovalue_percentile"] = parameters.get("isovalue_percentile", 99.5)
         for uuid in uuids:
             if (geometry := self.get(uuid)) is None:
                 continue

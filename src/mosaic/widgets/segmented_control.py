@@ -36,6 +36,7 @@ class SegmentedControl(QWidget):
         super().__init__(parent)
         self._buttons = []
         self._selected = default
+        self._indeterminate = False
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -64,6 +65,7 @@ class SegmentedControl(QWidget):
         self._on_theme_changed()
 
     def _select(self, index):
+        self._indeterminate = False
         for i, btn in enumerate(self._buttons):
             btn.setChecked(i == index)
         self._selected = index
@@ -118,3 +120,13 @@ class SegmentedControl(QWidget):
 
     def currentIndex(self):
         return self._selected
+
+    def set_indeterminate(self) -> None:
+        """Uncheck all segments to show a 'multiple values' state."""
+        self._indeterminate = True
+        for btn in self._buttons:
+            btn.setChecked(False)
+
+    def is_indeterminate(self) -> bool:
+        """Return whether the control is in the indeterminate (multiple values) state."""
+        return self._indeterminate
