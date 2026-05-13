@@ -63,10 +63,6 @@ class DataContainer:
     def refresh_lod(self, budget=None, force=False):
         """Recompute LOD for all geometries based on aggregate scene budget.
 
-        Distributes the point budget proportionally across geometries
-        so that many small geometries that collectively exceed the budget
-        still benefit from interaction-LOD.
-
         Parameters
         ----------
         budget : int, optional

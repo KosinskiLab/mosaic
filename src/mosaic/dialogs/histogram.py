@@ -257,7 +257,7 @@ class HistogramDialog(QDialog):
         return QSize(350, 350)
 
     def get_cluster_size(self):
-        return [x.get_number_of_points() for x in self.cdata._data.data]
+        return [x.get_number_of_points() for x in self.cdata.data.container.data]
 
     def update_histogram(self, data=None):
         self.histogram_widget.update_histogram(self.get_cluster_size())
@@ -268,7 +268,7 @@ class HistogramDialog(QDialog):
             upper_cutoff = max(cluster_sizes) + 1
 
         uuids = []
-        for geometry in self.cdata._data.data:
+        for geometry in self.cdata.data.container.data:
             n_points = geometry.get_number_of_points()
             if (n_points >= lower_cutoff) & (n_points <= upper_cutoff):
                 uuids.append(geometry.uuid)

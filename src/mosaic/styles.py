@@ -78,9 +78,9 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
     def _get_actor_index(self, actor, container="model"):
         # We use this order to promote extending existing meshes
-        data = self.cdata._models
+        data = self.cdata.models.container
         if container == "cluster":
-            data = self.cdata._data
+            data = self.cdata.data.container
 
         try:
             return data.get_actors().index(actor)
@@ -89,9 +89,9 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
     def _get_geometry_from_actor(self, actor):
         if (index := self._get_actor_index(actor, "model")) is not None:
-            return self.cdata._models.get(index)
+            return self.cdata.models.container.get(index)
         if (index := self._get_actor_index(actor, "cluster")) is not None:
-            return self.cdata._data.get(index)
+            return self.cdata.data.container.get(index)
         return None
 
     def _highlight_selected_points(self):
@@ -180,10 +180,10 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             faces=[np.asarray(x.triangles) for x in meshes],
         )
 
-        self.cdata._models.remove(geoms)
+        self.cdata.models.container.remove(geoms)
         fit = TriangularMesh(to_open3d(vertices, faces), repair=False)
         index = self.cdata.models.add(Geometry(model=fit, sampling_rate=sampling))
-        if (geometry := self.cdata._models.get(index)) is not None:
+        if (geometry := self.cdata.models.container.get(index)) is not None:
             geometry.change_representation("mesh")
             geometry.set_appearance(**appearance)
         return self.cdata.models.render()
@@ -481,7 +481,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
 
     def _add_points_to_cluster(self):
         """Create the final spline parametrization"""
-        self.cdata._data.add(points=self.points)
+        self.cdata.data.container.add(points=self.points)
         self.cdata.data.data_changed.emit()
         return self.cdata.data.render()
 

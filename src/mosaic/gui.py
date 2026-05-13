@@ -730,8 +730,8 @@ class App(QMainWindow):
 
         def _on_data_arrived():
             if (
-                len(self.cdata._data.data) > 0
-                or len(self.cdata._models.data) > 0
+                len(self.cdata.data.container.data) > 0
+                or len(self.cdata.models.container.data) > 0
                 or self.volume_viewer.primary.volume is not None
             ):
                 self.viewport_stack.setCurrentWidget(self.vtk_widget)

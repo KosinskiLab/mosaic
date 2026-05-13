@@ -235,7 +235,7 @@ class TrajectoryPlayer(QWidget):
 
         trajectories = [
             model
-            for model in self.cdata._models.data
+            for model in self.cdata.models.container.data
             if isinstance(model, GeometryTrajectory)
         ]
 

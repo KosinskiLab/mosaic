@@ -278,10 +278,11 @@ class GeometryData:
         Skipped when the polydata already has polygon cells (mesh).
         """
         if self.polydata.GetNumberOfPolys() > 0:
-            return
-        n = self.polydata.GetNumberOfPoints()
-        if n == 0:
-            return
+            return None
+
+        if (n := self.polydata.GetNumberOfPoints()) == 0:
+            return None
+
         cell_arr = np.empty(n + 1, dtype=np.int64)
         cell_arr[0] = n
         cell_arr[1:] = np.arange(n, dtype=np.int64)
@@ -910,7 +911,7 @@ class Geometry:
 
         n = self.get_number_of_points()
         if budget == lod.LOD_DISABLED or n <= budget:
-            return
+            return None
 
         indices = lod.surface_shell_indices(self.points, self.sampling_rate, budget)
         actor, data, indices = lod.build_lod_actor(self.points, indices)

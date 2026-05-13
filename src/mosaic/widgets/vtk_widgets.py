@@ -220,11 +220,9 @@ class BoundingBoxManager:
 
     def show_all_object_boxes(self):
         """Show bounding boxes for all visible objects"""
-
-        data_indices = [i for i in self.cdata._data.data if i.visible]
-        model_indices = [i for i in self.cdata._models.data if i.visible]
         return self.show_selected_boxes(
-            data_geometries=data_indices, model_geometries=model_indices
+            data_geometries=[i for i in self.cdata.data.container.data if i.visible],
+            model_geometries=[i for i in self.cdata.models.container.data if i.visible],
         )
 
     def show_selected_boxes(self, *args, data_geometries=None, model_geometries=None):

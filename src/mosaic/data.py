@@ -42,20 +42,14 @@ class MosaicData:
         self._last_lod_budget = None
         self._setup_interaction_lod(vtk_widget)
 
-    @property
-    def _data(self):
-        return self._session._data
-
-    @property
-    def _models(self):
-        return self._session._models
-
     def open_file(
         self, filename, offset=0, scale=1, sampling_rate=1, segmentation=False
     ):
         """Open a file and register new geometries with the GUI."""
-        n_data = len(self._data.data)
-        n_models = len(self._models.data)
+        data_container = self.data.container
+        models_container = self.models.container
+        n_data = len(data_container.data)
+        n_models = len(models_container.data)
 
         self._session.open(
             filename,
@@ -65,16 +59,15 @@ class MosaicData:
             segmentation=segmentation,
         )
 
-        # Assign colours and highlight color to newly added geometries
-        for geom in self._data.data[n_data:]:
+        for geom in data_container.data[n_data:]:
             geom.set_appearance(
                 base_color=self.data.next_color(),
-                highlight_color=self._data.highlight_color,
+                highlight_color=data_container.highlight_color,
             )
-        for geom in self._models.data[n_models:]:
+        for geom in models_container.data[n_models:]:
             geom.set_appearance(
                 base_color=self.models.next_color(),
-                highlight_color=self._models.highlight_color,
+                highlight_color=models_container.highlight_color,
             )
 
     @property
@@ -163,6 +156,8 @@ class MosaicData:
             except Exception:
                 pass
 
+        self.refresh_lod()
+
     def reset(self):
         """Reset the state of the class instance."""
         self._lod_restore_timer.stop()
@@ -189,18 +184,18 @@ class MosaicData:
 
     def _on_interaction_start(self, obj, event):
         self._lod_restore_timer.stop()
-        for geom in self._data.data:
+        for geom in self.data.container.data:
             geom.begin_interaction()
-        for geom in self._models.data:
+        for geom in self.models.container.data:
             geom.begin_interaction()
 
     def _on_interaction_end(self, obj, event):
         self._lod_restore_timer.start()
 
     def _restore_full_data(self):
-        for geom in self._data.data:
+        for geom in self.data.container.data:
             geom.end_interaction()
-        for geom in self._models.data:
+        for geom in self.models.container.data:
             geom.end_interaction()
         self._vtk_widget.GetRenderWindow().Render()
 
@@ -218,8 +213,8 @@ class MosaicData:
         force = budget != self._last_lod_budget
         self._last_lod_budget = budget
 
-        changed = self._data.refresh_lod(budget=budget, force=force)
-        changed |= self._models.refresh_lod(budget=budget, force=force)
+        changed = self.data.container.refresh_lod(budget=budget, force=force)
+        changed |= self.models.container.refresh_lod(budget=budget, force=force)
         if changed:
             self.viewport.render()
         return changed
@@ -231,9 +226,10 @@ class MosaicData:
         if mesh_only and type != "models":
             mesh_only = False
 
-        interactor, container = self.data, self._data
+        interactor = self.data
         if type == "models":
-            interactor, container = self.models, self._models
+            interactor = self.models
+        container = interactor.container
 
         selection = [x.uuid for x in container.data]
         if selected:

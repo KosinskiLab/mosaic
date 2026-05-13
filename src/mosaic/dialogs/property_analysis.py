@@ -1123,7 +1123,7 @@ class PropertyAnalysisDialog(QDialog):
 
     def _interactor_for(self, geometry):
         """Return the interactor (data or models) that owns *geometry*."""
-        if self.cdata._models.get(geometry.uuid) is not None:
+        if self.cdata.models.container.get(geometry.uuid) is not None:
             return self.cdata.models
         return self.cdata.data
 

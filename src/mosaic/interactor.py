@@ -67,7 +67,7 @@ class DataContainerInteractor(QObject):
 
     @property
     def container(self):
-        """The DataContainer this pane operates on, resolved live from the session."""
+        """The DataContainer this pane operates on."""
         return getattr(self.session, f"_{self.role}")
 
     def _get_selected_uuids(self):
@@ -367,7 +367,6 @@ class DataContainerInteractor(QObject):
 
         model = trajectory.model
         geometry = Geometry(model=model, sampling_rate=trajectory.sampling_rate)
-        geometry._set_faces(model.triangles)
         geometry.change_representation("mesh")
         self.add(geometry)
         self.render()
@@ -415,12 +414,11 @@ class DataContainerInteractor(QObject):
                 if not isinstance(geom, GeometryTrajectory):
                     expanded.append(geom)
                     continue
+
                 for frame in geom._trajectory:
-                    model = frame.get("fit")
-                    if model is None:
+                    if (model := frame.get("fit")) is None:
                         continue
                     g = Geometry(model=model, sampling_rate=geom.sampling_rate)
-                    g._set_faces(model.triangles)
                     expanded.append(g)
             file_path = [f"{base}_{i:06d}{ext}" for i in range(len(expanded))]
             geometries = expanded
@@ -549,8 +547,6 @@ class DataContainerInteractor(QObject):
             uuid_to_items[geometry.uuid] = item
         return uuid_to_items
 
-    # Thin forwarders so older ``cdata.data.render()`` / ``render_vtk()`` call sites
-    # in tabs/dialogs/widgets keep working without knowing about the viewport.
     def render(self, defer_render: bool = False):
         return self.viewport.render(defer_render=defer_render)
 
@@ -726,10 +722,6 @@ class DataContainerInteractor(QObject):
 
     def update(self, tree_state=None):
         """Resync the tree widget after the session swapped containers.
-
-        The container reference itself is resolved live via the :pyattr:`container`
-        property, so this only refreshes the tree from current state and drops
-        stale rendered-actor bookkeeping.
 
         Parameters
         ----------

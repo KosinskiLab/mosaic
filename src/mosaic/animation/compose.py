@@ -222,7 +222,9 @@ class AnimationComposerDialog(QDialog):
         from mosaic.geometry import GeometryTrajectory
 
         trajectories = [
-            x for x in self.cdata._models.data if isinstance(x, GeometryTrajectory)
+            x
+            for x in self.cdata.models.container.data
+            if isinstance(x, GeometryTrajectory)
         ]
 
         if not trajectories:
