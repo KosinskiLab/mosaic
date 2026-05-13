@@ -195,6 +195,30 @@ def compile_run(run_config: dict) -> List[Tuple[str, str]]:
                 for k, v in settings.items()
                 if k not in ("output_dir", "method", "format")
             }
+
+            shape = save_kwargs.get("shape")
+            if isinstance(shape, str):
+                if shape.strip().lower() in ("", "auto"):
+                    save_kwargs.pop("shape", None)
+                else:
+                    parts = [p for p in shape.replace(";", ",").split(",") if p.strip()]
+                    try:
+                        parsed_shape = [int(float(p)) for p in parts]
+                    except ValueError as exc:
+                        raise ValueError(
+                            f"Invalid shape '{shape}'. Expected three "
+                            "comma-separated numbers or 'Auto'."
+                        ) from exc
+                    if len(parsed_shape) != 3:
+                        raise ValueError(
+                            f"Invalid shape '{shape}'. Expected three "
+                            "comma-separated numbers or 'Auto'."
+                        )
+                    save_kwargs["shape"] = parsed_shape
+
+            if save_kwargs.get("sampling") is None:
+                save_kwargs.pop("sampling", None)
+
             line = f"save @last {shlex.quote(output_path)} format={fmt}"
             if save_kwargs:
                 line += f" {format_kwargs(save_kwargs)}"
@@ -230,11 +254,11 @@ def compile_run(run_config: dict) -> List[Tuple[str, str]]:
 
         if op_id == "cluster_select":
             parts = ["filter @last property=n_points"]
-            lower = settings.get("lower_threshold", -1)
-            upper = settings.get("upper_threshold", -1)
-            if lower >= 0:
+            lower = settings.get("lower_threshold")
+            upper = settings.get("upper_threshold")
+            if lower is not None:
                 parts.append(f"lower={lower}")
-            if upper >= 0 and upper > lower:
+            if upper is not None and (lower is None or upper > lower):
                 parts.append(f"upper={upper}")
             steps.append((op_id, " ".join(parts)))
             continue

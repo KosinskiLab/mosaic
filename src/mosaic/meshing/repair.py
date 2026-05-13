@@ -162,7 +162,7 @@ def close_holes(
         if len(b) < 3:
             break
         hole_edge_len = np.linalg.norm(vs[np.roll(b, -1)] - vs[b], axis=1).sum()
-        if hole_len_thr >= 0 and hole_edge_len > hole_len_thr:
+        if hole_len_thr is not None and hole_edge_len > hole_len_thr:
             break
         out_fs = _close_hole(vs, out_fs, b, fast)
     return out_fs

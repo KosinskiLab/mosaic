@@ -249,7 +249,7 @@ class HistogramDialog(QDialog):
         group_layout.addWidget(self.histogram_widget)
         layout.addWidget(group)
 
-        self.cdata.data.render_update.connect(self.update_histogram)
+        self.cdata.data.data_changed.connect(self.update_histogram)
         self.histogram_widget.cutoff_changed.connect(self._on_cutoff_changed)
         self.update_histogram()
 
@@ -278,7 +278,7 @@ class HistogramDialog(QDialog):
         """Disconnect when dialog closes"""
         self.histogram_widget.histogram_plot.close()
         try:
-            self.cdata.data.render_update.disconnect(self.update_histogram)
+            self.cdata.data.data_changed.disconnect(self.update_histogram)
             self.histogram_widget.cutoff_changed.disconnect(self._on_cutoff_changed)
         except (TypeError, RuntimeError):
             pass  # Already disconnected

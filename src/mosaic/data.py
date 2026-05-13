@@ -27,22 +27,28 @@ class MosaicData:
         super().__init__()
         from .commands.session import Session
         from .interactor import DataContainerInteractor
+        from .viewport import ViewportInteractor
 
         self._session = Session(quiet=True)
         self.thumbnail_provider = None
         self._session_hooks = []
 
-        self._data = self._session._data
-        self._models = self._session._models
-
         # GUI interaction layer on top of session containers
-        self.data = DataContainerInteractor(self._data, vtk_widget)
-        self.models = DataContainerInteractor(self._models, vtk_widget, prefix="Fit")
+        self.data = DataContainerInteractor(self._session, "data")
+        self.models = DataContainerInteractor(self._session, "models", prefix="Fit")
 
-        self.data.attach_area_picker()
-        self.active_picker = "data"
+        self.viewport = ViewportInteractor(vtk_widget, [self.data, self.models])
+
         self._last_lod_budget = None
         self._setup_interaction_lod(vtk_widget)
+
+    @property
+    def _data(self):
+        return self._session._data
+
+    @property
+    def _models(self):
+        return self._session._models
 
     def open_file(
         self, filename, offset=0, scale=1, sampling_rate=1, segmentation=False
@@ -73,11 +79,18 @@ class MosaicData:
 
     @property
     def shape(self):
-        return self._data.metadata.get("shape")
+        return self._session.metadata.get("shape")
 
     @shape.setter
     def shape(self, value):
-        self._data.metadata["shape"] = value
+        if value is None:
+            self._session.metadata.pop("shape", None)
+        else:
+            self._session.metadata["shape"] = value
+
+    @property
+    def physical_shape(self):
+        return self._session.metadata.get("physical_shape")
 
     def register_session_hook(self, collect, restore):
         """Register callbacks for session save/load.
@@ -132,13 +145,12 @@ class MosaicData:
         """Load application state from file."""
         self._session.load_session(filename)
 
-        self._data = self._session._data
-        self._models = self._session._models
+        # Containers are now resolved live from the session via property,
+        # so we only refresh the trees from the restored state.
+        self.data.update(tree_state=self._session._data_tree)
+        self.models.update(tree_state=self._session._models_tree)
 
-        self.data.update(self._data, tree_state=self._session._data_tree)
-        self.models.update(self._models, tree_state=self._session._models_tree)
-
-        meta_entry = self._session._metadata.get("meta")
+        meta_entry = self._session._file_sections.get("meta")
         meta = {}
         if meta_entry is not None:
             import json
@@ -153,8 +165,6 @@ class MosaicData:
 
     def reset(self):
         """Reset the state of the class instance."""
-        from .container import DataContainer
-
         self._lod_restore_timer.stop()
         self.shape = None
 
@@ -211,61 +221,8 @@ class MosaicData:
         changed = self._data.refresh_lod(budget=budget, force=force)
         changed |= self._models.refresh_lod(budget=budget, force=force)
         if changed:
-            self.data.render()
-            self.models.render()
+            self.viewport.render()
         return changed
-
-    def refresh_actors(self):
-        """Reinitialize all VTK actors to accommodate render setting changes."""
-        self.data.refresh_actors()
-        self.models.refresh_actors()
-
-    def set_coloring_mode(self, mode: str):
-        self.data.set_coloring_mode(mode)
-        self.models.set_coloring_mode(mode)
-
-    def _get_active_container(self):
-        if self.active_picker == "data":
-            return self.data
-        return self.models
-
-    def swap_area_picker(self):
-        """Toggle area picker between data and models containers."""
-        self.active_picker = "data" if self.active_picker != "data" else "models"
-        self.data.activate_viewing_mode()
-        self.models.activate_viewing_mode()
-        container = self._get_active_container()
-        return container.attach_area_picker()
-
-    def activate_viewing_mode(self):
-        """Activate viewing mode for all containers."""
-        self.data.activate_viewing_mode()
-        self.models.activate_viewing_mode()
-
-    def highlight_clusters_from_selected_points(self):
-        obj = self._get_active_container()
-        return obj.highlight_clusters_from_selected_points()
-
-    def visibility_unselected(self, visible: bool = True):
-        """Hide clusters and models that are not selected."""
-        cluster = list(self.data.point_selection.keys())
-        cluster.extend(self.data._get_selected_uuids())
-        cluster = set(cluster)
-
-        unselected = self.data.data_list.to_state().get_all_uuids() - cluster
-        self.data.visibility(
-            geometries=[self._data.get(x) for x in unselected], visible=visible
-        )
-
-        models = set(self.models._get_selected_uuids())
-        unselected = self.models.data_list.to_state().get_all_uuids() - models
-        self.models.visibility(
-            geometries=[self._models.get(x) for x in unselected], visible=visible
-        )
-
-    def activate_picking_mode(self):
-        obj = self._get_active_container()
-        return obj.activate_picking_mode()
 
     def format_datalist(
         self, type="data", mesh_only: bool = False, selected: bool = False

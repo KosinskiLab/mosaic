@@ -557,8 +557,7 @@ class PropertyAnalysisDialog(QDialog):
         self.legend = legend
         self._setup_ui()
 
-        self.cdata.data.vtk_pre_render.connect(self._on_render_update)
-        self.cdata.models.vtk_pre_render.connect(self._on_render_update)
+        self.cdata.viewport.vtk_pre_render.connect(self._on_render_update)
         self.cdata.data.data_changed.connect(self._refresh_target_lists)
         self.cdata.models.data_changed.connect(self._refresh_target_lists)
 
@@ -600,8 +599,7 @@ class PropertyAnalysisDialog(QDialog):
             sampler.cleanup()
 
         try:
-            self.cdata.data.vtk_pre_render.disconnect(self._on_render_update)
-            self.cdata.models.vtk_pre_render.disconnect(self._on_render_update)
+            self.cdata.viewport.vtk_pre_render.disconnect(self._on_render_update)
             self.cdata.data.data_changed.disconnect(self._refresh_target_lists)
             self.cdata.models.data_changed.disconnect(self._refresh_target_lists)
         except Exception:

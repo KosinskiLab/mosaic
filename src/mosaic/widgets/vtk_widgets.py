@@ -295,7 +295,7 @@ class BoundingBoxManager:
 
     def _create_session_bounds(self):
         """Create session bounds from cdata.shape"""
-        if (shape := self.cdata._data.metadata.get("physical_shape")) is None:
+        if (shape := self.cdata.physical_shape) is None:
             from .message_box import MosaicMessageBox
 
             return MosaicMessageBox.warning(

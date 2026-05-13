@@ -11,23 +11,11 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import numpy as np
 from typing import Dict
 
-
-import vtk
 from qtpy.QtGui import QAction
-from qtpy.QtWidgets import (
-    QListWidget,
-    QMenu,
-    QDialog,
-)
-from .widgets import MosaicMessageBox
-from qtpy.QtCore import (
-    Qt,
-    QObject,
-    Signal,
-    QEvent,
-)
-from .parallel import submit_task
+from qtpy.QtWidgets import QListWidget, QMenu, QDialog
+from qtpy.QtCore import Qt, QObject, Signal
 
+from .widgets import MosaicMessageBox
 from .formats.writer import write_geometries
 from .widgets.container_list import StyledTreeWidgetItem
 
@@ -38,16 +26,20 @@ class DataContainerInteractor(QObject):
     """Handle interaction between GUI and DataContainer"""
 
     data_changed = Signal()
-    render_update = Signal()
-    vtk_pre_render = Signal()
 
-    def __init__(self, container, vtk_widget, prefix="Cluster"):
+    def __init__(self, session, role, prefix="Cluster"):
         from .widgets import ContainerListWidget
 
         super().__init__()
         self.prefix = prefix
-        self.point_selection, self.rendered_actors = {}, set()
-        self.vtk_widget, self.container = vtk_widget, container
+        self.point_selection = {}
+        self.session = session
+
+        # "data" or "models", names the container on session
+        self.role = role
+
+        # Wired in via attach_viewport once the ViewportInteractor exists.
+        self.viewport = None
 
         # Interaction element for the GUI
         self.data_list = ContainerListWidget()
@@ -62,12 +54,21 @@ class DataContainerInteractor(QObject):
             self._show_context_menu
         )
 
-        # Functionality to add points
-        self._interaction_mode, self._active_cluster = False, None
-        self.point_picker = vtk.vtkWorldPointPicker()
-        self.vtk_widget.installEventFilter(self)
-
+        self._active_cluster = None
         self.set_coloring_mode("default")
+
+    def attach_viewport(self, viewport):
+        """Wire this pane to its ViewportInteractor."""
+        self.viewport = viewport
+
+    def set_active_cluster(self, uuid):
+        """Set the UUID of the cluster receiving drawn points (``None`` to clear)."""
+        self._active_cluster = uuid
+
+    @property
+    def container(self):
+        """The DataContainer this pane operates on, resolved live from the session."""
+        return getattr(self.session, f"_{self.role}")
 
     def _get_selected_uuids(self):
         """Get UUIDs of selected items."""
@@ -85,63 +86,6 @@ class DataContainerInteractor(QObject):
     def get_selected_geometries(self):
         ret = [self.container.get(uuid) for uuid in self._get_selected_uuids()]
         return [x for x in ret if x is not None]
-
-    def attach_area_picker(self):
-        self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
-        if self.interactor is None:
-            raise ValueError("Initialize an Interactor first.")
-        self.area_picker = vtk.vtkAreaPicker()
-        style = vtk.vtkInteractorStyleRubberBandPick()
-
-        self.interactor.SetPicker(self.area_picker)
-        self.interactor.SetInteractorStyle(style)
-        self.area_picker.AddObserver("EndPickEvent", self._on_area_pick)
-
-    def get_event_position(self, event, return_event_position: bool = True):
-        pos = event.pos()
-        return self._get_event_position(
-            (pos.x(), pos.y(), 0), return_event_position=return_event_position
-        )
-
-    def _get_event_position(self, position, return_event_position: bool = True):
-        # Avoid DPI/scaling issue on MacOS Retina displays
-        dpr = self.vtk_widget.devicePixelRatio()
-
-        y = (self.vtk_widget.height() - position[1]) * dpr
-        event_position = (position[0] * dpr, y, 0)
-        r = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
-        self.point_picker.Pick(*event_position, r)
-        world_position = self.point_picker.GetPickPosition()
-
-        # Projection onto current camera plane
-        camera = r.GetActiveCamera()
-        camera_plane = vtk.vtkPlane()
-        camera_plane.SetNormal(camera.GetDirectionOfProjection())
-        camera_plane.SetOrigin(world_position)
-
-        t = vtk.mutable(0.0)
-        x = [0, 0, 0]
-        camera_plane.IntersectWithLine(camera.GetPosition(), world_position, t, x)
-        if return_event_position:
-            return x, event_position
-        return x
-
-    def eventFilter(self, watched_obj, event):
-        # VTK camera also observes left-click, so duplicate calls need to be handled
-        if self._interaction_mode in ("draw", "pick") and event.type() in [
-            QEvent.Type.MouseButtonPress,
-            QEvent.Type.MouseMove,
-        ]:
-            if event.buttons() & Qt.MouseButton.LeftButton:
-                world_position, event_position = self.get_event_position(event, True)
-                if self._interaction_mode == "draw":
-                    self._add_point(world_position)
-                elif self._interaction_mode == "pick":
-                    self._pick_prop(event_position)
-                return True
-
-        # Let vtk events pass through
-        return super().eventFilter(watched_obj, event)
 
     def _on_item_renamed(self, item):
         if item.metadata.get("uuid") is None:
@@ -180,7 +124,6 @@ class DataContainerInteractor(QObject):
                 [i], geometry._appearance | {"base_color": self.next_color()}
             )
         self.container.highlight([])
-        return self.render_vtk()
 
     def add(self, *args, **kwargs):
         if kwargs.get("color", None) is None:
@@ -191,14 +134,14 @@ class DataContainerInteractor(QObject):
         return ret
 
     def add_selection(
-        self, selected_point_ids: Dict[vtk.vtkActor, np.ndarray], add: bool = True
+        self, selected_point_ids: Dict[str, np.ndarray], add: bool = True
     ) -> int:
         """Add new cloud from selected points.
 
         Parameters
         ----------
         selected_point_ids : dict
-            Mapping of vtkActor to selected point IDs.
+            Mapping of geometry UUID to selected point IDs.
         add : bool
             Whether to add the Geometry defined by selected points.
 
@@ -230,12 +173,13 @@ class DataContainerInteractor(QObject):
                 # All points were selected, mark for removal
                 remove_cluster.append(geometry)
 
-        self.container.remove(remove_cluster)
+        self.remove(remove_cluster)
         if len(new_cluster) and add:
             return self.add(Geometry.merge(new_cluster))
         return -1
 
-    def _add_point(self, point):
+    def add_point(self, point):
+        """Append a point to the active drawing cluster."""
         if (geometry := self.container.get(self._active_cluster)) is None:
             return -1
 
@@ -243,20 +187,6 @@ class DataContainerInteractor(QObject):
         geometry.swap_data(np.concatenate((geometry.points, np.asarray(point)[None])))
         self.data_changed.emit()
         return self.render()
-
-    def activate_viewing_mode(self):
-        self._interaction_mode = None
-        self._active_cluster = None
-
-    def activate_drawing_mode(self):
-        self._active_cluster = None
-        self._interaction_mode = "draw"
-
-        new_cluster_index = self.add(points=np.empty((0, 3), dtype=np.float32))
-        self._active_cluster = self.container.get(new_cluster_index).uuid
-
-    def activate_picking_mode(self):
-        self._interaction_mode = "pick"
 
     def set_selection_by_uuid(self, uuids):
         """
@@ -276,6 +206,7 @@ class DataContainerInteractor(QObject):
         # handle actual deselect all using _highlight_selection
         if not len(self._get_selected_uuids()):
             return None
+
         self._highlight_selection()
 
     def deselect(self):
@@ -288,64 +219,8 @@ class DataContainerInteractor(QObject):
         self.container.highlight(self._get_selected_uuids())
         self.render_vtk()
 
-    def _on_area_pick(self, obj, event):
-        frustum = obj.GetFrustum()
-        interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
-        if not interactor.GetShiftKey():
-            self.deselect_points()
-
-        num_planes = frustum.GetNumberOfPlanes()
-        plane_norm = np.empty((num_planes, 3), dtype=np.float32)
-        plane_orig = np.empty((num_planes, 3), dtype=np.float32)
-
-        for i in range(num_planes):
-            plane = frustum.GetPlane(i)
-            plane_norm[i] = plane.GetNormal()
-            plane_orig[i] = plane.GetOrigin()
-
-        frustum_min, frustum_max = _compute_frustum_bound(plane_norm, plane_orig)
-        for geometry in self.container.data:
-            if not geometry.visible:
-                continue
-
-            bounds = geometry._data.GetBounds()
-            if not _bounds_in_frustum(bounds, plane_norm, plane_orig):
-                continue
-
-            points = geometry.points
-            if len(points) == 0:
-                continue
-
-            mask = (
-                (points[:, 0] >= frustum_min[0])
-                & (points[:, 0] <= frustum_max[0])
-                & (points[:, 1] >= frustum_min[1])
-                & (points[:, 1] <= frustum_max[1])
-                & (points[:, 2] >= frustum_min[2])
-                & (points[:, 2] <= frustum_max[2])
-            )
-            if not mask.any():
-                continue
-
-            ids = np.flatnonzero(mask)
-            ids = ids[_points_in_frustum(points[ids], plane_norm, plane_orig)]
-            if len(ids) == 0:
-                continue
-
-            uuid = geometry.uuid
-            if uuid not in self.point_selection:
-                self.point_selection[uuid] = np.array([], dtype=np.int32)
-
-            union = np.union1d(ids, self.point_selection[uuid])
-            self.point_selection[uuid] = union.astype(np.int32, copy=False)
-        self.highlight_selected_points(color=None)
-
-    def _pick_prop(self, event_pos):
-        picker = vtk.vtkPropPicker()
-        r = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
-        picker.Pick(*event_pos, r)
-
-        picked_prop = picker.GetViewProp()
+    def pick_prop(self, picked_prop):
+        """Select the geometry whose actor was picked by the viewport, if any."""
         actors = self.container.get_actors()
         if picked_prop in actors:
             index = actors.index(picked_prop)
@@ -380,7 +255,7 @@ class DataContainerInteractor(QObject):
         duplicate_action.triggered.connect(self.duplicate)
         context_menu.addAction(duplicate_action)
         remove_action = QAction("Remove", self.data_list)
-        remove_action.triggered.connect(self.remove)
+        remove_action.triggered.connect(self.remove_selection)
         context_menu.addAction(remove_action)
 
         selected_items = self.data_list.selected_items()
@@ -499,43 +374,19 @@ class DataContainerInteractor(QObject):
 
     def _handle_export(self, *args, **kwargs):
         from .dialogs import ExportDialog
+        from qtpy.QtWidgets import QApplication
 
         geometries = self.get_selected_geometries()
 
         enabled_categories = ["pointcloud", "volume"]
-        for geometry in geometries:
-            fit = geometry.model
-            if hasattr(fit, "mesh"):
-                enabled_categories.append("mesh")
+        if any(hasattr(g.model, "mesh") for g in geometries):
+            enabled_categories.append("mesh")
 
-        sampling, shape = (1, 1, 1), (1, 1, 1)
-        for geometry in geometries:
-            sampling = np.maximum(sampling, geometry.sampling_rate)
-            bounds = geometry._data.GetBounds()
-            geom_shape = (bounds[1], bounds[3], bounds[5])
-            geom_shape = np.divide(geom_shape, geometry.sampling_rate)
-            shape = np.maximum(shape, geom_shape)
-
-        sampling = max(sampling)
-        shape = np.asarray(shape).astype(int) + 1
-
-        # Shape is stored when opening files through the GUI
-        if (container_shape := self.container.metadata.get("shape")) is not None:
-            # Cleaned segmentations will be smaller. However, it makes sense to store
-            # them w.r.t to the intial volume. If they are larger it means the user
-            # added points which should be reflected in the default value
-            shape = np.maximum(shape, container_shape)
-
-        shape = tuple(int(x) for x in shape)
         names = [g._meta.get("name", f"Geometry {i}") for i, g in enumerate(geometries)]
-
         dialog = ExportDialog(
-            parent=self.vtk_widget.window(),
+            parent=QApplication.activeWindow(),
             enabled_categories=enabled_categories,
-            parameters={
-                "shape": shape,
-                "sampling": sampling,
-            },
+            parameters={"shape": self.session.metadata.get("shape", None)},
             names=names,
         )
 
@@ -587,8 +438,7 @@ class DataContainerInteractor(QObject):
         if not len(uuids):
             return -1
 
-        snapshots: dict = {}
-        property_list: list = []
+        snapshots, property_list = {}, []
         for uuid in uuids:
             geometry = self.container.get(uuid)
             if geometry is None:
@@ -596,12 +446,14 @@ class DataContainerInteractor(QObject):
             appearance = geometry._appearance.copy()
             appearance["sampling_rate"] = geometry.sampling_rate
             appearance.setdefault("highlight_color", self.container.highlight_color)
+
             # volume_scale and volume_path live on geometry._meta, not _appearance;
             # surface them so the dialog can detect Native/Invert mixing.
             if "volume_scale" in geometry._meta:
                 appearance["volume_scale"] = geometry._meta["volume_scale"]
             if "volume_path" in geometry._meta:
                 appearance["volume_path"] = geometry._meta["volume_path"]
+
             snapshots[uuid] = appearance
             property_list.append(appearance)
 
@@ -634,6 +486,7 @@ class DataContainerInteractor(QObject):
             for uuid, snap in snapshots.items():
                 snap = snap.copy()
                 sampling_rate = snap.pop("sampling_rate", None)
+
                 # volume_path / volume_scale belong to _meta; strip them so the
                 # cancel-restore doesn't trigger a spurious volume reload.
                 snap.pop("volume_path", None)
@@ -696,34 +549,13 @@ class DataContainerInteractor(QObject):
             uuid_to_items[geometry.uuid] = item
         return uuid_to_items
 
+    # Thin forwarders so older ``cdata.data.render()`` / ``render_vtk()`` call sites
+    # in tabs/dialogs/widgets keep working without knowing about the viewport.
     def render(self, defer_render: bool = False):
-        """Synchronize vtk actors and tree data structure with subsequent render."""
-        renderer = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
-
-        current_actors = set(self.container.get_actors(include_lod=True))
-        actors_to_remove = self.rendered_actors - current_actors
-        for actor in actors_to_remove:
-            renderer.RemoveViewProp(actor)
-            self.rendered_actors.remove(actor)
-
-        actors_to_add = current_actors - self.rendered_actors
-        for actor in actors_to_add:
-            renderer.AddViewProp(actor)
-            self.rendered_actors.add(actor)
-
-        uuid_to_items = self._uuid_to_items()
-        self.data_list.update(uuid_to_items)
-
-        if defer_render:
-            return None
-
-        self.render_vtk()
-        self.render_update.emit()
+        return self.viewport.render(defer_render=defer_render)
 
     def render_vtk(self):
-        """Update the vtk scene."""
-        self.vtk_pre_render.emit()
-        return self.vtk_widget.GetRenderWindow().Render()
+        return self.viewport.render_vtk()
 
     def deselect_points(self):
         if len(self.point_selection) == 0:
@@ -824,7 +656,7 @@ class DataContainerInteractor(QObject):
             return None
 
         if getattr(self, "_merge_uuid", None) is not None:
-            self.container.remove(self._merge_uuid)
+            self.remove(self._merge_uuid)
 
         for _, geometry in self._geometry_backup.items():
             self.add(geometry)
@@ -854,44 +686,57 @@ class DataContainerInteractor(QObject):
 
         if len(merge):
             merged_geometry = Geometry.merge(merge)
-            self.container.remove(merge)
+            self.remove(merge)
             new_index = self.add(merged_geometry)
             self._merge_uuid = self.container.get(new_index).uuid
 
         self.render()
 
-    def remove(self):
+    def remove(self, uuids_or_geometries):
+        """Remove the given geometries from the container and notify listeners."""
+        self.container.remove(uuids_or_geometries)
+        self.data_changed.emit()
+
+    def remove_selection(self):
+        """Drop selected points (or whole geometries when fully selected) with undo backup."""
         self._backup()
         self.add_selection(self.point_selection, add=False)
         self.point_selection.clear()
 
-        self.container.remove(self.get_selected_geometries())
-        self.data_changed.emit()
+        self.remove(self.get_selected_geometries())
         self.render()
 
-    def refresh_actors(self):
-        for index in range(len(self.container)):
-            geometry = self.container.get(index)
-            self.container.update(geometry, geometry[...])
-        return self.render()
+    def visibility(self, geometries=None, visible: bool = True):
+        if geometries is None:
+            geometries = self.get_selected_geometries()
+        for geometry in geometries:
+            if geometry is None:
+                continue
+            geometry.set_visibility(visible)
+        self.render()
 
-    def update(self, container, tree_state=None):
-        """Replace the underlying container and rebuild the tree.
+    def duplicate(self, geometries=None):
+        if geometries is None:
+            geometries = self.get_selected_geometries()
+        for geometry in geometries:
+            if geometry is None:
+                continue
+            self.add(geometry[...])
+        self.render()
+
+    def update(self, tree_state=None):
+        """Resync the tree widget after the session swapped containers.
+
+        The container reference itself is resolved live via the :pyattr:`container`
+        property, so this only refreshes the tree from current state and drops
+        stale rendered-actor bookkeeping.
 
         Parameters
         ----------
-        container : :py:class:`mosaic.container.DataContainer`
-            Container with new data.
         tree_state : TreeState, optional
-            Tree structure to restore. If None, items added to root.
+            Tree structure to restore. If None, items are added to root.
         """
-        if not isinstance(container, type(self.container)):
-            raise ValueError(
-                f"Can not update {type(self.container)} using {type(container)}."
-            )
-
-        self.rendered_actors.clear()
-        self.container = container
+        self.viewport.rendered_actors.clear()
 
         if tree_state is not None:
             self.data_list.apply_state(tree_state, self._uuid_to_items())
@@ -899,144 +744,3 @@ class DataContainerInteractor(QObject):
             self.data_list.update(self._uuid_to_items())
 
         self.data_changed.emit()
-
-
-_GEOMETRY_OPERATIONS = {
-    "skeletonize": {"remove_original": False, "background": True},
-    "downsample": {"remove_original": False, "background": True},
-    "remove_outliers": {"remove_original": False, "background": True},
-    "compute_normals": {"remove_original": True, "background": True},
-    "cluster": {"remove_original": True, "background": True},
-    "duplicate": {"remove_original": False},
-    "visibility": {
-        "remove_original": False,
-        "render": "full",
-        "background": False,
-        "batch": True,
-    },
-}
-
-for op_name, config in _GEOMETRY_OPERATIONS.items():
-    method_name = config.get("method_name", op_name)
-    remove_orig = config.get("remove_original", False)
-    render = config.get("render", "full")
-    background = config.get("background", False)
-    batch = config.get("batch", False)
-
-    def create_method(op_name, remove_orig, render_flag, bg_task, batch_flag):
-        def method(self, **kwargs):
-            f"""Apply {op_name} operation to selected geometries."""
-            from .geometry import Geometry, GeometryData
-            from .operations import GeometryOperations
-
-            def _render_callback(*args, **kwargs):
-                if render_flag == "full":
-                    self.render()
-                elif render_flag == "vtk":
-                    self.render_vtk()
-
-            if (geometries := kwargs.get("geometries", None)) is None:
-                geometries = self.get_selected_geometries()
-
-            for geometry in geometries:
-                if geometry is None:
-                    continue
-
-                def _callback(ret, geom=geometry):
-                    if ret is None:
-                        return None
-
-                    if isinstance(ret, (Geometry, GeometryData)):
-                        ret = (ret,)
-
-                    for new_geom in ret:
-                        if isinstance(new_geom, GeometryData):
-                            new_geom = new_geom.to_geometry()
-                        self.add(new_geom)
-
-                    if remove_orig:
-                        self.container.remove(geom)
-
-                    if not batch_flag:
-                        _render_callback()
-
-                func = getattr(GeometryOperations, op_name)
-
-                if bg_task:
-                    submit_task(
-                        op_name.title(),
-                        func,
-                        _callback,
-                        geometry._geometry_data,
-                        **kwargs,
-                    )
-                    continue
-                _callback(func(geometry, **kwargs))
-
-            if batch_flag:
-                _render_callback()
-
-        method.__name__ = method_name
-        method.__doc__ = f"Apply {op_name} operation using GeometryOperations."
-        return method
-
-    setattr(
-        DataContainerInteractor,
-        method_name,
-        create_method(op_name, remove_orig, render, background, batch),
-    )
-
-
-def _compute_frustum_bound(plane_normals, plane_origins, tol=1e-6):
-    from itertools import combinations
-
-    vertices = []
-    for i, j, k in combinations(range(len(plane_normals)), 3):
-        A = np.array([plane_normals[i], plane_normals[j], plane_normals[k]])
-        b = np.array(
-            [
-                np.dot(plane_normals[i], plane_origins[i]),
-                np.dot(plane_normals[j], plane_origins[j]),
-                np.dot(plane_normals[k], plane_origins[k]),
-            ]
-        )
-
-        if abs(np.linalg.det(A)) > np.finfo(np.float32).resolution:
-            vertex = np.linalg.solve(A, b)
-            vertices.append(vertex)
-
-    vertices = np.array(vertices)
-    return vertices.min(axis=0), vertices.max(axis=0)
-
-
-def _points_in_frustum(points, plane_normals, plane_origins):
-    offsets = (plane_origins * plane_normals).sum(axis=1)
-    mask = np.ones(len(points), dtype=bool)
-    for i in range(len(plane_normals)):
-        mask[mask] = points[mask] @ plane_normals[i] - offsets[i] <= 0
-        if not mask.any():
-            break
-    return mask
-
-
-def _bounds_in_frustum(bounds, plane_normals, plane_origins):
-    xmin, xmax, ymin, ymax, zmin, zmax = bounds
-    corners = np.array(
-        [
-            [xmin, ymin, zmin],
-            [xmax, ymin, zmin],
-            [xmin, ymax, zmin],
-            [xmax, ymax, zmin],
-            [xmin, ymin, zmax],
-            [xmax, ymin, zmax],
-            [xmin, ymax, zmax],
-            [xmax, ymax, zmax],
-        ],
-        dtype=np.float32,
-    )
-
-    for normal, origin in zip(plane_normals, plane_origins):
-        distances = np.dot(corners - origin, normal)
-        if np.all(distances > 0):
-            return False
-    return True

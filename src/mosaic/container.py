@@ -29,7 +29,6 @@ class DataContainer:
 
     def __init__(self, base_color=BASE_COLOR, highlight_color=(0.8, 0.2, 0.2)):
         self.data = []
-        self.metadata = {}
         self.base_color = base_color
         self.highlight_color = highlight_color
 
@@ -154,7 +153,6 @@ class DataContainer:
     def clear(self):
         """Remove all data associated with the container."""
         self.data.clear()
-        self.metadata.clear()
 
     def uuid_to_index(self, uuid: str) -> int:
         """Convert a uuid to an index in self.data."""

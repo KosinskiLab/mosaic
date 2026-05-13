@@ -1,4 +1,4 @@
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, Qt
 from qtpy.QtWidgets import (
     QWidget,
     QDialog,
@@ -237,21 +237,23 @@ class ExportDialog(QDialog):
     ):
         super().__init__(parent)
         self.setWindowTitle("Export Animation")
-        self.setModal(True)
+
         self.total_frames = total_frames
         self.current_width = current_width
         self.current_height = current_height
+
+        self.setFocus(Qt.FocusReason.OtherFocusReason)
+
         self.setup_ui()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(16)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+        layout.setContentsMargins(10, 10, 10, 10)
 
         format_group = QGroupBox("Output Format")
         format_layout = QGridLayout(format_group)
         format_layout.setSpacing(8)
-        format_layout.setColumnStretch(1, 1)
 
         format_layout.addWidget(QLabel("Format:"), 0, 0)
         self.format_combo = QComboBox()
@@ -360,8 +362,6 @@ class ExportDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
 
-        button_layout.addStretch()
-
         export_btn = QPushButton("Export")
         export_btn.setIcon(icon("ph.download", role="primary"))
         export_btn.setDefault(True)
@@ -370,7 +370,7 @@ class ExportDialog(QDialog):
 
         layout.addLayout(button_layout)
 
-        self.setMinimumWidth(340)
+        self.resize(360, 520)
 
     def _on_format_changed(self, format_name: str):
         """Handle format change - disable quality for PNG."""

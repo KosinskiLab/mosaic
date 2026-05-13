@@ -1,3 +1,4 @@
+from functools import partial
 from typing import List, Tuple, Literal
 
 import vtk
@@ -28,7 +29,8 @@ class SegmentationTab(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.ribbon)
 
-        self.cdata.data.vtk_widget.installEventFilter(self)
+        # Something to decouple later
+        self.cdata.data.viewport.vtk_widget.installEventFilter(self)
 
     def eventFilter(self, obj, event):
         """Handle Escape key to exit transformer and trimmer mode."""
@@ -62,7 +64,10 @@ class SegmentationTab(QWidget):
                 "Remove",
                 "ph.trash",
                 self,
-                lambda: (self.cdata.data.remove(), self.cdata.models.remove()),
+                lambda: (
+                    self.cdata.data.remove_selection(),
+                    self.cdata.models.remove_selection(),
+                ),
                 "Remove selected objects",
             ),
             create_button(
@@ -94,7 +99,7 @@ class SegmentationTab(QWidget):
                 "Cluster",
                 "ph.arrows-out-line-horizontal",
                 self,
-                self.cdata.data.cluster,
+                partial(self._run_op, "cluster", replace=True),
                 "Partition cluster",
                 MethodRegistry.settings_dict("cluster"),
             ),
@@ -102,7 +107,7 @@ class SegmentationTab(QWidget):
                 "Outlier",
                 "ph.funnel",
                 self,
-                self.cdata.data.remove_outliers,
+                partial(self._run_op, "remove_outliers"),
                 "Remove outliers from cluster",
                 MethodRegistry.settings_dict("remove_outliers"),
             ),
@@ -110,7 +115,7 @@ class SegmentationTab(QWidget):
                 "Normals",
                 "ph.arrows-out",
                 self,
-                self.cdata.data.compute_normals,
+                partial(self._run_op, "compute_normals", replace=True),
                 "Compute or flip cluster normals",
                 MethodRegistry.settings_dict("compute_normals"),
             ),
@@ -125,7 +130,7 @@ class SegmentationTab(QWidget):
                 "Skeletonize",
                 "ph.line-segments",
                 self,
-                self.cdata.data.skeletonize,
+                partial(self._run_op, "skeletonize"),
                 "Extract skeleton from cluster",
                 MethodRegistry.settings_dict("skeletonize"),
             ),
@@ -133,7 +138,7 @@ class SegmentationTab(QWidget):
                 "Downsample",
                 "ph.arrows-in",
                 self,
-                self.cdata.data.downsample,
+                partial(self._run_op, "downsample"),
                 "Downsample cluster",
                 MethodRegistry.settings_dict("downsample"),
             ),
@@ -150,6 +155,55 @@ class SegmentationTab(QWidget):
             ),
         ]
         self.ribbon.add_section("Analysis", analysis_actions)
+
+    def _default_callback(self, geom):
+        from ..geometry import Geometry, GeometryData
+
+        if geom is None:
+            return None
+
+        if isinstance(geom, (Geometry, GeometryData)):
+            geom = (geom,)
+
+        render = False
+        for new_geom in geom:
+
+            if new_geom is None:
+                continue
+
+            if isinstance(new_geom, GeometryData):
+                new_geom = new_geom.to_geometry()
+
+            self.cdata.data.add(new_geom)
+            render = True
+
+        if render:
+            self.cdata.data.render()
+
+    def _run_op(self, op_name, replace=False, **kwargs):
+        from ..operations import GeometryOperations
+        from ..parallel import submit_task
+
+        def _make_callback(geometry):
+
+            def callback(ret):
+                if ret is None:
+                    return None
+                self.cdata.data.remove(geometry)
+                return self._default_callback(ret)
+
+            return callback if replace else self._default_callback
+
+        func = getattr(GeometryOperations, op_name)
+        task_name = op_name.title()
+        for geometry in self.cdata.data.get_selected_geometries():
+            submit_task(
+                task_name,
+                func,
+                _make_callback(geometry),
+                geometry._geometry_data,
+                **kwargs,
+            )
 
     def _toggle_trimmer(self):
         if self.trimmer.active:
@@ -184,8 +238,8 @@ class SegmentationTab(QWidget):
         dialog = None
         if getattr(self, "distance_crop_dock", None) is None:
             dialog = DistanceCropDialog(cdata=self.cdata, parent=self)
-            self.cdata.data.render_update.connect(dialog.populate_lists)
-            self.cdata.models.render_update.connect(dialog.populate_lists)
+            self.cdata.data.data_changed.connect(dialog.populate_lists)
+            self.cdata.models.data_changed.connect(dialog.populate_lists)
             dialog.cropApplied.connect(self._apply_distance_crop)
 
         create_or_toggle_dock(self, "distance_crop_dock", dialog)

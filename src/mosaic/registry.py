@@ -48,7 +48,6 @@ class Param:
     type : str
         Python type: ``"float"``, ``"int"``, ``"str"``, ``"bool"``,
         ``"path"``.  ``options`` turns a ``str`` into a select widget.
-        ``"float_list"`` is also accepted for semicolon-separated floats.
     label : str
         GUI label. Defaults to ``name.replace("_", " ").title()``.
     default : Any
@@ -87,6 +86,7 @@ class Param:
     options: tuple = None
     file_mode: bool = None
     placeholder: str = None
+    special_text: str = None
 
     @property
     def widget_type(self) -> str:
@@ -123,6 +123,8 @@ class Param:
             d["file_mode"] = self.file_mode
         if self.placeholder is not None:
             d["placeholder"] = self.placeholder
+        if self.special_text is not None:
+            d["special_text"] = self.special_text
         return d
 
 
@@ -418,9 +420,10 @@ _FAIRING_PARAMS = (
 _HOLE_SIZE = Param(
     "max_hole_size",
     "float",
-    default=-1.0,
-    min=-1.0,
+    default=None,
+    min=0.0,
     label="Hole Size",
+    special_text="Auto",
     description="Maximum surface area of holes considered for triangulation.",
 )
 

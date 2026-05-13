@@ -39,19 +39,19 @@ MEMBRAIN_SETTINGS = {
             "type": "text",
             "label": "Input Sampling",
             "parameter": "input_sampling_rate",
-            "default": -1.0,
+            "default": None,
+            "special_text": "Auto",
             "min": 0.1,
-            "description": "Pixel size of your tomogram.",
-            "notes": "Defaults to the pixel size specified in the header.",
+            "description": "Pixel size of your tomogram. Clear to read from the header.",
         },
         {
             "type": "text",
             "label": "Output Sampling",
             "parameter": "output_sampling_rate",
-            "default": -1.0,
+            "default": None,
+            "special_text": "Auto",
             "min": 0.1,
-            "description": "Target pixel size for internal rescaling",
-            "notes": "Non default values triggers scaling from input to output scaling.",
+            "description": "Target pixel size for internal rescaling. Clear to skip rescaling.",
         },
         {
             "type": "boolean",
@@ -81,8 +81,8 @@ def run_membrainseg(
     out_folder: str = None,
     window_size: int = 160,
     clustering: bool = True,
-    input_sampling_rate: Tuple[float] = -1.0,
-    output_sampling_rate: Tuple[float] = -1.0,
+    input_sampling_rate: Tuple[float] = None,
+    output_sampling_rate: Tuple[float] = None,
     test_time_augmentation: bool = True,
 ):
     from ..formats.parser import load_density
@@ -123,19 +123,25 @@ def run_membrainseg(
     else:
         cmd.append("--no-store-connected-components")
 
-    input_sampling_rate = np.max(input_sampling_rate)
-    output_sampling_rate = np.max(output_sampling_rate)
+    input_sampling_rate = (
+        float(np.max(input_sampling_rate)) if input_sampling_rate is not None else None
+    )
+    output_sampling_rate = (
+        float(np.max(output_sampling_rate))
+        if output_sampling_rate is not None
+        else None
+    )
 
-    if output_sampling_rate > 0:
+    if output_sampling_rate is not None:
         cmd.extend(["--out-pixel-size", f"{output_sampling_rate}", "--rescale-patches"])
 
-        if input_sampling_rate < 0:
-            input_sampling_rate = np.max(
-                load_density(tomogram_path, use_memmap=True).sampling_rate
+        if input_sampling_rate is None:
+            input_sampling_rate = float(
+                np.max(load_density(tomogram_path, use_memmap=True).sampling_rate)
             )
             print(f"Setting samping rate to {input_sampling_rate}.")
 
-    if input_sampling_rate > 0:
+    if input_sampling_rate is not None:
         cmd.extend(["--in-pixel-size", f"{input_sampling_rate}"])
 
     ret = run([str(x) for x in cmd])

@@ -398,9 +398,9 @@ class App(QMainWindow):
 
         elif mode == "silhouettes":
             passes = vtk.vtkRenderStepsPass()
-            sobel = vtk.vtkSobelGradientMagnitudePass()
-            sobel.SetDelegatePass(passes)
-            renderer.SetPass(sobel)
+            edl = vtk.vtkEDLShading()
+            edl.SetDelegatePass(passes)
+            renderer.SetPass(edl)
 
     @staticmethod
     def _ssao_radius(renderer, fraction: float = 0.02, fallback: float = 50.0):
@@ -498,12 +498,12 @@ class App(QMainWindow):
 
     def toggle_interaction_target(self):
         self._transition_modes(ViewerModes.VIEWING)
-        self.cdata.swap_area_picker()
+        self.cdata.viewport.swap_target()
         self.toggle_selection_menu()
 
     def remove_selected(self):
-        self.cdata.data.remove()
-        self.cdata.models.remove()
+        self.cdata.data.remove_selection()
+        self.cdata.models.remove_selection()
 
     def on_right_click(self, obj, event):
         self.cdata.data.deselect()
@@ -522,17 +522,17 @@ class App(QMainWindow):
             if hasattr(current_style, "cleanup"):
                 current_style.cleanup()
 
-            self.cdata.swap_area_picker()
-            self.cdata.swap_area_picker()
+            self.cdata.viewport.attach_area_picker()
 
-        self.cdata.activate_viewing_mode()
+        self.cdata.viewport.activate_viewing_mode()
         self.status_indicator.update_status(interaction=new_mode.value)
         if current_mode == new_mode:
             self.status_indicator.update_status(interaction=ViewerModes.VIEWING.value)
             return self.cursor_handler.update_mode(ViewerModes.VIEWING)
 
         if new_mode == ViewerModes.DRAWING:
-            self.cdata.data.activate_drawing_mode()
+            self.cdata.viewport.set_target(self.cdata.data)
+            self.cdata.viewport.activate_drawing_mode()
         elif new_mode == ViewerModes.CURVE:
             from .styles import CurveBuilderInteractorStyle
 
@@ -540,10 +540,9 @@ class App(QMainWindow):
             self.interactor.SetInteractorStyle(style)
             style.SetDefaultRenderer(self.renderer)
         elif new_mode == ViewerModes.SELECTION:
-            self.cdata._get_active_container().attach_area_picker()
-
+            self.cdata.viewport.attach_area_picker()
         elif new_mode == ViewerModes.PICKING:
-            self.cdata.activate_picking_mode()
+            self.cdata.viewport.activate_picking_mode()
         elif new_mode in (ViewerModes.MESH_ADD, ViewerModes.MESH_DELETE):
             from .styles import MeshEditInteractorStyle
 
@@ -694,10 +693,7 @@ class App(QMainWindow):
 
         self._setup_volume_viewer()
         self._setup_camera_hud()
-        self.cdata.data.render_update.connect(
-            self.volume_viewer.primary.handle_projection_change
-        )
-        self.cdata.models.render_update.connect(
+        self.cdata.viewport.render_update.connect(
             self.volume_viewer.primary.handle_projection_change
         )
 
@@ -902,14 +898,14 @@ class App(QMainWindow):
         self.color_default_action.setCheckable(True)
         self.color_default_action.setChecked(True)
         self.color_default_action.triggered.connect(
-            lambda: self.cdata.set_coloring_mode("default")
+            lambda: self.cdata.viewport.set_coloring_mode("default")
         )
         coloring_group.addAction(self.color_default_action)
 
         self.color_by_entity_action = QAction("By Entity", self)
         self.color_by_entity_action.setCheckable(True)
         self.color_by_entity_action.triggered.connect(
-            lambda: self.cdata.set_coloring_mode("entity")
+            lambda: self.cdata.viewport.set_coloring_mode("entity")
         )
         coloring_group.addAction(self.color_by_entity_action)
 
@@ -1115,19 +1111,19 @@ class App(QMainWindow):
         )
         expand_selection_action.setShortcut(QKeySequence("E"))
         expand_selection_action.triggered.connect(
-            self.cdata.highlight_clusters_from_selected_points
+            self.cdata.viewport.highlight_clusters_from_selected_points
         )
 
         hide_unselected_action = QAction(icon("ph.eye-slash"), "Hide Unselected", self)
         hide_unselected_action.setShortcut(QKeySequence("H"))
         hide_unselected_action.triggered.connect(
-            lambda: self.cdata.visibility_unselected(visible=False)
+            lambda: self.cdata.viewport.visibility_unselected(visible=False)
         )
 
         show_unselected_action = QAction(icon("ph.eye"), "Show Unselected", self)
         show_unselected_action.setShortcut(QKeySequence("Shift+H"))
         show_unselected_action.triggered.connect(
-            lambda: self.cdata.visibility_unselected(visible=True)
+            lambda: self.cdata.viewport.visibility_unselected(visible=True)
         )
 
         picking_action = QAction(icon("ph.hand-pointing"), "Pick Objects", self)
@@ -1419,8 +1415,7 @@ class App(QMainWindow):
         self._add_file_to_recent(file_path)
         self._current_session_path = file_path
 
-        self.cdata.data.render(defer_render=True)
-        self.cdata.models.render(defer_render=True)
+        self.cdata.viewport.render(defer_render=True)
         self._camera_view = None
         self.set_camera_view("z")
 
@@ -1456,8 +1451,7 @@ class App(QMainWindow):
             self.status_indicator.show()
 
         self.cdata.reset()
-        self.cdata.data.render(defer_render=True)
-        self.cdata.models.render(defer_render=True)
+        self.cdata.viewport.render(defer_render=True)
         self._current_session_path = None
         self.prime_viewport_placeholder()
 
@@ -1513,8 +1507,7 @@ class App(QMainWindow):
 
         self.cdata.data.data_changed.emit()
         self.cdata.models.data_changed.emit()
-        self.cdata.data.render(defer_render=False)
-        self.cdata.models.render(defer_render=False)
+        self.cdata.viewport.render(defer_render=False)
         self.set_camera_view("z")
 
         if density_paths:

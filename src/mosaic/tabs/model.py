@@ -13,7 +13,7 @@ from ..parallel import submit_task, submit_task_batch
 
 def _repair_mesh(
     geometry,
-    max_hole_size=-1,
+    max_hole_size=None,
     bridge_alpha=0.0,
     smoothness=0,
     curvature_weight=0,
@@ -530,8 +530,8 @@ REPAIR_SETTINGS = {
             "label": "Hole Size",
             "parameter": "max_hole_size",
             "type": "float",
-            "min": -1.0,
-            "default": -1.0,
+            "min": 0.0,
+            "default": None,
             "description": "Maximum surface area of holes considered for triangulation.",
         },
         {

@@ -2,7 +2,6 @@ import time
 
 import numpy as np
 from qtpy.QtCore import Qt, QEvent, QTimer
-from qtpy.QtGui import QCursor
 from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,

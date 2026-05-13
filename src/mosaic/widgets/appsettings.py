@@ -54,7 +54,11 @@ LIGHTING_MODES = [
     ("full", "Full", "Multi-light setup with three-point lighting"),
     ("flat", "Flat", "No shading with uniform flat colors"),
     ("poster", "Poster", "Light background with edge outlines"),
-    ("silhouettes", "Silhouettes", "Edge outlines via Sobel gradient detection"),
+    (
+        "silhouettes",
+        "Silhouettes",
+        "Eye-dome lighting that darkens depth discontinuities",
+    ),
 ]
 
 

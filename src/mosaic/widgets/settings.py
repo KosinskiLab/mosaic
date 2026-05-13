@@ -44,18 +44,26 @@ def format_tooltip(description=None, default=None, notes=None, **kwargs):
 
 
 def create_setting_widget(setting: Dict):
-    if setting["type"] == "number":
+    if setting["type"] in ("number", "float"):
+
         widget = QSpinBox()
-        widget.setRange(int(setting.get("min", 0)), int(setting.get("max", 1 << 30)))
-        set_widget_value(widget, setting.get("default", 0))
-    elif setting["type"] == "float":
-        widget = QDoubleSpinBox()
-        widget.setDecimals(setting.get("decimals", 4))
-        widget.setRange(setting.get("min", 0.0), setting.get("max", 1e32))
-        set_widget_value(widget, setting.get("default", 0.0))
-        widget.setSingleStep(setting.get("step", 1.0))
-        if setting.get("min", 0.0) < 0:
-            widget.setSpecialValueText(setting.get("special_text", "Auto"))
+        wrange = int(setting.get("min", 0)), int(setting.get("max", 1 << 30))
+        if setting["type"] == "float":
+            widget = QDoubleSpinBox()
+            widget.setDecimals(setting.get("decimals", 6))
+            wrange = setting.get("min", 0.0), setting.get("max", 1e32)
+            widget.setSingleStep(setting.get("step", 1.0))
+
+        widget.setRange(*wrange)
+        default_value = setting.get("default")
+        if default_value is None:
+            marker = setting.get("special_text", "Auto")
+            widget.setSpecialValueText(marker)
+            widget.setProperty("none_marker", marker)
+            widget.setValue(widget.minimum())
+        else:
+            widget.setValue(default_value)
+
     elif setting["type"] == "select":
         widget = QComboBox()
         option_values = setting.get("option_values")
@@ -66,6 +74,7 @@ def create_setting_widget(setting: Dict):
             widget.addItems(setting["options"])
         if "default" in setting:
             set_widget_value(widget, setting["default"])
+
     elif setting["type"] == "PathSelector":
         from . import PathSelector
 
@@ -84,17 +93,25 @@ def create_setting_widget(setting: Dict):
         widget = QCheckBox()
         set_widget_value(widget, setting.get("default", False))
         widget.setMinimumHeight(Colors.WIDGET_HEIGHT)
-    elif setting["type"] in ("text", "float_list"):
+
+    elif setting["type"] == "text":
         widget = QLineEdit()
         default_value = setting.get("default", None)
 
-        widget.setProperty("setting_type", setting["type"])
-        if not isinstance(default_value, str) and setting["type"] != "float_list":
+        is_numeric = (
+            default_value is not None and not isinstance(default_value, str)
+        ) or ("min" in setting or "max" in setting)
+        if is_numeric:
             validator = QDoubleValidator()
             validator.setNotation(QDoubleValidator.Notation.StandardNotation)
             validator.setBottom(float(setting.get("min", 0.0)))
             widget.setValidator(validator)
-        set_widget_value(widget, str(setting.get("default", 0)))
+
+        text = "" if default_value is None else str(default_value)
+        if default_value is None and (marker := setting.get("special_text")):
+            text = str(marker)
+            widget.setProperty("none_marker", text)
+        set_widget_value(widget, text)
         widget.setMinimumWidth(100)
     else:
         raise ValueError(f"Could not create widget from {setting}.")
@@ -109,6 +126,9 @@ def get_widget_value(widget):
     from .path_selector import PathSelector
 
     if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
+        marker = widget.property("none_marker")
+        if marker and widget.text() == marker:
+            return None
         return widget.value()
     elif isinstance(widget, QComboBox):
         data = widget.currentData()
@@ -118,12 +138,13 @@ def get_widget_value(widget):
     elif isinstance(widget, QCheckBox):
         return widget.isChecked()
     elif isinstance(widget, QLineEdit):
-        validator = widget.validator()
         value = widget.text().strip()
+        marker = widget.property("none_marker")
+        if not value or (marker and value == marker):
+            return None
+        validator = widget.validator()
         if validator:
             return float(value)
-        if widget.property("setting_type") == "float_list":
-            return [float(x.strip()) for x in value.split(";")]
         return value
     elif isinstance(widget, PathSelector):
         return widget.get_path()
@@ -149,9 +170,6 @@ def set_widget_value(widget, value):
     elif isinstance(widget, QCheckBox):
         widget.setChecked(bool(value))
     elif isinstance(widget, QLineEdit):
-        if widget.property("setting_type") == "float_list":
-            if isinstance(value, (list, tuple)):
-                value = ",".join([str(x) for x in value])
         widget.setText(str(value))
     elif isinstance(widget, PathSelector):
         widget.set_path(value)

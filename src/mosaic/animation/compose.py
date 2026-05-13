@@ -29,6 +29,7 @@ from qtpy.QtWidgets import (
     QApplication,
     QSizePolicy,
     QCheckBox,
+    QMessageBox,
 )
 from .timeline import TimelineWidget
 from .animations import AnimationType, BaseAnimation

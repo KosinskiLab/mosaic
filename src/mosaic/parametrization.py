@@ -1274,8 +1274,8 @@ class BallPivoting(TriangularMesh):
         cls,
         positions: np.ndarray,
         radii: Tuple[float] = (5.0,),
-        max_hole_size: float = -1,
-        target_edge_length: float = -1,
+        max_hole_size: float = None,
+        target_edge_length: float = None,
         smoothness: float = 0.0,
         curvature_weight: float = 0.0,
         pressure: float = 0.0,
@@ -1295,9 +1295,9 @@ class BallPivoting(TriangularMesh):
         radii : tuple of float
             Ball radii for surface reconstruction. Use commas to
             specify multiple radii, e.g. ``(50, 30.5, 10)``.
-        max_hole_size : float
+        max_hole_size : float, optional
             Maximum surface area of holes to triangulate.
-            ``-1`` fills all holes, ``0`` skips hole filling.
+            ``None`` fills all holes, ``0`` skips hole filling.
         target_edge_length : float
             Target edge length for remeshing after hole filling.
             ``-1`` uses the average edge length of the mesh.
@@ -1489,7 +1489,7 @@ class PoissonMesh(TriangularMesh):
             mesh.remove_vertices_by_mask(vertices_to_remove)
 
         # Remove vertices far from the original point cloud
-        if deldist > 0:
+        if deldist is not None and deldist > 0:
             deldist_norm = deldist / voxel_size
             mesh_vertices = np.asarray(mesh.vertices)
             pcd_tree = o3d.geometry.KDTreeFlann(pcd)
@@ -1515,7 +1515,7 @@ class AlphaShape(TriangularMesh):
         positions: np.ndarray,
         voxel_size: float = 1,
         alpha: float = 1,
-        target_edge_length: float = -1,
+        target_edge_length: float = None,
         smoothness: float = 0.0,
         curvature_weight: float = 0.0,
         pressure: float = 0.0,
@@ -1596,11 +1596,9 @@ class AlphaShape(TriangularMesh):
         fs = np.asarray(mesh.triangles)
 
         distances, _ = utils.find_closest_points(positions, vs)
-        edge_length = (
-            target_edge_length
-            if target_edge_length > 0
-            else float(np.median(meshing.compute_edge_lengths(mesh)))
-        )
+        edge_length = target_edge_length
+        if target_edge_length is None:
+            edge_length = float(np.median(meshing.compute_edge_lengths(mesh)))
         vids = np.where(distances > edge_length / 2.0)[0]
 
         if len(vids) == 0:
@@ -1626,7 +1624,7 @@ class ShrinkWrap(TriangularMesh):
         voxel_size: float = 1,
         max_iter: int = 100,
         k_neighbors: int = 8,
-        target_edge_length: float = -1,
+        target_edge_length: float = None,
         smoothness: float = 0.0,
         curvature_weight: float = 0.0,
         pressure: float = 0.0,
@@ -1769,11 +1767,8 @@ class ShrinkWrap(TriangularMesh):
         fs = np.asarray(mesh.triangles)
 
         distances, _ = utils.find_closest_points(positions_orig, vs)
-        edge_length = (
-            target_edge_length
-            if target_edge_length > 0
-            else float(np.median(meshing.compute_edge_lengths(mesh)))
-        )
+        if target_edge_length is None:
+            edge_length = float(np.median(meshing.compute_edge_lengths(mesh)))
         vids = np.where(distances > edge_length / 2.0)[0]
 
         if len(vids) == 0:
