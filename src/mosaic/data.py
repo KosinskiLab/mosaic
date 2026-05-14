@@ -173,7 +173,7 @@ class MosaicData:
         self._vtk_widget = vtk_widget
         self._lod_restore_timer = QTimer(vtk_widget)
         self._lod_restore_timer.setSingleShot(True)
-        self._lod_restore_timer.setInterval(200)
+        self._lod_restore_timer.setInterval(50)
         self._lod_restore_timer.timeout.connect(self._restore_full_data)
 
         if (interactor := vtk_widget.GetRenderWindow().GetInteractor()) is None:

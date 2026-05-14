@@ -137,7 +137,6 @@ class ViewportInteractor(QObject):
         num_planes = frustum.GetNumberOfPlanes()
         plane_norm = np.empty((num_planes, 3), dtype=np.float32)
         plane_orig = np.empty((num_planes, 3), dtype=np.float32)
-
         for i in range(num_planes):
             plane = frustum.GetPlane(i)
             plane_norm[i] = plane.GetNormal()
@@ -222,11 +221,7 @@ class ViewportInteractor(QObject):
         return self.current_target.highlight_clusters_from_selected_points()
 
     def visibility_unselected(self, visible: bool = True):
-        """Toggle visibility for geometries not retained by selection on each pane.
-
-        A geometry is "retained" if it is either in the pane's list selection
-        or referenced by its point selection.
-        """
+        """Toggle visibility for geometries not selected on each pane."""
         for pane in self.panes:
             kept = set(pane.point_selection.keys())
             kept.update(pane._get_selected_uuids())
@@ -261,12 +256,7 @@ def _compute_frustum_bound(plane_normals, plane_origins, tol=1e-6):
 
 def _points_in_frustum(points, plane_normals, plane_origins):
     offsets = (plane_origins * plane_normals).sum(axis=1)
-    mask = np.ones(len(points), dtype=bool)
-    for i in range(len(plane_normals)):
-        mask[mask] = points[mask] @ plane_normals[i] - offsets[i] <= 0
-        if not mask.any():
-            break
-    return mask
+    return ((points @ plane_normals.T) <= offsets).all(axis=1)
 
 
 def _bounds_in_frustum(bounds, plane_normals, plane_origins):

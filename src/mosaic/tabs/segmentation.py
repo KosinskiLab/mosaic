@@ -304,7 +304,7 @@ class ClusterTransformer:
 
         self.transform_widget = None
         self.selected_cluster = None
-        self.data.vtk_widget.GetRenderWindow().Render()
+        self.data.viewport.vtk_widget.GetRenderWindow().Render()
 
     def show(self):
         geometries = self.data.get_selected_geometries()
@@ -331,7 +331,7 @@ class ClusterTransformer:
         self.normals = self.geometry.normals.copy()
         self.transform_widget.PlaceWidget(bounds)
         self.transform_widget.On()
-        self.data.vtk_widget.GetRenderWindow().Render()
+        self.data.viewport.vtk_widget.GetRenderWindow().Render()
 
     def setup(self):
         """Create and configure the 3D widget for transformations."""
@@ -340,7 +340,7 @@ class ClusterTransformer:
 
         self.transform_widget = vtk.vtkBoxWidget()
         self.transform_widget.SetInteractor(
-            self.data.vtk_widget.GetRenderWindow().GetInteractor()
+            self.data.viewport.vtk_widget.GetRenderWindow().GetInteractor()
         )
         self.transform_widget.SetRotationEnabled(True)
         self.transform_widget.SetTranslationEnabled(True)
@@ -483,7 +483,9 @@ class PlaneTrimmer:
     def _setup_plane_widget(self, color: Tuple[float, float, float]):
         """Setup an interactive widget for the plane."""
         widget = vtk.vtkImplicitPlaneWidget()
-        widget.SetInteractor(self.data.vtk_widget.GetRenderWindow().GetInteractor())
+        widget.SetInteractor(
+            self.data.viewport.vtk_widget.GetRenderWindow().GetInteractor()
+        )
         widget.SetPlaceFactor(1.0)
 
         bounds = self._get_scene_bounds()

@@ -400,24 +400,20 @@ class ExportDialog(QDialog):
         for parameter, widget in getattr(self, "setting_widgets", {}).items():
             settings[parameter] = get_widget_value(widget)
 
-        if "shape" in settings:
-            raw = str(settings.pop("shape")).strip()
-            if not raw:
-                settings["shape"] = None
-            else:
-                try:
-                    parsed = tuple(int(s.strip()) for s in raw.split(","))
-                except ValueError as exc:
-                    raise ValueError(
-                        "Shape must be three comma-separated integers "
-                        f"(X, Y, Z). Got: {raw!r}."
-                    ) from exc
-                if len(parsed) != 3:
-                    raise ValueError(
-                        "Shape must be three comma-separated integers "
-                        f"(X, Y, Z). Got {len(parsed)} value(s): {raw!r}."
-                    )
-                settings["shape"] = parsed
+        if (raw := settings.get("shape", None)) is not None:
+            try:
+                parsed = tuple(int(s.strip()) for s in raw.split(","))
+            except ValueError as exc:
+                raise ValueError(
+                    "Shape must be three comma-separated integers "
+                    f"(X, Y, Z). Got: {raw!r}."
+                ) from exc
+            if len(parsed) != 3:
+                raise ValueError(
+                    "Shape must be three comma-separated integers "
+                    f"(X, Y, Z). Got {len(parsed)} value(s): {raw!r}."
+                )
+            settings["shape"] = parsed
 
         return settings
 
@@ -463,6 +459,7 @@ class ExportDialog(QDialog):
         if not path:
             return None
 
+        # This could be clearer for exporting trajectories
         base_path = splitext(path)[0]
         is_single = self.single_file_checkbox.isChecked()
 

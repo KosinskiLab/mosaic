@@ -209,7 +209,7 @@ class DevelopmentTab(QWidget):
 
     def test_point_rendering_performance(self, *args, **kwargs):
         test_duration = 5.0
-        vtk_widget = self.cdata.data.vtk_widget
+        vtk_widget = self.cdata.data.viewport.vtk_widget
         render_window = vtk_widget.GetRenderWindow()
         renderer = render_window.GetRenderers().GetFirstRenderer()
         camera = renderer.GetActiveCamera()
@@ -364,11 +364,11 @@ class DevelopmentTab(QWidget):
             return
 
         renderer = (
-            self.cdata.data.vtk_widget.GetRenderWindow()
+            self.cdata.data.viewport.vtk_widget.GetRenderWindow()
             .GetRenderers()
             .GetFirstRenderer()
         )
-        vtk_widget = self.cdata.data.vtk_widget
+        vtk_widget = self.cdata.data.viewport.vtk_widget
 
         if self._overlay is None:
             self._overlay = AnnotationOverlayController(
@@ -390,7 +390,7 @@ class DevelopmentTab(QWidget):
         if self._overlay is not None:
             self._overlay.deactivate()
             self._overlay.tool_panel = None
-        self.cdata.data.vtk_widget.removeEventFilter(self)
+        self.cdata.data.viewport.vtk_widget.removeEventFilter(self)
         try:
             if self.volume_viewer is not None:
                 self.volume_viewer.primary.data_changed.disconnect(
@@ -453,11 +453,13 @@ class DevelopmentTab(QWidget):
         self._overlay.active_tool = tool_id
         if not self._overlay.active:
             return
-        interactor = self.cdata.data.vtk_widget.GetRenderWindow().GetInteractor()
+        interactor = (
+            self.cdata.data.viewport.vtk_widget.GetRenderWindow().GetInteractor()
+        )
         if interactor.GetInteractorStyle() is not self._overlay._paint_style:
             interactor.SetInteractorStyle(self._overlay._paint_style)
         self._overlay._paint_style._update_cursor()
-        self.cdata.data.vtk_widget.GetRenderWindow().Render()
+        self.cdata.data.viewport.vtk_widget.GetRenderWindow().Render()
 
     def _on_labels_changed(self):
         if self._overlay is not None and self._overlay.active:

@@ -21,7 +21,6 @@ from qtpy.QtWidgets import (
     QWidget,
     QLabel,
     QGroupBox,
-    QApplication,
 )
 from ..icons import icon
 from ..widgets import (
@@ -44,11 +43,12 @@ def tuple_or_value(v):
 class GeometryPropertiesDialog(QDialog):
     parametersChanged = Signal(dict)
 
-    def __init__(self, initial_properties=None, parent=None):
+    def __init__(self, initial_properties=None, parent=None, anchor=None):
         super().__init__(parent)
         self.setWindowTitle("Properties")
         self.setFixedWidth(400)
         self.parameters = {}
+        self._anchor = anchor
 
         if initial_properties is None:
             property_list = [{}]
@@ -164,24 +164,21 @@ class GeometryPropertiesDialog(QDialog):
         return widget in self._indeterminate_widgets
 
     def showEvent(self, event):
-        """Position the dialog on the left side of the parent window."""
         super().showEvent(event)
-
         self.setFocus(Qt.FocusReason.OtherFocusReason)
 
-        # Find the main window
-        main_window = self.parent().window() if self.parent() else None
-        if main_window is None:
-            main_window = QApplication.activeWindow()
-        if main_window is None or main_window is self:
+        if self._anchor is None or not self._anchor.isVisible():
             return
 
-        parent_geo = main_window.geometry()
-
-        # Position on the left side, vertically centered
-        x = parent_geo.left() + 20
-        y = parent_geo.top() + (parent_geo.height() - self.height()) // 2
-
+        top_right = self._anchor.mapToGlobal(self._anchor.rect().topRight())
+        screen_geo = self.screen().availableGeometry()
+        x = max(
+            screen_geo.left(),
+            min(top_right.x() + 10, screen_geo.right() - self.width()),
+        )
+        y = max(
+            screen_geo.top(), min(top_right.y(), screen_geo.bottom() - self.height())
+        )
         self.move(x, y)
 
     def setup_ui(self):

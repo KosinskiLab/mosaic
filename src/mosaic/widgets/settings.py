@@ -170,7 +170,10 @@ def set_widget_value(widget, value):
     elif isinstance(widget, QCheckBox):
         widget.setChecked(bool(value))
     elif isinstance(widget, QLineEdit):
-        widget.setText(str(value))
+        if value is None:
+            widget.setText(widget.property("none_marker") or "")
+        else:
+            widget.setText(str(value))
     elif isinstance(widget, PathSelector):
         widget.set_path(value)
     else:

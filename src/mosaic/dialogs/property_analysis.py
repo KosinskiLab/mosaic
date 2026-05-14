@@ -1224,7 +1224,7 @@ class PropertyAnalysisDialog(QDialog):
                 parameters[k] = get_widget_value(widget)
 
         if self.property_combo.currentText() == "To Camera":
-            vtk_widget = self.cdata.data.vtk_widget
+            vtk_widget = self.cdata.data.viewport.vtk_widget
             renderer = vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
             parameters["queries"] = np.array(
                 renderer.GetActiveCamera().GetPosition()

@@ -244,15 +244,21 @@ class DataContainerInteractor(QObject):
         context_menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         show_action = QAction("Show", self.data_list)
-        show_action.triggered.connect(lambda: self.visibility(visible=True))
+        show_action.triggered.connect(
+            lambda: self.visibility(self.get_selected_geometries(), visible=True)
+        )
         context_menu.addAction(show_action)
 
         hide_action = QAction("Hide", self.data_list)
-        hide_action.triggered.connect(lambda: self.visibility(visible=False))
+        hide_action.triggered.connect(
+            lambda: self.visibility(self.get_selected_geometries(), visible=False)
+        )
         context_menu.addAction(hide_action)
 
         duplicate_action = QAction("Duplicate", self.data_list)
-        duplicate_action.triggered.connect(self.duplicate)
+        duplicate_action.triggered.connect(
+            lambda: self.duplicate(self.get_selected_geometries())
+        )
         context_menu.addAction(duplicate_action)
         remove_action = QAction("Remove", self.data_list)
         remove_action.triggered.connect(self.remove_selection)
@@ -418,15 +424,20 @@ class DataContainerInteractor(QObject):
                 for frame in geom._trajectory:
                     if (model := frame.get("fit")) is None:
                         continue
-                    g = Geometry(model=model, sampling_rate=geom.sampling_rate)
+                    g = Geometry(
+                        points=model.vertices,
+                        normals=model.compute_vertex_normals(),
+                        model=model,
+                        sampling_rate=geom.sampling_rate,
+                    )
                     expanded.append(g)
-            file_path = [f"{base}_{i:06d}{ext}" for i in range(len(expanded))]
+            file_path = [f"{base}_{i:d}{ext}" for i in range(len(expanded))]
             geometries = expanded
 
         try:
             write_geometries(geometries, file_path, **export_data)
         except Exception as e:
-            MosaicMessageBox.warning(None, "Error", str(e))
+            MosaicMessageBox.warning(None, "Error during writing geometries", str(e))
         return None
 
     def _show_properties_dialog(self) -> int:
@@ -441,6 +452,7 @@ class DataContainerInteractor(QObject):
             geometry = self.container.get(uuid)
             if geometry is None:
                 continue
+
             appearance = geometry._appearance.copy()
             appearance["sampling_rate"] = geometry.sampling_rate
             appearance.setdefault("highlight_color", self.container.highlight_color)
@@ -458,7 +470,7 @@ class DataContainerInteractor(QObject):
         if not snapshots:
             return -1
 
-        dialog = GeometryPropertiesDialog(initial_properties=property_list)
+        dialog = GeometryPropertiesDialog(property_list, anchor=self.data_list)
 
         def on_parameters_changed(parameters):
             sampling_rate = parameters.pop("sampling_rate", None)
@@ -695,25 +707,24 @@ class DataContainerInteractor(QObject):
 
     def remove_selection(self):
         """Drop selected points (or whole geometries when fully selected) with undo backup."""
+        selected = self.get_selected_geometries()
+        if len(self.point_selection) == 0 and len(selected) == 0:
+            return None
+
         self._backup()
         self.add_selection(self.point_selection, add=False)
         self.point_selection.clear()
-
-        self.remove(self.get_selected_geometries())
+        self.remove(selected)
         self.render()
 
-    def visibility(self, geometries=None, visible: bool = True):
-        if geometries is None:
-            geometries = self.get_selected_geometries()
+    def visibility(self, geometries, visible: bool = True):
         for geometry in geometries:
             if geometry is None:
                 continue
             geometry.set_visibility(visible)
         self.render()
 
-    def duplicate(self, geometries=None):
-        if geometries is None:
-            geometries = self.get_selected_geometries()
+    def duplicate(self, geometries):
         for geometry in geometries:
             if geometry is None:
                 continue
