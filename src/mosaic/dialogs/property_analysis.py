@@ -173,11 +173,13 @@ def _populate_list(geometries, tree_state=None):
 
 
 def _build_type_combo_option(dlg, key, items):
-    """Add a QComboBox option row with given key and items."""
+    """Add a 'Type:' combo wrapped in an Options group."""
+    group, layout = dlg._create_options_group()
     combo = QComboBox()
     combo.addItems(items)
     combo.setFixedHeight(Colors.WIDGET_HEIGHT)
-    dlg.property_options_layout.addRow("Type:", combo)
+    layout.addRow("Type:", combo)
+    dlg.property_options_layout.addRow(group)
     dlg.option_widgets[key] = combo
 
 
@@ -192,15 +194,19 @@ def _build_vertex_properties_options(dlg):
     if len(properties) == 0:
         return dlg.property_combo.clear()
 
+    group, layout = dlg._create_options_group()
     options = QComboBox()
     options.addItems(sorted(list(properties)))
     options.setFixedHeight(Colors.WIDGET_HEIGHT)
-    dlg.property_options_layout.addRow("Type:", options)
+    layout.addRow("Type:", options)
+    dlg.property_options_layout.addRow(group)
     dlg.option_widgets["name"] = options
 
 
 def _build_curvature_options(dlg):
-    curvature, radius = dlg._create_curvature_options(dlg.property_options_layout)
+    group, layout = dlg._create_options_group()
+    curvature, radius = dlg._create_curvature_options(layout)
+    dlg.property_options_layout.addRow(group)
     dlg.option_widgets["curvature"] = curvature
     dlg.option_widgets["radius"] = radius
 
@@ -280,10 +286,12 @@ def _build_thickness_options(dlg):
 def _build_tomogram_options(dlg):
     from mosaic.widgets import PathSelector, SliderRow
 
+    group, layout = dlg._create_options_group()
+
     path_selector = PathSelector(
         placeholder="Path to tomogram (MRC, EM, MAP, ...)",
     )
-    dlg.property_options_layout.addRow("Tomogram:", path_selector)
+    layout.addRow("Tomogram:", path_selector)
     dlg.option_widgets["file_path"] = path_selector
 
     texture_size = QSpinBox()
@@ -295,8 +303,7 @@ def _build_tomogram_options(dlg):
         "Texture resolution in pixels. Larger meshes require larger textures to "
         "maintain texture resolution."
     )
-
-    dlg.property_options_layout.addRow("Texture Size:", texture_size)
+    layout.addRow("Texture Size:", texture_size)
     dlg.option_widgets["texture_size"] = texture_size
 
     spline_order = QSpinBox()
@@ -307,7 +314,7 @@ def _build_tomogram_options(dlg):
         "Spline interpolation order for tomogram sampling. "
         "1 = linear (fast), 3 = cubic (smooth, default), 5 = quintic."
     )
-    dlg.property_options_layout.addRow("Spline Order:", spline_order)
+    layout.addRow("Spline Order:", spline_order)
     dlg.option_widgets["interpolation_order"] = spline_order
 
     offset_slider = SliderRow(
@@ -323,10 +330,11 @@ def _build_tomogram_options(dlg):
         "Offset along surface normals in voxels. "
         "Positive = outward, negative = inward."
     )
-
     offset_slider.valueChanged.connect(dlg._preview_throttle)
-    dlg.property_options_layout.addRow(offset_slider)
+    layout.addRow(offset_slider)
     dlg.option_widgets["normal_offset"] = offset_slider
+
+    dlg.property_options_layout.addRow(group)
 
 
 def _build_to_cluster_options(dlg):
@@ -552,6 +560,7 @@ class PropertyAnalysisDialog(QDialog):
 
         self._preview_throttle = Throttle(self._preview, interval_ms=150)
         self._update_plot_throttle = Throttle(self._update_plot, interval_ms=150)
+        self._internal_render = False
         self.setWindowTitle("Property Analysis")
 
         self.legend = legend
@@ -566,6 +575,9 @@ class PropertyAnalysisDialog(QDialog):
 
     def _on_render_update(self):
         """Re-apply properties when models are re-rendered."""
+        if self._internal_render:
+            return None
+
         self.cdata.data.blockSignals(True)
         self.cdata.models.blockSignals(True)
         try:
@@ -667,6 +679,18 @@ class PropertyAnalysisDialog(QDialog):
 
         return curvature_combo, radius_spin
 
+    def _create_options_group(self, title: str = "Options") -> tuple:
+        """Create a generic options group box with a QFormLayout inside.
+
+        Returns
+        -------
+        tuple
+            (group_box, form_layout)
+        """
+        group = QGroupBox(title)
+        layout = QFormLayout(group)
+        return group, layout
+
     def _create_target_list_group(
         self, title: str, data_source: str, with_compare_all: bool = False, **kwargs
     ) -> tuple:
@@ -744,38 +768,39 @@ class PropertyAnalysisDialog(QDialog):
         return colormap
 
     def _setup_visualization_tab(self):
-        from ..icons import dialog_accept_icon
         from ..widgets.settings import format_tooltip
 
         layout = QVBoxLayout(self.visualization_tab)
         layout.setSpacing(6)
 
         property_group = QGroupBox("Property")
+        property_group.setStyleSheet("QGroupBox { border-bottom: none; }")
         property_layout = QVBoxLayout()
+        property_layout.setContentsMargins(8, 4, 0, 4)
         property_layout.setSpacing(4)
 
-        category_layout = QHBoxLayout()
-        category_layout.addWidget(QLabel("Category:"))
+        self.property_options_layout = QFormLayout()
+        self.property_options_layout.setContentsMargins(0, 0, 0, 0)
+        self.property_options_layout.setHorizontalSpacing(24)
+
         self.category_combo = QComboBox()
         self.category_combo.addItems(
             ["Distance", "Mesh", "Geometric", "Projection", "Custom"]
         )
         self.category_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.category_combo.currentTextChanged.connect(self._update_property_list)
-        category_layout.addWidget(self.category_combo)
+        self.property_options_layout.addRow("Category:", self.category_combo)
 
-        category_layout.addSpacing(15)
-        category_layout.addWidget(QLabel("Property:"))
         self.property_combo = QComboBox()
         self.property_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.property_combo.currentTextChanged.connect(self._update_options)
-        category_layout.addWidget(self.property_combo, 1)
-        property_layout.addLayout(category_layout)
+        self.property_options_layout.addRow("Metric:", self.property_combo)
 
-        self.property_options_container = QWidget()
-        self.property_options_layout = QFormLayout(self.property_options_container)
-        self.property_options_layout.setContentsMargins(0, 6, 0, 0)
-        property_layout.addWidget(self.property_options_container)
+        # Number of rows reserved for the persistent selectors at the top of
+        # the form; per-property option rows are added/removed after these.
+        self._persistent_option_rows = self.property_options_layout.rowCount()
+
+        property_layout.addLayout(self.property_options_layout)
 
         property_group.setLayout(property_layout)
         layout.addWidget(property_group)
@@ -783,7 +808,7 @@ class PropertyAnalysisDialog(QDialog):
         # Filter group - two column layout
         filter_group = QGroupBox("Filter")
         filter_main_layout = QHBoxLayout(filter_group)
-        filter_main_layout.setContentsMargins(8, 4, 8, 4)
+        filter_main_layout.setContentsMargins(8, 4, 0, 4)
         filter_main_layout.setSpacing(8)
 
         self.filter_stack = QStackedWidget()
@@ -845,6 +870,7 @@ class PropertyAnalysisDialog(QDialog):
 
         options_group = QGroupBox("Visualization")
         options_layout = QVBoxLayout(options_group)
+        options_layout.setContentsMargins(8, 4, 0, 4)
         options_layout.setSpacing(4)
 
         colormap_layout = QHBoxLayout()
@@ -868,7 +894,7 @@ class PropertyAnalysisDialog(QDialog):
         self.normalize_checkbox.checkStateChanged.connect(self._preview)
         checkbox_layout.addWidget(self.normalize_checkbox)
 
-        self.quantile_checkbox = QCheckBox("Use Quantiles")
+        self.quantile_checkbox = QCheckBox("Quantiles")
         self.quantile_checkbox.setToolTip(
             format_tooltip(
                 label="Use Quantiles",
@@ -929,7 +955,6 @@ class PropertyAnalysisDialog(QDialog):
             )
         )
         button_layout.addWidget(self.live_update_checkbox)
-        button_layout.addStretch()
 
         self.visualize_export_btn = QPushButton("Export")
         self.visualize_export_btn.setIcon(_icon("ph.download", role="primary"))
@@ -1090,8 +1115,10 @@ class PropertyAnalysisDialog(QDialog):
         if property_name is None:
             property_name = self.property_combo.currentText()
 
-        while self.property_options_layout.rowCount() > 0:
-            self.property_options_layout.removeRow(0)
+        while self.property_options_layout.rowCount() > self._persistent_option_rows:
+            self.property_options_layout.removeRow(
+                self.property_options_layout.rowCount() - 1
+            )
 
         self.option_widgets = {}
         builder = _OPTION_BUILDERS.get(property_name)
@@ -1414,6 +1441,7 @@ class PropertyAnalysisDialog(QDialog):
         return colormap
 
     def render(self):
+        self._internal_render = True
         try:
             self.cdata.data.blockSignals(True)
             self.cdata.models.blockSignals(True)
@@ -1423,6 +1451,7 @@ class PropertyAnalysisDialog(QDialog):
         finally:
             self.cdata.data.blockSignals(False)
             self.cdata.models.blockSignals(False)
+            self._internal_render = False
 
     def _get_selected_categories(self):
         """Return the set of selected label strings from the category filter."""
