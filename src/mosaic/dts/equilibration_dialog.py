@@ -95,8 +95,8 @@ class MeshEquilibrationDialog(QDialog):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(8)
 
         basic_group = QGroupBox("Basic")
         basic = QGridLayout(basic_group)
@@ -179,7 +179,7 @@ class MeshEquilibrationDialog(QDialog):
 
         layout.addStretch()
 
-        self.footer = DialogFooter(dialog=self, margin=(0, 12, 0, 0))
+        self.footer = DialogFooter(dialog=self, margin=(0, 0, 0, 0))
         self.footer.accept_button.setEnabled(False)
         layout.addWidget(self.footer)
 

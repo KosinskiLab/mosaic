@@ -497,6 +497,7 @@ class TemplateMatchingDialog(QDialog):
         self.resize(650, 600)
 
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(10, 0, 10, 0)
         self.tabs = TabWidget(tab_bar_margins=(0, 0, 0, 0))
 
         self.input_tab = InputDataTab()
@@ -529,7 +530,7 @@ class TemplateMatchingDialog(QDialog):
         self.footer = DialogFooter(
             info_text="Define target tomogram and template structures",
             dialog=self,
-            margin=(0, 10, 0, 0),
+            margin=(0, 0, 0, 10),
         )
         self.layout.addWidget(self.footer)
         self.tabs.currentChanged.connect(self._update_help_text)

@@ -85,8 +85,8 @@ class MeshMappingDialog(QDialog):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+        layout.setContentsMargins(8, 8, 8, 8)
 
         output_group = QGroupBox("Output")
         output_layout = QHBoxLayout(output_group)
@@ -101,7 +101,7 @@ class MeshMappingDialog(QDialog):
 
         config_group = QGroupBox("Mesh")
         config_layout = QVBoxLayout()
-        config_layout.setSpacing(10)
+        config_layout.setSpacing(8)
 
         fit_layout = QHBoxLayout()
         fit_label = QLabel("Surface:")
@@ -127,7 +127,7 @@ class MeshMappingDialog(QDialog):
 
         projection_group = QGroupBox("Projection")
         projection_layout = QVBoxLayout(projection_group)
-        projection_layout.setSpacing(10)
+        projection_layout.setSpacing(8)
         self.cast_rays = QCheckBox("Use raycasting to project proteins onto mesh.")
         self.cast_rays.toggled.connect(
             lambda: self.flip_normals.setEnabled(self.cast_rays.isChecked())
@@ -159,7 +159,7 @@ class MeshMappingDialog(QDialog):
         mapping_group.setLayout(mapping_layout)
         layout.addWidget(mapping_group)
 
-        self.footer = DialogFooter(dialog=self, margin=(0, 10, 0, 0))
+        self.footer = DialogFooter(dialog=self, margin=(0, 0, 0, 0))
         self.footer.accept_button.setEnabled(False)
         layout.addWidget(self.footer)
 
