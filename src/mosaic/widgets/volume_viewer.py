@@ -101,8 +101,201 @@ def _load_density_image(filepath):
     return image
 
 
+class _ViewerRenderer:
+    """Mode-specific rendering strategy for :class:`VolumeViewer`."""
+
+    def attach(self, renderer):
+        raise NotImplementedError
+
+    def detach(self, renderer):
+        raise NotImplementedError
+
+    def set_input_data(self, image):
+        raise NotImplementedError
+
+    def set_input_connection(self, port, *, streaming: bool):
+        raise NotImplementedError
+
+    def set_visibility(self, visible: bool):
+        raise NotImplementedError
+
+    def apply_lut(self, ctf, otf, scalar_range):
+        """Apply colour transfer function (``ctf``) and, in 3D, opacity (``otf``)."""
+        raise NotImplementedError
+
+    def extract_for_auto_contrast(
+        self, volume, *, orientation_dim, slice_index, zarr_source
+    ):
+        """Return a ``vtkAlgorithm`` whose output feeds ``vtkImageHistogramStatistics``."""
+        raise NotImplementedError
+
+    def set_slice(self, n: int):
+        return None
+
+    def get_slice(self) -> int:
+        return 0
+
+    def set_orientation(self, orientation: str):
+        return None
+
+    def add_clip(self, plane):
+        return None
+
+    def remove_clip(self, plane):
+        return None
+
+
+class _Slice2DRenderer(_ViewerRenderer):
+    """2D slice rendering via ``vtkImageSliceMapper`` + ``vtkImageSlice``."""
+
+    def __init__(self):
+        self.mapper = vtk.vtkImageSliceMapper()
+        self.actor = vtk.vtkImageSlice()
+        self.actor.SetMapper(self.mapper)
+
+    def attach(self, renderer):
+        renderer.AddViewProp(self.actor)
+
+    def detach(self, renderer):
+        renderer.RemoveViewProp(self.actor)
+        self.actor.SetMapper(None)
+
+    def set_input_data(self, image):
+        self.mapper.SetInputData(image)
+        self.mapper.StreamingOff()
+
+    def set_input_connection(self, port, *, streaming: bool):
+        self.mapper.SetInputConnection(port)
+        if streaming:
+            self.mapper.StreamingOn()
+        else:
+            self.mapper.StreamingOff()
+
+    def set_visibility(self, visible: bool):
+        self.actor.SetVisibility(visible)
+
+    def apply_lut(self, ctf, otf, scalar_range):
+        min_value, max_value = scalar_range
+        value_range = max_value - min_value
+        prop = self.actor.GetProperty()
+        prop.SetLookupTable(ctf)
+        prop.SetUseLookupTableScalarRange(True)
+        prop.SetColorWindow(value_range)
+        prop.SetColorLevel(min_value + value_range / 2)
+
+    def extract_for_auto_contrast(
+        self, volume, *, orientation_dim, slice_index, zarr_source
+    ):
+        if volume is None:
+            return None
+        dims = volume.GetDimensions()
+        voi = [0, dims[0] - 1, 0, dims[1] - 1, 0, dims[2] - 1]
+        voi[2 * orientation_dim] = slice_index
+        voi[2 * orientation_dim + 1] = slice_index
+        extractor = vtk.vtkExtractVOI()
+        if zarr_source is not None:
+            extractor.SetInputConnection(zarr_source.GetOutputPort())
+        else:
+            extractor.SetInputData(volume)
+        extractor.SetVOI(*voi)
+        return extractor
+
+    def set_slice(self, n: int):
+        self.mapper.SetSliceNumber(n)
+
+    def get_slice(self) -> int:
+        return int(self.mapper.GetSliceNumber())
+
+    def set_orientation(self, orientation: str):
+        {
+            "X": self.mapper.SetOrientationToX,
+            "Y": self.mapper.SetOrientationToY,
+            "Z": self.mapper.SetOrientationToZ,
+        }.get(orientation, lambda: None)()
+
+    def add_clip(self, plane):
+        # Clipping is applied to scene actors, not the slice itself.
+        return None
+
+    def remove_clip(self, plane):
+        return None
+
+
+class _Volume3DRenderer(_ViewerRenderer):
+    """MIP volume rendering via ``vtkSmartVolumeMapper`` + ``vtkVolume``."""
+
+    _OTF_SAMPLES = 32
+
+    def __init__(self):
+        self.mapper = vtk.vtkSmartVolumeMapper()
+        self.mapper.SetBlendModeToMaximumIntensity()
+        self.actor = vtk.vtkVolume()
+        self.actor.SetMapper(self.mapper)
+        prop = vtk.vtkVolumeProperty()
+        prop.ShadeOff()
+        prop.SetInterpolationTypeToLinear()
+        self.actor.SetProperty(prop)
+
+    def attach(self, renderer):
+        renderer.AddViewProp(self.actor)
+
+    def detach(self, renderer):
+        renderer.RemoveViewProp(self.actor)
+
+    def set_input_data(self, image):
+        self.mapper.SetInputData(image)
+
+    def set_input_connection(self, port, *, streaming: bool):
+        # SmartVolumeMapper doesn't support the same streaming-on-port path
+        # as ImageSliceMapper; for now we wire the port and let VTK pull.
+        self.mapper.SetInputConnection(port)
+
+    def set_visibility(self, visible: bool):
+        self.actor.SetVisibility(visible)
+
+    def apply_lut(self, ctf, otf, scalar_range):
+        prop = self.actor.GetProperty()
+        prop.SetColor(ctf)
+        if otf is not None:
+            prop.SetScalarOpacity(otf)
+
+    def extract_for_auto_contrast(
+        self, volume, *, orientation_dim, slice_index, zarr_source
+    ):
+        if volume is None:
+            return None
+        passthrough = vtk.vtkPassThrough()
+        if zarr_source is not None:
+            passthrough.SetInputConnection(zarr_source.GetOutputPort())
+        else:
+            passthrough.SetInputData(volume)
+        return passthrough
+
+    @classmethod
+    def _build_opacity_tf(cls, lo: float, hi: float, gamma: float):
+        """Build a piecewise opacity function ramping from ``lo`` to ``hi``.
+
+        Sampled along ``alpha = t ** gamma`` for ``t in [0, 1]``; ``gamma > 1``
+        pushes mid-range voxels toward transparent so the same control that
+        darkens 2D mid-tones also dims them in 3D.
+        """
+        otf = vtk.vtkPiecewiseFunction()
+        if hi <= lo:
+            hi = lo + 1e-6
+        otf.AddPoint(lo, 0.0)
+        for i in range(1, cls._OTF_SAMPLES):
+            t = i / cls._OTF_SAMPLES
+            alpha = t ** max(gamma, 1e-6)
+            x = lo + t * (hi - lo)
+            otf.AddPoint(x, alpha)
+        otf.AddPoint(hi, 1.0)
+        otf.ClampingOn()
+        return otf
+
+
 class VolumeViewer(QWidget):
     data_changed = Signal()
+    mode_changed = Signal(str)
 
     def __init__(self, vtk_widget, legend=None, parent=None):
         super().__init__(parent)
@@ -113,8 +306,12 @@ class VolumeViewer(QWidget):
             self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
         )
 
-        self.slice_mapper = vtk.vtkImageSliceMapper()
-        self.slice = vtk.vtkImageSlice()
+        self._mode = "2D"
+        self._renderer = _Slice2DRenderer()
+        # TODO: Aliases because animation code reads viewer.slice directly.
+        self.slice_mapper = self._renderer.mapper
+        self.slice = self._renderer.actor
+
         self._source_path = None
         self._volume = None
         self._streaming = False
@@ -267,6 +464,46 @@ class VolumeViewer(QWidget):
     def source_path(self):
         return self._source_path
 
+    @property
+    def mode(self) -> str:
+        return self._mode
+
+    def _toggle_mode(self):
+        """Switch between 2D slice and 3D volume rendering."""
+        if self._volume is None:
+            return None
+
+        new_mode = "3D" if self._mode == "2D" else "2D"
+        old = self._renderer
+        new = _Volume3DRenderer() if new_mode == "3D" else _Slice2DRenderer()
+
+        with self._suspend_rendering():
+            if self._streaming and self._zarr_source is not None:
+                new.set_input_connection(
+                    self._zarr_source.GetOutputPort(), streaming=True
+                )
+            else:
+                new.set_input_data(self._volume)
+
+            old.detach(self.renderer)
+            self._renderer = new
+            # Keep the public ``slice`` / ``slice_mapper`` aliases pointing
+            # at the 2D actor when we have one — animation code reads them.
+            if isinstance(new, _Slice2DRenderer):
+                self.slice_mapper = new.mapper
+                self.slice = new.actor
+                # Restore slice + orientation from the persisted control state.
+                new.set_orientation(self.orientation_selector.currentText())
+                new.set_slice(int(self.slice_row.value()))
+            self._renderer.attach(self.renderer)
+            self._renderer.set_visibility(self.is_visible)
+            self.update_contrast_and_gamma()
+            # Reapply or tear down clipping based on the new mode.
+            self.handle_projection_change(self.project_selector.currentText())
+
+        self._mode = new_mode
+        self.mode_changed.emit(new_mode)
+
     def load_volume(self, source):
         """Load a volume from a local file path or remote Zarr URL."""
         if self.volume is not None:
@@ -282,8 +519,7 @@ class VolumeViewer(QWidget):
         if self.volume is None:
             self.volume = _load_density_image(source)
 
-        self.slice_mapper.SetInputData(self.volume)
-        self.slice_mapper.StreamingOff()
+        self._renderer.set_input_data(self.volume)
         self._setup_after_load()
 
     def _load_zarr(self, source):
@@ -297,8 +533,9 @@ class VolumeViewer(QWidget):
         self.volume = vtk.vtkImageData()
         self.volume.SetDimensions(x, y, z)
         self.volume.SetSpacing(*self._zarr_source.spacing)
-        self.slice_mapper.SetInputConnection(self._zarr_source.GetOutputPort())
-        self.slice_mapper.StreamingOn()
+        self._renderer.set_input_connection(
+            self._zarr_source.GetOutputPort(), streaming=True
+        )
         self._setup_after_load()
         self._install_lod_observer()
 
@@ -308,8 +545,7 @@ class VolumeViewer(QWidget):
         self._streaming = False
         self._zarr_source = None
         self.volume = new_volume
-        self.slice_mapper.SetInputData(self.volume)
-        self.slice_mapper.StreamingOff()
+        self._renderer.set_input_data(self.volume)
         self._setup_after_load()
 
     def _rebuild_load_menu(self, paths=None):
@@ -352,10 +588,14 @@ class VolumeViewer(QWidget):
         self._zarr_source = None
         self._scalar_range = (0.0, 1.0)
 
-        self.renderer.RemoveViewProp(self.slice)
-        self.slice.SetMapper(None)
-        self.slice_mapper = vtk.vtkImageSliceMapper()
-        self.slice = vtk.vtkImageSlice()
+        self._renderer.detach(self.renderer)
+        self._renderer = _Slice2DRenderer()
+        self.slice_mapper = self._renderer.mapper
+        self.slice = self._renderer.actor
+        was_3d = self._mode == "3D"
+        self._mode = "2D"
+        if was_3d:
+            self.mode_changed.emit("2D")
 
     def close_volume(self):
         if self.volume is None:
@@ -394,8 +634,7 @@ class VolumeViewer(QWidget):
     def _setup_after_load(self):
         with self._suspend_rendering():
             self.change_orientation(self.orientation_selector.currentText())
-            self.slice.SetMapper(self.slice_mapper)
-            self.renderer.AddViewProp(self.slice)
+            self._renderer.attach(self.renderer)
             self.change_widget_state(is_enabled=True)
             self.auto_contrast()
             self.set_visibility(True)
@@ -406,11 +645,11 @@ class VolumeViewer(QWidget):
             widget.setEnabled(is_enabled)
 
     def toggle_visibility(self):
-        return self.set_visibility(not self.slice.GetVisibility())
+        return self.set_visibility(not self.is_visible)
 
     def set_visibility(self, visible: bool):
         self.is_visible = visible
-        self.slice.SetVisibility(visible)
+        self._renderer.set_visibility(visible)
         icon = "ph.eye" if visible else "ph.eye-slash"
         tip = "Hide volume" if visible else "Show volume"
         self.visibility_button.setIcon(_icon_factory(icon, role="muted"))
@@ -424,17 +663,13 @@ class VolumeViewer(QWidget):
         self.update_slice(slice_number)
 
     def update_slice(self, slice_number):
-        self.slice_mapper.SetSliceNumber(slice_number)
+        self._renderer.set_slice(slice_number)
         self.update_clipping_plane()
         self._render()
 
     def change_orientation(self, orientation):
         dimensions = self.get_dimensions()
-        {
-            "X": self.slice_mapper.SetOrientationToX,
-            "Y": self.slice_mapper.SetOrientationToY,
-            "Z": self.slice_mapper.SetOrientationToZ,
-        }.get(orientation, lambda: None)()
+        self._renderer.set_orientation(orientation)
 
         self._orientation = orientation
         dim = self._orientation_mapping.get(orientation, 0)
@@ -442,7 +677,7 @@ class VolumeViewer(QWidget):
 
         mid = dimensions[dim] // 2
         self.slice_row.setValue(mid)
-        self.slice_mapper.SetSliceNumber(mid)
+        self._renderer.set_slice(mid)
         self.update_clipping_plane()
         self._render()
 
@@ -467,22 +702,14 @@ class VolumeViewer(QWidget):
         """Return a vtkExtractVOI configured for the current slice."""
         if self.volume is None:
             return None
-
-        dims = self.volume.GetDimensions()
         dim = self._orientation_mapping[self.orientation_selector.currentText()]
-        idx = self.slice_mapper.GetSliceNumber()
-
-        voi = [0, dims[0] - 1, 0, dims[1] - 1, 0, dims[2] - 1]
-        voi[2 * dim] = idx
-        voi[2 * dim + 1] = idx
-
-        extractor = vtk.vtkExtractVOI()
-        if self._streaming and self._zarr_source is not None:
-            extractor.SetInputConnection(self._zarr_source.GetOutputPort())
-        else:
-            extractor.SetInputData(self.volume)
-        extractor.SetVOI(*voi)
-        return extractor
+        idx = self._renderer.get_slice()
+        return self._renderer.extract_for_auto_contrast(
+            self.volume,
+            orientation_dim=dim,
+            slice_index=idx,
+            zarr_source=self._zarr_source if self._streaming else None,
+        )
 
     def auto_contrast(self, low_pct: float = 0.01, high_pct: float = 99.9):
         """Set contrast from percentile thresholds of the current slice."""
@@ -536,11 +763,11 @@ class VolumeViewer(QWidget):
         if self.legend is not None:
             self.legend.set_lookup_table(ctf, "Volume")
 
-        prop = self.slice.GetProperty()
-        prop.SetLookupTable(ctf)
-        prop.SetUseLookupTableScalarRange(True)
-        prop.SetColorWindow(value_range)
-        prop.SetColorLevel(min_value + value_range / 2)
+        otf = None
+        if isinstance(self._renderer, _Volume3DRenderer):
+            otf = _Volume3DRenderer._build_opacity_tf(adjusted_min, adjusted_max, gamma)
+
+        self._renderer.apply_lut(ctf, otf, (min_value, max_value))
         self._render()
 
     def update_clipping_plane(self):
@@ -567,6 +794,12 @@ class VolumeViewer(QWidget):
                 mapper.RemoveClippingPlane(self.clipping_plane)
 
     def handle_projection_change(self, state=None):
+        if isinstance(self._renderer, _Volume3DRenderer):
+            # Clipping planes encode the 2D slice position; in 3D they
+            # would clip the scene against a stale slice and confuse
+            # downstream actors. Skip silently.
+            return None
+
         if state is None:
             state = self.project_selector.currentText()
 
@@ -610,7 +843,7 @@ class VolumeViewer(QWidget):
 
     def _switch_zarr_level(self, new_level):
         old_shape = self._zarr_source.shape
-        old_slice = self.slice_mapper.GetSliceNumber()
+        old_slice = self._renderer.get_slice()
         old_dim = self._orientation_mapping.get(
             self.orientation_selector.currentText(), 0
         )
@@ -633,7 +866,7 @@ class VolumeViewer(QWidget):
         self.slice_row.setValue(new_slice)
         self.slice_row.blockSignals(False)
 
-        self.slice_mapper.SetSliceNumber(new_slice)
+        self._renderer.set_slice(new_slice)
         self._render()
 
     def _install_lod_observer(self):
