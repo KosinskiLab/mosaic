@@ -163,6 +163,22 @@ class GeometryPropertiesDialog(QDialog):
             return widget.is_indeterminate()
         return widget in self._indeterminate_widgets
 
+    def _panel_ancestor(self):
+        """Return the object browser panel enclosing the anchor.
+
+        The dialog aligns its top edge to this panel rather than the inner
+        list, whose top sits below the panel's search box and section label.
+        Falls back to the anchor itself when no sidebar ancestor exists.
+        """
+        from ..widgets import ObjectBrowserSidebar
+
+        widget = self._anchor
+        while widget is not None:
+            if isinstance(widget, ObjectBrowserSidebar):
+                return widget
+            widget = widget.parentWidget()
+        return self._anchor
+
     def showEvent(self, event):
         super().showEvent(event)
         self.setFocus(Qt.FocusReason.OtherFocusReason)
@@ -170,15 +186,16 @@ class GeometryPropertiesDialog(QDialog):
         if self._anchor is None or not self._anchor.isVisible():
             return
 
-        top_right = self._anchor.mapToGlobal(self._anchor.rect().topRight())
+        right = self._anchor.mapToGlobal(self._anchor.rect().topRight()).x()
+        panel = self._panel_ancestor()
+        top = panel.mapToGlobal(panel.rect().topLeft()).y()
+
         screen_geo = self.screen().availableGeometry()
         x = max(
             screen_geo.left(),
-            min(top_right.x() + 10, screen_geo.right() - self.width()),
+            min(right + 10, screen_geo.right() - self.width()),
         )
-        y = max(
-            screen_geo.top(), min(top_right.y(), screen_geo.bottom() - self.height())
-        )
+        y = max(screen_geo.top(), min(top, screen_geo.bottom() - self.height()))
         self.move(x, y)
 
     def setup_ui(self):

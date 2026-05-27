@@ -461,8 +461,7 @@ class Cylinder(Parametrization):
         Returns
         -------
         Cylinder
-            Fitted cylinder with estimated center, orientation, radius,
-            and height.
+            Cylinder with estimated center, orientation, radius and height.
         """
         positions = np.asarray(positions, dtype=np.float64)
         if positions.shape[1] != 3 or len(positions.shape) != 2:
