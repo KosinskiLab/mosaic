@@ -15,9 +15,8 @@ from vtkmodules.vtkCommonCore import vtkPoints, vtkLookupTable
 from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
 from vtkmodules.util import numpy_support
 
-from .utils import normals_to_rot, apply_quat, NORMAL_REFERENCE
 from .stylesheets import Colors
-
+from .utils import normals_to_rot, apply_quat, NORMAL_REFERENCE
 
 __all__ = [
     "GeometryData",
@@ -829,15 +828,6 @@ class Geometry:
         prop.SetAmbient(self._appearance.get("ambient", 0.3))
         prop.SetDiffuse(self._appearance.get("diffuse", 0.7))
         prop.SetSpecular(self._appearance.get("specular", 0.2))
-
-        interpolation = self._appearance.get("interpolation", "gouraud")
-
-        if interpolation == "phong":
-            prop.SetInterpolationToPhong()
-        elif interpolation == "flat":
-            prop.SetInterpolationToFlat()
-        else:
-            prop.SetInterpolationToGouraud()
 
     def _create_actor(self, actor=None):
         """

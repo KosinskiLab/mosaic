@@ -115,7 +115,6 @@ class GeometryPropertiesDialog(QDialog):
             "ambient": self.ambient_slider,
             "diffuse": self.diffuse_slider,
             "specular": self.specular_slider,
-            "interpolation": self._interpolation_control,
             "base_color": self.base_color_picker,
             "highlight_color": self.highlight_color_picker,
             "isovalue_percentile": self.isovalue_slider,
@@ -251,30 +250,6 @@ class GeometryPropertiesDialog(QDialog):
         )
         self.highlight_color_picker.setToolTip("Color when geometry is selected")
         appearance_layout.addWidget(self.highlight_color_picker)
-
-        interp_row = QWidget()
-        interp_layout = QHBoxLayout(interp_row)
-        interp_layout.setContentsMargins(0, 0, 0, 0)
-        interp_layout.setSpacing(12)
-
-        interp_label = QLabel("Shading")
-        interp_layout.addWidget(interp_label)
-        interp_layout.addStretch()
-
-        interp_labels = ["Flat", "Gouraud", "Phong"]
-        current_interp = self.initial_properties.get("interpolation", "gouraud")
-        interp_idx = next(
-            (i for i, l in enumerate(interp_labels) if l.lower() == current_interp), 1
-        )
-        self._interpolation_control = SegmentedControl(
-            interp_labels, default=interp_idx
-        )
-        self._interpolation_control.setToolTip(
-            "Surface shading. Flat for faceted, Gouraud for smooth, Phong \n"
-            "for per-pixel smooth with sharper highlights on meshes."
-        )
-        interp_layout.addWidget(self._interpolation_control)
-        appearance_layout.addWidget(interp_row)
 
         main_layout.addWidget(appearance_group)
 
@@ -442,9 +417,6 @@ class GeometryPropertiesDialog(QDialog):
         self.ambient_slider.valueChanged.connect(mark_and_throttle("ambient"))
         self.diffuse_slider.valueChanged.connect(mark_and_throttle("diffuse"))
         self.specular_slider.valueChanged.connect(mark_and_throttle("specular"))
-        self._interpolation_control.selectionChanged.connect(
-            mark_and_emit("interpolation")
-        )
         self.isovalue_slider.valueChanged.connect(
             mark_and_throttle("isovalue_percentile")
         )
@@ -507,7 +479,6 @@ class GeometryPropertiesDialog(QDialog):
         self.ambient_slider.setValue(0.3)
         self.diffuse_slider.setValue(0.7)
         self.specular_slider.setValue(0.2)
-        self._interpolation_control._select(1)  # gouraud
         self.base_color_picker.set_color(BASE_COLOR)
         self.highlight_color_picker.set_color((0.8, 0.2, 0.2))
         self.isovalue_slider.setValue(99.5)
@@ -528,7 +499,6 @@ class GeometryPropertiesDialog(QDialog):
                 "ambient",
                 "diffuse",
                 "specular",
-                "interpolation",
                 "base_color",
                 "highlight_color",
                 "isovalue_percentile",
@@ -588,11 +558,6 @@ class GeometryPropertiesDialog(QDialog):
         include("ambient", self.ambient_slider, self.ambient_slider.value)
         include("diffuse", self.diffuse_slider, self.diffuse_slider.value)
         include("specular", self.specular_slider, self.specular_slider.value)
-        include(
-            "interpolation",
-            self._interpolation_control,
-            lambda: self._interpolation_control.currentText().lower(),
-        )
         include("base_color", self.base_color_picker, self.base_color_picker.get_color)
         include(
             "highlight_color",

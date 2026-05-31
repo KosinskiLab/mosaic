@@ -183,20 +183,19 @@ def _build_type_combo_option(dlg, key, items):
     dlg.option_widgets[key] = combo
 
 
-def _build_vertex_properties_options(dlg):
-    geometries = dlg._get_all_geometries()
+def _collect_vertex_properties(dlg):
     properties = set()
-    for geometry in geometries:
+    for geometry in dlg._get_all_geometries():
         if geometry.vertex_properties is None:
             continue
         properties |= set(geometry.vertex_properties.properties)
+    return sorted(properties)
 
-    if len(properties) == 0:
-        return dlg.property_combo.clear()
 
+def _build_vertex_properties_options(dlg):
     group, layout = dlg._create_options_group()
     options = QComboBox()
-    options.addItems(sorted(list(properties)))
+    options.addItems(_collect_vertex_properties(dlg))
     options.setFixedHeight(Colors.WIDGET_HEIGHT)
     layout.addRow("Type:", options)
     dlg.property_options_layout.addRow(group)
@@ -567,8 +566,8 @@ class PropertyAnalysisDialog(QDialog):
         self._setup_ui()
 
         self.cdata.viewport.vtk_pre_render.connect(self._on_render_update)
-        self.cdata.data.data_changed.connect(self._refresh_target_lists)
-        self.cdata.models.data_changed.connect(self._refresh_target_lists)
+        self.cdata.data.data_changed.connect(self._on_data_changed)
+        self.cdata.models.data_changed.connect(self._on_data_changed)
 
     def sizeHint(self):
         return QSize(350, 600)
@@ -591,6 +590,11 @@ class PropertyAnalysisDialog(QDialog):
             self.cdata.data.blockSignals(False)
             self.cdata.models.blockSignals(False)
 
+    def _on_data_changed(self):
+        """Keep options that depend on the current data in sync with changes."""
+        self._refresh_target_lists()
+        self._sync_vertex_property_options()
+
     def _refresh_target_lists(self):
         """Incrementally update any active target list with current geometries."""
         if (target_list := self.option_widgets.get("queries")) is None:
@@ -602,6 +606,25 @@ class PropertyAnalysisDialog(QDialog):
         uuid_to_items = _make_uuid_to_items(geometries)
         target_list.update(uuid_to_items)
 
+    def _sync_vertex_property_options(self):
+        """Refresh the vertex-property selector to match the current data."""
+        combo = self.option_widgets.get("name")
+        if combo is None or self.property_combo.currentText() != "Vertex Properties":
+            return None
+
+        properties = _collect_vertex_properties(self)
+        current = [combo.itemText(i) for i in range(combo.count())]
+        if properties == current:
+            return None
+
+        selected = combo.currentText()
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItems(properties)
+        if (index := combo.findText(selected)) >= 0:
+            combo.setCurrentIndex(index)
+        combo.blockSignals(False)
+
     def closeEvent(self, event):
         """Disconnect signals and restore textured geometries when dialog closes."""
         if hasattr(self, "plot_widget"):
@@ -612,8 +635,8 @@ class PropertyAnalysisDialog(QDialog):
 
         try:
             self.cdata.viewport.vtk_pre_render.disconnect(self._on_render_update)
-            self.cdata.data.data_changed.disconnect(self._refresh_target_lists)
-            self.cdata.models.data_changed.disconnect(self._refresh_target_lists)
+            self.cdata.data.data_changed.disconnect(self._on_data_changed)
+            self.cdata.models.data_changed.disconnect(self._on_data_changed)
         except Exception:
             pass
         super().closeEvent(event)
@@ -1595,7 +1618,6 @@ class PropertyAnalysisDialog(QDialog):
                 continue
 
             raw_flat = np.asarray(raw).flatten()
-            parent_name = geometry._meta.get("name", "Object")
             interactor = self._interactor_for(geometry)
 
             for label in np.unique(raw_flat):
@@ -1603,7 +1625,7 @@ class PropertyAnalysisDialog(QDialog):
                 subset = geometry[mask]
                 if subset.get_number_of_points() == 0:
                     continue
-                subset._meta["name"] = f"{parent_name}_{label}"
+                subset._meta["name"] = str(label)
                 interactor.add(subset)
                 dirty_interactors.add(id(interactor))
 
