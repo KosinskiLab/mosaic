@@ -1,9 +1,6 @@
 """
 Rich terminal theme for the Mosaic scripting interface.
 
-Derives the terminal palette from :class:`~mosaic.stylesheets.Colors`,
-adapting the GUI's indigo/slate/emerald system for dark terminal backgrounds.
-
 Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
@@ -31,26 +28,10 @@ BOX_PANEL = ROUNDED
 MOSAIC_THEME = Theme(
     {
         "mosaic.heading": f"bold {Colors.PRIMARY}",
-        "mosaic.accent": Colors.PRIMARY,
-        "mosaic.data": Colors.BORDER_HOVER,
-        "mosaic.muted": Colors.TEXT_SECONDARY,
-        "mosaic.error": f"bold {Colors.ERROR}",
+        "mosaic.accent": Colors.CATEGORY["preprocessing"],
+        "mosaic.dim": "dim",
         "mosaic.success": Colors.SUCCESS,
-        "mosaic.command": Colors.CATEGORY["preprocessing"],
-        "mosaic.param": Colors.CATEGORY["analysis"],
-        "mosaic.index": f"bold {Colors.PRIMARY}",
-        "mosaic.border": Colors.TEXT_SECONDARY,
-        "mosaic.banner.title": f"bold {Colors.PRIMARY}",
-        "mosaic.banner.version": Colors.WARNING,
-        "mosaic.prompt.name": f"bold {Colors.PRIMARY}",
-        "mosaic.prompt.sep": Colors.TEXT_SECONDARY,
-        "mosaic.bar.complete": Colors.PRIMARY,
-        "mosaic.bar.finished": Colors.SUCCESS,
-        "mosaic.bar.remaining": Colors.TEXT_SECONDARY,
-        "mosaic.warning": Colors.WARNING,
-        "mosaic.rule": Colors.TEXT_SECONDARY,
-        "mosaic.type": Colors.CATEGORY["parametrization"],
-        "mosaic.group": Colors.CATEGORY["analysis"],
+        "mosaic.error": Colors.ERROR,
     }
 )
 

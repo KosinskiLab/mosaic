@@ -479,9 +479,9 @@ class Session:
             SpinnerColumn("dots"),
             TextColumn("[mosaic.accent]{task.description}"),
             BarColumn(
-                style="mosaic.bar.remaining",
-                complete_style="mosaic.bar.complete",
-                finished_style="mosaic.bar.finished",
+                style="mosaic.dim",
+                complete_style="mosaic.accent",
+                finished_style="mosaic.success",
             ),
             MofNCompleteColumn(),
             TimeRemainingColumn(),
@@ -623,12 +623,21 @@ class Session:
         return results
 
     def filter(
-        self, geometries: List, prop_name: str, lower=None, upper=None, **kwargs
+        self,
+        geometries: List,
+        prop_name: str,
+        lower=None,
+        upper=None,
+        include=None,
+        exclude=None,
+        **kwargs,
     ) -> tuple:
-        """Filter geometries by property value range.
+        """Filter geometries by property value range or membership.
 
         Automatically detects whether the property yields per-vertex arrays
         (point-level filtering) or scalars (population-level filtering).
+        Range operators (``lower`` / ``upper``) and membership operators
+        (``include`` / ``exclude``) may be combined; they are AND-ed.
 
         Parameters
         ----------
@@ -637,9 +646,13 @@ class Session:
         prop_name : str
             Vertex property name or measure name.
         lower : float, optional
-            Lower bound (inclusive).
+            Lower bound (inclusive). Numeric properties only.
         upper : float, optional
-            Upper bound (inclusive).
+            Upper bound (inclusive). Numeric properties only.
+        include : scalar, sequence, or np.ndarray, optional
+            Keep only values present in this set. Works for any dtype.
+        exclude : scalar, sequence, or np.ndarray, optional
+            Remove values present in this set. Works for any dtype.
         **kwargs
             Additional parameters passed to property computation.
 
@@ -648,8 +661,25 @@ class Session:
         tuple of (int, int, str)
             ``(kept, removed, level)`` where *level* is ``"point"`` or
             ``"population"``.
+
+        Raises
+        ------
+        TypeError
+            If ``lower`` or ``upper`` is supplied for a non-numeric property.
         """
         from ..properties import GeometryProperties
+
+        def _is_non_numeric(v):
+            if isinstance(v, np.ndarray):
+                return v.dtype.kind in ("U", "S", "O")
+            return isinstance(v, (str, bytes))
+
+        def _as_set_array(v):
+            if isinstance(v, np.ndarray):
+                return np.atleast_1d(v)
+            if isinstance(v, (list, tuple)):
+                return np.asarray(v)
+            return np.asarray([v])
 
         kept_geoms = []
         kept, removed = 0, 0
@@ -676,11 +706,21 @@ class Session:
 
             if is_array:
                 level = "point"
+                if (lower is not None or upper is not None) and _is_non_numeric(val):
+                    raise TypeError(
+                        f"Property '{prop_name}' is non-numeric; "
+                        f"use include=/exclude= instead of lower=/upper="
+                    )
+
                 mask = np.ones(len(val), dtype=bool)
                 if lower is not None:
                     mask &= val >= lower
                 if upper is not None:
                     mask &= val <= upper
+                if include is not None:
+                    mask &= np.isin(val, _as_set_array(include))
+                if exclude is not None:
+                    mask &= ~np.isin(val, _as_set_array(exclude))
 
                 if not mask.any():
                     self.remove([geom])
@@ -694,11 +734,22 @@ class Session:
                     kept_geoms.append(geom)
             else:
                 level = "population"
-                scalar = float(val) if not isinstance(val, (int, float)) else val
+                if (lower is not None or upper is not None) and _is_non_numeric(val):
+                    raise TypeError(
+                        f"Property '{prop_name}' is non-numeric; "
+                        f"use include=/exclude= instead of lower=/upper="
+                    )
+
                 in_range = True
-                if lower is not None and scalar < lower:
+                if lower is not None or upper is not None:
+                    scalar = float(val) if not isinstance(val, (int, float)) else val
+                    if lower is not None and scalar < lower:
+                        in_range = False
+                    if upper is not None and scalar > upper:
+                        in_range = False
+                if include is not None and val not in _as_set_array(include).tolist():
                     in_range = False
-                if upper is not None and scalar > upper:
+                if exclude is not None and val in _as_set_array(exclude).tolist():
                     in_range = False
 
                 if in_range:

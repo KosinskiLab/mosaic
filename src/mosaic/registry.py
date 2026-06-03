@@ -193,11 +193,11 @@ class Operation:
             method = self.get_method(method_name)
         elif self.methods:
             parts.append("<method>")
-        if self.targets:
-            parts.append("[targets]")
         has_params = self.common_params or (method is not None and method.params)
         if has_params:
             parts.append("[parameter=value ...]")
+        if self.targets:
+            parts.append("[targets]")
         return " ".join(parts)
 
     def get_method(self, name: str) -> Optional[Method]:
@@ -592,6 +592,18 @@ _THICKNESS = Method(
     ),
 )
 
+_PROJECTION_PARAM = Param(
+    "projection",
+    "str",
+    options=("closest", "normal", "inverted_normal"),
+    default="closest",
+    label="Projection",
+    description="How points are projected onto the mesh. "
+    "'closest' picks the nearest surface point; "
+    "'normal' casts a ray along each point's normal; "
+    "'inverted_normal' casts along the inverted normal.",
+)
+
 _PROJECTED_CURVATURE = Method(
     "Projected Curvature",
     "projected_curvature",
@@ -610,6 +622,7 @@ _PROJECTED_CURVATURE = Method(
             label="Type",
         ),
         Param("radius", "int", default=5, min=1, max=20, label="Radius"),
+        _PROJECTION_PARAM,
     ),
 )
 
@@ -632,6 +645,7 @@ _GEODESIC_DISTANCE = Method(
             default="mean",
             label="Aggregation",
         ),
+        _PROJECTION_PARAM,
     ),
 )
 
@@ -645,14 +659,8 @@ _PROJECTED_ANGLE = Method(
             "str",
             description="Reference mesh geometries (e.g. #0).",
         ),
+        _PROJECTION_PARAM,
     ),
-)
-
-_VERTEX_PROPERTY = Method(
-    "Vertex Property",
-    "vertex_property",
-    description="Retrieve a named vertex property.",
-    params=(Param("name", "str", description="Property name to retrieve."),),
 )
 
 _BOX_SIZE = Method(
@@ -714,7 +722,6 @@ MethodRegistry.register(
             _PROJECTED_CURVATURE,
             _GEODESIC_DISTANCE,
             _PROJECTED_ANGLE,
-            _VERTEX_PROPERTY,
             _BOX_SIZE,
             _WIDTH,
             _DEPTH,
@@ -817,7 +824,7 @@ MethodRegistry.register(
 MethodRegistry.register(
     Operation(
         name="filter",
-        description="Filter geometries by property value range.",
+        description="Filter geometries by property value range or membership.",
         common_params=(
             Param(
                 "property",
@@ -828,13 +835,25 @@ MethodRegistry.register(
                 "lower",
                 "float",
                 default=None,
-                description="Lower bound (inclusive).",
+                description="Lower bound, inclusive. Numeric properties only.",
             ),
             Param(
                 "upper",
                 "float",
                 default=None,
-                description="Upper bound (inclusive).",
+                description="Upper bound, inclusive. Numeric properties only.",
+            ),
+            Param(
+                "include",
+                "str",
+                default=None,
+                description="Keep only values in this set. Comma-separated for multiple (e.g. include=a,b,c).",
+            ),
+            Param(
+                "exclude",
+                "str",
+                default=None,
+                description="Remove values in this set. Comma-separated for multiple.",
             ),
         ),
     )

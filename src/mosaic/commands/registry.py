@@ -171,7 +171,7 @@ def _success_text(prefix: str, detail: str) -> Text:
     """Build a success message with styled prefix."""
     t = Text()
     t.append(prefix, style="mosaic.success")
-    t.append(detail, style="mosaic.muted")
+    t.append(detail, style="mosaic.dim")
     return t
 
 
@@ -226,10 +226,10 @@ def _build_param_table(params) -> Table:
         pad_edge=True,
         padding=(0, 1),
     )
-    table.add_column("Parameter", style="mosaic.param", no_wrap=True)
-    table.add_column("Type", style="mosaic.muted")
-    table.add_column("Default", style="mosaic.data")
-    table.add_column("Description", style="mosaic.muted")
+    table.add_column("Parameter", style="mosaic.accent", no_wrap=True)
+    table.add_column("Type", style="mosaic.dim")
+    table.add_column("Default")
+    table.add_column("Description", style="mosaic.dim")
 
     for p in params:
         default_str = ""
@@ -244,7 +244,7 @@ def _build_param_table(params) -> Table:
         if p.notes:
             desc_parts.append(p.notes)
 
-        table.add_row(p.name, p.type, default_str, " — ".join(desc_parts))
+        table.add_row(p.name, p.type, default_str, ". ".join(desc_parts))
 
     return table
 
@@ -252,7 +252,7 @@ def _build_param_table(params) -> Table:
 def _usage_line(usage_str: str) -> Text:
     """Build a styled ``Usage: ...`` line."""
     t = Text()
-    t.append("Usage: ", style="mosaic.muted")
+    t.append("Usage: ", style="mosaic.dim")
     t.append(usage_str, style="bold")
     return t
 
@@ -263,7 +263,7 @@ def _help_panel(title: str, *parts) -> Panel:
         Group(*parts),
         title=f"[mosaic.heading]{title}",
         title_align="left",
-        border_style="mosaic.border",
+        border_style="mosaic.dim",
         box=BOX_PANEL,
         padding=(0, 1),
     )
@@ -277,11 +277,11 @@ def _applied_text(op_name: str, created: list, session) -> Text:
     indices = [all_geoms.index(g) for g in created if g in all_geoms]
     t = Text()
     t.append(f"Applied {op_name}", style="mosaic.success")
-    t.append(f" → {len(created)} new geometry(s): ", style="mosaic.muted")
+    t.append(f" → {len(created)} new geometry(s): ", style="mosaic.dim")
     if indices:
-        t.append(", ".join(f"#{i}" for i in indices), style="mosaic.index")
+        t.append(", ".join(f"#{i}" for i in indices), style="mosaic.accent")
     else:
-        t.append("@last", style="mosaic.index")
+        t.append("@last", style="mosaic.accent")
     return t
 
 
@@ -396,13 +396,13 @@ def _build_geometry_table(session, entries) -> Table:
         show_edge=False,
         pad_edge=True,
         padding=(0, 1),
-        caption=f"[mosaic.muted]{len(entries)} geometries",
+        caption=f"[mosaic.dim]{len(entries)} geometries",
         caption_style="",
     )
-    table.add_column("#", justify="right", style="mosaic.index", no_wrap=True)
-    table.add_column("Points", justify="right", style="mosaic.data")
-    table.add_column("Type", justify="center", style="mosaic.type")
-    table.add_column("Group", style="mosaic.group")
+    table.add_column("#", justify="right", style="mosaic.accent", no_wrap=True)
+    table.add_column("Points", justify="right")
+    table.add_column("Type", justify="center")
+    table.add_column("Group")
     table.add_column("Name", style="bold")
 
     for i, geom in entries:
@@ -419,7 +419,7 @@ def _build_geometry_table(session, entries) -> Table:
 def _cmd_list(session, parsed: ParsedCommand):
     all_geoms = session._all_geometries()
     if not all_geoms:
-        return Text("No geometries loaded.", style="mosaic.muted")
+        return Text("No geometries loaded.", style="mosaic.dim")
 
     # Normalize kwargs to lowercase so Name=, Type=, Group= all work
     kwargs = {k.lower(): v for k, v in parsed.kwargs.items()}
@@ -440,9 +440,9 @@ def _cmd_list(session, parsed: ParsedCommand):
         if filter_parts:
             parts = [f"{k}='{v}'" for k, v in filter_parts.items()]
             return Text(
-                f"No geometries matching {', '.join(parts)}.", style="mosaic.muted"
+                f"No geometries matching {', '.join(parts)}.", style="mosaic.dim"
             )
-        return Text("No geometries loaded.", style="mosaic.muted")
+        return Text("No geometries loaded.", style="mosaic.dim")
 
     if output_fmt == "ids":
         return " ".join(f"#{i}" for i, _ in entries)
@@ -453,7 +453,7 @@ def _cmd_list(session, parsed: ParsedCommand):
 def _cmd_info(session, parsed: ParsedCommand):
     geometries = _resolve_targets(session, parsed)
     if not geometries:
-        return Text("No geometries to inspect.", style="mosaic.muted")
+        return Text("No geometries to inspect.", style="mosaic.dim")
 
     all_geoms = session._all_geometries()
     panels = []
@@ -463,8 +463,8 @@ def _cmd_info(session, parsed: ParsedCommand):
         name = session._geometry_name(geom, idx)
 
         table = Table(box=None, show_header=False, pad_edge=False, padding=(0, 1))
-        table.add_column("Key", style="mosaic.param", justify="right", no_wrap=True)
-        table.add_column("Value", style="mosaic.data")
+        table.add_column("Key", style="mosaic.accent", justify="right", no_wrap=True)
+        table.add_column("Value", style="mosaic.dim")
 
         rows = [
             ("Index", f"#{idx}"),
@@ -487,7 +487,7 @@ def _cmd_info(session, parsed: ParsedCommand):
                 table,
                 title=f"[mosaic.heading]#{idx} {name}",
                 title_align="left",
-                border_style="mosaic.border",
+                border_style="mosaic.dim",
                 box=BOX_PANEL,
                 padding=(0, 1),
                 width=min(60, get_console().width),
@@ -510,7 +510,7 @@ def _cmd_remove(session, parsed: ParsedCommand):
 def _cmd_visibility(session, parsed: ParsedCommand):
     geometries = _resolve_targets(session, parsed)
     if not geometries:
-        return Text("No target geometries.", style="mosaic.muted")
+        return Text("No target geometries.", style="mosaic.dim")
     visible = parsed.kwargs.pop("visible", True)
     for geom in geometries:
         geom.set_visibility(visible)
@@ -545,7 +545,7 @@ def _cmd_rename(session, parsed: ParsedCommand):
 
     geometries = _resolve_targets(session, parsed)
     if not geometries:
-        return Text("No target geometries.", style="mosaic.muted")
+        return Text("No target geometries.", style="mosaic.dim")
 
     expr = parsed.args[0]
     match = _re.fullmatch(r"s/(.+?)/(.*?)/(.*)", expr)
@@ -600,8 +600,8 @@ def _registry_method_listing(op_name: str):
         pad_edge=True,
         padding=(0, 1),
     )
-    table.add_column("Method", style="mosaic.command", no_wrap=True)
-    table.add_column("Description", style="mosaic.muted")
+    table.add_column("Method", style="mosaic.accent", no_wrap=True)
+    table.add_column("Description", style="mosaic.dim")
 
     for m in op.methods:
         table.add_row(m.internal_name, m.description or "")
@@ -614,7 +614,7 @@ def _registry_method_listing(op_name: str):
         Text(),
         Text(
             f"Type '{op_name} <method> help' for parameters.",
-            style="mosaic.muted",
+            style="mosaic.dim",
         ),
     )
 
@@ -707,18 +707,18 @@ def _cmd_help(session, parsed: ParsedCommand):
             pad_edge=True,
             padding=(0, 1),
         )
-        table.add_column("Command", style="mosaic.command", no_wrap=True, min_width=20)
-        table.add_column("Description", style="mosaic.muted")
+        table.add_column("Command", style="mosaic.accent", no_wrap=True, min_width=20)
+        table.add_column("Description", style="mosaic.dim")
         for cmd in cmds:
             table.add_row(cmd.name, cmd.description)
-        parts.append(Rule(group_name, style="mosaic.rule", align="left"))
+        parts.append(Rule(group_name, style="mosaic.dim", align="left"))
         parts.append(table)
 
     parts += [
         Text(),
         Text(
             "Type 'help <command>' or '<command> help' for details.",
-            style="mosaic.muted",
+            style="mosaic.dim",
         ),
     ]
 
@@ -727,7 +727,7 @@ def _cmd_help(session, parsed: ParsedCommand):
 
 def _cmd_history(session, parsed: ParsedCommand):
     if not session._log:
-        return Text("No commands in history.", style="mosaic.muted")
+        return Text("No commands in history.", style="mosaic.dim")
 
     table = Table(
         box=None,
@@ -736,8 +736,8 @@ def _cmd_history(session, parsed: ParsedCommand):
         pad_edge=True,
         padding=(0, 1),
     )
-    table.add_column("#", style="mosaic.muted", justify="right", no_wrap=True)
-    table.add_column("Command", style="mosaic.command")
+    table.add_column("#", style="mosaic.dim", justify="right", no_wrap=True)
+    table.add_column("Command", style="mosaic.accent")
 
     for i, line in enumerate(session._log):
         table.add_row(str(i), line)
@@ -778,7 +778,7 @@ def _make_operation_handler(op_name: str, has_methods: bool = False):
 
         geometries = _resolve_targets(session, parsed)
         if not geometries:
-            return Text("No target geometries.", style="mosaic.muted")
+            return Text("No target geometries.", style="mosaic.dim")
 
         kwargs = _resolve_kwargs(session, parsed.kwargs)
         if method_name is not None:
@@ -796,9 +796,14 @@ def _cmd_measure(session, parsed: ParsedCommand):
         return _registry_method_listing("measure")
 
     property_name = parsed.args[0]
+    if property_name == "vertex_property":
+        return _error_panel(
+            "'measure vertex_property' is no longer supported. "
+            "Use 'properties name=<prop>' to display vertex property values."
+        )
     geometries = _resolve_targets(session, parsed)
     if not geometries:
-        return Text("No target geometries.", style="mosaic.muted")
+        return Text("No target geometries.", style="mosaic.dim")
 
     kwargs = _resolve_kwargs(session, parsed.kwargs)
     store = kwargs.get("store", False)
@@ -811,21 +816,22 @@ def _cmd_measure(session, parsed: ParsedCommand):
         isinstance(v, np.ndarray) and v.ndim >= 1 for v in results if v is not None
     )
 
+    skipped = []
+
     if has_array:
-        table = Table(
-            box=BOX_TABLE,
-            show_header=True,
-            show_edge=False,
-            pad_edge=True,
-            padding=(0, 1),
-        )
-        table.add_column("#", justify="right", style="mosaic.index", no_wrap=True)
-        table.add_column("Points", justify="right", style="mosaic.data")
-        table.add_column("Min", justify="right", style="mosaic.data")
-        table.add_column("Max", justify="right", style="mosaic.data")
-        table.add_column("Mean", justify="right", style="mosaic.data")
-        table.add_column("Std", justify="right", style="mosaic.data")
-        table.add_column("Median", justify="right", style="mosaic.data")
+        arrays_with_labels = []
+        for i, (geom, val) in enumerate(zip(geometries, results)):
+            label = f"#{all_geoms.index(geom)}" if geom in all_geoms else f"@{i}"
+            if val is None:
+                skipped.append(label)
+                continue
+            if isinstance(val, np.ndarray) and val.ndim >= 1:
+                arrays_with_labels.append((label, val))
+            else:
+                arrays_with_labels.append(
+                    (label, np.asarray([float(val)], dtype=np.float64))
+                )
+        table = _render_numeric_per_geom_summary(arrays_with_labels, property_name)
     else:
         table = Table(
             box=BOX_TABLE,
@@ -834,36 +840,17 @@ def _cmd_measure(session, parsed: ParsedCommand):
             pad_edge=True,
             padding=(0, 1),
         )
-        table.add_column("#", justify="right", style="mosaic.index", no_wrap=True)
-        table.add_column("Value", justify="right", style="mosaic.data")
-
-    skipped = []
-    for i, (geom, val) in enumerate(zip(geometries, results)):
-        if geom in all_geoms:
-            label = str(all_geoms.index(geom))
-        else:
-            label = f"@{i}"
-        if val is None:
-            skipped.append(label)
-            continue
-
-        if has_array and isinstance(val, np.ndarray) and val.ndim >= 1:
-            table.add_row(
-                label,
-                f"{len(val):,}",
-                f"{val.min():.4g}",
-                f"{val.max():.4g}",
-                f"{val.mean():.4g}",
-                f"{val.std():.4g}",
-                f"{np.median(val):.4g}",
-            )
-        elif has_array:
-            sv = str(val)
-            table.add_row(label, "", sv, sv, sv, "0", sv)
-        else:
+        table.add_column("#", justify="right", style="mosaic.accent", no_wrap=True)
+        table.add_column("Value", justify="right")
+        for i, (geom, val) in enumerate(zip(geometries, results)):
+            label = f"#{all_geoms.index(geom)}" if geom in all_geoms else f"@{i}"
+            if val is None:
+                skipped.append(label)
+                continue
             table.add_row(label, str(val))
 
-    if skipped and not table.rows:
+    # _render_numeric_per_geom_summary may return Text on the no-finite-values path
+    if skipped and isinstance(table, Table) and not table.rows:
         return _error_panel(
             f"{property_name} returned no results. "
             f"Check that the target geometries support this property."
@@ -875,7 +862,7 @@ def _cmd_measure(session, parsed: ParsedCommand):
         parts.append(
             Text(
                 f"  Skipped #{', #'.join(skipped)} (property not available)",
-                style="mosaic.warning",
+                style="mosaic.error",
             )
         )
 
@@ -895,14 +882,24 @@ def _cmd_measure(session, parsed: ParsedCommand):
 def _cmd_filter(session, parsed: ParsedCommand):
     geometries = _resolve_targets(session, parsed)
     if not geometries:
-        return Text("No target geometries.", style="mosaic.muted")
+        return Text("No target geometries.", style="mosaic.dim")
 
     kwargs = _resolve_kwargs(session, parsed.kwargs)
     prop = kwargs.pop("property", None)
     if prop is None:
         return _error_panel("Missing required parameter: property=<name>")
 
-    kept, removed, level = session.filter(geometries, prop_name=prop, **kwargs)
+    # Parser leaves unbracketed comma strings intact for non-numeric values;
+    # split here so session.filter sees a list rather than the literal "a,b".
+    for key in ("include", "exclude"):
+        val = kwargs.get(key)
+        if isinstance(val, str) and "," in val:
+            kwargs[key] = [v.strip() for v in val.split(",")]
+
+    try:
+        kept, removed, level = session.filter(geometries, prop_name=prop, **kwargs)
+    except TypeError as exc:
+        return _error_panel(str(exc))
 
     if level == "point":
         return _success_text(
@@ -1110,11 +1107,11 @@ def _cmd_dts_analysis(session, parsed: ParsedCommand):
         show_edge=False,
         pad_edge=True,
         padding=(0, 1),
-        caption=f"[mosaic.muted]{col_name}  ·  {n_frames} frames",
+        caption=f"[mosaic.dim]{col_name}  ·  {n_frames} frames",
         caption_style="",
     )
-    table.add_column("Stat", style="mosaic.param", no_wrap=True)
-    table.add_column("Value", justify="right", style="mosaic.data")
+    table.add_column("Stat", style="mosaic.accent", no_wrap=True)
+    table.add_column("Value", justify="right")
 
     table.add_row("Mean", f"{np.nanmean(values):.6g}")
     table.add_row("Std", f"{np.nanstd(values):.6g}")
@@ -1123,6 +1120,259 @@ def _cmd_dts_analysis(session, parsed: ParsedCommand):
     if n_frames >= 2:
         table.add_row("First frame", f"{values[0]:.6g}")
         table.add_row("Last frame", f"{values[-1]:.6g}")
+
+    return table
+
+
+def _cmd_properties(session, parsed: ParsedCommand):
+    """List vertex properties on the selected geometries.
+
+    With no ``name=`` argument, prints a metadata table (one row per
+    property per geometry). With ``name=<prop>``, prints the values of
+    that property across the selected geometries, a value/count table
+    for categorical data, a histogram for numeric data.
+    """
+    if parsed.targets:
+        geometries = session.resolve_many(parsed.targets)
+    else:
+        geometries = session._all_geometries()
+
+    if not geometries:
+        return Text("No geometries loaded.", style="mosaic.dim")
+
+    name = parsed.kwargs.get("name", None)
+    if name is not None:
+        return _properties_values(session, geometries, str(name))
+    return _properties_metadata(session, geometries)
+
+
+def _properties_metadata(session, geometries):
+    """Render the per-property metadata table (no ``name=`` argument)."""
+    import numpy as np
+
+    all_geoms = session._all_geometries()
+
+    table = Table(
+        box=BOX_TABLE,
+        show_header=True,
+        show_edge=False,
+        pad_edge=True,
+        padding=(0, 1),
+    )
+    table.add_column("#", justify="right", style="mosaic.accent", no_wrap=True)
+    table.add_column("Name", style="mosaic.accent")
+    table.add_column("Dtype")
+    table.add_column("Shape", justify="right")
+    table.add_column("Unique", justify="right")
+
+    any_rows = False
+    for geom in geometries:
+        idx = all_geoms.index(geom) if geom in all_geoms else "?"
+        vp = geom.vertex_properties
+        if vp is None or not vp.properties:
+            continue
+        for name in vp.properties:
+            arr = vp.get_property(name)
+            if arr.dtype.kind in ("f", "c"):
+                unique_str = "-"
+            else:
+                flat = arr.reshape(-1) if arr.ndim > 1 else arr
+                unique_str = f"{int(np.unique(flat).size):,}"
+            table.add_row(
+                f"#{idx}",
+                name,
+                str(arr.dtype),
+                str(tuple(arr.shape)),
+                unique_str,
+            )
+            any_rows = True
+
+    if not any_rows:
+        return Text(
+            "No vertex properties on selected geometries.",
+            style="mosaic.dim",
+        )
+    return table
+
+
+def _properties_values(session, geometries, prop_name: str):
+    """Render values of *prop_name* across *geometries*."""
+    import numpy as np
+
+    all_geoms = session._all_geometries()
+
+    per_geom = []
+    for geom in geometries:
+        vp = geom.vertex_properties
+        if vp is None:
+            continue
+        arr = vp.get_property(prop_name)
+        if arr is None:
+            continue
+        flat = arr.reshape(-1) if arr.ndim > 1 else arr
+        idx = all_geoms.index(geom) if geom in all_geoms else "?"
+        per_geom.append((f"#{idx}", flat))
+
+    if not per_geom:
+        return Text(
+            f"Property '{prop_name}' not found on selected geometries.",
+            style="mosaic.dim",
+        )
+
+    combined = (
+        np.concatenate([a for _, a in per_geom])
+        if len(per_geom) > 1
+        else per_geom[0][1]
+    )
+
+    if _is_categorical_for_display(combined):
+        return _render_categorical_values(combined, prop_name, len(per_geom))
+    return _render_numeric_per_geom_summary(per_geom, prop_name)
+
+
+def _is_categorical_for_display(arr) -> bool:
+    """Decide whether *arr* should display as a value/count table."""
+    import numpy as np
+
+    if arr.dtype.kind in ("U", "S", "O", "b"):
+        return True
+    if arr.dtype.kind in ("i", "u"):
+        return int(np.unique(arr).size) <= 16
+    return False
+
+
+_CATEGORICAL_DISPLAY_LIMIT = 20
+
+
+def _render_categorical_values(arr, prop_name: str, n_geoms: int):
+    """Render a value/count/% table for categorical *arr*."""
+    import numpy as np
+
+    values, counts = np.unique(arr, return_counts=True)
+    order = np.argsort(-counts)
+    values, counts = values[order], counts[order]
+    total = int(counts.sum())
+
+    table = Table(
+        box=BOX_TABLE,
+        show_header=True,
+        show_edge=False,
+        pad_edge=True,
+        padding=(0, 1),
+        title=f"[mosaic.heading]{prop_name}",
+        title_justify="left",
+    )
+    table.add_column("Value", style="mosaic.accent")
+    table.add_column("Count", justify="right")
+    table.add_column("%", justify="right", style="mosaic.dim")
+
+    n_shown = min(len(values), _CATEGORICAL_DISPLAY_LIMIT)
+    for v, c in zip(values[:n_shown], counts[:n_shown]):
+        pct = 100.0 * int(c) / total if total else 0.0
+        table.add_row(str(v), f"{int(c):,}", f"{pct:.1f}")
+
+    if len(values) > _CATEGORICAL_DISPLAY_LIMIT:
+        remaining = len(values) - _CATEGORICAL_DISPLAY_LIMIT
+        table.add_row("…", f"({remaining:,} more)", "")
+
+    footer = Text()
+    footer.append(f"  {total:,} value(s) across ", style="mosaic.dim")
+    footer.append(f"{n_geoms}")
+    footer.append(" geometry(s)", style="mosaic.dim")
+    return Group(table, footer)
+
+
+_SPARKLINE_BINS = 16
+_SPARKLINE_BLOCKS = "▁▂▃▄▅▆▇█"
+
+
+def _render_numeric_per_geom_summary(arrays_with_labels, prop_name: str):
+    """Render a per-geometry summary table with sparkline histograms.
+
+    Each row is one geometry with ``# | Points | Min | Max | Mean | Std | Median |
+    Distribution``. Sparklines share global bin edges (computed from the
+    concatenation of all *arrays_with_labels*) so the X axis is aligned and
+    distribution shapes can be compared visually across rows. Bar heights are
+    normalized per row to that row's max count, so a row with few points still
+    renders a readable shape.
+
+    Parameters
+    ----------
+    arrays_with_labels : sequence of (str, np.ndarray)
+        ``(label, array)`` pairs where label is shown in the ``#`` column.
+        Empty arrays and arrays without finite values render a blank
+        sparkline.
+    prop_name : str
+        Property name (currently unused in the table but reserved for future
+        title use).
+
+    Returns
+    -------
+    rich.table.Table or rich.text.Text
+        Summary table, or a muted Text when no array has finite values.
+    """
+    import numpy as np
+
+    cleaned = []
+    for label, arr in arrays_with_labels:
+        if arr.dtype.kind == "f":
+            arr = arr[np.isfinite(arr)]
+        cleaned.append((label, arr))
+
+    nonempty = [a for _, a in cleaned if a.size > 0]
+    if not nonempty:
+        return Text(
+            f"Property '{prop_name}' has no finite values.",
+            style="mosaic.dim",
+        )
+
+    combined = np.concatenate(nonempty) if len(nonempty) > 1 else nonempty[0]
+    edges = np.histogram_bin_edges(combined, bins=_SPARKLINE_BINS)
+
+    table = Table(
+        box=BOX_TABLE,
+        show_header=True,
+        show_edge=False,
+        pad_edge=True,
+        padding=(0, 1),
+    )
+    table.add_column("#", justify="right", style="mosaic.accent", no_wrap=True)
+    table.add_column("Points", justify="right")
+    table.add_column("Min", justify="right")
+    table.add_column("Max", justify="right")
+    table.add_column("Mean", justify="right")
+    table.add_column("Std", justify="right")
+    table.add_column("Median", justify="right")
+    table.add_column("Distribution", no_wrap=True)
+
+    n_levels = len(_SPARKLINE_BLOCKS)
+    for label, arr in cleaned:
+        if arr.size == 0:
+            table.add_row(label, "0", "", "", "", "", "", "")
+            continue
+        counts, _ = np.histogram(arr, bins=edges)
+        local_max = int(counts.max())
+        if local_max == 0:
+            sparkline = " " * _SPARKLINE_BINS
+        else:
+            indices = np.clip(
+                (counts.astype(np.float64) * (n_levels - 1) / local_max)
+                .round()
+                .astype(int),
+                0,
+                n_levels - 1,
+            )
+            sparkline = "".join(_SPARKLINE_BLOCKS[i] for i in indices)
+        table.add_row(
+            label,
+            f"{arr.size:,}",
+            f"{float(arr.min()):.4g}",
+            f"{float(arr.max()):.4g}",
+            f"{float(arr.mean()):.4g}",
+            f"{float(arr.std()):.4g}",
+            f"{float(np.median(arr)):.4g}",
+            sparkline,
+        )
 
     return table
 
@@ -1180,6 +1430,13 @@ def _register_builtins():
         ),
         ("help", _cmd_help, "Show help", "help [command]", "Shell"),
         ("history", _cmd_history, "Show command history", "history", "Shell"),
+        (
+            "properties",
+            _cmd_properties,
+            "List vertex properties on geometries, or display values when name= is given",
+            "properties [name=<property>] [targets]",
+            "Analysis",
+        ),
     ]:
         CommandRegistry.register(name, handler, desc, usage, group=group)
 
@@ -1225,7 +1482,7 @@ def _register_builtins():
         "visibility",
         _cmd_visibility,
         "Change geometry visibility",
-        "visibility [targets] visible=true|false",
+        "visibility visible=true|false [targets]",
         group="Session",
     )
 

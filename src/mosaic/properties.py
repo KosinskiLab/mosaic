@@ -319,7 +319,23 @@ def n_points(geometry, *args, **kwargs):
     return geometry.points.shape[0]
 
 
-def projected_angle(geometry: Geometry, queries: List[Geometry], **kwargs):
+def _projection_normals(geometry: Geometry, projection: str):
+    """Resolve cast-ray normals for a given projection mode."""
+    if projection == "closest" or geometry.normals is None:
+        return None
+    if projection == "normal":
+        return geometry.normals
+    if projection == "inverted_normal":
+        return -geometry.normals
+    raise ValueError(f"Unknown projection mode: {projection!r}")
+
+
+def projected_angle(
+    geometry: Geometry,
+    queries: List[Geometry],
+    projection: str = "closest",
+    **kwargs,
+):
     """
     Compute the angle between point normals and the nearest mesh surface normal.
 
@@ -329,6 +345,11 @@ def projected_angle(geometry: Geometry, queries: List[Geometry], **kwargs):
         Input point cloud with normals.
     queries : list of Geometry
         Reference mesh geometries. Uses the first with a TriangularMesh model.
+    projection : {'closest', 'normal', 'inverted_normal'}, optional
+        How points are projected onto the mesh. ``'closest'`` uses the nearest
+        surface point; ``'normal'`` casts a ray along the point normal;
+        ``'inverted_normal'`` casts along the inverted normal. Falls back to
+        closest-point when the geometry has no normals. Default is ``'closest'``.
 
     Returns
     -------
@@ -337,6 +358,8 @@ def projected_angle(geometry: Geometry, queries: List[Geometry], **kwargs):
     """
     from .parametrization import TriangularMesh
 
+    if not isinstance(queries, (list, tuple)):
+        queries = [queries]
     queries = [x for x in queries if isinstance(x.model, TriangularMesh)]
 
     if len(queries) == 0:
@@ -347,7 +370,11 @@ def projected_angle(geometry: Geometry, queries: List[Geometry], **kwargs):
     if (fit := queries[0].model) is None:
         return None
 
-    _, indices = fit.compute_distance(points=geometry.points, return_indices=True)
+    _, indices = fit.compute_distance(
+        points=geometry.points,
+        normals=_projection_normals(geometry, projection),
+        return_indices=True,
+    )
     normals = fit.compute_vertex_normals()[indices]
 
     dot = np.sum(np.multiply(normals, geometry.normals), axis=-1)
@@ -355,10 +382,15 @@ def projected_angle(geometry: Geometry, queries: List[Geometry], **kwargs):
 
 
 def projected_curvature(
-    geometry: Geometry, queries: List[Geometry], curvature: str, radius: int, **kwargs
+    geometry: Geometry,
+    queries: List[Geometry],
+    curvature: str,
+    radius: int,
+    projection: str = "closest",
+    **kwargs,
 ):
     """
-    Project mesh curvature values onto a point cloud via nearest-vertex lookup.
+    Project mesh curvature values onto a point cloud.
 
     Parameters
     ----------
@@ -370,12 +402,19 @@ def projected_curvature(
         Curvature type, e.g. 'Mean', 'Gaussian', 'Maximum', 'Minimum'.
     radius : int
         Neighborhood radius for curvature estimation on the mesh.
+    projection : {'closest', 'normal', 'inverted_normal'}, optional
+        How points are projected onto the mesh. ``'closest'`` uses the nearest
+        surface point; ``'normal'`` casts a ray along the point normal;
+        ``'inverted_normal'`` casts along the inverted normal. Falls back to
+        closest-point when the geometry has no normals. Default is ``'closest'``.
 
     Returns
     -------
     np.ndarray or None
         Per-point curvature values, or None if no valid query mesh.
     """
+    if not isinstance(queries, (list, tuple)):
+        queries = [queries]
     if len(queries) == 0:
         return None
     elif len(queries) > 1:
@@ -385,7 +424,11 @@ def projected_curvature(
         return None
 
     curvature = fit.compute_curvature(curvature=curvature, radius=radius, **kwargs)
-    _, indices = fit.compute_distance(points=geometry.points, return_indices=True)
+    _, indices = fit.compute_distance(
+        points=geometry.points,
+        normals=_projection_normals(geometry, projection),
+        return_indices=True,
+    )
     return curvature[indices]
 
 
@@ -395,6 +438,7 @@ def geodesic_distance(
     k: int = 1,
     k_start=1,
     aggregation: str = "mean",
+    projection: str = "closest",
 ):
     """
     Compute geodesic distances along a mesh surface between projected points.
@@ -412,12 +456,19 @@ def geodesic_distance(
     aggregation : str, optional
         How to aggregate multi-neighbor distances: 'mean', 'min', 'max',
         'median', or 'std'. Default is 'mean'.
+    projection : {'closest', 'normal', 'inverted_normal'}, optional
+        How points are projected onto the mesh. ``'closest'`` uses the nearest
+        surface point; ``'normal'`` casts a ray along the point normal;
+        ``'inverted_normal'`` casts along the inverted normal. Falls back to
+        closest-point when the geometry has no normals. Default is ``'closest'``.
 
     Returns
     -------
     np.ndarray or None
         Per-point geodesic distance values, or None if no valid query mesh.
     """
+    if not isinstance(queries, (list, tuple)):
+        queries = [queries]
     if len(queries) == 0:
         return None
     elif len(queries) > 1:
@@ -428,6 +479,7 @@ def geodesic_distance(
 
     _, projections, triangles = fit.compute_distance(
         points=geometry.points,
+        normals=_projection_normals(geometry, projection),
         return_indices=False,
         return_triangles=True,
         return_projection=True,

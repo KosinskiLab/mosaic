@@ -224,26 +224,49 @@ def _build_mesh_statistics_options(dlg):
     )
 
 
+def _create_projection_combo():
+    combo = QComboBox()
+    combo.addItem("Closest Point", "closest")
+    combo.addItem("Along Normal", "normal")
+    combo.addItem("Along Inverted Normal", "inverted_normal")
+    combo.setFixedHeight(Colors.WIDGET_HEIGHT)
+    combo.setToolTip(
+        "How points are projected onto the mesh. 'Closest Point' picks the "
+        "nearest surface point; 'Along Normal' casts a ray along each point's "
+        "normal; 'Along Inverted Normal' casts along the inverted normal."
+    )
+    return combo
+
+
 def _build_projected_curvature_options(dlg):
     group, layout, target_list, _ = dlg._create_target_list_group(
         "Target Mesh", "models", mesh_only=True
     )
     options_layout = QFormLayout()
     curvature, radius = dlg._create_curvature_options(options_layout)
+    projection = _create_projection_combo()
+    options_layout.addRow("Projection:", projection)
     layout.addLayout(options_layout)
 
     dlg.property_options_layout.addRow(group)
     dlg.option_widgets["queries"] = target_list
     dlg.option_widgets["curvature"] = curvature
     dlg.option_widgets["radius"] = radius
+    dlg.option_widgets["projection"] = projection
 
 
 def _build_angle_options(dlg):
     group, layout, target_list, _ = dlg._create_target_list_group(
         "Target Mesh", "models", mesh_only=True
     )
+    options_layout = QFormLayout()
+    projection = _create_projection_combo()
+    options_layout.addRow("Projection:", projection)
+    layout.addLayout(options_layout)
+
     dlg.property_options_layout.addRow(group)
     dlg.option_widgets["queries"] = target_list
+    dlg.option_widgets["projection"] = projection
 
 
 def _build_geodesic_distance_options(dlg):
@@ -251,12 +274,17 @@ def _build_geodesic_distance_options(dlg):
         "Target Mesh", "models", mesh_only=True
     )
     k_start, k_end, aggregation = dlg._create_knn_range_widget(layout)
+    options_layout = QFormLayout()
+    projection = _create_projection_combo()
+    options_layout.addRow("Projection:", projection)
+    layout.addLayout(options_layout)
 
     dlg.property_options_layout.addRow(group)
     dlg.option_widgets["queries"] = target_list
     dlg.option_widgets["k_start"] = k_start
     dlg.option_widgets["k"] = k_end
     dlg.option_widgets["aggregation"] = aggregation
+    dlg.option_widgets["projection"] = projection
 
 
 def _build_thickness_options(dlg):
@@ -1561,6 +1589,10 @@ class PropertyAnalysisDialog(QDialog):
             return
 
         categorical = self._is_categorical(geometries)
+        category_name = None
+        if categorical:
+            checked = self._get_selected_categories()
+            category_name = "+".join(sorted(checked))
 
         dirty_interactors = set()
         for geometry in geometries:
@@ -1568,7 +1600,6 @@ class PropertyAnalysisDialog(QDialog):
                 raw = self._cache.get_value(geometry.uuid)
                 if raw is None:
                     continue
-                checked = self._get_selected_categories()
                 raw_flat = np.asarray(raw).flatten()
                 mask = np.array([str(v) in checked for v in raw_flat])
             else:
@@ -1585,6 +1616,8 @@ class PropertyAnalysisDialog(QDialog):
 
             subset = geometry[mask]
             if subset.get_number_of_points() > 0:
+                if category_name:
+                    subset._meta["name"] = category_name
                 interactor = self._interactor_for(geometry)
                 interactor.add(subset)
                 dirty_interactors.add(id(interactor))

@@ -101,12 +101,12 @@ def _fill_mesh(mesh_geometry):
 def _project(
     mesh_geometries,
     geometries,
-    use_normals: bool = False,
-    invert_normals: bool = False,
+    projection: str = "closest",
     update_normals: bool = False,
     partition: bool = False,
 ):
     from ..geometry import Geometry, GeometryData
+    from ..properties import _projection_normals
 
     meshes = [mg.model for mg in mesh_geometries]
     n_meshes = len(meshes)
@@ -117,9 +117,7 @@ def _project(
     mesh_tri = [[] for _ in range(n_meshes)]
 
     for geometry in geometries:
-        normals = geometry.normals if use_normals else None
-        if normals is not None:
-            normals = normals * (-1 if invert_normals else 1)
+        normals = _projection_normals(geometry, projection)
 
         all_dist, all_proj, all_tri = [], [], []
         for mesh in meshes:
@@ -449,8 +447,7 @@ class ModelTab(QWidget):
 
     def _project_parallel(
         self,
-        use_normals: bool = False,
-        invert_normals: bool = False,
+        projection: str = "closest",
         update_normals: bool = False,
         partition: bool = False,
         **kwargs,
@@ -461,8 +458,7 @@ class ModelTab(QWidget):
             self._default_callback,
             self._get_selected_meshes(),
             self.cdata.data.get_selected_geometries(),
-            use_normals,
-            invert_normals,
+            projection,
             update_normals,
             partition,
         )
@@ -576,18 +572,16 @@ PROJECTION_SETTINGS = {
     "title": "Settings",
     "settings": [
         {
-            "label": "Cast Normals",
-            "parameter": "use_normals",
-            "type": "boolean",
-            "default": True,
-            "description": "Include normal vectors in raycasting.",
-        },
-        {
-            "label": "Invert Normals",
-            "parameter": "invert_normals",
-            "type": "boolean",
-            "default": False,
-            "description": "Invert direction of normal vectors.",
+            "label": "Projection",
+            "parameter": "projection",
+            "type": "select",
+            "options": ["Closest Point", "Along Normal", "Along Inverted Normal"],
+            "option_values": ["closest", "normal", "inverted_normal"],
+            "default": "closest",
+            "description": "How points are projected onto the mesh. "
+            "'Closest Point' picks the nearest surface point; "
+            "'Along Normal' casts a ray along each point's normal; "
+            "'Along Inverted Normal' casts along the inverted normal.",
         },
         {
             "label": "Update Normals",
