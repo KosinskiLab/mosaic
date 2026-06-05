@@ -28,7 +28,7 @@ Writing
 .. autosummary::
    :toctree: rst
 
-   OrientationsWriter
+   write_geometries
    write_density
 
 

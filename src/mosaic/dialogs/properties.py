@@ -420,7 +420,7 @@ class GeometryPropertiesDialog(QDialog):
         self.isovalue_slider.valueChanged.connect(
             mark_and_throttle("isovalue_percentile")
         )
-        self.scale_control.selectionChanged.connect(mark_and_emit("scale"))
+        self.scale_control.selectionChanged.connect(self._on_scale_changed)
         self.sampling_x.textChanged.connect(self._on_sampling_x_changed)
         self.sampling_y.textChanged.connect(self._on_sampling_y_changed)
         self.sampling_z.textChanged.connect(self._on_sampling_z_changed)
@@ -438,12 +438,21 @@ class GeometryPropertiesDialog(QDialog):
         self._touched.add("size")
         self._emit_throttle()
 
+    def _on_scale_changed(self, _value):
+        # A scale toggle requires reloading the volume so the data is actually
+        # re-multiplied; bare appearance updates ignore `scale`.
+        self._touched.add("scale")
+        parameters = self.get_parameters()
+        if self.volume_path is not None:
+            parameters["volume_path"] = self.volume_path
+        self.parametersChanged.emit(parameters)
+
     def _on_sampling_changed(self, widget, axis_key: str):
         if widget in self._indeterminate_widgets:
             # Programmatic clears send empty text; only the user typing a value
             # should clear the indeterminate state.
             if widget.text() == "":
-                return
+                return None
             self._indeterminate_widgets.discard(widget)
             widget.setPlaceholderText("")
         self._touched.add(axis_key)

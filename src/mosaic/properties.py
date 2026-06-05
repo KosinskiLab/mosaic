@@ -378,7 +378,7 @@ def projected_angle(
     normals = fit.compute_vertex_normals()[indices]
 
     dot = np.sum(np.multiply(normals, geometry.normals), axis=-1)
-    return np.degrees(np.arccos(dot))
+    return np.degrees(np.arccos(np.clip(dot, a_min=-1, a_max=1)))
 
 
 def projected_curvature(

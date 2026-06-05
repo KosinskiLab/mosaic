@@ -1482,6 +1482,10 @@ class App(QMainWindow):
 
         from .parallel import submit_io_task
 
+        self._scene_was_empty_at_import = (
+            len(self.cdata.data.container) == 0
+            and len(self.cdata.models.container) == 0
+        )
         submit_io_task(
             "Reading Files",
             _read_files_worker,
@@ -1508,7 +1512,11 @@ class App(QMainWindow):
         self.cdata.data.data_changed.emit()
         self.cdata.models.data_changed.emit()
         self.cdata.viewport.render(defer_render=False)
-        self.set_camera_view("z")
+        if getattr(self, "_scene_was_empty_at_import", True):
+            self.renderer.ResetCamera()
+            self.renderer.ResetCameraClippingRange()
+            self.vtk_widget.GetRenderWindow().Render()
+        self._scene_was_empty_at_import = False
 
         if density_paths:
             from pathlib import Path

@@ -58,8 +58,10 @@ def read_density_header(filename: str):
         return data_shape[::1], sampling_rate[::1]
 
     # Fallback for cases supported by Density.from_file and not mrcfile
-    except Exception as e:
-        print(e)
+    except Exception as exc:
+        import warnings
+
+        warnings.warn(f"mrcfile header read failed for {filename}: {exc}")
         from .parser import load_density
 
         density = load_density(filename)

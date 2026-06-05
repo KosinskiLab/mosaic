@@ -270,8 +270,7 @@ class ImportDataDialog(QDialog):
 
     def set_files(self, filenames):
         from ..formats._utils import get_extension
-        from ..formats.reader import FORMAT_MAPPING
-        from ..formats.parser import read_volume, read_star
+        from ..formats.parser import read_star, read_volume, resolve_parser
 
         self.filenames = filenames
         self.current_file_index = 0
@@ -281,12 +280,16 @@ class ImportDataDialog(QDialog):
 
         for file in filenames:
             extension = get_extension(file)[1:]
-            if extension in FORMAT_MAPPING.get(read_volume):
+            try:
+                parser = resolve_parser(extension)
+            except ValueError:
+                parser = None
+            if parser is read_volume:
                 shape, sampling_rate = read_density_header(file)
                 self.sampling_x.setText(f"{sampling_rate[0]:g}")
                 self.sampling_y.setText(f"{sampling_rate[1]:g}")
                 self.sampling_z.setText(f"{sampling_rate[2]:g}")
-            elif extension in FORMAT_MAPPING.get(read_star):
+            elif parser is read_star:
                 info = read_star_header(file)
                 px = info.get("pixel_size")
                 if px:

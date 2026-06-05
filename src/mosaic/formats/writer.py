@@ -1,106 +1,158 @@
 import json
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 
-from ._utils import get_extension, write_star_header
+from ._utils import write_star_header
+from .records import GeometryData
 
 
-class OrientationsWriter:
-    def __init__(
-        self, points: np.ndarray, quaternions: np.ndarray, entities: np.ndarray
-    ):
-        """
-        Initialize writer with point coordinates, quaternions, and entity labels.
-
-        Parameters
-        ----------
-        points : np.ndarray
-            Array of 3D point coordinates.
-        quaternions : np.ndarray
-            Array of quaternion rotations.
-        entities : np.ndarray
-            Array of entity labels for each point.
-        """
-        from ..utils import quat_to_euler
-
-        self.entities = entities
-        self.points = points
-
-        # Until we find a better solution for the pipeline module, avoid
-        # scipy.spatial.transform.Rotation due to threading complications
-        self.rotations = quat_to_euler(quaternions, degrees=True, inv_quat=True)
-
-    def to_file(self, file_path, file_format: str = None, **kwargs):
-        """
-        Write orientations data to file in specified format.
-
-        Parameters
-        ----------
-        file_path : str
-            Output file path.
-        file_format : str, optional
-            Output format, inferred from extension if None.
-        **kwargs
-            Additional keyword arguments passed to writer.
-
-        Raises
-        ------
-        ValueError
-            If the file format is not supported.
-        """
-        _supported_formats = ("tsv", "star")
-
-        if file_format is None:
-            file_format = get_extension(file_path)[1:]
-
-        if file_format not in _supported_formats:
-            formats = ", ".join([str(x) for x in _supported_formats])
-            raise ValueError(f"Supported formats are {formats}.")
-        return self._write_orientations(file_path, **kwargs)
-
-    def _write_orientations(self, file_path, **kwargs):
-        """
-        Backend function for writing orientations to file.
-
-        Parameters
-        ----------
-        file_path : str
-            Output file path.
-        **kwargs
-            Additional keyword arguments passed to orientations writer.
-        """
-        from tme import Orientations
-
-        orientations = Orientations(
-            translations=self.points,
-            rotations=self.rotations,
-            scores=np.zeros(self.rotations.shape[0]),
-            details=self.entities,
-        )
-        return orientations.to_file(file_path, **kwargs)
-
-
-def write_density(
-    data: np.ndarray, filename: str, sampling_rate: float = 1, origin: float = 0
-) -> None:
-    """
-    Write 3D density data to file (typically in CCP4/MRC format).
+def _coerce_records(geometries) -> List[GeometryData]:
+    """Build per-geometry records for the writers.
 
     Parameters
     ----------
-    data : np.ndarray
-        3D density array.
-    filename : str
-        Output file path.
-    sampling_rate : float, optional
-        Sampling rate per voxel, by default 1 Angstrom / Voxel.
-    origin : float, optional
-        Origin offset for the density data in Angstrom, by default 0.
-    """
-    from tme import Density
+    geometries : list of Geometry
+        Source geometries.
 
-    return Density(data, sampling_rate=sampling_rate, origin=origin).to_file(filename)
+    Returns
+    -------
+    list of GeometryData
+        One record per geometry.
+    """
+    records = []
+    for geometry in geometries:
+        points, normals, quaternions = geometry.get_point_data()
+        records.append(
+            GeometryData(
+                vertices=points,
+                normals=normals,
+                quaternions=quaternions,
+                sampling=geometry.sampling_rate,
+                vertex_properties=geometry.vertex_properties,
+                model=geometry.model,
+            )
+        )
+    return records
+
+
+def _prepare_oriented_points(records, sampling):
+    """Scale, synthesize quaternions, and concatenate records for STAR/TSV.
+
+    Parameters
+    ----------
+    records : list of GeometryData
+        Source records.
+    sampling : float or None
+        Sampling override; ``None`` uses each record's own.
+
+    Returns
+    -------
+    dict
+        Stacked ``points`` / ``quaternions`` / ``entities``, per-record
+        ``pixel_sizes``, and merged ``vertex_properties``.
+    """
+    from .records import VertexPropertyContainer
+
+    points_out, quats_out, entities_out, pixel_sizes = [], [], [], []
+    for i, rec in enumerate(records):
+        rec_sampling = sampling if sampling is not None else rec.sampling
+        pixel_sizes.append(float(np.mean(rec_sampling)))
+
+        pts = np.divide(rec.vertices, rec_sampling)
+        points_out.append(pts)
+        quats_out.append(_ensure_quaternions(rec))
+        entities_out.append(np.full(pts.shape[0], fill_value=i))
+
+    return {
+        "points": np.concatenate(points_out) if points_out else np.empty((0, 3)),
+        "quaternions": (np.concatenate(quats_out) if quats_out else np.empty((0, 4))),
+        "entities": (
+            np.concatenate(entities_out) if entities_out else np.empty((0,), dtype=int)
+        ),
+        "pixel_sizes": pixel_sizes,
+        "vertex_properties": VertexPropertyContainer.merge(
+            [r.vertex_properties for r in records if r.vertex_properties is not None]
+        ),
+    }
+
+
+def _ensure_quaternions(rec):
+    """Return ``rec.quaternions``, synthesizing from normals when absent.
+
+    Parameters
+    ----------
+    rec : GeometryData
+        Source record.
+
+    Returns
+    -------
+    np.ndarray
+        Quaternion array, scalar-first.
+    """
+    from ..utils import normals_to_rot, NORMAL_REFERENCE
+
+    if rec.quaternions is not None:
+        return rec.quaternions
+    normals = rec.normals
+    if normals is None:
+        normals = np.full_like(rec.vertices, fill_value=NORMAL_REFERENCE)
+    return normals_to_rot(normals, scalar_first=True)
+
+
+def _write_orientations(
+    points,
+    quaternions,
+    entities,
+    path,
+    file_format,
+    *,
+    vertex_properties=None,
+    **kwargs,
+):
+    """Convert oriented points to ZYZ Eulers and write via ``tme.Orientations``.
+
+    Parameters
+    ----------
+    points : np.ndarray
+        Point coordinates.
+    quaternions : np.ndarray
+        Scalar-first quaternions.
+    entities : np.ndarray
+        Per-point integer label written to the ``details`` column.
+    path : str
+        Output path.
+    file_format : str
+        ``"star"`` or ``"tsv"``.
+    vertex_properties : VertexPropertyContainer, optional
+        Per-point properties to attach as ``Orientations.metadata``
+        (pytme >= 0.3.4). Silently dropped on older pytme.
+    **kwargs
+        Forwarded to ``Orientations.to_file``.
+    """
+    from tme import Orientations
+    from ..utils import quat_to_euler
+
+    # scipy.spatial.transform.Rotation threading breaks pipelines
+    rotations = quat_to_euler(quaternions, degrees=True, inv_quat=True)
+    common = dict(
+        translations=points,
+        rotations=rotations,
+        scores=np.zeros(rotations.shape[0]),
+        details=entities,
+    )
+
+    metadata = {}
+    if vertex_properties is not None:
+        metadata = {
+            name: vertex_properties.get_property(name)
+            for name in vertex_properties.properties
+        }
+    try:
+        orientations = Orientations(**common, metadata=metadata)
+    except TypeError:
+        orientations = Orientations(**common)
+    orientations.to_file(path, file_format=file_format, **kwargs)
 
 
 def write_topology_file(file_path: str, data: Dict, tsi_format: bool = False) -> None:
@@ -168,6 +220,219 @@ def write_topology_file(file_path: str, data: Dict, tsi_format: bool = False) ->
         ofile.write(inclusion_string)
 
 
+def write_star(records, path, sampling, shape=None, relion_5_format=False, **_):
+    """Write records to a STAR file.
+
+    Parameters
+    ----------
+    records : list of GeometryData
+        Records to write.
+    path : str
+        Output path.
+    sampling : float, optional
+        Sampling override, None defaults to value associated with each record.
+    shape : tuple of int, optional
+        Tomogram shape; required when ``relion_5_format`` is True.
+    relion_5_format : bool, optional
+        Write origin-centered RELION-5 coordinates.
+    """
+    if relion_5_format and shape is None:
+        raise ValueError("relion_5_format requires shape to be set.")
+
+    prepared = _prepare_oriented_points(records, 1 if relion_5_format else sampling)
+    points = prepared["points"]
+
+    orientation_kwargs = {}
+    if relion_5_format:
+        points = points - np.multiply(np.divide(shape, 2).astype(int), sampling)
+        orientation_kwargs["version"] = "# version 50001"
+
+    _write_orientations(
+        points,
+        prepared["quaternions"],
+        prepared["entities"],
+        path,
+        file_format="star",
+        vertex_properties=prepared["vertex_properties"],
+        **orientation_kwargs,
+    )
+
+    if not relion_5_format:
+        write_star_header(path, sampling)
+
+
+def write_tsv(records, path, sampling, **_):
+    """Write records to a tab-separated orientation file.
+
+    Parameters
+    ----------
+    records : list of GeometryData
+        Records to write.
+    path : str
+        Output path.
+    sampling : float, optional
+        Sampling override, None defaults to value associated with each record.
+    """
+    prepared = _prepare_oriented_points(records, sampling)
+    _write_orientations(
+        prepared["points"],
+        prepared["quaternions"],
+        prepared["entities"],
+        path,
+        file_format="tsv",
+        vertex_properties=prepared["vertex_properties"],
+    )
+
+
+def write_xyz(records, path, sampling, **_):
+    """Write records to a plain ``x,y,z`` CSV file.
+
+    Parameters
+    ----------
+    records : list of GeometryData
+        Records to write.
+    path : str
+        Output path.
+    sampling : float, optional
+        Sampling override, None defaults to value associated with each record.
+    """
+    prepared = _prepare_oriented_points(records, sampling)
+    np.savetxt(path, prepared["points"], delimiter=",", header="x,y,z", comments="")
+
+
+def write_ndjson(records, path, sampling, **_):
+    """Write records as newline-delimited JSON oriented-point records.
+
+    Parameters
+    ----------
+    records : list of GeometryData
+        Records to write. All records flatten into one stream.
+    path : str
+        Output path.
+    sampling : float, optional
+        Sampling override, None defaults to value associated with each record.
+    """
+    from ..utils import _quat_to_matrix
+
+    lines = []
+    for rec in records:
+        pts = np.divide(rec.vertices, sampling)
+        matrices = _quat_to_matrix(_ensure_quaternions(rec))
+        for pt, mat in zip(pts, matrices):
+            lines.append(
+                json.dumps(
+                    {
+                        "type": "orientedPoint",
+                        "location": {
+                            "x": float(pt[0]),
+                            "y": float(pt[1]),
+                            "z": float(pt[2]),
+                        },
+                        "xyz_rotation_matrix": mat.tolist(),
+                    }
+                )
+            )
+
+    with open(path, "w") as f:
+        f.write("\n".join(lines) + "\n")
+
+
+def write_meshes(records, path, **_):
+    """Write fitted mesh models to disk, merging records for single-file output.
+
+    Records without a mesh-bearing model are skipped; if none remain,
+    ``ValueError`` is raised.
+
+    Parameters
+    ----------
+    records : list of GeometryData
+        Source records.
+    path : str
+        Output path.
+    """
+    from ..parametrization import merge
+
+    models = [r.model for r in records if hasattr(r.model, "mesh")]
+    if not models:
+        raise ValueError("No geometries have a fitted mesh model to export.")
+
+    if len(models) == 1:
+        return models[0].to_file(path)
+    merge(models).to_file(path)
+
+
+def write_volume(records, path, *, shape, sampling, **_):
+    """Render records into a single labeled volume at the given sampling.
+
+    Each record paints with its 1-based index as the label value; the
+    dtype is the smallest integer type that fits, or ``float32``.
+
+    Parameters
+    ----------
+    records : list of GeometryData
+        Source records.
+    path : str
+        Output path (e.g. ``.mrc``, ``.em``, ``.h5``).
+    shape : tuple of int
+        Volume dimensions in voxels.
+    sampling : float, optional
+        Sampling override, None defaults to value associated with each record.
+    """
+    from ..utils import points_to_volume
+
+    shape = tuple(int(x) for x in shape)
+
+    max_index = len(records) + 1
+    if max_index < np.iinfo(np.int8).max:
+        dtype = np.int8
+    elif max_index < np.iinfo(np.uint16).max:
+        dtype = np.uint16
+    else:
+        dtype = np.float32
+
+    volume = None
+    for i, rec in enumerate(records):
+        pts = np.divide(rec.vertices, sampling)
+        volume = points_to_volume(
+            pts,
+            sampling_rate=1,
+            shape=shape,
+            weight=i + 1,
+            out=volume,
+            out_dtype=dtype,
+        )
+
+    from tme import Density
+
+    Density(volume, sampling_rate=sampling, origin=0).to_file(path)
+
+
+_FORMAT_MAPPING = {
+    write_star: ("star",),
+    write_tsv: ("tsv",),
+    write_xyz: ("xyz",),
+    write_ndjson: ("ndjson",),
+    write_meshes: ("obj", "stl", "ply", "tsi", "q"),
+    write_volume: ("mrc", "em", "h5"),
+}
+
+
+def resolve_writer(file_format: str):
+    """Return the writer registered for *file_format*.
+
+    Raises
+    ------
+    ValueError
+        If no writer is registered for *file_format*.
+    """
+    for writer, formats in _FORMAT_MAPPING.items():
+        if file_format in formats:
+            return writer
+
+    supported = ", ".join(f"'{x}'" for fmts in _FORMAT_MAPPING.values() for x in fmts)
+    raise ValueError(f"Unsupported format '{file_format}', supported are {supported}.")
+
+
 def write_geometries(
     geometries,
     file_path,
@@ -184,173 +449,46 @@ def write_geometries(
     geometries : list of Geometry
         Geometries to export.
     file_path : str or list of str
-        Output file path. A single string merges all geometries into one
-        file. A list of strings writes one file per geometry and must have
-        the same length as *geometries*.
+        Single string merges all geometries into one file; a list writes
+        one file per geometry and must match ``geometries`` in length.
     format : str
-        Output format: star, tsv, xyz (point clouds),
-        obj, stl, ply (meshes), mrc, em, h5 (volumes).
+        ``star``, ``tsv``, ``xyz``, ``ndjson`` (points);
+        ``obj``, ``stl``, ``ply``, ``tsi``, ``q`` (meshes);
+        ``mrc``, ``em``, ``h5`` (volumes).
     shape : tuple of (int, int, int), optional
-        Tomogram dimensions in voxels. Sets the output grid for volume
-        formats and the coordinate origin (shape / 2) when
-        ``relion_5_format`` is True. Inferred from geometry bounds
-        when not provided.
+        Volume grid for volume formats; origin for RELION-5 centering.
     sampling : float, optional
-        Override sampling rate for coordinate scaling.
+        Sampling override.
     relion_5_format : bool, optional
-        Write origin-centered RELION 5 coordinates. Shifts points by
-        half the tomogram shape so the origin sits at the volume center.
+        Origin-centered RELION-5 STAR output.
     """
-    from ..utils import points_to_volume, normals_to_rot, NORMAL_REFERENCE
-
     if not len(geometries):
         return None
 
-    is_single = isinstance(file_path, str)
-    if not is_single and len(file_path) != len(geometries):
-        raise ValueError(
-            f"file_path list length ({len(file_path)}) must match "
-            f"geometries length ({len(geometries)})"
-        )
-
-    mesh_formats = ("obj", "stl", "ply", "tsi", "q")
-    volume_formats = ("mrc", "em", "h5")
-    point_formats = ("tsv", "star", "xyz", "ndjson")
-
-    file_format = format
+    records = _coerce_records(geometries)
+    if sampling is None:
+        # Mirror geometry.py:565: take the max sampling across records
+        sampling = float(np.max([r.sampling for r in records]))
 
     if shape is None:
-        shape = np.max(
-            [np.divide(x.points.max(axis=0), x.sampling_rate) for x in geometries],
+        bounds = np.max(
+            [np.divide(r.vertices.max(axis=0), sampling) for r in records],
             axis=0,
         )
-        shape = tuple(int(x + 1) for x in shape.astype(int))
+        shape = tuple(int(x + 1) for x in bounds.astype(int))
     else:
         shape = tuple(int(x) for x in shape)
 
-    meshes = []
-    center, orientation_kwargs = 0, {}
-    data = {"points": [], "quaternions": []}
-    pixel_sizes = []
-    for index, geometry in enumerate(geometries):
-        if file_format in mesh_formats:
-            if not hasattr(geometry.model, "mesh"):
-                continue
-            meshes.append(geometry.model)
-            continue
+    kwargs = dict(sampling=sampling, shape=shape, relion_5_format=relion_5_format)
 
-        points, normals, quaternions = geometry.get_point_data()
-        if file_format in point_formats and quaternions is None:
-            # At this point make up the normals
-            if normals is None:
-                normals = np.full_like(points, fill_value=NORMAL_REFERENCE)
-            quaternions = normals_to_rot(normals, scalar_first=True)
+    writer = resolve_writer(format)
+    if isinstance(file_path, str):
+        return writer(records, file_path, **kwargs)
 
-        geom_sampling = sampling if sampling is not None else geometry.sampling_rate
-        pixel_sizes.append(float(np.mean(geom_sampling)))
-        if relion_5_format:
-            center = np.divide(shape, 2).astype(int) if shape is not None else 0
-            center = np.multiply(center, geom_sampling)
-            orientation_kwargs["version"] = "# version 50001"
-            geom_sampling = 1
-
-        points = np.subtract(np.divide(points, geom_sampling), center)
-        data["points"].append(points)
-        data["quaternions"].append(quaternions)
-
-    if file_format in mesh_formats:
-        if not meshes:
-            raise ValueError("No geometries have a fitted mesh model to export.")
-        if is_single:
-            if len(meshes) == 1:
-                meshes[0].to_file(file_path)
-            else:
-                from ..parametrization import merge
-
-                merge(meshes).to_file(file_path)
-        else:
-            for index, mesh in enumerate(meshes):
-                mesh.to_file(file_path[index])
-
-        return None
-
-    if file_format in volume_formats:
-        # Try saving some memory on write. uint8 would be padded to 16 hence int8
-        dtype = np.float32
-        max_index = len(data["points"]) + 1
-        if max_index < np.iinfo(np.int8).max:
-            dtype = np.int8
-        elif max_index < np.iinfo(np.uint16).max:
-            dtype = np.uint16
-
-        volume, index = None, 0
-        for file_index, points in enumerate(data["points"]):
-            index += 1
-            volume = points_to_volume(
-                points,
-                sampling_rate=1,
-                shape=shape,
-                weight=index,
-                out=volume,
-                out_dtype=dtype,
-            )
-            if not is_single:
-                write_density(
-                    volume,
-                    filename=file_path[file_index],
-                    sampling_rate=geom_sampling,
-                )
-                volume, index = None, 0
-
-        if is_single:
-            write_density(volume, filename=file_path, sampling_rate=geom_sampling)
-
-        return None
-
-    if file_format not in point_formats:
-        return None
-
-    data["entities"] = [
-        np.full(x.shape[0], fill_value=i) for i, x in enumerate(data["points"])
-    ]
-    if is_single:
-        data = {k: [np.concatenate(v)] for k, v in data.items()}
-        pixel_sizes = pixel_sizes[:1]
-
-    if file_format == "ndjson":
-        from ..utils import _quat_to_matrix
-
-        for index in range(len(data["points"])):
-            points = data["points"][index]
-            quats = data["quaternions"][index]
-            fname = file_path if is_single else file_path[index]
-            matrices = _quat_to_matrix(quats)
-            lines = []
-            for pt, mat in zip(points, matrices):
-                record = {
-                    "type": "orientedPoint",
-                    "location": {
-                        "x": float(pt[0]),
-                        "y": float(pt[1]),
-                        "z": float(pt[2]),
-                    },
-                    "xyz_rotation_matrix": mat.tolist(),
-                }
-                lines.append(json.dumps(record))
-            with open(fname, "w") as f:
-                f.write("\n".join(lines) + "\n")
-        return None
-
-    if file_format == "xyz":
-        for index, points in enumerate(data["points"]):
-            fname = file_path if is_single else file_path[index]
-            csv_header = ",".join(["x", "y", "z"])
-            np.savetxt(fname, points, delimiter=",", header=csv_header, comments="")
-        return 1
-
-    for index in range(len(data["points"])):
-        orientations = OrientationsWriter(**{k: v[index] for k, v in data.items()})
-        fname = file_path if is_single else file_path[index]
-        orientations.to_file(fname, file_format=file_format, **orientation_kwargs)
-        if file_format == "star":
-            write_star_header(fname, pixel_sizes[index])
+    if len(file_path) != len(records):
+        raise ValueError(
+            f"file_path list length ({len(file_path)}) must match "
+            f"geometries length ({len(records)})"
+        )
+    for record, path in zip(records, file_path):
+        writer([record], path, **kwargs)

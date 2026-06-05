@@ -5,8 +5,7 @@ _module_map = {
         "open_file",
     ],
     ".writer": [
-        "OrientationsWriter",
-        "write_density",
+        "write_geometries",
     ],
     ".session": [
         "is_session_file",
@@ -16,10 +15,13 @@ _module_map = {
         "read_session_section",
         "write_session",
     ],
-    ".parser": [
+    ".records": [
+        "GeometryData",
         "GeometryDataContainer",
         "VertexPropertyContainer",
         "NotASegmentationError",
+    ],
+    ".parser": [
         "read_ndjson",
         "read_volume",
         "load_density",
