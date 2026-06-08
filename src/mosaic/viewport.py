@@ -11,7 +11,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import vtk
 import numpy as np
-from qtpy.QtCore import Qt, QObject, QEvent, Signal
+from qtpy.QtCore import Qt, QObject, QEvent, QTimer, Signal
 
 __all__ = ["ViewportInteractor"]
 
@@ -30,12 +30,15 @@ class ViewportInteractor(QObject):
         self.rendered_actors = set()
         self._interaction_mode = None
         self.point_picker = vtk.vtkWorldPointPicker()
+        self._last_lod_budget = None
 
         for pane in self.panes:
             pane.attach_viewport(self)
+            pane.data_changed.connect(self.refresh_lod)
 
         self.attach_area_picker()
         self.vtk_widget.installEventFilter(self)
+        self._setup_interaction_lod()
 
     def set_target(self, pane):
         """Set the active interaction target and return all panes to viewing."""
@@ -179,13 +182,78 @@ class ViewportInteractor(QObject):
             target.point_selection[uuid] = union.astype(np.int32, copy=False)
         target.highlight_selected_points(color=None)
 
+    def refresh_lod(self, force: bool = False):
+        """Recompute interaction-LOD budgets across all panes.
+
+        Returns
+        -------
+        bool
+            True when LOD actors were created or destroyed (caller
+            should expect the renderer to have re-synced).
+        """
+        from . import lod
+
+        budget = lod.get_point_budget()
+        force = force or (budget != self._last_lod_budget)
+        self._last_lod_budget = budget
+
+        geometries = [g for pane in self.panes for g in pane.container.data]
+        budgets = lod.compute_scene_lod(geometries, budget)
+
+        changed = False
+        for g in geometries:
+            per_geom = budgets.get(g.uuid)
+            if per_geom is not None:
+                if force or getattr(g, "_lod_indices", None) is None:
+                    g.setup_lod(per_geom)
+                    changed = True
+            elif getattr(g, "_lod_actor", None) is not None:
+                g.setup_lod(lod.LOD_DISABLED)
+                changed = True
+
+        if changed:
+            self.render()
+        return changed
+
+    def _setup_interaction_lod(self):
+        """Register VTK interaction observers for point-budget LOD."""
+        self._lod_restore_timer = QTimer(self.vtk_widget)
+        self._lod_restore_timer.setSingleShot(True)
+        self._lod_restore_timer.setInterval(50)
+        self._lod_restore_timer.timeout.connect(self._restore_full_data)
+
+        if (interactor := self.vtk_widget.GetRenderWindow().GetInteractor()) is None:
+            return None
+
+        interactor.AddObserver("StartInteractionEvent", self._on_interaction_start)
+        interactor.AddObserver("EndInteractionEvent", self._on_interaction_end)
+
+    def _on_interaction_start(self, obj, event):
+        self._lod_restore_timer.stop()
+        for pane in self.panes:
+            for geom in pane.container.data:
+                geom.begin_interaction()
+
+    def _on_interaction_end(self, obj, event):
+        self._lod_restore_timer.start()
+
+    def _restore_full_data(self):
+        for pane in self.panes:
+            for geom in pane.container.data:
+                geom.end_interaction()
+        self.vtk_widget.GetRenderWindow().Render()
+
     def render(self, defer_render: bool = False):
         """Synchronize VTK actors and pane tree widgets, then render."""
         renderer = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
         current_actors = set()
         for pane in self.panes:
-            current_actors.update(pane.container.get_actors(include_lod=True))
+            for geom in pane.container.data:
+                current_actors.add(geom.actor)
+                lod_actor = getattr(geom, "_lod_actor", None)
+                if lod_actor is not None:
+                    current_actors.add(lod_actor)
 
         actors_to_remove = self.rendered_actors - current_actors
         for actor in actors_to_remove:

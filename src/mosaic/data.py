@@ -39,9 +39,6 @@ class MosaicData:
 
         self.viewport = ViewportInteractor(vtk_widget, [self.data, self.models])
 
-        self._last_lod_budget = None
-        self._setup_interaction_lod(vtk_widget)
-
     def open_file(
         self, filename, offset=0, scale=1, sampling_rate=1, segmentation=False
     ):
@@ -160,64 +157,15 @@ class MosaicData:
 
     def reset(self):
         """Reset the state of the class instance."""
-        self._lod_restore_timer.stop()
+        self.viewport._lod_restore_timer.stop()
         self.shape = None
 
         self.data.clear()
         self.models.clear()
 
-    def _setup_interaction_lod(self, vtk_widget):
-        """Register VTK interaction observers for point-budget LOD."""
-        from qtpy.QtCore import QTimer
-
-        self._vtk_widget = vtk_widget
-        self._lod_restore_timer = QTimer(vtk_widget)
-        self._lod_restore_timer.setSingleShot(True)
-        self._lod_restore_timer.setInterval(50)
-        self._lod_restore_timer.timeout.connect(self._restore_full_data)
-
-        if (interactor := vtk_widget.GetRenderWindow().GetInteractor()) is None:
-            return None
-
-        interactor.AddObserver("StartInteractionEvent", self._on_interaction_start)
-        interactor.AddObserver("EndInteractionEvent", self._on_interaction_end)
-
-    def _on_interaction_start(self, obj, event):
-        self._lod_restore_timer.stop()
-        for geom in self.data.container.data:
-            geom.begin_interaction()
-        for geom in self.models.container.data:
-            geom.begin_interaction()
-
-    def _on_interaction_end(self, obj, event):
-        self._lod_restore_timer.start()
-
-    def _restore_full_data(self):
-        for geom in self.data.container.data:
-            geom.end_interaction()
-        for geom in self.models.container.data:
-            geom.end_interaction()
-        self._vtk_widget.GetRenderWindow().Render()
-
     def refresh_lod(self):
-        """Recompute interaction-LOD budgets from current settings.
-
-        Returns
-        -------
-        bool
-            True when any LOD actors changed (renderer sync needed).
-        """
-        from . import lod
-
-        budget = lod.get_point_budget()
-        force = budget != self._last_lod_budget
-        self._last_lod_budget = budget
-
-        changed = self.data.container.refresh_lod(budget=budget, force=force)
-        changed |= self.models.container.refresh_lod(budget=budget, force=force)
-        if changed:
-            self.viewport.render()
-        return changed
+        """Shortcut for :meth:`ViewportInteractor.refresh_lod`."""
+        return self.viewport.refresh_lod()
 
     def format_datalist(
         self, type="data", mesh_only: bool = False, selected: bool = False

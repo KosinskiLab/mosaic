@@ -135,12 +135,6 @@ def _write_orientations(
 
     # scipy.spatial.transform.Rotation threading breaks pipelines
     rotations = quat_to_euler(quaternions, degrees=True, inv_quat=True)
-    common = dict(
-        translations=points,
-        rotations=rotations,
-        scores=np.zeros(rotations.shape[0]),
-        details=entities,
-    )
 
     metadata = {}
     if vertex_properties is not None:
@@ -148,10 +142,15 @@ def _write_orientations(
             name: vertex_properties.get_property(name)
             for name in vertex_properties.properties
         }
+        metadata["_rlnClassNumber"] = entities
+
+    common = {"translations": points, "rotations": rotations}
     try:
         orientations = Orientations(**common, metadata=metadata)
     except TypeError:
-        orientations = Orientations(**common)
+        orientations = Orientations(
+            **common, scores=np.zeros(rotations.shape[0]), details=entities
+        )
     orientations.to_file(path, file_format=file_format, **kwargs)
 
 

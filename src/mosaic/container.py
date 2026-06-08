@@ -35,65 +35,9 @@ class DataContainer:
     def __len__(self):
         return len(self.data)
 
-    def get_actors(self, include_lod=False):
-        """Get VTK actors from all geometries.
-
-        Parameters
-        ----------
-        include_lod : bool, optional
-            Include interaction-LOD shadow actors. Only the renderer
-            should set this to True; index-based lookups rely on the
-            default 1:1 correspondence with :pyattr:`data`.
-
-        Returns
-        -------
-        list
-            List of VTK actors.
-        """
-        if not include_lod:
-            return [x.actor for x in self.data]
-        actors = []
-        for x in self.data:
-            actors.append(x.actor)
-            lod = getattr(x, "_lod_actor", None)
-            if lod is not None:
-                actors.append(lod)
-        return actors
-
-    def refresh_lod(self, budget=None, force=False):
-        """Recompute LOD for all geometries based on aggregate scene budget.
-
-        Parameters
-        ----------
-        budget : int, optional
-            Total scene point budget.  Reads from application settings
-            when *None*.
-
-        Returns
-        -------
-        bool
-            True when LOD actors were created or destroyed (caller
-            should sync the renderer).
-        """
-        from . import lod
-
-        if budget is None:
-            budget = lod.get_point_budget()
-
-        budgets = lod.compute_scene_lod(self.data, budget)
-        changed = False
-
-        for g in self.data:
-            per_geom = budgets.get(g.uuid)
-            if per_geom is not None:
-                if force or getattr(g, "_lod_indices", None) is None:
-                    g.setup_lod(per_geom)
-                    changed = True
-            elif getattr(g, "_lod_actor", None) is not None:
-                g.setup_lod(lod.LOD_DISABLED)
-                changed = True
-
-        return changed
+    def get_actors(self):
+        """Get VTK actors from all geometries."""
+        return [x.actor for x in self.data]
 
     def add(self, points=None, color=None, **kwargs):
         """Add a new geometry object to the container.
@@ -126,7 +70,6 @@ class DataContainer:
             geometry._appearance.setdefault("highlight_color", self.highlight_color)
 
         self.data.append(geometry)
-        self.refresh_lod()
         return len(self.data) - 1
 
     def remove(self, uuids_or_geometries: Union[List[str], List["Geometry"]]):
@@ -143,8 +86,6 @@ class DataContainer:
         # Reverse order to avoid potential shift issue
         for index in sorted(indices, reverse=True):
             self.data.pop(index)
-
-        self.refresh_lod()
 
     def clear(self):
         """Remove all data associated with the container."""
@@ -202,7 +143,6 @@ class DataContainer:
             new_geometry.uuid = uuid
 
         self.data[index] = new_geometry
-        self.refresh_lod()
         return True
 
     def highlight_points(self, uuid_or_geometry, point_ids: set, color: Tuple[float]):
@@ -277,10 +217,12 @@ class DataContainer:
             scales = set([x._meta.get("volume_scale") for x in rel_geoms])
 
             # We are dealing with a VolumeGeometry for which we might have
-            # to update the volume to account for scale changes
+            # to update the volume to account for scale changes. An explicit
+            # reattach request bypasses the no-op short-circuit so the user
+            # can force an isosurface recompute even when nothing changed.
             same_volume = len(paths) == 1 and volume_path in paths
             same_scale = len(scales) == 1 and scale in scales
-            if same_volume and same_scale:
+            if same_volume and same_scale and not parameters.get("reattach_volume"):
                 volume_path = None
 
             # We are dealing with a reattach, where a Geometry instance has volume_path
