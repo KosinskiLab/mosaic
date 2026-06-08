@@ -1654,6 +1654,8 @@ class SegmentationGeometry(Geometry):
         meta=None,
         volume=None,
         volume_origin=None,
+        vertex_properties=None,
+        model=None,
         **kwargs,
     ):
         self.uuid = str(uuid4())
@@ -1661,6 +1663,8 @@ class SegmentationGeometry(Geometry):
             points=points,
             sampling_rate=sampling_rate,
             meta=meta,
+            vertex_properties=vertex_properties,
+            model=model,
         )
         self._representation = "segmentation"
         self._lod_actor = None
@@ -2108,10 +2112,13 @@ class SegmentationGeometry(Geometry):
         idx = idx[idx < n_points]
 
         new_points = self._geometry_data.points[idx]
+        vprops = self._geometry_data.vertex_properties
+        new_vprops = vprops[idx] if vprops is not None else None
 
         if copy:
             state = self.__getstate__()
             state["points"] = new_points
+            state["vertex_properties"] = new_vprops
             state.pop("uuid", None)
             ret = self.__class__.__new__(self.__class__)
             ret.__setstate__(state)
@@ -2120,6 +2127,8 @@ class SegmentationGeometry(Geometry):
         # In-place: remap vertex mapping and optionally rebuild
         n_old = n_points
         self._geometry_data.points = new_points
+        if new_vprops is not None:
+            self._geometry_data.vertex_properties = new_vprops
 
         if new_points.shape[0] == 0:
             self._volume_shape = (1, 1, 1)
@@ -2220,6 +2229,8 @@ class SegmentationGeometry(Geometry):
             "points": self._geometry_data.points,
             "sampling_rate": self.sampling_rate,
             "meta": self._meta,
+            "vertex_properties": self.vertex_properties,
+            "model": self.model,
         } | {
             "visible": self.visible,
             "appearance": self._appearance,

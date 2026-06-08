@@ -22,6 +22,38 @@ from .widgets.container_list import StyledTreeWidgetItem
 __all__ = ["DataContainerInteractor"]
 
 
+_VOLUME_GEOMETRY_KEYS = (
+    "volume",
+    "volume_sampling_rate",
+    "lower_quantile",
+    "upper_quantile",
+    "target_resolution",
+)
+
+
+def _convert_geometry(geometry, target_cls):
+    """Rebuild *geometry* as an instance of *target_cls* preserving shared state.
+
+    Why: VTK subclasses (Volume/Segmentation) own type-specific attributes that
+    do not survive a hand-rolled field copy. Round-tripping through __getstate__
+    keeps vertex_properties, model, and meta intact across representation swaps.
+    """
+    from .geometry import VolumeGeometry
+
+    state = geometry.__getstate__()
+    appearance = state.pop("appearance", {})
+    for key in ("visible", "representation", "uuid"):
+        state.pop(key, None)
+    if target_cls is not VolumeGeometry:
+        for key in _VOLUME_GEOMETRY_KEYS:
+            state.pop(key, None)
+    state["color"] = appearance.get("base_color", (0.7, 0.7, 0.7))
+
+    new_geom = target_cls(**state)
+    new_geom._appearance.update(appearance)
+    return new_geom
+
+
 class DataContainerInteractor(QObject):
     """Handle interaction between GUI and DataContainer"""
 
@@ -597,38 +629,19 @@ class DataContainerInteractor(QObject):
                 if isinstance(geometry, SegmentationGeometry):
                     continue
 
-                seg = SegmentationGeometry(
-                    points=geometry.points,
-                    sampling_rate=geometry.sampling_rate,
-                    color=geometry._appearance.get("base_color", (0.7, 0.7, 0.7)),
-                    meta=geometry._meta,
-                )
+                seg = _convert_geometry(geometry, SegmentationGeometry)
                 self.container.update(geometry.uuid, seg)
                 continue
 
             if isinstance(geometry, SegmentationGeometry):
-                new_geom = Geometry(
-                    points=geometry.points,
-                    sampling_rate=geometry.sampling_rate,
-                    color=geometry._appearance.get("base_color", (0.7, 0.7, 0.7)),
-                    meta=geometry._meta,
-                )
-                new_geom._appearance.update(geometry._appearance)
+                new_geom = _convert_geometry(geometry, Geometry)
                 self.container.update(geometry.uuid, new_geom)
                 geometry = self.container.get(geometry.uuid)
 
             # Its less of a headache to handle this here, because normals and basis
             # representation rely on similar glyph rendering mechanisms as the volume
             elif isinstance(geometry, VolumeGeometry) and representation != "volume":
-                new_geom = Geometry(
-                    points=geometry.points,
-                    normals=geometry.normals,
-                    quaternions=geometry.quaternions,
-                    sampling_rate=geometry.sampling_rate,
-                    color=geometry._appearance.get("base_color", (0.7, 0.7, 0.7)),
-                    meta=geometry._meta,
-                )
-                new_geom._appearance.update(geometry._appearance)
+                new_geom = _convert_geometry(geometry, Geometry)
                 self.container.update(geometry.uuid, new_geom)
                 geometry = self.container.get(geometry.uuid)
 

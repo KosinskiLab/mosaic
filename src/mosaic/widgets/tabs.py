@@ -151,6 +151,12 @@ class TabBar(QWidget):
         self._anim.setEndValue(target)
         self._anim.start()
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        btn = self._button_group.checkedButton()
+        if btn is not None:
+            QTimer.singleShot(0, lambda: self._snap_indicator(btn))
+
     def _apply_button_style(self, btn):
         btn.setStyleSheet(
             f"""
