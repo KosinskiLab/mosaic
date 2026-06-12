@@ -720,11 +720,22 @@ class BackgroundTaskManager(QObject):
 
                 self.task_completed.emit(task_id, task_name, result)
 
-                if task_info["callback"]:
-                    task_info["callback"](result)
-
                 if warnings_msg is not None:
                     self.task_warning.emit(task_id, task_name, warnings_msg)
+
+                if task_info["callback"]:
+                    try:
+                        task_info["callback"](result)
+                    except Exception as cb_exc:
+                        import traceback
+
+                        traceback.print_exc()
+                        self.task_warning.emit(
+                            task_id, task_name, f"Callback raised: {cb_exc}"
+                        )
+
+            except concurrent.futures.CancelledError:
+                task_info["status"] = "cancelled"
 
             except concurrent.futures.process.BrokenProcessPool as e:
                 error_msg = f"Worker process died unexpectedly: {str(e)}"
@@ -800,7 +811,7 @@ class BackgroundTaskManager(QObject):
 
         cancelled = future.cancel()
         if cancelled and task_id in self.task_info:
-            self.task_info[task_id]["status"] = "failed"
+            self.task_info[task_id]["status"] = "cancelled"
 
         return cancelled
 
@@ -816,7 +827,7 @@ class BackgroundTaskManager(QObject):
         removed = []
         for task_id in list(self.task_info.keys()):
             status = self.task_info[task_id].get("status")
-            if status in ("completed", "failed"):
+            if status in ("completed", "failed", "cancelled"):
                 self.task_info.pop(task_id, None)
                 removed.append(task_id)
         return removed

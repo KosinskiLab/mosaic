@@ -369,6 +369,7 @@ class Geometry:
         self._lod_data = None
         self._lod_indices = None
         self._lod_active = False
+        self._intent_visible = True
 
         self._actor = self._create_actor(vtk_actor)
         self._appearance = {
@@ -545,18 +546,29 @@ class Geometry:
             "models": [],
         }
 
+        all_have_normals = True
+        all_have_quaternions = True
         for geometry in geometries:
             _points, _normals, _quaternions = geometry.get_point_data()
 
             data["points"].append(_points)
-            if _normals is not None:
+            if _normals is None:
+                all_have_normals = False
+            else:
                 data["normals"].append(_normals)
 
-            if _quaternions is not None:
+            if _quaternions is None:
+                all_have_quaternions = False
+            else:
                 data["quaternions"].append(_quaternions)
 
             if (model := geometry.model) is not None:
                 data["models"].append(model)
+
+        if not all_have_normals:
+            data["normals"] = []
+        if not all_have_quaternions:
+            data["quaternions"] = []
 
         # Merging Geometries with different sampling rate is an underdetermined
         # problem without user intervention. Computing the maximum of geometries
@@ -585,12 +597,18 @@ class Geometry:
             _ = appearance.pop("volume_path", None)
             _ = appearance.pop("isovalue_percentile", None)
 
+        from .formats.parser import VertexPropertyContainer
+
         state = {
             "sampling_rate": sampling_rate,
             "visible": any(x.visible for x in geometries),
             "representation": representation,
             "appearance": appearance,
             "model": model,
+            "meta": geometries[0]._meta.copy(),
+            "vertex_properties": VertexPropertyContainer.merge(
+                [g.vertex_properties for g in geometries]
+            ),
         }
 
         state |= {
@@ -622,9 +640,10 @@ class Geometry:
         Returns
         -------
         bool
-            True if geometry is visible, False otherwise.
+            User-intent visibility, independent of transient render
+            states like LOD substitution during interaction.
         """
-        return self.actor.GetVisibility()
+        return self._intent_visible
 
     @property
     def points(self):
@@ -763,7 +782,11 @@ class Geometry:
         visibility : bool, optional
             Whether geometry should be visible, by default True.
         """
-        return self.actor.SetVisibility(visibility)
+        self._intent_visible = bool(visibility)
+        if self._lod_active and self._lod_actor is not None:
+            self._lod_actor.SetVisibility(self._intent_visible)
+        else:
+            self._actor.SetVisibility(self._intent_visible)
 
     def set_appearance(
         self,
@@ -960,8 +983,7 @@ class Geometry:
         """Hide main actor and show the LOD actor for fast interaction."""
         if self._lod_actor is None or self._lod_active:
             return
-        self._pre_lod_visible = self._actor.GetVisibility()
-        if not self._pre_lod_visible:
+        if not self._intent_visible:
             return
         self._sync_lod_arrays()
         self._sync_lod_mapper()
@@ -974,7 +996,7 @@ class Geometry:
         if not self._lod_active:
             return
         self._lod_active = False
-        self._actor.SetVisibility(self._pre_lod_visible)
+        self._actor.SetVisibility(self._intent_visible)
         self._lod_actor.SetVisibility(False)
 
     def get_number_of_points(self):

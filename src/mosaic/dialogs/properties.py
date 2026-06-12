@@ -586,13 +586,14 @@ class GeometryPropertiesDialog(QDialog):
             ("_sampling_y", self.sampling_y),
             ("_sampling_z", self.sampling_z),
         ]
-        if all(not self._widget_is_indeterminate(w) for _, w in axes) and any(
-            k in self._touched or k in self._initially_unanimous for k, _ in axes
-        ):
-            out["sampling_rate"] = (
-                float(get_widget_value(self.sampling_x)),
-                float(get_widget_value(self.sampling_y)),
-                float(get_widget_value(self.sampling_z)),
+        sampling_values = [get_widget_value(w) for _, w in axes]
+        if (
+            all(not self._widget_is_indeterminate(w) for _, w in axes)
+            and all(v is not None for v in sampling_values)
+            and any(
+                k in self._touched or k in self._initially_unanimous for k, _ in axes
             )
+        ):
+            out["sampling_rate"] = tuple(float(v) for v in sampling_values)
 
         return out

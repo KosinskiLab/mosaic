@@ -74,8 +74,10 @@ def read_star_header(filename: str) -> dict:
     Returns
     -------
     dict
-        Keys ``pixel_size`` (float or None) and ``centered`` (bool).
-        Empty on parse failure.
+        Keys ``pixel_size`` (float or None), ``centered`` (bool), and
+        ``shape`` (tuple of int or None, in voxels, taken from the first
+        particle's ``_rlnTomoSizeX/Y/Z`` columns when present). Empty on
+        parse failure.
     """
     try:
         from tme.parser import StarParser
@@ -90,7 +92,11 @@ def read_star_header(filename: str) -> dict:
             pixel_size = float(px[0])
 
         centered = "_rlnCenteredCoordinateXAngst" in particles
-        return {"pixel_size": pixel_size, "centered": centered}
+        shape = None
+        size_keys = ("_rlnTomoSizeX", "_rlnTomoSizeY", "_rlnTomoSizeZ")
+        if all(k in particles for k in size_keys):
+            shape = tuple(int(particles[k][0]) for k in size_keys)
+        return {"pixel_size": pixel_size, "centered": centered, "shape": shape}
     except Exception:
         return {}
 

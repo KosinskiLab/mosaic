@@ -217,6 +217,25 @@ class BoundingBoxManager:
         self.object_box_actors = []
         self.dataset_box_actor = None
         self.session_box_actor = None
+        self.cdata.data.data_changed.connect(self._refresh_global_boxes)
+        self.cdata.models.data_changed.connect(self._refresh_global_boxes)
+
+    def _refresh_global_boxes(self):
+        """Rebuild dataset/session bounding boxes if currently shown."""
+        rebuild = False
+        if self.dataset_box_actor is not None:
+            self.renderer.RemoveActor(self.dataset_box_actor)
+            self.dataset_box_actor = None
+            self._create_dataset_bounds()
+            rebuild = True
+        if self.session_box_actor is not None:
+            self.renderer.RemoveActor(self.session_box_actor)
+            self.session_box_actor = None
+            if self.cdata.physical_shape is not None:
+                self._create_session_bounds()
+            rebuild = True
+        if rebuild:
+            self.renderer.GetRenderWindow().Render()
 
     def show_all_object_boxes(self):
         """Show bounding boxes for all visible objects"""

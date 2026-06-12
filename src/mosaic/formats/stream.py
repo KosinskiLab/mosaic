@@ -66,7 +66,8 @@ class ZarrPyramid:
 
             if cache_key not in self._cache:
                 if self._on_chunk_ready is None:
-                    self._fetch_chunk(level, ck)
+                    fetched = self._fetch_chunk_data(level, ck)
+                    self._install_chunk(fetched)
                 else:
                     missing.append(ck)
                     if cache_key not in self._pending:
@@ -75,8 +76,8 @@ class ZarrPyramid:
                         self._pending.add(cache_key)
                         submit_io_task(
                             "Fetch zarr chunk",
-                            self._fetch_chunk,
-                            self._on_chunk_ready,
+                            self._fetch_chunk_data,
+                            self._on_chunk_fetched,
                             level,
                             ck,
                         )
@@ -209,18 +210,29 @@ class ZarrPyramid:
             _, evicted = self._cache.popitem(last=False)
             self._cache_used -= evicted.nbytes
 
-    def _fetch_chunk(self, level, chunk_key):
+    def _fetch_chunk_data(self, level, chunk_key):
+        """Worker-thread: read the chunk; no shared-state mutation."""
         cache_key = (level, *chunk_key)
         try:
             zs, ys, xs = self._chunk_slices(level, *chunk_key)
             arr = self._levels[level]["array"]
             slab = arr[zs, ys, xs]
-            self._put_cache(cache_key, np.ascontiguousarray(slab, dtype=np.float32))
+            return cache_key, np.ascontiguousarray(slab, dtype=np.float32)
         except Exception:
-            pass
-        finally:
-            # Its probably best to just retry
-            self._pending.discard(cache_key)
+            return cache_key, None
+
+    def _install_chunk(self, fetched):
+        """GUI-thread: install the fetched chunk into the cache."""
+        cache_key, data = fetched
+        self._pending.discard(cache_key)
+        if data is not None:
+            self._put_cache(cache_key, data)
+
+    def _on_chunk_fetched(self, fetched):
+        """GUI-thread callback for an IO-pool fetch."""
+        self._install_chunk(fetched)
+        if self._on_chunk_ready is not None:
+            self._on_chunk_ready()
 
 
 class ZarrImageSource(VTKPythonAlgorithmBase):

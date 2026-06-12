@@ -500,9 +500,7 @@ class Cylinder(Parametrization):
 
         projected_heights = np.dot(positions - center, direction)
         height = np.max(projected_heights) - np.min(projected_heights)
-        v1 = np.array([1, 0, 0])
-        if not np.allclose(direction, [1, 0, 0]):
-            v1 = np.array([0, 1, 0])
+        v1 = np.eye(3)[int(np.argmin(np.abs(direction)))]
         v1 = v1 - np.dot(v1, direction) * direction
         v1 = v1 / np.linalg.norm(v1)
         v2 = np.cross(direction, v1)
@@ -633,8 +631,8 @@ class RBF(Parametrization):
     ) -> "RBF":
         """Fit a radial basis function interpolant to a point cloud.
 
-        The input is downsampled before fitting. The RBF maps two
-        coordinate axes to the third, controlled by ``direction``.
+        The RBF maps two coordinate axes to the third, controlled by
+        ``direction``.
 
         Parameters
         ----------
@@ -654,9 +652,6 @@ class RBF(Parametrization):
         RBF
             Fitted RBF parametrization.
         """
-        n_positions = positions.shape[0] // 50
-        positions = positions[::n_positions]
-
         swap = (2, 1, 0)
         if direction == "yz":
             swap = (0, 2, 1)
@@ -716,7 +711,7 @@ class RBF(Parametrization):
 
     def points_per_sampling(self, sampling_density: float, normal_offset=None) -> int:
         (xmin, xmax), (ymin, ymax) = self.grid
-        surface_area = (xmax - xmin) * (ymax - xmin)
+        surface_area = (xmax - xmin) * (ymax - ymin)
 
         n_points = np.ceil(np.divide(surface_area, sampling_density))
         return int(n_points)
@@ -793,6 +788,11 @@ class SplineCurve(Parametrization):
         normals = np.zeros_like(tangents)
         normals[:, 0] = -tangents[:, 1]
         normals[:, 1] = tangents[:, 0]
+        degenerate = np.linalg.norm(normals, axis=1) < 1e-6
+        if degenerate.any():
+            refs = np.eye(3)[np.argmin(np.abs(tangents[degenerate]), axis=1)]
+            t = tangents[degenerate]
+            normals[degenerate] = refs - np.sum(refs * t, axis=1, keepdims=True) * t
         return _normalize(normals)
 
     def points_per_sampling(self, sampling_density: float, normal_offset=None) -> int:
@@ -1296,7 +1296,7 @@ class BallPivoting(TriangularMesh):
             specify multiple radii, e.g. ``(50, 30.5, 10)``.
         max_hole_size : float, optional
             Maximum surface area of holes to triangulate.
-            ``None`` or ``0`` skips hole filling.
+            ``None`` fills all holes, ``0`` skips hole filling.
         target_edge_length : float
             Target edge length for remeshing after hole filling.
             ``-1`` uses the average edge length of the mesh.
@@ -1365,7 +1365,7 @@ class BallPivoting(TriangularMesh):
                 "No vertices for mesh creation. Try increasing ball pivoting radii."
             )
 
-        if not max_hole_size:
+        if max_hole_size == 0:
             return cls(mesh=mesh)
 
         vs = np.asarray(mesh.vertices, dtype=np.float64)
@@ -1557,7 +1557,7 @@ class AlphaShape(TriangularMesh):
 
         positions = np.asarray(positions, dtype=np.float64)
 
-        scale = positions.max()
+        scale = np.abs(positions).max() or 1.0
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(positions.copy() / scale)
         try:

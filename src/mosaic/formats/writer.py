@@ -243,8 +243,15 @@ def write_star(records, path, sampling, shape=None, relion_5_format=False, **_):
 
     orientation_kwargs = {}
     if relion_5_format:
-        points = points - np.multiply(np.divide(shape, 2).astype(int), sampling)
+        shape_arr = np.asarray(shape)
+        points = points - np.multiply(np.divide(shape_arr, 2).astype(int), sampling)
         orientation_kwargs["version"] = "# version 50001"
+
+        n = points.shape[0]
+        vp = prepared["vertex_properties"]
+        vp.set_property("_rlnTomoSizeX", np.full(n, int(shape_arr[0])))
+        vp.set_property("_rlnTomoSizeY", np.full(n, int(shape_arr[1])))
+        vp.set_property("_rlnTomoSizeZ", np.full(n, int(shape_arr[2])))
 
     _write_orientations(
         points,

@@ -4,7 +4,7 @@ from shutil import which
 from pathlib import Path
 from typing import Tuple
 from subprocess import run
-from os.path import splitext, join, basename
+from os.path import splitext, join, basename, exists
 
 import numpy as np
 
@@ -144,14 +144,15 @@ def run_membrainseg(
     if input_sampling_rate is not None:
         cmd.extend(["--in-pixel-size", f"{input_sampling_rate}"])
 
-    ret = run([str(x) for x in cmd])
+    ret = run([str(x) for x in cmd], capture_output=True, text=True)
     out_path = join(
         out_folder, f"{_stem(tomogram_path)}_{_stem(model_path)}.ckpt_segmented.mrc"
     )
 
-    if ret.stderr:
-        print(ret.stdout)
-        print(ret.stderr)
-        out_path = None
+    if ret.returncode != 0 or not exists(out_path):
+        raise RuntimeError(
+            "MemBrain segmentation failed.\n"
+            f"stdout:\n{ret.stdout}\nstderr:\n{ret.stderr}"
+        )
 
     return out_path

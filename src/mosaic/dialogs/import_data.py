@@ -301,6 +301,12 @@ class ImportDataDialog(QDialog):
                     self.scale_x.setText("1")
                     self.scale_y.setText("1")
                     self.scale_z.setText("1")
+                    shape = info.get("shape")
+                    if shape is not None:
+                        ox, oy, oz = ((s // 2) * px for s in shape)
+                        self.offset_x.setText(f"{-ox:g}")
+                        self.offset_y.setText(f"{-oy:g}")
+                        self.offset_z.setText(f"{-oz:g}")
 
             self.file_parameters[file] = self._get_current_parameters()
 

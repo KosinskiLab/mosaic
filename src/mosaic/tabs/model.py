@@ -41,14 +41,27 @@ def _repair_mesh(
         fs = meshing.bridge_boundaries(vs, fs, alpha=bridge_alpha)
 
     new_fs = fs
-    if max_hole_size:
+    if max_hole_size != 0:
         new_fs = meshing.close_holes(vs, fs, max_hole_size)
     hole_fids = np.arange(n_original_fs, len(new_fs))
 
     if not (smoothness == 0 and curvature_weight == 0 and pressure == 0):
+
         new_vs, new_fs, _ = meshing.repair.triangulation_refine_leipa(
             vs, new_fs, hole_fids, np.sqrt(2)
         )
+
+        if len(new_vs) > len(vs):
+            try:
+                mesh = meshing.remesh(
+                    meshing.to_open3d(new_vs, new_fs),
+                    feature=np.arange(len(vs)),
+                )
+                new_vs = np.asarray(mesh.vertices, dtype=np.float64)
+                new_fs = np.asarray(mesh.triangles)
+            except (ValueError, RuntimeError) as e:
+                warnings.warn(f"Isotropic remeshing failed: {e}. Using Leipa output.")
+
         vids = np.arange(len(vs), len(new_vs))
 
         if fair_all:

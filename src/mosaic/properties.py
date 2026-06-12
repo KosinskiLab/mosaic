@@ -107,20 +107,19 @@ def mesh_volume(fit, volume_type: str = "Total", **kwargs):
     fit : object
         Fitted mesh model.
     volume_type : str
-        "Total" for total volume, "Per-Triangle" for summed triangle volumes.
+        "Total" for total volume, "Per-Triangle" for per-triangle volumes.
 
     Returns
     -------
     float or np.ndarray
-        Total volume or summed absolute triangle volumes.
+        Total volume or array of per-triangle volume contributions.
     """
     if volume_type == "Per-Triangle":
         vertices, triangles = fit.vertices, fit.triangles
         v0 = vertices[triangles[:, 0]]
         v1 = vertices[triangles[:, 1]]
         v2 = vertices[triangles[:, 2]]
-        face_volumes = np.sum(np.cross(v0, v1) * v2, axis=1) / 6.0
-        return np.array([np.sum(np.abs(face_volumes))])
+        return np.sum(np.cross(v0, v1) * v2, axis=1) / 6.0
     return fit.mesh.get_volume()
 
 

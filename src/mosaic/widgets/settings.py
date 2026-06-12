@@ -54,14 +54,19 @@ def create_setting_widget(setting: Dict):
             wrange = setting.get("min", 0.0), setting.get("max", 1e32)
             widget.setSingleStep(setting.get("step", 1.0))
 
-        widget.setRange(*wrange)
         default_value = setting.get("default")
         if default_value is None:
+            # Reserve a sentinel slot one step below `min` for the
+            # special-value marker. Without it the declared minimum
+            # collides with the "Auto" slot and gets read back as None,
+            # so e.g. typing 0 into a min=0 field silently means "unset".
             marker = setting.get("special_text", "Auto")
+            widget.setRange(wrange[0] - widget.singleStep(), wrange[1])
             widget.setSpecialValueText(marker)
             widget.setProperty("none_marker", marker)
             widget.setValue(widget.minimum())
         else:
+            widget.setRange(*wrange)
             widget.setValue(default_value)
 
     elif setting["type"] == "select":

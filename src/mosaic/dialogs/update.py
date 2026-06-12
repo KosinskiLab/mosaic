@@ -123,7 +123,7 @@ class UpdateDialog(QDialog):
 
         skip_btn = QPushButton("Skip")
         skip_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        skip_btn.clicked.connect(self.reject)
+        skip_btn.clicked.connect(self._on_skip_clicked)
         skip_btn.setStyleSheet(self._secondary_btn_style())
         btn_row.addWidget(skip_btn)
 
@@ -157,11 +157,11 @@ class UpdateDialog(QDialog):
         )
         return view
 
-    def reject(self):
+    def _on_skip_clicked(self):
         from ..settings import Settings
 
         Settings.ui.skipped_version = self._latest
-        super().reject()
+        self.reject()
 
     def _open_release_notes(self):
         QDesktopServices.openUrl(QUrl(self._release_url))

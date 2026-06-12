@@ -146,15 +146,22 @@ def read_txt(filename: str):
     """
     ret = []
 
+    is_gz = filename.lower().endswith(".gz")
+    stem = filename[:-3] if is_gz else filename
+
     delimiter = None
-    if filename.endswith(("csv", "xyz")):
+    if stem.endswith(("csv", "xyz")):
         delimiter = ","
-    elif filename.endswith(("txt", "tsv")):
+    elif stem.endswith(("txt", "tsv")):
         delimiter = "\t"
 
-    with open(filename, mode="r") as ifile:
+    opener = gzip_open if is_gz else open
+    with opener(filename, mode="rt") as ifile:
         data = ifile.read().split("\n")
         data = [x.strip().split(delimiter) for x in data if x.strip()]
+
+    if not data:
+        raise ValueError(f"{filename} is empty or contains only whitespace.")
 
     header = ("x", "y", "z", *ascii_lowercase)[: len(data[0])]
     if "x" in data[0]:
@@ -545,10 +552,8 @@ def _read_tsi_file(file_path: str) -> Dict:
     ret["n_faces"] = n_faces
     ret["faces"] = np.array([x.split() for x in faces], dtype=np.float64)
 
-    while len(data):
-        if not data[0].startswith("inclusion"):
-            data.pop(0)
-        break
+    while len(data) and not data[0].startswith("inclusion"):
+        data.pop(0)
 
     if len(data) == 0:
         return ret

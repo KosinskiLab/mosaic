@@ -623,6 +623,7 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
         if other is None:
             return None
 
+        self._geometry = other._geometry
         self.metadata = other.metadata.copy()
         self.setText(0, other.text())
 
