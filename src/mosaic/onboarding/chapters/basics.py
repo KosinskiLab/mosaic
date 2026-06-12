@@ -45,9 +45,7 @@ _SAMPLING_RATE = 6.8
 class BasicsChapter(OnboardingChapter):
     id = "basics"
     title = "Getting Started"
-    description = (
-        "First analysis with a real cryo-ET dataset: import, mesh, and analyze"
-    )
+    description = "First analysis of a cryo-ET dataset: import, mesh, and analyze"
     duration = "~20 min"
 
     def __init__(self):

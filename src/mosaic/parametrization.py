@@ -1296,7 +1296,7 @@ class BallPivoting(TriangularMesh):
             specify multiple radii, e.g. ``(50, 30.5, 10)``.
         max_hole_size : float, optional
             Maximum surface area of holes to triangulate.
-            ``None`` fills all holes, ``0`` skips hole filling.
+            ``None`` or ``0`` skips hole filling.
         target_edge_length : float
             Target edge length for remeshing after hole filling.
             ``-1`` uses the average edge length of the mesh.
@@ -1365,7 +1365,7 @@ class BallPivoting(TriangularMesh):
                 "No vertices for mesh creation. Try increasing ball pivoting radii."
             )
 
-        if max_hole_size == 0:
+        if not max_hole_size:
             return cls(mesh=mesh)
 
         vs = np.asarray(mesh.vertices, dtype=np.float64)

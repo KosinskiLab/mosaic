@@ -239,7 +239,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.parent.renderer.AddActor(self.selected_actor)
         self.parent.vtk_widget.GetRenderWindow().Render()
 
-    def delete_selected_faces(self):
+    def remove_selected(self):
         from .meshing import to_open3d
         from .parametrization import TriangularMesh
 
@@ -284,7 +284,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     def on_key_press(self, obj, event):
         key = self.GetInteractor().GetKeySym().lower()
         if key in ["return", "enter", "delete", "backspace"]:
-            self.delete_selected_faces()
+            self.remove_selected()
         return self.OnKeyPress()
 
 

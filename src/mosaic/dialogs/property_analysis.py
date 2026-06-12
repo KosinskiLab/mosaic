@@ -30,6 +30,7 @@ from qtpy.QtWidgets import (
     QDoubleSpinBox,
     QStackedWidget,
     QAbstractItemView,
+    QSizePolicy,
 )
 import pyqtgraph as pg
 
@@ -49,6 +50,7 @@ from ..widgets import (
     generate_gradient_colors,
     MosaicMessageBox,
 )
+from ..widgets.segmented_control import SegmentedControl
 
 
 def to_numeric(arr):
@@ -160,8 +162,15 @@ def _make_uuid_to_items(geometries):
 
 
 def _populate_list(geometries, tree_state=None):
-    target_list = ContainerTreeWidget()
+    target_list = ContainerTreeWidget(compact=True)
     target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
+    target_list.tree_widget.setEditTriggers(
+        QAbstractItemView.EditTrigger.NoEditTriggers
+    )
+    target_list.setMinimumHeight(80)
+    target_list.setSizePolicy(
+        QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding
+    )
 
     uuid_to_items = _make_uuid_to_items(geometries)
 
@@ -179,7 +188,7 @@ def _build_type_combo_option(dlg, key, items):
     combo.addItems(items)
     combo.setFixedHeight(Colors.WIDGET_HEIGHT)
     layout.addRow("Type:", combo)
-    dlg.property_options_layout.addRow(group)
+    dlg.property_options_layout.addWidget(group)
     dlg.option_widgets[key] = combo
 
 
@@ -198,14 +207,14 @@ def _build_vertex_properties_options(dlg):
     options.addItems(_collect_vertex_properties(dlg))
     options.setFixedHeight(Colors.WIDGET_HEIGHT)
     layout.addRow("Type:", options)
-    dlg.property_options_layout.addRow(group)
+    dlg.property_options_layout.addWidget(group)
     dlg.option_widgets["name"] = options
 
 
 def _build_curvature_options(dlg):
     group, layout = dlg._create_options_group()
     curvature, radius = dlg._create_curvature_options(layout)
-    dlg.property_options_layout.addRow(group)
+    dlg.property_options_layout.addWidget(group)
     dlg.option_widgets["curvature"] = curvature
     dlg.option_widgets["radius"] = radius
 
@@ -240,7 +249,7 @@ def _create_projection_combo():
 
 def _build_projected_curvature_options(dlg):
     group, layout, target_list, _ = dlg._create_target_list_group(
-        "Target Mesh", "models", mesh_only=True
+        "Options", "models", mesh_only=True
     )
     options_layout = QFormLayout()
     curvature, radius = dlg._create_curvature_options(options_layout)
@@ -248,7 +257,7 @@ def _build_projected_curvature_options(dlg):
     options_layout.addRow("Projection:", projection)
     layout.addLayout(options_layout)
 
-    dlg.property_options_layout.addRow(group)
+    dlg.property_options_layout.addWidget(group, 1)
     dlg.option_widgets["queries"] = target_list
     dlg.option_widgets["curvature"] = curvature
     dlg.option_widgets["radius"] = radius
@@ -257,21 +266,21 @@ def _build_projected_curvature_options(dlg):
 
 def _build_angle_options(dlg):
     group, layout, target_list, _ = dlg._create_target_list_group(
-        "Target Mesh", "models", mesh_only=True
+        "Options", "models", mesh_only=True
     )
     options_layout = QFormLayout()
     projection = _create_projection_combo()
     options_layout.addRow("Projection:", projection)
     layout.addLayout(options_layout)
 
-    dlg.property_options_layout.addRow(group)
+    dlg.property_options_layout.addWidget(group, 1)
     dlg.option_widgets["queries"] = target_list
     dlg.option_widgets["projection"] = projection
 
 
 def _build_geodesic_distance_options(dlg):
     group, layout, target_list, _ = dlg._create_target_list_group(
-        "Target Mesh", "models", mesh_only=True
+        "Options", "models", mesh_only=True
     )
     k_start, k_end, aggregation = dlg._create_knn_range_widget(layout)
     options_layout = QFormLayout()
@@ -279,7 +288,7 @@ def _build_geodesic_distance_options(dlg):
     options_layout.addRow("Projection:", projection)
     layout.addLayout(options_layout)
 
-    dlg.property_options_layout.addRow(group)
+    dlg.property_options_layout.addWidget(group, 1)
     dlg.option_widgets["queries"] = target_list
     dlg.option_widgets["k_start"] = k_start
     dlg.option_widgets["k"] = k_end
@@ -289,7 +298,7 @@ def _build_geodesic_distance_options(dlg):
 
 def _build_thickness_options(dlg):
     group, layout, target_list, _ = dlg._create_target_list_group(
-        "Target Cluster", "data", with_compare_all=False
+        "Options", "data", with_compare_all=False
     )
     smoothing_layout = QHBoxLayout()
     smoothing_layout.addWidget(QLabel("Smoothing Radius:"))
@@ -305,7 +314,7 @@ def _build_thickness_options(dlg):
     smoothing_layout.addWidget(smoothing_spin)
     layout.addLayout(smoothing_layout)
 
-    dlg.property_options_layout.addRow(group)
+    dlg.property_options_layout.addWidget(group, 1)
     dlg.option_widgets["queries"] = target_list
     dlg.option_widgets["smoothing_radius"] = smoothing_spin
 
@@ -361,7 +370,7 @@ def _build_tomogram_options(dlg):
     layout.addRow(offset_slider)
     dlg.option_widgets["normal_offset"] = offset_slider
 
-    dlg.property_options_layout.addRow(group)
+    dlg.property_options_layout.addWidget(group)
 
 
 def _build_to_cluster_options(dlg):
@@ -375,7 +384,7 @@ def _build_to_cluster_options(dlg):
 
     k_start, k_end, aggregation = dlg._create_knn_range_widget(layout)
 
-    dlg.property_options_layout.addRow(group)
+    dlg.property_options_layout.addWidget(group, 1)
     dlg.option_widgets["queries"] = target_list
     dlg.option_widgets["include_self"] = include_self
     dlg.option_widgets["compare_to_all"] = compare_all
@@ -385,14 +394,15 @@ def _build_to_cluster_options(dlg):
 
 
 def _build_to_self_options(dlg):
-    group = QGroupBox("Options")
+    group = QWidget()
     layout = QVBoxLayout(group)
+    layout.setContentsMargins(0, 0, 0, 0)
 
     self_checkbox = QCheckBox()
     self_checkbox.setChecked(True)
     k_start, k_end, aggregation = dlg._create_knn_range_widget(layout)
 
-    dlg.property_options_layout.addRow(group)
+    dlg.property_options_layout.addWidget(group)
     dlg.option_widgets["only_self"] = self_checkbox
     dlg.option_widgets["k_start"] = k_start
     dlg.option_widgets["k"] = k_end
@@ -401,9 +411,9 @@ def _build_to_self_options(dlg):
 
 def _build_to_model_options(dlg):
     group, layout, target_list, compare_all = dlg._create_target_list_group(
-        "Target Models", "models", with_compare_all=True
+        "Options", "models", with_compare_all=True
     )
-    dlg.property_options_layout.addRow(group)
+    dlg.property_options_layout.addWidget(group, 1)
     dlg.option_widgets["queries"] = target_list
     dlg.option_widgets["compare_to_all"] = compare_all
 
@@ -537,14 +547,14 @@ class PropertyAnalysisDialog(QDialog):
             "Tomogram",
         ],
         "Projection": ["Projected Curvature", "Geodesic Distance", "Angle"],
-        "Geometric": [
+        "Attributes": [
             "Identity",
             "Width (X-axis)",
             "Depth (Y-axis)",
             "Height (Z-axis)",
             "Number of Points",
+            "Vertex Properties",
         ],
-        "Custom": ["Vertex Properties"],
     }
 
     PROPERTY_MAP = {
@@ -596,6 +606,12 @@ class PropertyAnalysisDialog(QDialog):
         self.cdata.viewport.vtk_pre_render.connect(self._on_render_update)
         self.cdata.data.data_changed.connect(self._on_data_changed)
         self.cdata.models.data_changed.connect(self._on_data_changed)
+        self.cdata.data.data_list.structure_changed.connect(
+            self._resync_target_list_structure
+        )
+        self.cdata.models.data_list.structure_changed.connect(
+            self._resync_target_list_structure
+        )
 
     def sizeHint(self):
         return QSize(350, 600)
@@ -634,10 +650,38 @@ class PropertyAnalysisDialog(QDialog):
         uuid_to_items = _make_uuid_to_items(geometries)
         target_list.update(uuid_to_items)
 
+    def _resync_target_list_structure(self):
+        """Re-apply the main tree's grouping to the active target list.
+
+        Fires when the main sidebar emits ``structure_changed`` (group / ungroup
+        / drag-drop). ``apply_state`` clears the tree, so selection is captured
+        by UUID and restored against the rebuilt items.
+        """
+        if (target_list := self.option_widgets.get("queries")) is None:
+            return None
+        if (data_source := getattr(target_list, "_data_source", None)) is None:
+            return None
+
+        selected_uuids = {
+            item.metadata.get("uuid")
+            for item in target_list.selected_items()
+            if item.metadata.get("uuid") is not None
+        }
+
+        kwargs = getattr(target_list, "_data_kwargs", {})
+        geometries = self.cdata.format_datalist(data_source, **kwargs)
+        uuid_to_items = _make_uuid_to_items(geometries)
+        tree_state = self.cdata.get_tree_state(data_source)
+        target_list.apply_state(tree_state, uuid_to_items)
+
+        if selected_uuids:
+            target_list.set_selection(list(selected_uuids))
+        return None
+
     def _sync_vertex_property_options(self):
         """Refresh the vertex-property selector to match the current data."""
         combo = self.option_widgets.get("name")
-        if combo is None or self.property_combo.currentText() != "Vertex Properties":
+        if combo is None or self._current_metric() != "Vertex Properties":
             return None
 
         properties = _collect_vertex_properties(self)
@@ -665,6 +709,12 @@ class PropertyAnalysisDialog(QDialog):
             self.cdata.viewport.vtk_pre_render.disconnect(self._on_render_update)
             self.cdata.data.data_changed.disconnect(self._on_data_changed)
             self.cdata.models.data_changed.disconnect(self._on_data_changed)
+            self.cdata.data.data_list.structure_changed.disconnect(
+                self._resync_target_list_structure
+            )
+            self.cdata.models.data_list.structure_changed.disconnect(
+                self._resync_target_list_structure
+            )
         except Exception:
             pass
         super().closeEvent(event)
@@ -731,29 +781,41 @@ class PropertyAnalysisDialog(QDialog):
         return curvature_combo, radius_spin
 
     def _create_options_group(self, title: str = "Options") -> tuple:
-        """Create a generic options group box with a QFormLayout inside.
+        """Create a frameless option panel with a QFormLayout inside.
+
+        The *title* parameter is accepted for backwards compatibility with the
+        existing builders but is no longer rendered; the dotted separator the
+        dialog inserts above the panel marks the boundary instead.
 
         Returns
         -------
         tuple
-            (group_box, form_layout)
+            (container_widget, form_layout)
         """
-        group = QGroupBox(title)
+        _ = title
+        group = QWidget()
         layout = QFormLayout(group)
+        layout.setContentsMargins(0, 0, 0, 0)
         return group, layout
 
     def _create_target_list_group(
         self, title: str, data_source: str, with_compare_all: bool = False, **kwargs
     ) -> tuple:
-        """Create a target selection group with optional 'Compare to All' checkbox.
+        """Create a target selection panel with optional 'Compare to All' checkbox.
+
+        The *title* parameter is accepted for backwards compatibility but is no
+        longer rendered.
 
         Returns
         -------
         tuple
-            (group_box, target_list, compare_all_checkbox or None)
+            (container_widget, vbox_layout, target_list, compare_all_checkbox or None)
         """
-        group = QGroupBox(title)
+        _ = title
+        group = QWidget()
+        group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(group)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         tree_state = self.cdata.get_tree_state(data_source)
         target_list = _populate_list(
@@ -761,7 +823,7 @@ class PropertyAnalysisDialog(QDialog):
         )
         target_list._data_source = data_source
         target_list._data_kwargs = kwargs
-        layout.addWidget(target_list)
+        layout.addWidget(target_list, 1)
 
         compare_all = None
         if with_compare_all:
@@ -822,44 +884,53 @@ class PropertyAnalysisDialog(QDialog):
         from ..widgets.settings import format_tooltip
 
         layout = QVBoxLayout(self.visualization_tab)
-        layout.setSpacing(6)
+        layout.setSpacing(8)
 
         property_group = QGroupBox("Property")
-        property_group.setStyleSheet("QGroupBox { border-bottom: none; }")
         property_layout = QVBoxLayout()
-        property_layout.setContentsMargins(8, 4, 0, 4)
-        property_layout.setSpacing(4)
+        property_layout.setContentsMargins(8, 8, 0, 4)
+        property_layout.setSpacing(8)
 
-        self.property_options_layout = QFormLayout()
-        self.property_options_layout.setContentsMargins(0, 0, 0, 0)
-        self.property_options_layout.setHorizontalSpacing(24)
-
-        self.category_combo = QComboBox()
-        self.category_combo.addItems(
-            ["Distance", "Mesh", "Geometric", "Projection", "Custom"]
+        self.category_segments = SegmentedControl(
+            list(self.PROPERTY_CATEGORIES.keys()), default=0
         )
-        self.category_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
-        self.category_combo.currentTextChanged.connect(self._update_property_list)
-        self.property_options_layout.addRow("Category:", self.category_combo)
+        self.category_segments.selectionChanged.connect(self._update_property_list)
+        property_layout.addWidget(self.category_segments)
 
+        metric_row = QHBoxLayout()
+        metric_row.setSpacing(8)
+        metric_label = QLabel("Metric:")
+        metric_row.addWidget(metric_label)
         self.property_combo = QComboBox()
         self.property_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.property_combo.currentTextChanged.connect(self._update_options)
-        self.property_options_layout.addRow("Metric:", self.property_combo)
-
-        # Number of rows reserved for the persistent selectors at the top of
-        # the form; per-property option rows are added/removed after these.
-        self._persistent_option_rows = self.property_options_layout.rowCount()
-
-        property_layout.addLayout(self.property_options_layout)
+        metric_row.addWidget(self.property_combo, 1)
+        property_layout.addLayout(metric_row)
+        # Pin segments + combo to the top of the group: when Options is hidden
+        # the Property group's Preferred size policy lets it grow into the
+        # leftover space; without this stretch, Qt would center the children.
+        property_layout.addStretch(1)
 
         property_group.setLayout(property_layout)
         layout.addWidget(property_group)
 
+        self.options_group = QGroupBox("Options")
+        self.options_group.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding
+        )
+        options_outer = QVBoxLayout(self.options_group)
+        options_outer.setContentsMargins(8, 8, 0, 4)
+        options_outer.setSpacing(8)
+        self.property_options_layout = QVBoxLayout()
+        self.property_options_layout.setContentsMargins(0, 0, 0, 0)
+        self.property_options_layout.setSpacing(6)
+        options_outer.addLayout(self.property_options_layout, 1)
+        layout.addWidget(self.options_group, 1)
+
         # Filter group - two column layout
         filter_group = QGroupBox("Filter")
         filter_main_layout = QHBoxLayout(filter_group)
-        filter_main_layout.setContentsMargins(8, 4, 0, 4)
+        filter_main_layout.setContentsMargins(8, 8, 0, 4)
         filter_main_layout.setSpacing(8)
 
         self.filter_stack = QStackedWidget()
@@ -921,8 +992,8 @@ class PropertyAnalysisDialog(QDialog):
 
         options_group = QGroupBox("Visualization")
         options_layout = QVBoxLayout(options_group)
-        options_layout.setContentsMargins(8, 4, 0, 4)
-        options_layout.setSpacing(4)
+        options_layout.setContentsMargins(8, 8, 0, 4)
+        options_layout.setSpacing(8)
 
         colormap_layout = QHBoxLayout()
         colormap_layout.addWidget(QLabel("Color Map:"))
@@ -1144,37 +1215,47 @@ class PropertyAnalysisDialog(QDialog):
 
         layout.addLayout(button_layout)
 
-    def _update_property_list(self, category: str = None):
-        if category is None:
-            category = self.category_combo.currentText()
+    def _current_metric(self) -> str:
+        return self.property_combo.currentText()
 
-        previous_text = self.property_combo.currentText()
+    def _update_property_list(self, category: Optional[str] = None) -> None:
+        category = category or self.category_segments.currentText()
 
+        previous = self.property_combo.currentText()
         self.property_combo.blockSignals(True)
         self.property_combo.clear()
         self.property_combo.addItems(self.PROPERTY_CATEGORIES.get(category, []))
-        if previous_text is not None:
-            index = self.property_combo.findText(previous_text)
+        if previous:
+            index = self.property_combo.findText(previous)
             if index >= 0:
                 self.property_combo.setCurrentIndex(index)
+        self.property_combo.blockSignals(False)
 
         if self.property_combo.count() > 0:
             self._update_options(self.property_combo.currentText())
-        self.property_combo.blockSignals(False)
+        return None
 
-    def _update_options(self, property_name: str = None):
+    def _update_options(self, property_name: Optional[str] = None) -> None:
         if property_name is None:
-            property_name = self.property_combo.currentText()
+            property_name = self._current_metric()
 
-        while self.property_options_layout.rowCount() > self._persistent_option_rows:
-            self.property_options_layout.removeRow(
-                self.property_options_layout.rowCount() - 1
-            )
+        while self.property_options_layout.count() > 0:
+            item = self.property_options_layout.takeAt(0)
+            if (widget := item.widget()) is not None:
+                widget.setParent(None)
+                widget.deleteLater()
 
         self.option_widgets = {}
         builder = _OPTION_BUILDERS.get(property_name)
-        if builder is not None:
-            builder(self)
+        if builder is None:
+            self.options_group.setVisible(False)
+            return None
+
+        builder(self)
+        if "queries" not in self.option_widgets:
+            self.property_options_layout.addStretch(1)
+        self.options_group.setVisible(True)
+        return None
 
     def toggle_all_targets(self, state, target_list):
         target_list.setEnabled(not bool(state))
@@ -1284,7 +1365,7 @@ class PropertyAnalysisDialog(QDialog):
     def _compute_properties(self):
         from ..properties import GeometryProperties
 
-        property_name = self.PROPERTY_MAP.get(self.property_combo.currentText())
+        property_name = self.PROPERTY_MAP.get(self._current_metric())
         if property_name is None:
             return None
 
@@ -1301,7 +1382,7 @@ class PropertyAnalysisDialog(QDialog):
             else:
                 parameters[k] = get_widget_value(widget)
 
-        if self.property_combo.currentText() == "To Camera":
+        if self._current_metric() == "To Camera":
             vtk_widget = self.cdata.data.viewport.vtk_widget
             renderer = vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
             parameters["queries"] = np.array(
@@ -1415,7 +1496,7 @@ class PropertyAnalysisDialog(QDialog):
         if not geometries:
             return None
 
-        property_name = self.PROPERTY_MAP.get(self.property_combo.currentText())
+        property_name = self.PROPERTY_MAP.get(self._current_metric())
         if property_name in self._CUSTOM_PREVIEWS:
             return self._update_texture_offset(
                 get_widget_value(self.option_widgets.get("normal_offset", 0.0))
@@ -1450,7 +1531,7 @@ class PropertyAnalysisDialog(QDialog):
                 continue
             geometry.set_scalars(metric, lut, lut_range)
 
-        legend_label = self.property_combo.currentText()
+        legend_label = self._current_metric()
         name_widget = self.option_widgets.get("name")
         if name_widget is not None:
             legend_label = name_widget.currentText()
@@ -1541,7 +1622,7 @@ class PropertyAnalysisDialog(QDialog):
             lut, lut_range = cmap_to_vtkctf(
                 colormap, upper, min_value=lower, transparent_range=True
             )
-            legend_label = self.property_combo.currentText()
+            legend_label = self._current_metric()
             name_widget = self.option_widgets.get("name")
             if name_widget is not None:
                 legend_label = name_widget.currentText()
@@ -1787,7 +1868,7 @@ class PropertyAnalysisDialog(QDialog):
 
     def _create_categorical_plot(self, data_series, values, plot_type):
         """Create a categorical plot with names on x-axis for single values"""
-        property_name = self.property_combo.currentText()
+        property_name = self._current_metric()
 
         plot = self.plot_widget.addPlot()
         plot.setLabel("left", property_name)
@@ -1880,7 +1961,7 @@ class PropertyAnalysisDialog(QDialog):
 
     def _create_plot(self, data_series, all_values, plot_mode, plot_type):
         """Create either histogram, density or line plot based on plot_type"""
-        property_name = self.property_combo.currentText()
+        property_name = self._current_metric()
 
         bins, x_range = None, None
         if plot_type == "Histogram":
@@ -1999,7 +2080,7 @@ class PropertyAnalysisDialog(QDialog):
         def write_data(file_path):
             from ..properties import export_property_csv
 
-            property_name = self.property_combo.currentText()
+            property_name = self._current_metric()
             geometries, values, sources = [], [], []
             for name, geom in selected_items:
                 cached = self._cache.get_value(geom.uuid)

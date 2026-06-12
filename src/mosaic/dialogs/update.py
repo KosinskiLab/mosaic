@@ -218,16 +218,19 @@ class UpdateDialog(QDialog):
     def _primary_btn_style(self) -> str:
         return f"""
             QPushButton {{
-                background: {Colors.PRIMARY};
-                color: white;
-                border: none;
+                background: transparent;
+                color: {Colors.PRIMARY};
+                border: 1px solid {Colors.BORDER_DARK};
                 border-radius: 6px;
                 padding: 7px 18px;
                 font-size: {Typography.BODY}px;
                 font-weight: 500;
             }}
-            QPushButton:hover {{ background: {Colors.alpha("PRIMARY", 0.85)}; }}
-            QPushButton:pressed {{ background: {Colors.PRIMARY}; }}
+            QPushButton:hover {{
+                border-color: {Colors.PRIMARY};
+                background: {Colors.alpha("PRIMARY", 0.08)};
+            }}
+            QPushButton:pressed {{ background: {Colors.alpha("PRIMARY", 0.14)}; }}
             QPushButton:focus {{ outline: none; }}
         """
 

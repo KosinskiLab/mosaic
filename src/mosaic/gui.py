@@ -502,6 +502,9 @@ class App(QMainWindow):
         self.toggle_selection_menu()
 
     def remove_selected(self):
+        style = self.interactor.GetInteractorStyle()
+        if hasattr(style, "remove_selected"):
+            return style.remove_selected()
         self.cdata.data.remove_selection()
         self.cdata.models.remove_selection()
 

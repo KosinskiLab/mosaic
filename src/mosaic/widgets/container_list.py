@@ -1,11 +1,10 @@
 from uuid import uuid4
 from typing import Dict, List, Union
 
-from qtpy.QtGui import QColor, QIcon, QPixmap, QPainter
+from qtpy.QtGui import QColor, QIcon, QPainter
 from qtpy.QtCore import (
     Qt,
     QRect,
-    QByteArray,
     QEvent,
     QItemSelection,
     QItemSelectionModel,
@@ -28,7 +27,6 @@ from qtpy.QtWidgets import (
     QMenu,
     QMessageBox,
 )
-from qtpy.QtSvg import QSvgRenderer
 from ..icons import icon as _icon_factory
 from ..tree_state import TreeState, TreeStateData
 from ..stylesheets import Colors, Typography
@@ -50,7 +48,7 @@ class SelectionIndicator(QWidget):
         for label in (self._top_label, self._bottom_label):
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             label.setCursor(Qt.CursorShape.PointingHandCursor)
-            label.setFixedHeight(22)
+            label.setFixedHeight(16)
             label.hide()
 
         self._top_label.mousePressEvent = lambda _: self._scroll_to(self._above)
@@ -121,8 +119,8 @@ class SelectionIndicator(QWidget):
         w = self._tree.viewport().width()
         h = self._tree.viewport().height()
         self.setGeometry(0, 0, w, h)
-        self._top_label.setGeometry(4, 2, w - 8, 22)
-        self._bottom_label.setGeometry(4, h - 24, w - 8, 22)
+        self._top_label.setGeometry(4, 0, w - 8, 16)
+        self._bottom_label.setGeometry(4, h - 16, w - 8, 16)
 
     def _scroll_to(self, items):
         if not items:
@@ -149,10 +147,22 @@ class SelectionIndicator(QWidget):
             )
 
 
+class _DropAwareTreeWidget(QTreeWidget):
+    """QTreeWidget that emits ``dropped`` once the user finishes a drag-drop."""
+
+    dropped = Signal()
+
+    def dropEvent(self, event):
+        super().dropEvent(event)
+        self.dropped.emit()
+
+
 class ContainerTreeWidget(QFrame):
     """Drop-in replacement for ContainerListWidget using QTreeWidget for grouping support."""
 
-    def __init__(self, title: str = None):
+    structure_changed = Signal()
+
+    def __init__(self, title: str = None, compact: bool = False):
         super().__init__()
         self.setFrameStyle(QFrame.Shape.NoFrame)
 
@@ -161,7 +171,7 @@ class ContainerTreeWidget(QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.title = title
-        self.tree_widget = QTreeWidget()
+        self.tree_widget = _DropAwareTreeWidget()
         self.tree_widget.setHeaderHidden(True)
         self.tree_widget.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
@@ -179,7 +189,11 @@ class ContainerTreeWidget(QFrame):
         self.tree_widget.setDropIndicatorShown(True)
         self.tree_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
 
-        self.tree_widget.setItemDelegate(MetadataItemDelegate(self.tree_widget))
+        self.tree_widget.dropped.connect(self.structure_changed)
+
+        self.tree_widget.setItemDelegate(
+            MetadataItemDelegate(self.tree_widget, compact=compact)
+        )
         self._selection_indicator = SelectionIndicator(self.tree_widget)
 
         layout.addWidget(self.tree_widget)
@@ -325,6 +339,7 @@ class ContainerTreeWidget(QFrame):
 
         group_item.setExpanded(True)
         self._select_group_children(group_item)
+        self.structure_changed.emit()
         return group_item
 
     def ungroup_selected(self) -> int:
@@ -345,6 +360,7 @@ class ContainerTreeWidget(QFrame):
             self.tree_widget.blockSignals(False)
 
         self._set_selection(selected_items)
+        self.structure_changed.emit()
         return len(selected_items)
 
     def traverse(self, reverse=False):
@@ -532,26 +548,8 @@ class GroupTreeWidgetItem(QTreeWidgetItem):
 
     def update_icon(self, expanded: bool = True):
         """Update the icon based on expanded state."""
-
-        path = "M7,5 L11,9 L7,13"
-        if expanded:
-            path = "M5,7 L9,11 L13,7"
-
-        svg_template = f"""
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
-                <rect width="18" height="18" fill="transparent" />
-                <path stroke="{Colors.TEXT_MUTED}" stroke-width="2" fill="none" d="{path}" />
-            </svg>"""
-
-        svg_bytes = QByteArray(svg_template.encode())
-        renderer = QSvgRenderer(svg_bytes)
-        pixmap = QPixmap(18, 18)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        icon = QIcon(pixmap)
-        self.setIcon(0, icon)
+        name = "ph.caret-down" if expanded else "ph.caret-right"
+        self.setIcon(0, _icon_factory(name, role="muted"))
 
     def setData(self, column, role, value):
         """Update group_name when text is changed."""
@@ -693,18 +691,35 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
 class MetadataItemDelegate(QStyledItemDelegate):
     """Delegate for custom selection/hover painting."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, compact: bool = False):
         super().__init__(parent)
+        # Compact mode strips the left padding for embedded uses (e.g. option
+        # blocks in dialogs); the default keeps a small breathing room.
+        self._pad = 0 if compact else 6
+        self._child_indent = 4 if compact else 6
+        # Header-style items (group carets, picker categories) render with a
+        # smaller icon than element rows so the chevron does not dominate.
+        self._header_icon_size = 14
+        self._item_icon_size = 20
 
-    @staticmethod
-    def _indent_for(index):
-        return 6 if index.parent().isValid() else 0
+    def _icon_size_for(self, item) -> int:
+        return (
+            self._item_icon_size
+            if isinstance(item, StyledTreeWidgetItem)
+            else self._header_icon_size
+        )
+
+    def _indent_for(self, index):
+        return self._child_indent if index.parent().isValid() else 0
 
     def updateEditorGeometry(self, editor, option, index):
+        tree_widget = self.parent()
+        item = tree_widget.itemFromIndex(index)
+        icon_size = self._icon_size_for(item)
         indent = self._indent_for(index)
         icon = index.data(Qt.ItemDataRole.DecorationRole)
         has_icon = icon is not None and not icon.isNull()
-        text_left = 12 + 20 + 4 if has_icon else 12
+        text_left = self._pad + icon_size + 4 if has_icon else self._pad
         editor.setGeometry(option.rect.adjusted(text_left + indent - 4, 2, 0, -2))
 
     def paint(self, painter, option, index):
@@ -712,12 +727,13 @@ class MetadataItemDelegate(QStyledItemDelegate):
         item = tree_widget.itemFromIndex(index)
 
         indent = self._indent_for(index)
+        pad = self._pad
 
         # Calculate content rect extending to right edge
         content_rect = QRect(
-            option.rect.left() + 6 + indent,
+            option.rect.left() + max(pad - 6, 0) + indent,
             option.rect.top() + 2,
-            option.rect.width() - 6 - indent,
+            option.rect.width() - max(pad - 6, 0) - indent,
             option.rect.height() - 4,
         )
 
@@ -740,12 +756,12 @@ class MetadataItemDelegate(QStyledItemDelegate):
             painter.drawRoundedRect(content_rect, 6, 6)
         painter.restore()
 
-        icon_size = 20
+        icon_size = self._icon_size_for(item)
         icon = index.data(Qt.ItemDataRole.DecorationRole)
         has_icon = icon and not icon.isNull()
         if has_icon:
             icon_rect = QRect(
-                option.rect.left() + 12 + indent,
+                option.rect.left() + pad + indent,
                 option.rect.top() + (option.rect.height() - icon_size) // 2,
                 icon_size,
                 icon_size,
@@ -763,11 +779,11 @@ class MetadataItemDelegate(QStyledItemDelegate):
         else:
             painter.setPen(QColor(Colors.TEXT_SECONDARY))
 
-        text_left = 12 + icon_size + 4 if has_icon else 12
+        text_left = pad + icon_size + 4 if has_icon else pad
         text_rect = QRect(
             option.rect.left() + text_left + indent,
             option.rect.top(),
-            option.rect.width() - text_left - 12,
+            option.rect.width() - text_left - pad,
             option.rect.height(),
         )
         painter.drawText(text_rect, int(Qt.AlignmentFlag.AlignVCenter), text)
