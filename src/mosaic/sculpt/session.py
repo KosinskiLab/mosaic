@@ -13,7 +13,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from dataclasses import dataclass
-from typing import NamedTuple, Optional, Tuple, Union
+from typing import NamedTuple, Optional, Tuple
 
 import igl
 import numpy as np
@@ -30,7 +30,6 @@ __all__ = [
     "TOOL_BY_HOTKEY",
     "TOOL_BY_ID",
     "ToolSpec",
-    "UndoRecord",
 ]
 
 
@@ -51,9 +50,6 @@ class SnapshotRecord:
     before_fs: np.ndarray
     after_vs: np.ndarray
     after_fs: np.ndarray
-
-
-UndoRecord = Union[PositionRecord, SnapshotRecord]
 
 
 class ToolSpec(NamedTuple):

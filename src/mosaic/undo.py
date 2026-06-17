@@ -38,6 +38,15 @@ class UndoStack:
         self._undo.append(entry)
         self._redo.clear()
 
+    def push_pair(
+        self,
+        label: str,
+        undo: Callable[[], None],
+        redo: Callable[[], None],
+    ) -> None:
+        """Build an :class:`UndoEntry` from its parts and push it."""
+        self.push(UndoEntry(label=label, undo=undo, redo=redo))
+
     def undo(self) -> Optional[UndoEntry]:
         if not self._undo:
             return None
@@ -53,12 +62,6 @@ class UndoStack:
         entry.redo()
         self._undo.append(entry)
         return entry
-
-    def can_undo(self) -> bool:
-        return bool(self._undo)
-
-    def can_redo(self) -> bool:
-        return bool(self._redo)
 
     def clear(self) -> None:
         self._undo.clear()

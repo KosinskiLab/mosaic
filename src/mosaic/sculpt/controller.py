@@ -559,7 +559,7 @@ class SculptController:
         return "view"
 
     def _push_stroke_undo(self, session, record) -> None:
-        from ..undo import STACK, UndoEntry
+        from ..undo import STACK
 
         target = session.target
         geometry = self._geometry
@@ -581,17 +581,15 @@ class SculptController:
             request_render()
             return None
 
-        STACK.push(
-            UndoEntry(
-                label=f"Sculpt: {session.tool}",
-                undo=lambda: apply(before),
-                redo=lambda: apply(after),
-            )
+        STACK.push_pair(
+            f"Sculpt: {session.tool}",
+            undo=lambda: apply(before),
+            redo=lambda: apply(after),
         )
         return None
 
     def _push_patch_undo(self, session, geometry, record) -> None:
-        from ..undo import STACK, UndoEntry
+        from ..undo import STACK
 
         target = session.target
         request_render = self._request_render
@@ -608,12 +606,10 @@ class SculptController:
             request_render()
             return None
 
-        STACK.push(
-            UndoEntry(
-                label="Sculpt: patch",
-                undo=lambda: swap(record.before_vs, record.before_fs),
-                redo=lambda: swap(record.after_vs, record.after_fs),
-            )
+        STACK.push_pair(
+            "Sculpt: patch",
+            undo=lambda: swap(record.before_vs, record.before_fs),
+            redo=lambda: swap(record.after_vs, record.after_fs),
         )
         return None
 

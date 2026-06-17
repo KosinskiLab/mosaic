@@ -52,7 +52,6 @@ class SculptShortcutFilter(QObject):
 
     def _on_key(self, event) -> bool:
         key = event.key()
-        mods = event.modifiers()
 
         # Escape bubbles to the gui-level shortcut that requests viewing mode.
         if key == Qt.Key.Key_Escape:

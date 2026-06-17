@@ -49,6 +49,11 @@ class _GeometrySubset:
     n_kept: int
 
 
+def _has_mesh_model(geometry) -> bool:
+    """Whether ``geometry`` carries triangular-mesh connectivity in its model."""
+    return geometry is not None and hasattr(getattr(geometry, "model", None), "mesh")
+
+
 def _convert_geometry(geometry, target_cls):
     """Rebuild *geometry* as an instance of *target_cls* preserving shared state.
 
@@ -334,7 +339,7 @@ class DataContainerInteractor(QObject):
         ]
 
         selected = self.get_selected_geometries()
-        if any(hasattr(x.model, "mesh") for x in selected):
+        if any(_has_mesh_model(x) for x in selected):
             formats.extend(mesh_formats)
 
         # We might need a more reliable check for assessing whether
@@ -434,7 +439,7 @@ class DataContainerInteractor(QObject):
         geometries = self.get_selected_geometries()
 
         enabled_categories = ["pointcloud", "volume"]
-        if any(hasattr(g.model, "mesh") for g in geometries):
+        if any(_has_mesh_model(g) for g in geometries):
             enabled_categories.append("mesh")
 
         names = [g._meta.get("name", f"Geometry {i}") for i, g in enumerate(geometries)]
@@ -745,18 +750,28 @@ class DataContainerInteractor(QObject):
             u: _GeometrySwap(u, before=self.container.get(u)[...], after=None)
             for u in whole_uuids
         }
-        slices = {
-            u: self.container.get(u)[self.point_selection[u]] for u in point_uuids
-        }
-        return swaps, slices
+        slices, originals = {}, {}
+        for u in point_uuids:
+            source = self.container.get(u)
+            slices[u] = source[self.point_selection[u]]
+            # Subsetting a mesh drops triangles straddling the cut, and the
+            # subset/merge undo path cannot rebuild that severed connectivity.
+            # Snapshot the pristine mesh so undo restores it exactly instead.
+            if _has_mesh_model(source):
+                originals[u] = source[...]
+        return swaps, slices, originals
 
-    def _subset_changes(self, slices):
+    def _subset_changes(self, slices, originals):
         """Build one change per point source from its post-op survival state."""
         changes = []
         for uuid, removed in slices.items():
             survivor = self.container.get(uuid)
             if survivor is None:
                 changes.append(_GeometrySwap(uuid, before=removed, after=None))
+            elif uuid in originals:
+                changes.append(
+                    _GeometrySwap(uuid, before=originals[uuid], after=survivor[...])
+                )
             else:
                 changes.append(
                     _GeometrySubset(
@@ -766,14 +781,12 @@ class DataContainerInteractor(QObject):
         return changes
 
     def _push_swap(self, label: str, changes) -> None:
-        from .undo import STACK, UndoEntry
+        from .undo import STACK
 
-        STACK.push(
-            UndoEntry(
-                label=label,
-                undo=lambda: self._apply_changes(changes, undo=True),
-                redo=lambda: self._apply_changes(changes, undo=False),
-            )
+        STACK.push_pair(
+            label,
+            undo=lambda: self._apply_changes(changes, undo=True),
+            redo=lambda: self._apply_changes(changes, undo=False),
         )
         return None
 
@@ -781,7 +794,7 @@ class DataContainerInteractor(QObject):
         from .geometry import Geometry, merge_geometries
 
         selected = self.get_selected_geometries()
-        swaps, slices = self._capture_selection(selected)
+        swaps, slices, originals = self._capture_selection(selected)
 
         point_cluster = self.add_selection(self.point_selection, add=True)
         self.deselect_points()
@@ -807,7 +820,7 @@ class DataContainerInteractor(QObject):
                 merged_uuid, before=None, after=merged[...]
             )
 
-        changes = list(swaps.values()) + self._subset_changes(slices)
+        changes = list(swaps.values()) + self._subset_changes(slices, originals)
         self._push_swap("Merge", changes)
         self.render()
         return None
@@ -823,13 +836,13 @@ class DataContainerInteractor(QObject):
         if not self.point_selection and not selected:
             return None
 
-        swaps, slices = self._capture_selection(selected)
+        swaps, slices, originals = self._capture_selection(selected)
 
         self.add_selection(self.point_selection, add=False)
         self.point_selection.clear()
         self.remove(selected)
 
-        changes = list(swaps.values()) + self._subset_changes(slices)
+        changes = list(swaps.values()) + self._subset_changes(slices, originals)
         self._push_swap("Remove", changes)
         self.render()
         return None
