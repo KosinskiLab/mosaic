@@ -12,10 +12,12 @@ import numpy as np
 
 
 class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
-    def __init__(self, parent, cdata):
+    def __init__(self, vtk_widget, data_pane, models_pane):
         super().__init__()
-        self.parent = parent
-        self.cdata = cdata
+        self.vtk_widget = vtk_widget
+        self.data_pane = data_pane
+        self.models_pane = models_pane
+        self.renderer = vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
         self.selected_actor = vtk.vtkActor()
         self.cell_picker = vtk.vtkCellPicker()
@@ -40,8 +42,8 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.clear_face_selection()
 
         if self.selected_actor is not None:
-            self.parent.renderer.RemoveActor(self.selected_actor)
-        return self.cdata.models.render_vtk()
+            self.renderer.RemoveActor(self.selected_actor)
+        return self.models_pane.render_vtk()
 
     def clear_face_selection(self):
         self.selected_faces = []
@@ -78,9 +80,9 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
     def _get_actor_index(self, actor, container="model"):
         # We use this order to promote extending existing meshes
-        data = self.cdata.models.container
+        data = self.models_pane.container
         if container == "cluster":
-            data = self.cdata.data.container
+            data = self.data_pane.container
 
         try:
             return data.get_actors().index(actor)
@@ -89,9 +91,9 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
     def _get_geometry_from_actor(self, actor):
         if (index := self._get_actor_index(actor, "model")) is not None:
-            return self.cdata.models.container.get(index)
+            return self.models_pane.container.get(index)
         if (index := self._get_actor_index(actor, "cluster")) is not None:
-            return self.cdata.data.container.get(index)
+            return self.data_pane.container.get(index)
         return None
 
     def _highlight_selected_points(self):
@@ -110,11 +112,11 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
                 point_ids, geometry._appearance.get("highlight_color", (0.8, 0.2, 0.2))
             )
 
-        self.parent.vtk_widget.GetRenderWindow().Render()
+        self.vtk_widget.GetRenderWindow().Render()
 
     def handle_point_selection(self):
         click_pos = self.GetInteractor().GetEventPosition()
-        self.point_picker.Pick(click_pos[0], click_pos[1], 0, self.parent.renderer)
+        self.point_picker.Pick(click_pos[0], click_pos[1], 0, self.renderer)
 
         point_id = self.point_picker.GetPointId()
         if point_id == -1:
@@ -137,7 +139,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     def handle_face_selection(self):
         click_pos = self.GetInteractor().GetEventPosition()
 
-        self.cell_picker.Pick(click_pos[0], click_pos[1], 0, self.parent.renderer)
+        self.cell_picker.Pick(click_pos[0], click_pos[1], 0, self.renderer)
         cell_id = self.cell_picker.GetCellId()
 
         if cell_id == -1:
@@ -180,13 +182,13 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             faces=[np.asarray(x.triangles) for x in meshes],
         )
 
-        self.cdata.models.container.remove(geoms)
+        self.models_pane.container.remove(geoms)
         fit = TriangularMesh(to_open3d(vertices, faces), repair=False)
-        index = self.cdata.models.add(Geometry(model=fit, sampling_rate=sampling))
-        if (geometry := self.cdata.models.container.get(index)) is not None:
+        index = self.models_pane.add(Geometry(model=fit, sampling_rate=sampling))
+        if (geometry := self.models_pane.container.get(index)) is not None:
             geometry.change_representation("mesh")
             geometry.set_appearance(**appearance)
-        return self.cdata.models.render()
+        return self.models_pane.render()
 
     def highlight_selected_faces(self):
         if not self.selected_faces:
@@ -236,8 +238,8 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         prop.EdgeVisibilityOn()
         prop.SetColor(0.388, 0.400, 0.945)
 
-        self.parent.renderer.AddActor(self.selected_actor)
-        self.parent.vtk_widget.GetRenderWindow().Render()
+        self.renderer.AddActor(self.selected_actor)
+        self.vtk_widget.GetRenderWindow().Render()
 
     def remove_selected(self):
         from .meshing import to_open3d
@@ -291,16 +293,11 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
     """VTK interactor style for building spline curves."""
 
-    def __init__(self, parent, cdata):
-        """Initialize the interactor style.
-
-        Args:
-            parent: Parent widget containing the VTK widget
-            cdata: Data container object
-        """
+    def __init__(self, vtk_widget, data_pane):
         super().__init__()
-        self.parent = parent
-        self.cdata = cdata
+        self.vtk_widget = vtk_widget
+        self.data_pane = data_pane
+        self.renderer = vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
 
         self.points = []
         self.actors = []
@@ -311,7 +308,6 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
         self.prop_picker = vtk.vtkPropPicker()
         self.world_picker = vtk.vtkWorldPointPicker()
 
-        self.renderer = self.parent.renderer
         self.AddObserver("LeftButtonPressEvent", self.on_left_button_down)
         self.AddObserver("MouseMoveEvent", self.on_mouse_move)
         self.AddObserver("LeftButtonReleaseEvent", self.on_left_button_release)
@@ -319,7 +315,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
 
     def _event_to_worldposition(self, position):
         event_position = (position[0], position[1], 0)
-        r = self.parent.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
+        r = self.renderer
         self.world_picker.Pick(*event_position, r)
         world_position = self.world_picker.GetPickPosition()
 
@@ -374,7 +370,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
         self.actors.clear()
         self.selected_actor = None
         self.current_connection = None
-        self.parent.vtk_widget.GetRenderWindow().Render()
+        self.vtk_widget.GetRenderWindow().Render()
 
     def _create_point_actor(self, position):
         """Create a VTK actor for a control point"""
@@ -404,7 +400,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
     def _handle_spline_interaction(self, position, actor):
         """Handle spline interaction events"""
         try:
-            index = self.cdata.data.container.get_actors().index(actor)
+            index = self.data_pane.container.get_actors().index(actor)
         except Exception:
             index = None
 
@@ -477,13 +473,13 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
         self.current_connection.SetMapper(mapper)
         self.current_connection.GetProperty().SetColor(1, 1, 0)
         self.renderer.AddActor(self.current_connection)
-        self.parent.vtk_widget.GetRenderWindow().Render()
+        self.vtk_widget.GetRenderWindow().Render()
 
     def _add_points_to_cluster(self):
         """Create the final spline parametrization"""
-        self.cdata.data.container.add(points=self.points)
-        self.cdata.data.data_changed.emit()
-        return self.cdata.data.render()
+        self.data_pane.container.add(points=self.points)
+        self.data_pane.data_changed.emit()
+        return self.data_pane.render()
 
     def on_key_press(self, obj, event):
         key = self.GetInteractor().GetKeySym().lower()

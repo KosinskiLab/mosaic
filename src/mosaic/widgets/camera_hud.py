@@ -59,6 +59,15 @@ _REF_VIEW_UPS = {
 }
 
 
+def _project_orthonormal(vec, axis):
+    """Return the unit component of ``vec`` perpendicular to unit ``axis``."""
+    vec = vec - axis * float(np.dot(vec, axis))
+    n = np.linalg.norm(vec)
+    if n < 1e-12:
+        return None
+    return vec / n
+
+
 def _decompose_angles(camera, view_key, aligned_direction):
     """Recover (elevation, azimuth, pitch) consistent with ``set_camera_view``.
 
@@ -82,17 +91,21 @@ def _decompose_angles(camera, view_key, aligned_direction):
         direction = -direction
     view_up = np.array(camera.GetViewUp())
 
-    # M maps {pos_init, view_init, pos_init x view_init} to
-    # {direction, view_up, direction x view_up}; recover it via M = B_out * B_in^-1.
+    # _REF_VIEW_UPS["z"] = (1, 0, 1) is not orthogonal to its reference
+    # direction (0, 0, 1), and vtkInteractorStyleTrackballCamera::Rotate calls
+    # OrthogonalizeViewUp() after every drag — so the live view-up is the
+    # orthogonalized version. Project both onto an orthonormal basis so the
+    # change-of-basis M = B_out @ B_in^T is a rotation rather than a shear.
+    view_init = _project_orthonormal(view_init, pos_init)
+    view_up = _project_orthonormal(view_up, direction)
+    if view_init is None or view_up is None:
+        return 0, 0, 0
+
     third_in = np.cross(pos_init, view_init)
     third_out = np.cross(direction, view_up)
     B_in = np.column_stack([pos_init, view_init, third_in])
     B_out = np.column_stack([direction, view_up, third_out])
-
-    try:
-        rot = B_out @ np.linalg.inv(B_in)
-    except np.linalg.LinAlgError:
-        return 0, 0, 0
+    rot = B_out @ B_in.T
 
     sin_az = float(np.clip(-rot[2, 0], -1.0, 1.0))
     azimuth = np.degrees(np.arcsin(sin_az))

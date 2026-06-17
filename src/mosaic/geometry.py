@@ -24,6 +24,7 @@ __all__ = [
     "VolumeGeometry",
     "SegmentationGeometry",
     "GeometryTrajectory",
+    "merge_geometries",
 ]
 
 
@@ -592,10 +593,9 @@ class Geometry:
         # TODO: We can handle merging of VolumeGeometries propertly, but
         # need to make sure they contain the same volume. For now we just
         # render them as point cloud
-        if representation in ("volume", "segmentation"):
+        if representation == "volume":
             representation = "pointcloud"
             _ = appearance.pop("volume_path", None)
-            _ = appearance.pop("isovalue_percentile", None)
 
         from .formats.parser import VertexPropertyContainer
 
@@ -1692,6 +1692,7 @@ class SegmentationGeometry(Geometry):
         self._lod_actor = None
         self._lod_data = None
         self._lod_active = False
+        self._intent_visible = True
 
         self._appearance = {
             "size": 8,
@@ -2234,8 +2235,7 @@ class SegmentationGeometry(Geometry):
         self._set_appearance()
 
     def change_representation(self, representation=None):
-        """Segmentation geometry -- representation changes are not supported."""
-        warnings.warn("SegmentationGeometry does not support representation changes.")
+        """Representation changes are not supported."""
         return None
 
     def is_mesh_representation(self, representation=None):
@@ -2341,3 +2341,23 @@ class GeometryTrajectory(Geometry):
 # For backwards compatibility
 class PointCloud(Geometry):
     pass
+
+
+def merge_geometries(geometries):
+    """Merge geometries, dispatching on a shared subclass.
+
+    Parameters
+    ----------
+    geometries : iterable of Geometry
+        Geometries to merge.
+
+    Returns
+    -------
+    Geometry
+        Merged geometry; the shared subclass when the inputs are homogeneous,
+        otherwise a base :class:`Geometry`.
+    """
+    geometries = [g for g in geometries if isinstance(g, Geometry)]
+    types = {type(g) for g in geometries}
+    target = next(iter(types)) if len(types) == 1 else Geometry
+    return target.merge(geometries)

@@ -240,20 +240,6 @@ class DevelopmentTab(QWidget):
                 event.accept()
                 return True
 
-            if key == Qt.Key.Key_Z and mods == Qt.KeyboardModifier.ControlModifier:
-                if is_action:
-                    self._undo()
-                event.accept()
-                return True
-
-            if key == Qt.Key.Key_Z and mods == (
-                Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
-            ):
-                if is_action:
-                    self._redo()
-                event.accept()
-                return True
-
             if key in (Qt.Key.Key_BracketLeft, Qt.Key.Key_BracketRight) and not mods:
                 if is_action:
                     delta = -1 if key == Qt.Key.Key_BracketLeft else 1
@@ -282,16 +268,6 @@ class DevelopmentTab(QWidget):
                 return True
 
         return super().eventFilter(obj, event)
-
-    def _undo(self):
-        if self._overlay is None:
-            return
-        self._overlay.undo()
-
-    def _redo(self):
-        if self._overlay is None:
-            return
-        self._overlay.redo()
 
     def _switch_tool(self, tool_id):
         if self._tool_panel is not None:

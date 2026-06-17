@@ -40,6 +40,7 @@ from qtpy.QtGui import (
     QGuiApplication,
     QActionGroup,
     QKeySequence,
+    QShortcut,
     QDragEnterEvent,
 )
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
@@ -47,6 +48,7 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from .data import MosaicData
 from .icons import icon
 from .settings import Settings
+from .undo import STACK
 from .stylesheets import Colors
 from .animation._utils import ScreenshotManager
 from .parallel import BackgroundTaskManager
@@ -114,7 +116,6 @@ class App(QMainWindow):
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         self.interactor.Initialize()
         self.interactor.AddObserver("RightButtonPressEvent", self.on_right_click)
-        self.interactor.AddObserver("KeyPressEvent", self._on_vtk_key_press)
         self.interactor.SetDesiredUpdateRate(Settings.rendering.target_fps)
 
         left = 78 if sys.platform == "darwin" else 8
@@ -477,18 +478,6 @@ class App(QMainWindow):
         self._transition_modes(self.cursor_handler.current_mode)
         self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
 
-    def _on_vtk_key_press(self, obj, event):
-        key = obj.GetKeyCode()
-        if key == "r":
-            self._transition_modes(ViewerModes.SELECTION)
-
-    def _send_vtk_key(self, key_char):
-        self.vtk_widget.setFocus()
-        self.interactor.SetKeyCode(key_char)
-        self.interactor.SetKeySym(key_char)
-        self.interactor.KeyPressEvent()
-        self.interactor.CharEvent()
-
     def toggle_background(self):
         self._use_alt_background = not getattr(self, "_use_alt_background", False)
         current_color = self.renderer.GetBackground()
@@ -497,9 +486,12 @@ class App(QMainWindow):
         self.vtk_widget.GetRenderWindow().Render()
 
     def toggle_interaction_target(self):
+        previous_mode = self.cursor_handler.current_mode
         self._transition_modes(ViewerModes.VIEWING)
         self.cdata.viewport.swap_target()
         self.toggle_selection_menu()
+        if previous_mode == ViewerModes.SELECTION:
+            self._transition_modes(ViewerModes.SELECTION)
 
     def remove_selected(self):
         style = self.interactor.GetInteractorStyle()
@@ -514,47 +506,11 @@ class App(QMainWindow):
 
     def _transition_modes(self, new_mode):
         self.vtk_widget.setFocus()
+        if self.cursor_handler.current_mode == new_mode:
+            new_mode = ViewerModes.VIEWING
 
-        current_mode = self.cursor_handler.current_mode
-        if current_mode in (
-            ViewerModes.MESH_ADD,
-            ViewerModes.MESH_DELETE,
-            ViewerModes.CURVE,
-        ):
-            current_style = self.interactor.GetInteractorStyle()
-            if hasattr(current_style, "cleanup"):
-                current_style.cleanup()
-
-            self.cdata.viewport.attach_area_picker()
-
-        self.cdata.viewport.activate_viewing_mode()
+        self.cdata.viewport.set_mode(new_mode)
         self.status_indicator.update_status(interaction=new_mode.value)
-        if current_mode == new_mode:
-            self.status_indicator.update_status(interaction=ViewerModes.VIEWING.value)
-            return self.cursor_handler.update_mode(ViewerModes.VIEWING)
-
-        if new_mode == ViewerModes.DRAWING:
-            self.cdata.viewport.set_target(self.cdata.data)
-            self.cdata.viewport.activate_drawing_mode()
-        elif new_mode == ViewerModes.CURVE:
-            from .styles import CurveBuilderInteractorStyle
-
-            style = CurveBuilderInteractorStyle(self, self.cdata)
-            self.interactor.SetInteractorStyle(style)
-            style.SetDefaultRenderer(self.renderer)
-        elif new_mode == ViewerModes.SELECTION:
-            self.cdata.viewport.attach_area_picker()
-        elif new_mode == ViewerModes.PICKING:
-            self.cdata.viewport.activate_picking_mode()
-        elif new_mode in (ViewerModes.MESH_ADD, ViewerModes.MESH_DELETE):
-            from .styles import MeshEditInteractorStyle
-
-            style = MeshEditInteractorStyle(self, self.cdata)
-            self.interactor.SetInteractorStyle(style)
-            style.SetDefaultRenderer(self.renderer)
-            if new_mode == ViewerModes.MESH_ADD:
-                style.toggle_add_face_mode()
-
         return self.cursor_handler.update_mode(new_mode)
 
     def set_camera_view(
@@ -696,6 +652,7 @@ class App(QMainWindow):
 
         self._setup_volume_viewer()
         self._setup_camera_hud()
+        self._setup_sculpt_palette()
         self.cdata.viewport.render_update.connect(
             self.volume_viewer.primary.handle_projection_change
         )
@@ -778,10 +735,12 @@ class App(QMainWindow):
         add_file_action.setShortcut("Ctrl+O")
 
         undo_action = QAction(icon("ph.arrow-u-up-left"), "Undo", self)
-        undo_action.triggered.connect(
-            lambda: (self.cdata.data.undo(), self.cdata.models.undo())
-        )
+        undo_action.triggered.connect(lambda: STACK.undo())
         undo_action.setShortcut("Ctrl+Z")
+
+        redo_action = QAction(icon("ph.arrow-u-up-right"), "Redo", self)
+        redo_action.triggered.connect(lambda: STACK.redo())
+        redo_action.setShortcut("Ctrl+Shift+Z")
 
         save_file_action = QAction(icon("ph.floppy-disk"), "Save Session", self)
         save_file_action.triggered.connect(self.save_session)
@@ -1104,10 +1063,11 @@ class App(QMainWindow):
         background_action.setShortcut(QKeySequence("D"))
         background_action.triggered.connect(self.toggle_background)
 
-        # TODO: Figure out why selection needs this extra treatment
         selection_action = QAction(icon("ph.cursor"), "Point Selection", self)
         selection_action.setShortcut(QKeySequence("R"))
-        selection_action.triggered.connect(lambda: self._send_vtk_key("r"))
+        selection_action.triggered.connect(
+            lambda: self._transition_modes(ViewerModes.SELECTION)
+        )
 
         expand_selection_action = QAction(
             icon("ph.arrows-out"), "Expand Selection", self
@@ -1151,6 +1111,12 @@ class App(QMainWindow):
             lambda: self._transition_modes(ViewerModes.DRAWING)
         )
 
+        sculpt_action = QAction(icon("ph.paint-brush"), "Sculpt Mesh", self)
+        sculpt_action.setShortcut(QKeySequence("G"))
+        sculpt_action.triggered.connect(
+            lambda: self._transition_modes(ViewerModes.SCULPT)
+        )
+
         curve_action = QAction(icon("ph.path"), "Curve Drawing", self)
         curve_action.setShortcut(QKeySequence("Shift+A"))
         curve_action.triggered.connect(
@@ -1192,6 +1158,7 @@ class App(QMainWindow):
         interaction_target_menu.addAction(swap_target_action)
 
         interact_menu.addAction(undo_action)
+        interact_menu.addAction(redo_action)
         interact_menu.addAction(viewing_action)
         interact_menu.addAction(background_action)
         interact_menu.addSeparator()
@@ -1216,6 +1183,9 @@ class App(QMainWindow):
 
         interact_menu.addAction(mesh_add_action)
         interact_menu.addAction(mesh_delete_action)
+        interact_menu.addSeparator()
+
+        interact_menu.addAction(sculpt_action)
 
     def open_batch_pipeline(self):
         """Open the PipelineBuilderDialog dialog."""
@@ -1308,6 +1278,22 @@ class App(QMainWindow):
 
         self.camera_hud = CameraHUD(parent=self)
         self.camera_hud.attach(self)
+
+    def _setup_sculpt_palette(self):
+        from .widgets.sculpt_palette_hud import SculptPaletteHUD
+
+        self.sculpt_palette = SculptPaletteHUD(parent=self)
+        self.sculpt_palette.attach(self)
+        # SculptMode owns the toolChanged/radiusChanged/strengthChanged wiring;
+        # it connects/disconnects in activate()/deactivate().
+        self.cdata.viewport.register_sculpt_hud(self.sculpt_palette)
+
+        # Escape returns to viewing mode from any non-viewing mode. Lives at
+        # the gui level so the sculpt shortcut filter doesn't need a back-ref.
+        escape_shortcut = QShortcut(QKeySequence("Escape"), self)
+        escape_shortcut.activated.connect(
+            lambda: self._transition_modes(ViewerModes.VIEWING)
+        )
 
     def _setup_volume_viewer(self):
         # HUD is a top-level translucent tool window that tracks the

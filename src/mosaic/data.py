@@ -11,6 +11,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from .undo import STACK
+
 __all__ = ["MosaicData"]
 
 
@@ -162,6 +164,7 @@ class MosaicData:
 
         self.data.clear()
         self.models.clear()
+        STACK.clear()
 
     def refresh_lod(self):
         """Shortcut for :meth:`ViewportInteractor.refresh_lod`."""

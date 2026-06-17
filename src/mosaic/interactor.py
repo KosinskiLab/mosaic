@@ -1,7 +1,6 @@
 """
-Implemenents DataContainerInteractor and LinkedDataContainerInteractor,
-which mediate interaction between the GUI and underlying DataContainers.
-This includes selection, editing and rendering.
+Implemenents DataContainerInteractor to mediate interaction between
+the viewport/GUI and DataContainers.
 
 Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
@@ -9,7 +8,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import numpy as np
-from typing import Dict
+from dataclasses import dataclass
+from typing import Dict, Optional
 
 from qtpy.QtGui import QAction
 from qtpy.QtWidgets import QListWidget, QMenu, QDialog
@@ -29,6 +29,24 @@ _VOLUME_GEOMETRY_KEYS = (
     "upper_quantile",
     "target_resolution",
 )
+
+
+@dataclass
+class _GeometrySwap:
+    """Restore a uuid to an exact geometry (or absence) in either direction."""
+
+    uuid: str
+    before: Optional["Geometry"]
+    after: Optional["Geometry"]
+
+
+@dataclass
+class _GeometrySubset:
+    """Point subset removed from a surviving geometry; undo re-appends the slice."""
+
+    uuid: str
+    removed: "Geometry"
+    n_kept: int
 
 
 def _convert_geometry(geometry, target_cls):
@@ -658,60 +676,141 @@ class DataContainerInteractor(QObject):
         self._highlight_selection()
         self.render()
 
-    def _backup(self):
-        # Save clusters and points that are modified by the operation
-        self._merge_uuid = None
-        try:
-            self._geometry_backup = {
-                x.uuid: x[...] for x in self.get_selected_geometries()
-            }
-            self._point_backup = {
-                i: self.container.get(i)[ix] for i, ix in self.point_selection.items()
-            }
-        except Exception:
-            self._geometry_backup = None
-            self._point_backup = None
+    def _restore_geometry(self, uuid, geom) -> None:
+        """Set ``uuid`` to ``geom`` exactly, or remove it when ``geom`` is None."""
+        prev = self.container.get(uuid)
+        if geom is None:
+            if prev is not None:
+                self.container.remove(uuid)
+        elif prev is None:
+            geom.uuid = uuid
+            self.add(geom)
+        else:
+            self.container.update(uuid, geom)
+        return None
 
-    def undo(self):
-        if getattr(self, "_geometry_backup", None) is None:
+    def _undo_subset_removal(self, record) -> None:
+        """Re-append a removed point slice to its surviving geometry."""
+        from .geometry import merge_geometries
+
+        slice_copy = record.removed[...]
+        slice_copy.uuid = record.uuid
+        current = self.container.get(record.uuid)
+        if current is None:
+            self.add(slice_copy)
             return None
+        # merge_geometries keeps the surviving geometry's representation (e.g. a
+        # segmentation stays a segmentation instead of collapsing to a point cloud).
+        merged = merge_geometries((current, slice_copy))
+        merged.uuid = record.uuid
+        self.container.update(record.uuid, merged)
+        return None
 
-        if getattr(self, "_merge_uuid", None) is not None:
-            self.remove(self._merge_uuid)
+    def _redo_subset_removal(self, record) -> None:
+        """Re-remove the slice by keeping only the first ``n_kept`` points.
 
-        for _, geometry in self._geometry_backup.items():
-            self.add(geometry)
+        Undo appends the slice at the tail, so the first ``n_kept`` points are the
+        surviving set; redo only runs on that post-undo state (the UndoStack clears
+        redo on push and a redo can only follow its matching undo).
+        """
+        current = self.container.get(record.uuid)
+        if current is None:
+            return None
+        keep = np.zeros(current.get_number_of_points(), dtype=bool)
+        keep[: record.n_kept] = True
+        self.container.update(record.uuid, current.subset(keep, copy=True))
+        return None
 
-        for uuid, geometry in self._point_backup.items():
-            prev_geometry = self.container.get(uuid)
-            if prev_geometry is None:
-                self.add(geometry)
-                continue
-            self.container.update(uuid, geometry.merge((prev_geometry, geometry)))
-
-        self._geometry_backup = None
-        self._point_backup = None
-        self._merge_uuid = None
+    def _apply_changes(self, changes, *, undo: bool) -> None:
+        """Apply each change in the given direction, then refresh once."""
+        for change in changes:
+            if isinstance(change, _GeometrySubset):
+                if undo:
+                    self._undo_subset_removal(change)
+                else:
+                    self._redo_subset_removal(change)
+            else:
+                self._restore_geometry(
+                    change.uuid, change.before if undo else change.after
+                )
         self.data_changed.emit()
         self.render()
+        return None
+
+    def _capture_selection(self, selected):
+        """Snapshot the pre-op state shared by ``merge`` and ``remove_selection``."""
+        whole_uuids = {g.uuid for g in selected}
+        point_uuids = [u for u in self.point_selection if u not in whole_uuids]
+        swaps = {
+            u: _GeometrySwap(u, before=self.container.get(u)[...], after=None)
+            for u in whole_uuids
+        }
+        slices = {
+            u: self.container.get(u)[self.point_selection[u]] for u in point_uuids
+        }
+        return swaps, slices
+
+    def _subset_changes(self, slices):
+        """Build one change per point source from its post-op survival state."""
+        changes = []
+        for uuid, removed in slices.items():
+            survivor = self.container.get(uuid)
+            if survivor is None:
+                changes.append(_GeometrySwap(uuid, before=removed, after=None))
+            else:
+                changes.append(
+                    _GeometrySubset(
+                        uuid, removed=removed, n_kept=survivor.get_number_of_points()
+                    )
+                )
+        return changes
+
+    def _push_swap(self, label: str, changes) -> None:
+        from .undo import STACK, UndoEntry
+
+        STACK.push(
+            UndoEntry(
+                label=label,
+                undo=lambda: self._apply_changes(changes, undo=True),
+                redo=lambda: self._apply_changes(changes, undo=False),
+            )
+        )
+        return None
 
     def merge(self):
-        from .geometry import Geometry
+        from .geometry import Geometry, merge_geometries
 
-        self._backup()
+        selected = self.get_selected_geometries()
+        swaps, slices = self._capture_selection(selected)
+
         point_cluster = self.add_selection(self.point_selection, add=True)
         self.deselect_points()
 
-        merge = [*self.get_selected_geometries(), self.container.get(point_cluster)]
-        merge = [x for x in merge if isinstance(x, Geometry)]
+        merge_list = [
+            *self.get_selected_geometries(),
+            self.container.get(point_cluster),
+        ]
+        merge_list = [g for g in merge_list if isinstance(g, Geometry)]
+        if not merge_list:
+            self.render()
+            return None
 
-        if len(merge):
-            merged_geometry = Geometry.merge(merge)
-            self.remove(merge)
-            new_index = self.add(merged_geometry)
-            self._merge_uuid = self.container.get(new_index).uuid
+        merged = merge_geometries(merge_list)
+        self.remove(merge_list)
+        new_index = self.add(merged)
+        merged_uuid = self.container.get(new_index).uuid
 
+        if merged_uuid in swaps:
+            swaps[merged_uuid].after = merged[...]
+        else:
+            swaps[merged_uuid] = _GeometrySwap(
+                merged_uuid, before=None, after=merged[...]
+            )
+
+        changes = list(swaps.values()) + self._subset_changes(slices)
+        self._push_swap("Merge", changes)
         self.render()
+        return None
 
     def remove(self, uuids_or_geometries):
         """Remove the given geometries from the container and notify listeners."""
@@ -719,16 +818,21 @@ class DataContainerInteractor(QObject):
         self.data_changed.emit()
 
     def remove_selection(self):
-        """Drop selected points (or whole geometries when fully selected) with undo backup."""
+        """Drop selected points (or whole geometries when fully selected)."""
         selected = self.get_selected_geometries()
-        if len(self.point_selection) == 0 and len(selected) == 0:
+        if not self.point_selection and not selected:
             return None
 
-        self._backup()
+        swaps, slices = self._capture_selection(selected)
+
         self.add_selection(self.point_selection, add=False)
         self.point_selection.clear()
         self.remove(selected)
+
+        changes = list(swaps.values()) + self._subset_changes(slices)
+        self._push_swap("Remove", changes)
         self.render()
+        return None
 
     def visibility(self, geometries, visible: bool = True):
         for geometry in geometries:
