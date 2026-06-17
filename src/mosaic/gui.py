@@ -60,6 +60,7 @@ from .widgets import (
     LegendWidget,
     ScaleBarWidget,
     ObjectBrowserSidebar,
+    UpdatePill,
     ViewerModes,
     StatusIndicator,
     CursorModeHandler,
@@ -103,6 +104,7 @@ class App(QMainWindow):
 
         self.cdata = MosaicData(self.vtk_widget)
         self.cdata.thumbnail_provider = self._capture_thumbnail
+        self._current_session_path = None
 
         self.renderer = vtk.vtkRenderer()
         self.render_window = self.vtk_widget.GetRenderWindow()
@@ -158,6 +160,10 @@ class App(QMainWindow):
             QPushButton:focus {{ outline: none; }}
         """
         )
+        self.update_pill = UpdatePill()
+        self.update_pill.update_clicked.connect(self._show_update_dialog)
+        self.tab_bar._layout.addWidget(self.update_pill)
+
         self.theme_toggle = ThemeToggle()
         self.theme_toggle.set_initial_state(Colors.is_dark())
         self.theme_toggle.toggled.connect(self._on_theme_toggled)
@@ -343,7 +349,7 @@ class App(QMainWindow):
             passes = vtk.vtkRenderStepsPass()
             ssao = vtk.vtkSSAOPass()
             ssao.SetDelegatePass(passes)
-            ssao.SetRadius(50.0)
+            ssao.SetRadius(self._ssao_radius(renderer))
             ssao.SetKernelSize(128)
             ssao.BlurOn()
             renderer.SetPass(ssao)
@@ -359,7 +365,7 @@ class App(QMainWindow):
                 light.SetPosition(*pos)
                 light.SetColor(*color)
                 light.SetIntensity(intensity)
-                light.SetLightTypeToSceneLight()
+                light.SetLightTypeToCameraLight()
                 renderer.AddLight(light)
 
         elif mode == "flat":
@@ -379,22 +385,32 @@ class App(QMainWindow):
                 l.SetPosition(*pos)
                 l.SetColor(*color)
                 l.SetIntensity(intensity)
-                l.SetLightTypeToSceneLight()
+                l.SetLightTypeToCameraLight()
                 renderer.AddLight(l)
 
             passes = vtk.vtkRenderStepsPass()
             ssao = vtk.vtkSSAOPass()
             ssao.SetDelegatePass(passes)
-            ssao.SetRadius(50.0)
+            ssao.SetRadius(self._ssao_radius(renderer))
             ssao.SetKernelSize(128)
             ssao.BlurOn()
             renderer.SetPass(ssao)
 
         elif mode == "silhouettes":
             passes = vtk.vtkRenderStepsPass()
-            sobel = vtk.vtkSobelGradientMagnitudePass()
-            sobel.SetDelegatePass(passes)
-            renderer.SetPass(sobel)
+            edl = vtk.vtkEDLShading()
+            edl.SetDelegatePass(passes)
+            renderer.SetPass(edl)
+
+    @staticmethod
+    def _ssao_radius(renderer, fraction: float = 0.02, fallback: float = 50.0):
+        # SSAO radius is in world units, so a fixed value over- or under-shoots
+        # depending on data scale. Tie it to the visible scene diagonal.
+        bounds = renderer.ComputeVisiblePropBounds()
+        diag = max(bounds[1] - bounds[0], bounds[3] - bounds[2], bounds[5] - bounds[4])
+        if diag <= 0:
+            return fallback
+        return fraction * diag
 
     def apply_render_settings(self):
         dark = [float(x) for x in Settings.rendering.background_color]
@@ -482,12 +498,15 @@ class App(QMainWindow):
 
     def toggle_interaction_target(self):
         self._transition_modes(ViewerModes.VIEWING)
-        self.cdata.swap_area_picker()
+        self.cdata.viewport.swap_target()
         self.toggle_selection_menu()
 
     def remove_selected(self):
-        self.cdata.data.remove()
-        self.cdata.models.remove()
+        style = self.interactor.GetInteractorStyle()
+        if hasattr(style, "remove_selected"):
+            return style.remove_selected()
+        self.cdata.data.remove_selection()
+        self.cdata.models.remove_selection()
 
     def on_right_click(self, obj, event):
         self.cdata.data.deselect()
@@ -506,17 +525,17 @@ class App(QMainWindow):
             if hasattr(current_style, "cleanup"):
                 current_style.cleanup()
 
-            self.cdata.swap_area_picker()
-            self.cdata.swap_area_picker()
+            self.cdata.viewport.attach_area_picker()
 
-        self.cdata.activate_viewing_mode()
+        self.cdata.viewport.activate_viewing_mode()
         self.status_indicator.update_status(interaction=new_mode.value)
         if current_mode == new_mode:
             self.status_indicator.update_status(interaction=ViewerModes.VIEWING.value)
             return self.cursor_handler.update_mode(ViewerModes.VIEWING)
 
         if new_mode == ViewerModes.DRAWING:
-            self.cdata.data.activate_drawing_mode()
+            self.cdata.viewport.set_target(self.cdata.data)
+            self.cdata.viewport.activate_drawing_mode()
         elif new_mode == ViewerModes.CURVE:
             from .styles import CurveBuilderInteractorStyle
 
@@ -524,10 +543,9 @@ class App(QMainWindow):
             self.interactor.SetInteractorStyle(style)
             style.SetDefaultRenderer(self.renderer)
         elif new_mode == ViewerModes.SELECTION:
-            self.cdata._get_active_container().attach_area_picker()
-
+            self.cdata.viewport.attach_area_picker()
         elif new_mode == ViewerModes.PICKING:
-            self.cdata.activate_picking_mode()
+            self.cdata.viewport.activate_picking_mode()
         elif new_mode in (ViewerModes.MESH_ADD, ViewerModes.MESH_DELETE):
             from .styles import MeshEditInteractorStyle
 
@@ -642,6 +660,8 @@ class App(QMainWindow):
         self.tab_bar._on_theme_changed()
         if hasattr(self, "status_indicator"):
             self.status_indicator._on_theme_changed()
+        if hasattr(self, "update_pill"):
+            self.update_pill._on_theme_changed()
         if hasattr(self, "_tab_gear"):
             self._tab_gear.setIcon(icon("ph.sliders-thin", role="active"))
 
@@ -676,10 +696,7 @@ class App(QMainWindow):
 
         self._setup_volume_viewer()
         self._setup_camera_hud()
-        self.cdata.data.render_update.connect(
-            self.volume_viewer.primary.handle_projection_change
-        )
-        self.cdata.models.render_update.connect(
+        self.cdata.viewport.render_update.connect(
             self.volume_viewer.primary.handle_projection_change
         )
 
@@ -716,8 +733,8 @@ class App(QMainWindow):
 
         def _on_data_arrived():
             if (
-                len(self.cdata._data.data) > 0
-                or len(self.cdata._models.data) > 0
+                len(self.cdata.data.container.data) > 0
+                or len(self.cdata.models.container.data) > 0
                 or self.volume_viewer.primary.volume is not None
             ):
                 self.viewport_stack.setCurrentWidget(self.vtk_widget)
@@ -769,6 +786,12 @@ class App(QMainWindow):
         save_file_action = QAction(icon("ph.floppy-disk"), "Save Session", self)
         save_file_action.triggered.connect(self.save_session)
         save_file_action.setShortcut("Ctrl+S")
+
+        save_file_as_action = QAction(
+            icon("ph.floppy-disk-back"), "Save Session As...", self
+        )
+        save_file_as_action.triggered.connect(self.save_session_as)
+        save_file_as_action.setShortcut("Ctrl+Shift+S")
 
         close_file_action = QAction(icon("ph.x-circle"), "Close Session", self)
         close_file_action.triggered.connect(lambda: self.close_session(True))
@@ -878,14 +901,14 @@ class App(QMainWindow):
         self.color_default_action.setCheckable(True)
         self.color_default_action.setChecked(True)
         self.color_default_action.triggered.connect(
-            lambda: self.cdata.set_coloring_mode("default")
+            lambda: self.cdata.viewport.set_coloring_mode("default")
         )
         coloring_group.addAction(self.color_default_action)
 
         self.color_by_entity_action = QAction("By Entity", self)
         self.color_by_entity_action.setCheckable(True)
         self.color_by_entity_action.triggered.connect(
-            lambda: self.cdata.set_coloring_mode("entity")
+            lambda: self.cdata.viewport.set_coloring_mode("entity")
         )
         coloring_group.addAction(self.color_by_entity_action)
 
@@ -937,6 +960,7 @@ class App(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(new_session_action)
         file_menu.addAction(save_file_action)
+        file_menu.addAction(save_file_as_action)
         file_menu.addAction(close_file_action)
 
         file_menu.addSeparator()
@@ -1090,19 +1114,19 @@ class App(QMainWindow):
         )
         expand_selection_action.setShortcut(QKeySequence("E"))
         expand_selection_action.triggered.connect(
-            self.cdata.highlight_clusters_from_selected_points
+            self.cdata.viewport.highlight_clusters_from_selected_points
         )
 
         hide_unselected_action = QAction(icon("ph.eye-slash"), "Hide Unselected", self)
         hide_unselected_action.setShortcut(QKeySequence("H"))
         hide_unselected_action.triggered.connect(
-            lambda: self.cdata.visibility_unselected(visible=False)
+            lambda: self.cdata.viewport.visibility_unselected(visible=False)
         )
 
         show_unselected_action = QAction(icon("ph.eye"), "Show Unselected", self)
         show_unselected_action.setShortcut(QKeySequence("Shift+H"))
         show_unselected_action.triggered.connect(
-            lambda: self.cdata.visibility_unselected(visible=True)
+            lambda: self.cdata.viewport.visibility_unselected(visible=True)
         )
 
         picking_action = QAction(icon("ph.hand-pointing"), "Pick Objects", self)
@@ -1392,9 +1416,9 @@ class App(QMainWindow):
                 widget.set_current(file_path)
 
         self._add_file_to_recent(file_path)
+        self._current_session_path = file_path
 
-        self.cdata.data.render(defer_render=True)
-        self.cdata.models.render(defer_render=True)
+        self.cdata.viewport.render(defer_render=True)
         self._camera_view = None
         self.set_camera_view("z")
 
@@ -1418,6 +1442,8 @@ class App(QMainWindow):
         self.renderer.RemoveAllViewProps()
         self.volume_viewer.close()
 
+        self.bbox_manager.reset()
+        self.trajectory_player.clear()
         self.dataset_bbox.setChecked(False)
         self.computed_bbox.setChecked(False)
 
@@ -1428,8 +1454,8 @@ class App(QMainWindow):
             self.status_indicator.show()
 
         self.cdata.reset()
-        self.cdata.data.render(defer_render=True)
-        self.cdata.models.render(defer_render=True)
+        self.cdata.viewport.render(defer_render=True)
+        self._current_session_path = None
         self.prime_viewport_placeholder()
 
         if render:
@@ -1459,6 +1485,10 @@ class App(QMainWindow):
 
         from .parallel import submit_io_task
 
+        self._scene_was_empty_at_import = (
+            len(self.cdata.data.container) == 0
+            and len(self.cdata.models.container) == 0
+        )
         submit_io_task(
             "Reading Files",
             _read_files_worker,
@@ -1484,9 +1514,12 @@ class App(QMainWindow):
 
         self.cdata.data.data_changed.emit()
         self.cdata.models.data_changed.emit()
-        self.cdata.data.render(defer_render=False)
-        self.cdata.models.render(defer_render=False)
-        self.set_camera_view("z")
+        self.cdata.viewport.render(defer_render=False)
+        if getattr(self, "_scene_was_empty_at_import", True):
+            self.renderer.ResetCamera()
+            self.renderer.ResetCameraClippingRange()
+            self.vtk_widget.GetRenderWindow().Render()
+        self._scene_was_empty_at_import = False
 
         if density_paths:
             from pathlib import Path
@@ -1564,12 +1597,18 @@ class App(QMainWindow):
             return None
 
     def save_session(self):
+        if self._current_session_path:
+            self.cdata.to_file(self._current_session_path)
+            return None
+        return self.save_session_as()
+
+    def save_session_as(self):
         file_dialog = QFileDialog()
         file_dialog.setDefaultSuffix("pickle")
         file_path, _ = file_dialog.getSaveFileName(
             self,
             "Save File",
-            "",
+            self._current_session_path or "",
             "Session Files (*.pickle)",
         )
         if not file_path:
@@ -1578,6 +1617,8 @@ class App(QMainWindow):
         if not file_path.lower().endswith(".pickle"):
             file_path += ".pickle"
         self.cdata.to_file(file_path)
+        self._current_session_path = file_path
+        self._add_file_to_recent(file_path)
 
     def update_recent_files_menu(self):
         Settings.ui.recent_files = [x for x in Settings.ui.recent_files if exists(x)]
@@ -1625,21 +1666,26 @@ class App(QMainWindow):
         return self._open_files([file_path])
 
     def _check_for_updates(self):
-        from .dialogs import UpdateChecker, UpdateDialog
+        from .dialogs import UpdateChecker
         from .__version__ import __version__
-
-        def _show_update_dialog(latest_version, release_notes):
-            if Settings.ui.skipped_version == latest_version:
-                return None
-            dialog = UpdateDialog(
-                __version__, latest_version, release_notes, parent=self
-            )
-            dialog.exec()
 
         # We assign the thread to keep it alive
         self.update_checker = UpdateChecker(__version__, parent=self)
-        self.update_checker.update_available.connect(_show_update_dialog)
+        self.update_checker.update_available.connect(self._on_update_available)
         self.update_checker.start()
+
+    def _on_update_available(self, latest_version: str, release_notes: str):
+        from .settings import Settings
+
+        self.update_pill.show_update(latest_version, release_notes)
+        if Settings.ui.skipped_version != latest_version:
+            self._show_update_dialog(latest_version, release_notes)
+
+    def _show_update_dialog(self, latest_version: str, release_notes: str = ""):
+        from .dialogs import UpdateDialog
+        from .__version__ import __version__
+
+        UpdateDialog(__version__, latest_version, release_notes, parent=self).exec()
 
 
 def _read_files_worker(cdata, filenames, file_parameters):

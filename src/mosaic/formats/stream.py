@@ -18,10 +18,6 @@ class ZarrPyramid:
     """
     Cache-backed multi-level zarr image pyramid.
 
-    Stateless with respect to "current level" — the caller specifies
-    which level to read.  On cache miss, falls back to the best
-    available coarser data in cache, upsampled to the requested grid.
-
     Parameters
     ----------
     levels : list of dict
@@ -31,7 +27,7 @@ class ZarrPyramid:
         Maximum decoded chunk cache size in bytes.
     """
 
-    def __init__(self, levels, cache_bytes=512 * 1024**2):
+    def __init__(self, levels, cache_bytes=8 * 1024**3):
         self._levels = list(levels)
         self._cache_bytes = cache_bytes
 
@@ -69,22 +65,23 @@ class ZarrPyramid:
             cache_key = (level, *ck)
 
             if cache_key not in self._cache:
-                if self._on_chunk_ready is not None and cache_key not in self._pending:
-                    from mosaic.parallel import submit_io_task
-
-                    missing.append(ck)
-                    self._pending.add(cache_key)
-
-                    submit_io_task(
-                        "Fetch zarr chunk",
-                        self._fetch_chunk,
-                        self._on_chunk_ready,
-                        level,
-                        ck,
-                    )
-                    continue
+                if self._on_chunk_ready is None:
+                    fetched = self._fetch_chunk_data(level, ck)
+                    self._install_chunk(fetched)
                 else:
-                    self._fetch_chunk(level, ck)
+                    missing.append(ck)
+                    if cache_key not in self._pending:
+                        from mosaic.parallel import submit_io_task
+
+                        self._pending.add(cache_key)
+                        submit_io_task(
+                            "Fetch zarr chunk",
+                            self._fetch_chunk_data,
+                            self._on_chunk_fetched,
+                            level,
+                            ck,
+                        )
+                    continue
 
             self._cache.move_to_end(cache_key)
             self._copy_chunk(level, cache_key, ck, result, x0, y0, z0)
@@ -144,6 +141,7 @@ class ZarrPyramid:
 
             source = chunk_data[sz0:sz1, sy0:sy1, sx0:sx1]
             self._upsample_into(source, target)
+            self._cache.move_to_end((cl, *ck_idx))
 
     @staticmethod
     def _upsample_into(source, target):
@@ -156,7 +154,7 @@ class ZarrPyramid:
         from scipy.ndimage import zoom
 
         factors = tuple(t / s for t, s in zip(target.shape, source.shape))
-        upsampled = zoom(source, factors, order=1).astype(np.float32)
+        upsampled = zoom(source, factors, order=0).astype(np.float32)
         mask = target == 0
         target[mask] = upsampled[mask]
 
@@ -204,24 +202,37 @@ class ZarrPyramid:
         result[rz, ry, rx] = chunk_data[sz, sy, sx]
 
     def _put_cache(self, key, data):
+        if key in self._cache:
+            self._cache_used -= self._cache[key].nbytes
         self._cache[key] = data
         self._cache_used += data.nbytes
         while self._cache_used > self._cache_bytes and self._cache:
             _, evicted = self._cache.popitem(last=False)
             self._cache_used -= evicted.nbytes
 
-    def _fetch_chunk(self, level, chunk_key):
+    def _fetch_chunk_data(self, level, chunk_key):
+        """Worker-thread: read the chunk; no shared-state mutation."""
         cache_key = (level, *chunk_key)
         try:
             zs, ys, xs = self._chunk_slices(level, *chunk_key)
             arr = self._levels[level]["array"]
             slab = arr[zs, ys, xs]
-            self._put_cache(cache_key, np.ascontiguousarray(slab, dtype=np.float32))
+            return cache_key, np.ascontiguousarray(slab, dtype=np.float32)
         except Exception:
-            pass
-        finally:
-            # Its probably best to just retry
-            self._pending.discard(cache_key)
+            return cache_key, None
+
+    def _install_chunk(self, fetched):
+        """GUI-thread: install the fetched chunk into the cache."""
+        cache_key, data = fetched
+        self._pending.discard(cache_key)
+        if data is not None:
+            self._put_cache(cache_key, data)
+
+    def _on_chunk_fetched(self, fetched):
+        """GUI-thread callback for an IO-pool fetch."""
+        self._install_chunk(fetched)
+        if self._on_chunk_ready is not None:
+            self._on_chunk_ready()
 
 
 class ZarrImageSource(VTKPythonAlgorithmBase):

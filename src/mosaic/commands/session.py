@@ -41,12 +41,27 @@ class Session:
         self._models = DataContainer(highlight_color=(0.2, 0.4, 0.8))
         self._data_tree = TreeStateData()
         self._models_tree = TreeStateData()
-        self._metadata: dict = {}
+        self._file_sections: dict = {}
         self._order: list = []
         self._last_results: list = []
         self._log: List[str] = []
         self._counter: int = 0
+        self.metadata: dict = {}
         self.quiet: bool = quiet
+
+    def _update_shape(self, data_shape, sampling) -> None:
+        """Extend the session bounding box to include *data_shape*."""
+        data_shape = np.asarray(data_shape)
+        physical = np.multiply(data_shape, sampling)
+
+        shape = self.metadata.get("shape")
+        self.metadata["shape"] = (
+            data_shape if shape is None else np.maximum(shape, data_shape)
+        )
+        physical_shape = self.metadata.get("physical_shape")
+        self.metadata["physical_shape"] = (
+            physical if physical_shape is None else np.maximum(physical_shape, physical)
+        )
 
     def _all_geometries(self) -> list:
         """Return all geometries in insertion order."""
@@ -192,8 +207,6 @@ class Session:
         use_index = len(container) > 1
 
         geoms, indices = [], []
-        shape = self._data.metadata.get("shape", None)
-        physical_shape = self._data.metadata.get("physical_shape", None)
         for index, data in enumerate(container):
             effective_sampling = (
                 sampling_rate if sampling_rate is not None else data.sampling
@@ -209,23 +222,10 @@ class Session:
                 geom = list(self._data.data)[idx]
                 self._order.append(geom)
                 indices.append(len(self._order) - 1)
+                self._update_shape(data.shape, effective_sampling)
 
             geoms.append(geom)
             self._counter += 1
-
-            data_shape = np.asarray(data.shape)
-            if shape is None:
-                shape = data_shape
-            shape = np.maximum(shape, data_shape)
-
-            physical_data_shape = np.multiply(data_shape, effective_sampling)
-            if physical_shape is None:
-                physical_shape = physical_data_shape
-            physical_shape = np.maximum(physical_shape, physical_data_shape)
-
-        if persist and shape is not None:
-            self._data.metadata["shape"] = shape
-            self._data.metadata["physical_shape"] = physical_shape
 
         self._last_results = geoms
         return indices
@@ -248,8 +248,6 @@ class Session:
         use_index = len(container) > 1
 
         indices, geoms = [], []
-        shape = self._data.metadata.get("shape", None)
-        physical_shape = self._data.metadata.get("physical_shape", None)
         for index, data in enumerate(container):
             effective_scale = scale if scale is not None else data.sampling
             sampling = sampling_rate if sampling_rate is not None else data.sampling
@@ -258,16 +256,6 @@ class Session:
                 data.vertices, effective_scale, out=data.vertices
             )
             data.vertices = np.subtract(data.vertices, offset, out=data.vertices)
-
-            data_shape = np.asarray(data.shape)
-            if shape is None:
-                shape = data_shape
-            shape = np.maximum(shape, data_shape)
-
-            physical_data_shape = np.multiply(data_shape, effective_scale)
-            if physical_shape is None:
-                physical_shape = physical_data_shape
-            physical_shape = np.maximum(physical_shape, physical_data_shape)
 
             is_mesh = data.faces is not None
             mesh_model = None
@@ -297,6 +285,7 @@ class Session:
 
                 self._order.append(geom)
                 indices.append(len(self._order) - 1)
+                self._update_shape(data.shape, effective_scale)
             else:
                 geom = Geometry(**kw)
 
@@ -306,10 +295,6 @@ class Session:
             geom._meta["name"] = f"{index}_{base}" if use_index else base
             geoms.append(geom)
             self._counter += 1
-
-        if persist and shape is not None:
-            self._data.metadata["shape"] = shape
-            self._data.metadata["physical_shape"] = physical_shape
 
         self._last_results = geoms
         return indices
@@ -334,7 +319,7 @@ class Session:
             export_parameters["format"] = suffix
 
         if export_parameters.get("shape") is None:
-            export_parameters["shape"] = self._data.metadata.get("shape")
+            export_parameters["shape"] = self.metadata.get("shape")
         write_geometries(geometries, filepath, **export_parameters)
 
     def save_session(self, filepath: str, sections: dict = None) -> None:
@@ -350,7 +335,7 @@ class Session:
             Ignored for ``.pickle`` files.
         """
         state = {
-            "shape": self._data.metadata.get("shape"),
+            "metadata": self.metadata,
             "_data": self._data,
             "_models": self._models,
             "_data_tree": self._data_tree,
@@ -362,7 +347,7 @@ class Session:
         else:
             from ..formats.session import write_session
 
-            merged = dict(self._metadata)
+            merged = dict(self._file_sections)
             if sections:
                 merged.update(sections)
             write_session(filepath, state, sections=merged or None)
@@ -396,7 +381,7 @@ class Session:
             data = read_session_section(filepath, name)
             if data is not None:
                 sections[name] = (info["encoding"], data)
-        self._metadata = sections
+        self._file_sections = sections
 
         loaded_data = state.get("_data", state.get("data", DataContainer()))
         loaded_models = state.get(
@@ -420,9 +405,21 @@ class Session:
             else:
                 setattr(self, attr, tree)
 
-        shape = state.get("shape")
-        if shape is not None:
-            self._data.metadata["shape"] = shape
+        self.metadata = dict(state.get("metadata") or {})
+
+        # Back-compat: older sessions stored shape on the top-level state
+        # and on the loaded container's metadata dict.
+        legacy_container_meta = getattr(loaded_data, "metadata", None) or {}
+        if "shape" not in self.metadata:
+            legacy_shape = state.get("shape")
+            if legacy_shape is None:
+                legacy_shape = legacy_container_meta.get("shape")
+            if legacy_shape is not None:
+                self.metadata["shape"] = legacy_shape
+        if "physical_shape" not in self.metadata:
+            legacy_physical = legacy_container_meta.get("physical_shape")
+            if legacy_physical is not None:
+                self.metadata["physical_shape"] = legacy_physical
 
         self._order = list(self._data.data) + list(self._models.data)
         self._last_results = self._all_geometries()
@@ -482,9 +479,9 @@ class Session:
             SpinnerColumn("dots"),
             TextColumn("[mosaic.accent]{task.description}"),
             BarColumn(
-                style="mosaic.bar.remaining",
-                complete_style="mosaic.bar.complete",
-                finished_style="mosaic.bar.finished",
+                style="mosaic.dim",
+                complete_style="mosaic.accent",
+                finished_style="mosaic.success",
             ),
             MofNCompleteColumn(),
             TimeRemainingColumn(),
@@ -626,12 +623,21 @@ class Session:
         return results
 
     def filter(
-        self, geometries: List, prop_name: str, lower=None, upper=None, **kwargs
+        self,
+        geometries: List,
+        prop_name: str,
+        lower=None,
+        upper=None,
+        include=None,
+        exclude=None,
+        **kwargs,
     ) -> tuple:
-        """Filter geometries by property value range.
+        """Filter geometries by property value range or membership.
 
         Automatically detects whether the property yields per-vertex arrays
         (point-level filtering) or scalars (population-level filtering).
+        Range operators (``lower`` / ``upper``) and membership operators
+        (``include`` / ``exclude``) may be combined; they are AND-ed.
 
         Parameters
         ----------
@@ -640,9 +646,13 @@ class Session:
         prop_name : str
             Vertex property name or measure name.
         lower : float, optional
-            Lower bound (inclusive).
+            Lower bound (inclusive). Numeric properties only.
         upper : float, optional
-            Upper bound (inclusive).
+            Upper bound (inclusive). Numeric properties only.
+        include : scalar, sequence, or np.ndarray, optional
+            Keep only values present in this set. Works for any dtype.
+        exclude : scalar, sequence, or np.ndarray, optional
+            Remove values present in this set. Works for any dtype.
         **kwargs
             Additional parameters passed to property computation.
 
@@ -651,8 +661,25 @@ class Session:
         tuple of (int, int, str)
             ``(kept, removed, level)`` where *level* is ``"point"`` or
             ``"population"``.
+
+        Raises
+        ------
+        TypeError
+            If ``lower`` or ``upper`` is supplied for a non-numeric property.
         """
         from ..properties import GeometryProperties
+
+        def _is_non_numeric(v):
+            if isinstance(v, np.ndarray):
+                return v.dtype.kind in ("U", "S", "O")
+            return isinstance(v, (str, bytes))
+
+        def _as_set_array(v):
+            if isinstance(v, np.ndarray):
+                return np.atleast_1d(v)
+            if isinstance(v, (list, tuple)):
+                return np.asarray(v)
+            return np.asarray([v])
 
         kept_geoms = []
         kept, removed = 0, 0
@@ -679,11 +706,21 @@ class Session:
 
             if is_array:
                 level = "point"
+                if (lower is not None or upper is not None) and _is_non_numeric(val):
+                    raise TypeError(
+                        f"Property '{prop_name}' is non-numeric; "
+                        f"use include=/exclude= instead of lower=/upper="
+                    )
+
                 mask = np.ones(len(val), dtype=bool)
                 if lower is not None:
                     mask &= val >= lower
                 if upper is not None:
                     mask &= val <= upper
+                if include is not None:
+                    mask &= np.isin(val, _as_set_array(include))
+                if exclude is not None:
+                    mask &= ~np.isin(val, _as_set_array(exclude))
 
                 if not mask.any():
                     self.remove([geom])
@@ -697,11 +734,22 @@ class Session:
                     kept_geoms.append(geom)
             else:
                 level = "population"
-                scalar = float(val) if not isinstance(val, (int, float)) else val
+                if (lower is not None or upper is not None) and _is_non_numeric(val):
+                    raise TypeError(
+                        f"Property '{prop_name}' is non-numeric; "
+                        f"use include=/exclude= instead of lower=/upper="
+                    )
+
                 in_range = True
-                if lower is not None and scalar < lower:
+                if lower is not None or upper is not None:
+                    scalar = float(val) if not isinstance(val, (int, float)) else val
+                    if lower is not None and scalar < lower:
+                        in_range = False
+                    if upper is not None and scalar > upper:
+                        in_range = False
+                if include is not None and val not in _as_set_array(include).tolist():
                     in_range = False
-                if upper is not None and scalar > upper:
+                if exclude is not None and val in _as_set_array(exclude).tolist():
                     in_range = False
 
                 if in_range:

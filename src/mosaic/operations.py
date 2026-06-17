@@ -417,9 +417,9 @@ def sample(
                 Param(
                     "distance",
                     "float",
-                    default=-1.0,
-                    min=-1.0,
+                    default=None,
                     max=1e32,
+                    special_text="Auto",
                     description="Distance between points to be considered connected.",
                     notes="Defaults to the associated sampling rate.",
                 ),
@@ -432,9 +432,9 @@ def sample(
                 Param(
                     "distance",
                     "float",
-                    default=-1.0,
-                    min=-1.0,
+                    default=None,
                     max=1e32,
+                    special_text="Auto",
                     description="Distance between points to be considered connected.",
                     notes="Defaults to the associated sampling rate.",
                 ),
@@ -447,9 +447,9 @@ def sample(
                 Param(
                     "distance",
                     "float",
-                    default=-1.0,
-                    min=-1.0,
+                    default=None,
                     max=1e32,
+                    special_text="Auto",
                     description="Distance between points to be considered connected.",
                     notes="Defaults to the associated sampling rate.",
                 ),
@@ -473,8 +473,8 @@ def sample(
                 Param(
                     "distance",
                     "float",
-                    default=-1.0,
-                    min=-1.0,
+                    default=None,
+                    special_text="Auto",
                     description="Neighborhood radius for density estimation.",
                     notes="Defaults to the associated sampling rate.",
                 ),
@@ -507,8 +507,8 @@ def sample(
                 Param(
                     "distance",
                     "float",
-                    default=-1.0,
-                    min=-1.0,
+                    default=None,
+                    special_text="Auto",
                     description="Radius for merging subclusters.",
                     notes="Defaults to the associated sampling rate.",
                 ),
@@ -576,8 +576,8 @@ def cluster(
             f"Method must be one of {list(_func_mapping.keys())}, got '{method}'."
         )
 
-    distance = kwargs.pop("distance", -1)
-    if np.any(np.array(distance) < 0):
+    distance = kwargs.pop("distance", None)
+    if distance is None:
         distance = np.max(geometry.sampling_rate)
 
     if method in ("connected_components", "envelope", "leiden"):
@@ -1094,10 +1094,10 @@ def smooth(geometry, method: str, **kwargs):
                 Param(
                     "target_edge_length",
                     "float",
-                    default=-1.0,
-                    min=-1.0,
+                    default=None,
                     label="Edge Length",
-                    description="Edge length for remeshing. -1 uses median.",
+                    special_text="Auto",
+                    description="Edge length for remeshing; Auto uses median.",
                 ),
                 *_FAIRING_PARAMS,
             ),
@@ -1117,10 +1117,10 @@ def smooth(geometry, method: str, **kwargs):
                 Param(
                     "target_edge_length",
                     "float",
-                    default=-1.0,
-                    min=-1.0,
+                    default=None,
                     label="Edge Length",
-                    description="Edge length for remeshing. -1 uses median.",
+                    special_text="Auto",
+                    description="Edge length for remeshing; Auto uses median.",
                 ),
                 *_FAIRING_PARAMS,
             ),
@@ -1140,9 +1140,9 @@ def smooth(geometry, method: str, **kwargs):
                 Param(
                     "deldist",
                     "float",
-                    default=-1.0,
-                    min=-1.0,
+                    default=None,
                     label="Distance",
+                    special_text="Auto",
                     description="Drop vertices further than distance from input.",
                 ),
                 Param(
@@ -1163,9 +1163,9 @@ def smooth(geometry, method: str, **kwargs):
                 Param(
                     "distance",
                     "float",
-                    default=-1.0,
-                    min=-1.0,
+                    default=None,
                     max=1e32,
+                    special_text="Auto",
                     description="Distance between points to be considered connected.",
                     notes="Defaults to the sampling rate of the object.",
                 ),
@@ -1323,8 +1323,8 @@ def fit(geometry, method: str, **kwargs):
             raise ValueError(f"Incorrect radius specification {radii}.") from e
 
     kwargs["voxel_size"] = np.max(geometry.sampling_rate)
-    if method == "flying_edges" and kwargs.get("distance", -1) != -1:
-        kwargs["voxel_size"] = kwargs.get("distance")
+    if method == "flying_edges" and kwargs.get("distance") is not None:
+        kwargs["voxel_size"] = kwargs["distance"]
 
     fit_object = PARAMETRIZATION_TYPE.get(method)
     if fit_object is None:

@@ -15,9 +15,8 @@ from vtkmodules.vtkCommonCore import vtkPoints, vtkLookupTable
 from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
 from vtkmodules.util import numpy_support
 
-from .utils import normals_to_rot, apply_quat, NORMAL_REFERENCE
 from .stylesheets import Colors
-
+from .utils import normals_to_rot, apply_quat, NORMAL_REFERENCE
 
 __all__ = [
     "GeometryData",
@@ -278,10 +277,11 @@ class GeometryData:
         Skipped when the polydata already has polygon cells (mesh).
         """
         if self.polydata.GetNumberOfPolys() > 0:
-            return
-        n = self.polydata.GetNumberOfPoints()
-        if n == 0:
-            return
+            return None
+
+        if (n := self.polydata.GetNumberOfPoints()) == 0:
+            return None
+
         cell_arr = np.empty(n + 1, dtype=np.int64)
         cell_arr[0] = n
         cell_arr[1:] = np.arange(n, dtype=np.int64)
@@ -369,6 +369,7 @@ class Geometry:
         self._lod_data = None
         self._lod_indices = None
         self._lod_active = False
+        self._intent_visible = True
 
         self._actor = self._create_actor(vtk_actor)
         self._appearance = {
@@ -486,6 +487,10 @@ class Geometry:
                 if copy:
                     state[key] = state[key].copy()
 
+        model = state.get("model")
+        if model is not None and hasattr(model, "subset"):
+            state["model"] = model.subset(idx)
+
         parent_lod = self._lod_indices
 
         ret = self
@@ -541,18 +546,29 @@ class Geometry:
             "models": [],
         }
 
+        all_have_normals = True
+        all_have_quaternions = True
         for geometry in geometries:
             _points, _normals, _quaternions = geometry.get_point_data()
 
             data["points"].append(_points)
-            if _normals is not None:
+            if _normals is None:
+                all_have_normals = False
+            else:
                 data["normals"].append(_normals)
 
-            if _quaternions is not None:
+            if _quaternions is None:
+                all_have_quaternions = False
+            else:
                 data["quaternions"].append(_quaternions)
 
             if (model := geometry.model) is not None:
                 data["models"].append(model)
+
+        if not all_have_normals:
+            data["normals"] = []
+        if not all_have_quaternions:
+            data["quaternions"] = []
 
         # Merging Geometries with different sampling rate is an underdetermined
         # problem without user intervention. Computing the maximum of geometries
@@ -581,12 +597,18 @@ class Geometry:
             _ = appearance.pop("volume_path", None)
             _ = appearance.pop("isovalue_percentile", None)
 
+        from .formats.parser import VertexPropertyContainer
+
         state = {
             "sampling_rate": sampling_rate,
             "visible": any(x.visible for x in geometries),
             "representation": representation,
             "appearance": appearance,
             "model": model,
+            "meta": geometries[0]._meta.copy(),
+            "vertex_properties": VertexPropertyContainer.merge(
+                [g.vertex_properties for g in geometries]
+            ),
         }
 
         state |= {
@@ -618,9 +640,10 @@ class Geometry:
         Returns
         -------
         bool
-            True if geometry is visible, False otherwise.
+            User-intent visibility, independent of transient render
+            states like LOD substitution during interaction.
         """
-        return self.actor.GetVisibility()
+        return self._intent_visible
 
     @property
     def points(self):
@@ -759,7 +782,11 @@ class Geometry:
         visibility : bool, optional
             Whether geometry should be visible, by default True.
         """
-        return self.actor.SetVisibility(visibility)
+        self._intent_visible = bool(visibility)
+        if self._lod_active and self._lod_actor is not None:
+            self._lod_actor.SetVisibility(self._intent_visible)
+        else:
+            self._actor.SetVisibility(self._intent_visible)
 
     def set_appearance(
         self,
@@ -824,15 +851,6 @@ class Geometry:
         prop.SetAmbient(self._appearance.get("ambient", 0.3))
         prop.SetDiffuse(self._appearance.get("diffuse", 0.7))
         prop.SetSpecular(self._appearance.get("specular", 0.2))
-
-        interpolation = self._appearance.get("interpolation", "gouraud")
-
-        if interpolation == "phong":
-            prop.SetInterpolationToPhong()
-        elif interpolation == "flat":
-            prop.SetInterpolationToFlat()
-        else:
-            prop.SetInterpolationToGouraud()
 
     def _create_actor(self, actor=None):
         """
@@ -906,7 +924,7 @@ class Geometry:
 
         n = self.get_number_of_points()
         if budget == lod.LOD_DISABLED or n <= budget:
-            return
+            return None
 
         indices = lod.surface_shell_indices(self.points, self.sampling_rate, budget)
         actor, data, indices = lod.build_lod_actor(self.points, indices)
@@ -965,8 +983,7 @@ class Geometry:
         """Hide main actor and show the LOD actor for fast interaction."""
         if self._lod_actor is None or self._lod_active:
             return
-        self._pre_lod_visible = self._actor.GetVisibility()
-        if not self._pre_lod_visible:
+        if not self._intent_visible:
             return
         self._sync_lod_arrays()
         self._sync_lod_mapper()
@@ -979,7 +996,7 @@ class Geometry:
         if not self._lod_active:
             return
         self._lod_active = False
-        self._actor.SetVisibility(self._pre_lod_visible)
+        self._actor.SetVisibility(self._intent_visible)
         self._lod_actor.SetVisibility(False)
 
     def get_number_of_points(self):
@@ -1659,6 +1676,8 @@ class SegmentationGeometry(Geometry):
         meta=None,
         volume=None,
         volume_origin=None,
+        vertex_properties=None,
+        model=None,
         **kwargs,
     ):
         self.uuid = str(uuid4())
@@ -1666,6 +1685,8 @@ class SegmentationGeometry(Geometry):
             points=points,
             sampling_rate=sampling_rate,
             meta=meta,
+            vertex_properties=vertex_properties,
+            model=model,
         )
         self._representation = "segmentation"
         self._lod_actor = None
@@ -2113,10 +2134,13 @@ class SegmentationGeometry(Geometry):
         idx = idx[idx < n_points]
 
         new_points = self._geometry_data.points[idx]
+        vprops = self._geometry_data.vertex_properties
+        new_vprops = vprops[idx] if vprops is not None else None
 
         if copy:
             state = self.__getstate__()
             state["points"] = new_points
+            state["vertex_properties"] = new_vprops
             state.pop("uuid", None)
             ret = self.__class__.__new__(self.__class__)
             ret.__setstate__(state)
@@ -2125,6 +2149,8 @@ class SegmentationGeometry(Geometry):
         # In-place: remap vertex mapping and optionally rebuild
         n_old = n_points
         self._geometry_data.points = new_points
+        if new_vprops is not None:
+            self._geometry_data.vertex_properties = new_vprops
 
         if new_points.shape[0] == 0:
             self._volume_shape = (1, 1, 1)
@@ -2225,6 +2251,8 @@ class SegmentationGeometry(Geometry):
             "points": self._geometry_data.points,
             "sampling_rate": self.sampling_rate,
             "meta": self._meta,
+            "vertex_properties": self.vertex_properties,
+            "model": self.model,
         } | {
             "visible": self.visible,
             "appearance": self._appearance,

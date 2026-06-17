@@ -364,17 +364,37 @@ class BackgroundTaskManager(QObject):
         all_futures = list(self.futures.items()) + list(self.io_futures.items())
 
         for task_id, future in all_futures:
-            if task_id in self.task_info:
-                task_name = self.task_info[task_id]["name"]
+            info = self.task_info.get(task_id)
+            if info is not None:
+                task_name = info.get("name", "Unknown")
                 self.task_failed.emit(
                     task_id,
                     task_name,
                     "Task cancelled: executor restart",
                 )
+                self.task_info[task_id] = {
+                    "name": task_name,
+                    "status": "failed",
+                    "is_io": info.get("is_io", False),
+                }
             try:
                 future.cancel()
             except Exception:
                 pass
+
+        for queued_task in getattr(self, "task_queue", []):
+            task_id = queued_task["task_id"]
+            self.task_failed.emit(
+                task_id,
+                queued_task["name"],
+                "Task cancelled: executor restart",
+            )
+            if task_id in self.task_info:
+                self.task_info[task_id] = {
+                    "name": queued_task["name"],
+                    "status": "failed",
+                    "is_io": queued_task.get("is_io", False),
+                }
 
         self._shutdown()
 
@@ -410,7 +430,9 @@ class BackgroundTaskManager(QObject):
         self.futures.clear()
         self.io_futures.clear()
 
-        self.task_info.clear()
+        # task_info is intentionally preserved: terminal entries (status in
+        # {"completed", "failed"}) are owned by clear_finished_tasks() so the
+        # GUI can remove the corresponding cards on user request.
         self.task_queue.clear()
         self.batch_limits.clear()
         self.batch_running.clear()
@@ -698,11 +720,22 @@ class BackgroundTaskManager(QObject):
 
                 self.task_completed.emit(task_id, task_name, result)
 
-                if task_info["callback"]:
-                    task_info["callback"](result)
-
                 if warnings_msg is not None:
                     self.task_warning.emit(task_id, task_name, warnings_msg)
+
+                if task_info["callback"]:
+                    try:
+                        task_info["callback"](result)
+                    except Exception as cb_exc:
+                        import traceback
+
+                        traceback.print_exc()
+                        self.task_warning.emit(
+                            task_id, task_name, f"Callback raised: {cb_exc}"
+                        )
+
+            except concurrent.futures.CancelledError:
+                task_info["status"] = "cancelled"
 
             except concurrent.futures.process.BrokenProcessPool as e:
                 error_msg = f"Worker process died unexpectedly: {str(e)}"
@@ -778,7 +811,7 @@ class BackgroundTaskManager(QObject):
 
         cancelled = future.cancel()
         if cancelled and task_id in self.task_info:
-            self.task_info[task_id]["status"] = "failed"
+            self.task_info[task_id]["status"] = "cancelled"
 
         return cancelled
 
@@ -794,7 +827,7 @@ class BackgroundTaskManager(QObject):
         removed = []
         for task_id in list(self.task_info.keys()):
             status = self.task_info[task_id].get("status")
-            if status in ("completed", "failed"):
+            if status in ("completed", "failed", "cancelled"):
                 self.task_info.pop(task_id, None)
                 removed.append(task_id)
         return removed

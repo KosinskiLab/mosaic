@@ -427,20 +427,23 @@ class Cylinder(Parametrization):
             Initial guess for cylinder radius.
         """
         center = np.mean(positions, axis=0)
-        positions_centered = positions - center
+        positions = positions - center
 
-        cov_mat = np.cov(positions_centered, rowvar=False)
+        cov_mat = np.cov(positions, rowvar=False)
         evals, evecs = np.linalg.eigh(cov_mat)
 
-        sort_idx = np.argsort(evals)[::-1]
-        evals = evals[sort_idx]
-        evecs = evecs[:, sort_idx]
+        best = None
+        for i in range(3):
+            direction = evecs[:, i]
+            perp = positions - np.outer(positions @ direction, direction)
 
-        direction = evecs[:, -1]
+            perp_norms = np.linalg.norm(perp, axis=1)
+            radius = np.sqrt(np.mean(perp_norms**2))
+            residual = np.sum((perp_norms - radius) ** 2)
+            if best is None or residual < best[0]:
+                best = (residual, direction, radius)
 
-        proj_matrix = np.eye(3) - np.outer(direction, direction)
-        projected_points = positions_centered @ proj_matrix
-        radius = np.mean(np.linalg.norm(projected_points, axis=1))
+        _, direction, radius = best
         return center, direction, radius
 
     @classmethod
@@ -458,8 +461,7 @@ class Cylinder(Parametrization):
         Returns
         -------
         Cylinder
-            Fitted cylinder with estimated center, orientation, radius,
-            and height.
+            Cylinder with estimated center, orientation, radius and height.
         """
         positions = np.asarray(positions, dtype=np.float64)
         if positions.shape[1] != 3 or len(positions.shape) != 2:
@@ -498,9 +500,7 @@ class Cylinder(Parametrization):
 
         projected_heights = np.dot(positions - center, direction)
         height = np.max(projected_heights) - np.min(projected_heights)
-        v1 = np.array([1, 0, 0])
-        if not np.allclose(direction, [1, 0, 0]):
-            v1 = np.array([0, 1, 0])
+        v1 = np.eye(3)[int(np.argmin(np.abs(direction)))]
         v1 = v1 - np.dot(v1, direction) * direction
         v1 = v1 / np.linalg.norm(v1)
         v2 = np.cross(direction, v1)
@@ -631,8 +631,8 @@ class RBF(Parametrization):
     ) -> "RBF":
         """Fit a radial basis function interpolant to a point cloud.
 
-        The input is downsampled before fitting. The RBF maps two
-        coordinate axes to the third, controlled by ``direction``.
+        The RBF maps two coordinate axes to the third, controlled by
+        ``direction``.
 
         Parameters
         ----------
@@ -652,9 +652,6 @@ class RBF(Parametrization):
         RBF
             Fitted RBF parametrization.
         """
-        n_positions = positions.shape[0] // 50
-        positions = positions[::n_positions]
-
         swap = (2, 1, 0)
         if direction == "yz":
             swap = (0, 2, 1)
@@ -714,7 +711,7 @@ class RBF(Parametrization):
 
     def points_per_sampling(self, sampling_density: float, normal_offset=None) -> int:
         (xmin, xmax), (ymin, ymax) = self.grid
-        surface_area = (xmax - xmin) * (ymax - xmin)
+        surface_area = (xmax - xmin) * (ymax - ymin)
 
         n_points = np.ceil(np.divide(surface_area, sampling_density))
         return int(n_points)
@@ -791,6 +788,11 @@ class SplineCurve(Parametrization):
         normals = np.zeros_like(tangents)
         normals[:, 0] = -tangents[:, 1]
         normals[:, 1] = tangents[:, 0]
+        degenerate = np.linalg.norm(normals, axis=1) < 1e-6
+        if degenerate.any():
+            refs = np.eye(3)[np.argmin(np.abs(tangents[degenerate]), axis=1)]
+            t = tangents[degenerate]
+            normals[degenerate] = refs - np.sum(refs * t, axis=1, keepdims=True) * t
         return _normalize(normals)
 
     def points_per_sampling(self, sampling_density: float, normal_offset=None) -> int:
@@ -832,8 +834,7 @@ class TriangularMesh(Parametrization):
             from .formats.writer import write_topology_file
 
             data = to_tsi(self.vertices, self.triangles, margin=20)
-            write_topology_file(file_path, data, tsi_format=(ext == ".tsi"))
-            return
+            return write_topology_file(file_path, data, tsi_format=(ext == ".tsi"))
 
         import open3d as o3d
 
@@ -1272,8 +1273,8 @@ class BallPivoting(TriangularMesh):
         cls,
         positions: np.ndarray,
         radii: Tuple[float] = (5.0,),
-        max_hole_size: float = -1,
-        target_edge_length: float = -1,
+        max_hole_size: float = None,
+        target_edge_length: float = None,
         smoothness: float = 0.0,
         curvature_weight: float = 0.0,
         pressure: float = 0.0,
@@ -1293,9 +1294,9 @@ class BallPivoting(TriangularMesh):
         radii : tuple of float
             Ball radii for surface reconstruction. Use commas to
             specify multiple radii, e.g. ``(50, 30.5, 10)``.
-        max_hole_size : float
+        max_hole_size : float, optional
             Maximum surface area of holes to triangulate.
-            ``-1`` fills all holes, ``0`` skips hole filling.
+            ``None`` fills all holes, ``0`` skips hole filling.
         target_edge_length : float
             Target edge length for remeshing after hole filling.
             ``-1`` uses the average edge length of the mesh.
@@ -1487,7 +1488,7 @@ class PoissonMesh(TriangularMesh):
             mesh.remove_vertices_by_mask(vertices_to_remove)
 
         # Remove vertices far from the original point cloud
-        if deldist > 0:
+        if deldist is not None and deldist > 0:
             deldist_norm = deldist / voxel_size
             mesh_vertices = np.asarray(mesh.vertices)
             pcd_tree = o3d.geometry.KDTreeFlann(pcd)
@@ -1513,7 +1514,7 @@ class AlphaShape(TriangularMesh):
         positions: np.ndarray,
         voxel_size: float = 1,
         alpha: float = 1,
-        target_edge_length: float = -1,
+        target_edge_length: float = None,
         smoothness: float = 0.0,
         curvature_weight: float = 0.0,
         pressure: float = 0.0,
@@ -1556,7 +1557,7 @@ class AlphaShape(TriangularMesh):
 
         positions = np.asarray(positions, dtype=np.float64)
 
-        scale = positions.max()
+        scale = np.abs(positions).max() or 1.0
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(positions.copy() / scale)
         try:
@@ -1594,11 +1595,9 @@ class AlphaShape(TriangularMesh):
         fs = np.asarray(mesh.triangles)
 
         distances, _ = utils.find_closest_points(positions, vs)
-        edge_length = (
-            target_edge_length
-            if target_edge_length > 0
-            else float(np.median(meshing.compute_edge_lengths(mesh)))
-        )
+        edge_length = target_edge_length
+        if target_edge_length is None:
+            edge_length = float(np.median(meshing.compute_edge_lengths(mesh)))
         vids = np.where(distances > edge_length / 2.0)[0]
 
         if len(vids) == 0:
@@ -1624,7 +1623,7 @@ class ShrinkWrap(TriangularMesh):
         voxel_size: float = 1,
         max_iter: int = 100,
         k_neighbors: int = 8,
-        target_edge_length: float = -1,
+        target_edge_length: float = None,
         smoothness: float = 0.0,
         curvature_weight: float = 0.0,
         pressure: float = 0.0,
@@ -1767,11 +1766,8 @@ class ShrinkWrap(TriangularMesh):
         fs = np.asarray(mesh.triangles)
 
         distances, _ = utils.find_closest_points(positions_orig, vs)
-        edge_length = (
-            target_edge_length
-            if target_edge_length > 0
-            else float(np.median(meshing.compute_edge_lengths(mesh)))
-        )
+        if target_edge_length is None:
+            edge_length = float(np.median(meshing.compute_edge_lengths(mesh)))
         vids = np.where(distances > edge_length / 2.0)[0]
 
         if len(vids) == 0:

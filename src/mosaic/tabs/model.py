@@ -13,7 +13,7 @@ from ..parallel import submit_task, submit_task_batch
 
 def _repair_mesh(
     geometry,
-    max_hole_size=-1,
+    max_hole_size=None,
     bridge_alpha=0.0,
     smoothness=0,
     curvature_weight=0,
@@ -22,7 +22,6 @@ def _repair_mesh(
     fair_all=False,
     boundary_ring=0,
 ):
-    import igl
     from .. import meshing
     from ..geometry import GeometryData
     from ..parametrization import TriangularMesh
@@ -41,27 +40,29 @@ def _repair_mesh(
     if bridge_alpha > 0:
         fs = meshing.bridge_boundaries(vs, fs, alpha=bridge_alpha)
 
-    new_fs = meshing.close_holes(vs, fs, max_hole_size)
+    new_fs = fs
+    if max_hole_size != 0:
+        new_fs = meshing.close_holes(vs, fs, max_hole_size)
     hole_fids = np.arange(n_original_fs, len(new_fs))
 
     if not (smoothness == 0 and curvature_weight == 0 and pressure == 0):
-        try:
-            mesh = meshing.remesh(meshing.to_open3d(vs, new_fs))
-            new_vs = np.asarray(mesh.vertices, dtype=np.float64)
-            new_fs = np.asarray(mesh.triangles)
-            _, face_ids, _ = igl.point_mesh_squared_distance(
-                new_vs, vs, new_fs.astype(np.int64)
-            )
-            vids = np.where(np.isin(face_ids, hole_fids))[0]
 
-        except (ValueError, RuntimeError) as e:
-            warnings.warn(
-                f"Remeshing failed: {e}. Falling back to Liepa triangulation."
-            )
-            new_vs, new_fs, _ = meshing.repair.triangulation_refine_leipa(
-                vs, new_fs, hole_fids, np.sqrt(2)
-            )
-            vids = np.arange(len(vs), len(new_vs))
+        new_vs, new_fs, _ = meshing.repair.triangulation_refine_leipa(
+            vs, new_fs, hole_fids, np.sqrt(2)
+        )
+
+        if len(new_vs) > len(vs):
+            try:
+                mesh = meshing.remesh(
+                    meshing.to_open3d(new_vs, new_fs),
+                    feature=np.arange(len(vs)),
+                )
+                new_vs = np.asarray(mesh.vertices, dtype=np.float64)
+                new_fs = np.asarray(mesh.triangles)
+            except (ValueError, RuntimeError) as e:
+                warnings.warn(f"Isotropic remeshing failed: {e}. Using Leipa output.")
+
+        vids = np.arange(len(vs), len(new_vs))
 
         if fair_all:
             vids = np.arange(len(new_vs))
@@ -101,12 +102,12 @@ def _fill_mesh(mesh_geometry):
 def _project(
     mesh_geometries,
     geometries,
-    use_normals: bool = False,
-    invert_normals: bool = False,
+    projection: str = "closest",
     update_normals: bool = False,
     partition: bool = False,
 ):
     from ..geometry import Geometry, GeometryData
+    from ..properties import _projection_normals
 
     meshes = [mg.model for mg in mesh_geometries]
     n_meshes = len(meshes)
@@ -117,9 +118,7 @@ def _project(
     mesh_tri = [[] for _ in range(n_meshes)]
 
     for geometry in geometries:
-        normals = geometry.normals if use_normals else None
-        if normals is not None:
-            normals = normals * (-1 if invert_normals else 1)
+        normals = _projection_normals(geometry, projection)
 
         all_dist, all_proj, all_tri = [], [], []
         for mesh in meshes:
@@ -449,8 +448,7 @@ class ModelTab(QWidget):
 
     def _project_parallel(
         self,
-        use_normals: bool = False,
-        invert_normals: bool = False,
+        projection: str = "closest",
         update_normals: bool = False,
         partition: bool = False,
         **kwargs,
@@ -461,8 +459,7 @@ class ModelTab(QWidget):
             self._default_callback,
             self._get_selected_meshes(),
             self.cdata.data.get_selected_geometries(),
-            use_normals,
-            invert_normals,
+            projection,
             update_normals,
             partition,
         )
@@ -530,8 +527,8 @@ REPAIR_SETTINGS = {
             "label": "Hole Size",
             "parameter": "max_hole_size",
             "type": "float",
-            "min": -1.0,
-            "default": -1.0,
+            "min": 0.0,
+            "default": None,
             "description": "Maximum surface area of holes considered for triangulation.",
         },
         {
@@ -576,18 +573,16 @@ PROJECTION_SETTINGS = {
     "title": "Settings",
     "settings": [
         {
-            "label": "Cast Normals",
-            "parameter": "use_normals",
-            "type": "boolean",
-            "default": True,
-            "description": "Include normal vectors in raycasting.",
-        },
-        {
-            "label": "Invert Normals",
-            "parameter": "invert_normals",
-            "type": "boolean",
-            "default": False,
-            "description": "Invert direction of normal vectors.",
+            "label": "Projection",
+            "parameter": "projection",
+            "type": "select",
+            "options": ["Closest Point", "Along Normal", "Along Inverted Normal"],
+            "option_values": ["closest", "normal", "inverted_normal"],
+            "default": "closest",
+            "description": "How points are projected onto the mesh. "
+            "'Closest Point' picks the nearest surface point; "
+            "'Along Normal' casts a ray along each point's normal; "
+            "'Along Inverted Normal' casts along the inverted normal.",
         },
         {
             "label": "Update Normals",

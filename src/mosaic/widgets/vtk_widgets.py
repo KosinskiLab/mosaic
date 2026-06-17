@@ -217,14 +217,31 @@ class BoundingBoxManager:
         self.object_box_actors = []
         self.dataset_box_actor = None
         self.session_box_actor = None
+        self.cdata.data.data_changed.connect(self._refresh_global_boxes)
+        self.cdata.models.data_changed.connect(self._refresh_global_boxes)
+
+    def _refresh_global_boxes(self):
+        """Rebuild dataset/session bounding boxes if currently shown."""
+        rebuild = False
+        if self.dataset_box_actor is not None:
+            self.renderer.RemoveActor(self.dataset_box_actor)
+            self.dataset_box_actor = None
+            self._create_dataset_bounds()
+            rebuild = True
+        if self.session_box_actor is not None:
+            self.renderer.RemoveActor(self.session_box_actor)
+            self.session_box_actor = None
+            if self.cdata.physical_shape is not None:
+                self._create_session_bounds()
+            rebuild = True
+        if rebuild:
+            self.renderer.GetRenderWindow().Render()
 
     def show_all_object_boxes(self):
         """Show bounding boxes for all visible objects"""
-
-        data_indices = [i for i in self.cdata._data.data if i.visible]
-        model_indices = [i for i in self.cdata._models.data if i.visible]
         return self.show_selected_boxes(
-            data_geometries=data_indices, model_geometries=model_indices
+            data_geometries=[i for i in self.cdata.data.container.data if i.visible],
+            model_geometries=[i for i in self.cdata.models.container.data if i.visible],
         )
 
     def show_selected_boxes(self, *args, data_geometries=None, model_geometries=None):
@@ -257,6 +274,20 @@ class BoundingBoxManager:
         self.object_box_actors.clear()
         self.renderer.GetRenderWindow().Render()
 
+    def reset(self):
+        """Drop all bounding box actors and references."""
+        for actor in self.object_box_actors:
+            self.renderer.RemoveActor(actor)
+        self.object_box_actors.clear()
+
+        if self.dataset_box_actor:
+            self.renderer.RemoveActor(self.dataset_box_actor)
+            self.dataset_box_actor = None
+
+        if self.session_box_actor:
+            self.renderer.RemoveActor(self.session_box_actor)
+            self.session_box_actor = None
+
     def show_dataset_bounds(self, visible):
         """Toggle bounding box computed from all loaded data"""
         if visible:
@@ -281,7 +312,7 @@ class BoundingBoxManager:
 
     def _create_session_bounds(self):
         """Create session bounds from cdata.shape"""
-        if (shape := self.cdata._data.metadata.get("physical_shape")) is None:
+        if (shape := self.cdata.physical_shape) is None:
             from .message_box import MosaicMessageBox
 
             return MosaicMessageBox.warning(

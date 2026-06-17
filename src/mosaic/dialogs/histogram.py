@@ -249,7 +249,7 @@ class HistogramDialog(QDialog):
         group_layout.addWidget(self.histogram_widget)
         layout.addWidget(group)
 
-        self.cdata.data.render_update.connect(self.update_histogram)
+        self.cdata.data.data_changed.connect(self.update_histogram)
         self.histogram_widget.cutoff_changed.connect(self._on_cutoff_changed)
         self.update_histogram()
 
@@ -257,7 +257,7 @@ class HistogramDialog(QDialog):
         return QSize(350, 350)
 
     def get_cluster_size(self):
-        return [x.get_number_of_points() for x in self.cdata._data.data]
+        return [x.get_number_of_points() for x in self.cdata.data.container.data]
 
     def update_histogram(self, data=None):
         self.histogram_widget.update_histogram(self.get_cluster_size())
@@ -268,7 +268,7 @@ class HistogramDialog(QDialog):
             upper_cutoff = max(cluster_sizes) + 1
 
         uuids = []
-        for geometry in self.cdata._data.data:
+        for geometry in self.cdata.data.container.data:
             n_points = geometry.get_number_of_points()
             if (n_points >= lower_cutoff) & (n_points <= upper_cutoff):
                 uuids.append(geometry.uuid)
@@ -278,7 +278,7 @@ class HistogramDialog(QDialog):
         """Disconnect when dialog closes"""
         self.histogram_widget.histogram_plot.close()
         try:
-            self.cdata.data.render_update.disconnect(self.update_histogram)
+            self.cdata.data.data_changed.disconnect(self.update_histogram)
             self.histogram_widget.cutoff_changed.disconnect(self._on_cutoff_changed)
         except (TypeError, RuntimeError):
             pass  # Already disconnected

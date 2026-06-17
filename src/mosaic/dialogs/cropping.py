@@ -283,7 +283,7 @@ class DistanceCropDialog(QDialog):
             keep_ids = np.where(keep_mask)[0]
 
             if len(keep_ids) > 0:
-                self.cdata._data.highlight_points(source.uuid, keep_ids, None)
+                self.cdata.data.container.highlight_points(source.uuid, keep_ids, None)
 
         self._preview_active = True
         self.cdata.data.render_vtk()
@@ -294,7 +294,7 @@ class DistanceCropDialog(QDialog):
             return
 
         for uuid, base_color in self._original_colors.items():
-            if (geometry := self.cdata._data.get(uuid)) is not None:
+            if (geometry := self.cdata.data.container.get(uuid)) is not None:
                 # Reset all points to base color
                 geometry.set_color(base_color)
 

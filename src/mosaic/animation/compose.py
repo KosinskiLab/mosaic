@@ -29,6 +29,7 @@ from qtpy.QtWidgets import (
     QApplication,
     QSizePolicy,
     QCheckBox,
+    QMessageBox,
 )
 from .timeline import TimelineWidget
 from .animations import AnimationType, BaseAnimation
@@ -221,7 +222,9 @@ class AnimationComposerDialog(QDialog):
         from mosaic.geometry import GeometryTrajectory
 
         trajectories = [
-            x for x in self.cdata._models.data if isinstance(x, GeometryTrajectory)
+            x
+            for x in self.cdata.models.container.data
+            if isinstance(x, GeometryTrajectory)
         ]
 
         if not trajectories:

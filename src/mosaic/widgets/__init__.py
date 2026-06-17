@@ -36,6 +36,7 @@ _module_map = {
     ".message_box": ["MosaicMessageBox"],
     ".appsettings": ["AppSettingsPanel"],
     ".tabs": ["TabBar", "TabWidget"],
+    ".update_pill": ["UpdatePill"],
     ".settings": [
         "format_tooltip",
         "create_setting_widget",

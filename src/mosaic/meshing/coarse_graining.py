@@ -35,7 +35,7 @@ def mesh_to_cg(
             fit = TriangularMesh(mesh)
             kwargs = {
                 "points": geometry.points,
-                "normals": geometry.normals * -1 if flip_normals else 1,
+                "normals": -geometry.normals if flip_normals else geometry.normals,
                 "return_indices": True,
             }
             _, vertex_indices = fit.compute_distance(**kwargs)

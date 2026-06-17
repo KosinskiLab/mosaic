@@ -216,7 +216,7 @@ class MosaicREPL:
                     break
                 _interrupted = True
                 self._console.print(
-                    "[mosaic.warning]Press Ctrl+C again or type 'exit' to quit.[/]"
+                    "[mosaic.accent]Press Ctrl+C again or type 'exit' to quit.[/]"
                 )
                 continue
 
@@ -373,12 +373,12 @@ class MosaicREPL:
 
         self._console.print()
         t = Text()
-        t.append("Mosaic Shell", style="mosaic.banner.title")
-        t.append(f"  v{version}", style="mosaic.muted")
+        t.append("Mosaic Shell", style="mosaic.heading")
+        t.append(f"  v{version}", style="mosaic.dim")
         self._console.print(t)
         self._console.print(
             "Type 'help' for commands, '<command> help' for details, 'exit' to quit.",
-            style="mosaic.muted",
+            style="mosaic.dim",
         )
         self._console.print()
 
@@ -394,8 +394,8 @@ class MosaicREPL:
         buf = StringIO()
         c = Console(file=buf, theme=MOSAIC_THEME, force_terminal=True, width=999)
         prompt_text = Text()
-        prompt_text.append("mosaic", style="mosaic.prompt.name")
-        prompt_text.append(">", style="mosaic.prompt.sep")
+        prompt_text.append("mosaic", style="mosaic.accent")
+        prompt_text.append(">", style="mosaic.dim")
         prompt_text.append(" ")
         c.print(prompt_text, end="")
         raw = buf.getvalue()

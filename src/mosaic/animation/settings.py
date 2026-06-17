@@ -1,4 +1,4 @@
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, Qt
 from qtpy.QtWidgets import (
     QWidget,
     QDialog,
@@ -28,6 +28,7 @@ class AnimationSettings(QGroupBox):
         super().__init__("Track Settings", parent)
         self.animation = None
         self.parameter_widgets = {}
+        self._param_labels = []
         self.setup_ui()
 
     def setup_ui(self):
@@ -58,7 +59,6 @@ class AnimationSettings(QGroupBox):
         frame_layout.setSpacing(4)
         frame_layout.setColumnStretch(1, 1)
         frame_layout.setColumnStretch(3, 1)
-        frame_layout.setColumnStretch(5, 1)
 
         frame_layout.addWidget(QLabel("Start:"), 0, 0)
         self.global_start_spin = QSpinBox()
@@ -70,15 +70,7 @@ class AnimationSettings(QGroupBox):
         )
         frame_layout.addWidget(self.global_start_spin, 0, 1)
 
-        frame_layout.addWidget(QLabel("Len:"), 0, 2)
-        self.stop_spin = QSpinBox()
-        self.stop_spin.setRange(1, 2 << 29)
-        self.stop_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
-        self.stop_spin.setMinimumWidth(0)
-        self.stop_spin.valueChanged.connect(self._on_duration_changed)
-        frame_layout.addWidget(self.stop_spin, 0, 3)
-
-        frame_layout.addWidget(QLabel("Rate:"), 0, 4)
+        frame_layout.addWidget(QLabel("Rate:"), 0, 2)
         self.rate_spin = QDoubleSpinBox()
         self.rate_spin.setRange(0.1, 10.0)
         self.rate_spin.setValue(1.0)
@@ -87,20 +79,18 @@ class AnimationSettings(QGroupBox):
         self.rate_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.rate_spin.setMinimumWidth(0)
         self.rate_spin.valueChanged.connect(self._on_rate_changed)
-        frame_layout.addWidget(self.rate_spin, 0, 5)
+        frame_layout.addWidget(self.rate_spin, 0, 3)
 
         self._base_duration = 100  # Reference duration at rate=1.0
 
         main_layout.addLayout(frame_layout)
 
-        separator = QWidget()
-        separator.setFixedHeight(1)
-        separator.setStyleSheet("background-color: #d1d5db;")
-        main_layout.addWidget(separator)
+        self._separator = QWidget()
+        self._separator.setFixedHeight(1)
+        main_layout.addWidget(self._separator)
 
-        params_label = QLabel("Parameters")
-        params_label.setStyleSheet("font-weight: 500; color: #6b7280;")
-        main_layout.addWidget(params_label)
+        self._params_label = QLabel("Parameters")
+        main_layout.addWidget(self._params_label)
 
         self.params_layout = QFormLayout()
         self.params_layout.setContentsMargins(0, 0, 0, 0)
@@ -110,27 +100,26 @@ class AnimationSettings(QGroupBox):
 
         main_layout.addStretch()
 
-    def _on_duration_changed(self, value):
-        """Handle duration change - update rate to match."""
-        if self._base_duration > 0:
-            rate = self._base_duration / value
-            self.rate_spin.blockSignals(True)
-            self.rate_spin.setValue(rate)
-            self.rate_spin.blockSignals(False)
-            if self.animation:
-                self.animation.rate = rate
-        self.on_change(value, "stop_frame")
+        self._on_theme_changed()
+
+    def _on_theme_changed(self):
+        """Re-apply theme-dependent stylesheets after a palette switch."""
+        self._separator.setStyleSheet(f"background-color: {Colors.BORDER_DARK};")
+        self._params_label.setStyleSheet(
+            f"font-weight: 500; color: {Colors.TEXT_SECONDARY};"
+        )
+        muted = f"color: {Colors.TEXT_MUTED};"
+        for label in self._param_labels:
+            label.setStyleSheet(muted)
 
     def _on_rate_changed(self, rate):
-        """Handle rate change - update duration accordingly."""
-        if rate > 0:
-            new_duration = max(1, int(self._base_duration / rate))
-            self.stop_spin.blockSignals(True)
-            self.stop_spin.setValue(new_duration)
-            self.stop_spin.blockSignals(False)
-            if self.animation:
-                self.animation.rate = rate
-            self.on_change(new_duration, "stop_frame")
+        """Handle rate change by updating the derived stop_frame."""
+        if rate <= 0:
+            return None
+        new_duration = max(1, int(self._base_duration / rate))
+        if self.animation:
+            self.animation.rate = rate
+        self.on_change(new_duration, "stop_frame")
 
     def set_animation(self, animation):
         self.animation = animation
@@ -139,7 +128,6 @@ class AnimationSettings(QGroupBox):
         for widget in [
             self.name_edit,
             self.global_start_spin,
-            self.stop_spin,
             self.enabled_check,
             self.rate_spin,
         ]:
@@ -147,7 +135,6 @@ class AnimationSettings(QGroupBox):
 
         self.name_edit.setText(animation.name)
         self.global_start_spin.setValue(animation.global_start_frame)
-        self.stop_spin.setValue(animation.stop_frame)
         self.enabled_check.setChecked(animation.enabled)
 
         if animation._base_duration is not None:
@@ -159,7 +146,6 @@ class AnimationSettings(QGroupBox):
         for widget in [
             self.name_edit,
             self.global_start_spin,
-            self.stop_spin,
             self.enabled_check,
             self.rate_spin,
         ]:
@@ -168,6 +154,7 @@ class AnimationSettings(QGroupBox):
         while self.params_layout.rowCount() > 0:
             self.params_layout.removeRow(0)
         self.parameter_widgets.clear()
+        self._param_labels.clear()
 
         for widget_settings in animation.get_settings():
             if widget_settings["type"] == "button":
@@ -181,7 +168,8 @@ class AnimationSettings(QGroupBox):
                 widget.clicked.connect(_on_button)
             elif widget_settings["type"] == "label":
                 widget = QLabel(widget_settings.get("text", ""))
-                widget.setStyleSheet("color: #9ca3af;")
+                widget.setStyleSheet(f"color: {Colors.TEXT_MUTED};")
+                self._param_labels.append(widget)
             else:
                 widget = create_setting_widget(widget_settings)
 
@@ -221,9 +209,6 @@ class AnimationSettings(QGroupBox):
         # Data range changes update stop_frame; sync the UI
         if key in ("data_start", "data_stop"):
             self._base_duration = self.animation._base_duration or self._base_duration
-            self.stop_spin.blockSignals(True)
-            self.stop_spin.setValue(self.animation.stop_frame)
-            self.stop_spin.blockSignals(False)
             self.rate_spin.blockSignals(True)
             self.rate_spin.setValue(self.animation.rate)
             self.rate_spin.blockSignals(False)
@@ -252,21 +237,23 @@ class ExportDialog(QDialog):
     ):
         super().__init__(parent)
         self.setWindowTitle("Export Animation")
-        self.setModal(True)
+
         self.total_frames = total_frames
         self.current_width = current_width
         self.current_height = current_height
+
+        self.setFocus(Qt.FocusReason.OtherFocusReason)
+
         self.setup_ui()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(16)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+        layout.setContentsMargins(10, 10, 10, 10)
 
         format_group = QGroupBox("Output Format")
         format_layout = QGridLayout(format_group)
         format_layout.setSpacing(8)
-        format_layout.setColumnStretch(1, 1)
 
         format_layout.addWidget(QLabel("Format:"), 0, 0)
         self.format_combo = QComboBox()
@@ -375,8 +362,6 @@ class ExportDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
 
-        button_layout.addStretch()
-
         export_btn = QPushButton("Export")
         export_btn.setIcon(icon("ph.download", role="primary"))
         export_btn.setDefault(True)
@@ -385,7 +370,7 @@ class ExportDialog(QDialog):
 
         layout.addLayout(button_layout)
 
-        self.setMinimumWidth(340)
+        self.resize(360, 520)
 
     def _on_format_changed(self, format_name: str):
         """Handle format change - disable quality for PNG."""

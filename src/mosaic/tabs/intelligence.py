@@ -232,12 +232,6 @@ class IntelligenceTab(QWidget):
         from ..segmentation import run_membrainseg
 
         def _callback(output_name: str):
-            if output_name is None:
-                return MosaicMessageBox.warning(
-                    None, "Error", "No segmentation was created."
-                )
-
-            # Preferred because it also updates viewport
             app = QApplication.instance().activeWindow()
             if isinstance(app, App):
                 return app._open_files([output_name])

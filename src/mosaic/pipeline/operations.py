@@ -81,16 +81,14 @@ OPERATION_CATEGORIES = {
                             "label": "Lower Threshold",
                             "parameter": "lower_threshold",
                             "type": "float",
-                            "min": -1.0,
-                            "default": -1.0,
+                            "default": None,
                             "special_text": "Disabled",
                         },
                         {
                             "label": "Upper Threshold",
                             "parameter": "upper_threshold",
                             "type": "float",
-                            "min": -1.0,
-                            "default": -1.0,
+                            "default": None,
                             "special_text": "Disabled",
                         },
                     ],
@@ -218,6 +216,30 @@ OPERATION_CATEGORIES = {
                                 "type": "select",
                                 "options": ["mrc", "em", "h5"],
                                 "default": "mrc",
+                            },
+                            {
+                                "label": "Shape",
+                                "parameter": "shape",
+                                "type": "text",
+                                "default": "Auto",
+                                "description": (
+                                    "Output volume shape as comma-separated "
+                                    "x,y,z voxel counts (e.g. 256,256,256). "
+                                    "Leave as Auto to derive from data bounds."
+                                ),
+                            },
+                            {
+                                "label": "Voxel Size",
+                                "parameter": "sampling",
+                                "type": "float",
+                                "default": None,
+                                "step": 0.1,
+                                "special_text": "Auto",
+                                "description": (
+                                    "Override the sampling rate used for "
+                                    "coordinate scaling. Leave as Auto to "
+                                    "use the geometry's stored value."
+                                ),
                             },
                         ],
                     },

@@ -565,7 +565,7 @@ class ActorSelectionDialog(QDialog):
 
             separator = QFrame()
             separator.setFrameShape(QFrame.Shape.HLine)
-            separator.setStyleSheet("color: #6b7280;")
+            separator.setStyleSheet(f"color: {Colors.BORDER_DARK};")
             layout.addWidget(separator)
 
         layout.addWidget(DialogFooter(dialog=self, margin=(0, 10, 0, 0)))

@@ -715,11 +715,11 @@ class StatusIndicator:
                 }}
                 QPushButton:hover {{
                     background: {Colors.BG_HOVER};
-                    border: 1px solid rgba(0, 0, 0, 0.08);
+                    border: 1px solid {Colors.alpha("TEXT_PRIMARY", 0.08)};
                 }}
                 QPushButton:pressed {{
                     background: {Colors.BG_PRESSED};
-                    border: 1px solid rgba(0, 0, 0, 0.12);
+                    border: 1px solid {Colors.alpha("TEXT_PRIMARY", 0.12)};
                 }}
                 QPushButton:focus {{ outline: none; }}
             """

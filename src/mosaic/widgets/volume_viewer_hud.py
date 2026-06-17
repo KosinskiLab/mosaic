@@ -187,6 +187,7 @@ class _ViewerStrip(QWidget):
         self._leave_timer.timeout.connect(self._check_leave)
 
         viewer.data_changed.connect(self._sync_state)
+        viewer.mode_changed.connect(self._on_mode_changed)
 
     def _restyle_viewer(self):
         v = self.viewer
@@ -267,6 +268,11 @@ class _ViewerStrip(QWidget):
 
         row.addWidget(v.visibility_button)
         row.addWidget(v.auto_contrast_button)
+
+        self._mode_btn = _icon_btn("ph.cube", "Switch to 3D rendering")
+        self._mode_btn.setEnabled(False)
+        self._mode_btn.clicked.connect(v._toggle_mode)
+        row.addWidget(self._mode_btn)
 
         row.addWidget(v.slice_row, 1)
 
@@ -430,10 +436,26 @@ class _ViewerStrip(QWidget):
             self._hud._layout_strips()
         self._hud._schedule_vtk_render()
 
+    def _on_mode_changed(self, new_mode: str):
+        is_3d = new_mode == "3D"
+        icon_name = "ph.square" if is_3d else "ph.cube"
+        self._mode_btn.setIcon(icon(icon_name, color=_ICON))
+        self._mode_btn.setToolTip(
+            "Switch to 2D rendering" if is_3d else "Switch to 3D rendering"
+        )
+        # In 3D the slice slider, orientation segment, and projection segment
+        # are meaningless. Disable in place so the strip layout stays stable.
+        self.viewer.slice_row.setEnabled(not is_3d)
+        self._ori_seg.setEnabled(not is_3d)
+        self._proj_seg.setEnabled(not is_3d)
+
     def _sync_state(self):
         has_vol = self.viewer.volume is not None
-        self._ori_seg.setEnabled(has_vol)
-        self._proj_seg.setEnabled(has_vol)
+        is_2d = self.viewer.mode == "2D"
+        self._ori_seg.setEnabled(has_vol and is_2d)
+        self._proj_seg.setEnabled(has_vol and is_2d)
+        self.viewer.slice_row.setEnabled(has_vol and is_2d)
+        self._mode_btn.setEnabled(has_vol)
         if has_vol:
             self._load_close_btn.setText("Close")
             self._load_close_btn.setToolTip("Close volume")

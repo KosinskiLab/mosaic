@@ -25,7 +25,6 @@ from qtpy.QtWidgets import (
     QLineEdit,
     QPlainTextEdit,
     QStackedWidget,
-    QFileDialog,
 )
 import pyqtgraph as pg
 
@@ -46,6 +45,20 @@ _EXTRA_CONFIG_PLACEHOLDER = (
     "# Screen:  Kappa = {{kappa:25.0:35.0:5.0}} 0 0\n"
     "# List:    Set_Steps = 1 {{steps:1000,5000}}"
 )
+
+
+class _AutoSizedStack(QStackedWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.currentChanged.connect(lambda _: self.updateGeometry())
+
+    def sizeHint(self):
+        w = self.currentWidget()
+        return w.sizeHint() if w is not None else super().sizeHint()
+
+    def minimumSizeHint(self):
+        w = self.currentWidget()
+        return w.minimumSizeHint() if w is not None else super().minimumSizeHint()
 
 
 class ConfigurePanel(QScrollArea):
@@ -407,7 +420,7 @@ class ConfigurePanel(QScrollArea):
 
         parent_form.addRow(f"{coupling_def['label']}:", header)
 
-        mode_stack = QStackedWidget()
+        mode_stack = _AutoSizedStack()
         mode_param_keys = {}
 
         for mode_name, params in coupling_def["modes"].items():

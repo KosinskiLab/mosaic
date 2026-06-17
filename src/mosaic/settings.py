@@ -92,7 +92,7 @@ class RenderingSettings:
     background_color_alt: Tuple[float, float, float] = (1.0, 1.0, 1.0)
     use_gradient_background: bool = False
     target_fps: float = 30.0
-    parallel_worker: int = min(8, QThread.idealThreadCount() - 1)
+    parallel_worker: int = max(1, min(8, QThread.idealThreadCount() - 1))
     enable_fxaa: bool = True
     use_depth_peeling: bool = True
     max_depth_peels: int = 4
@@ -119,10 +119,10 @@ class UISettings:
     max_recent_files: int = 10
     auto_save_session: bool = False
     auto_save_interval: int = 300
-    skipped_version: str = ""
     theme_mode: str = "system"
     always_open_as_volume: bool = False
     onboarding_done: bool = False
+    skipped_version: str = ""
 
 
 @dataclass

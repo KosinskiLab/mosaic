@@ -22,7 +22,7 @@ _module_map = {
     ".analysis": [
         "compute",
     ],
-    ".dialog": ["DTSScreeningDialog"],
+    ".dts_dialog": ["DTSScreeningDialog"],
     ".equilibration_dialog": ["MeshEquilibrationDialog"],
 }
 

@@ -6,10 +6,12 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, QSize
+from qtpy.QtGui import QIcon
 from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton
 
 from ..stylesheets import Colors
+from ..icons import icon as _icon
 
 
 class SegmentedControl(QWidget):
@@ -19,6 +21,9 @@ class SegmentedControl(QWidget):
     ----------
     options : list of str
         Button labels.
+    icons : list, optional
+        Optional list parallel to ``options``. Each entry may be an icon name
+        string (resolved via :func:`mosaic.icons.icon`), a QIcon, or None.
     default : int, optional
         Initially selected index, by default 0.
     parent : QWidget, optional
@@ -27,10 +32,11 @@ class SegmentedControl(QWidget):
 
     selectionChanged = Signal(str)
 
-    def __init__(self, options, default=0, parent=None):
+    def __init__(self, options, icons=None, default=0, parent=None):
         super().__init__(parent)
         self._buttons = []
         self._selected = default
+        self._indeterminate = False
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -42,6 +48,10 @@ class SegmentedControl(QWidget):
             btn.setCheckable(True)
             btn.setChecked(i == default)
             btn.clicked.connect(lambda _, idx=i: self._select(idx))
+            if icons is not None and i < len(icons) and icons[i] is not None:
+                ic = icons[i]
+                btn.setIcon(ic if isinstance(ic, QIcon) else _icon(ic, role="muted"))
+                btn.setIconSize(QSize(16, 16))
             if i == 0:
                 position = "first" if last > 0 else "only"
             elif i == last:
@@ -55,6 +65,7 @@ class SegmentedControl(QWidget):
         self._on_theme_changed()
 
     def _select(self, index):
+        self._indeterminate = False
         for i, btn in enumerate(self._buttons):
             btn.setChecked(i == index)
         self._selected = index
@@ -109,3 +120,13 @@ class SegmentedControl(QWidget):
 
     def currentIndex(self):
         return self._selected
+
+    def set_indeterminate(self) -> None:
+        """Uncheck all segments to show a 'multiple values' state."""
+        self._indeterminate = True
+        for btn in self._buttons:
+            btn.setChecked(False)
+
+    def is_indeterminate(self) -> bool:
+        """Return whether the control is in the indeterminate (multiple values) state."""
+        return self._indeterminate
