@@ -861,7 +861,7 @@ def _cmd_measure(session, parsed: ParsedCommand):
     if skipped:
         parts.append(
             Text(
-                f"  Skipped #{', #'.join(skipped)} (property not available)",
+                f"  Skipped {', #'.join(skipped)} (property not available)",
                 style="mosaic.error",
             )
         )

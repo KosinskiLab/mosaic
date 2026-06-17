@@ -81,25 +81,26 @@ _DEFAULT_SMOOTH_STRENGTH = 0.25
 def _radius_defaults(
     vs: np.ndarray, fs: np.ndarray
 ) -> Tuple[float, Tuple[float, float]]:
-    """Pick a default brush radius + slider bounds from mesh scale.
-
-    Radius targets ~8 mean edges so a tap touches a meaningful patch; falls
-    back to 5% of bbox diagonal for face-less point sets. Slider lower bound
-    is half the mean edge (can still touch a single vertex), upper is half the
-    bbox diagonal (covers roughly half the mesh).
-    """
+    """Pick a default brush radius + slider bounds from mesh scale."""
     mean_edge = float(_edge_lengths(vs, fs).mean()) if len(fs) else 0.0
     diag = float(np.linalg.norm(vs.max(axis=0) - vs.min(axis=0))) if len(vs) else 0.0
 
     if mean_edge > 1e-6:
         default = mean_edge * 8.0
+        high = mean_edge * 40.0
     elif diag > 1e-6:
         default = diag * 0.05
+        high = diag * 0.5
     else:
         default = 10.0
+        high = 1000.0
 
+    if diag > 1e-6:
+        high = min(high, diag * 0.5)
+
+    high = max(high, default * 2.0)
     low = max(mean_edge * 0.5, 1e-3)
-    return default, (low, max(diag * 0.5, low * 100.0))
+    return default, (low, high)
 
 
 class SculptController:
@@ -118,6 +119,15 @@ class SculptController:
         self._picker: Optional[vtk.vtkCellPicker] = None
         self._overlay: Optional[SculptOverlay] = None
         self._render_callback = None
+
+        # Resolves a geometry uuid to the object currently holding it, mirroring
+        # ``container.get(uuid)``. Undo/redo closures resolve their target this
+        # way at apply-time instead of capturing the geometry object: the
+        # interactor's own undo restores *copies* under the same uuid, so a stale
+        # object reference would edit an orphan while the visible mesh keeps the
+        # sculpted edit. None means "no container wired" (headless/tests), in
+        # which case we fall back to the actively-bound geometry.
+        self._resolve_geometry = None
         self._last_cursor_world: Optional[np.ndarray] = None
         self._tint_color: Tuple[float, float, float] = TOOL_BY_ID["view"].color
 
@@ -179,6 +189,18 @@ class SculptController:
         self._overlay.attach(renderer)
         if self.session is not None:
             self._apply_tool_color(self.session.tool)
+
+    def set_geometry_resolver(self, resolver) -> None:
+        """Wire how undo/redo finds the live geometry for a uuid."""
+        self._resolve_geometry = resolver
+
+    def _resolve_live(self, uuid):
+        """Return the geometry currently under ``uuid``, or None if it is gone."""
+        if uuid is None:
+            return None
+        if self._resolve_geometry is None:
+            return self._geometry
+        return self._resolve_geometry(uuid)
 
     def bind_mesh_actor(self, mesh_actor) -> None:
         """Record which actor the cell-picker should match against."""
@@ -406,7 +428,7 @@ class SculptController:
         self._tint_active = False
         swap_geometry_topology(geometry, target.vs, target.fs)
         self._writer = PolyDataPointWriter(geometry._data)
-        self._push_patch_undo(session, geometry, record)
+        self._push_patch_undo(geometry, record)
         return None
 
     def _update_hover(self, x: int, y: int) -> None:
@@ -561,24 +583,42 @@ class SculptController:
     def _push_stroke_undo(self, session, record) -> None:
         from ..undo import STACK
 
-        target = session.target
-        geometry = self._geometry
-        writer = self._writer
-        request_render = self._request_render
+        uuid = getattr(self._geometry, "uuid", None)
+        # Capture the render trigger now: the global undo outlives sculpt mode,
+        # and unbind_renderer nulls _render_callback. Without this, an undo fired
+        # after leaving sculpt mode swaps the data but never repaints.
+        render = self._render_callback
         indices = record.indices
         before = record.before_positions
         after = record.after_positions
 
         def apply(positions):
-            if indices.size == 0 or target.vs.shape[0] <= int(indices.max()):
+            geom = self._resolve_live(uuid)
+            if geom is None or indices.size == 0:
                 return None
-            target.vs[indices] = positions
-            target.invalidate_normals()
+
+            if self._geometry is geom and self.session is not None:
+                # Still the active mesh: drive the live session target + writer.
+                vs = self.session.target.vs
+                if vs.shape[0] <= int(indices.max()):
+                    return None
+                vs[indices] = positions
+                self.session.target.invalidate_normals()
+                writer = self._writer
+            else:
+                # Detached, or replaced by a restored copy under the same uuid:
+                # edit the live mesh's own points so undo lands on what is shown.
+                vs = np.ascontiguousarray(geom.points, dtype=np.float64)
+                if vs.shape[0] <= int(indices.max()):
+                    return None
+                vs[indices] = positions
+                writer = PolyDataPointWriter(geom._data)
+
             if writer is not None:
-                writer.write(target.vs)
-            if geometry is not None:
-                sync_model_vertices(geometry, target.vs)
-            request_render()
+                writer.write(vs)
+            sync_model_vertices(geom, vs)
+            if render is not None:
+                render()
             return None
 
         STACK.push_pair(
@@ -588,22 +628,28 @@ class SculptController:
         )
         return None
 
-    def _push_patch_undo(self, session, geometry, record) -> None:
+    def _push_patch_undo(self, geometry, record) -> None:
         from ..undo import STACK
 
-        target = session.target
-        request_render = self._request_render
+        uuid = getattr(geometry, "uuid", None)
+        # Capture the render trigger now; see _push_stroke_undo for why the
+        # controller's live callback is unreliable once sculpt mode is gone.
+        render = self._render_callback
 
         def swap(vs, fs):
-            target.replace_topology(vs, fs)
-            swap_geometry_topology(geometry, vs, fs)
-            if self._geometry is geometry:
-                # We're still the active mesh, rebind the controller's writer to
-                # the freshly-rebuilt polydata. If the user has hovered to another
-                # mesh, leave that mesh's writer alone.
-                self._writer = PolyDataPointWriter(geometry._data)
+            geom = self._resolve_live(uuid)
+            if geom is None:
+                return None
+            swap_geometry_topology(geom, vs, fs)
+            if self._geometry is geom:
+                # We are still the active mesh: keep the live session in sync and
+                # rebind the controller's writer to the freshly-rebuilt polydata.
+                if self.session is not None:
+                    self.session.target.replace_topology(vs, fs)
+                self._writer = PolyDataPointWriter(geom._data)
             self._tint_active = False
-            request_render()
+            if render is not None:
+                render()
             return None
 
         STACK.push_pair(

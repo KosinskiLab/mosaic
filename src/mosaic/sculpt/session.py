@@ -63,9 +63,9 @@ class ToolSpec(NamedTuple):
 
 TOOLS: Tuple[ToolSpec, ...] = (
     ToolSpec("view", "1", "1  View", (0.75, 0.78, 0.82)),
-    ToolSpec("grab", "2", "2  Grab", (1.0, 0.71, 0.28)),
-    ToolSpec("smooth", "3", "3  Smooth", (0.49, 0.83, 0.99)),
-    ToolSpec("patch", "4", "4  Patch", (0.72, 0.58, 0.96)),
+    ToolSpec("grab", "2", "2  Grab", (0.98, 0.75, 0.18)),
+    ToolSpec("smooth", "3", "3  Smooth", (0.18, 0.62, 0.78)),
+    ToolSpec("patch", "4", "4  Patch", (0.72, 0.32, 0.78)),
 )
 
 TOOL_BY_ID: dict[str, ToolSpec] = {t.id: t for t in TOOLS}

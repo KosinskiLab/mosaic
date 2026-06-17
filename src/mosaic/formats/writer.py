@@ -263,8 +263,7 @@ def write_star(records, path, sampling, shape=None, relion_5_format=False, **_):
         **orientation_kwargs,
     )
 
-    if not relion_5_format:
-        write_star_header(path, sampling)
+    write_star_header(path, sampling)
 
 
 def write_tsv(records, path, sampling, **_):

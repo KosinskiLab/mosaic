@@ -13,7 +13,7 @@ from typing import Dict, Optional
 
 from qtpy.QtGui import QAction
 from qtpy.QtWidgets import QListWidget, QMenu, QDialog
-from qtpy.QtCore import Qt, QObject, Signal
+from qtpy.QtCore import Qt, QObject, QSignalBlocker, Signal
 
 from .widgets import MosaicMessageBox
 from .formats.writer import write_geometries
@@ -728,16 +728,18 @@ class DataContainerInteractor(QObject):
 
     def _apply_changes(self, changes, *, undo: bool) -> None:
         """Apply each change in the given direction, then refresh once."""
-        for change in changes:
-            if isinstance(change, _GeometrySubset):
-                if undo:
-                    self._undo_subset_removal(change)
+        # Block to avoid data_changed firing continuously
+        with QSignalBlocker(self):
+            for change in changes:
+                if isinstance(change, _GeometrySubset):
+                    if undo:
+                        self._undo_subset_removal(change)
+                    else:
+                        self._redo_subset_removal(change)
                 else:
-                    self._redo_subset_removal(change)
-            else:
-                self._restore_geometry(
-                    change.uuid, change.before if undo else change.after
-                )
+                    self._restore_geometry(
+                        change.uuid, change.before if undo else change.after
+                    )
         self.data_changed.emit()
         self.render()
         return None
