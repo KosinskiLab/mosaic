@@ -31,10 +31,6 @@ def get_point_budget() -> int:
 def _subsample(indices, budget):
     """Pick *budget* entries from a sorted index array, preserving order.
 
-    Stratified sampling (one random pick per equal-width bin) stays ascending
-    without a post-sort and spreads picks evenly, which is what an LOD wants.
-    Assumes ``len(indices) > budget``.
-
     Parameters
     ----------
     indices : np.ndarray
@@ -148,7 +144,6 @@ def build_lod_actor(points: np.ndarray, indices: np.ndarray):
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
     actor.SetVisibility(False)
-
     return actor, lod, indices
 
 
@@ -188,7 +183,6 @@ def remap_lod_indices(parent_indices, subset_idx, n_child, budget):
 
     if len(new_indices) > budget:
         new_indices = _subsample(new_indices, budget)
-
     return new_indices
 
 
@@ -222,7 +216,6 @@ def merge_lod_indices(lod_indices, counts, budget):
 
     if len(merged) > budget:
         merged = _subsample(merged, budget)
-
     return merged
 
 
@@ -320,7 +313,6 @@ class InteractionLOD:
 
         owner = self._owner
         self.apply(surface_shell_indices(owner.points, owner.sampling_rate, budget))
-        return None
 
     def inherit(self, parent, subset_idx, budget=None):
         """Remap a parent's LOD into the owner's index space.
@@ -340,7 +332,6 @@ class InteractionLOD:
         if budget is None:
             budget = get_point_budget()
         self.apply(remap_lod_indices(parent.indices, subset_idx, self.count, budget))
-        return None
 
     def merge(self, inputs, budget=None):
         """Rebuild the LOD from the LODs of merged geometries.
@@ -365,7 +356,6 @@ class InteractionLOD:
         )
         if merged is not None:
             self.apply(merged)
-        return None
 
     def apply(self, indices):
         """Build and attach the LOD actor for the given point *indices*."""
@@ -373,7 +363,6 @@ class InteractionLOD:
         if actor is not None:
             self.actor, self.data, self.indices = actor, data, indices
             self._sync_mtime = -1
-        return None
 
     def begin(self):
         """Hide the main actor and show the LOD actor for fast interaction."""
@@ -385,7 +374,6 @@ class InteractionLOD:
         self.active = True
         owner._actor.SetVisibility(False)
         self.actor.SetVisibility(True)
-        return None
 
     def end(self):
         """Restore the main actor and hide the LOD actor."""
@@ -396,7 +384,6 @@ class InteractionLOD:
         self.active = False
         owner._actor.SetVisibility(owner._intent_visible)
         self.actor.SetVisibility(False)
-        return None
 
     def _sync_mapper(self):
         owner = self._owner
@@ -413,7 +400,6 @@ class InteractionLOD:
         lut = src.GetLookupTable()
         if lut is not None:
             dst.SetLookupTable(lut)
-        return None
 
     def _sync_arrays(self):
         owner = self._owner
@@ -438,4 +424,3 @@ class InteractionLOD:
         else:
             lod_pd.SetNormals(None)
         self._sync_mtime = mtime
-        return None
