@@ -13,9 +13,7 @@ from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
 
 LOD_DISABLED = 0
 
-# Below this point count, rendering cost is negligible on any modern GPU,
-# so small clouds (landmarks, picked points, ROI markers) skip LOD entirely
-# and render at full fidelity.
+# Below this point count, rendering cost is negligible
 LOD_SMALL_CLOUD_POINTS = 10_000
 
 
@@ -181,6 +179,48 @@ def remap_lod_indices(parent_indices, subset_idx, n_child, budget):
         new_indices.sort()
 
     return new_indices
+
+
+def merge_lod_indices(lod_indices, counts, budget):
+    """Combine per-geometry LOD indices into a merged index space.
+
+    :func:`Geometry.merge` concatenates point arrays in input order, so
+    input ``i`` occupies a contiguous block starting at ``sum(counts[:i])``.
+    Each input's LOD indices are shifted by that offset and concatenated,
+    mirroring the point concatenation.  This is the merge-side twin of
+    :func:`remap_lod_indices`.
+
+    Parameters
+    ----------
+    lod_indices : list of np.ndarray or None
+        Each input geometry's LOD indices, in merge order.  A ``None`` entry
+        means that input has no LOD.
+    counts : list of int
+        Each input geometry's point count, in the same order.
+    budget : int
+        Maximum number of LOD indices for the merged result.
+
+    Returns
+    -------
+    np.ndarray or None
+        Merged LOD indices, trimmed to *budget* if needed.  ``None`` when any
+        entry of *lod_indices* is ``None`` (the merge is then not a
+        resynthesizable subset/merge and the caller should recompute).
+    """
+    if any(idx is None for idx in lod_indices):
+        return None
+
+    offsets = np.cumsum([0, *counts[:-1]])
+    merged = np.concatenate(
+        [np.asarray(idx) + off for idx, off in zip(lod_indices, offsets)]
+    )
+
+    if len(merged) > budget:
+        rng = np.random.default_rng(42)
+        merged = rng.choice(merged, size=budget, replace=False)
+        merged.sort()
+
+    return merged
 
 
 def compute_scene_lod(geometries, budget):

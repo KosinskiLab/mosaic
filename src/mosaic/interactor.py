@@ -700,12 +700,10 @@ class DataContainerInteractor(QObject):
 
         slice_copy = record.removed[...]
         slice_copy.uuid = record.uuid
-        current = self.container.get(record.uuid)
-        if current is None:
+        if (current := self.container.get(record.uuid)) is None:
             self.add(slice_copy)
             return None
-        # merge_geometries keeps the surviving geometry's representation (e.g. a
-        # segmentation stays a segmentation instead of collapsing to a point cloud).
+
         merged = merge_geometries((current, slice_copy))
         merged.uuid = record.uuid
         self.container.update(record.uuid, merged)
@@ -718,8 +716,7 @@ class DataContainerInteractor(QObject):
         surviving set; redo only runs on that post-undo state (the UndoStack clears
         redo on push and a redo can only follow its matching undo).
         """
-        current = self.container.get(record.uuid)
-        if current is None:
+        if (current := self.container.get(record.uuid)) is None:
             return None
         keep = np.zeros(current.get_number_of_points(), dtype=bool)
         keep[: record.n_kept] = True
@@ -756,6 +753,7 @@ class DataContainerInteractor(QObject):
         for u in point_uuids:
             source = self.container.get(u)
             slices[u] = source[self.point_selection[u]]
+
             # Subsetting a mesh drops triangles straddling the cut, and the
             # subset/merge undo path cannot rebuild that severed connectivity.
             # Snapshot the pristine mesh so undo restores it exactly instead.

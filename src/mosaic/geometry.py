@@ -549,10 +549,13 @@ class Geometry:
 
         all_have_normals = True
         all_have_quaternions = True
+        counts, lod_indices = [], []
         for geometry in geometries:
             _points, _normals, _quaternions = geometry.get_point_data()
 
             data["points"].append(_points)
+            counts.append(len(_points))
+            lod_indices.append(getattr(geometry, "_lod_indices", None))
             if _normals is None:
                 all_have_normals = False
             else:
@@ -590,9 +593,8 @@ class Geometry:
 
             model = merge(data.pop("models"))
 
-        # TODO: We can handle merging of VolumeGeometries propertly, but
-        # need to make sure they contain the same volume. For now we just
-        # render them as point cloud
+        # Merging VolumeGeometries is awkward because they may not represent
+        # the same volume. For now we fallback to point clouds.
         if representation == "volume":
             representation = "pointcloud"
             _ = appearance.pop("volume_path", None)
@@ -618,6 +620,15 @@ class Geometry:
 
         ret = cls.__new__(cls)
         ret.__setstate__(state)
+
+        from . import lod
+
+        budget = lod.get_point_budget()
+        if budget != lod.LOD_DISABLED and ret.get_number_of_points() > budget:
+            merged_lod = lod.merge_lod_indices(lod_indices, counts, budget)
+            if merged_lod is not None:
+                ret._apply_lod_indices(merged_lod)
+
         return ret
 
     @property
@@ -890,16 +901,27 @@ class Geometry:
         from . import lod
 
         n = self.get_number_of_points()
-        if budget == lod.LOD_DISABLED or n <= budget:
-            return
-
         new_indices = lod.remap_lod_indices(parent_lod_indices, subset_idx, n, budget)
-        actor, data, indices = lod.build_lod_actor(self.points, new_indices)
+        self._apply_lod_indices(new_indices)
+        return None
+
+    def _apply_lod_indices(self, indices):
+        """Build and attach the LOD actor for the given point *indices*.
+
+        Parameters
+        ----------
+        indices : np.ndarray
+            Indices into ``self.points`` forming the LOD subset.
+        """
+        from . import lod
+
+        actor, data, lod_indices = lod.build_lod_actor(self.points, indices)
         if actor is not None:
             self._lod_actor = actor
             self._lod_data = data
-            self._lod_indices = indices
+            self._lod_indices = lod_indices
             self._lod_sync_mtime = -1
+        return None
 
     def setup_lod(self, budget=None):
         """Build or clear the interaction-LOD actor.
