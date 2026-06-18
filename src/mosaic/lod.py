@@ -13,7 +13,7 @@ from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
 
 LOD_DISABLED = 0
 
-# Below this point count, rendering cost is negligible
+# Rendering cost is negligible below this point count
 LOD_SMALL_CLOUD_POINTS = 10_000
 
 
@@ -26,6 +26,26 @@ def get_point_budget() -> int:
     from .settings import Settings
 
     return int(Settings.vtk.point_budget)
+
+
+def _subsample(indices, budget):
+    """Pick *budget* entries from a sorted index array, preserving order.
+
+    Stratified sampling (one random pick per equal-width bin) stays ascending
+    without a post-sort and spreads picks evenly, which is what an LOD wants.
+    Assumes ``len(indices) > budget``.
+
+    Parameters
+    ----------
+    indices : np.ndarray
+        Sorted index array to thin.
+    budget : int
+        Number of indices to keep.
+    """
+    rng = np.random.default_rng(42)
+    edges = np.linspace(0, len(indices), budget + 1).astype(np.int64)
+    pos = edges[:-1] + (rng.random(budget) * (edges[1:] - edges[:-1])).astype(np.int64)
+    return indices[pos]
 
 
 def surface_shell_indices(points: np.ndarray, sampling_rate, budget: int) -> np.ndarray:
@@ -79,10 +99,7 @@ def surface_shell_indices(points: np.ndarray, sampling_rate, budget: int) -> np.
     )
 
     if len(surface_idx) > budget:
-        rng = np.random.default_rng(42)
-        surface_idx = rng.choice(surface_idx, size=budget, replace=False)
-        surface_idx.sort()
-
+        surface_idx = _subsample(surface_idx, budget)
     return surface_idx
 
 
@@ -156,11 +173,7 @@ def remap_lod_indices(parent_indices, subset_idx, n_child, budget):
     ):
         if len(parent_indices) <= budget:
             return parent_indices
-
-        rng = np.random.default_rng(42)
-        trimmed = rng.choice(parent_indices, size=budget, replace=False)
-        trimmed.sort()
-        return trimmed
+        return _subsample(parent_indices, budget)
 
     n_parent = int(np.max(subset_idx)) + 1
     kept = np.zeros(n_parent, dtype=bool)
@@ -174,21 +187,13 @@ def remap_lod_indices(parent_indices, subset_idx, n_child, budget):
     new_indices = new_map[surviving]
 
     if len(new_indices) > budget:
-        rng = np.random.default_rng(42)
-        new_indices = rng.choice(new_indices, size=budget, replace=False)
-        new_indices.sort()
+        new_indices = _subsample(new_indices, budget)
 
     return new_indices
 
 
 def merge_lod_indices(lod_indices, counts, budget):
     """Combine per-geometry LOD indices into a merged index space.
-
-    :func:`Geometry.merge` concatenates point arrays in input order, so
-    input ``i`` occupies a contiguous block starting at ``sum(counts[:i])``.
-    Each input's LOD indices are shifted by that offset and concatenated,
-    mirroring the point concatenation.  This is the merge-side twin of
-    :func:`remap_lod_indices`.
 
     Parameters
     ----------
@@ -216,9 +221,7 @@ def merge_lod_indices(lod_indices, counts, budget):
     )
 
     if len(merged) > budget:
-        rng = np.random.default_rng(42)
-        merged = rng.choice(merged, size=budget, replace=False)
-        merged.sort()
+        merged = _subsample(merged, budget)
 
     return merged
 
@@ -270,3 +273,169 @@ def compute_scene_lod(geometries, budget):
         if n > share:
             result[g.uuid] = share
     return result
+
+
+class InteractionLOD:
+    """Runtime interaction level-of-detail for one geometry.
+
+    Owns the LOD actor and its point-index subset and swaps it in for the
+    owner's full-resolution actor during camera interaction.  Purely a
+    rendering concern: never pickled, rebuilt on demand from the owner.
+
+    Parameters
+    ----------
+    owner : Geometry
+        Geometry supplying points, sampling rate, the main actor and data.
+    """
+
+    def __init__(self, owner):
+        self._owner = owner
+        self.actor = None
+        self.data = None
+        self.indices = None
+        self.active = False
+        self._sync_mtime = -1
+
+    @property
+    def count(self):
+        """Number of points in the owning geometry."""
+        return self._owner.get_number_of_points()
+
+    def setup(self, budget=None):
+        """Build the LOD actor from a fresh surface-shell extraction.
+
+        Parameters
+        ----------
+        budget : int, optional
+            Maximum LOD points.  Defaults to the global point budget.
+        """
+        self.actor = self.data = self.indices = None
+        self.active = False
+        self._sync_mtime = -1
+
+        if budget is None:
+            budget = get_point_budget()
+        if budget == LOD_DISABLED or self.count <= budget:
+            return None
+
+        owner = self._owner
+        self.apply(surface_shell_indices(owner.points, owner.sampling_rate, budget))
+        return None
+
+    def inherit(self, parent, subset_idx, budget=None):
+        """Remap a parent's LOD into the owner's index space.
+
+        Parameters
+        ----------
+        parent : InteractionLOD
+            LOD of the geometry this one was subset from.  A no-op when the
+            parent carries no LOD.
+        subset_idx : np.ndarray
+            Indices used to create the owner from the parent.
+        budget : int, optional
+            Maximum LOD points.  Defaults to the global point budget.
+        """
+        if parent.indices is None:
+            return None
+        if budget is None:
+            budget = get_point_budget()
+        self.apply(remap_lod_indices(parent.indices, subset_idx, self.count, budget))
+        return None
+
+    def merge(self, inputs, budget=None):
+        """Rebuild the LOD from the LODs of merged geometries.
+
+        Each input's indices are offset by the running point count, mirroring
+        the point concatenation in :meth:`Geometry.merge`.  A no-op when the
+        merged result is small enough not to need a LOD or any input lacks one.
+
+        Parameters
+        ----------
+        inputs : list of InteractionLOD
+            LODs of the merged geometries, in merge order.
+        budget : int, optional
+            Maximum LOD points.  Defaults to the global point budget.
+        """
+        budget = get_point_budget() if budget is None else budget
+        if budget == LOD_DISABLED or self.count <= budget:
+            return None
+
+        merged = merge_lod_indices(
+            [inp.indices for inp in inputs], [inp.count for inp in inputs], budget
+        )
+        if merged is not None:
+            self.apply(merged)
+        return None
+
+    def apply(self, indices):
+        """Build and attach the LOD actor for the given point *indices*."""
+        actor, data, indices = build_lod_actor(self._owner.points, indices)
+        if actor is not None:
+            self.actor, self.data, self.indices = actor, data, indices
+            self._sync_mtime = -1
+        return None
+
+    def begin(self):
+        """Hide the main actor and show the LOD actor for fast interaction."""
+        owner = self._owner
+        if self.actor is None or self.active or not owner._intent_visible:
+            return None
+        self._sync_arrays()
+        self._sync_mapper()
+        self.active = True
+        owner._actor.SetVisibility(False)
+        self.actor.SetVisibility(True)
+        return None
+
+    def end(self):
+        """Restore the main actor and hide the LOD actor."""
+        if not self.active:
+            return None
+
+        owner = self._owner
+        self.active = False
+        owner._actor.SetVisibility(owner._intent_visible)
+        self.actor.SetVisibility(False)
+        return None
+
+    def _sync_mapper(self):
+        owner = self._owner
+        self.actor.GetProperty().DeepCopy(owner._actor.GetProperty())
+        transform = owner._actor.GetUserTransform()
+        if transform is not None:
+            self.actor.SetUserTransform(transform)
+
+        src, dst = owner._actor.GetMapper(), self.actor.GetMapper()
+        dst.SetScalarVisibility(src.GetScalarVisibility())
+        dst.SetScalarMode(src.GetScalarMode())
+        dst.SetColorMode(src.GetColorMode())
+        dst.SetScalarRange(src.GetScalarRange())
+        lut = src.GetLookupTable()
+        if lut is not None:
+            dst.SetLookupTable(lut)
+        return None
+
+    def _sync_arrays(self):
+        owner = self._owner
+        mtime = owner._data.GetPointData().GetMTime()
+        if mtime == self._sync_mtime:
+            return None
+
+        idx = self.indices
+        pd, lod_pd = owner._data.GetPointData(), self.data.GetPointData()
+        scalars = pd.GetScalars()
+        if scalars is not None:
+            src = numpy_support.vtk_to_numpy(scalars)
+            lod_pd.SetScalars(numpy_support.numpy_to_vtk(src[idx], deep=True))
+        else:
+            lod_pd.SetScalars(None)
+        normals = pd.GetNormals()
+        if normals is not None:
+            src = numpy_support.vtk_to_numpy(normals)
+            vtk_n = numpy_support.numpy_to_vtk(src[idx], deep=True)
+            vtk_n.SetName("Normals")
+            lod_pd.SetNormals(vtk_n)
+        else:
+            lod_pd.SetNormals(None)
+        self._sync_mtime = mtime
+        return None

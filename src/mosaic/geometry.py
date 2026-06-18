@@ -15,6 +15,7 @@ from vtkmodules.vtkCommonCore import vtkPoints, vtkLookupTable
 from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
 from vtkmodules.util import numpy_support
 
+from . import lod
 from .stylesheets import Colors
 from .utils import normals_to_rot, apply_quat, NORMAL_REFERENCE
 
@@ -366,10 +367,7 @@ class Geometry:
             )
 
         self._representation = "pointcloud"
-        self._lod_actor = None
-        self._lod_data = None
-        self._lod_indices = None
-        self._lod_active = False
+        self.lod = lod.InteractionLOD(self)
         self._intent_visible = True
 
         self._actor = self._create_actor(vtk_actor)
@@ -492,7 +490,7 @@ class Geometry:
         if model is not None and hasattr(model, "subset"):
             state["model"] = model.subset(idx)
 
-        parent_lod = self._lod_indices
+        parent_lod = self.lod
 
         ret = self
         if copy:
@@ -502,11 +500,7 @@ class Geometry:
             state["vtk_actor"] = self.actor
 
         ret.__setstate__(state)
-
-        if parent_lod is not None:
-            from . import lod
-
-            ret._inherit_lod(parent_lod, idx, lod.get_point_budget())
+        ret.lod.inherit(parent_lod, idx)
 
         return ret
 
@@ -549,13 +543,10 @@ class Geometry:
 
         all_have_normals = True
         all_have_quaternions = True
-        counts, lod_indices = [], []
         for geometry in geometries:
             _points, _normals, _quaternions = geometry.get_point_data()
 
             data["points"].append(_points)
-            counts.append(len(_points))
-            lod_indices.append(getattr(geometry, "_lod_indices", None))
             if _normals is None:
                 all_have_normals = False
             else:
@@ -620,15 +611,7 @@ class Geometry:
 
         ret = cls.__new__(cls)
         ret.__setstate__(state)
-
-        from . import lod
-
-        budget = lod.get_point_budget()
-        if budget != lod.LOD_DISABLED and ret.get_number_of_points() > budget:
-            merged_lod = lod.merge_lod_indices(lod_indices, counts, budget)
-            if merged_lod is not None:
-                ret._apply_lod_indices(merged_lod)
-
+        ret.lod.merge([g.lod for g in geometries])
         return ret
 
     @property
@@ -794,8 +777,8 @@ class Geometry:
             Whether geometry should be visible, by default True.
         """
         self._intent_visible = bool(visibility)
-        if self._lod_active and self._lod_actor is not None:
-            self._lod_actor.SetVisibility(self._intent_visible)
+        if self.lod.active and self.lod.actor is not None:
+            self.lod.actor.SetVisibility(self._intent_visible)
         else:
             self._actor.SetVisibility(self._intent_visible)
 
@@ -891,135 +874,6 @@ class Geometry:
             actor = vtk.vtkActor()
         actor.SetMapper(mapper)
         return actor
-
-    def _inherit_lod(self, parent_lod_indices, subset_idx, budget):
-        """Remap a parent geometry's LOD indices into this subset's index space.
-
-        Avoids rerunning the surface-shell extraction when the point data
-        comes from a known parent.  Delegates to :func:`lod.remap_lod_indices`.
-        """
-        from . import lod
-
-        n = self.get_number_of_points()
-        new_indices = lod.remap_lod_indices(parent_lod_indices, subset_idx, n, budget)
-        self._apply_lod_indices(new_indices)
-        return None
-
-    def _apply_lod_indices(self, indices):
-        """Build and attach the LOD actor for the given point *indices*.
-
-        Parameters
-        ----------
-        indices : np.ndarray
-            Indices into ``self.points`` forming the LOD subset.
-        """
-        from . import lod
-
-        actor, data, lod_indices = lod.build_lod_actor(self.points, indices)
-        if actor is not None:
-            self._lod_actor = actor
-            self._lod_data = data
-            self._lod_indices = lod_indices
-            self._lod_sync_mtime = -1
-        return None
-
-    def setup_lod(self, budget=None):
-        """Build or clear the interaction-LOD actor.
-
-        Parameters
-        ----------
-        budget : int, optional
-            Maximum points for the LOD representation.  When *None*
-            the global point budget from settings is used (per-geometry
-            fallback; prefer container-level budgets).
-        """
-        from . import lod
-
-        self._lod_actor = None
-        self._lod_indices = None
-        self._lod_data = None
-        self._lod_active = False
-        self._lod_sync_mtime = -1
-
-        if budget is None:
-            budget = lod.get_point_budget()
-
-        n = self.get_number_of_points()
-        if budget == lod.LOD_DISABLED or n <= budget:
-            return None
-
-        indices = lod.surface_shell_indices(self.points, self.sampling_rate, budget)
-        actor, data, indices = lod.build_lod_actor(self.points, indices)
-        if actor is not None:
-            self._lod_actor = actor
-            self._lod_data = data
-            self._lod_indices = indices
-
-    def _sync_lod_mapper(self):
-        """Copy visual properties and mapper config to the LOD actor."""
-        self._lod_actor.GetProperty().DeepCopy(self._actor.GetProperty())
-
-        transform = self._actor.GetUserTransform()
-        if transform is not None:
-            self._lod_actor.SetUserTransform(transform)
-
-        src = self._actor.GetMapper()
-        dst = self._lod_actor.GetMapper()
-        dst.SetScalarVisibility(src.GetScalarVisibility())
-        dst.SetScalarMode(src.GetScalarMode())
-        dst.SetColorMode(src.GetColorMode())
-        dst.SetScalarRange(src.GetScalarRange())
-        lut = src.GetLookupTable()
-        if lut is not None:
-            dst.SetLookupTable(lut)
-
-    def _sync_lod_arrays(self):
-        """Copy current scalars and normals from the live data into the LOD polydata."""
-        mtime = self._data.GetPointData().GetMTime()
-        if mtime == getattr(self, "_lod_sync_mtime", -1):
-            return
-
-        idx = self._lod_indices
-        pd = self._data.GetPointData()
-        lod_pd = self._lod_data.GetPointData()
-
-        scalars = pd.GetScalars()
-        if scalars is not None:
-            src = numpy_support.vtk_to_numpy(scalars)
-            lod_pd.SetScalars(numpy_support.numpy_to_vtk(src[idx], deep=True))
-        else:
-            lod_pd.SetScalars(None)
-
-        normals = pd.GetNormals()
-        if normals is not None:
-            src = numpy_support.vtk_to_numpy(normals)
-            vtk_n = numpy_support.numpy_to_vtk(src[idx], deep=True)
-            vtk_n.SetName("Normals")
-            lod_pd.SetNormals(vtk_n)
-        else:
-            lod_pd.SetNormals(None)
-
-        self._lod_sync_mtime = mtime
-
-    def begin_interaction(self):
-        """Hide main actor and show the LOD actor for fast interaction."""
-        if self._lod_actor is None or self._lod_active:
-            return
-        if not self._intent_visible:
-            return
-        self._sync_lod_arrays()
-        self._sync_lod_mapper()
-        self._lod_active = True
-        self._actor.SetVisibility(False)
-        self._lod_actor.SetVisibility(True)
-
-    def end_interaction(self):
-        """Restore the main actor and hide the LOD actor."""
-        if not self._lod_active:
-            return
-        self._lod_active = False
-        self._actor.SetVisibility(self._intent_visible)
-        self._lod_actor.SetVisibility(False)
 
     def get_number_of_points(self):
         """
@@ -1436,13 +1290,11 @@ class Geometry:
         if clipping_planes:
             mapper.SetClippingPlanes(clipping_planes)
 
-        self.end_interaction()
-        self._lod_actor = None
-        self._lod_data = None
-        self._lod_indices = None
-        self._lod_active = False
+        self.lod.end()
         if representation in ("pointcloud", "gaussian_density"):
-            self.setup_lod()
+            self.lod.setup()
+        else:
+            self.lod.setup(lod.LOD_DISABLED)
 
         return self.set_appearance()
 
@@ -1711,9 +1563,7 @@ class SegmentationGeometry(Geometry):
             model=model,
         )
         self._representation = "segmentation"
-        self._lod_actor = None
-        self._lod_data = None
-        self._lod_active = False
+        self.lod = lod.InteractionLOD(self)
         self._intent_visible = True
 
         self._appearance = {

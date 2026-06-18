@@ -292,11 +292,11 @@ class ViewportInteractor(QObject):
         for g in geometries:
             per_geom = budgets.get(g.uuid)
             if per_geom is not None:
-                if force or getattr(g, "_lod_indices", None) is None:
-                    g.setup_lod(per_geom)
+                if force or g.lod.indices is None:
+                    g.lod.setup(per_geom)
                     changed = True
-            elif getattr(g, "_lod_actor", None) is not None:
-                g.setup_lod(lod.LOD_DISABLED)
+            elif g.lod.actor is not None:
+                g.lod.setup(lod.LOD_DISABLED)
                 changed = True
 
         if changed:
@@ -320,7 +320,7 @@ class ViewportInteractor(QObject):
         self._lod_restore_timer.stop()
         for pane in self.panes:
             for geom in pane.container.data:
-                geom.begin_interaction()
+                geom.lod.begin()
 
     def _on_interaction_end(self, obj, event):
         self._lod_restore_timer.start()
@@ -328,7 +328,7 @@ class ViewportInteractor(QObject):
     def _restore_full_data(self):
         for pane in self.panes:
             for geom in pane.container.data:
-                geom.end_interaction()
+                geom.lod.end()
         self.vtk_widget.GetRenderWindow().Render()
 
     def render(self, defer_render: bool = False):
@@ -339,9 +339,8 @@ class ViewportInteractor(QObject):
         for pane in self.panes:
             for geom in pane.container.data:
                 current_actors.add(geom.actor)
-                lod_actor = getattr(geom, "_lod_actor", None)
-                if lod_actor is not None:
-                    current_actors.add(lod_actor)
+                if geom.lod.actor is not None:
+                    current_actors.add(geom.lod.actor)
 
         actors_to_remove = self.rendered_actors - current_actors
         for actor in actors_to_remove:
