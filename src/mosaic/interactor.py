@@ -8,8 +8,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import numpy as np
-from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict
 
 from qtpy.QtGui import QAction
 from qtpy.QtWidgets import QListWidget, QMenu, QDialog
@@ -18,6 +17,7 @@ from qtpy.QtCore import Qt, QObject, QSignalBlocker, Signal
 from .widgets import MosaicMessageBox
 from .formats.writer import write_geometries
 from .widgets.container_list import StyledTreeWidgetItem
+from .swaps import GeometrySwap, GeometrySubset, apply_changes, record
 
 __all__ = ["DataContainerInteractor"]
 
@@ -29,24 +29,6 @@ _VOLUME_GEOMETRY_KEYS = (
     "upper_quantile",
     "target_resolution",
 )
-
-
-@dataclass
-class _GeometrySwap:
-    """Restore a uuid to an exact geometry (or absence) in either direction."""
-
-    uuid: str
-    before: Optional["Geometry"]
-    after: Optional["Geometry"]
-
-
-@dataclass
-class _GeometrySubset:
-    """Point subset removed from a surviving geometry; undo re-appends the slice."""
-
-    uuid: str
-    removed: "Geometry"
-    n_kept: int
 
 
 def _has_mesh_model(geometry) -> bool:
@@ -681,62 +663,10 @@ class DataContainerInteractor(QObject):
         self._highlight_selection()
         self.render()
 
-    def _restore_geometry(self, uuid, geom) -> None:
-        """Set ``uuid`` to ``geom`` exactly, or remove it when ``geom`` is None."""
-        prev = self.container.get(uuid)
-        if geom is None:
-            if prev is not None:
-                self.container.remove(uuid)
-        elif prev is None:
-            geom.uuid = uuid
-            self.add(geom)
-        else:
-            self.container.update(uuid, geom)
-        return None
-
-    def _undo_subset_removal(self, record) -> None:
-        """Re-append a removed point slice to its surviving geometry."""
-        from .geometry import merge_geometries
-
-        slice_copy = record.removed[...]
-        slice_copy.uuid = record.uuid
-        if (current := self.container.get(record.uuid)) is None:
-            self.add(slice_copy)
-            return None
-
-        merged = merge_geometries((current, slice_copy))
-        merged.uuid = record.uuid
-        self.container.update(record.uuid, merged)
-        return None
-
-    def _redo_subset_removal(self, record) -> None:
-        """Re-remove the slice by keeping only the first ``n_kept`` points.
-
-        Undo appends the slice at the tail, so the first ``n_kept`` points are the
-        surviving set; redo only runs on that post-undo state (the UndoStack clears
-        redo on push and a redo can only follow its matching undo).
-        """
-        if (current := self.container.get(record.uuid)) is None:
-            return None
-        keep = np.zeros(current.get_number_of_points(), dtype=bool)
-        keep[: record.n_kept] = True
-        self.container.update(record.uuid, current.subset(keep, copy=True))
-        return None
-
-    def _apply_changes(self, changes, *, undo: bool) -> None:
+    def apply(self, changes, *, undo: bool) -> None:
         """Apply each change in the given direction, then refresh once."""
-        # Block to avoid data_changed firing continuously
         with QSignalBlocker(self):
-            for change in changes:
-                if isinstance(change, _GeometrySubset):
-                    if undo:
-                        self._undo_subset_removal(change)
-                    else:
-                        self._redo_subset_removal(change)
-                else:
-                    self._restore_geometry(
-                        change.uuid, change.before if undo else change.after
-                    )
+            apply_changes(self, changes, undo=undo)
         self.data_changed.emit()
         self.render()
         return None
@@ -746,7 +676,7 @@ class DataContainerInteractor(QObject):
         whole_uuids = {g.uuid for g in selected}
         point_uuids = [u for u in self.point_selection if u not in whole_uuids]
         swaps = {
-            u: _GeometrySwap(u, before=self.container.get(u)[...], after=None)
+            u: GeometrySwap(u, before=self.container.get(u)[...], after=None)
             for u in whole_uuids
         }
         slices, originals = {}, {}
@@ -767,27 +697,21 @@ class DataContainerInteractor(QObject):
         for uuid, removed in slices.items():
             survivor = self.container.get(uuid)
             if survivor is None:
-                changes.append(_GeometrySwap(uuid, before=removed, after=None))
+                changes.append(GeometrySwap(uuid, before=removed, after=None))
             elif uuid in originals:
                 changes.append(
-                    _GeometrySwap(uuid, before=originals[uuid], after=survivor[...])
+                    GeometrySwap(uuid, before=originals[uuid], after=survivor[...])
                 )
             else:
                 changes.append(
-                    _GeometrySubset(
+                    GeometrySubset(
                         uuid, removed=removed, n_kept=survivor.get_number_of_points()
                     )
                 )
         return changes
 
     def _push_swap(self, label: str, changes) -> None:
-        from .undo import STACK
-
-        STACK.push_pair(
-            label,
-            undo=lambda: self._apply_changes(changes, undo=True),
-            redo=lambda: self._apply_changes(changes, undo=False),
-        )
+        record(self, changes, label)
         return None
 
     def merge(self):
@@ -816,7 +740,7 @@ class DataContainerInteractor(QObject):
         if merged_uuid in swaps:
             swaps[merged_uuid].after = merged[...]
         else:
-            swaps[merged_uuid] = _GeometrySwap(
+            swaps[merged_uuid] = GeometrySwap(
                 merged_uuid, before=None, after=merged[...]
             )
 

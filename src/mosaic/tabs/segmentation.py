@@ -156,43 +156,36 @@ class SegmentationTab(QWidget):
         ]
         self.ribbon.add_section("Analysis", analysis_actions)
 
-    def _default_callback(self, geom):
-        from ..geometry import Geometry, GeometryData
-
-        if geom is None:
-            return None
-
-        if isinstance(geom, (Geometry, GeometryData)):
-            geom = (geom,)
-
-        render = False
-        for new_geom in geom:
-
-            if new_geom is None:
-                continue
-
-            if isinstance(new_geom, GeometryData):
-                new_geom = new_geom.to_geometry()
-
-            self.cdata.data.add(new_geom)
-            render = True
-
-        if render:
-            self.cdata.data.render()
-
     def _run_op(self, op_name, replace=False, **kwargs):
+        from ..geometry import Geometry, GeometryData
         from ..operations import GeometryOperations
         from ..parallel import submit_task
+        from ..swaps import place
 
-        def _make_callback(geometry):
-
+        def _make_callback(source):
             def callback(ret):
                 if ret is None:
                     return None
-                self.cdata.data.remove(geometry)
-                return self._default_callback(ret)
+                if isinstance(ret, (Geometry, GeometryData)):
+                    ret = (ret,)
+                results = []
+                for new_geom in ret:
+                    if new_geom is None:
+                        continue
+                    if isinstance(new_geom, GeometryData):
+                        new_geom = new_geom.to_geometry()
+                    results.append(new_geom)
+                if not results:
+                    return None
+                place(
+                    self.cdata.data,
+                    add=results,
+                    remove=[source] if replace else [],
+                    label=op_name.title(),
+                )
+                return None
 
-            return callback if replace else self._default_callback
+            return callback
 
         func = getattr(GeometryOperations, op_name)
         task_name = op_name.title()
@@ -204,6 +197,7 @@ class SegmentationTab(QWidget):
                 geometry._geometry_data,
                 **kwargs,
             )
+        return None
 
     def _toggle_trimmer(self):
         if self.trimmer.active:
@@ -259,6 +253,9 @@ class SegmentationTab(QWidget):
         distance = crop_data["distance"]
         keep_smaller = crop_data["keep_smaller"]
 
+        from ..swaps import place
+
+        cropped = []
         for source in sources:
             dist = GeometryProperties.compute(
                 geometry=source,
@@ -274,9 +271,11 @@ class SegmentationTab(QWidget):
                 MosaicMessageBox.warning(self, "Warning", "No points satisfy cutoff.")
                 continue
 
-            self.cdata.data.add(source[mask])
+            cropped.append(source[mask])
 
-        self.cdata.data.render()
+        if cropped:
+            place(self.cdata.data, add=cropped, label="Distance crop")
+        return None
 
 
 class ClusterTransformer:
