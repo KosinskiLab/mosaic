@@ -1,8 +1,7 @@
 """
 Implements ViewportInteractor, which owns viewport-wide state shared
-across the DataContainerInteractor panes (Clusters and Models):
-the event filter, world-position pickers, draw/pick mode, the active
-interaction target, and renderer-level actor reconciliation.
+across the DataContainerInteractor panes the event filter, world-position
+pickers, interaction modes and render-level actors reconciliation
 
 Copyright (c) 2024-2026 European Molecular Biology Laboratory
 

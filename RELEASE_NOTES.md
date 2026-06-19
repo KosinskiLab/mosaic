@@ -1,3 +1,45 @@
+# Release Notes v1.3.0
+
+Version 1.3.0 brings interactive mesh sculpting, application-wide undo/redo and various smaller features.
+
+## Features
+
+- Interactive mesh sculpting to simplify local repair/smoothing.
+- Application-wide undo/redo that covers sculpting, mesh edits, geometry operations, point subsetting, and actions in the Model and Segmentation tabs.
+- 3D ray-cast volume rendering in the volume viewer.
+- Star files now read/write the pixel size from/to the header when available.
+
+## Improvements
+
+- Projection mode is exposed in Property Analysis and under Parametrization > Project.
+- General polish, including a repositioned Properties dialog anchor, harmonized options across Property Analysis metrics, and tidied margins.
+
+## Bug Fixes
+
+- Fixed vertex properties being lost on segmentation and volume geometry round-trips.
+- Fixed a lock-up in Property Analysis when Live Update was combined with a filter.
+- Fixed the tab indicator not resizing with its tab.
+- Guarded against a `max_hole_size` of `0` during mesh repair.
+- Made the initial guess for Cylinder parametrization more stable.
+- Improved updater handling and various smaller fixes.
+
+## Developer Notes
+
+- New `mosaic.undo` module exposes a process-wide undo/redo stack (`STACK`, `UndoStack`, `UndoEntry`); subsystems push one `UndoEntry` per change with `undo` and `redo` closures.
+- New `mosaic.swaps` module holds reversible change dataclasses (`GeometrySwap`, `GeometrySubset`) and apply/restore helpers shared by the GUI interactor and the REPL.
+- New `mosaic.sculpt` package exports.
+- `DataContainerInteractor` now exposes its container via a `container` property; VTK and LOD responsibilities moved from `interactor.py` into `viewport.py`.
+- Geometry composes an `InteractionLOD` (`mosaic.lod`) instead of owning LOD logic.
+- File I/O was restructured around a new `mosaic.formats.records` module with symmetrized reader and writer paths.
+
+## Installation
+
+```bash
+pip install -U mosaic-gui==1.3.0
+```
+
+---
+
 # Release Notes v1.2.4
 
 Version 1.2.4 makes Mosaic run better on laptops and machines without dedicated GPUs and improving the DTS simulation workflow.
