@@ -1,7 +1,6 @@
 """
-Implemenents DataContainerInteractor and LinkedDataContainerInteractor,
-which mediate interaction between the GUI and underlying DataContainers.
-This includes selection, editing and rendering.
+Implemenents DataContainerInteractor to mediate interaction between
+the viewport/GUI and DataContainers.
 
 Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
@@ -13,11 +12,12 @@ from typing import Dict
 
 from qtpy.QtGui import QAction
 from qtpy.QtWidgets import QListWidget, QMenu, QDialog
-from qtpy.QtCore import Qt, QObject, Signal
+from qtpy.QtCore import Qt, QObject, QSignalBlocker, Signal
 
 from .widgets import MosaicMessageBox
 from .formats.writer import write_geometries
 from .widgets.container_list import StyledTreeWidgetItem
+from .swaps import GeometrySwap, GeometrySubset, apply_changes, record
 
 __all__ = ["DataContainerInteractor"]
 
@@ -29,6 +29,11 @@ _VOLUME_GEOMETRY_KEYS = (
     "upper_quantile",
     "target_resolution",
 )
+
+
+def _has_mesh_model(geometry) -> bool:
+    """Whether ``geometry`` carries triangular-mesh connectivity in its model."""
+    return geometry is not None and hasattr(getattr(geometry, "model", None), "mesh")
 
 
 def _convert_geometry(geometry, target_cls):
@@ -316,7 +321,7 @@ class DataContainerInteractor(QObject):
         ]
 
         selected = self.get_selected_geometries()
-        if any(hasattr(x.model, "mesh") for x in selected):
+        if any(_has_mesh_model(x) for x in selected):
             formats.extend(mesh_formats)
 
         # We might need a more reliable check for assessing whether
@@ -416,7 +421,7 @@ class DataContainerInteractor(QObject):
         geometries = self.get_selected_geometries()
 
         enabled_categories = ["pointcloud", "volume"]
-        if any(hasattr(g.model, "mesh") for g in geometries):
+        if any(_has_mesh_model(g) for g in geometries):
             enabled_categories.append("mesh")
 
         names = [g._meta.get("name", f"Geometry {i}") for i, g in enumerate(geometries)]
@@ -658,60 +663,91 @@ class DataContainerInteractor(QObject):
         self._highlight_selection()
         self.render()
 
-    def _backup(self):
-        # Save clusters and points that are modified by the operation
-        self._merge_uuid = None
-        try:
-            self._geometry_backup = {
-                x.uuid: x[...] for x in self.get_selected_geometries()
-            }
-            self._point_backup = {
-                i: self.container.get(i)[ix] for i, ix in self.point_selection.items()
-            }
-        except Exception:
-            self._geometry_backup = None
-            self._point_backup = None
-
-    def undo(self):
-        if getattr(self, "_geometry_backup", None) is None:
-            return None
-
-        if getattr(self, "_merge_uuid", None) is not None:
-            self.remove(self._merge_uuid)
-
-        for _, geometry in self._geometry_backup.items():
-            self.add(geometry)
-
-        for uuid, geometry in self._point_backup.items():
-            prev_geometry = self.container.get(uuid)
-            if prev_geometry is None:
-                self.add(geometry)
-                continue
-            self.container.update(uuid, geometry.merge((prev_geometry, geometry)))
-
-        self._geometry_backup = None
-        self._point_backup = None
-        self._merge_uuid = None
+    def apply(self, changes, *, undo: bool) -> None:
+        """Apply each change in the given direction, then refresh once."""
+        with QSignalBlocker(self):
+            apply_changes(self, changes, undo=undo)
         self.data_changed.emit()
         self.render()
+        return None
+
+    def _capture_selection(self, selected):
+        """Snapshot the pre-op state shared by ``merge`` and ``remove_selection``."""
+        whole_uuids = {g.uuid for g in selected}
+        point_uuids = [u for u in self.point_selection if u not in whole_uuids]
+        swaps = {
+            u: GeometrySwap(u, before=self.container.get(u)[...], after=None)
+            for u in whole_uuids
+        }
+        slices, originals = {}, {}
+        for u in point_uuids:
+            source = self.container.get(u)
+            slices[u] = source[self.point_selection[u]]
+
+            # Subsetting a mesh drops triangles straddling the cut, and the
+            # subset/merge undo path cannot rebuild that severed connectivity.
+            # Snapshot the pristine mesh so undo restores it exactly instead.
+            if _has_mesh_model(source):
+                originals[u] = source[...]
+        return swaps, slices, originals
+
+    def _subset_changes(self, slices, originals):
+        """Build one change per point source from its post-op survival state."""
+        changes = []
+        for uuid, removed in slices.items():
+            survivor = self.container.get(uuid)
+            if survivor is None:
+                changes.append(GeometrySwap(uuid, before=removed, after=None))
+            elif uuid in originals:
+                changes.append(
+                    GeometrySwap(uuid, before=originals[uuid], after=survivor[...])
+                )
+            else:
+                changes.append(
+                    GeometrySubset(
+                        uuid, removed=removed, n_kept=survivor.get_number_of_points()
+                    )
+                )
+        return changes
+
+    def _push_swap(self, label: str, changes) -> None:
+        record(self, changes, label)
+        return None
 
     def merge(self):
-        from .geometry import Geometry
+        from .geometry import Geometry, merge_geometries
 
-        self._backup()
+        selected = self.get_selected_geometries()
+        swaps, slices, originals = self._capture_selection(selected)
+
         point_cluster = self.add_selection(self.point_selection, add=True)
         self.deselect_points()
 
-        merge = [*self.get_selected_geometries(), self.container.get(point_cluster)]
-        merge = [x for x in merge if isinstance(x, Geometry)]
+        merge_list = [
+            *self.get_selected_geometries(),
+            self.container.get(point_cluster),
+        ]
+        merge_list = [g for g in merge_list if isinstance(g, Geometry)]
+        if not merge_list:
+            self.render()
+            return None
 
-        if len(merge):
-            merged_geometry = Geometry.merge(merge)
-            self.remove(merge)
-            new_index = self.add(merged_geometry)
-            self._merge_uuid = self.container.get(new_index).uuid
+        merged = merge_geometries(merge_list)
+        self.remove(merge_list)
+        new_index = self.add(merged)
+        merged_uuid = self.container.get(new_index).uuid
 
+        if merged_uuid in swaps:
+            swaps[merged_uuid].after = merged[...]
+        else:
+            swaps[merged_uuid] = GeometrySwap(
+                merged_uuid, before=None, after=merged[...]
+            )
+
+        changes = list(swaps.values()) + self._subset_changes(slices, originals)
+        self._push_swap("Merge", changes)
         self.render()
+        return None
 
     def remove(self, uuids_or_geometries):
         """Remove the given geometries from the container and notify listeners."""
@@ -719,16 +755,21 @@ class DataContainerInteractor(QObject):
         self.data_changed.emit()
 
     def remove_selection(self):
-        """Drop selected points (or whole geometries when fully selected) with undo backup."""
+        """Drop selected points (or whole geometries when fully selected)."""
         selected = self.get_selected_geometries()
-        if len(self.point_selection) == 0 and len(selected) == 0:
+        if not self.point_selection and not selected:
             return None
 
-        self._backup()
+        swaps, slices, originals = self._capture_selection(selected)
+
         self.add_selection(self.point_selection, add=False)
         self.point_selection.clear()
         self.remove(selected)
+
+        changes = list(swaps.values()) + self._subset_changes(slices, originals)
+        self._push_swap("Remove", changes)
         self.render()
+        return None
 
     def visibility(self, geometries, visible: bool = True):
         for geometry in geometries:

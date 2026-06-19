@@ -37,6 +37,7 @@ class ViewerModes(enum.Enum):
     MESH_DELETE = "MeshEdit"
     MESH_ADD = "MeshAdd"
     CURVE = "Curve"
+    SCULPT = "Sculpt"
 
 
 class TextSpinnerLabel(QLabel):
@@ -968,6 +969,10 @@ class CursorModeHandler:
             ViewerModes.MESH_DELETE: Qt.CursorShape.ForbiddenCursor,
             ViewerModes.MESH_ADD: Qt.CursorShape.PointingHandCursor,
             ViewerModes.CURVE: Qt.CursorShape.CrossCursor,
+            # Sculpt enters in View tool (camera control); the brush cursor
+            # is swapped in dynamically by ``SculptMode.set_tool`` when the
+            # user picks Grab/Smooth/Patch.
+            ViewerModes.SCULPT: Qt.CursorShape.ArrowCursor,
         }
 
     def update_mode(self, mode: ViewerModes):

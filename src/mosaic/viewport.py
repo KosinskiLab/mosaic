@@ -26,53 +26,133 @@ class ViewportInteractor(QObject):
         super().__init__()
         self.vtk_widget = vtk_widget
         self.panes = list(panes)
+        self.data_pane, self.models_pane = self.panes
         self.current_target = self.panes[0]
         self.rendered_actors = set()
         self._interaction_mode = None
-        self.point_picker = vtk.vtkWorldPointPicker()
+        self._world_picker = vtk.vtkWorldPointPicker()
         self._last_lod_budget = None
+        self._active_mode = None
+        self._sculpt_hud = None
+        self._sculpt_controller = None
 
         for pane in self.panes:
             pane.attach_viewport(self)
             pane.data_changed.connect(self.refresh_lod)
 
-        self.attach_area_picker()
+        self._attach_area_picker()
         self.vtk_widget.installEventFilter(self)
         self._setup_interaction_lod()
 
+    def register_sculpt_hud(self, hud) -> None:
+        """Register the SculptPaletteHUD so sculpt mode can wire its signals."""
+        self._sculpt_hud = hud
+
     def set_target(self, pane):
-        """Set the active interaction target and return all panes to viewing."""
+        """Set the active interaction target and reset to viewing mode."""
         if pane not in self.panes:
             raise ValueError("Pane is not registered with this viewport.")
+
         self.current_target = pane
-        self.activate_viewing_mode()
+        from mosaic.widgets.status_indicator import ViewerModes
+
+        self.set_mode(ViewerModes.VIEWING)
 
     def swap_target(self):
-        """Cycle to the next registered pane, return to viewing, and re-attach the area picker."""
+        """Cycle to the next registered pane, leaving the viewport in viewing mode."""
         idx = self.panes.index(self.current_target)
-        self.set_target(self.panes[(idx + 1) % len(self.panes)])
-        return self.attach_area_picker()
+        return self.set_target(self.panes[(idx + 1) % len(self.panes)])
 
-    def activate_viewing_mode(self):
+    def set_mode(self, viewer_mode) -> None:
+        """Dispatch entry for interaction modes."""
+        from mosaic.widgets.status_indicator import ViewerModes
+
+        self._teardown_active_mode()
         self._interaction_mode = None
-        for pane in self.panes:
-            pane.set_active_cluster(None)
 
-    def activate_drawing_mode(self):
-        """Drawing always operates on the current target."""
-        for pane in self.panes:
-            pane.set_active_cluster(None)
-        self._interaction_mode = "draw"
-        new_cluster_index = self.current_target.add(
-            points=np.empty((0, 3), dtype=np.float32)
-        )
-        new_uuid = self.current_target.container.get(new_cluster_index).uuid
-        self.current_target.set_active_cluster(new_uuid)
+        interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
 
-    def activate_picking_mode(self):
-        self._interaction_mode = "pick"
+        if viewer_mode == ViewerModes.VIEWING:
+            if interactor is not None:
+                interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
+            for pane in self.panes:
+                pane.set_active_cluster(None)
+            return None
 
-    def attach_area_picker(self):
+        if viewer_mode == ViewerModes.DRAWING:
+            for pane in self.panes:
+                pane.set_active_cluster(None)
+            self.current_target = self.data_pane
+            self._interaction_mode = "draw"
+            new_cluster_index = self.current_target.add(
+                points=np.empty((0, 3), dtype=np.float32)
+            )
+            new_uuid = self.current_target.container.get(new_cluster_index).uuid
+            self.current_target.set_active_cluster(new_uuid)
+            return None
+
+        if viewer_mode == ViewerModes.PICKING:
+            self._interaction_mode = "pick"
+            return None
+
+        if viewer_mode == ViewerModes.SELECTION:
+            self._attach_area_picker()
+            return None
+
+        if viewer_mode == ViewerModes.CURVE:
+            from mosaic.styles import CurveBuilderInteractorStyle
+
+            style = CurveBuilderInteractorStyle(self.vtk_widget, self.data_pane)
+            if interactor is not None:
+                interactor.SetInteractorStyle(style)
+            style.SetDefaultRenderer(style.renderer)
+            return None
+
+        if viewer_mode in (ViewerModes.MESH_ADD, ViewerModes.MESH_DELETE):
+            from mosaic.styles import MeshEditInteractorStyle
+
+            style = MeshEditInteractorStyle(
+                self.vtk_widget, self.data_pane, self.models_pane
+            )
+            if interactor is not None:
+                interactor.SetInteractorStyle(style)
+            style.SetDefaultRenderer(style.renderer)
+            if viewer_mode == ViewerModes.MESH_ADD:
+                style.toggle_add_face_mode()
+            return None
+
+        if viewer_mode == ViewerModes.SCULPT:
+            from mosaic.sculpt.controller import SculptController
+            from mosaic.sculpt.mode import SculptMode
+
+            if self._sculpt_controller is None:
+                self._sculpt_controller = SculptController()
+
+            # Reset the HUD to View before activation
+            if self._sculpt_hud is not None:
+                self._sculpt_hud.set_tool("view")
+            mode = SculptMode(
+                self, self.models_pane, self._sculpt_hud, self._sculpt_controller
+            )
+            self._interaction_mode = "sculpt"
+            self._active_mode = mode
+            mode.activate()
+            return None
+
+        raise ValueError(f"Unhandled viewer mode: {viewer_mode!r}")
+
+    def _teardown_active_mode(self) -> None:
+        """Run mode-leaving cleanup for both mode-objects and bare styles."""
+        if self._active_mode is not None:
+            self._active_mode.deactivate()
+            self._active_mode = None
+        interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
+        if interactor is not None:
+            current_style = interactor.GetInteractorStyle()
+            if hasattr(current_style, "cleanup"):
+                current_style.cleanup()
+
+    def _attach_area_picker(self):
         self.interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         if self.interactor is None:
             raise ValueError("Initialize an Interactor first.")
@@ -81,6 +161,14 @@ class ViewportInteractor(QObject):
 
         self.interactor.SetPicker(self.area_picker)
         self.interactor.SetInteractorStyle(style)
+
+        # CurrentMode is a protected C++ member with no Python setter. Flip it
+        # to VTKISRBP_SELECT by firing CharEvent through the interactor so VTK
+        # dispatches OnChar via C++ virtual that hits the rubber-band
+        # override (which only toggles the flag)
+        self.interactor.SetKeyCode("r")
+        self.interactor.SetKeySym("r")
+        self.interactor.CharEvent()
         self.area_picker.AddObserver("EndPickEvent", self._on_area_pick)
 
     def get_event_position(self, event, return_event_position: bool = True):
@@ -94,8 +182,8 @@ class ViewportInteractor(QObject):
         y = (self.vtk_widget.height() - position[1]) * dpr
         event_position = (position[0] * dpr, y, 0)
         r = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
-        self.point_picker.Pick(*event_position, r)
-        world_position = self.point_picker.GetPickPosition()
+        self._world_picker.Pick(*event_position, r)
+        world_position = self._world_picker.GetPickPosition()
 
         camera = r.GetActiveCamera()
         camera_plane = vtk.vtkPlane()
@@ -204,11 +292,11 @@ class ViewportInteractor(QObject):
         for g in geometries:
             per_geom = budgets.get(g.uuid)
             if per_geom is not None:
-                if force or getattr(g, "_lod_indices", None) is None:
-                    g.setup_lod(per_geom)
+                if force or g.lod.indices is None:
+                    g.lod.setup(per_geom)
                     changed = True
-            elif getattr(g, "_lod_actor", None) is not None:
-                g.setup_lod(lod.LOD_DISABLED)
+            elif g.lod.actor is not None:
+                g.lod.setup(lod.LOD_DISABLED)
                 changed = True
 
         if changed:
@@ -232,7 +320,7 @@ class ViewportInteractor(QObject):
         self._lod_restore_timer.stop()
         for pane in self.panes:
             for geom in pane.container.data:
-                geom.begin_interaction()
+                geom.lod.begin()
 
     def _on_interaction_end(self, obj, event):
         self._lod_restore_timer.start()
@@ -240,7 +328,7 @@ class ViewportInteractor(QObject):
     def _restore_full_data(self):
         for pane in self.panes:
             for geom in pane.container.data:
-                geom.end_interaction()
+                geom.lod.end()
         self.vtk_widget.GetRenderWindow().Render()
 
     def render(self, defer_render: bool = False):
@@ -251,9 +339,8 @@ class ViewportInteractor(QObject):
         for pane in self.panes:
             for geom in pane.container.data:
                 current_actors.add(geom.actor)
-                lod_actor = getattr(geom, "_lod_actor", None)
-                if lod_actor is not None:
-                    current_actors.add(lod_actor)
+                if geom.lod.actor is not None:
+                    current_actors.add(geom.lod.actor)
 
         actors_to_remove = self.rendered_actors - current_actors
         for actor in actors_to_remove:

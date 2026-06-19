@@ -25,6 +25,31 @@ from ..tree_state import TreeStateData, TreeState
 __all__ = ["Session"]
 
 
+class _SessionTarget:
+    """Non-rendering DataContainerInteractor mock wrapping a container.
+
+    Parameters
+    ----------
+    container : DataContainer
+        The container this target wraps.
+    """
+
+    def __init__(self, container):
+        self.container = container
+
+    def add(self, geom) -> None:
+        """Add *geom* directly to the container (no palette colour assignment)."""
+        self.container.add(geom)
+        return None
+
+    def apply(self, changes, *, undo: bool) -> None:
+        """Apply *changes* in the given direction without any rendering side-effects."""
+        from ..swaps import apply_changes
+
+        apply_changes(self, changes, undo=undo)
+        return None
+
+
 class Session:
     """Headless workspace that holds geometry data and dispatches operations.
 
@@ -538,10 +563,12 @@ class Session:
         if func is None:
             raise ValueError(f"Unknown operation: {operation_name}")
 
+        from ..swaps import place
+
         results, errors = self._run_parallel(func, geometries, operation_name, **kwargs)
 
-        created = []
-        for i, result in enumerate(results):
+        created, data_geoms, model_geoms = [], [], []
+        for result in results:
             if result is None:
                 continue
 
@@ -555,12 +582,26 @@ class Session:
                     new_geom = new_geom.to_geometry()
                 if new_geom.model is not None:
                     new_geom.change_representation("surface")
-                if persist:
-                    container = self._data if new_geom.model is None else self._models
-
-                    container.add(new_geom)
-                    self._order.append(new_geom)
                 created.append(new_geom)
+                if new_geom.model is None:
+                    data_geoms.append(new_geom)
+                else:
+                    model_geoms.append(new_geom)
+
+        if persist:
+            if data_geoms:
+                place(
+                    _SessionTarget(self._data),
+                    add=data_geoms,
+                    label=operation_name,
+                )
+            if model_geoms:
+                place(
+                    _SessionTarget(self._models),
+                    add=model_geoms,
+                    label=operation_name,
+                )
+            self._order.extend(created)
 
         if errors:
             msgs = [f"#{i}: {e}" for i, e in errors]

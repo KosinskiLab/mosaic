@@ -310,34 +310,30 @@ class ModelTab(QWidget):
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
 
-    def _default_callback(self, geom):
+    def _default_callback(self, geom, label="Operation"):
         from ..geometry import Geometry, GeometryData
         from ..parametrization import TriangularMesh
+        from ..swaps import place
 
         if isinstance(geom, (Geometry, GeometryData)):
             geom = (geom,)
 
-        new_model, new_cluster = False, False
+        data_geoms, model_geoms = [], []
         for new_geom in geom:
-
             if isinstance(new_geom, GeometryData):
                 new_geom = new_geom.to_geometry()
-
             if isinstance(new_geom.model, TriangularMesh):
                 new_geom.change_representation("surface")
-
             if new_geom.model is None:
-                new_cluster = True
-                self.cdata.data.add(new_geom)
-                continue
+                data_geoms.append(new_geom)
+            else:
+                model_geoms.append(new_geom)
 
-            new_model = True
-            self.cdata.models.add(new_geom)
-
-        if new_model:
-            self.cdata.models.render()
-        if new_cluster:
-            self.cdata.data.render()
+        if data_geoms:
+            place(self.cdata.data, add=data_geoms, label=label)
+        if model_geoms:
+            place(self.cdata.models, add=model_geoms, label=label)
+        return None
 
     def _get_selected_meshes(self):
         from ..parametrization import TriangularMesh
@@ -356,7 +352,7 @@ class ModelTab(QWidget):
                 {
                     "name": "Repair Mesh",
                     "func": _repair_mesh,
-                    "callback": self._default_callback,
+                    "callback": partial(self._default_callback, label="Repair"),
                     "args": (geometry._geometry_data,),
                     "kwargs": kwargs,
                 }
@@ -372,7 +368,7 @@ class ModelTab(QWidget):
                 {
                     "name": "Parametrization",
                     "func": GeometryOperations.fit,
-                    "callback": self._default_callback,
+                    "callback": partial(self._default_callback, label="Fit"),
                     "args": (geometry._geometry_data, method),
                     "kwargs": kwargs,
                 }
@@ -388,7 +384,7 @@ class ModelTab(QWidget):
                 {
                     "name": "Smooth",
                     "func": GeometryOperations.smooth,
-                    "callback": self._default_callback,
+                    "callback": partial(self._default_callback, label="Smooth"),
                     "args": (geometry._geometry_data, method),
                     "kwargs": kwargs,
                 }
@@ -404,7 +400,7 @@ class ModelTab(QWidget):
                 {
                     "name": "Sample Fit",
                     "func": GeometryOperations.sample,
-                    "callback": self._default_callback,
+                    "callback": partial(self._default_callback, label="Sample"),
                     "args": (geometry._geometry_data,),
                     "kwargs": {
                         "method": method,
@@ -425,7 +421,7 @@ class ModelTab(QWidget):
                 {
                     "name": "Remesh",
                     "func": GeometryOperations.remesh,
-                    "callback": self._default_callback,
+                    "callback": partial(self._default_callback, label="Remesh"),
                     "args": (geometry._geometry_data, method),
                     "kwargs": kwargs,
                 }
@@ -439,7 +435,7 @@ class ModelTab(QWidget):
                 {
                     "name": "Fill Mesh",
                     "func": _fill_mesh,
-                    "callback": self._default_callback,
+                    "callback": partial(self._default_callback, label="Fill"),
                     "args": (geometry._geometry_data,),
                 }
                 for geometry in self._get_selected_meshes()
@@ -456,7 +452,7 @@ class ModelTab(QWidget):
         submit_task(
             "Project",
             _project,
-            self._default_callback,
+            partial(self._default_callback, label="Project"),
             self._get_selected_meshes(),
             self.cdata.data.get_selected_geometries(),
             projection,
