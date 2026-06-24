@@ -943,7 +943,7 @@ def build_appstyle():
                 # "QWidgetWindow ... must be a top level window" warnings.
                 menu = QMenu(combo.window() or combo)
                 menu.setStyleSheet(
-                    "QMenu { padding: 0px 0px; }QMenu::item { padding: 4px 7px; }"
+                    "QMenu { padding: 0px 0px; }" "QMenu::item { padding: 4px 7px; }"
                 )
                 menu.setWindowFlags(
                     menu.windowFlags()
