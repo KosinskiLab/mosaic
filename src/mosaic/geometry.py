@@ -171,12 +171,15 @@ class GeometryData:
 
     def set_faces(self, faces):
         """Set triangular face connectivity on the polydata."""
-        faces = np.asarray(faces, dtype=int)
+        # Use int64 explicitly because numpy_to_vtkIdTypeArray() requires int64 input.
+        # dtype=int is platform-dependent (int32 on Windows, typically int64 on
+        # Linux/macOS), which can otherwise cause a ValueError.
+        faces = np.asarray(faces, dtype=np.int64)
         if faces.ndim == 2 and faces.shape[1] == 3:
             faces = np.concatenate(
                 (np.full((faces.shape[0], 1), fill_value=3), faces),
                 axis=1,
-                dtype=int,
+                dtype=np.int64,
             )
         poly_cells = vtkCellArray()
         poly_cells.SetCells(
