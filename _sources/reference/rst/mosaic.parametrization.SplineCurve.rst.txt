@@ -1,0 +1,36 @@
+﻿SplineCurve
+===========
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: SplineCurve
+   :members:
+   :show-inheritance:
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+         
+            SplineCurve.compute_normal
+         
+         
+            SplineCurve.fit
+         
+         
+            SplineCurve.points_per_sampling
+         
+         
+            SplineCurve.sample
+         
+   
+   

@@ -1,0 +1,6 @@
+﻿DataContainerInteractor.update
+================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.update

@@ -1,0 +1,6 @@
+﻿DataContainerInteractor.set\_coloring\_mode
+===========================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.set_coloring_mode

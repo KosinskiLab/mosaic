@@ -1,0 +1,45 @@
+﻿PoissonMesh
+===========
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: PoissonMesh
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+         
+         
+         
+         
+         
+            PoissonMesh.fit
+         
+         
+         
+         
+         
+         
+         
+   
+   

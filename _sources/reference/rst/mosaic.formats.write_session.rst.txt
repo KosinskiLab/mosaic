@@ -1,0 +1,6 @@
+﻿write\_session
+============================
+
+.. currentmodule:: mosaic.formats
+
+.. autofunction:: write_session

@@ -1,0 +1,62 @@
+﻿VolumeGeometry
+==============
+
+.. currentmodule:: mosaic.geometry
+
+.. autoclass:: VolumeGeometry
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+         
+         
+         
+         
+         
+         
+            VolumeGeometry.set_appearance
+         
+         
+         
+         
+         
+         
+         
+            VolumeGeometry.update_isovalue
+         
+         
+            VolumeGeometry.update_isovalue_quantile
+         
+         
+            VolumeGeometry.update_target_resolution
+         
+   
+   

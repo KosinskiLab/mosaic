@@ -1,0 +1,1546 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mosaic.commands.session &#8212; mosaic 1.3.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
+
+    <script src="../../../_static/documentation_options.js?v=1f29e9d3"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/mosaic/commands/session';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../../_static/logo.png"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../reference/index.html">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">mosaic.commands.session</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for mosaic.commands.session</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Headless session manager for the Mosaic scripting interface.</span>
+
+<span class="sd">:class:`Session` is the headless equivalent of :class:`~mosaic.data.MosaicData`,</span>
+<span class="sd">managing two :class:`~mosaic.container.DataContainer` instances (point clouds</span>
+<span class="sd">and fitted models) without Qt or VTK rendering dependencies.</span>
+
+<span class="sd">Copyright (c) 2024-2026 European Molecular Biology Laboratory</span>
+
+<span class="sd">Author: Valentin Maurer &lt;valentin.maurer@embl-hamburg.de&gt;</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">uuid</span><span class="w"> </span><span class="kn">import</span> <span class="n">uuid4</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProcessPoolExecutor</span><span class="p">,</span> <span class="n">as_completed</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..container</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataContainer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..tree_state</span><span class="w"> </span><span class="kn">import</span> <span class="n">TreeStateData</span><span class="p">,</span> <span class="n">TreeState</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Session&quot;</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_SessionTarget</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Non-rendering DataContainerInteractor mock wrapping a container.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    container : DataContainer</span>
+<span class="sd">        The container this target wraps.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">container</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">container</span> <span class="o">=</span> <span class="n">container</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">geom</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add *geom* directly to the container (no palette colour assignment).&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">changes</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">undo</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply *changes* in the given direction without any rendering side-effects.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..swaps</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_changes</span>
+
+        <span class="n">apply_changes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">changes</span><span class="p">,</span> <span class="n">undo</span><span class="o">=</span><span class="n">undo</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="Session">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Session</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Headless workspace that holds geometry data and dispatches operations.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data : DataContainer</span>
+<span class="sd">        Container for point cloud geometries.</span>
+<span class="sd">    models : DataContainer</span>
+<span class="sd">        Container for fitted mesh/model geometries.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">quiet</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="o">=</span> <span class="n">DataContainer</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_models</span> <span class="o">=</span> <span class="n">DataContainer</span><span class="p">(</span><span class="n">highlight_color</span><span class="o">=</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data_tree</span> <span class="o">=</span> <span class="n">TreeStateData</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_models_tree</span> <span class="o">=</span> <span class="n">TreeStateData</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_file_sections</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_results</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_counter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quiet</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">quiet</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_shape</span><span class="p">,</span> <span class="n">sampling</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extend the session bounding box to include *data_shape*.&quot;&quot;&quot;</span>
+        <span class="n">data_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data_shape</span><span class="p">)</span>
+        <span class="n">physical</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">data_shape</span><span class="p">,</span> <span class="n">sampling</span><span class="p">)</span>
+
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;shape&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;shape&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">data_shape</span> <span class="k">if</span> <span class="n">shape</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">data_shape</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">physical_shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;physical_shape&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;physical_shape&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">physical</span> <span class="k">if</span> <span class="n">physical_shape</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">physical_shape</span><span class="p">,</span> <span class="n">physical</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_all_geometries</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return all geometries in insertion order.&quot;&quot;&quot;</span>
+        <span class="c1"># Sync any geometries added directly to containers (e.g. tests)</span>
+        <span class="n">ordered</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">id</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">id</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ordered</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+                <span class="n">ordered</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">id</span><span class="p">(</span><span class="n">g</span><span class="p">))</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_owner</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">geometry</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return which container owns *geometry*.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">container</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">geometry</span> <span class="ow">in</span> <span class="n">container</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">container</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_tree_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">container</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TreeStateData</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the tree state associated with *container*.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">container</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models_tree</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_tree</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_flatten</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Flatten one level of nesting in *items*.&quot;&quot;&quot;</span>
+        <span class="n">flat</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">flat</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">flat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">flat</span>
+
+<div class="viewcode-block" id="Session.resolve">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.resolve.html#mosaic.commands.session.Session.resolve">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve a target specifier to a list of Geometry objects.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        spec : str</span>
+<span class="sd">            ``&quot;#N&quot;`` for a single geometry, ``&quot;#N-M&quot;`` for a range,</span>
+<span class="sd">            ``&quot;*&quot;`` for every geometry, or ``&quot;@last&quot;`` for the results</span>
+<span class="sd">            of the most recent ``open()`` or ``apply()`` call.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of Geometry</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">spec</span> <span class="o">==</span> <span class="s2">&quot;@last&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_last_results</span><span class="p">)</span>
+
+        <span class="n">all_geoms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_geometries</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">spec</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">all_geoms</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">):</span>
+            <span class="n">body</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+            <span class="k">if</span> <span class="s2">&quot;-&quot;</span> <span class="ow">in</span> <span class="n">body</span><span class="p">:</span>
+                <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">body</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">lo</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">hi</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">lo</span> <span class="o">&gt;</span> <span class="n">hi</span><span class="p">:</span>
+                    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">hi</span><span class="p">,</span> <span class="n">lo</span>
+                <span class="k">return</span> <span class="p">[</span><span class="n">all_geoms</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_geoms</span><span class="p">)]</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_geoms</span><span class="p">):</span>
+                <span class="k">return</span> <span class="p">[</span><span class="n">all_geoms</span><span class="p">[</span><span class="n">idx</span><span class="p">]]</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Geometry </span><span class="si">{</span><span class="n">spec</span><span class="si">}</span><span class="s2"> does not exist (have </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_geoms</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid target specifier: </span><span class="si">{</span><span class="n">spec</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Session.resolve_many">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.resolve_many.html#mosaic.commands.session.Session.resolve_many">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">resolve_many</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">specs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve multiple specifiers, preserving order and deduplicating.&quot;&quot;&quot;</span>
+        <span class="n">seen</span><span class="p">,</span> <span class="n">result</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(),</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">specs</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">geom</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">spec</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">id</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+                    <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">id</span><span class="p">(</span><span class="n">geom</span><span class="p">))</span>
+                    <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="Session.open">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.open.html#mosaic.commands.session.Session.open">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">scale</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">sampling_rate</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">persist</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">segmentation</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load geometries from a file.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filepath : str</span>
+<span class="sd">            Path to the input file.</span>
+<span class="sd">        offset : float or array-like, optional</span>
+<span class="sd">            Coordinate offset subtracted from scaled vertices as</span>
+<span class="sd">            ``vertices * scale - offset`` (default 0).</span>
+<span class="sd">        scale : float or array-like, optional</span>
+<span class="sd">            Scale factor applied to raw vertices. Defaults to the file&#39;s</span>
+<span class="sd">            native sampling rate, which converts voxel-index vertices</span>
+<span class="sd">            returned by volume loaders into physical units.</span>
+<span class="sd">        sampling_rate : float, optional</span>
+<span class="sd">            Override the file&#39;s native sampling rate.</span>
+<span class="sd">        persist : bool, optional</span>
+<span class="sd">            When ``True`` (default), add geometries to session containers.</span>
+<span class="sd">            When ``False``, geometries are only available via ``@last``.</span>
+<span class="sd">        segmentation : bool, optional</span>
+<span class="sd">            When ``True``, treat the volume as a segmentation and extract</span>
+<span class="sd">            surface meshes via VTK&#39;s FlyingEdges3D.</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            Additional arguments passed to ``open_file()``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of int</span>
+<span class="sd">            Global indices of the newly added geometries.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..formats.reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_volume_file</span>
+
+        <span class="k">if</span> <span class="n">segmentation</span> <span class="ow">and</span> <span class="n">is_volume_file</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_open_segmentation</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">sampling_rate</span><span class="p">,</span> <span class="n">persist</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_open_generic</span><span class="p">(</span>
+            <span class="n">filepath</span><span class="p">,</span>
+            <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
+            <span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">,</span>
+            <span class="n">sampling_rate</span><span class="o">=</span><span class="n">sampling_rate</span><span class="p">,</span>
+            <span class="n">persist</span><span class="o">=</span><span class="n">persist</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_open_segmentation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">sampling_rate</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">persist</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Open a volume as SegmentationGeometry from point clouds.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..formats</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_file</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">SegmentationGeometry</span>
+
+        <span class="n">container</span> <span class="o">=</span> <span class="n">open_file</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">use_index</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">container</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span>
+
+        <span class="n">geoms</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">container</span><span class="p">):</span>
+            <span class="n">effective_sampling</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">sampling_rate</span> <span class="k">if</span> <span class="n">sampling_rate</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">data</span><span class="o">.</span><span class="n">sampling</span>
+            <span class="p">)</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">use_index</span> <span class="k">else</span> <span class="n">base</span>
+            <span class="n">geom</span> <span class="o">=</span> <span class="n">SegmentationGeometry</span><span class="p">(</span>
+                <span class="n">points</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">vertices</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">sampling</span><span class="p">),</span>
+                <span class="n">sampling_rate</span><span class="o">=</span><span class="n">effective_sampling</span><span class="p">,</span>
+                <span class="n">meta</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">},</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">persist</span><span class="p">:</span>
+                <span class="n">idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+                <span class="n">geom</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">data</span><span class="p">)[</span><span class="n">idx</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+                <span class="n">indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_update_shape</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">effective_sampling</span><span class="p">)</span>
+
+            <span class="n">geoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_results</span> <span class="o">=</span> <span class="n">geoms</span>
+        <span class="k">return</span> <span class="n">indices</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_open_generic</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">filepath</span><span class="p">,</span>
+        <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">scale</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">sampling_rate</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">persist</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load geometries via the format parsers (generic path).&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..formats</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_file</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Geometry</span>
+
+        <span class="n">container</span> <span class="o">=</span> <span class="n">open_file</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">use_index</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">container</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span>
+
+        <span class="n">indices</span><span class="p">,</span> <span class="n">geoms</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">container</span><span class="p">):</span>
+            <span class="n">effective_scale</span> <span class="o">=</span> <span class="n">scale</span> <span class="k">if</span> <span class="n">scale</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">data</span><span class="o">.</span><span class="n">sampling</span>
+            <span class="n">sampling</span> <span class="o">=</span> <span class="n">sampling_rate</span> <span class="k">if</span> <span class="n">sampling_rate</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">data</span><span class="o">.</span><span class="n">sampling</span>
+
+            <span class="n">data</span><span class="o">.</span><span class="n">vertices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span>
+                <span class="n">data</span><span class="o">.</span><span class="n">vertices</span><span class="p">,</span> <span class="n">effective_scale</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">vertices</span>
+            <span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">vertices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">vertices</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">vertices</span><span class="p">)</span>
+
+            <span class="n">is_mesh</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">faces</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="n">mesh_model</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">is_mesh</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">..meshing</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_open3d</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">..parametrization</span><span class="w"> </span><span class="kn">import</span> <span class="n">TriangularMesh</span>
+
+                <span class="n">mesh_model</span> <span class="o">=</span> <span class="n">TriangularMesh</span><span class="p">(</span><span class="n">to_open3d</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">vertices</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">faces</span><span class="p">))</span>
+
+            <span class="n">kw</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">mesh_model</span><span class="p">,</span>
+                <span class="s2">&quot;sampling_rate&quot;</span><span class="p">:</span> <span class="n">sampling</span><span class="p">,</span>
+                <span class="s2">&quot;vertex_properties&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">vertex_properties</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="n">data_container</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_mesh</span><span class="p">:</span>
+                <span class="n">data_container</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span>
+                <span class="n">kw</span> <span class="o">|=</span> <span class="p">{</span>
+                    <span class="s2">&quot;points&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">vertices</span><span class="p">,</span>
+                    <span class="s2">&quot;normals&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">normals</span><span class="p">,</span>
+                    <span class="s2">&quot;quaternions&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">quaternions</span><span class="p">,</span>
+                <span class="p">}</span>
+
+            <span class="k">if</span> <span class="n">persist</span><span class="p">:</span>
+                <span class="n">idx</span> <span class="o">=</span> <span class="n">data_container</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+                <span class="n">geom</span> <span class="o">=</span> <span class="n">data_container</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+                <span class="n">indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_update_shape</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">effective_scale</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">geom</span> <span class="o">=</span> <span class="n">Geometry</span><span class="p">(</span><span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">is_mesh</span><span class="p">:</span>
+                <span class="n">geom</span><span class="o">.</span><span class="n">change_representation</span><span class="p">(</span><span class="s2">&quot;surface&quot;</span><span class="p">)</span>
+
+            <span class="n">geom</span><span class="o">.</span><span class="n">_meta</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">use_index</span> <span class="k">else</span> <span class="n">base</span>
+            <span class="n">geoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_results</span> <span class="o">=</span> <span class="n">geoms</span>
+        <span class="k">return</span> <span class="n">indices</span>
+
+<div class="viewcode-block" id="Session.save">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.save.html#mosaic.commands.session.Session.save">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">geometries</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Export geometries to a file.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        geometries : list of Geometry</span>
+<span class="sd">            Geometries to export.</span>
+<span class="sd">        filepath : str</span>
+<span class="sd">            Output file path.</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            Additional export parameters (``format``, ``sampling``, etc.).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..formats.writer</span><span class="w"> </span><span class="kn">import</span> <span class="n">write_geometries</span>
+
+        <span class="n">export_parameters</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">export_parameters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;format&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">suffix</span> <span class="o">=</span> <span class="n">filepath</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="n">export_parameters</span><span class="p">[</span><span class="s2">&quot;format&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">suffix</span>
+
+        <span class="k">if</span> <span class="n">export_parameters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;shape&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">export_parameters</span><span class="p">[</span><span class="s2">&quot;shape&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;shape&quot;</span><span class="p">)</span>
+        <span class="n">write_geometries</span><span class="p">(</span><span class="n">geometries</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="o">**</span><span class="n">export_parameters</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Session.save_session">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.save_session.html#mosaic.commands.session.Session.save_session">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">sections</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save session state to *filepath*.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filepath : str</span>
+<span class="sd">            Destination file path.</span>
+<span class="sd">        sections : dict, optional</span>
+<span class="sd">            Extra sections to include in the file, mapping section names to</span>
+<span class="sd">            ``(encoding, data)`` tuples (e.g. ``{&quot;thumbnail&quot;: (&quot;png&quot;, bytes)}``).</span>
+<span class="sd">            Ignored for ``.pickle`` files.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">,</span>
+            <span class="s2">&quot;_data&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">,</span>
+            <span class="s2">&quot;_models&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">,</span>
+            <span class="s2">&quot;_data_tree&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_tree</span><span class="p">,</span>
+            <span class="s2">&quot;_models_tree&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models_tree</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">filepath</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.pickle&quot;</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+                <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">fh</span><span class="p">,</span> <span class="n">protocol</span><span class="o">=</span><span class="n">pickle</span><span class="o">.</span><span class="n">HIGHEST_PROTOCOL</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">..formats.session</span><span class="w"> </span><span class="kn">import</span> <span class="n">write_session</span>
+
+            <span class="n">merged</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_file_sections</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">sections</span><span class="p">:</span>
+                <span class="n">merged</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">sections</span><span class="p">)</span>
+            <span class="n">write_session</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">sections</span><span class="o">=</span><span class="n">merged</span> <span class="ow">or</span> <span class="kc">None</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Session.load_session">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.load_session.html#mosaic.commands.session.Session.load_session">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">persist</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Restore session state from a session file.</span>
+
+<span class="sd">        Handles both ``.pickle`` and indexed ``.mosaic`` formats.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filepath : str</span>
+<span class="sd">            Path to the session file.</span>
+<span class="sd">        persist : bool, optional</span>
+<span class="sd">            When ``True`` (default), replace the current session state.</span>
+<span class="sd">            When ``False``, geometries are only available via ``@last``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..formats.session</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">open_session</span><span class="p">,</span>
+            <span class="n">read_session_index</span><span class="p">,</span>
+            <span class="n">read_session_section</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">state</span> <span class="o">=</span> <span class="n">open_session</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+
+        <span class="n">index</span> <span class="o">=</span> <span class="n">read_session_index</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+        <span class="n">sections</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">index</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sections&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;state&quot;</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">read_session_section</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">sections</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;encoding&quot;</span><span class="p">],</span> <span class="n">data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_file_sections</span> <span class="o">=</span> <span class="n">sections</span>
+
+        <span class="n">loaded_data</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_data&quot;</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="n">DataContainer</span><span class="p">()))</span>
+        <span class="n">loaded_models</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;_models&quot;</span><span class="p">,</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">,</span> <span class="n">DataContainer</span><span class="p">(</span><span class="n">highlight_color</span><span class="o">=</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">))),</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">persist</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_last_results</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">loaded_data</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">loaded_models</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="o">=</span> <span class="n">loaded_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_models</span> <span class="o">=</span> <span class="n">loaded_models</span>
+
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;_data_tree&quot;</span><span class="p">,</span> <span class="s2">&quot;_models_tree&quot;</span><span class="p">):</span>
+            <span class="n">tree</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">tree</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">TreeStateData</span><span class="p">())</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">TreeState</span><span class="p">):</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">tree</span><span class="o">.</span><span class="n">to_tree_state_data</span><span class="p">())</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">tree</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span>
+
+        <span class="c1"># Back-compat: older sessions stored shape on the top-level state</span>
+        <span class="c1"># and on the loaded container&#39;s metadata dict.</span>
+        <span class="n">legacy_container_meta</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">loaded_data</span><span class="p">,</span> <span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="s2">&quot;shape&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">:</span>
+            <span class="n">legacy_shape</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;shape&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">legacy_shape</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">legacy_shape</span> <span class="o">=</span> <span class="n">legacy_container_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;shape&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">legacy_shape</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;shape&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">legacy_shape</span>
+        <span class="k">if</span> <span class="s2">&quot;physical_shape&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">:</span>
+            <span class="n">legacy_physical</span> <span class="o">=</span> <span class="n">legacy_container_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;physical_shape&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">legacy_physical</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;physical_shape&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">legacy_physical</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_order</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_geometries</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_run_parallel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">geometries</span><span class="p">,</span> <span class="n">operation_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute *func* on each geometry using a process pool.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        func : callable</span>
+<span class="sd">            Function to apply to each geometry.</span>
+<span class="sd">        geometries : list of Geometry</span>
+<span class="sd">            Target geometries.</span>
+<span class="sd">        operation_name : str</span>
+<span class="sd">            Label for the progress bar.</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            Passed to *func*. ``workers`` is consumed to set pool size.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        results : list</span>
+<span class="sd">            Per-geometry results (``None`` for failures).</span>
+<span class="sd">        errors : list of (int, Exception)</span>
+<span class="sd">            Index and exception for each failed geometry.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..parallel</span><span class="w"> </span><span class="kn">import</span> <span class="n">_init_worker</span><span class="p">,</span> <span class="n">_wrap_task</span>
+
+        <span class="n">workers</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;workers&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">pool</span> <span class="o">=</span> <span class="n">ProcessPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="n">workers</span><span class="p">,</span> <span class="n">initializer</span><span class="o">=</span><span class="n">_init_worker</span><span class="p">)</span>
+        <span class="n">futures</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">pool</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">_wrap_task</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span> <span class="n">i</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">g</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">geometries</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">geometries</span><span class="p">)</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">rich.progress</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">Progress</span><span class="p">,</span>
+            <span class="n">SpinnerColumn</span><span class="p">,</span>
+            <span class="n">BarColumn</span><span class="p">,</span>
+            <span class="n">TextColumn</span><span class="p">,</span>
+            <span class="n">TimeRemainingColumn</span><span class="p">,</span>
+            <span class="n">MofNCompleteColumn</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.theme</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_console</span>
+
+        <span class="n">console</span> <span class="o">=</span> <span class="n">get_console</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">quiet</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringIO</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">rich.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">Console</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">.theme</span><span class="w"> </span><span class="kn">import</span> <span class="n">MOSAIC_THEME</span>
+
+            <span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="n">StringIO</span><span class="p">(),</span> <span class="n">theme</span><span class="o">=</span><span class="n">MOSAIC_THEME</span><span class="p">)</span>
+
+        <span class="n">progress</span> <span class="o">=</span> <span class="n">Progress</span><span class="p">(</span>
+            <span class="n">SpinnerColumn</span><span class="p">(</span><span class="s2">&quot;dots&quot;</span><span class="p">),</span>
+            <span class="n">TextColumn</span><span class="p">(</span><span class="s2">&quot;[mosaic.accent]</span><span class="si">{task.description}</span><span class="s2">&quot;</span><span class="p">),</span>
+            <span class="n">BarColumn</span><span class="p">(</span>
+                <span class="n">style</span><span class="o">=</span><span class="s2">&quot;mosaic.dim&quot;</span><span class="p">,</span>
+                <span class="n">complete_style</span><span class="o">=</span><span class="s2">&quot;mosaic.accent&quot;</span><span class="p">,</span>
+                <span class="n">finished_style</span><span class="o">=</span><span class="s2">&quot;mosaic.success&quot;</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">MofNCompleteColumn</span><span class="p">(),</span>
+            <span class="n">TimeRemainingColumn</span><span class="p">(),</span>
+            <span class="n">console</span><span class="o">=</span><span class="n">console</span><span class="p">,</span>
+            <span class="n">transient</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">progress</span><span class="p">:</span>
+            <span class="n">task</span> <span class="o">=</span> <span class="n">progress</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span><span class="n">operation_name</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">futures</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">future</span> <span class="ow">in</span> <span class="n">as_completed</span><span class="p">(</span><span class="n">futures</span><span class="p">):</span>
+                <span class="n">idx</span> <span class="o">=</span> <span class="n">futures</span><span class="p">[</span><span class="n">future</span><span class="p">]</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">ret</span> <span class="o">=</span> <span class="n">future</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+                    <span class="n">results</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">ret</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">ret</span><span class="p">[</span><span class="s2">&quot;warnings&quot;</span><span class="p">]:</span>
+                        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;#</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">ret</span><span class="p">[</span><span class="s1">&#39;warnings&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">idx</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+                <span class="n">progress</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+        <span class="n">pool</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">results</span><span class="p">,</span> <span class="n">errors</span>
+
+<div class="viewcode-block" id="Session.apply">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.apply.html#mosaic.commands.session.Session.apply">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">operation_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">geometries</span><span class="p">:</span> <span class="n">List</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply a :class:`~mosaic.operations.GeometryOperations` function.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        operation_name : str</span>
+<span class="sd">            Registered operation name (e.g. ``&quot;cluster&quot;``).</span>
+<span class="sd">        geometries : list of Geometry</span>
+<span class="sd">            Target geometries.</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            Operation-specific parameters.  Use ``workers=N`` to control</span>
+<span class="sd">            the number of parallel worker processes.</span>
+
+<span class="sd">            Special flags (consumed before dispatching):</span>
+
+<span class="sd">            - **persist** (*bool*, default ``True``): when ``False``, results</span>
+<span class="sd">              are stored in ``_last_results`` but NOT added to session</span>
+<span class="sd">              containers (transient, only available via ``@last``).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of Geometry</span>
+<span class="sd">            Newly created geometries.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Geometry</span><span class="p">,</span> <span class="n">GeometryData</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..operations</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeometryOperations</span>
+
+        <span class="n">persist</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;persist&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">func</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">GeometryOperations</span><span class="p">,</span> <span class="n">operation_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">func</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown operation: </span><span class="si">{</span><span class="n">operation_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..swaps</span><span class="w"> </span><span class="kn">import</span> <span class="n">place</span>
+
+        <span class="n">results</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_parallel</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">geometries</span><span class="p">,</span> <span class="n">operation_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">created</span><span class="p">,</span> <span class="n">data_geoms</span><span class="p">,</span> <span class="n">model_geoms</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="p">(</span><span class="n">Geometry</span><span class="p">,</span> <span class="n">GeometryData</span><span class="p">)):</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="n">result</span><span class="p">,)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flatten</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">new_geom</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_geom</span><span class="p">,</span> <span class="n">GeometryData</span><span class="p">):</span>
+                    <span class="n">new_geom</span> <span class="o">=</span> <span class="n">new_geom</span><span class="o">.</span><span class="n">to_geometry</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">new_geom</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">new_geom</span><span class="o">.</span><span class="n">change_representation</span><span class="p">(</span><span class="s2">&quot;surface&quot;</span><span class="p">)</span>
+                <span class="n">created</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_geom</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">new_geom</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">data_geoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_geom</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">model_geoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_geom</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">persist</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">data_geoms</span><span class="p">:</span>
+                <span class="n">place</span><span class="p">(</span>
+                    <span class="n">_SessionTarget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">),</span>
+                    <span class="n">add</span><span class="o">=</span><span class="n">data_geoms</span><span class="p">,</span>
+                    <span class="n">label</span><span class="o">=</span><span class="n">operation_name</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">model_geoms</span><span class="p">:</span>
+                <span class="n">place</span><span class="p">(</span>
+                    <span class="n">_SessionTarget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">),</span>
+                    <span class="n">add</span><span class="o">=</span><span class="n">model_geoms</span><span class="p">,</span>
+                    <span class="n">label</span><span class="o">=</span><span class="n">operation_name</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">created</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
+            <span class="n">msgs</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;#</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">errors</span><span class="p">]</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">geometries</span><span class="p">)</span><span class="si">}</span><span class="s2"> failed:</span><span class="se">\n</span><span class="s2">  &quot;</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">  &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">msgs</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_results</span> <span class="o">=</span> <span class="n">created</span>
+        <span class="k">return</span> <span class="n">created</span></div>
+
+
+<div class="viewcode-block" id="Session.measure">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.measure.html#mosaic.commands.session.Session.measure">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">measure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">property_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">geometries</span><span class="p">:</span> <span class="n">List</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute a property via :class:`~mosaic.properties.GeometryProperties`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        property_name : str</span>
+<span class="sd">            Property name (e.g. ``&quot;mesh_area&quot;``).</span>
+<span class="sd">        geometries : list of Geometry</span>
+<span class="sd">            Target geometries.</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            Property-specific parameters.</span>
+
+<span class="sd">            - **output** (*str*, optional): export results to a CSV file.</span>
+<span class="sd">            - **store** (*bool*, default ``False``): store per-vertex array</span>
+<span class="sd">              results as vertex properties on each geometry.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list</span>
+<span class="sd">            One result per input geometry.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..properties</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeometryProperties</span>
+
+        <span class="n">output</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">store</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;store&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">GeometryProperties</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">property_name</span><span class="p">,</span> <span class="n">geom</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">geom</span> <span class="ow">in</span> <span class="n">geometries</span>
+        <span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">store</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">geom</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">geometries</span><span class="p">,</span> <span class="n">results</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">val</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="o">!=</span> <span class="n">geom</span><span class="o">.</span><span class="n">get_number_of_points</span><span class="p">():</span>
+                    <span class="k">continue</span>
+                <span class="n">geom</span><span class="o">.</span><span class="n">vertex_properties</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="n">property_name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">output</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">..properties</span><span class="w"> </span><span class="kn">import</span> <span class="n">export_property_csv</span>
+
+            <span class="n">paired</span> <span class="o">=</span> <span class="p">[(</span><span class="n">g</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">geometries</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">paired</span><span class="p">:</span>
+                <span class="n">geoms</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">paired</span><span class="p">)</span>
+                <span class="n">export_property_csv</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">property_name</span><span class="p">,</span> <span class="n">geoms</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">results</span></div>
+
+
+<div class="viewcode-block" id="Session.filter">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.filter.html#mosaic.commands.session.Session.filter">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">filter</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">geometries</span><span class="p">:</span> <span class="n">List</span><span class="p">,</span>
+        <span class="n">prop_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">lower</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">upper</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">include</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">exclude</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Filter geometries by property value range or membership.</span>
+
+<span class="sd">        Automatically detects whether the property yields per-vertex arrays</span>
+<span class="sd">        (point-level filtering) or scalars (population-level filtering).</span>
+<span class="sd">        Range operators (``lower`` / ``upper``) and membership operators</span>
+<span class="sd">        (``include`` / ``exclude``) may be combined; they are AND-ed.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        geometries : list of Geometry</span>
+<span class="sd">            Target geometries.</span>
+<span class="sd">        prop_name : str</span>
+<span class="sd">            Vertex property name or measure name.</span>
+<span class="sd">        lower : float, optional</span>
+<span class="sd">            Lower bound (inclusive). Numeric properties only.</span>
+<span class="sd">        upper : float, optional</span>
+<span class="sd">            Upper bound (inclusive). Numeric properties only.</span>
+<span class="sd">        include : scalar, sequence, or np.ndarray, optional</span>
+<span class="sd">            Keep only values present in this set. Works for any dtype.</span>
+<span class="sd">        exclude : scalar, sequence, or np.ndarray, optional</span>
+<span class="sd">            Remove values present in this set. Works for any dtype.</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            Additional parameters passed to property computation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple of (int, int, str)</span>
+<span class="sd">            ``(kept, removed, level)`` where *level* is ``&quot;point&quot;`` or</span>
+<span class="sd">            ``&quot;population&quot;``.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        TypeError</span>
+<span class="sd">            If ``lower`` or ``upper`` is supplied for a non-numeric property.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..properties</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeometryProperties</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_is_non_numeric</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">v</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">kind</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;U&quot;</span><span class="p">,</span> <span class="s2">&quot;S&quot;</span><span class="p">,</span> <span class="s2">&quot;O&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">))</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_as_set_array</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">v</span><span class="p">])</span>
+
+        <span class="n">kept_geoms</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">kept</span><span class="p">,</span> <span class="n">removed</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+        <span class="n">level</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">geom</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">geometries</span><span class="p">):</span>
+            <span class="c1"># Check stored vertex properties first</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">geom</span><span class="o">.</span><span class="n">vertex_properties</span><span class="o">.</span><span class="n">get_property</span><span class="p">(</span><span class="n">prop_name</span><span class="p">)</span>
+
+            <span class="c1"># Fall back to computing the property</span>
+            <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">GeometryProperties</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">prop_name</span><span class="p">,</span> <span class="n">geom</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">kept_geoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+                <span class="n">kept</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">continue</span>
+
+            <span class="n">is_array</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="n">val</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;=</span> <span class="mi">1</span>
+                <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="o">==</span> <span class="n">geom</span><span class="o">.</span><span class="n">get_number_of_points</span><span class="p">()</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">is_array</span><span class="p">:</span>
+                <span class="n">level</span> <span class="o">=</span> <span class="s2">&quot;point&quot;</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">lower</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">upper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="n">_is_non_numeric</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Property &#39;</span><span class="si">{</span><span class="n">prop_name</span><span class="si">}</span><span class="s2">&#39; is non-numeric; &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;use include=/exclude= instead of lower=/upper=&quot;</span>
+                    <span class="p">)</span>
+
+                <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">val</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">lower</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">mask</span> <span class="o">&amp;=</span> <span class="n">val</span> <span class="o">&gt;=</span> <span class="n">lower</span>
+                <span class="k">if</span> <span class="n">upper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">mask</span> <span class="o">&amp;=</span> <span class="n">val</span> <span class="o">&lt;=</span> <span class="n">upper</span>
+                <span class="k">if</span> <span class="n">include</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">mask</span> <span class="o">&amp;=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">_as_set_array</span><span class="p">(</span><span class="n">include</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">exclude</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">mask</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">_as_set_array</span><span class="p">(</span><span class="n">exclude</span><span class="p">))</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">remove</span><span class="p">([</span><span class="n">geom</span><span class="p">])</span>
+                    <span class="n">removed</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">n_before</span> <span class="o">=</span> <span class="n">geom</span><span class="o">.</span><span class="n">get_number_of_points</span><span class="p">()</span>
+                    <span class="n">geom</span><span class="o">.</span><span class="n">subset</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                    <span class="n">n_after</span> <span class="o">=</span> <span class="n">geom</span><span class="o">.</span><span class="n">get_number_of_points</span><span class="p">()</span>
+                    <span class="n">removed</span> <span class="o">+=</span> <span class="n">n_before</span> <span class="o">-</span> <span class="n">n_after</span>
+                    <span class="n">kept</span> <span class="o">+=</span> <span class="n">n_after</span>
+                    <span class="n">kept_geoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">level</span> <span class="o">=</span> <span class="s2">&quot;population&quot;</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">lower</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">upper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="n">_is_non_numeric</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Property &#39;</span><span class="si">{</span><span class="n">prop_name</span><span class="si">}</span><span class="s2">&#39; is non-numeric; &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;use include=/exclude= instead of lower=/upper=&quot;</span>
+                    <span class="p">)</span>
+
+                <span class="n">in_range</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">if</span> <span class="n">lower</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">upper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">scalar</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">else</span> <span class="n">val</span>
+                    <span class="k">if</span> <span class="n">lower</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">scalar</span> <span class="o">&lt;</span> <span class="n">lower</span><span class="p">:</span>
+                        <span class="n">in_range</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="k">if</span> <span class="n">upper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">scalar</span> <span class="o">&gt;</span> <span class="n">upper</span><span class="p">:</span>
+                        <span class="n">in_range</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">if</span> <span class="n">include</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">val</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_as_set_array</span><span class="p">(</span><span class="n">include</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">():</span>
+                    <span class="n">in_range</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">if</span> <span class="n">exclude</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">_as_set_array</span><span class="p">(</span><span class="n">exclude</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">():</span>
+                    <span class="n">in_range</span> <span class="o">=</span> <span class="kc">False</span>
+
+                <span class="k">if</span> <span class="n">in_range</span><span class="p">:</span>
+                    <span class="n">kept_geoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+                    <span class="n">kept</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">remove</span><span class="p">([</span><span class="n">geom</span><span class="p">])</span>
+                    <span class="n">removed</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_results</span> <span class="o">=</span> <span class="n">kept_geoms</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">kept</span><span class="p">,</span> <span class="n">removed</span><span class="p">,</span> <span class="n">level</span> <span class="ow">or</span> <span class="s2">&quot;population&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_geometry_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">geometry</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the display name, falling back to GUI-style defaults.&quot;&quot;&quot;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">geometry</span><span class="o">.</span><span class="n">_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">name</span>
+        <span class="k">if</span> <span class="n">geometry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Fit </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Cluster </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_geometry_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">geometry</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the group name a geometry belongs to, or empty string.&quot;&quot;&quot;</span>
+        <span class="n">uuid</span> <span class="o">=</span> <span class="n">geometry</span><span class="o">.</span><span class="n">uuid</span>
+        <span class="k">for</span> <span class="n">tree</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data_tree</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models_tree</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">group_id</span><span class="p">,</span> <span class="n">members</span> <span class="ow">in</span> <span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">uuid</span> <span class="ow">in</span> <span class="n">members</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">tree</span><span class="o">.</span><span class="n">group_names</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">group_id</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_match_filter</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">pattern</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if *value* matches *pattern* (case-insensitive).</span>
+
+<span class="sd">        When *pattern* contains glob characters (``*``, ``?``, ``[``),</span>
+<span class="sd">        :func:`fnmatch.fnmatch` is used.  Otherwise a substring match</span>
+<span class="sd">        is performed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">fnmatch</span><span class="w"> </span><span class="kn">import</span> <span class="n">fnmatch</span>
+
+        <span class="n">value_lower</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">pattern_lower</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">c</span> <span class="ow">in</span> <span class="n">pattern</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">,</span> <span class="s2">&quot;[&quot;</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="n">fnmatch</span><span class="p">(</span><span class="n">value_lower</span><span class="p">,</span> <span class="n">pattern_lower</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">pattern_lower</span> <span class="ow">in</span> <span class="n">value_lower</span>
+
+<div class="viewcode-block" id="Session.list_filtered">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.list_filtered.html#mosaic.commands.session.Session.list_filtered">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">list_filtered</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="nb">type</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">group</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">visible</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return matching geometries as ``(index, geometry)`` pairs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        type : str, optional</span>
+<span class="sd">            Filter by geometry type (``cluster``, ``mesh``, ``parametric``).</span>
+<span class="sd">        name : str, optional</span>
+<span class="sd">            Filter by geometry name. Supports glob patterns (e.g. ``0*``)</span>
+<span class="sd">            and case-insensitive substring matching.</span>
+<span class="sd">        group : str, optional</span>
+<span class="sd">            Filter by group name. Supports glob patterns and substring matching.</span>
+<span class="sd">        visible : bool, optional</span>
+<span class="sd">            Filter by visibility state. When ``True``, only visible</span>
+<span class="sd">            geometries are returned; when ``False``, only hidden ones.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of (int, Geometry)</span>
+<span class="sd">            Matching ``(global_index, geometry)`` pairs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">all_geoms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_geometries</span><span class="p">()</span>
+        <span class="n">entries</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">g</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">all_geoms</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">g</span><span class="o">.</span><span class="n">geometry_type</span> <span class="o">!=</span> <span class="nb">type</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_match_filter</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_geometry_name</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">i</span><span class="p">),</span> <span class="n">name</span>
+            <span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">group</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_match_filter</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_geometry_group</span><span class="p">(</span><span class="n">g</span><span class="p">),</span> <span class="n">group</span>
+            <span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">visible</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">g</span><span class="o">.</span><span class="n">visible</span> <span class="o">!=</span> <span class="n">visible</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">entries</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">i</span><span class="p">,</span> <span class="n">g</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">entries</span></div>
+
+
+<div class="viewcode-block" id="Session.remove">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.remove.html#mosaic.commands.session.Session.remove">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">geometries</span><span class="p">:</span> <span class="n">List</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove geometries from the session.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        geometries : list of Geometry</span>
+<span class="sd">            Geometries to remove.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        int</span>
+<span class="sd">            Number of geometries removed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">removed_ids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">geom</span> <span class="ow">in</span> <span class="n">geometries</span><span class="p">:</span>
+            <span class="n">container</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_owner</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">container</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">container</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_tree_for</span><span class="p">(</span><span class="n">container</span><span class="p">)</span><span class="o">.</span><span class="n">remove_uuid</span><span class="p">(</span><span class="n">geom</span><span class="o">.</span><span class="n">uuid</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">geom</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+            <span class="n">removed_ids</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">id</span><span class="p">(</span><span class="n">geom</span><span class="p">))</span>
+            <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">removed_ids</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_last_results</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_results</span> <span class="k">if</span> <span class="nb">id</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">removed_ids</span>
+            <span class="p">]</span>
+        <span class="k">return</span> <span class="n">count</span></div>
+
+
+<div class="viewcode-block" id="Session.merge">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.merge.html#mosaic.commands.session.Session.merge">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">merge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">geometries</span><span class="p">:</span> <span class="n">List</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Geometry&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge multiple geometries into one.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        geometries : list of Geometry</span>
+<span class="sd">            Geometries to merge. All must belong to the same container</span>
+<span class="sd">            (data or models).</span>
+<span class="sd">        name : str, optional</span>
+<span class="sd">            Name for the merged geometry. Defaults to the name of the</span>
+<span class="sd">            first input geometry.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Geometry</span>
+<span class="sd">            The newly created merged geometry.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Geometry</span>
+
+        <span class="n">owners</span> <span class="o">=</span> <span class="p">{</span><span class="nb">id</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">geometries</span> <span class="k">if</span> <span class="p">(</span><span class="n">c</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_owner</span><span class="p">(</span><span class="n">g</span><span class="p">))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">}</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">owners</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Cannot merge geometries across data and model containers.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">container</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_owner</span><span class="p">(</span><span class="n">geometries</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span>
+
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_geometries</span><span class="p">()</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">geometries</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_geometry_name</span><span class="p">(</span><span class="n">geometries</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">idx</span><span class="p">)</span>
+
+        <span class="n">merged</span> <span class="o">=</span> <span class="n">Geometry</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">geometries</span><span class="p">)</span>
+        <span class="n">merged</span><span class="o">.</span><span class="n">_meta</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">geometries</span><span class="p">)</span>
+        <span class="n">container</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">merged</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">merged</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_results</span> <span class="o">=</span> <span class="p">[</span><span class="n">merged</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">merged</span></div>
+
+
+<div class="viewcode-block" id="Session.group">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.group.html#mosaic.commands.session.Session.group">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">geometries</span><span class="p">:</span> <span class="n">List</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Assign geometries to a named group.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        geometries : list of Geometry</span>
+<span class="sd">            Geometries to group.</span>
+<span class="sd">        name : str</span>
+<span class="sd">            Display name for the group.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        str</span>
+<span class="sd">            UUID of the created or updated group.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">geometries</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No geometries to group.&quot;</span><span class="p">)</span>
+
+        <span class="n">owners</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_owner</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">geometries</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">c</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">owners</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot group non-persisted geometries.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">({</span><span class="nb">id</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">owners</span><span class="p">})</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Cannot group geometries across data and model containers.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">container</span> <span class="o">=</span> <span class="n">owners</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">tree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree_for</span><span class="p">(</span><span class="n">container</span><span class="p">)</span>
+
+        <span class="c1"># Check if a group with this name already exists</span>
+        <span class="n">existing_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">gid</span><span class="p">,</span> <span class="n">gname</span> <span class="ow">in</span> <span class="n">tree</span><span class="o">.</span><span class="n">group_names</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">gname</span> <span class="o">==</span> <span class="n">name</span><span class="p">:</span>
+                <span class="n">existing_id</span> <span class="o">=</span> <span class="n">gid</span>
+                <span class="k">break</span>
+
+        <span class="k">if</span> <span class="n">existing_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">group_id</span> <span class="o">=</span> <span class="n">existing_id</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">group_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid4</span><span class="p">())</span>
+            <span class="n">tree</span><span class="o">.</span><span class="n">root_items</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">group_id</span><span class="p">)</span>
+            <span class="n">tree</span><span class="o">.</span><span class="n">group_names</span><span class="p">[</span><span class="n">group_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+            <span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">group_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">geom</span> <span class="ow">in</span> <span class="n">geometries</span><span class="p">:</span>
+            <span class="n">uuid</span> <span class="o">=</span> <span class="n">geom</span><span class="o">.</span><span class="n">uuid</span>
+            <span class="c1"># Remove from any existing group</span>
+            <span class="k">for</span> <span class="n">gid</span> <span class="ow">in</span> <span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="p">:</span>
+                <span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">gid</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">u</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">gid</span><span class="p">]</span> <span class="k">if</span> <span class="n">u</span> <span class="o">!=</span> <span class="n">uuid</span><span class="p">]</span>
+            <span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">group_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">uuid</span><span class="p">)</span>
+
+        <span class="c1"># Clean up any groups that became empty during reassignment</span>
+        <span class="k">for</span> <span class="n">gid</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">gid</span> <span class="o">!=</span> <span class="n">group_id</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">gid</span><span class="p">]:</span>
+                <span class="k">del</span> <span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">gid</span><span class="p">]</span>
+                <span class="n">tree</span><span class="o">.</span><span class="n">group_names</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">gid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">tree</span><span class="o">.</span><span class="n">root_items</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">tree</span><span class="o">.</span><span class="n">root_items</span> <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="n">gid</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">group_id</span></div>
+
+
+<div class="viewcode-block" id="Session.ungroup">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.ungroup.html#mosaic.commands.session.Session.ungroup">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ungroup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">geometries</span><span class="p">:</span> <span class="n">List</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove geometries from their groups.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        geometries : list of Geometry</span>
+<span class="sd">            Geometries to ungroup.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        int</span>
+<span class="sd">            Number of geometries ungrouped.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">geom</span> <span class="ow">in</span> <span class="n">geometries</span><span class="p">:</span>
+            <span class="n">container</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_owner</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">container</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">tree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree_for</span><span class="p">(</span><span class="n">container</span><span class="p">)</span>
+            <span class="n">uuid</span> <span class="o">=</span> <span class="n">geom</span><span class="o">.</span><span class="n">uuid</span>
+            <span class="k">for</span> <span class="n">gid</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="p">):</span>
+                <span class="n">members</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">gid</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">uuid</span> <span class="ow">in</span> <span class="n">members</span><span class="p">:</span>
+                    <span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">gid</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">u</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">members</span> <span class="k">if</span> <span class="n">u</span> <span class="o">!=</span> <span class="n">uuid</span><span class="p">]</span>
+                    <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="c1"># Clean up empty groups</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">gid</span><span class="p">]:</span>
+                        <span class="k">del</span> <span class="n">tree</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">gid</span><span class="p">]</span>
+                        <span class="n">tree</span><span class="o">.</span><span class="n">group_names</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">gid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                        <span class="n">tree</span><span class="o">.</span><span class="n">root_items</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">tree</span><span class="o">.</span><span class="n">root_items</span> <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="n">gid</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">count</span></div>
+
+
+<div class="viewcode-block" id="Session.log_command">
+<a class="viewcode-back" href="../../../reference/rst/mosaic.commands.session.Session.log_command.html#mosaic.commands.session.Session.log_command">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">log_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Append a command string to the session log.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cmd_str</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.19.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

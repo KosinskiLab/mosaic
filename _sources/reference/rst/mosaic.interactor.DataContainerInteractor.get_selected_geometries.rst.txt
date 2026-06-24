@@ -1,0 +1,6 @@
+﻿DataContainerInteractor.get\_selected\_geometries
+=================================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.get_selected_geometries

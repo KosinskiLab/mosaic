@@ -1,0 +1,6 @@
+﻿visibility
+============================
+
+.. currentmodule:: mosaic.operations
+
+.. autofunction:: visibility

@@ -1,0 +1,38 @@
+﻿Ellipsoid
+=========
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: Ellipsoid
+   :members:
+   :show-inheritance:
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+            Ellipsoid.compute_distance
+         
+         
+            Ellipsoid.compute_normal
+         
+         
+            Ellipsoid.fit
+         
+         
+            Ellipsoid.points_per_sampling
+         
+         
+            Ellipsoid.sample
+         
+   
+   

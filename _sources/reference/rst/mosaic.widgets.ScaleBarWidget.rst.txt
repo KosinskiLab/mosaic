@@ -1,0 +1,35 @@
+﻿ScaleBarWidget
+==============
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: ScaleBarWidget
+   :members:
+   :show-inheritance:
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+            ScaleBarWidget.hide
+         
+         
+            ScaleBarWidget.set_label_format
+         
+         
+            ScaleBarWidget.set_units
+         
+         
+            ScaleBarWidget.show
+         
+   
+   

@@ -1,0 +1,68 @@
+﻿Session
+=======
+
+.. currentmodule:: mosaic.commands.session
+
+.. autoclass:: Session
+   :members:
+   :show-inheritance:
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+            Session.apply
+         
+         
+            Session.filter
+         
+         
+            Session.group
+         
+         
+            Session.list_filtered
+         
+         
+            Session.load_session
+         
+         
+            Session.log_command
+         
+         
+            Session.measure
+         
+         
+            Session.merge
+         
+         
+            Session.open
+         
+         
+            Session.remove
+         
+         
+            Session.resolve
+         
+         
+            Session.resolve_many
+         
+         
+            Session.save
+         
+         
+            Session.save_session
+         
+         
+            Session.ungroup
+         
+   
+   

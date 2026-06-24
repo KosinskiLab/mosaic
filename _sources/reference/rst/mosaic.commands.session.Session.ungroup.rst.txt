@@ -1,0 +1,6 @@
+﻿Session.ungroup
+=======================================
+
+.. currentmodule:: mosaic.commands.session
+
+.. automethod:: Session.ungroup
