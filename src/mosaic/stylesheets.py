@@ -168,7 +168,11 @@ Colors.apply_palette(Colors.LIGHT)
 
 def _get_resource_path(resource_name):
     """Get the absolute path to a resource in the package."""
-    return str(files("mosaic.data").joinpath(f"data/{resource_name}"))
+    # Build an absolute path to the requested resource inside the package data directory.
+    # Convert the path to POSIX format because Qt stylesheets expect forward slashes.
+    # On Windows, backslashes may be misinterpreted as escape characters in Qt's QSS parser,
+    # so using POSIX-style paths ensures consistent behavior across platforms.
+    return (files("mosaic.data") / "data" / resource_name).as_posix()
 
 
 def _build_QGroupBox_style():
@@ -939,7 +943,7 @@ def build_appstyle():
                 # "QWidgetWindow ... must be a top level window" warnings.
                 menu = QMenu(combo.window() or combo)
                 menu.setStyleSheet(
-                    "QMenu { padding: 0px 0px; }" "QMenu::item { padding: 4px 7px; }"
+                    "QMenu { padding: 0px 0px; }QMenu::item { padding: 4px 7px; }"
                 )
                 menu.setWindowFlags(
                     menu.windowFlags()
