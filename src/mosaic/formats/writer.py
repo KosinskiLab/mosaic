@@ -1,4 +1,5 @@
 import json
+import warnings
 from typing import Dict, List
 
 import numpy as np
@@ -481,6 +482,12 @@ def write_geometries(
             axis=0,
         )
         shape = tuple(int(x + 1) for x in bounds.astype(int))
+        if relion_5_format:
+            warnings.warn(
+                f"No tomogram shape provided for RELION-5 export; inferred {shape} "
+                "from the data bounds. Pass shape=X,Y,Z for correct centering.",
+                stacklevel=2,
+            )
     else:
         shape = tuple(int(x) for x in shape)
 

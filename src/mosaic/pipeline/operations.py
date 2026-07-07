@@ -199,6 +199,20 @@ OPERATION_CATEGORIES = {
                                 "description": "Apply RELION 5 format coordinate transformation",
                                 "default": False,
                             },
+                            {
+                                "label": "Shape",
+                                "parameter": "shape",
+                                "type": "text",
+                                "default": "Auto",
+                                "description": (
+                                    "Tomogram dimensions as comma-separated "
+                                    "x,y,z voxel counts (e.g. 928,928,464). "
+                                    "Used as the centering origin for RELION 5. "
+                                    "Leave as Auto to derive from the loaded "
+                                    "volume, or from data bounds when no volume "
+                                    "was imported."
+                                ),
+                            },
                         ],
                         "Mesh": [
                             {

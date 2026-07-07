@@ -1,3 +1,7 @@
+# Release Notes v1.3.1
+
+Version 1.3.1 adds a shape parameter field to the Export Data functionality of the pipeline. This allows for defining tomogram shapes, for instance used for Relion5 export. The corresponding writers have been updated to emit a warning if the shape is unavailable and inferred from the bounding box of the data.
+
 # Release Notes v1.3.0
 
 Version 1.3.0 brings interactive mesh sculpting, application-wide undo/redo and various smaller features.

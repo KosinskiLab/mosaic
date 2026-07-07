@@ -247,7 +247,9 @@ class Session:
                 geom = list(self._data.data)[idx]
                 self._order.append(geom)
                 indices.append(len(self._order) - 1)
-                self._update_shape(data.shape, effective_sampling)
+
+            # Shape describes the coordinate frame not retained geometry
+            self._update_shape(data.shape, effective_sampling)
 
             geoms.append(geom)
             self._counter += 1
@@ -310,10 +312,11 @@ class Session:
 
                 self._order.append(geom)
                 indices.append(len(self._order) - 1)
-                self._update_shape(data.shape, effective_scale)
             else:
                 geom = Geometry(**kw)
 
+            # Shape describes the coordinate frame not retained geometry
+            self._update_shape(data.shape, effective_scale)
             if is_mesh:
                 geom.change_representation("surface")
 

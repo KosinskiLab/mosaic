@@ -772,13 +772,15 @@ class VolumeViewer(QWidget):
 
     def update_clipping_plane(self):
         if self.volume is None or self.project_selector.currentText() == "Off":
-            return
+            return None
 
         dim = self._orientation_mapping.get(self.orientation_selector.currentText(), 0)
         pos = int(self.slice_row.value())
         origin, spacing = self.volume.GetOrigin()[dim], self.volume.GetSpacing()[dim]
         normal = [0 if i != dim else self.clipping_direction for i in range(3)]
         self.clipping_plane.SetNormal(*normal)
+
+        pos -= 0.5 * self.clipping_direction
         self.clipping_plane.SetOrigin(
             *[0 if i != dim else origin + pos * spacing for i in range(3)]
         )
@@ -811,7 +813,7 @@ class VolumeViewer(QWidget):
             actor = actors.GetNextActor()
             mapper = actor.GetMapper()
             self.remove_existing_clipping_plane(mapper)
-            if state == "Off":
+            if state == "Off" or getattr(actor, "_mosaic_no_clip", False):
                 continue
             self.clipping_direction = 1 if state == "Project +" else -1
             self.update_clipping_plane()

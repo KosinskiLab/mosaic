@@ -102,7 +102,8 @@ class SliderRow(QWidget):
         ratio = (value - self.min_val) / (self.max_val - self.min_val)
         if self.exponent != 1.0:
             ratio = 1.0 - (1.0 - ratio) ** (1.0 / self.exponent)
-        return int(ratio * self.steps)
+        pos = ratio * self.steps
+        return int(round(pos)) if self.decimals == 0 else int(pos)
 
     def _slider_to_value(self, pos: int) -> float:
         """Convert slider position to actual value."""
@@ -111,7 +112,8 @@ class SliderRow(QWidget):
         ratio = pos / self.steps
         if self.exponent != 1.0:
             ratio = 1.0 - (1.0 - ratio) ** self.exponent
-        return self.min_val + ratio * (self.max_val - self.min_val)
+        value = self.min_val + ratio * (self.max_val - self.min_val)
+        return float(round(value)) if self.decimals == 0 else value
 
     def _resize_label(self):
         fm = self.value_label.fontMetrics()

@@ -254,6 +254,20 @@ class DevelopmentTab(QWidget):
                 event.accept()
                 return True
 
+            # macOS tags arrow keys with KeypadModifier, so test only for the
+            # modifiers we explicitly disallow rather than for an exact match.
+            _block = (
+                Qt.KeyboardModifier.ControlModifier
+                | Qt.KeyboardModifier.AltModifier
+                | Qt.KeyboardModifier.MetaModifier
+            )
+            if key in (Qt.Key.Key_Left, Qt.Key.Key_Right) and not (mods & _block):
+                if is_action:
+                    step = 10 if mods & Qt.KeyboardModifier.ShiftModifier else 1
+                    self._step_slice(-step if key == Qt.Key.Key_Left else step)
+                event.accept()
+                return True
+
             if Qt.Key.Key_1 <= key <= Qt.Key.Key_9 and not mods:
                 if is_action:
                     self._activate_label_index(key - Qt.Key.Key_1)
@@ -518,7 +532,11 @@ class DevelopmentTab(QWidget):
                 self, "Empty", "Selected label has no annotations."
             )
             return
-        points = coords * sampling
+        # Match the world->voxel mapping used while painting, which offsets by
+        # the volume origin (see AnnotationOverlayController._world_to_ij).
+        volume = self._get_volume()
+        origin = np.asarray(volume.GetOrigin(), dtype=np.float32) if volume else 0.0
+        points = coords * sampling + origin
         geom = Geometry(points=points, sampling_rate=sampling)
         geom._meta["name"] = active.name
         geom.set_appearance(base_color=tuple(active.color))
@@ -540,10 +558,12 @@ class DevelopmentTab(QWidget):
         annotation = self._overlay.annotation
         sampling = annotation.sampling_rate
         shape = annotation.shape
+        volume = self._get_volume()
+        origin = np.asarray(volume.GetOrigin(), dtype=np.float32) if volume else 0.0
         for geom in geometries:
             name = geom._meta.get("name", "Cluster")
             label_id = self._labels.add_label(name)
-            voxels = np.round(geom.points / sampling).astype(int)
+            voxels = np.round((geom.points - origin) / sampling).astype(int)
             valid = (
                 (voxels[:, 0] >= 0)
                 & (voxels[:, 0] < shape[0])
