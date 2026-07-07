@@ -1,0 +1,45 @@
+﻿FlyingEdges
+===========
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: FlyingEdges
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+         
+         
+         
+         
+         
+            FlyingEdges.fit
+         
+         
+         
+         
+         
+         
+         
+   
+   

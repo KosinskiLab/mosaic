@@ -1,0 +1,1805 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>API &#8212; mosaic 1.3.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/general.css?v=63b7f29f" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesig-nicons.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
+
+    <script src="../_static/documentation_options.js?v=bb516dca"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=4ea706d9"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/index';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../_static/logo.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Geometry" href="data_structures/geometry.html" />
+    <link rel="prev" title="License" href="../tutorial/misc/license.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../_static/searchtools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script src="../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">mosaic</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../tutorial/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#">
+    Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../genindex.html">
+    Index
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/KosinskiLab/mosaic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item pst-sidebar-collapse"><button id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar"><svg class="pst-icon svg-inline--fa" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
+  </svg>
+  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
+  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
+</button></div>
+        <div class="sidebar-primary-item">
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Data Structures</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="data_structures/geometry.html">Geometry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html">Geometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.points.html">Geometry.points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.normals.html">Geometry.normals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.quaternions.html">Geometry.quaternions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.sampling_rate.html">Geometry.sampling_rate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.model.html">Geometry.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.actor.html">Geometry.actor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.visible.html">Geometry.visible</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.set_color.html">Geometry.set_color</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.set_visibility.html">Geometry.set_visibility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.set_appearance.html">Geometry.set_appearance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.change_representation.html">Geometry.change_representation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.is_mesh_representation.html">Geometry.is_mesh_representation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.color_points.html">Geometry.color_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.set_scalars.html">Geometry.set_scalars</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.swap_data.html">Geometry.swap_data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.merge.html">Geometry.merge</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.subset.html">Geometry.subset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.get_point_data.html">Geometry.get_point_data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.get_number_of_points.html">Geometry.get_number_of_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.__getstate__.html">Geometry.__getstate__</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.geometry.Geometry.__setstate__.html">Geometry.__setstate__</a></li>
+</ul>
+</details></li>
+
+
+<li class="toctree-l1 has-children"><a class="reference internal" href="data_structures/container.html">DataContainer</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.container.DataContainer.html">DataContainer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.container.DataContainer.add.html">DataContainer.add</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.container.DataContainer.remove.html">DataContainer.remove</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.container.DataContainer.get.html">DataContainer.get</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.container.DataContainer.update.html">DataContainer.update</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.container.DataContainer.clear.html">DataContainer.clear</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.container.DataContainer.get_actors.html">DataContainer.get_actors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.container.DataContainer.uuid_to_index.html">DataContainer.uuid_to_index</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.container.DataContainer.highlight.html">DataContainer.highlight</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.container.DataContainer.highlight_points.html">DataContainer.highlight_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.container.DataContainer.update_appearance.html">DataContainer.update_appearance</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="data_structures/session.html">Session</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.html">Session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.resolve.html">Session.resolve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.resolve_many.html">Session.resolve_many</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.open.html">Session.open</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.save.html">Session.save</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.save_session.html">Session.save_session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.load_session.html">Session.load_session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.apply.html">Session.apply</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.measure.html">Session.measure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.filter.html">Session.filter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.list_filtered.html">Session.list_filtered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.remove.html">Session.remove</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.merge.html">Session.merge</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.group.html">Session.group</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.ungroup.html">Session.ungroup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.commands.session.Session.log_command.html">Session.log_command</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="data_structures/data.html">MosaicData</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.data.MosaicData.html">MosaicData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.data.MosaicData.open_file.html">MosaicData.open_file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.data.MosaicData.to_file.html">MosaicData.to_file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.data.MosaicData.load_session.html">MosaicData.load_session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.data.MosaicData.reset.html">MosaicData.reset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.data.MosaicData.refresh_lod.html">MosaicData.refresh_lod</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.data.MosaicData.register_session_hook.html">MosaicData.register_session_hook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.data.MosaicData.format_datalist.html">MosaicData.format_datalist</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.data.MosaicData.get_tree_state.html">MosaicData.get_tree_state</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="data_structures/interactor.html">DataContainerInteractor</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html">DataContainerInteractor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.get_selected_geometries.html">DataContainerInteractor.get_selected_geometries</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.set_selection_by_uuid.html">DataContainerInteractor.set_selection_by_uuid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.deselect.html">DataContainerInteractor.deselect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.deselect_points.html">DataContainerInteractor.deselect_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.highlight_selected_points.html">DataContainerInteractor.highlight_selected_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.highlight_clusters_from_selected_points.html">DataContainerInteractor.highlight_clusters_from_selected_points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.add.html">DataContainerInteractor.add</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.add_selection.html">DataContainerInteractor.add_selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.merge.html">DataContainerInteractor.merge</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.remove.html">DataContainerInteractor.remove</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.update.html">DataContainerInteractor.update</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.duplicate.html">DataContainerInteractor.duplicate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.visibility.html">DataContainerInteractor.visibility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.next_color.html">DataContainerInteractor.next_color</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.set_coloring_mode.html">DataContainerInteractor.set_coloring_mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.change_representation.html">DataContainerInteractor.change_representation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.render.html">DataContainerInteractor.render</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.render_vtk.html">DataContainerInteractor.render_vtk</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Processing</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="operations.html">Operations</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.operations.downsample.html">downsample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.operations.remove_outliers.html">remove_outliers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.operations.skeletonize.html">skeletonize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.operations.cluster.html">cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.operations.compute_normals.html">compute_normals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.operations.fit.html">fit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.operations.sample.html">sample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.operations.remesh.html">remesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.operations.smooth.html">smooth</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.operations.duplicate.html">duplicate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.operations.visibility.html">visibility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html">GeometryOperations</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="parametrization.html">Parametrization</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parametrization.Parametrization.html">Parametrization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parametrization.Sphere.html">Sphere</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parametrization.Ellipsoid.html">Ellipsoid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parametrization.Cylinder.html">Cylinder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parametrization.RBF.html">RBF</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parametrization.SplineCurve.html">SplineCurve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parametrization.TriangularMesh.html">TriangularMesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parametrization.BallPivoting.html">BallPivoting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parametrization.PoissonMesh.html">PoissonMesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parametrization.AlphaShape.html">AlphaShape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parametrization.FlyingEdges.html">FlyingEdges</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parametrization.merge.html">merge</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="parallel.html">Parallel</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parallel.BackgroundTaskManager.html">BackgroundTaskManager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parallel.submit_task.html">submit_task</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.parallel.submit_task_batch.html">submit_task_batch</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">File I/O</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="formats.html">Formats</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.formats.open_file.html">open_file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.formats.write_geometries.html">write_geometries</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.formats.is_session_file.html">is_session_file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.formats.open_session.html">open_session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.formats.write_session.html">write_session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.formats.read_session_index.html">read_session_index</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.formats.read_session_meta.html">read_session_meta</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.formats.read_session_section.html">read_session_section</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.formats.open_omezarr.html">open_omezarr</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.formats.ZarrImageSource.html">ZarrImageSource</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.formats.GeometryDataContainer.html">GeometryDataContainer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.formats.VertexPropertyContainer.html">VertexPropertyContainer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.formats.NotASegmentationError.html">mosaic.formats.NotASegmentationError</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">GUI</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="gui/widgets.html">Widgets</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.widgets.ObjectBrowserSidebar.html">ObjectBrowserSidebar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.widgets.RibbonToolBar.html">RibbonToolBar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.widgets.ContainerListWidget.html">ContainerListWidget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.widgets.StyledListWidgetItem.html">StyledListWidgetItem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.widgets.AxesWidget.html">AxesWidget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.widgets.ScaleBarWidget.html">ScaleBarWidget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.widgets.LegendWidget.html">LegendWidget</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.widgets.TrajectoryPlayer.html">TrajectoryPlayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.widgets.ViewerModes.html">ViewerModes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.widgets.CursorModeHandler.html">CursorModeHandler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.widgets.StatusIndicator.html">StatusIndicator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.widgets.create_button.html">create_button</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="gui/dialogs.html">Dialogs</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.dialogs.ImportDataDialog.html">ImportDataDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.dialogs.ExportDialog.html">ExportDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.dialogs.PropertyAnalysisDialog.html">PropertyAnalysisDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.dialogs.HistogramDialog.html">HistogramDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.dialogs.GeometryPropertiesDialog.html">GeometryPropertiesDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.dialogs.TemplateMatchingDialog.html">TemplateMatchingDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.dialogs.MeshMappingDialog.html">MeshMappingDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.dialogs.DistanceCropDialog.html">DistanceCropDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.dts.MeshEquilibrationDialog.html">MeshEquilibrationDialog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.dts.DTSScreeningDialog.html">DTSScreeningDialog</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="gui/tabs.html">Tabs</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.tabs.SegmentationTab.html">SegmentationTab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.tabs.ModelTab.html">ModelTab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.tabs.IntelligenceTab.html">IntelligenceTab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.tabs.SegmentationTab.show_ribbon.html">SegmentationTab.show_ribbon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.tabs.ModelTab.show_ribbon.html">ModelTab.show_ribbon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rst/mosaic.tabs.IntelligenceTab.show_ribbon.html">IntelligenceTab.show_ribbon</a></li>
+</ul>
+</details></li>
+
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">API</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="api">
+<h1>API<a class="headerlink" href="#api" title="Link to this heading">#</a></h1>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Data Structures</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="data_structures/geometry.html">Geometry</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/geometry.html#constructor">Constructor</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html">Geometry</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry"><code class="docutils literal notranslate"><span class="pre">Geometry</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.actor"><code class="docutils literal notranslate"><span class="pre">Geometry.actor</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.change_representation"><code class="docutils literal notranslate"><span class="pre">Geometry.change_representation()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.color_points"><code class="docutils literal notranslate"><span class="pre">Geometry.color_points()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.geometry_type"><code class="docutils literal notranslate"><span class="pre">Geometry.geometry_type</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.get_number_of_points"><code class="docutils literal notranslate"><span class="pre">Geometry.get_number_of_points()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.merge"><code class="docutils literal notranslate"><span class="pre">Geometry.merge()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.normals"><code class="docutils literal notranslate"><span class="pre">Geometry.normals</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.points"><code class="docutils literal notranslate"><span class="pre">Geometry.points</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.quaternions"><code class="docutils literal notranslate"><span class="pre">Geometry.quaternions</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.set_appearance"><code class="docutils literal notranslate"><span class="pre">Geometry.set_appearance()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.set_color"><code class="docutils literal notranslate"><span class="pre">Geometry.set_color()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.set_scalars"><code class="docutils literal notranslate"><span class="pre">Geometry.set_scalars()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.set_visibility"><code class="docutils literal notranslate"><span class="pre">Geometry.set_visibility()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.swap_data"><code class="docutils literal notranslate"><span class="pre">Geometry.swap_data()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.Geometry.html#mosaic.geometry.Geometry.visible"><code class="docutils literal notranslate"><span class="pre">Geometry.visible</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/geometry.html#core-data-properties">Core Data Properties</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.points.html">Geometry.points</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.points.html#mosaic.geometry.Geometry.points"><code class="docutils literal notranslate"><span class="pre">Geometry.points</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.normals.html">Geometry.normals</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.normals.html#mosaic.geometry.Geometry.normals"><code class="docutils literal notranslate"><span class="pre">Geometry.normals</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.quaternions.html">Geometry.quaternions</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.quaternions.html#mosaic.geometry.Geometry.quaternions"><code class="docutils literal notranslate"><span class="pre">Geometry.quaternions</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.sampling_rate.html">Geometry.sampling_rate</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.sampling_rate.html#mosaic.geometry.Geometry.sampling_rate"><code class="docutils literal notranslate"><span class="pre">Geometry.sampling_rate</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.model.html">Geometry.model</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.model.html#mosaic.geometry.Geometry.model"><code class="docutils literal notranslate"><span class="pre">Geometry.model</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.actor.html">Geometry.actor</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.actor.html#mosaic.geometry.Geometry.actor"><code class="docutils literal notranslate"><span class="pre">Geometry.actor</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.visible.html">Geometry.visible</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.visible.html#mosaic.geometry.Geometry.visible"><code class="docutils literal notranslate"><span class="pre">Geometry.visible</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/geometry.html#visualization-control">Visualization Control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.set_color.html">Geometry.set_color</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.set_color.html#mosaic.geometry.Geometry.set_color"><code class="docutils literal notranslate"><span class="pre">Geometry.set_color()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.set_visibility.html">Geometry.set_visibility</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.set_visibility.html#mosaic.geometry.Geometry.set_visibility"><code class="docutils literal notranslate"><span class="pre">Geometry.set_visibility()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.set_appearance.html">Geometry.set_appearance</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.set_appearance.html#mosaic.geometry.Geometry.set_appearance"><code class="docutils literal notranslate"><span class="pre">Geometry.set_appearance()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.change_representation.html">Geometry.change_representation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.change_representation.html#mosaic.geometry.Geometry.change_representation"><code class="docutils literal notranslate"><span class="pre">Geometry.change_representation()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.is_mesh_representation.html">Geometry.is_mesh_representation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.is_mesh_representation.html#mosaic.geometry.Geometry.is_mesh_representation"><code class="docutils literal notranslate"><span class="pre">Geometry.is_mesh_representation()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/geometry.html#point-coloring">Point Coloring</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.color_points.html">Geometry.color_points</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.color_points.html#mosaic.geometry.Geometry.color_points"><code class="docutils literal notranslate"><span class="pre">Geometry.color_points()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.set_scalars.html">Geometry.set_scalars</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.set_scalars.html#mosaic.geometry.Geometry.set_scalars"><code class="docutils literal notranslate"><span class="pre">Geometry.set_scalars()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/geometry.html#data-manipulation">Data Manipulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.swap_data.html">Geometry.swap_data</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.swap_data.html#mosaic.geometry.Geometry.swap_data"><code class="docutils literal notranslate"><span class="pre">Geometry.swap_data()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.merge.html">Geometry.merge</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.merge.html#mosaic.geometry.Geometry.merge"><code class="docutils literal notranslate"><span class="pre">Geometry.merge()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.subset.html">Geometry.subset</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.subset.html#mosaic.geometry.Geometry.subset"><code class="docutils literal notranslate"><span class="pre">Geometry.subset()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.get_point_data.html">Geometry.get_point_data</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.get_point_data.html#mosaic.geometry.Geometry.get_point_data"><code class="docutils literal notranslate"><span class="pre">Geometry.get_point_data()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/geometry.html#utility-functions">Utility Functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.get_number_of_points.html">Geometry.get_number_of_points</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.get_number_of_points.html#mosaic.geometry.Geometry.get_number_of_points"><code class="docutils literal notranslate"><span class="pre">Geometry.get_number_of_points()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/geometry.html#serialization">Serialization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.__getstate__.html">Geometry.__getstate__</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.__getstate__.html#mosaic.geometry.Geometry.__getstate__"><code class="docutils literal notranslate"><span class="pre">Geometry.__getstate__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.Geometry.__setstate__.html">Geometry.__setstate__</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.Geometry.__setstate__.html#mosaic.geometry.Geometry.__setstate__"><code class="docutils literal notranslate"><span class="pre">Geometry.__setstate__()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/geometry.html#indexing">Indexing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data_structures/geometry.html#volumegeometry">VolumeGeometry</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/geometry.html#id1">Constructor</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.VolumeGeometry.html">VolumeGeometry</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.VolumeGeometry.html#mosaic.geometry.VolumeGeometry"><code class="docutils literal notranslate"><span class="pre">VolumeGeometry</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.VolumeGeometry.html#mosaic.geometry.VolumeGeometry.set_appearance"><code class="docutils literal notranslate"><span class="pre">VolumeGeometry.set_appearance()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.VolumeGeometry.html#mosaic.geometry.VolumeGeometry.update_isovalue"><code class="docutils literal notranslate"><span class="pre">VolumeGeometry.update_isovalue()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.VolumeGeometry.html#mosaic.geometry.VolumeGeometry.update_isovalue_quantile"><code class="docutils literal notranslate"><span class="pre">VolumeGeometry.update_isovalue_quantile()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.VolumeGeometry.html#mosaic.geometry.VolumeGeometry.update_target_resolution"><code class="docutils literal notranslate"><span class="pre">VolumeGeometry.update_target_resolution()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/geometry.html#volume-operations">Volume Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.VolumeGeometry.update_isovalue.html">VolumeGeometry.update_isovalue</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.VolumeGeometry.update_isovalue.html#mosaic.geometry.VolumeGeometry.update_isovalue"><code class="docutils literal notranslate"><span class="pre">VolumeGeometry.update_isovalue()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.VolumeGeometry.update_isovalue_quantile.html">VolumeGeometry.update_isovalue_quantile</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.VolumeGeometry.update_isovalue_quantile.html#mosaic.geometry.VolumeGeometry.update_isovalue_quantile"><code class="docutils literal notranslate"><span class="pre">VolumeGeometry.update_isovalue_quantile()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.VolumeGeometry.set_appearance.html">VolumeGeometry.set_appearance</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.VolumeGeometry.set_appearance.html#mosaic.geometry.VolumeGeometry.set_appearance"><code class="docutils literal notranslate"><span class="pre">VolumeGeometry.set_appearance()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data_structures/geometry.html#geometrytrajectory">GeometryTrajectory</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/geometry.html#id2">Constructor</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.GeometryTrajectory.html">GeometryTrajectory</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.GeometryTrajectory.html#mosaic.geometry.GeometryTrajectory"><code class="docutils literal notranslate"><span class="pre">GeometryTrajectory</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.GeometryTrajectory.html#mosaic.geometry.GeometryTrajectory.display_frame"><code class="docutils literal notranslate"><span class="pre">GeometryTrajectory.display_frame()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.geometry.GeometryTrajectory.html#mosaic.geometry.GeometryTrajectory.frames"><code class="docutils literal notranslate"><span class="pre">GeometryTrajectory.frames</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/geometry.html#trajectory-control">Trajectory Control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.GeometryTrajectory.frames.html">GeometryTrajectory.frames</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.GeometryTrajectory.frames.html#mosaic.geometry.GeometryTrajectory.frames"><code class="docutils literal notranslate"><span class="pre">GeometryTrajectory.frames</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.geometry.GeometryTrajectory.display_frame.html">GeometryTrajectory.display_frame</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.geometry.GeometryTrajectory.display_frame.html#mosaic.geometry.GeometryTrajectory.display_frame"><code class="docutils literal notranslate"><span class="pre">GeometryTrajectory.display_frame()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data_structures/container.html">DataContainer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/container.html#constructor">Constructor</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.container.DataContainer.html">DataContainer</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.container.DataContainer.html#mosaic.container.DataContainer"><code class="docutils literal notranslate"><span class="pre">DataContainer</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.container.DataContainer.html#mosaic.container.DataContainer.add"><code class="docutils literal notranslate"><span class="pre">DataContainer.add()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.container.DataContainer.html#mosaic.container.DataContainer.clear"><code class="docutils literal notranslate"><span class="pre">DataContainer.clear()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.container.DataContainer.html#mosaic.container.DataContainer.get"><code class="docutils literal notranslate"><span class="pre">DataContainer.get()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.container.DataContainer.html#mosaic.container.DataContainer.get_actors"><code class="docutils literal notranslate"><span class="pre">DataContainer.get_actors()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.container.DataContainer.html#mosaic.container.DataContainer.highlight"><code class="docutils literal notranslate"><span class="pre">DataContainer.highlight()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.container.DataContainer.html#mosaic.container.DataContainer.highlight_points"><code class="docutils literal notranslate"><span class="pre">DataContainer.highlight_points()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.container.DataContainer.html#mosaic.container.DataContainer.remove"><code class="docutils literal notranslate"><span class="pre">DataContainer.remove()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.container.DataContainer.html#mosaic.container.DataContainer.update"><code class="docutils literal notranslate"><span class="pre">DataContainer.update()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.container.DataContainer.html#mosaic.container.DataContainer.update_appearance"><code class="docutils literal notranslate"><span class="pre">DataContainer.update_appearance()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.container.DataContainer.html#mosaic.container.DataContainer.uuid_to_index"><code class="docutils literal notranslate"><span class="pre">DataContainer.uuid_to_index()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/container.html#data-access-and-management">Data Access and Management</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.container.DataContainer.add.html">DataContainer.add</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.container.DataContainer.add.html#mosaic.container.DataContainer.add"><code class="docutils literal notranslate"><span class="pre">DataContainer.add()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.container.DataContainer.remove.html">DataContainer.remove</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.container.DataContainer.remove.html#mosaic.container.DataContainer.remove"><code class="docutils literal notranslate"><span class="pre">DataContainer.remove()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.container.DataContainer.get.html">DataContainer.get</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.container.DataContainer.get.html#mosaic.container.DataContainer.get"><code class="docutils literal notranslate"><span class="pre">DataContainer.get()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.container.DataContainer.update.html">DataContainer.update</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.container.DataContainer.update.html#mosaic.container.DataContainer.update"><code class="docutils literal notranslate"><span class="pre">DataContainer.update()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.container.DataContainer.clear.html">DataContainer.clear</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.container.DataContainer.clear.html#mosaic.container.DataContainer.clear"><code class="docutils literal notranslate"><span class="pre">DataContainer.clear()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.container.DataContainer.get_actors.html">DataContainer.get_actors</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.container.DataContainer.get_actors.html#mosaic.container.DataContainer.get_actors"><code class="docutils literal notranslate"><span class="pre">DataContainer.get_actors()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/container.html#uuid-resolution">UUID Resolution</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.container.DataContainer.uuid_to_index.html">DataContainer.uuid_to_index</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.container.DataContainer.uuid_to_index.html#mosaic.container.DataContainer.uuid_to_index"><code class="docutils literal notranslate"><span class="pre">DataContainer.uuid_to_index()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/container.html#visualization-control">Visualization Control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.container.DataContainer.highlight.html">DataContainer.highlight</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.container.DataContainer.highlight.html#mosaic.container.DataContainer.highlight"><code class="docutils literal notranslate"><span class="pre">DataContainer.highlight()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.container.DataContainer.highlight_points.html">DataContainer.highlight_points</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.container.DataContainer.highlight_points.html#mosaic.container.DataContainer.highlight_points"><code class="docutils literal notranslate"><span class="pre">DataContainer.highlight_points()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.container.DataContainer.update_appearance.html">DataContainer.update_appearance</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.container.DataContainer.update_appearance.html#mosaic.container.DataContainer.update_appearance"><code class="docutils literal notranslate"><span class="pre">DataContainer.update_appearance()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/container.html#container-length">Container Length</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data_structures/session.html">Session</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/session.html#constructor">Constructor</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.html">Session</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session"><code class="docutils literal notranslate"><span class="pre">Session</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.apply"><code class="docutils literal notranslate"><span class="pre">Session.apply()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.filter"><code class="docutils literal notranslate"><span class="pre">Session.filter()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.group"><code class="docutils literal notranslate"><span class="pre">Session.group()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.list_filtered"><code class="docutils literal notranslate"><span class="pre">Session.list_filtered()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.load_session"><code class="docutils literal notranslate"><span class="pre">Session.load_session()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.log_command"><code class="docutils literal notranslate"><span class="pre">Session.log_command()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.measure"><code class="docutils literal notranslate"><span class="pre">Session.measure()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.merge"><code class="docutils literal notranslate"><span class="pre">Session.merge()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.open"><code class="docutils literal notranslate"><span class="pre">Session.open()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.remove"><code class="docutils literal notranslate"><span class="pre">Session.remove()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.resolve"><code class="docutils literal notranslate"><span class="pre">Session.resolve()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.resolve_many"><code class="docutils literal notranslate"><span class="pre">Session.resolve_many()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.save"><code class="docutils literal notranslate"><span class="pre">Session.save()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.save_session"><code class="docutils literal notranslate"><span class="pre">Session.save_session()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.commands.session.Session.html#mosaic.commands.session.Session.ungroup"><code class="docutils literal notranslate"><span class="pre">Session.ungroup()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/session.html#target-resolution">Target Resolution</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.resolve.html">Session.resolve</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.resolve.html#mosaic.commands.session.Session.resolve"><code class="docutils literal notranslate"><span class="pre">Session.resolve()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.resolve_many.html">Session.resolve_many</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.resolve_many.html#mosaic.commands.session.Session.resolve_many"><code class="docutils literal notranslate"><span class="pre">Session.resolve_many()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/session.html#file-i-o">File I/O</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.open.html">Session.open</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.open.html#mosaic.commands.session.Session.open"><code class="docutils literal notranslate"><span class="pre">Session.open()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.save.html">Session.save</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.save.html#mosaic.commands.session.Session.save"><code class="docutils literal notranslate"><span class="pre">Session.save()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.save_session.html">Session.save_session</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.save_session.html#mosaic.commands.session.Session.save_session"><code class="docutils literal notranslate"><span class="pre">Session.save_session()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.load_session.html">Session.load_session</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.load_session.html#mosaic.commands.session.Session.load_session"><code class="docutils literal notranslate"><span class="pre">Session.load_session()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/session.html#operations">Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.apply.html">Session.apply</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.apply.html#mosaic.commands.session.Session.apply"><code class="docutils literal notranslate"><span class="pre">Session.apply()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.measure.html">Session.measure</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.measure.html#mosaic.commands.session.Session.measure"><code class="docutils literal notranslate"><span class="pre">Session.measure()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/session.html#filtering-and-queries">Filtering and Queries</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.filter.html">Session.filter</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.filter.html#mosaic.commands.session.Session.filter"><code class="docutils literal notranslate"><span class="pre">Session.filter()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.list_filtered.html">Session.list_filtered</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.list_filtered.html#mosaic.commands.session.Session.list_filtered"><code class="docutils literal notranslate"><span class="pre">Session.list_filtered()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/session.html#container-manipulation">Container Manipulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.remove.html">Session.remove</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.remove.html#mosaic.commands.session.Session.remove"><code class="docutils literal notranslate"><span class="pre">Session.remove()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.merge.html">Session.merge</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.merge.html#mosaic.commands.session.Session.merge"><code class="docutils literal notranslate"><span class="pre">Session.merge()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.group.html">Session.group</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.group.html#mosaic.commands.session.Session.group"><code class="docutils literal notranslate"><span class="pre">Session.group()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.ungroup.html">Session.ungroup</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.ungroup.html#mosaic.commands.session.Session.ungroup"><code class="docutils literal notranslate"><span class="pre">Session.ungroup()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/session.html#logging">Logging</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.commands.session.Session.log_command.html">Session.log_command</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.commands.session.Session.log_command.html#mosaic.commands.session.Session.log_command"><code class="docutils literal notranslate"><span class="pre">Session.log_command()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data_structures/data.html">MosaicData</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/data.html#constructor">Constructor</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.data.MosaicData.html">MosaicData</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.data.MosaicData.html#mosaic.data.MosaicData"><code class="docutils literal notranslate"><span class="pre">MosaicData</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.data.MosaicData.html#mosaic.data.MosaicData.format_datalist"><code class="docutils literal notranslate"><span class="pre">MosaicData.format_datalist()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.data.MosaicData.html#mosaic.data.MosaicData.get_tree_state"><code class="docutils literal notranslate"><span class="pre">MosaicData.get_tree_state()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.data.MosaicData.html#mosaic.data.MosaicData.load_session"><code class="docutils literal notranslate"><span class="pre">MosaicData.load_session()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.data.MosaicData.html#mosaic.data.MosaicData.open_file"><code class="docutils literal notranslate"><span class="pre">MosaicData.open_file()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.data.MosaicData.html#mosaic.data.MosaicData.refresh_lod"><code class="docutils literal notranslate"><span class="pre">MosaicData.refresh_lod()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.data.MosaicData.html#mosaic.data.MosaicData.register_session_hook"><code class="docutils literal notranslate"><span class="pre">MosaicData.register_session_hook()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.data.MosaicData.html#mosaic.data.MosaicData.reset"><code class="docutils literal notranslate"><span class="pre">MosaicData.reset()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.data.MosaicData.html#mosaic.data.MosaicData.to_file"><code class="docutils literal notranslate"><span class="pre">MosaicData.to_file()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/data.html#file-i-o">File I/O</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.data.MosaicData.open_file.html">MosaicData.open_file</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.data.MosaicData.open_file.html#mosaic.data.MosaicData.open_file"><code class="docutils literal notranslate"><span class="pre">MosaicData.open_file()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.data.MosaicData.to_file.html">MosaicData.to_file</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.data.MosaicData.to_file.html#mosaic.data.MosaicData.to_file"><code class="docutils literal notranslate"><span class="pre">MosaicData.to_file()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.data.MosaicData.load_session.html">MosaicData.load_session</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.data.MosaicData.load_session.html#mosaic.data.MosaicData.load_session"><code class="docutils literal notranslate"><span class="pre">MosaicData.load_session()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.data.MosaicData.reset.html">MosaicData.reset</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.data.MosaicData.reset.html#mosaic.data.MosaicData.reset"><code class="docutils literal notranslate"><span class="pre">MosaicData.reset()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/data.html#interaction-modes">Interaction Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/data.html#visualization">Visualization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.data.MosaicData.refresh_lod.html">MosaicData.refresh_lod</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.data.MosaicData.refresh_lod.html#mosaic.data.MosaicData.refresh_lod"><code class="docutils literal notranslate"><span class="pre">MosaicData.refresh_lod()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/data.html#session-hooks">Session Hooks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.data.MosaicData.register_session_hook.html">MosaicData.register_session_hook</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.data.MosaicData.register_session_hook.html#mosaic.data.MosaicData.register_session_hook"><code class="docutils literal notranslate"><span class="pre">MosaicData.register_session_hook()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/data.html#utilities">Utilities</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.data.MosaicData.format_datalist.html">MosaicData.format_datalist</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.data.MosaicData.format_datalist.html#mosaic.data.MosaicData.format_datalist"><code class="docutils literal notranslate"><span class="pre">MosaicData.format_datalist()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.data.MosaicData.get_tree_state.html">MosaicData.get_tree_state</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.data.MosaicData.get_tree_state.html#mosaic.data.MosaicData.get_tree_state"><code class="docutils literal notranslate"><span class="pre">MosaicData.get_tree_state()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data_structures/interactor.html">DataContainerInteractor</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/interactor.html#constructor">Constructor</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html">DataContainerInteractor</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor.add_point"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.add_point()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor.add_selection"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.add_selection()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor.apply"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.apply()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor.attach_viewport"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.attach_viewport()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor.container"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.container</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor.deselect"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.deselect()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor.pick_prop"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.pick_prop()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor.remove"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.remove()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor.remove_selection"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.remove_selection()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor.set_active_cluster"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.set_active_cluster()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor.set_selection_by_uuid"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.set_selection_by_uuid()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.html#mosaic.interactor.DataContainerInteractor.update"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.update()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/interactor.html#interaction-modes">Interaction Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/interactor.html#selection">Selection</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.get_selected_geometries.html">DataContainerInteractor.get_selected_geometries</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.get_selected_geometries.html#mosaic.interactor.DataContainerInteractor.get_selected_geometries"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.get_selected_geometries()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.set_selection_by_uuid.html">DataContainerInteractor.set_selection_by_uuid</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.set_selection_by_uuid.html#mosaic.interactor.DataContainerInteractor.set_selection_by_uuid"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.set_selection_by_uuid()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.deselect.html">DataContainerInteractor.deselect</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.deselect.html#mosaic.interactor.DataContainerInteractor.deselect"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.deselect()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.deselect_points.html">DataContainerInteractor.deselect_points</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.deselect_points.html#mosaic.interactor.DataContainerInteractor.deselect_points"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.deselect_points()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.highlight_selected_points.html">DataContainerInteractor.highlight_selected_points</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.highlight_selected_points.html#mosaic.interactor.DataContainerInteractor.highlight_selected_points"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.highlight_selected_points()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.highlight_clusters_from_selected_points.html">DataContainerInteractor.highlight_clusters_from_selected_points</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.highlight_clusters_from_selected_points.html#mosaic.interactor.DataContainerInteractor.highlight_clusters_from_selected_points"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.highlight_clusters_from_selected_points()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/interactor.html#data-management">Data Management</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.add.html">DataContainerInteractor.add</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.add.html#mosaic.interactor.DataContainerInteractor.add"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.add()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.add_selection.html">DataContainerInteractor.add_selection</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.add_selection.html#mosaic.interactor.DataContainerInteractor.add_selection"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.add_selection()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.merge.html">DataContainerInteractor.merge</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.merge.html#mosaic.interactor.DataContainerInteractor.merge"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.merge()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.remove.html">DataContainerInteractor.remove</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.remove.html#mosaic.interactor.DataContainerInteractor.remove"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.remove()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.update.html">DataContainerInteractor.update</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.update.html#mosaic.interactor.DataContainerInteractor.update"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.update()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/interactor.html#geometry-operations">Geometry Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.duplicate.html">DataContainerInteractor.duplicate</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.duplicate.html#mosaic.interactor.DataContainerInteractor.duplicate"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.duplicate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.visibility.html">DataContainerInteractor.visibility</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.visibility.html#mosaic.interactor.DataContainerInteractor.visibility"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.visibility()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data_structures/interactor.html#visualization">Visualization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.next_color.html">DataContainerInteractor.next_color</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.next_color.html#mosaic.interactor.DataContainerInteractor.next_color"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.next_color()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.set_coloring_mode.html">DataContainerInteractor.set_coloring_mode</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.set_coloring_mode.html#mosaic.interactor.DataContainerInteractor.set_coloring_mode"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.set_coloring_mode()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.change_representation.html">DataContainerInteractor.change_representation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.change_representation.html#mosaic.interactor.DataContainerInteractor.change_representation"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.change_representation()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.render.html">DataContainerInteractor.render</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.render.html#mosaic.interactor.DataContainerInteractor.render"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.render()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.render_vtk.html">DataContainerInteractor.render_vtk</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.interactor.DataContainerInteractor.render_vtk.html#mosaic.interactor.DataContainerInteractor.render_vtk"><code class="docutils literal notranslate"><span class="pre">DataContainerInteractor.render_vtk()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Processing</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="operations.html">Operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations.html#point-cloud-processing">Point Cloud Processing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.operations.downsample.html">downsample</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.operations.downsample.html#mosaic.operations.downsample"><code class="docutils literal notranslate"><span class="pre">downsample()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.operations.remove_outliers.html">remove_outliers</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.operations.remove_outliers.html#mosaic.operations.remove_outliers"><code class="docutils literal notranslate"><span class="pre">remove_outliers()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.operations.skeletonize.html">skeletonize</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.operations.skeletonize.html#mosaic.operations.skeletonize"><code class="docutils literal notranslate"><span class="pre">skeletonize()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="operations.html#clustering">Clustering</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.operations.cluster.html">cluster</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.operations.cluster.html#mosaic.operations.cluster"><code class="docutils literal notranslate"><span class="pre">cluster()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="operations.html#normal-computation">Normal Computation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.operations.compute_normals.html">compute_normals</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.operations.compute_normals.html#mosaic.operations.compute_normals"><code class="docutils literal notranslate"><span class="pre">compute_normals()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="operations.html#surface-fitting">Surface Fitting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.operations.fit.html">fit</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.operations.fit.html#mosaic.operations.fit"><code class="docutils literal notranslate"><span class="pre">fit()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.operations.sample.html">sample</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.operations.sample.html#mosaic.operations.sample"><code class="docutils literal notranslate"><span class="pre">sample()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="operations.html#mesh-operations">Mesh Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.operations.remesh.html">remesh</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.operations.remesh.html#mosaic.operations.remesh"><code class="docutils literal notranslate"><span class="pre">remesh()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.operations.smooth.html">smooth</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.operations.smooth.html#mosaic.operations.smooth"><code class="docutils literal notranslate"><span class="pre">smooth()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="operations.html#utility-functions">Utility Functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.operations.duplicate.html">duplicate</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.operations.duplicate.html#mosaic.operations.duplicate"><code class="docutils literal notranslate"><span class="pre">duplicate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.operations.visibility.html">visibility</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.operations.visibility.html#mosaic.operations.visibility"><code class="docutils literal notranslate"><span class="pre">visibility()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="operations.html#operation-registry">Operation Registry</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html">GeometryOperations</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html#mosaic.operations.GeometryOperations"><code class="docutils literal notranslate"><span class="pre">GeometryOperations</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html#mosaic.operations.GeometryOperations.cluster"><code class="docutils literal notranslate"><span class="pre">GeometryOperations.cluster()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html#mosaic.operations.GeometryOperations.compute_normals"><code class="docutils literal notranslate"><span class="pre">GeometryOperations.compute_normals()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html#mosaic.operations.GeometryOperations.downsample"><code class="docutils literal notranslate"><span class="pre">GeometryOperations.downsample()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html#mosaic.operations.GeometryOperations.duplicate"><code class="docutils literal notranslate"><span class="pre">GeometryOperations.duplicate()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html#mosaic.operations.GeometryOperations.fit"><code class="docutils literal notranslate"><span class="pre">GeometryOperations.fit()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html#mosaic.operations.GeometryOperations.register"><code class="docutils literal notranslate"><span class="pre">GeometryOperations.register()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html#mosaic.operations.GeometryOperations.remesh"><code class="docutils literal notranslate"><span class="pre">GeometryOperations.remesh()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html#mosaic.operations.GeometryOperations.remove_outliers"><code class="docutils literal notranslate"><span class="pre">GeometryOperations.remove_outliers()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html#mosaic.operations.GeometryOperations.sample"><code class="docutils literal notranslate"><span class="pre">GeometryOperations.sample()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html#mosaic.operations.GeometryOperations.skeletonize"><code class="docutils literal notranslate"><span class="pre">GeometryOperations.skeletonize()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html#mosaic.operations.GeometryOperations.smooth"><code class="docutils literal notranslate"><span class="pre">GeometryOperations.smooth()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.operations.GeometryOperations.html#mosaic.operations.GeometryOperations.visibility"><code class="docutils literal notranslate"><span class="pre">GeometryOperations.visibility()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parametrization.html">Parametrization</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="parametrization.html#base-class">Base Class</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parametrization.Parametrization.html">Parametrization</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parametrization.Parametrization.html#mosaic.parametrization.Parametrization"><code class="docutils literal notranslate"><span class="pre">Parametrization</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Parametrization.html#mosaic.parametrization.Parametrization.compute_distance"><code class="docutils literal notranslate"><span class="pre">Parametrization.compute_distance()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Parametrization.html#mosaic.parametrization.Parametrization.compute_normal"><code class="docutils literal notranslate"><span class="pre">Parametrization.compute_normal()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Parametrization.html#mosaic.parametrization.Parametrization.fit"><code class="docutils literal notranslate"><span class="pre">Parametrization.fit()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Parametrization.html#mosaic.parametrization.Parametrization.points_per_sampling"><code class="docutils literal notranslate"><span class="pre">Parametrization.points_per_sampling()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Parametrization.html#mosaic.parametrization.Parametrization.sample"><code class="docutils literal notranslate"><span class="pre">Parametrization.sample()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="parametrization.html#geometric-shapes">Geometric Shapes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parametrization.Sphere.html">Sphere</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parametrization.Sphere.html#mosaic.parametrization.Sphere"><code class="docutils literal notranslate"><span class="pre">Sphere</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Sphere.html#mosaic.parametrization.Sphere.compute_distance"><code class="docutils literal notranslate"><span class="pre">Sphere.compute_distance()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Sphere.html#mosaic.parametrization.Sphere.compute_normal"><code class="docutils literal notranslate"><span class="pre">Sphere.compute_normal()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Sphere.html#mosaic.parametrization.Sphere.fit"><code class="docutils literal notranslate"><span class="pre">Sphere.fit()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Sphere.html#mosaic.parametrization.Sphere.points_per_sampling"><code class="docutils literal notranslate"><span class="pre">Sphere.points_per_sampling()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Sphere.html#mosaic.parametrization.Sphere.sample"><code class="docutils literal notranslate"><span class="pre">Sphere.sample()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parametrization.Ellipsoid.html">Ellipsoid</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parametrization.Ellipsoid.html#mosaic.parametrization.Ellipsoid"><code class="docutils literal notranslate"><span class="pre">Ellipsoid</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Ellipsoid.html#mosaic.parametrization.Ellipsoid.compute_distance"><code class="docutils literal notranslate"><span class="pre">Ellipsoid.compute_distance()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Ellipsoid.html#mosaic.parametrization.Ellipsoid.compute_normal"><code class="docutils literal notranslate"><span class="pre">Ellipsoid.compute_normal()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Ellipsoid.html#mosaic.parametrization.Ellipsoid.fit"><code class="docutils literal notranslate"><span class="pre">Ellipsoid.fit()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Ellipsoid.html#mosaic.parametrization.Ellipsoid.points_per_sampling"><code class="docutils literal notranslate"><span class="pre">Ellipsoid.points_per_sampling()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Ellipsoid.html#mosaic.parametrization.Ellipsoid.sample"><code class="docutils literal notranslate"><span class="pre">Ellipsoid.sample()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parametrization.Cylinder.html">Cylinder</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parametrization.Cylinder.html#mosaic.parametrization.Cylinder"><code class="docutils literal notranslate"><span class="pre">Cylinder</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Cylinder.html#mosaic.parametrization.Cylinder.compute_normal"><code class="docutils literal notranslate"><span class="pre">Cylinder.compute_normal()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Cylinder.html#mosaic.parametrization.Cylinder.fit"><code class="docutils literal notranslate"><span class="pre">Cylinder.fit()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Cylinder.html#mosaic.parametrization.Cylinder.points_per_sampling"><code class="docutils literal notranslate"><span class="pre">Cylinder.points_per_sampling()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.Cylinder.html#mosaic.parametrization.Cylinder.sample"><code class="docutils literal notranslate"><span class="pre">Cylinder.sample()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parametrization.RBF.html">RBF</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parametrization.RBF.html#mosaic.parametrization.RBF"><code class="docutils literal notranslate"><span class="pre">RBF</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.RBF.html#mosaic.parametrization.RBF.compute_normal"><code class="docutils literal notranslate"><span class="pre">RBF.compute_normal()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.RBF.html#mosaic.parametrization.RBF.fit"><code class="docutils literal notranslate"><span class="pre">RBF.fit()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.RBF.html#mosaic.parametrization.RBF.points_per_sampling"><code class="docutils literal notranslate"><span class="pre">RBF.points_per_sampling()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.RBF.html#mosaic.parametrization.RBF.sample"><code class="docutils literal notranslate"><span class="pre">RBF.sample()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parametrization.SplineCurve.html">SplineCurve</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parametrization.SplineCurve.html#mosaic.parametrization.SplineCurve"><code class="docutils literal notranslate"><span class="pre">SplineCurve</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.SplineCurve.html#mosaic.parametrization.SplineCurve.compute_normal"><code class="docutils literal notranslate"><span class="pre">SplineCurve.compute_normal()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.SplineCurve.html#mosaic.parametrization.SplineCurve.fit"><code class="docutils literal notranslate"><span class="pre">SplineCurve.fit()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.SplineCurve.html#mosaic.parametrization.SplineCurve.points_per_sampling"><code class="docutils literal notranslate"><span class="pre">SplineCurve.points_per_sampling()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.SplineCurve.html#mosaic.parametrization.SplineCurve.sample"><code class="docutils literal notranslate"><span class="pre">SplineCurve.sample()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="parametrization.html#triangular-meshes">Triangular Meshes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parametrization.TriangularMesh.html">TriangularMesh</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parametrization.TriangularMesh.html#mosaic.parametrization.TriangularMesh"><code class="docutils literal notranslate"><span class="pre">TriangularMesh</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.TriangularMesh.html#mosaic.parametrization.TriangularMesh.add_projections"><code class="docutils literal notranslate"><span class="pre">TriangularMesh.add_projections()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.TriangularMesh.html#mosaic.parametrization.TriangularMesh.compute_distance"><code class="docutils literal notranslate"><span class="pre">TriangularMesh.compute_distance()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.TriangularMesh.html#mosaic.parametrization.TriangularMesh.compute_normal"><code class="docutils literal notranslate"><span class="pre">TriangularMesh.compute_normal()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.TriangularMesh.html#mosaic.parametrization.TriangularMesh.fit"><code class="docutils literal notranslate"><span class="pre">TriangularMesh.fit()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.TriangularMesh.html#mosaic.parametrization.TriangularMesh.geodesic_distance"><code class="docutils literal notranslate"><span class="pre">TriangularMesh.geodesic_distance()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.TriangularMesh.html#mosaic.parametrization.TriangularMesh.points_per_sampling"><code class="docutils literal notranslate"><span class="pre">TriangularMesh.points_per_sampling()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.TriangularMesh.html#mosaic.parametrization.TriangularMesh.sample"><code class="docutils literal notranslate"><span class="pre">TriangularMesh.sample()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parametrization.BallPivoting.html">BallPivoting</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parametrization.BallPivoting.html#mosaic.parametrization.BallPivoting"><code class="docutils literal notranslate"><span class="pre">BallPivoting</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.BallPivoting.html#mosaic.parametrization.BallPivoting.fit"><code class="docutils literal notranslate"><span class="pre">BallPivoting.fit()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parametrization.PoissonMesh.html">PoissonMesh</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parametrization.PoissonMesh.html#mosaic.parametrization.PoissonMesh"><code class="docutils literal notranslate"><span class="pre">PoissonMesh</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.PoissonMesh.html#mosaic.parametrization.PoissonMesh.fit"><code class="docutils literal notranslate"><span class="pre">PoissonMesh.fit()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parametrization.AlphaShape.html">AlphaShape</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parametrization.AlphaShape.html#mosaic.parametrization.AlphaShape"><code class="docutils literal notranslate"><span class="pre">AlphaShape</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.AlphaShape.html#mosaic.parametrization.AlphaShape.fit"><code class="docutils literal notranslate"><span class="pre">AlphaShape.fit()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parametrization.FlyingEdges.html">FlyingEdges</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parametrization.FlyingEdges.html#mosaic.parametrization.FlyingEdges"><code class="docutils literal notranslate"><span class="pre">FlyingEdges</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parametrization.FlyingEdges.html#mosaic.parametrization.FlyingEdges.fit"><code class="docutils literal notranslate"><span class="pre">FlyingEdges.fit()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="parametrization.html#utilities">Utilities</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parametrization.merge.html">merge</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parametrization.merge.html#mosaic.parametrization.merge"><code class="docutils literal notranslate"><span class="pre">merge()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="parametrization.html#type-registry">Type Registry</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parallel.html">Parallel</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="parallel.html#backgroundtaskmanager">BackgroundTaskManager</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parallel.BackgroundTaskManager.html">BackgroundTaskManager</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parallel.BackgroundTaskManager.html#mosaic.parallel.BackgroundTaskManager"><code class="docutils literal notranslate"><span class="pre">BackgroundTaskManager</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parallel.BackgroundTaskManager.html#mosaic.parallel.BackgroundTaskManager.cancel_task"><code class="docutils literal notranslate"><span class="pre">BackgroundTaskManager.cancel_task()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parallel.BackgroundTaskManager.html#mosaic.parallel.BackgroundTaskManager.clear_finished_tasks"><code class="docutils literal notranslate"><span class="pre">BackgroundTaskManager.clear_finished_tasks()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parallel.BackgroundTaskManager.html#mosaic.parallel.BackgroundTaskManager.get_task_output"><code class="docutils literal notranslate"><span class="pre">BackgroundTaskManager.get_task_output()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parallel.BackgroundTaskManager.html#mosaic.parallel.BackgroundTaskManager.submit_io_task"><code class="docutils literal notranslate"><span class="pre">BackgroundTaskManager.submit_io_task()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parallel.BackgroundTaskManager.html#mosaic.parallel.BackgroundTaskManager.submit_task"><code class="docutils literal notranslate"><span class="pre">BackgroundTaskManager.submit_task()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.parallel.BackgroundTaskManager.html#mosaic.parallel.BackgroundTaskManager.submit_task_batch"><code class="docutils literal notranslate"><span class="pre">BackgroundTaskManager.submit_task_batch()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="parallel.html#signals">Signals</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="parallel.html#convenience-functions">Convenience Functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parallel.submit_task.html">submit_task</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parallel.submit_task.html#mosaic.parallel.submit_task"><code class="docutils literal notranslate"><span class="pre">submit_task()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.parallel.submit_task_batch.html">submit_task_batch</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.parallel.submit_task_batch.html#mosaic.parallel.submit_task_batch"><code class="docutils literal notranslate"><span class="pre">submit_task_batch()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="parallel.html#usage-example">Usage Example</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">File I/O</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Formats</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="formats.html#reading">Reading</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.formats.open_file.html">open_file</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.formats.open_file.html#mosaic.formats.open_file"><code class="docutils literal notranslate"><span class="pre">open_file()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="formats.html#writing">Writing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.formats.write_geometries.html">write_geometries</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.formats.write_geometries.html#mosaic.formats.write_geometries"><code class="docutils literal notranslate"><span class="pre">write_geometries()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="formats.html#session-files">Session Files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.formats.is_session_file.html">is_session_file</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.formats.is_session_file.html#mosaic.formats.is_session_file"><code class="docutils literal notranslate"><span class="pre">is_session_file()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.formats.open_session.html">open_session</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.formats.open_session.html#mosaic.formats.open_session"><code class="docutils literal notranslate"><span class="pre">open_session()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.formats.write_session.html">write_session</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.formats.write_session.html#mosaic.formats.write_session"><code class="docutils literal notranslate"><span class="pre">write_session()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.formats.read_session_index.html">read_session_index</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.formats.read_session_index.html#mosaic.formats.read_session_index"><code class="docutils literal notranslate"><span class="pre">read_session_index()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.formats.read_session_meta.html">read_session_meta</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.formats.read_session_meta.html#mosaic.formats.read_session_meta"><code class="docutils literal notranslate"><span class="pre">read_session_meta()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.formats.read_session_section.html">read_session_section</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.formats.read_session_section.html#mosaic.formats.read_session_section"><code class="docutils literal notranslate"><span class="pre">read_session_section()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="formats.html#streaming">Streaming</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.formats.open_omezarr.html">open_omezarr</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.formats.open_omezarr.html#mosaic.formats.open_omezarr"><code class="docutils literal notranslate"><span class="pre">open_omezarr()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.formats.ZarrImageSource.html">ZarrImageSource</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.formats.ZarrImageSource.html#mosaic.formats.ZarrImageSource"><code class="docutils literal notranslate"><span class="pre">ZarrImageSource</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.formats.ZarrImageSource.html#mosaic.formats.ZarrImageSource.RequestData"><code class="docutils literal notranslate"><span class="pre">ZarrImageSource.RequestData()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.formats.ZarrImageSource.html#mosaic.formats.ZarrImageSource.RequestInformation"><code class="docutils literal notranslate"><span class="pre">ZarrImageSource.RequestInformation()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="formats.html#data-containers">Data Containers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.formats.GeometryDataContainer.html">GeometryDataContainer</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.formats.GeometryDataContainer.html#mosaic.formats.GeometryDataContainer"><code class="docutils literal notranslate"><span class="pre">GeometryDataContainer</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.formats.VertexPropertyContainer.html">VertexPropertyContainer</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.formats.VertexPropertyContainer.html#mosaic.formats.VertexPropertyContainer"><code class="docutils literal notranslate"><span class="pre">VertexPropertyContainer</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.formats.VertexPropertyContainer.html#mosaic.formats.VertexPropertyContainer.copy"><code class="docutils literal notranslate"><span class="pre">VertexPropertyContainer.copy()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.formats.VertexPropertyContainer.html#mosaic.formats.VertexPropertyContainer.get_property"><code class="docutils literal notranslate"><span class="pre">VertexPropertyContainer.get_property()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.formats.VertexPropertyContainer.html#mosaic.formats.VertexPropertyContainer.merge"><code class="docutils literal notranslate"><span class="pre">VertexPropertyContainer.merge()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.formats.VertexPropertyContainer.html#mosaic.formats.VertexPropertyContainer.properties"><code class="docutils literal notranslate"><span class="pre">VertexPropertyContainer.properties</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.formats.VertexPropertyContainer.html#mosaic.formats.VertexPropertyContainer.set_property"><code class="docutils literal notranslate"><span class="pre">VertexPropertyContainer.set_property()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="formats.html#exceptions">Exceptions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.formats.NotASegmentationError.html">mosaic.formats.NotASegmentationError</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.formats.NotASegmentationError.html#mosaic.formats.NotASegmentationError"><code class="docutils literal notranslate"><span class="pre">NotASegmentationError</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">GUI</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="gui/widgets.html">Widgets</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="gui/widgets.html#core-interface-components">Core Interface Components</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.widgets.ObjectBrowserSidebar.html">ObjectBrowserSidebar</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.widgets.ObjectBrowserSidebar.html#mosaic.widgets.ObjectBrowserSidebar"><code class="docutils literal notranslate"><span class="pre">ObjectBrowserSidebar</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.widgets.RibbonToolBar.html">RibbonToolBar</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.widgets.RibbonToolBar.html#mosaic.widgets.RibbonToolBar"><code class="docutils literal notranslate"><span class="pre">RibbonToolBar</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.widgets.RibbonToolBar.html#mosaic.widgets.RibbonToolBar.minimumSizeHint"><code class="docutils literal notranslate"><span class="pre">RibbonToolBar.minimumSizeHint()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.widgets.RibbonToolBar.html#mosaic.widgets.RibbonToolBar.resizeEvent"><code class="docutils literal notranslate"><span class="pre">RibbonToolBar.resizeEvent()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.widgets.ContainerListWidget.html">ContainerListWidget</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.widgets.ContainerListWidget.html#mosaic.widgets.ContainerListWidget"><code class="docutils literal notranslate"><span class="pre">ContainerListWidget</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.widgets.StyledListWidgetItem.html">StyledListWidgetItem</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.widgets.StyledListWidgetItem.html#mosaic.widgets.StyledListWidgetItem"><code class="docutils literal notranslate"><span class="pre">StyledListWidgetItem</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gui/widgets.html#d-visualization-widgets">3D Visualization Widgets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.widgets.AxesWidget.html">AxesWidget</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.widgets.AxesWidget.html#mosaic.widgets.AxesWidget"><code class="docutils literal notranslate"><span class="pre">AxesWidget</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.widgets.ScaleBarWidget.html">ScaleBarWidget</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.widgets.ScaleBarWidget.html#mosaic.widgets.ScaleBarWidget"><code class="docutils literal notranslate"><span class="pre">ScaleBarWidget</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.widgets.ScaleBarWidget.html#mosaic.widgets.ScaleBarWidget.set_label_format"><code class="docutils literal notranslate"><span class="pre">ScaleBarWidget.set_label_format()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.widgets.ScaleBarWidget.html#mosaic.widgets.ScaleBarWidget.set_units"><code class="docutils literal notranslate"><span class="pre">ScaleBarWidget.set_units()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.widgets.LegendWidget.html">LegendWidget</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.widgets.LegendWidget.html#mosaic.widgets.LegendWidget"><code class="docutils literal notranslate"><span class="pre">LegendWidget</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gui/widgets.html#volume-and-time-series">Volume and Time-series</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.widgets.TrajectoryPlayer.html">TrajectoryPlayer</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.widgets.TrajectoryPlayer.html#mosaic.widgets.TrajectoryPlayer"><code class="docutils literal notranslate"><span class="pre">TrajectoryPlayer</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.widgets.TrajectoryPlayer.html#mosaic.widgets.TrajectoryPlayer.clear"><code class="docutils literal notranslate"><span class="pre">TrajectoryPlayer.clear()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.widgets.TrajectoryPlayer.html#mosaic.widgets.TrajectoryPlayer.update_trajectories"><code class="docutils literal notranslate"><span class="pre">TrajectoryPlayer.update_trajectories()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gui/widgets.html#interaction-control">Interaction Control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.widgets.ViewerModes.html">ViewerModes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.widgets.ViewerModes.html#mosaic.widgets.ViewerModes"><code class="docutils literal notranslate"><span class="pre">ViewerModes</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.widgets.CursorModeHandler.html">CursorModeHandler</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.widgets.CursorModeHandler.html#mosaic.widgets.CursorModeHandler"><code class="docutils literal notranslate"><span class="pre">CursorModeHandler</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.widgets.StatusIndicator.html">StatusIndicator</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.widgets.StatusIndicator.html#mosaic.widgets.StatusIndicator"><code class="docutils literal notranslate"><span class="pre">StatusIndicator</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.widgets.StatusIndicator.html#mosaic.widgets.StatusIndicator.connect_signals"><code class="docutils literal notranslate"><span class="pre">StatusIndicator.connect_signals()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.widgets.StatusIndicator.html#mosaic.widgets.StatusIndicator.hide_progress"><code class="docutils literal notranslate"><span class="pre">StatusIndicator.hide_progress()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.widgets.StatusIndicator.html#mosaic.widgets.StatusIndicator.show_progress"><code class="docutils literal notranslate"><span class="pre">StatusIndicator.show_progress()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.widgets.StatusIndicator.html#mosaic.widgets.StatusIndicator.update_progress"><code class="docutils literal notranslate"><span class="pre">StatusIndicator.update_progress()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gui/widgets.html#ribbon-utilities">Ribbon Utilities</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.widgets.create_button.html">create_button</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.widgets.create_button.html#mosaic.widgets.create_button"><code class="docutils literal notranslate"><span class="pre">create_button()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui/dialogs.html">Dialogs</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="gui/dialogs.html#data-import-export">Data Import/Export</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.dialogs.ImportDataDialog.html">ImportDataDialog</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.dialogs.ImportDataDialog.html#mosaic.dialogs.ImportDataDialog"><code class="docutils literal notranslate"><span class="pre">ImportDataDialog</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.dialogs.ExportDialog.html">ExportDialog</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.dialogs.ExportDialog.html#mosaic.dialogs.ExportDialog"><code class="docutils literal notranslate"><span class="pre">ExportDialog</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.ExportDialog.html#mosaic.dialogs.ExportDialog.accept"><code class="docutils literal notranslate"><span class="pre">ExportDialog.accept()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.ExportDialog.html#mosaic.dialogs.ExportDialog.get_current_settings"><code class="docutils literal notranslate"><span class="pre">ExportDialog.get_current_settings()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.ExportDialog.html#mosaic.dialogs.ExportDialog.set_defaults"><code class="docutils literal notranslate"><span class="pre">ExportDialog.set_defaults()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gui/dialogs.html#analysis-dialogs">Analysis Dialogs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.dialogs.PropertyAnalysisDialog.html">PropertyAnalysisDialog</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.dialogs.PropertyAnalysisDialog.html#mosaic.dialogs.PropertyAnalysisDialog"><code class="docutils literal notranslate"><span class="pre">PropertyAnalysisDialog</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.PropertyAnalysisDialog.html#mosaic.dialogs.PropertyAnalysisDialog.closeEvent"><code class="docutils literal notranslate"><span class="pre">PropertyAnalysisDialog.closeEvent()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.PropertyAnalysisDialog.html#mosaic.dialogs.PropertyAnalysisDialog.render"><code class="docutils literal notranslate"><span class="pre">PropertyAnalysisDialog.render()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.PropertyAnalysisDialog.html#mosaic.dialogs.PropertyAnalysisDialog.sizeHint"><code class="docutils literal notranslate"><span class="pre">PropertyAnalysisDialog.sizeHint()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.dialogs.HistogramDialog.html">HistogramDialog</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.dialogs.HistogramDialog.html#mosaic.dialogs.HistogramDialog"><code class="docutils literal notranslate"><span class="pre">HistogramDialog</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.HistogramDialog.html#mosaic.dialogs.HistogramDialog.closeEvent"><code class="docutils literal notranslate"><span class="pre">HistogramDialog.closeEvent()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.HistogramDialog.html#mosaic.dialogs.HistogramDialog.sizeHint"><code class="docutils literal notranslate"><span class="pre">HistogramDialog.sizeHint()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.dialogs.GeometryPropertiesDialog.html">GeometryPropertiesDialog</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.dialogs.GeometryPropertiesDialog.html#mosaic.dialogs.GeometryPropertiesDialog"><code class="docutils literal notranslate"><span class="pre">GeometryPropertiesDialog</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.GeometryPropertiesDialog.html#mosaic.dialogs.GeometryPropertiesDialog.connect_signals"><code class="docutils literal notranslate"><span class="pre">GeometryPropertiesDialog.connect_signals()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.GeometryPropertiesDialog.html#mosaic.dialogs.GeometryPropertiesDialog.get_parameters"><code class="docutils literal notranslate"><span class="pre">GeometryPropertiesDialog.get_parameters()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.GeometryPropertiesDialog.html#mosaic.dialogs.GeometryPropertiesDialog.showEvent"><code class="docutils literal notranslate"><span class="pre">GeometryPropertiesDialog.showEvent()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gui/dialogs.html#processing-configuration">Processing Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.dialogs.TemplateMatchingDialog.html">TemplateMatchingDialog</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.dialogs.TemplateMatchingDialog.html#mosaic.dialogs.TemplateMatchingDialog"><code class="docutils literal notranslate"><span class="pre">TemplateMatchingDialog</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.TemplateMatchingDialog.html#mosaic.dialogs.TemplateMatchingDialog.accept"><code class="docutils literal notranslate"><span class="pre">TemplateMatchingDialog.accept()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.dialogs.MeshMappingDialog.html">MeshMappingDialog</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.dialogs.MeshMappingDialog.html#mosaic.dialogs.MeshMappingDialog"><code class="docutils literal notranslate"><span class="pre">MeshMappingDialog</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.MeshMappingDialog.html#mosaic.dialogs.MeshMappingDialog.accept"><code class="docutils literal notranslate"><span class="pre">MeshMappingDialog.accept()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.MeshMappingDialog.html#mosaic.dialogs.MeshMappingDialog.get_output_directory"><code class="docutils literal notranslate"><span class="pre">MeshMappingDialog.get_output_directory()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gui/dialogs.html#distance-operations">Distance Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.dialogs.DistanceCropDialog.html">DistanceCropDialog</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.dialogs.DistanceCropDialog.html#mosaic.dialogs.DistanceCropDialog"><code class="docutils literal notranslate"><span class="pre">DistanceCropDialog</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.DistanceCropDialog.html#mosaic.dialogs.DistanceCropDialog.accept"><code class="docutils literal notranslate"><span class="pre">DistanceCropDialog.accept()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.DistanceCropDialog.html#mosaic.dialogs.DistanceCropDialog.closeEvent"><code class="docutils literal notranslate"><span class="pre">DistanceCropDialog.closeEvent()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.DistanceCropDialog.html#mosaic.dialogs.DistanceCropDialog.populate_lists"><code class="docutils literal notranslate"><span class="pre">DistanceCropDialog.populate_lists()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dialogs.DistanceCropDialog.html#mosaic.dialogs.DistanceCropDialog.reject"><code class="docutils literal notranslate"><span class="pre">DistanceCropDialog.reject()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gui/dialogs.html#dts-dialogs">DTS Dialogs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.dts.MeshEquilibrationDialog.html">MeshEquilibrationDialog</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.dts.MeshEquilibrationDialog.html#mosaic.dts.MeshEquilibrationDialog"><code class="docutils literal notranslate"><span class="pre">MeshEquilibrationDialog</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dts.MeshEquilibrationDialog.html#mosaic.dts.MeshEquilibrationDialog.accept"><code class="docutils literal notranslate"><span class="pre">MeshEquilibrationDialog.accept()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dts.MeshEquilibrationDialog.html#mosaic.dts.MeshEquilibrationDialog.get_output_directory"><code class="docutils literal notranslate"><span class="pre">MeshEquilibrationDialog.get_output_directory()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dts.MeshEquilibrationDialog.html#mosaic.dts.MeshEquilibrationDialog.get_parameters"><code class="docutils literal notranslate"><span class="pre">MeshEquilibrationDialog.get_parameters()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.dts.DTSScreeningDialog.html">DTSScreeningDialog</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.dts.DTSScreeningDialog.html#mosaic.dts.DTSScreeningDialog"><code class="docutils literal notranslate"><span class="pre">DTSScreeningDialog</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.dts.DTSScreeningDialog.html#mosaic.dts.DTSScreeningDialog.closeEvent"><code class="docutils literal notranslate"><span class="pre">DTSScreeningDialog.closeEvent()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui/tabs.html">Tabs</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="gui/tabs.html#main-tab-classes">Main Tab Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.tabs.SegmentationTab.html">SegmentationTab</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.tabs.SegmentationTab.html#mosaic.tabs.SegmentationTab"><code class="docutils literal notranslate"><span class="pre">SegmentationTab</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.tabs.SegmentationTab.html#mosaic.tabs.SegmentationTab.eventFilter"><code class="docutils literal notranslate"><span class="pre">SegmentationTab.eventFilter()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.tabs.ModelTab.html">ModelTab</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.tabs.ModelTab.html#mosaic.tabs.ModelTab"><code class="docutils literal notranslate"><span class="pre">ModelTab</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.tabs.IntelligenceTab.html">IntelligenceTab</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.tabs.IntelligenceTab.html#mosaic.tabs.IntelligenceTab"><code class="docutils literal notranslate"><span class="pre">IntelligenceTab</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gui/tabs.html#segmentation-operations">Segmentation Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.tabs.SegmentationTab.show_ribbon.html">SegmentationTab.show_ribbon</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.tabs.SegmentationTab.show_ribbon.html#mosaic.tabs.SegmentationTab.show_ribbon"><code class="docutils literal notranslate"><span class="pre">SegmentationTab.show_ribbon()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gui/tabs.html#modeling-operations">Modeling Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.tabs.ModelTab.show_ribbon.html">ModelTab.show_ribbon</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.tabs.ModelTab.show_ribbon.html#mosaic.tabs.ModelTab.show_ribbon"><code class="docutils literal notranslate"><span class="pre">ModelTab.show_ribbon()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gui/tabs.html#intelligence-operations">Intelligence Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.tabs.IntelligenceTab.show_ribbon.html">IntelligenceTab.show_ribbon</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.tabs.IntelligenceTab.show_ribbon.html#mosaic.tabs.IntelligenceTab.show_ribbon"><code class="docutils literal notranslate"><span class="pre">IntelligenceTab.show_ribbon()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui/tabs.html#interaction-styles">Interaction Styles</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="gui/tabs.html#mesh-editing">Mesh Editing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.styles.MeshEditInteractorStyle.html">MeshEditInteractorStyle</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.styles.MeshEditInteractorStyle.html#mosaic.styles.MeshEditInteractorStyle"><code class="docutils literal notranslate"><span class="pre">MeshEditInteractorStyle</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gui/tabs.html#curve-creation">Curve Creation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rst/mosaic.styles.CurveBuilderInteractorStyle.html">CurveBuilderInteractorStyle</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rst/mosaic.styles.CurveBuilderInteractorStyle.html#mosaic.styles.CurveBuilderInteractorStyle"><code class="docutils literal notranslate"><span class="pre">CurveBuilderInteractorStyle</span></code></a><ul>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.styles.CurveBuilderInteractorStyle.html#mosaic.styles.CurveBuilderInteractorStyle.cleanup"><code class="docutils literal notranslate"><span class="pre">CurveBuilderInteractorStyle.cleanup()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.styles.CurveBuilderInteractorStyle.html#mosaic.styles.CurveBuilderInteractorStyle.on_left_button_down"><code class="docutils literal notranslate"><span class="pre">CurveBuilderInteractorStyle.on_left_button_down()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="rst/mosaic.styles.CurveBuilderInteractorStyle.html#mosaic.styles.CurveBuilderInteractorStyle.on_mouse_move"><code class="docutils literal notranslate"><span class="pre">CurveBuilderInteractorStyle.on_mouse_move()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../tutorial/misc/license.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">License</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="data_structures/geometry.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Geometry</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024-2025, European Molecular Biology Laboratory.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.19.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

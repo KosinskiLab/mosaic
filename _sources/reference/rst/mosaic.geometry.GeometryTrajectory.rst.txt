@@ -1,0 +1,57 @@
+﻿GeometryTrajectory
+==================
+
+.. currentmodule:: mosaic.geometry
+
+.. autoclass:: GeometryTrajectory
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+         
+            GeometryTrajectory.frames
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+         
+         
+            GeometryTrajectory.display_frame
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+   
+   

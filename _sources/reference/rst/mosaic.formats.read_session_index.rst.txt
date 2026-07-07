@@ -1,0 +1,6 @@
+﻿read\_session\_index
+=================================
+
+.. currentmodule:: mosaic.formats
+
+.. autofunction:: read_session_index

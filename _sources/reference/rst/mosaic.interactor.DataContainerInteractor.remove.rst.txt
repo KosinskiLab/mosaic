@@ -1,0 +1,6 @@
+﻿DataContainerInteractor.remove
+================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.remove

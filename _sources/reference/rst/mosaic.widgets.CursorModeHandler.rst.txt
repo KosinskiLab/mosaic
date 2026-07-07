@@ -1,0 +1,35 @@
+﻿CursorModeHandler
+=================
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: CursorModeHandler
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+            CursorModeHandler.current_mode
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+            CursorModeHandler.update_mode
+         
+   
+   

@@ -1,0 +1,6 @@
+﻿Geometry.quaternions
+====================================
+
+.. currentmodule:: mosaic.geometry
+
+.. autoproperty:: Geometry.quaternions

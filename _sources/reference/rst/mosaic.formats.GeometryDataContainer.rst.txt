@@ -1,0 +1,50 @@
+﻿GeometryDataContainer
+=====================
+
+.. currentmodule:: mosaic.formats
+
+.. autoclass:: GeometryDataContainer
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+            GeometryDataContainer.faces
+         
+         
+            GeometryDataContainer.normals
+         
+         
+            GeometryDataContainer.quaternions
+         
+         
+            GeometryDataContainer.sampling
+         
+         
+            GeometryDataContainer.shape
+         
+         
+            GeometryDataContainer.vertex_properties
+         
+         
+            GeometryDataContainer.vertices
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+   
+   

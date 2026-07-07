@@ -1,0 +1,153 @@
+﻿DataContainerInteractor
+=======================
+
+.. currentmodule:: mosaic.interactor
+
+.. autoclass:: DataContainerInteractor
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+            DataContainerInteractor.container
+         
+         
+            DataContainerInteractor.data_changed
+         
+         
+         
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+            DataContainerInteractor.add
+         
+         
+            DataContainerInteractor.add_point
+         
+         
+            DataContainerInteractor.add_selection
+         
+         
+            DataContainerInteractor.apply
+         
+         
+            DataContainerInteractor.attach_viewport
+         
+         
+         
+            DataContainerInteractor.change_representation
+         
+         
+         
+         
+            DataContainerInteractor.clear
+         
+         
+         
+         
+         
+            DataContainerInteractor.deselect
+         
+         
+            DataContainerInteractor.deselect_points
+         
+         
+         
+         
+         
+         
+            DataContainerInteractor.duplicate
+         
+         
+         
+         
+         
+         
+         
+            DataContainerInteractor.get_selected_geometries
+         
+         
+            DataContainerInteractor.highlight_clusters_from_selected_points
+         
+         
+            DataContainerInteractor.highlight_selected_points
+         
+         
+         
+         
+         
+         
+         
+         
+         
+            DataContainerInteractor.merge
+         
+         
+         
+         
+            DataContainerInteractor.next_color
+         
+         
+         
+         
+            DataContainerInteractor.pick_prop
+         
+         
+         
+         
+         
+            DataContainerInteractor.remove
+         
+         
+         
+            DataContainerInteractor.remove_selection
+         
+         
+            DataContainerInteractor.render
+         
+         
+            DataContainerInteractor.render_vtk
+         
+         
+         
+         
+         
+         
+         
+            DataContainerInteractor.set_active_cluster
+         
+         
+            DataContainerInteractor.set_coloring_mode
+         
+         
+            DataContainerInteractor.set_selection_by_uuid
+         
+         
+         
+         
+         
+         
+         
+            DataContainerInteractor.update
+         
+         
+            DataContainerInteractor.visibility
+         
+   
+   
