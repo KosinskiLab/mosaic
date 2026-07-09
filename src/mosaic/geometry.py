@@ -171,21 +171,22 @@ class GeometryData:
 
     def set_faces(self, faces):
         """Set triangular face connectivity on the polydata."""
-        # Use int64 explicitly because numpy_to_vtkIdTypeArray() requires int64 input.
-        # dtype=int is platform-dependent (int32 on Windows, typically int64 on
-        # Linux/macOS), which can otherwise cause a ValueError.
+        # Use int64 to avoid platform-dependent promotion schemes which may
+        # not satisfy the int64 requirement of numpy_to_vtkIdTypeArray.
         faces = np.asarray(faces, dtype=np.int64)
-        if faces.ndim == 2 and faces.shape[1] == 3:
-            faces = np.concatenate(
-                (np.full((faces.shape[0], 1), fill_value=3), faces),
-                axis=1,
-                dtype=np.int64,
-            )
         poly_cells = vtkCellArray()
-        poly_cells.SetCells(
-            faces.shape[0],
-            numpy_support.numpy_to_vtkIdTypeArray(faces.ravel()),
-        )
+        if faces.ndim == 2 and faces.shape[1] == 3:
+            connectivity = numpy_support.numpy_to_vtkIdTypeArray(
+                np.ascontiguousarray(faces.ravel())
+            )
+            poly_cells.SetData(3, connectivity)
+        else:
+            # Pre vtk 6.9
+            poly_cells.ImportLegacyFormat(
+                numpy_support.numpy_to_vtkIdTypeArray(
+                    np.ascontiguousarray(faces.ravel())
+                )
+            )
         self.polydata.SetPolys(poly_cells)
         self.polydata.SetVerts(None)
         self.polydata.Modified()
@@ -287,11 +288,10 @@ class GeometryData:
         if (n := self.polydata.GetNumberOfPoints()) == 0:
             return None
 
-        cell_arr = np.empty(n + 1, dtype=np.int64)
-        cell_arr[0] = n
-        cell_arr[1:] = np.arange(n, dtype=np.int64)
+        # Migrated from SetCells in vtk 6.9+
+        connectivity = np.arange(n, dtype=np.int64)
         vertex_cells = vtkCellArray()
-        vertex_cells.SetCells(1, numpy_support.numpy_to_vtkIdTypeArray(cell_arr))
+        vertex_cells.SetData(n, numpy_support.numpy_to_vtkIdTypeArray(connectivity))
         self.polydata.SetVerts(vertex_cells)
 
 
@@ -589,7 +589,7 @@ class Geometry:
 
         # Merging VolumeGeometries is awkward because they may not represent
         # the same volume. For now we fallback to point clouds.
-        if representation == "volume":
+        if representation in ("volume", "segmentation"):
             representation = "pointcloud"
             _ = appearance.pop("volume_path", None)
 

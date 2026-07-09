@@ -135,7 +135,7 @@ class Parametrization(ABC):
             Distances between points and the parametrization.
         """
         samples = self.sample(n_samples=points.shape[0] * 4)
-        distances, _ = utils.find_closest_points(samples, points, k=1)
+        distances, _ = utils.find_closest_points(samples, points, k=2)
         return distances
 
 
@@ -404,6 +404,7 @@ class Cylinder(Parametrization):
         self.orientations = np.asarray(orientations, dtype=np.float64)
         self.radius = float(radius)
         self.height = float(height)
+        self._mesh = self._build_mesh()
 
     @staticmethod
     def _compute_initial_guess(
@@ -533,6 +534,54 @@ class Cylinder(Parametrization):
         norms = np.linalg.norm(perp, axis=1, keepdims=True)
         normals = np.where(norms > 1e-6, perp / norms, axis)
         return _normalize(normals)
+
+    def _build_mesh(self) -> "TriangularMesh":
+        """Synthesize a watertight triangular mesh matching this cylinder.
+
+        Uses open3d's ``create_cylinder`` (already axis-aligned to z and
+        centered), then applies this cylinder's orientation and center. Grid
+        resolution follows the sagitta-tolerance law.
+
+        Returns
+        -------
+        TriangularMesh
+            Capped tube mesh in world coordinates.
+        """
+        import open3d as o3d
+
+        edge = _edge_length_from_curvature(1.0 / self.radius)
+        resolution = _n_segments(2.0 * np.pi * self.radius, edge, min_seg=12)
+        split = _n_segments(self.height, edge, min_seg=1)
+
+        mesh = o3d.geometry.TriangleMesh.create_cylinder(
+            radius=self.radius,
+            height=self.height,
+            resolution=resolution,
+            split=split,
+        )
+        verts = np.asarray(mesh.vertices).dot(self.orientations.T) + self.centers
+        mesh.vertices = o3d.utility.Vector3dVector(verts)
+        return TriangularMesh(mesh, repair=False)
+
+    def compute_distance(self, points: np.ndarray, **kwargs) -> np.ndarray:
+        """Distance to the cylinder surface via its backing mesh.
+
+        Supports every keyword of ``TriangularMesh.compute_distance``
+        (``signed``, ``normals``, ``return_projection``, ``return_indices``,
+        ``return_triangles``). Signed distance is well-defined because the
+        backing mesh is watertight.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            Query coordinates with shape (n, 3).
+
+        Returns
+        -------
+        np.ndarray
+            Distances (and optional extras) from the backing mesh.
+        """
+        return self._mesh.compute_distance(points, **kwargs)
 
     def sample(
         self,
@@ -1866,7 +1915,7 @@ class FlyingEdges(TriangularMesh):
         vertices = numpy_support.vtk_to_numpy(vertices_vtk)
 
         polys = polydata.GetPolys()
-        cells = numpy_support.vtk_to_numpy(polys.GetData())
+        cells = numpy_support.vtk_to_numpy(polys.GetConnectivityArray())
 
         vertices = np.add(vertices, offset * voxel_size)
 
@@ -1899,6 +1948,78 @@ def _normalize(arr: np.ndarray):
     norm = np.linalg.norm(arr, axis=1, keepdims=True)
     norm = np.where(norm > 1e-6, norm, 1)
     return np.divide(arr, norm, out=arr)
+
+
+_MESH_CHORD_TOL = 5e-3
+_MESH_MAX_SEG = 512
+_MESH_MAX_VERTICES = 200_000
+
+
+def _edge_length_from_curvature(kappa: float, tol: float = _MESH_CHORD_TOL) -> float:
+    """Target triangle edge length from the sagitta bound ``L = sqrt(8*tol)/kappa``.
+
+    Parameters
+    ----------
+    kappa : float
+        Local curvature magnitude (1 / radius of curvature).
+    tol : float
+        Relative sagitta tolerance (chord error as a fraction of the local
+        radius of curvature).
+
+    Returns
+    -------
+    float
+        Edge length. For near-zero curvature a large finite value is returned.
+    """
+    kappa = max(abs(float(kappa)), 1e-8)
+    return float(np.sqrt(8.0 * tol) / kappa)
+
+
+def _n_segments(extent: float, edge_length: float, min_seg: int) -> int:
+    """Number of segments spanning ``extent`` at ``edge_length``, clamped.
+
+    Parameters
+    ----------
+    extent : float
+        Length of the axis to subdivide.
+    edge_length : float
+        Target edge length.
+    min_seg : int
+        Lower clamp on the segment count.
+
+    Returns
+    -------
+    int
+        Segment count in ``[min_seg, _MESH_MAX_SEG]``.
+    """
+    n = int(np.ceil(float(extent) / edge_length))
+    return int(np.clip(n, min_seg, _MESH_MAX_SEG))
+
+
+def _grid_faces(rows: int, cols: int) -> np.ndarray:
+    """Triangle connectivity for a row-major ``rows x cols`` vertex grid.
+
+    Parameters
+    ----------
+    rows : int
+        Number of grid rows.
+    cols : int
+        Number of grid columns.
+
+    Returns
+    -------
+    np.ndarray
+        Integer triangle indices with shape (2*(rows-1)*(cols-1), 3).
+    """
+    r = np.arange(rows - 1)[:, None]
+    c = np.arange(cols - 1)[None, :]
+    v00 = (r * cols + c).ravel()
+    v01 = v00 + 1
+    v10 = v00 + cols
+    v11 = v10 + 1
+    tri_a = np.column_stack([v00, v10, v11])
+    tri_b = np.column_stack([v00, v11, v01])
+    return np.vstack([tri_a, tri_b]).astype(np.int32)
 
 
 def merge(models: Tuple[Parametrization]) -> Parametrization:

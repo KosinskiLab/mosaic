@@ -251,10 +251,15 @@ class SculptPaletteHUD(QWidget):
         self._reposition()
 
     def eventFilter(self, obj, event):
+        viewport_parent = getattr(self, "_viewport_parent", None)
+        top_window = getattr(self, "_top_window", None)
+        if viewport_parent is None and top_window is None:
+            return False
+
         etype = event.type()
-        if obj is self._viewport_parent and etype == QEvent.Type.Resize:
+        if obj is viewport_parent and etype == QEvent.Type.Resize:
             self._reposition()
-        elif obj is self._top_window:
+        elif obj is top_window:
             if etype in (
                 QEvent.Type.Move,
                 QEvent.Type.Resize,
