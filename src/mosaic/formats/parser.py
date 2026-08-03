@@ -87,17 +87,14 @@ def _read_orientations(filename: str):
     }
 
     try:
-        vertex_properties = []
+        vertex_properties, props = [], {}
         for x in indices:
-            props = {
-                "pytme_score": data.scores[x],
-                "entity": data.details[x],
-            }
             for key, val in extra_metadata.items():
                 props[key] = val[x]
             vertex_properties.append(VertexPropertyContainer(props))
-    except Exception:
+    except Exception as e:
         vertex_properties = None
+        warnings.warn(f"Failed to extract vertex properties: {e}")
 
     return {
         "vertices": [data.translations[x] for x in indices],

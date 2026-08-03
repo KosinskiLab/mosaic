@@ -82,6 +82,11 @@ def capture_frame(
 ) -> np.ndarray:
     """Capture the current frame from a VTK render window.
 
+    The frame is captured with off-screen rendering enabled so that
+    ``magnification`` can enlarge the render beyond the on-screen window size
+    (on-screen render windows are clamped to the physical window/screen). The
+    on-screen window is left untouched during capture.
+
     Parameters
     ----------
     render_window : vtkRenderWindow
@@ -89,7 +94,9 @@ def capture_frame(
     transparent_bg : bool, optional
         If True, preserve alpha channel for transparency.
     magnification : int, optional
-        Render at higher resolution then downsample for quality.
+        Output resolution multiplier. The scene is rendered at
+        ``magnification`` times the target size, yielding genuine
+        high-resolution output.
     multisamples : int, optional
         Number of multisamples for hardware antialiasing. If None, uses current.
     width : int, optional
@@ -107,22 +114,19 @@ def capture_frame(
 
     original_size = render_window.GetSize()
     original_multisamples = render_window.GetMultiSamples()
+    original_offscreen = render_window.GetOffScreenRendering()
 
     if multisamples is not None:
         render_window.SetMultiSamples(multisamples)
 
-    target_width = width if width is not None else original_size[0]
-    target_height = height if height is not None else original_size[1]
+    target_width = (width if width is not None else original_size[0]) * magnification
+    target_height = (height if height is not None else original_size[1]) * magnification
 
-    # Apply magnification for supersampling
-    render_width = target_width * magnification
-    render_height = target_height * magnification
-
-    size_changed = False
-    if render_width != original_size[0] or render_height != original_size[1]:
-        render_window.SetSize(render_width, render_height)
+    size_changed = target_width != original_size[0] or target_height != original_size[1]
+    if size_changed:
+        render_window.SetOffScreenRendering(1)
+        render_window.SetSize(target_width, target_height)
         render_window.Render()
-        size_changed = True
 
     window_to_image = vtkWindowToImageFilter()
     window_to_image.SetInput(render_window)
@@ -131,7 +135,7 @@ def capture_frame(
     window_to_image.ReadFrontBufferOff()
 
     arr = read_frame(
-        window_to_image, target_width, target_height, magnification, transparent_bg
+        window_to_image, target_width, target_height, transparent_bg=transparent_bg
     )
 
     render_window.SetAlphaBitPlanes(original_alpha_bit_planes)
@@ -141,6 +145,7 @@ def capture_frame(
 
     if size_changed:
         render_window.SetSize(*original_size)
+        render_window.SetOffScreenRendering(original_offscreen)
         render_window.Render()
 
     return arr
@@ -309,7 +314,8 @@ class ScreenshotManager:
         height : int, optional
             Custom height, uses current window height by default.
         magnification : int, optional
-            Resolution multiplier for supersampling (1-8).
+            Output resolution multiplier (1-8). Rendered off-screen so it is not
+            bounded by the on-screen window size.
         multisamples : int, optional
             Number of multisamples for hardware antialiasing.
 
@@ -366,7 +372,8 @@ class ScreenshotManager:
             return -1
 
         transparent_bg = file_path.lower().endswith(".png")
-        screenshot = self.capture(transparent_bg=transparent_bg)
+
+        screenshot = self.capture(transparent_bg=transparent_bg, magnification=2)
         screenshot.save(file_path)
 
 

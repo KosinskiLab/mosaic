@@ -718,13 +718,16 @@ class DataContainerInteractor(QObject):
         from .geometry import Geometry, merge_geometries
 
         selected = self.get_selected_geometries()
+        selected_uuids = [g.uuid for g in selected]
         swaps, slices, originals = self._capture_selection(selected)
 
         point_cluster = self.add_selection(self.point_selection, add=True)
         self.deselect_points()
 
+        # add_selection emits data_changed, which the histogram "Select" dock
+        # reacts to by overwriting the tree selection, so re-fetch by UUID.
         merge_list = [
-            *self.get_selected_geometries(),
+            *(self.container.get(uuid) for uuid in selected_uuids),
             self.container.get(point_cluster),
         ]
         merge_list = [g for g in merge_list if isinstance(g, Geometry)]

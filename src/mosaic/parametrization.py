@@ -1915,11 +1915,9 @@ class FlyingEdges(TriangularMesh):
         vertices = numpy_support.vtk_to_numpy(vertices_vtk)
 
         polys = polydata.GetPolys()
-        cells = numpy_support.vtk_to_numpy(polys.GetConnectivityArray())
+        faces = numpy_support.vtk_to_numpy(polys.GetConnectivityArray()).reshape(-1, 3)
 
         vertices = np.add(vertices, offset * voxel_size)
-
-        faces = cells.reshape(-1, 4)[:, 1:]
         return cls(mesh=meshing.to_open3d(vertices, faces), repair=False)
 
 

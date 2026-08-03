@@ -327,7 +327,9 @@ class ClusterTransformer:
 
         # Transforms are w.r.t baseline orientation
         self.points = points.copy()
-        self.normals = self.geometry.normals.copy()
+        self.normals = (
+            self.geometry.normals.copy() if self.geometry.has_normals else None
+        )
         self.transform_widget.PlaceWidget(bounds)
         self.transform_widget.On()
         self.data.viewport.vtk_widget.GetRenderWindow().Render()
@@ -363,10 +365,11 @@ class ClusterTransformer:
         only_translate = np.allclose(rotation, np.eye(3), rtol=1e-10)
 
         new_points = self.points.copy()
-        new_normals = self.normals.copy()
+        new_normals = None if self.normals is None else self.normals.copy()
         if not only_translate:
             new_points = np.matmul(new_points, rotation.T, out=new_points)
-            new_normals = np.matmul(new_normals, rotation.T, out=new_normals)
+            if new_normals is not None:
+                new_normals = np.matmul(new_normals, rotation.T, out=new_normals)
 
         new_points = np.add(new_points, translation, out=new_points)
         self.geometry.swap_data(new_points, normals=new_normals)

@@ -350,7 +350,10 @@ class App(QMainWindow):
             passes = vtk.vtkRenderStepsPass()
             ssao = vtk.vtkSSAOPass()
             ssao.SetDelegatePass(passes)
-            ssao.SetRadius(self._ssao_radius(renderer))
+
+            radius = self._ssao_radius(renderer)
+            ssao.SetRadius(radius)
+            ssao.SetBias(0.02 * radius)
             ssao.SetKernelSize(128)
             ssao.BlurOn()
             renderer.SetPass(ssao)
@@ -392,7 +395,11 @@ class App(QMainWindow):
             passes = vtk.vtkRenderStepsPass()
             ssao = vtk.vtkSSAOPass()
             ssao.SetDelegatePass(passes)
-            ssao.SetRadius(self._ssao_radius(renderer))
+
+            radius = self._ssao_radius(renderer)
+            ssao.SetRadius(radius)
+            ssao.SetBias(0.02 * radius)
+
             ssao.SetKernelSize(128)
             ssao.BlurOn()
             renderer.SetPass(ssao)

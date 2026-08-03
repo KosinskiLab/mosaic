@@ -160,6 +160,12 @@ class TestCoerceRecords:
         records = _coerce_records([cloud_no_quats])
         assert records[0].quaternions is None
 
+    def test_normals_none_when_absent(self, cloud_no_quats):
+        from mosaic.formats.writer import _coerce_records
+
+        records = _coerce_records([cloud_no_quats])
+        assert records[0].normals is None
+
     def test_carries_model_attribute(self, cloud_no_quats):
         from mosaic.formats.writer import _coerce_records
 

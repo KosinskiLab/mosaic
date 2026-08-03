@@ -5,7 +5,7 @@ from os.path import join, basename
 
 import numpy as np
 
-from ..utils import find_closest_points
+from ..utils import NORMAL_REFERENCE, find_closest_points, normals_to_rot
 
 from . import remesh, center_mesh, compute_scale_factor_lower, scale
 from ..formats.writer import write_topology_file
@@ -32,10 +32,17 @@ def mesh_to_cg(
             continue
 
         if include_normals:
+            incl_normals = geometry.normals
+            if incl_normals is None:
+                incl_normals = np.full(
+                    (geometry.get_number_of_points(), 3),
+                    NORMAL_REFERENCE,
+                    dtype=np.float32,
+                )
             fit = TriangularMesh(mesh)
             kwargs = {
                 "points": geometry.points,
-                "normals": -geometry.normals if flip_normals else geometry.normals,
+                "normals": -incl_normals if flip_normals else incl_normals,
                 "return_indices": True,
             }
             _, vertex_indices = fit.compute_distance(**kwargs)
@@ -44,7 +51,17 @@ def mesh_to_cg(
 
         vertex_indices, incl_indices = np.unique(vertex_indices, return_index=True)
 
-        incl_quat = geometry.quaternions[incl_indices]
+        incl_quats = geometry.quaternions
+        if incl_quats is None:
+            incl_quats = normals_to_rot(
+                np.full(
+                    (geometry.get_number_of_points(), 3),
+                    NORMAL_REFERENCE,
+                    dtype=np.float32,
+                ),
+                scalar_first=True,
+            )
+        incl_quat = incl_quats[incl_indices]
         vertex_maps.append([vertex_indices, incl_indices, incl_quat])
 
     n_inclusions = len(vertex_maps)

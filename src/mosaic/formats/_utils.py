@@ -9,7 +9,6 @@ __all__ = [
     "get_extension",
     "read_density_header",
     "read_star_header",
-    "write_star_header",
 ]
 
 
@@ -99,41 +98,6 @@ def read_star_header(filename: str) -> dict:
         return {"pixel_size": pixel_size, "centered": centered, "shape": shape}
     except Exception:
         return {}
-
-
-def write_star_header(filename: str, pixel_size: float) -> None:
-    """Prepend a Relion ``data_optics`` block recording the pixel size.
-
-    Parameters
-    ----------
-    filename : str
-        Path to an existing STAR file written by
-        :py:meth:`tme.Orientations._to_star`.
-    pixel_size : float
-        Sampling rate in Angstrom per voxel of the source tomogram. Written
-        as ``_rlnImagePixelSize``. No-op if non-positive or None.
-    """
-    if pixel_size is None or pixel_size <= 0:
-        return None
-
-    optics_block = (
-        "data_optics\n"
-        "\n"
-        "loop_\n"
-        "_rlnOpticsGroup\n"
-        "_rlnOpticsGroupName\n"
-        "_rlnImagePixelSize\n"
-        f"1 opticsGroup1 {float(pixel_size)}\n"
-        "\n"
-    )
-
-    with open(filename, mode="r", encoding="utf-8") as ifile:
-        existing = ifile.read()
-
-    with open(filename, mode="w", encoding="utf-8") as ofile:
-        ofile.write(optics_block)
-        ofile.write(existing)
-    return None
 
 
 def _drop_prefix(iterable, target_length: int):

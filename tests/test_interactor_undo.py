@@ -77,6 +77,23 @@ def test_merge_redo_replays(interactor):
     assert interactor.container.get(g2.uuid) is None
 
 
+def test_merge_ignores_listener_reselection(interactor):
+    # merge() emits data_changed internally, so a listener that re-selects
+    # (like the histogram dock) must not hijack which objects get merged.
+    g1 = _add(interactor, 50, seed=1)
+    g2 = _add(interactor, 30, seed=2)
+    g3 = _add(interactor, 10, seed=3)
+
+    interactor.data_changed.connect(lambda: interactor.set_selection_by_uuid([g3.uuid]))
+
+    interactor.set_selection_by_uuid([g1.uuid, g2.uuid])
+    interactor.merge()
+
+    assert interactor.container.get(g1.uuid) is None
+    assert interactor.container.get(g2.uuid) is None
+    assert interactor.container.get(g3.uuid) is not None
+
+
 def test_remove_selection_undo_restores(interactor):
     g1 = _add(interactor, 50, seed=1)
     interactor.set_selection_by_uuid([g1.uuid])
