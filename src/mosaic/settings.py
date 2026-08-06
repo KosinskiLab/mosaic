@@ -94,9 +94,6 @@ class RenderingSettings:
     target_fps: float = 30.0
     parallel_worker: int = max(1, min(8, QThread.idealThreadCount() - 1))
     enable_fxaa: bool = True
-    use_depth_peeling: bool = True
-    max_depth_peels: int = 4
-    occlusion_ratio: float = 0.0
     multisamples: int = 0
     point_smoothing: bool = False
     line_smoothing: bool = False

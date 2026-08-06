@@ -50,10 +50,9 @@ THEME_PAIRINGS = OrderedDict(
 
 LIGHTING_MODES = [
     ("simple", "Simple", "Single headlight"),
-    ("soft", "Soft", "Ambient lighting with SSAO depth shading"),
     ("full", "Full", "Multi-light setup with three-point lighting"),
     ("flat", "Flat", "No shading with uniform flat colors"),
-    ("poster", "Poster", "Light background with edge outlines"),
+    ("poster", "Poster", "Camera lighting with SSAO ambient occlusion shading"),
     (
         "silhouettes",
         "Silhouettes",
@@ -644,58 +643,7 @@ class AppSettingsPanel(QFrame):
 
         section.addWidget(smooth_row)
 
-        dp_row, self._depth_peeling_check = _checkbox_row(
-            "Depth Peeling",
-            Settings.rendering.use_depth_peeling,
-            tooltip="Order-independent transparency rendering",
-        )
-        section.addWidget(dp_row)
-
-        self._dp_detail_container = QWidget()
-        dp_detail_layout = QVBoxLayout(self._dp_detail_container)
-        dp_detail_layout.setContentsMargins(0, 2, 0, 0)
-        dp_detail_layout.setSpacing(2)
-
-        self._max_peels_slider = SliderRow(
-            "Max Peels",
-            min_val=1,
-            max_val=20,
-            default=Settings.rendering.max_depth_peels,
-            decimals=0,
-        )
-        self._max_peels_slider.setToolTip(
-            "Maximum number of transparency layers to resolve"
-        )
-        self._connect_slider(
-            self._max_peels_slider, Settings.rendering, "max_depth_peels", int
-        )
-        dp_detail_layout.addWidget(self._max_peels_slider)
-
-        self._occlusion_slider = SliderRow(
-            "Occlusion",
-            min_val=0.0,
-            max_val=1.0,
-            default=Settings.rendering.occlusion_ratio,
-            decimals=2,
-        )
-        self._occlusion_slider.setToolTip(
-            "Allowed occlusion ratio before stopping depth peeling"
-        )
-        self._connect_slider(
-            self._occlusion_slider, Settings.rendering, "occlusion_ratio", float
-        )
-        dp_detail_layout.addWidget(self._occlusion_slider)
-
-        self._dp_detail_container.setVisible(Settings.rendering.use_depth_peeling)
-        section.addWidget(self._dp_detail_container)
-
-        self._depth_peeling_check.toggled.connect(self._on_depth_peeling_toggled)
-
         self._body_layout.addWidget(section)
-
-    def _on_depth_peeling_toggled(self, checked: bool):
-        self._dp_detail_container.setVisible(checked)
-        self._update_setting(Settings.rendering, "use_depth_peeling", checked)
 
     def _set_setting(self, category, attr, value):
         """Update a setting value without emitting settingsChanged."""

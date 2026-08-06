@@ -56,9 +56,6 @@ def mock_settings():
     with patch("mosaic.gui.Settings") as mock_settings:
         mock_settings.rendering.background_color = [0.1, 0.1, 0.1]
         mock_settings.rendering.background_color_alt = [0.2, 0.2, 0.2]
-        mock_settings.rendering.use_depth_peeling = True
-        mock_settings.rendering.occlusion_ratio = 0.1
-        mock_settings.rendering.max_depth_peels = 4
         mock_settings.rendering.enable_fxaa = True
         mock_settings.rendering.multisamples = 0
         mock_settings.rendering.point_smoothing = True
