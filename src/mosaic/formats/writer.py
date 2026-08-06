@@ -127,7 +127,7 @@ def _write_orientations(
         ``"star"`` or ``"tsv"``.
     vertex_properties : VertexPropertyContainer, optional
         Per-point properties to attach as ``Orientations.metadata``
-        (pytme >= 0.3.4). Silently dropped on older pytme.
+        (pytme >= 0.3.4, silently dropped on older versions).
     **kwargs
         Forwarded to ``Orientations.to_file``.
     """
