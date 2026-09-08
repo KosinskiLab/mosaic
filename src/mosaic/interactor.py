@@ -234,7 +234,14 @@ class DataContainerInteractor(QObject):
         uuids : list of str
             UUIDs to select
         """
-        self.data_list.set_selection(uuids)
+        # Avoids highlighting twice via itemSelectionChanged
+        tree = self.data_list.tree_widget
+        was_blocked = tree.blockSignals(True)
+        try:
+            self.data_list.set_selection(uuids)
+        finally:
+            tree.blockSignals(was_blocked)
+
         self._highlight_selection()
 
     def _on_cluster_selection_changed(self):

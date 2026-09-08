@@ -10,6 +10,8 @@ import vtk
 from vtkmodules.util import numpy_support
 import numpy as np
 
+from mosaic.viewport import hardware_picking
+
 
 class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     def __init__(self, vtk_widget, data_pane, models_pane):
@@ -333,7 +335,8 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
         """Handle left button press events"""
         event_position = [*self.GetInteractor().GetEventPosition(), 0]
 
-        self.prop_picker.Pick(*event_position, self.renderer)
+        with hardware_picking(self.renderer):
+            self.prop_picker.Pick(*event_position, self.renderer)
         picked_actor = self.prop_picker.GetActor()
 
         world_position = self._event_to_worldposition(event_position)

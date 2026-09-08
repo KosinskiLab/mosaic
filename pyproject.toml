@@ -23,7 +23,7 @@ dependencies = [
     "PyQt6>=6.7.1,<6.10; sys_platform == 'darwin'",
     "PyQt6>=6.9.1,<6.10; sys_platform != 'darwin'",
     "pyqtgraph>=0.13.3",
-    "pytme>=0.3.4",
+    "pytme>=0.3.4,<1.0",
     "open3d>=0.18.0",
     "libigl==2.6.1",
     "gpytoolbox>=0.3.0",

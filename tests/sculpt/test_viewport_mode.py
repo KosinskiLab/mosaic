@@ -12,6 +12,7 @@ def test_set_mode_sculpt_constructs_mode_and_activates():
     vm = ViewportInteractor.__new__(ViewportInteractor)
     vm._interaction_mode = "view"
     vm._active_mode = None
+    vm._prop_ids = None
     hud = MagicMock()
     vm._sculpt_hud = hud
     vm._sculpt_controller = None
@@ -37,6 +38,7 @@ def test_set_mode_viewing_tears_down_active_mode():
     vm._interaction_mode = "sculpt"
     prior = MagicMock()
     vm._active_mode = prior
+    vm._prop_ids = None
     vm.vtk_widget = MagicMock()
     interactor = MagicMock()
     vm.vtk_widget.GetRenderWindow().GetInteractor.return_value = interactor
