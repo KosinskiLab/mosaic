@@ -9,6 +9,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import os
 import re
 import shlex
 from dataclasses import dataclass, field
@@ -18,6 +19,36 @@ __all__ = ["ParsedCommand", "parse_command", "format_value", "format_kwargs"]
 
 _TARGET_RE = re.compile(r"^#\d+(-\d+)?$")
 _SPECIAL_TARGETS = {"@last", "*"}
+
+
+def _split_tokens(text: str) -> List[str]:
+    """Split a command line into shell-like tokens.
+
+    Quotes group tokens on every platform.  On Windows the backslash is kept
+    literal, since POSIX escape handling would eat the separators of a native
+    path.
+
+    Parameters
+    ----------
+    text : str
+        Raw command line.
+
+    Returns
+    -------
+    list of str
+        Tokens with quoting resolved.
+
+    Raises
+    ------
+    ValueError
+        If a quotation is left open.
+    """
+    lexer = shlex.shlex(text, posix=True)
+    lexer.whitespace_split = True
+    lexer.commenters = ""
+    if os.name == "nt":
+        lexer.escape = ""
+    return list(lexer)
 
 
 def _coerce_value(value: str) -> Any:
@@ -103,7 +134,7 @@ def format_kwargs(settings: dict) -> str:
     -------
     str
         Space-separated ``key=value`` tokens.  Values containing spaces
-        are quoted so that :func:`shlex.split` can reconstruct them.
+        are quoted so that :func:`parse_command` can reconstruct them.
     """
     parts = []
     for key, value in settings.items():
@@ -197,7 +228,7 @@ def parse_command(text: str) -> Optional[ParsedCommand]:
         return None
 
     try:
-        tokens = shlex.split(text)
+        tokens = _split_tokens(text)
     except ValueError as exc:
         raise ValueError(f"Syntax error: {exc}") from None
     if not tokens:

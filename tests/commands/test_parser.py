@@ -8,10 +8,12 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import math
 import shlex
+from types import SimpleNamespace
 
 import pytest
 import numpy as np
 
+from mosaic.commands import parser
 from mosaic.commands.parser import (
     ParsedCommand,
     parse_command,
@@ -521,3 +523,45 @@ class TestResolvePositional:
         cmd.resolve_positional(["param1"])
         assert cmd.targets == ["#0", "#1"]
         assert cmd.kwargs == {"param1": "val"}
+
+
+class TestPlatformPathSplitting:
+    """Backslash means a path separator on Windows and an escape elsewhere."""
+
+    WIN_PATH = r"C:\Users\me\AppData\Local\Temp\out.xyz"
+
+    @staticmethod
+    def _as_platform(monkeypatch, name):
+        """Swap the parser's view of the platform.
+
+        Patching ``os.name`` globally would make pathlib hand out WindowsPath
+        objects, which breaks pytest's own failure reporting.
+        """
+        monkeypatch.setattr(parser, "os", SimpleNamespace(name=name))
+
+    def test_native_windows_path_is_not_mangled(self, monkeypatch):
+        self._as_platform(monkeypatch, "nt")
+        cmd = parse_command(f"open filepath={self.WIN_PATH}")
+        assert cmd.kwargs["filepath"] == self.WIN_PATH
+
+    def test_windows_path_keeps_target_reference(self, monkeypatch):
+        self._as_platform(monkeypatch, "nt")
+        cmd = parse_command(f"save #0 filepath={self.WIN_PATH}")
+        assert cmd.targets == ["#0"]
+        assert cmd.kwargs["filepath"] == self.WIN_PATH
+
+    def test_quoted_windows_path_with_spaces(self, monkeypatch):
+        self._as_platform(monkeypatch, "nt")
+        cmd = parse_command('open filepath="C:\\Program Files\\data.xyz"')
+        assert cmd.kwargs["filepath"] == r"C:\Program Files\data.xyz"
+
+    def test_posix_keeps_backslash_escapes(self, monkeypatch):
+        self._as_platform(monkeypatch, "posix")
+        cmd = parse_command(r"open filepath=/tmp/my\ file.xyz")
+        assert cmd.kwargs["filepath"] == "/tmp/my file.xyz"
+
+    def test_quoted_value_roundtrips_on_both_platforms(self, monkeypatch):
+        line = f"open filepath={shlex.quote(self.WIN_PATH)}"
+        for name in ("nt", "posix"):
+            self._as_platform(monkeypatch, name)
+            assert parse_command(line).kwargs["filepath"] == self.WIN_PATH
