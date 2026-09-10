@@ -4,7 +4,6 @@ from typing import Dict, List
 
 import numpy as np
 
-from ._utils import write_star_header
 from .records import GeometryData
 
 
@@ -109,6 +108,7 @@ def _write_orientations(
     file_format,
     *,
     vertex_properties=None,
+    optics=None,
     **kwargs,
 ):
     """Convert oriented points to ZYZ Eulers and write via ``tme.Orientations``.
@@ -127,7 +127,7 @@ def _write_orientations(
         ``"star"`` or ``"tsv"``.
     vertex_properties : VertexPropertyContainer, optional
         Per-point properties to attach as ``Orientations.metadata``
-        (pytme >= 0.3.4). Silently dropped on older pytme.
+        (pytme >= 0.3.4, silently dropped on older versions).
     **kwargs
         Forwarded to ``Orientations.to_file``.
     """
@@ -145,13 +145,12 @@ def _write_orientations(
         }
         metadata["_rlnClassNumber"] = entities
 
-    common = {"translations": points, "rotations": rotations}
-    try:
-        orientations = Orientations(**common, metadata=metadata)
-    except TypeError:
-        orientations = Orientations(
-            **common, scores=np.zeros(rotations.shape[0]), details=entities
-        )
+    orientations = Orientations(
+        translations=points,
+        rotations=rotations,
+        metadata=metadata,
+        optics=optics if optics is not None else {},
+    )
     orientations.to_file(path, file_format=file_format, **kwargs)
 
 
@@ -254,6 +253,12 @@ def write_star(records, path, sampling, shape=None, relion_5_format=False, **_):
         vp.set_property("_rlnTomoSizeY", np.full(n, int(shape_arr[1])))
         vp.set_property("_rlnTomoSizeZ", np.full(n, int(shape_arr[2])))
 
+    optics = {
+        "_rlnOpticsGroup": 1,
+        "_rlnOpticsGroupName": "opticsGroup1",
+        "_rlnImagePixelSize": sampling,
+    }
+
     _write_orientations(
         points,
         prepared["quaternions"],
@@ -261,10 +266,9 @@ def write_star(records, path, sampling, shape=None, relion_5_format=False, **_):
         path,
         file_format="star",
         vertex_properties=prepared["vertex_properties"],
+        optics=optics,
         **orientation_kwargs,
     )
-
-    write_star_header(path, sampling)
 
 
 def write_tsv(records, path, sampling, **_):

@@ -8,11 +8,137 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from contextlib import contextmanager
+
 import vtk
 import numpy as np
 from qtpy.QtCore import Qt, QObject, QEvent, QTimer, Signal
 
-__all__ = ["ViewportInteractor"]
+__all__ = ["ViewportInteractor", "PropIdBuffer", "hardware_picking"]
+
+
+@contextmanager
+def hardware_picking(renderer):
+    """Detach the renderer's custom render pass for the duration of a pick.
+
+    vtkPropPicker resolves props through vtkHardwareSelector, which re-renders
+    the scene with per-prop id colors. vtkOpenGLRenderer::DeviceRender delegates
+    to the custom pass whenever one is installed and never reaches the selector
+    branch, so the id buffer stays empty and every pick misses under the poster
+    and silhouettes lighting modes, which install a pass (see App.set_lighting_mode).
+
+    Parameters
+    ----------
+    renderer : vtk.vtkRenderer
+        Renderer the pick is performed in.
+
+    Yields
+    ------
+    vtk.vtkRenderer
+        The same renderer, with no render pass installed.
+    """
+    render_pass = renderer.GetPass()
+    if render_pass is not None:
+        renderer.SetPass(None)
+    try:
+        yield renderer
+    finally:
+        if render_pass is not None:
+            renderer.SetPass(render_pass)
+
+
+class PropIdBuffer:
+    """Screen-space snapshot of which prop occupies which pixel.
+
+    Parameters
+    ----------
+    renderer : vtk.vtkRenderer
+        Renderer the snapshot is taken from.
+    """
+
+    def __init__(self, renderer):
+        self._renderer = renderer
+        self._selector = None
+        self._picker = None
+        self._state = None
+
+    def invalidate(self) -> None:
+        """Discard the snapshot so the next query recaptures it."""
+        self._selector = None
+        self._state = None
+
+    def prop_at(self, x: int, y: int):
+        """Return the prop at display coordinates *x*, *y*, or None.
+
+        Parameters
+        ----------
+        x, y : int
+            Display coordinates, origin at the lower left of the render window.
+
+        Returns
+        -------
+        vtk.vtkProp or None
+            Prop rendered at that pixel. None when the pixel lies outside the
+            render window, which happens while dragging past its edge.
+        """
+        x, y = int(x), int(y)
+        width, height = self._renderer.GetRenderWindow().GetSize()
+        if not (0 <= x < width and 0 <= y < height):
+            return None
+
+        if self._state is None or self._state != self._state_key():
+            self._capture()
+
+        if self._selector is None:
+            return self._pick_directly(x, y)
+
+        selection = self._selector.GenerateSelection(x, y, x, y)
+        if selection is None or selection.GetNumberOfNodes() == 0:
+            return None
+
+        properties = selection.GetNode(0).GetProperties()
+        prop_id = properties.Get(vtk.vtkSelectionNode.PROP_ID())
+        if prop_id is None or prop_id < 0:
+            return None
+        return self._selector.GetPropFromID(prop_id)
+
+    def _state_key(self):
+        """Camera and window state the snapshot was taken under."""
+        camera = self._renderer.GetActiveCamera()
+        return (camera.GetMTime(), self._renderer.GetRenderWindow().GetSize())
+
+    def _capture(self) -> None:
+        """Render the id buffer for the whole viewport and read it back."""
+        self._selector = None
+
+        width, height = self._renderer.GetRenderWindow().GetSize()
+        if width <= 0 or height <= 0:
+            self._state = self._state_key()
+            return None
+
+        selector = vtk.vtkHardwareSelector()
+        selector.SetRenderer(self._renderer)
+        # Prop ids alone. The cell and point id passes cost several times as
+        # much to render and read back, and nothing here consumes them.
+        selector.SetFieldAssociation(vtk.vtkDataObject.FIELD_ASSOCIATION_CELLS)
+        selector.SetActorPassOnly(True)
+        selector.SetArea(0, 0, width - 1, height - 1)
+
+        with hardware_picking(self._renderer):
+            captured = selector.CaptureBuffers()
+
+        if captured:
+            self._selector = selector
+        self._state = self._state_key()
+        return None
+
+    def _pick_directly(self, x: int, y: int):
+        """Fall back to a per-event prop pick when no snapshot is available."""
+        if self._picker is None:
+            self._picker = vtk.vtkPropPicker()
+        with hardware_picking(self._renderer):
+            self._picker.Pick(x, y, 0, self._renderer)
+        return self._picker.GetViewProp()
 
 
 class ViewportInteractor(QObject):
@@ -30,6 +156,7 @@ class ViewportInteractor(QObject):
         self.rendered_actors = set()
         self._interaction_mode = None
         self._world_picker = vtk.vtkWorldPointPicker()
+        self._prop_ids = None
         self._last_lod_budget = None
         self._active_mode = None
         self._sculpt_hud = None
@@ -68,6 +195,10 @@ class ViewportInteractor(QObject):
 
         self._teardown_active_mode()
         self._interaction_mode = None
+
+        # Modes add and remove their own actors without going through render()
+        if self._prop_ids is not None:
+            self._prop_ids.invalidate()
 
         interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
 
@@ -163,8 +294,7 @@ class ViewportInteractor(QObject):
 
         # CurrentMode is a protected C++ member with no Python setter. Flip it
         # to VTKISRBP_SELECT by firing CharEvent through the interactor so VTK
-        # dispatches OnChar via C++ virtual that hits the rubber-band
-        # override (which only toggles the flag)
+        # dispatches OnChar via C++ virtual that hits the rubber-band override
         self.interactor.SetKeyCode("r")
         self.interactor.SetKeySym("r")
         self.interactor.CharEvent()
@@ -176,10 +306,14 @@ class ViewportInteractor(QObject):
             (pos.x(), pos.y(), 0), return_event_position=return_event_position
         )
 
-    def _get_event_position(self, position, return_event_position: bool = True):
+    def _display_position(self, position):
+        """Map a Qt widget *position* to VTK display coordinates."""
         dpr = self.vtk_widget.devicePixelRatio()
         y = (self.vtk_widget.height() - position[1]) * dpr
-        event_position = (position[0] * dpr, y, 0)
+        return (position[0] * dpr, y, 0)
+
+    def _get_event_position(self, position, return_event_position: bool = True):
+        event_position = self._display_position(position)
         r = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
         self._world_picker.Pick(*event_position, r)
         world_position = self._world_picker.GetPickPosition()
@@ -202,20 +336,24 @@ class ViewportInteractor(QObject):
             QEvent.Type.MouseMove,
         ):
             if event.buttons() & Qt.MouseButton.LeftButton:
-                world_position, event_position = self.get_event_position(event, True)
                 if self._interaction_mode == "draw":
+                    world_position, _ = self.get_event_position(event, True)
                     self.current_target.add_point(world_position)
                 elif self._interaction_mode == "pick":
+                    pos = event.pos()
+                    event_position = self._display_position((pos.x(), pos.y()))
                     self.current_target.pick_prop(self._pick_prop_at(event_position))
                 return True
         return super().eventFilter(watched_obj, event)
 
     def _pick_prop_at(self, event_position):
-        """Run a VTK prop-pick at *event_position* and return the picked prop (or None)."""
-        picker = vtk.vtkPropPicker()
-        renderer = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
-        picker.Pick(*event_position, renderer)
-        return picker.GetViewProp()
+        """Return the prop at *event_position* in display coordinates (or None)."""
+        if self._prop_ids is None:
+            renderer = (
+                self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
+            )
+            self._prop_ids = PropIdBuffer(renderer)
+        return self._prop_ids.prop_at(event_position[0], event_position[1])
 
     def _on_area_pick(self, obj, event):
         frustum = obj.GetFrustum()
@@ -333,6 +471,11 @@ class ViewportInteractor(QObject):
     def render(self, defer_render: bool = False):
         """Synchronize VTK actors and pane tree widgets, then render."""
         renderer = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
+
+        # Actor set, visibility and geometry may all have moved. render_vtk
+        # deliberately does not do this, so highlighting keeps the snapshot.
+        if self._prop_ids is not None:
+            self._prop_ids.invalidate()
 
         current_actors = set()
         for pane in self.panes:

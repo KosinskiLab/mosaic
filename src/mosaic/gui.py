@@ -73,6 +73,11 @@ from .widgets.volume_viewer_hud import VolumeViewerHUD
 from .widgets.viewport_placeholder import ViewportPlaceholder, default_actions
 
 
+# From v1.3.2 these are no longer configurable in favor of vtk recommended defaults
+DEPTH_PEEL_OCCLUSION_RATIO = 0.1
+DEPTH_PEEL_MAX_LAYERS = 4
+
+
 class App(QMainWindow):
 
     def __init__(self):
@@ -300,7 +305,7 @@ class App(QMainWindow):
         saved = Settings.ui.window_geometry
         if saved and self.restoreGeometry(saved):
             super().show()
-            return
+            return None
 
         self.resize(self.sizeHint())
         super().show()
@@ -316,11 +321,14 @@ class App(QMainWindow):
         Parameters
         ----------
         mode: str
-            Can be one of 'simple', 'soft', 'full', 'flat', 'poster',
-            'silhouettes'
+            Can be one of 'simple', 'full', 'flat', 'poster', 'silhouettes'.
         """
-        renderer = self.renderer
+        # 'soft' was retired in v1.3.2; poster covers the same look. Fall back so
+        # persisted sessions and saved settings keep working.
+        if mode == "soft":
+            mode = "poster"
 
+        renderer = self.renderer
         current_pass = renderer.GetPass()
         if current_pass is not None:
             current_pass.ReleaseGraphicsResources(self.render_window)
@@ -336,24 +344,6 @@ class App(QMainWindow):
 
         if mode == "simple":
             pass
-
-        elif mode == "soft":
-            renderer.RemoveAllLights()
-            light = vtk.vtkLight()
-            light.SetLightTypeToHeadlight()
-            light.SetAmbientColor(1.0, 1.0, 1.0)
-            light.SetDiffuseColor(0.6, 0.6, 0.6)
-            light.SetSpecularColor(0.1, 0.1, 0.1)
-            light.SetIntensity(1.5)
-            renderer.AddLight(light)
-
-            passes = vtk.vtkRenderStepsPass()
-            ssao = vtk.vtkSSAOPass()
-            ssao.SetDelegatePass(passes)
-            ssao.SetRadius(self._ssao_radius(renderer))
-            ssao.SetKernelSize(128)
-            ssao.BlurOn()
-            renderer.SetPass(ssao)
 
         elif mode == "full":
             renderer.RemoveAllLights()
@@ -389,29 +379,69 @@ class App(QMainWindow):
                 l.SetLightTypeToCameraLight()
                 renderer.AddLight(l)
 
-            passes = vtk.vtkRenderStepsPass()
+        if mode == "poster":
             ssao = vtk.vtkSSAOPass()
-            ssao.SetDelegatePass(passes)
-            ssao.SetRadius(self._ssao_radius(renderer))
+
+            # Eyeball the SSAO radius
+            bounds = renderer.ComputeVisiblePropBounds()
+            diag = max(
+                bounds[1] - bounds[0], bounds[3] - bounds[2], bounds[5] - bounds[4]
+            )
+            radius = diag * 0.02 if diag > 0 else 50
+
+            ssao.SetRadius(radius)
+            ssao.SetBias(0.02 * radius)
             ssao.SetKernelSize(128)
             ssao.BlurOn()
-            renderer.SetPass(ssao)
+            renderer.SetPass(self._screen_effect_pass(ssao))
 
         elif mode == "silhouettes":
-            passes = vtk.vtkRenderStepsPass()
-            edl = vtk.vtkEDLShading()
-            edl.SetDelegatePass(passes)
-            renderer.SetPass(edl)
+            renderer.SetPass(self._screen_effect_pass(vtk.vtkEDLShading()))
 
     @staticmethod
-    def _ssao_radius(renderer, fraction: float = 0.02, fallback: float = 50.0):
-        # SSAO radius is in world units, so a fixed value over- or under-shoots
-        # depending on data scale. Tie it to the visible scene diagonal.
-        bounds = renderer.ComputeVisiblePropBounds()
-        diag = max(bounds[1] - bounds[0], bounds[3] - bounds[2], bounds[5] - bounds[4])
-        if diag <= 0:
-            return fallback
-        return fraction * diag
+    def _screen_effect_pass(effect):
+        """Wrap a screen-space effect pass in a full render sequence.
+
+        Notes
+        -----
+        This follows Kitware's recommended layout for shading of opaque
+        geometries under scree-space effects such as SSAO and EDL. Briefly,
+        the effect wraps the opaque pass alone while translucent and volumetric
+        geometries render afterwards through dual depth peeling. Setting any
+        custom pass also disables the renderer's built-in depth peeling,
+        so it is recreated here.
+
+        Parameters
+        ----------
+        effect : vtkImageProcessingPass
+            Screen-space pass (e.g. vtkSSAOPass, vtkEDLShading) to apply.
+
+        Returns
+        -------
+        vtkCameraPass
+            The render pass to hand to ``renderer.SetPass``.
+        """
+        opaque_camera = vtk.vtkCameraPass()
+        opaque_camera.SetDelegatePass(vtk.vtkOpaquePass())
+        effect.SetDelegatePass(opaque_camera)
+
+        collection = vtk.vtkRenderPassCollection()
+        collection.AddItem(vtk.vtkLightsPass())
+        collection.AddItem(effect)
+
+        peeling = vtk.vtkDualDepthPeelingPass()
+        peeling.SetMaximumNumberOfPeels(DEPTH_PEEL_MAX_LAYERS)
+        peeling.SetOcclusionRatio(DEPTH_PEEL_OCCLUSION_RATIO)
+        peeling.SetTranslucentPass(vtk.vtkTranslucentPass())
+        peeling.SetVolumetricPass(vtk.vtkVolumetricPass())
+        collection.AddItem(peeling)
+        collection.AddItem(vtk.vtkOverlayPass())
+
+        sequence = vtk.vtkSequencePass()
+        sequence.SetPasses(collection)
+        camera = vtk.vtkCameraPass()
+        camera.SetDelegatePass(sequence)
+        return camera
 
     def apply_render_settings(self):
         dark = [float(x) for x in Settings.rendering.background_color]
@@ -434,9 +464,9 @@ class App(QMainWindow):
             self.renderer.SetBackground(*active)
             self.renderer.GradientBackgroundOff()
         self.renderer_next_background = inactive
-        self.renderer.SetUseDepthPeeling(Settings.rendering.use_depth_peeling)
-        self.renderer.SetOcclusionRatio(Settings.rendering.occlusion_ratio)
-        self.renderer.SetMaximumNumberOfPeels(Settings.rendering.max_depth_peels)
+        self.renderer.SetUseDepthPeeling(True)
+        self.renderer.SetOcclusionRatio(DEPTH_PEEL_OCCLUSION_RATIO)
+        self.renderer.SetMaximumNumberOfPeels(DEPTH_PEEL_MAX_LAYERS)
         self.renderer.SetUseFXAA(Settings.rendering.enable_fxaa)
 
         self.render_window.SetMultiSamples(Settings.rendering.multisamples)
@@ -444,6 +474,11 @@ class App(QMainWindow):
         self.render_window.SetLineSmoothing(Settings.rendering.line_smoothing)
         self.render_window.SetPolygonSmoothing(Settings.rendering.polygon_smoothing)
         self.render_window.SetDesiredUpdateRate(Settings.rendering.target_fps)
+
+        # 'soft' was retired in v1.3.2; migrate any persisted value to poster so
+        # the settings dropdown stays in sync with what actually renders.
+        if Settings.rendering.lighting_mode == "soft":
+            Settings.rendering.lighting_mode = "poster"
 
         self.set_lighting_mode(Settings.rendering.lighting_mode)
         self.render_window.Render()

@@ -129,11 +129,9 @@ def build_lod_actor(points: np.ndarray, indices: np.ndarray):
     lod.SetPoints(vtk_pts)
 
     n_lod = len(indices)
-    cell_arr = np.empty(n_lod + 1, dtype=np.int64)
-    cell_arr[0] = n_lod
-    cell_arr[1:] = np.arange(n_lod, dtype=np.int64)
+    connectivity = np.arange(n_lod, dtype=np.int64)
     cells = vtkCellArray()
-    cells.SetCells(1, numpy_support.numpy_to_vtkIdTypeArray(cell_arr))
+    cells.SetData(n_lod, numpy_support.numpy_to_vtkIdTypeArray(connectivity))
     lod.SetVerts(cells)
 
     mapper = vtk.vtkPolyDataMapper()

@@ -134,7 +134,7 @@ class GeometryData:
     def normals(self) -> Optional[np.ndarray]:
         n = self.polydata.GetPointData().GetNormals()
         if n is None or n.GetNumberOfTuples() == 0:
-            return np.full((self.get_number_of_points(), 3), NORMAL_REFERENCE)
+            return None
         return numpy_support.vtk_to_numpy(n)
 
     @normals.setter
@@ -171,21 +171,22 @@ class GeometryData:
 
     def set_faces(self, faces):
         """Set triangular face connectivity on the polydata."""
-        # Use int64 explicitly because numpy_to_vtkIdTypeArray() requires int64 input.
-        # dtype=int is platform-dependent (int32 on Windows, typically int64 on
-        # Linux/macOS), which can otherwise cause a ValueError.
+        # Use int64 to avoid platform-dependent promotion schemes which may
+        # not satisfy the int64 requirement of numpy_to_vtkIdTypeArray.
         faces = np.asarray(faces, dtype=np.int64)
-        if faces.ndim == 2 and faces.shape[1] == 3:
-            faces = np.concatenate(
-                (np.full((faces.shape[0], 1), fill_value=3), faces),
-                axis=1,
-                dtype=np.int64,
-            )
         poly_cells = vtkCellArray()
-        poly_cells.SetCells(
-            faces.shape[0],
-            numpy_support.numpy_to_vtkIdTypeArray(faces.ravel()),
-        )
+        if faces.ndim == 2 and faces.shape[1] == 3:
+            connectivity = numpy_support.numpy_to_vtkIdTypeArray(
+                np.ascontiguousarray(faces.ravel())
+            )
+            poly_cells.SetData(3, connectivity)
+        else:
+            # Pre vtk 6.9
+            poly_cells.ImportLegacyFormat(
+                numpy_support.numpy_to_vtkIdTypeArray(
+                    np.ascontiguousarray(faces.ravel())
+                )
+            )
         self.polydata.SetPolys(poly_cells)
         self.polydata.SetVerts(None)
         self.polydata.Modified()
@@ -287,11 +288,10 @@ class GeometryData:
         if (n := self.polydata.GetNumberOfPoints()) == 0:
             return None
 
-        cell_arr = np.empty(n + 1, dtype=np.int64)
-        cell_arr[0] = n
-        cell_arr[1:] = np.arange(n, dtype=np.int64)
+        # Migrated from SetCells in vtk 6.9+
+        connectivity = np.arange(n, dtype=np.int64)
         vertex_cells = vtkCellArray()
-        vertex_cells.SetCells(1, numpy_support.numpy_to_vtkIdTypeArray(cell_arr))
+        vertex_cells.SetData(n, numpy_support.numpy_to_vtkIdTypeArray(connectivity))
         self.polydata.SetVerts(vertex_cells)
 
 
@@ -537,36 +537,40 @@ class Geometry:
         elif len(geometries) == 1:
             return geometries[0]
 
-        data = {
-            "points": [],
-            "quaternions": [],
-            "normals": [],
-            "models": [],
-        }
-
-        all_have_normals = True
-        all_have_quaternions = True
+        counts = []
+        normals_per_source = []
+        quats_per_source = []
+        models = []
+        points = []
         for geometry in geometries:
             _points, _normals, _quaternions = geometry.get_point_data()
-
-            data["points"].append(_points)
-            if _normals is None:
-                all_have_normals = False
-            else:
-                data["normals"].append(_normals)
-
-            if _quaternions is None:
-                all_have_quaternions = False
-            else:
-                data["quaternions"].append(_quaternions)
-
+            points.append(_points)
+            counts.append(geometry.get_number_of_points())
+            normals_per_source.append(_normals)
+            quats_per_source.append(_quaternions)
             if (model := geometry.model) is not None:
-                data["models"].append(model)
+                models.append(model)
 
-        if not all_have_normals:
-            data["normals"] = []
-        if not all_have_quaternions:
-            data["quaternions"] = []
+        def _fill(per_source, fill_row):
+            # None unless at least one source carries the attribute; otherwise
+            # concatenate, filling absent sources with the reference row.
+            if all(a is None for a in per_source):
+                return None
+            fill_row = np.asarray(fill_row, dtype=np.float32)
+            parts = [
+                a if a is not None else np.tile(fill_row, (c, 1))
+                for a, c in zip(per_source, counts)
+            ]
+            return np.concatenate(parts)
+
+        merged_normals = _fill(normals_per_source, NORMAL_REFERENCE)
+        identity_quat = normals_to_rot(
+            np.asarray(NORMAL_REFERENCE, dtype=np.float32)[None], scalar_first=True
+        )[0]
+
+        # quats_per_source holds raw STORED quaternions, so a source with
+        # real normals but no stored quaternions is filled with identity_quat
+        merged_quaternions = _fill(quats_per_source, identity_quat)
 
         # Merging Geometries with different sampling rate is an underdetermined
         # problem without user intervention. Computing the maximum of geometries
@@ -582,14 +586,14 @@ class Geometry:
         ][0]
 
         model = None
-        if len(data["models"]):
+        if len(models):
             from .parametrization import merge
 
-            model = merge(data.pop("models"))
+            model = merge(models)
 
         # Merging VolumeGeometries is awkward because they may not represent
         # the same volume. For now we fallback to point clouds.
-        if representation == "volume":
+        if representation in ("volume", "segmentation"):
             representation = "pointcloud"
             _ = appearance.pop("volume_path", None)
 
@@ -607,10 +611,9 @@ class Geometry:
             ),
         }
 
-        state |= {
-            k: np.concatenate(data[k]) if len(data[k]) else None
-            for k in ("points", "quaternions", "normals")
-        }
+        state["points"] = np.concatenate(points)
+        state["normals"] = merged_normals
+        state["quaternions"] = merged_quaternions
 
         ret = cls.__new__(cls)
         ret.__setstate__(state)
@@ -720,16 +723,17 @@ class Geometry:
         Returns
         -------
         np.ndarray or None
-            Quaternions in scalar-first format (n_points, 4), or None if not set.
+            Quaternions in scalar-first format (n_points, 4). Stored
+            quaternions are returned as-is; otherwise they are derived on
+            demand from real normals (never persisted); ``None`` when no
+            orientation data exists.
         """
-        quaternions = self._geometry_data.quaternions
-        if quaternions is not None:
-            return quaternions
-        if self._geometry_data.points is not None:
-            warnings.warn("Computing quaternions from associated normals.")
-            quaternions = normals_to_rot(self.normals, scalar_first=True)
-            self.quaternions = quaternions
-        return quaternions
+        stored = self._geometry_data.quaternions
+        if stored is not None:
+            return stored
+        if self.has_normals:
+            return normals_to_rot(self.normals, scalar_first=True)
+        return None
 
     @quaternions.setter
     def quaternions(self, quaternions: np.ndarray):
@@ -740,7 +744,12 @@ class Geometry:
         -----------
         quaternions : array-like
             Quaternion values in scalar-first format (n, (w, x, y, z)).
+            Pass ``None`` to clear.
         """
+        if quaternions is None:
+            self._geometry_data.quaternions = None
+            return None
+
         quaternions = np.asarray(quaternions, dtype=np.float32)
         if quaternions.shape[0] != self.points.shape[0]:
             warnings.warn("Number of orientations must match number of points.")
@@ -1073,11 +1082,23 @@ class Geometry:
             normals = apply_quat(quaternions, NORMAL_REFERENCE)
             self.quaternions = quaternions
 
-        if normals is None and points is not None:
-            normals = np.full_like(points, fill_value=NORMAL_REFERENCE)
-
         if normals is not None:
             self.normals = normals
+
+        n_points = self.get_number_of_points()
+        if (
+            normals is None
+            and self.has_normals
+            and len(self._geometry_data.normals) != n_points
+        ):
+            self.normals = None
+        stored_quaternions = self._geometry_data.quaternions
+        if (
+            quaternions is None
+            and stored_quaternions is not None
+            and len(stored_quaternions) != n_points
+        ):
+            self.quaternions = None
 
         if faces is not None:
             self._set_faces(faces)
@@ -1375,9 +1396,6 @@ class VolumeGeometry(Geometry):
         self._volume.SetSpacing(volume_sampling_rate)
         self._volume.SetDimensions(volume.shape)
         self._volume.AllocateScalars(vtk.VTK_FLOAT, 1)
-
-        if self.quaternions is None:
-            self.quaternions = normals_to_rot(self.normals, scalar_first=True)
 
         self._raw_volume = volume
         volume_vtk = numpy_support.numpy_to_vtk(

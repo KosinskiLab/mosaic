@@ -376,6 +376,8 @@ def projected_angle(
     )
     normals = fit.compute_vertex_normals()[indices]
 
+    if geometry.normals is None:
+        return None
     dot = np.sum(np.multiply(normals, geometry.normals), axis=-1)
     return np.degrees(np.arccos(np.clip(dot, a_min=-1, a_max=1)))
 

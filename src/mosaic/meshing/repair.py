@@ -375,7 +375,7 @@ def fair_mesh(
     curvature_weight: float = 0.0,
     pressure: float = 0.0,
     n_ring: int = 0,
-    **kwargs
+    **kwargs,
 ):
     """
     Minimizes vertex displacement and polyharmonic energy of a mesh at vids.

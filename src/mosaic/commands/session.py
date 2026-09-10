@@ -37,7 +37,7 @@ class _SessionTarget:
     def __init__(self, container):
         self.container = container
 
-    def add(self, geom) -> None:
+    def add(self, geom, *args, **kwargs) -> None:
         """Add *geom* directly to the container (no palette colour assignment)."""
         self.container.add(geom)
         return None

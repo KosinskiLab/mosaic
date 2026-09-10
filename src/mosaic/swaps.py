@@ -47,18 +47,16 @@ class GeometrySubset:
 
 
 def restore_geometry(target, uuid: str, geom) -> None:
-    """Set ``uuid`` to ``geom`` exactly, or remove it when ``geom`` is None.
-
-    Adds go through ``target.add`` so the target's add policy (e.g. the GUI
-    palette colour) is applied; removals and updates go through the container.
-    """
+    """Set ``uuid`` to ``geom`` exactly, or remove it when ``geom`` is None."""
     prev = target.container.get(uuid)
     if geom is None:
         if prev is not None:
             target.container.remove(uuid)
     elif prev is None:
         geom.uuid = uuid
-        target.add(geom)
+        # DataContainerInteractor.add applies custom base colors to implement
+        # coloring mode By Entity. When undoing we want to retain the old color
+        target.add(geom, color=geom._appearance.get("base_color"))
     else:
         target.container.update(uuid, geom)
     return None

@@ -1,3 +1,5 @@
+name: CI
+
 on:
   push:
     branches:
@@ -13,34 +15,80 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # build:
-  #   runs-on: ubuntu-latest
-  #   container:
-  #     image: python:3.11.5
-  #     options: --shm-size=8gb
-  #   steps:
-  #     - name: Checkout Repository
-  #       uses: actions/checkout@v4
-  #     - name: Build Package
-  #       run: |
-  #         python -mpip install .
-  #     - name: Upload Distribution as Artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: dist
-  #         path: dist/*
-      # - name: Test with pytest
-      #   run: |
-      #     pip install pytest pytest-cov importlib-resources
-      #     ulimit -n 4096
-      #     pytest -vvv
-  docs:
-    runs-on: ubuntu-latest
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            experimental: false
+          - os: windows-latest
+            experimental: true
+          - os: macos-latest
+            experimental: false
+
+    env:
+      QT_QPA_PLATFORM: offscreen
+      MPLBACKEND: Agg
+      PYTHONFAULTHANDLER: '1'
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: pip
+
+      - name: Install Linux system libraries for Qt/VTK
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xvfb \
+            libgl1 \
+            libegl1 \
+            libxkbcommon0 \
+            libdbus-1-3 \
+            libxrender1 \
+            libfontconfig1
+
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade "pip>=25.1"
+          python -m pip install .
+          python -m pip install --group test
+
+      # VTK needs an X display even with Qt headless.
+      - name: Run tests
+        if: runner.os == 'Linux'
+        continue-on-error: ${{ matrix.experimental }}
+        run: xvfb-run -a -s "-screen 0 1920x1080x24" pytest tests/ -v --durations=10
+
+      - name: Run tests
+        if: runner.os != 'Linux'
+        continue-on-error: ${{ matrix.experimental }}
+        run: pytest tests/ -v --durations=10
+
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      MPLBACKEND: Agg
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -50,14 +98,12 @@ jobs:
             libxrender1 \
             libfontconfig1 \
             xvfb
-      - name: Set matplotlib backend and display
-        run: |
-          echo "MPLBACKEND=Agg" >> $GITHUB_ENV
-          echo "DISPLAY=:99" >> $GITHUB_ENV
+
       - name: Install dependencies
         run: |
-          python -mpip install .
-          python -mpip install \
+          python -m pip install --upgrade pip
+          python -m pip install .
+          python -m pip install \
             Sphinx \
             pydata-sphinx-theme \
             sphinx_design \
@@ -66,13 +112,66 @@ jobs:
             sphinx-tabs \
             matplotlib \
             sphinxcontrib-youtube
+
       - name: Sphinx build
-        run: |
-          xvfb-run -a -s "-screen 0 1024x768x24" sphinx-build docs _build
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: xvfb-run -a -s "-screen 0 1024x768x24" sphinx-build docs _build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docs-html
+          path: _build/
+          retention-days: 7
+
+  deploy:
+    name: deploy docs
+    needs: [test, docs]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: docs-html
+          path: _build
+
+      - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: _build/
           force_orphan: true
+
+  build:
+    name: build package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install Poetry
+        run: python -m pip install "poetry>=2.2"
+
+      - name: Validate pyproject
+        run: poetry check
+
+      - name: Build sdist and wheel
+        run: poetry build
+
+      - name: Check metadata
+        run: |
+          python -m pip install twine
+          python -m twine check dist/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
+          path: dist/
