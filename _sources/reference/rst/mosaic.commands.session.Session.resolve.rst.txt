@@ -1,0 +1,6 @@
+﻿Session.resolve
+=======================================
+
+.. currentmodule:: mosaic.commands.session
+
+.. automethod:: Session.resolve

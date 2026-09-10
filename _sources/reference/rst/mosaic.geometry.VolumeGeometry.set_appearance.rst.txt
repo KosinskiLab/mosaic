@@ -1,0 +1,6 @@
+﻿VolumeGeometry.set\_appearance
+=============================================
+
+.. currentmodule:: mosaic.geometry
+
+.. automethod:: VolumeGeometry.set_appearance

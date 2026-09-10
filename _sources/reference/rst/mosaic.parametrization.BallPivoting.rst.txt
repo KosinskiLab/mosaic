@@ -1,0 +1,45 @@
+﻿BallPivoting
+============
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: BallPivoting
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+         
+         
+         
+         
+         
+            BallPivoting.fit
+         
+         
+         
+         
+         
+         
+         
+   
+   

@@ -1,0 +1,6 @@
+﻿read\_session\_meta
+================================
+
+.. currentmodule:: mosaic.formats
+
+.. autofunction:: read_session_meta

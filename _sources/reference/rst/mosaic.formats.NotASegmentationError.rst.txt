@@ -1,0 +1,6 @@
+﻿mosaic.formats.NotASegmentationError
+====================================
+
+.. currentmodule:: mosaic.formats
+
+.. autoexception:: NotASegmentationError

@@ -1,0 +1,45 @@
+﻿AlphaShape
+==========
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: AlphaShape
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+         
+         
+         
+         
+         
+            AlphaShape.fit
+         
+         
+         
+         
+         
+         
+         
+   
+   

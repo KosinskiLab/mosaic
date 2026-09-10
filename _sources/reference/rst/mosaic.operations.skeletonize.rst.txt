@@ -1,0 +1,6 @@
+﻿skeletonize
+=============================
+
+.. currentmodule:: mosaic.operations
+
+.. autofunction:: skeletonize

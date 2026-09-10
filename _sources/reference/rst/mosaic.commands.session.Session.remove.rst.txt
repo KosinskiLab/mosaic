@@ -1,0 +1,6 @@
+﻿Session.remove
+======================================
+
+.. currentmodule:: mosaic.commands.session
+
+.. automethod:: Session.remove

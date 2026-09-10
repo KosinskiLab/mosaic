@@ -1,0 +1,6 @@
+﻿Session.save\_session
+============================================
+
+.. currentmodule:: mosaic.commands.session
+
+.. automethod:: Session.save_session

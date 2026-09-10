@@ -1,0 +1,6 @@
+﻿submit\_task\_batch
+=================================
+
+.. currentmodule:: mosaic.parallel
+
+.. autofunction:: submit_task_batch

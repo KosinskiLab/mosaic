@@ -1,0 +1,6 @@
+﻿write\_geometries
+===============================
+
+.. currentmodule:: mosaic.formats
+
+.. autofunction:: write_geometries

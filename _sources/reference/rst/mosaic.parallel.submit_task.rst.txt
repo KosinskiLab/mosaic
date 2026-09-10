@@ -1,0 +1,6 @@
+﻿submit\_task
+===========================
+
+.. currentmodule:: mosaic.parallel
+
+.. autofunction:: submit_task

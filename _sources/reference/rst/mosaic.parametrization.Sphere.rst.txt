@@ -1,0 +1,38 @@
+﻿Sphere
+======
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: Sphere
+   :members:
+   :show-inheritance:
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+            Sphere.compute_distance
+         
+         
+            Sphere.compute_normal
+         
+         
+            Sphere.fit
+         
+         
+            Sphere.points_per_sampling
+         
+         
+            Sphere.sample
+         
+   
+   

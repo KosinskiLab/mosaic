@@ -1,0 +1,6 @@
+﻿MosaicData.register\_session\_hook
+============================================
+
+.. currentmodule:: mosaic.data
+
+.. automethod:: MosaicData.register_session_hook

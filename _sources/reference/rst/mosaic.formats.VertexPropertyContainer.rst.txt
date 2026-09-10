@@ -1,0 +1,47 @@
+﻿VertexPropertyContainer
+=======================
+
+.. currentmodule:: mosaic.formats
+
+.. autoclass:: VertexPropertyContainer
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+            VertexPropertyContainer.properties
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+            VertexPropertyContainer.copy
+         
+         
+            VertexPropertyContainer.get_property
+         
+         
+            VertexPropertyContainer.merge
+         
+         
+            VertexPropertyContainer.remove_property
+         
+         
+            VertexPropertyContainer.set_property
+         
+   
+   

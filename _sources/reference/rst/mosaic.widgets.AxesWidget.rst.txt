@@ -1,0 +1,35 @@
+﻿AxesWidget
+==========
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: AxesWidget
+   :members:
+   :show-inheritance:
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+            AxesWidget.set_arrow_heads_visible
+         
+         
+            AxesWidget.set_colored
+         
+         
+            AxesWidget.set_labels_visible
+         
+         
+            AxesWidget.set_visibility
+         
+   
+   

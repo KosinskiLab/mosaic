@@ -1,0 +1,6 @@
+﻿MosaicData.get\_tree\_state
+=====================================
+
+.. currentmodule:: mosaic.data
+
+.. automethod:: MosaicData.get_tree_state

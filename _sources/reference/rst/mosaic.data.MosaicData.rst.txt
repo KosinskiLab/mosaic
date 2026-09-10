@@ -1,0 +1,59 @@
+﻿MosaicData
+==========
+
+.. currentmodule:: mosaic.data
+
+.. autoclass:: MosaicData
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+            MosaicData.physical_shape
+         
+         
+            MosaicData.shape
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+            MosaicData.format_datalist
+         
+         
+            MosaicData.get_tree_state
+         
+         
+            MosaicData.load_session
+         
+         
+            MosaicData.open_file
+         
+         
+            MosaicData.refresh_lod
+         
+         
+            MosaicData.register_session_hook
+         
+         
+            MosaicData.reset
+         
+         
+            MosaicData.to_file
+         
+   
+   
