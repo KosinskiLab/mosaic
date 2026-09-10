@@ -31,7 +31,7 @@ jobs:
           - os: windows-latest
             experimental: true
           - os: macos-latest
-            experimental: true
+            experimental: false
 
     env:
       QT_QPA_PLATFORM: offscreen

@@ -7,7 +7,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import re
-import readline
 from pathlib import Path
 from typing import Optional
 
@@ -15,6 +14,13 @@ from .parser import parse_command
 from .session import Session
 from .registry import CommandRegistry, _error_panel
 from .theme import get_console, render_to_text
+
+try:
+    import readline
+except ImportError:
+    # readline is POSIX-only. On Windows the REPL runs without tab completion
+    # and without persistent history rather than failing to import.
+    readline = None
 
 _SUBST_RE = re.compile(r"\$\(([^)]+)\)")
 
@@ -405,6 +411,9 @@ class MosaicREPL:
         return "".join(f"\x01{p}\x02" if p.startswith("\x1b[") else p for p in parts)
 
     def _setup_readline(self) -> None:
+        if readline is None:
+            return None
+
         completer = _Completer(self.session)
         readline.set_completer(completer.complete)
         readline.set_completer_delims(" \t\n")
@@ -421,6 +430,9 @@ class MosaicREPL:
                 pass
 
     def _save_readline_history(self) -> None:
+        if readline is None:
+            return None
+
         try:
             readline.write_history_file(str(_HISTORY_PATH))
         except Exception:

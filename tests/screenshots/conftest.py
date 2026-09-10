@@ -1,3 +1,4 @@
+import os
 import sys
 import pytest
 import numpy as np
@@ -16,6 +17,28 @@ from mosaic.stylesheets import (
 
 
 SCREENSHOT_DIR = Path(__file__).resolve().parents[2] / "docs" / "_static" / "tutorial"
+
+
+# App builds a QVTKRenderWindowInteractor, which needs a real GL surface.
+_platform = os.environ.get("QT_QPA_PLATFORM", "")
+if _platform in ("offscreen", "minimal"):
+    _NO_DISPLAY_REASON = (
+        f"QVTKRenderWindowInteractor needs a GL surface, QT_QPA_PLATFORM={_platform}"
+    )
+elif sys.platform.startswith("linux") and not (
+    os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
+):
+    _NO_DISPLAY_REASON = "no display server, run under xvfb-run"
+else:
+    _NO_DISPLAY_REASON = None
+
+
+@pytest.fixture(scope="session", autouse=True)
+def require_display():
+    """Skip before any higher-scoped fixture can construct the VTK widget."""
+    if _NO_DISPLAY_REASON:
+        pytest.skip(_NO_DISPLAY_REASON)
+    return None
 
 
 @pytest.fixture(scope="session")
