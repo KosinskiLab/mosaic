@@ -65,8 +65,6 @@ test = [
 ]
 
 [tool.poetry]
-# [dependency-groups] (PEP 735) is only read by Poetry >= 2.2; older versions
-# ignore it silently and would resolve without the test dependencies.
 requires-poetry = ">=2.2"
 packages = [{include = "mosaic", from = "src"}]
 include = [
@@ -76,7 +74,24 @@ include = [
 ]
 
 [tool.pytest.ini_options]
-addopts = ["--import-mode=importlib"]
+minversion = "9.0"
+addopts = ["-ra", "--tb=short"]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+qt_api = "pyqt6"
+strict_markers = true
+strict_config = true
+markers = [
+    'slow: marks tests as slow (deselect with -m "not slow")',
+    "integration: marks tests as integration tests",
+    "gui: marks tests that require GUI components",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
 
 [tool.coverage.run]
 omit = ["tests/*"]

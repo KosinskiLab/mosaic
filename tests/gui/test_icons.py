@@ -64,17 +64,17 @@ def test_icon_factory_returns_qicon(qtbot):
 
 
 def test_icon_pixmap_returns_nonempty_pixmap(qtbot):
+    from qtpy.QtCore import QSizeF
     from qtpy.QtGui import QPixmap
 
     pix = icon_pixmap("ph.info", 18, role="primary")
     assert isinstance(pix, QPixmap)
-    assert pix.width() == 18
-    assert pix.height() == 18
+    assert pix.deviceIndependentSize() == QSizeF(18, 18)
 
 
 def test_icon_button_constructs_enabled_and_disabled(qtbot):
-    from qtpy.QtWidgets import QPushButton
     from qtpy.QtGui import QIcon
+    from qtpy.QtWidgets import QPushButton
 
     btn = icon_button("ph.upload", tooltip="Upload")
     qtbot.addWidget(btn)
@@ -107,6 +107,7 @@ def test_icon_pixmap_falls_back_for_unknown_glyph(qtbot):
     """``icon_pixmap`` inherits the fallback path from ``icon``."""
     import warnings
 
+    from qtpy.QtCore import QSizeF
     from qtpy.QtGui import QPixmap
 
     with warnings.catch_warnings(record=True) as caught:
@@ -114,6 +115,5 @@ def test_icon_pixmap_falls_back_for_unknown_glyph(qtbot):
         pix = icon_pixmap("ph.another-missing-glyph", 16)
 
     assert isinstance(pix, QPixmap)
-    assert pix.width() == 16
-    assert pix.height() == 16
+    assert pix.deviceIndependentSize() == QSizeF(16, 16)
     assert any("unavailable" in str(w.message) for w in caught)
