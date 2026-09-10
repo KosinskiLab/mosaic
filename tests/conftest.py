@@ -1,9 +1,48 @@
+import subprocess
 import sys
 import tempfile
+from functools import lru_cache
 
 import numpy as np
 import pytest
 from qtpy.QtWidgets import QApplication
+
+_RENDER_PROBE = """
+import vtk
+
+window = vtk.vtkRenderWindow()
+window.SetOffScreenRendering(1)
+window.SetSize(32, 32)
+window.AddRenderer(vtk.vtkRenderer())
+window.Render()
+window.Finalize()
+"""
+
+
+@lru_cache(maxsize=1)
+def vtk_offscreen_available() -> bool:
+    """Whether VTK can build and draw an offscreen render window here.
+
+    Runners without a GL driver abort the process rather than raising, so the
+    probe runs in a subprocess and a dead child counts as unavailable.
+    """
+    try:
+        probe = subprocess.run(
+            [sys.executable, "-c", _RENDER_PROBE],
+            capture_output=True,
+            timeout=120,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    return probe.returncode == 0
+
+
+@pytest.fixture(scope="session")
+def require_vtk_render_window():
+    """Skip tests that need a real ``vtkRenderWindow`` where none can exist."""
+    if not vtk_offscreen_available():
+        pytest.skip("VTK cannot create an offscreen render window here")
+    return None
 
 
 @pytest.fixture(scope="session")

@@ -39,7 +39,7 @@ class _StubWidget:
 
 
 @pytest.fixture
-def scene():
+def scene(require_vtk_render_window):
     """Offscreen render window showing a single centered sphere actor."""
     source = vtk.vtkSphereSource()
     source.SetRadius(10)

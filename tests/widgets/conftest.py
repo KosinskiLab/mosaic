@@ -28,7 +28,7 @@ class _FakeVTKWidget:
 
 
 @pytest.fixture
-def fake_vtk_widget():
+def fake_vtk_widget(require_vtk_render_window):
     """A non-Qt stand-in widget VolumeViewer can be constructed against.
 
     Use this (instead of mocking) when a test needs VolumeViewer to wire up

@@ -48,6 +48,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+            xvfb \
             libgl1 \
             libegl1 \
             libxkbcommon0 \
@@ -61,7 +62,14 @@ jobs:
           python -m pip install .
           python -m pip install --group test
 
+      # VTK needs an X display even with Qt headless.
       - name: Run tests
+        if: runner.os == 'Linux'
+        continue-on-error: ${{ matrix.experimental }}
+        run: xvfb-run -a -s "-screen 0 1920x1080x24" pytest tests/ -v --durations=10
+
+      - name: Run tests
+        if: runner.os != 'Linux'
         continue-on-error: ${{ matrix.experimental }}
         run: pytest tests/ -v --durations=10
 
