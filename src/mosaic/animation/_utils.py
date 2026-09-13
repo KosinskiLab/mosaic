@@ -310,9 +310,9 @@ class ScreenshotManager:
         transparent_bg : bool, optional
             Whether to keep transparent background.
         width : int, optional
-            Custom width, uses current window width by default.
+            Custom width in pixels, uses the widget width by default.
         height : int, optional
-            Custom height, uses current window height by default.
+            Custom height in pixels, uses the widget height by default.
         magnification : int, optional
             Output resolution multiplier (1-8). Rendered off-screen so it is not
             bounded by the on-screen window size.
@@ -325,6 +325,13 @@ class ScreenshotManager:
             Screenshot image.
         """
         render_window = self.vtk_widget.GetRenderWindow()
+
+        # Avoid shortfalls of high-DPI screens.
+        if width is None:
+            width = self.vtk_widget.width()
+        if height is None:
+            height = self.vtk_widget.height()
+
         arr = capture_frame(
             render_window,
             transparent_bg=transparent_bg,
@@ -353,7 +360,14 @@ class ScreenshotManager:
         window_arr = np.frombuffer(ptr, np.uint8).reshape(height, width, 3).copy()
         window_img = Image.fromarray(window_arr, "RGB")
 
-        vtk_img = self.capture(transparent_bg=False, magnification=1, multisamples=0)
+        render_size = self.vtk_widget.GetRenderWindow().GetSize()
+        vtk_img = self.capture(
+            transparent_bg=False,
+            width=render_size[0],
+            height=render_size[1],
+            magnification=1,
+            multisamples=0,
+        )
         vtk_pos = self.vtk_widget.mapTo(top_window, self.vtk_widget.rect().topLeft())
 
         dpr = top_window.devicePixelRatio()
