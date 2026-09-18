@@ -6,6 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from contextlib import contextmanager
 from os.path import splitext
 
 import numpy as np
@@ -72,6 +73,93 @@ def read_frame(
     return arr
 
 
+_TEXT_PROPERTY_GETTERS = (
+    "GetTextProperty",
+    "GetTitleTextProperty",
+    "GetLabelTextProperty",
+    "GetLegendTitleProperty",
+    "GetLegendLabelProperty",
+)
+
+
+def _iter_props(render_window):
+    """Yield every prop in every renderer, assembly parts included."""
+    from vtkmodules.vtkRenderingCore import vtkPropCollection
+
+    renderers = render_window.GetRenderers()
+    renderers.InitTraversal()
+    for _ in range(renderers.GetNumberOfItems()):
+        renderer = renderers.GetNextItem()
+        view_props = renderer.GetViewProps()
+        view_props.InitTraversal()
+        for _ in range(view_props.GetNumberOfItems()):
+            prop = view_props.GetNextProp()
+            yield prop
+
+            leaves = vtkPropCollection()
+            prop.GetActors(leaves)
+            prop.GetActors2D(leaves)
+            leaves.InitTraversal()
+            for _ in range(leaves.GetNumberOfItems()):
+                leaf = leaves.GetNextProp()
+                if leaf is not prop:
+                    yield leaf
+
+
+@contextmanager
+def scaled_device_pixel_attributes(render_window, factor: float):
+    """Scale pixel-denominated render attributes for the duration of a capture.
+
+    Parameters
+    ----------
+    render_window : vtkRenderWindow
+        The render window whose props are rescaled.
+    factor : float
+        Ratio of the capture size to the on-screen window size.
+    """
+    if factor == 1:
+        yield
+        return None
+
+    restore = []
+    scaled = set()
+
+    def scale(owner, attribute, transform):
+        if owner is None or (owner, attribute) in scaled:
+            return
+
+        getter = getattr(owner, f"Get{attribute}", None)
+        if getter is None:
+            return
+
+        scaled.add((owner, attribute))
+        original = getter()
+        setter = getattr(owner, f"Set{attribute}")
+        restore.append((setter, original))
+        setter(transform(original))
+        return
+
+    for prop in _iter_props(render_window):
+        appearance = prop.GetProperty() if hasattr(prop, "GetProperty") else None
+        for attribute in ("PointSize", "LineWidth"):
+            scale(appearance, attribute, lambda value: max(value * factor, 1.0))
+
+        for getter in _TEXT_PROPERTY_GETTERS:
+            text_property = getattr(prop, getter, None)
+            scale(
+                text_property() if text_property is not None else None,
+                "FontSize",
+                lambda value: round(value * factor),
+            )
+
+    try:
+        yield
+    finally:
+        for setter, original in restore:
+            setter(original)
+    return None
+
+
 def capture_frame(
     render_window,
     transparent_bg: bool = False,
@@ -79,6 +167,7 @@ def capture_frame(
     multisamples: int = None,
     width: int = None,
     height: int = None,
+    pixel_scale: float = None,
 ) -> np.ndarray:
     """Capture the current frame from a VTK render window.
 
@@ -103,6 +192,10 @@ def capture_frame(
         Custom target width, uses current window width by default.
     height : int, optional
         Custom target height, uses current window height by default.
+    pixel_scale : float, optional
+        Factor applied to device-pixel attributes such as point size and line
+        width. Defaults to the ratio between capture and window size; pass it
+        explicitly when the window was already resized by the caller.
 
     Returns
     -------
@@ -123,20 +216,24 @@ def capture_frame(
     target_height = (height if height is not None else original_size[1]) * magnification
 
     size_changed = target_width != original_size[0] or target_height != original_size[1]
-    if size_changed:
-        render_window.SetOffScreenRendering(1)
-        render_window.SetSize(target_width, target_height)
-        render_window.Render()
+    if pixel_scale is None:
+        pixel_scale = target_width / original_size[0] if original_size[0] else 1
 
-    window_to_image = vtkWindowToImageFilter()
-    window_to_image.SetInput(render_window)
-    window_to_image.SetInputBufferTypeToRGBA()
-    window_to_image.SetScale(1)
-    window_to_image.ReadFrontBufferOff()
+    with scaled_device_pixel_attributes(render_window, pixel_scale):
+        if size_changed:
+            render_window.SetOffScreenRendering(1)
+            render_window.SetSize(target_width, target_height)
+            render_window.Render()
 
-    arr = read_frame(
-        window_to_image, target_width, target_height, transparent_bg=transparent_bg
-    )
+        window_to_image = vtkWindowToImageFilter()
+        window_to_image.SetInput(render_window)
+        window_to_image.SetInputBufferTypeToRGBA()
+        window_to_image.SetScale(1)
+        window_to_image.ReadFrontBufferOff()
+
+        arr = read_frame(
+            window_to_image, target_width, target_height, transparent_bg=transparent_bg
+        )
 
     render_window.SetAlphaBitPlanes(original_alpha_bit_planes)
 
@@ -245,7 +342,10 @@ def capture_cropped(render_window, ctx):
         Cropped RGB image of exactly ``ctx["width"]`` x ``ctx["height"]``.
     """
     rw, rh = ctx["render_size"]
-    frame = capture_frame(render_window, width=rw, height=rh)
+    ow = ctx["original_size"][0]
+    frame = capture_frame(
+        render_window, width=rw, height=rh, pixel_scale=rw / ow if ow else 1
+    )
 
     fh = frame.shape[0]
     x, y, w, h = ctx["crop_x"], ctx["crop_y"], ctx["width"], ctx["height"]
