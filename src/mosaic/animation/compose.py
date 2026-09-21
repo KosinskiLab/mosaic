@@ -34,7 +34,12 @@ from qtpy.QtWidgets import (
 from .timeline import TimelineWidget
 from .animations import AnimationType, BaseAnimation
 from .settings import AnimationSettings, ExportDialog
-from ._utils import FrameWriter, capture_frame, read_frame
+from ._utils import (
+    FrameWriter,
+    capture_frame,
+    read_frame,
+    scaled_device_pixel_attributes,
+)
 
 from ..icons import icon
 from ..utils import Throttle
@@ -639,33 +644,38 @@ class AnimationComposerDialog(QDialog):
             render_width = width * magnification
             render_height = height * magnification
             render_window.SetSize(render_width, render_height)
-            render_window.Render()
 
-            window_to_image = vtkWindowToImageFilter()
-            window_to_image.SetInput(render_window)
-            window_to_image.SetInputBufferTypeToRGBA()
-            window_to_image.SetScale(1)
-            window_to_image.ReadFrontBufferOff()
-            window_to_image.ShouldRerenderOff()
+            pixel_scale = (
+                render_width / original_size[0] if original_size[0] else 1
+            )
+            with scaled_device_pixel_attributes(render_window, pixel_scale):
+                render_window.Render()
 
-            if indicator is not None:
-                indicator.show_progress("Exporting Animation", total=n_frames)
-
-            for i, frame_idx in enumerate(frames):
-                self.set_current_frame(frame_idx)
-
-                frame = read_frame(
-                    window_to_image,
-                    width,
-                    height,
-                    magnification,
-                    transparent_bg,
-                )
-                writer.append_data(frame)
+                window_to_image = vtkWindowToImageFilter()
+                window_to_image.SetInput(render_window)
+                window_to_image.SetInputBufferTypeToRGBA()
+                window_to_image.SetScale(1)
+                window_to_image.ReadFrontBufferOff()
+                window_to_image.ShouldRerenderOff()
 
                 if indicator is not None:
-                    indicator.update_progress(i + 1, n_frames)
-                QApplication.processEvents()
+                    indicator.show_progress("Exporting Animation", total=n_frames)
+
+                for i, frame_idx in enumerate(frames):
+                    self.set_current_frame(frame_idx)
+
+                    frame = read_frame(
+                        window_to_image,
+                        width,
+                        height,
+                        magnification,
+                        transparent_bg,
+                    )
+                    writer.append_data(frame)
+
+                    if indicator is not None:
+                        indicator.update_progress(i + 1, n_frames)
+                    QApplication.processEvents()
 
             writer.close()
 

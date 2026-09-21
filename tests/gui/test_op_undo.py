@@ -95,3 +95,65 @@ def test_replace_style_place_removes_source_and_undo_restores(interactor):
     assert interactor.container.get(src.uuid) is not None
     assert interactor.container.get(child_a.uuid) is None
     assert interactor.container.get(child_b.uuid) is None
+
+
+def test_duplicate_is_undoable(interactor):
+    source = _geom(12, 5)
+    interactor.add(source)
+    interactor.update()
+    n_before = len(interactor.container.data)
+
+    interactor.duplicate([interactor.container.get(source.uuid)])
+    assert len(interactor.container.data) == n_before + 1
+    copy_uuid = interactor.container.data[-1].uuid
+
+    STACK.undo()
+    assert len(interactor.container.data) == n_before
+    assert interactor.container.get(copy_uuid) is None
+    assert interactor.container.get(source.uuid) is not None
+
+    STACK.redo()
+    assert interactor.container.get(copy_uuid) is not None
+
+
+def test_duplicate_records_one_entry_for_a_multi_selection(interactor):
+    first, second = _geom(6, 7), _geom(7, 8)
+    interactor.add(first)
+    interactor.add(second)
+    interactor.update()
+    n_before = len(interactor.container.data)
+
+    interactor.duplicate(
+        [interactor.container.get(first.uuid), interactor.container.get(second.uuid)]
+    )
+    assert len(interactor.container.data) == n_before + 2
+
+    STACK.undo()
+    assert len(interactor.container.data) == n_before
+
+
+def test_duplicate_keeps_its_own_color_across_redo(interactor):
+    source = _geom(10, 9)
+    interactor.add(source)
+    interactor.set_coloring_mode("entity")
+    interactor.update()
+
+    interactor.duplicate([interactor.container.get(source.uuid)])
+    copy = interactor.container.data[-1]
+    copy_uuid, copy_color = copy.uuid, copy._appearance.get("base_color")
+    assert copy_color != interactor.container.get(source.uuid)._appearance.get(
+        "base_color"
+    )
+
+    STACK.undo()
+    STACK.redo()
+    restored = interactor.container.get(copy_uuid)
+    assert restored._appearance.get("base_color") == copy_color
+
+
+def test_duplicate_of_nothing_records_no_entry(interactor):
+    interactor.add(_geom(5, 10))
+    interactor.update()
+
+    interactor.duplicate([None])
+    assert STACK.undo() is None

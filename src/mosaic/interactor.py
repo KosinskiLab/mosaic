@@ -789,11 +789,22 @@ class DataContainerInteractor(QObject):
         self.render()
 
     def duplicate(self, geometries):
+        """Copy each geometry into the container as a single undoable step."""
+        copies = []
         for geometry in geometries:
             if geometry is None:
                 continue
-            self.add(geometry[...])
+            index = self.add(geometry[...])
+            if (copy := self.container.get(index)) is not None:
+                copies.append(copy)
+
+        if copies:
+            self._push_swap(
+                "Duplicate",
+                [GeometrySwap(c.uuid, before=None, after=c[...]) for c in copies],
+            )
         self.render()
+        return None
 
     def update(self, tree_state=None):
         """Resync the tree widget after the session swapped containers.
