@@ -9,31 +9,29 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import json
 import uuid
 
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QFont
 from qtpy.QtWidgets import (
+    QCheckBox,
     QDialog,
-    QVBoxLayout,
+    QFileDialog,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QWidget,
-    QGroupBox,
     QScrollArea,
     QSpinBox,
-    QFileDialog,
-    QCheckBox,
+    QVBoxLayout,
+    QWidget,
 )
-from qtpy.QtCore import Qt
-from qtpy.QtGui import QFont
-
-from .executor import generate_runs
-from .widgets import OperationCardWidget, PipelineTreeWidget
-from .operations import OPERATION_CATEGORIES, PIPELINE_PRESETS
 
 from ..settings import Settings
+from ..stylesheets import Colors, Typography
 from ..widgets import MosaicMessageBox
 from ..widgets.settings import format_tooltip
-from ..stylesheets import Colors, Typography
-
+from .executor import generate_runs
+from .operations import OPERATION_CATEGORIES, PIPELINE_PRESETS
+from .widgets import OperationCardWidget, PipelineTreeWidget
 
 __all__ = ["PipelineBuilderDialog"]
 
@@ -238,9 +236,9 @@ class PipelineBuilderDialog(QDialog):
                     op_name, op_info, category["color"]
                 )
                 op_btn.clicked.connect(
-                    lambda checked, n=op_name, i=op_info, c=category[
-                        "color"
-                    ]: self._add_card(n, i, c)
+                    lambda checked, n=op_name, i=op_info, c=category["color"]: (
+                        self._add_card(n, i, c)
+                    )
                 )
                 layout.addWidget(op_btn)
                 self._library_buttons[(category_id, op_name)] = op_btn
@@ -414,9 +412,9 @@ class PipelineBuilderDialog(QDialog):
             return None
 
         try:
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 config = json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
+        except (OSError, json.JSONDecodeError) as e:
             MosaicMessageBox.warning(
                 self, "Load Error", f"Failed to load configuration: {str(e)}"
             )
@@ -481,7 +479,7 @@ class PipelineBuilderDialog(QDialog):
             MosaicMessageBox.information(
                 self, "Export Success", f"Configuration exported to {filename}"
             )
-        except IOError as e:
+        except OSError as e:
             MosaicMessageBox.warning(
                 self, "Export Error", f"Failed to export configuration: {str(e)}"
             )

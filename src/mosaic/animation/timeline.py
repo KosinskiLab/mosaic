@@ -1,6 +1,6 @@
-from qtpy.QtCore import Qt, QRect, Signal
-from qtpy.QtWidgets import QWidget, QScrollArea, QApplication
-from qtpy.QtGui import QPainter, QColor, QPen, QFont, QMouseEvent
+from qtpy.QtCore import QRect, Qt, Signal
+from qtpy.QtGui import QColor, QFont, QMouseEvent, QPainter, QPen
+from qtpy.QtWidgets import QApplication, QScrollArea, QWidget
 
 from ..icons import icon
 from ..stylesheets import Colors, Typography

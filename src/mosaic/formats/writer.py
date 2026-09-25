@@ -1,13 +1,12 @@
 import json
 import warnings
-from typing import Dict, List
 
 import numpy as np
 
 from .records import GeometryData
 
 
-def _coerce_records(geometries) -> List[GeometryData]:
+def _coerce_records(geometries) -> list[GeometryData]:
     """Build per-geometry records for the writers.
 
     Parameters
@@ -90,7 +89,7 @@ def _ensure_quaternions(rec):
     np.ndarray
         Quaternion array, scalar-first.
     """
-    from ..utils import normals_to_rot, NORMAL_REFERENCE
+    from ..utils import NORMAL_REFERENCE, normals_to_rot
 
     if rec.quaternions is not None:
         return rec.quaternions
@@ -132,6 +131,7 @@ def _write_orientations(
         Forwarded to ``Orientations.to_file``.
     """
     from tme import Orientations
+
     from ..utils import quat_to_euler
 
     # scipy.spatial.transform.Rotation threading breaks pipelines
@@ -154,7 +154,7 @@ def _write_orientations(
     orientations.to_file(path, file_format=file_format, **kwargs)
 
 
-def write_topology_file(file_path: str, data: Dict, tsi_format: bool = False) -> None:
+def write_topology_file(file_path: str, data: dict, tsi_format: bool = False) -> None:
     """
     Write a topology file [1]_.
 

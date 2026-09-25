@@ -7,35 +7,35 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import re
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
+import pyqtgraph as pg
 from qtpy.QtCore import Qt, QTimer
 from qtpy.QtWidgets import (
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
+    QAbstractItemView,
     QComboBox,
     QCompleter,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
     QLineEdit,
     QPushButton,
-    QFormLayout,
-    QWidget,
-    QGroupBox,
     QSizePolicy,
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QAbstractItemView,
+    QVBoxLayout,
+    QWidget,
 )
-import pyqtgraph as pg
 
-from ..icons import icon
-from ..utils import Throttle
-from ..stylesheets import Colors, Typography
-from ..widgets import ColorMapSelector, generate_gradient_colors
 from ..dts._utils import collect_available_metrics, extract_metric_series
+from ..icons import icon
+from ..stylesheets import Colors, Typography
+from ..utils import Throttle
+from ..widgets import ColorMapSelector, generate_gradient_colors
 
 
 class AnalysisPanel(QWidget):
@@ -54,7 +54,7 @@ class AnalysisPanel(QWidget):
 
     def __init__(
         self,
-        get_selected_run_ids: Optional[Callable] = None,
+        get_selected_run_ids: Callable | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -63,7 +63,7 @@ class AnalysisPanel(QWidget):
         self._screen_dir = None
 
         self._lod_active = False
-        self._lod_downsample: Optional[int] = None
+        self._lod_downsample: int | None = None
         self._lod_timer = QTimer(self)
         self._lod_timer.setSingleShot(True)
         self._lod_timer.setInterval(self._LOD_IDLE_MS)
@@ -91,7 +91,7 @@ class AnalysisPanel(QWidget):
         self._plot_item.vb.sigRangeChangedManually.connect(self._on_user_interaction)
 
         self._placeholder = QLabel(
-            "No time series data available.\n" "Select a metric to display."
+            "No time series data available.\nSelect a metric to display."
         )
         self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._placeholder.setStyleSheet(
@@ -239,6 +239,7 @@ class AnalysisPanel(QWidget):
         time-series files are re-parsed; the rest of the cached data is kept.
         """
         from pathlib import Path
+
         from ..dts._utils import parse_run_time_series
 
         self._screen_dir = screen_dir
@@ -575,7 +576,8 @@ class AnalysisPanel(QWidget):
     def _save_derived(self):
         """Write the derived metric as .xvg into each run's mosaic/ folder."""
         from pathlib import Path
-        from ..dts._utils import write_xvg, sanitize_label, parse_xvg
+
+        from ..dts._utils import parse_xvg, sanitize_label, write_xvg
 
         parsed = self._parse_derived()
         if parsed is None:

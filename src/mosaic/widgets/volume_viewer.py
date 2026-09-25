@@ -9,25 +9,24 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from contextlib import contextmanager
 
 import vtk
-from qtpy.QtWidgets import (
-    QVBoxLayout,
-    QHBoxLayout,
-    QWidget,
-    QComboBox,
-    QPushButton,
-    QFileDialog,
-    QLabel,
-)
-from ..icons import icon as _icon_factory
-from .message_box import MosaicMessageBox
-
 from qtpy.QtCore import Signal
+from qtpy.QtWidgets import (
+    QComboBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 from vtkmodules.util import numpy_support
 
-from ..utils import Throttle
+from ..icons import icon as _icon_factory
 from ..stylesheets import Colors
+from ..utils import Throttle
 from .colors import ColorMapSelector
-from .sliders import SliderRow, DualHandleSlider
+from .message_box import MosaicMessageBox
+from .sliders import DualHandleSlider, SliderRow
 
 _VTK_READERS = {
     ".mrc": "vtkMRCReader",

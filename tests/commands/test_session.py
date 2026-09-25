@@ -19,7 +19,6 @@ def _geom(n_points=50, seed=None):
 
 
 class TestResolve:
-
     @pytest.mark.parametrize(
         "spec, expected_len",
         [
@@ -53,7 +52,6 @@ class TestResolve:
 
 
 class TestApply:
-
     def test_downsample_creates_geometry(self, make_session):
         session = make_session(n=1, n_points=200)
         geoms = session.resolve("*")
@@ -90,7 +88,6 @@ class TestApply:
 
 
 class TestMeasure:
-
     def test_scalar_property(self, make_session):
         session = make_session(n=1, n_points=77)
         results = session.measure("n_points", session._all_geometries())
@@ -118,7 +115,6 @@ class TestMeasure:
 
 
 class TestFilter:
-
     def test_population_level(self):
         session = Session(quiet=True)
         for size in [50, 200, 300]:
@@ -153,7 +149,6 @@ class TestFilter:
 
 
 class TestMerge:
-
     def test_merge_preserves_total_points(self, make_session):
         session = make_session(n=2, n_points=50)
         geoms = session._all_geometries()
@@ -169,7 +164,6 @@ class TestMerge:
 
 
 class TestGrouping:
-
     def test_create_group(self, make_session):
         session = make_session(n=3)
         geoms = session._all_geometries()
@@ -201,7 +195,6 @@ class TestGrouping:
 
 
 class TestRemove:
-
     def test_remove_clears_order_and_last(self, make_session):
         session = make_session(n=2)
         geoms = session._all_geometries()
@@ -220,7 +213,6 @@ class TestRemove:
 
 
 class TestListFiltered:
-
     def test_visibility_filter(self, make_session):
         session = make_session(n=3)
         session._all_geometries()[0].set_visibility(False)
@@ -242,7 +234,6 @@ class TestListFiltered:
 
 
 class TestLog:
-
     def test_log_appends(self):
         s = Session()
         s.log_command("list")
@@ -251,7 +242,6 @@ class TestLog:
 
 
 class TestHelpers:
-
     def test_flatten_nested(self):
         assert Session._flatten([[1, 2], 3, [4]]) == [1, 2, 3, 4]
 
@@ -303,7 +293,6 @@ class TestHelpers:
 
 
 class TestMatchFilter:
-
     def test_substring_match(self):
         assert Session._match_filter("cloud_data_123", "data") is True
 
@@ -321,7 +310,6 @@ class TestMatchFilter:
 
 
 class TestListFilteredExtended:
-
     def test_group_filter(self, make_session):
         session = make_session(n=3)
         geoms = session._all_geometries()
@@ -342,7 +330,6 @@ class TestListFilteredExtended:
 
 
 class TestFilterExtended:
-
     def test_upper_bound_population(self):
         session = Session(quiet=True)
         for size in [10, 50, 100]:
@@ -485,7 +472,6 @@ class TestFilterExtended:
 
 
 class TestOpenFile:
-
     def test_open_xyz(self, tmp_path):
         path = tmp_path / "test.xyz"
         pts = np.random.RandomState(0).rand(25, 3).astype(np.float32) * 100
@@ -519,7 +505,6 @@ class TestOpenFile:
 
 
 class TestSaveLoad:
-
     def test_save_xyz_roundtrip(self, make_session, tmp_path):
         session = make_session(n=1, n_points=20)
         geoms = session._all_geometries()
@@ -567,7 +552,6 @@ class TestSaveLoad:
 
 
 class TestMergeExtended:
-
     def test_merge_default_name(self, make_session):
         session = make_session(n=2, n_points=10)
         geoms = session._all_geometries()
@@ -585,7 +569,6 @@ class TestMergeExtended:
 
 
 class TestResolveRange:
-
     def test_reversed_range(self, make_session):
         session = make_session(n=5)
         result = session.resolve("#3-1")

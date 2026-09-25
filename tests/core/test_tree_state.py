@@ -10,7 +10,6 @@ from mosaic.tree_state import TreeState, TreeStateData
 
 
 class TestTreeStateData:
-
     def test_empty_defaults(self):
         t = TreeStateData()
         assert t.groups == {}
@@ -67,7 +66,6 @@ class TestTreeStateData:
 
 
 class TestTreeState:
-
     def test_get_all_uuids(self):
         t = TreeState()
         t.root_items = ["u1", "u2"]

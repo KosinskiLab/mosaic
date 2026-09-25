@@ -9,17 +9,16 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import pytest
 
 from mosaic.registry import (
-    Param,
-    Method,
-    Operation,
-    MethodRegistry,
     _UNSET,
     _WIDGET_TYPE,
+    Method,
+    MethodRegistry,
+    Operation,
+    Param,
 )
 
 
 class TestParam:
-
     def test_defaults(self):
         p = Param(name="depth", type="float")
         assert p.name == "depth"
@@ -113,7 +112,6 @@ class TestParam:
 
 
 class TestMethod:
-
     def test_defaults(self):
         m = Method(display_name="DBSCAN", internal_name="dbscan")
         assert m.display_name == "DBSCAN"
@@ -134,7 +132,6 @@ class TestMethod:
 
 
 class TestOperation:
-
     @pytest.fixture
     def simple_op(self):
         return Operation(
@@ -232,7 +229,6 @@ class TestOperation:
 
 
 class TestMethodRegistry:
-
     def test_get_registered_operation(self):
         op = MethodRegistry.get("cluster")
         assert op is not None

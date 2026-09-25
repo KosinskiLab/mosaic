@@ -8,16 +8,14 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import numpy as np
-from typing import Dict
-
+from qtpy.QtCore import QObject, QSignalBlocker, Qt, Signal
 from qtpy.QtGui import QAction
-from qtpy.QtWidgets import QListWidget, QMenu, QDialog
-from qtpy.QtCore import Qt, QObject, QSignalBlocker, Signal
+from qtpy.QtWidgets import QDialog, QListWidget, QMenu
 
-from .widgets import MosaicMessageBox
 from .formats.writer import write_geometries
+from .swaps import GeometrySubset, GeometrySwap, apply_changes, record
+from .widgets import MosaicMessageBox
 from .widgets.container_list import StyledTreeWidgetItem
-from .swaps import GeometrySwap, GeometrySubset, apply_changes, record
 
 __all__ = ["DataContainerInteractor"]
 
@@ -171,7 +169,7 @@ class DataContainerInteractor(QObject):
         return ret
 
     def add_selection(
-        self, selected_point_ids: Dict[str, np.ndarray], add: bool = True
+        self, selected_point_ids: dict[str, np.ndarray], add: bool = True
     ) -> int:
         """Add new cloud from selected points.
 
@@ -422,8 +420,9 @@ class DataContainerInteractor(QObject):
         self.render()
 
     def _handle_export(self, *args, **kwargs):
-        from .dialogs import ExportDialog
         from qtpy.QtWidgets import QApplication
+
+        from .dialogs import ExportDialog
 
         geometries = self.get_selected_geometries()
 
@@ -444,6 +443,7 @@ class DataContainerInteractor(QObject):
 
     def _wrap_export(self, export_data):
         from os.path import splitext
+
         from .geometry import Geometry, GeometryTrajectory
 
         file_path = export_data.pop("file_path", None)
@@ -559,6 +559,7 @@ class DataContainerInteractor(QObject):
 
     def _show_batch_rename_dialog(self) -> int:
         from qtpy.QtWidgets import QApplication
+
         from .dialogs import BatchRenameDialog
 
         items = self.data_list.selected_items()
@@ -630,13 +631,12 @@ class DataContainerInteractor(QObject):
         return self.set_selection_by_uuid(list(self.point_selection.keys()))
 
     def change_representation(self, representation: str):
-        from .geometry import Geometry, VolumeGeometry, SegmentationGeometry
+        from .geometry import Geometry, SegmentationGeometry, VolumeGeometry
 
         if not len(geometries := self.get_selected_geometries()):
             return -1
 
         for geometry in geometries:
-
             if representation == "segmentation":
                 if isinstance(geometry, SegmentationGeometry):
                     continue

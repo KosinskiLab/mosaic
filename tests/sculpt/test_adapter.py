@@ -81,9 +81,9 @@ def test_polydata_point_writer_is_zero_copy(flat_grid_mesh):
     view_before = numpy_support.vtk_to_numpy(geom._data.GetPoints().GetData())
     writer.write(vs)
     view_after = numpy_support.vtk_to_numpy(geom._data.GetPoints().GetData())
-    assert (
-        view_before.ctypes.data == view_after.ctypes.data
-    ), "writer must not reallocate the polydata's point buffer"
+    assert view_before.ctypes.data == view_after.ctypes.data, (
+        "writer must not reallocate the polydata's point buffer"
+    )
 
 
 def test_sync_model_vertices_updates_open3d_mesh(flat_grid_mesh):
@@ -141,6 +141,6 @@ def test_polydata_point_writer_rebinds_after_points_swap(flat_grid_mesh):
     writer.write(new_vs)
 
     live = numpy_support.vtk_to_numpy(geom._data.GetPoints().GetData())
-    assert np.allclose(
-        live[:, 2], 1.3, atol=1e-5
-    ), "writer must follow the polydata's current points buffer after a swap"
+    assert np.allclose(live[:, 2], 1.3, atol=1e-5), (
+        "writer must follow the polydata's current points buffer after a swap"
+    )

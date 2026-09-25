@@ -13,15 +13,15 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, replace
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 __all__ = [
-    "Param",
-    "Method",
-    "Operation",
-    "MethodRegistry",
-    "operation",
     "_DECORATED_OPERATIONS",
+    "Method",
+    "MethodRegistry",
+    "Operation",
+    "Param",
+    "operation",
 ]
 
 
@@ -146,7 +146,7 @@ class Method:
 
     display_name: str
     internal_name: str
-    params: Tuple[Param, ...] = ()
+    params: tuple[Param, ...] = ()
     description: str = ""
     gui: bool = True
 
@@ -170,8 +170,8 @@ class Operation:
     """
 
     name: str
-    common_params: Tuple[Param, ...] = ()
-    methods: Tuple[Method, ...] = ()
+    common_params: tuple[Param, ...] = ()
+    methods: tuple[Method, ...] = ()
     method_param_name: str = "method"
     description: str = ""
     title: str = "Settings"
@@ -200,7 +200,7 @@ class Operation:
             parts.append("[targets]")
         return " ".join(parts)
 
-    def get_method(self, name: str) -> Optional[Method]:
+    def get_method(self, name: str) -> Method | None:
         """Look up by *display_name* or *internal_name* (case-insensitive)."""
         low = name.lower()
         for m in self.methods:
@@ -251,7 +251,7 @@ class Operation:
 class MethodRegistry:
     """Global registry of operations with method sub-dispatch."""
 
-    _operations: Dict[str, Operation] = {}
+    _operations: dict[str, Operation] = {}
 
     @classmethod
     def register(cls, op: Operation):
@@ -259,7 +259,7 @@ class MethodRegistry:
         cls._operations[op.name] = op
 
     @classmethod
-    def get(cls, name: str) -> Optional[Operation]:
+    def get(cls, name: str) -> Operation | None:
         """Return the :class:`Operation` registered under *name*."""
         return cls._operations.get(name)
 
@@ -283,7 +283,7 @@ class MethodRegistry:
         return op.display_to_internal(display_name)
 
     @classmethod
-    def all_operations(cls) -> Dict[str, Operation]:
+    def all_operations(cls) -> dict[str, Operation]:
         """Return all registered operations."""
         return dict(cls._operations)
 

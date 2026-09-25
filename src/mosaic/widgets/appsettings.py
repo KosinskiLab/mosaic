@@ -10,27 +10,26 @@ __all__ = ["AppSettingsPanel"]
 
 from collections import OrderedDict
 
-from qtpy.QtGui import QPainter, QColor, QPen, QBrush, QPainterPath
-from qtpy.QtCore import Qt, Signal, QRectF, QThread
+from qtpy.QtCore import QRectF, Qt, QThread, Signal
+from qtpy.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from qtpy.QtWidgets import (
+    QCheckBox,
     QFrame,
-    QVBoxLayout,
     QHBoxLayout,
-    QWidget,
     QLabel,
     QPushButton,
-    QCheckBox,
     QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
 
-from mosaic.settings import Settings
-from mosaic.settings import QUALITY_PRESETS
-from mosaic.lod import LOD_DISABLED
-from mosaic.stylesheets import Colors, Typography
 from mosaic.icons import icon
-from mosaic.widgets.sliders import SliderRow
+from mosaic.lod import LOD_DISABLED
+from mosaic.settings import QUALITY_PRESETS, Settings
+from mosaic.stylesheets import Colors, Typography
 from mosaic.widgets.colors import ColorPickerRow
 from mosaic.widgets.segmented_control import SegmentedControl
+from mosaic.widgets.sliders import SliderRow
 
 
 def _rgb(hex_str: str) -> tuple:

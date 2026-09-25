@@ -1,6 +1,7 @@
+from unittest.mock import Mock
+
 import numpy as np
 import pytest
-from unittest.mock import Mock
 
 from mosaic.geometry import GeometryData
 from mosaic.operations import (
@@ -160,7 +161,6 @@ class TestVisibility:
 
 
 class TestSkeletonizeExtended:
-
     @pytest.fixture
     def dense_cloud(self):
         """Dense cloud suitable for skeletonization (needs volume-filling points)."""

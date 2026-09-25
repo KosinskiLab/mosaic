@@ -8,13 +8,11 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import os
 import shlex
-from typing import List, Tuple
 
-from ..commands.parser import format_value, format_kwargs
-from ..registry import MethodRegistry
+from ..commands.parser import format_kwargs, format_value
 from ..parallel import report_progress
-from ._utils import topological_sort, strip_filepath
-
+from ..registry import MethodRegistry
+from ._utils import strip_filepath, topological_sort
 
 __all__ = ["compile_run", "execute_run", "generate_runs"]
 
@@ -137,7 +135,7 @@ def generate_runs(pipeline_config):
     return runs
 
 
-def compile_run(run_config: dict) -> List[Tuple[str, str]]:
+def compile_run(run_config: dict) -> list[tuple[str, str]]:
     """Translate a pipeline run config into ``(op_id, script_line)`` pairs.
 
     Parameters
@@ -151,7 +149,7 @@ def compile_run(run_config: dict) -> List[Tuple[str, str]]:
         Each element is ``(operation_id, script_line)`` where
         *script_line* is a valid Mosaic REPL command.
     """
-    steps: List[Tuple[str, str]] = []
+    steps: list[tuple[str, str]] = []
 
     for op in run_config["operations"]:
         op_id = op["operation_id"]
@@ -327,8 +325,7 @@ def execute_run(
 
         if all_exist and found_export:
             print(
-                f"Skipping run {run_config['run_id']}: "
-                "all output files already exist"
+                f"Skipping run {run_config['run_id']}: all output files already exist"
             )
             return None
 

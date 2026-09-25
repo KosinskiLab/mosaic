@@ -4,8 +4,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from mosaic.icons import _resolve_colors, icon, icon_button, icon_pixmap
 from mosaic.stylesheets import Colors
-from mosaic.icons import _resolve_colors, icon, icon_pixmap, icon_button
 
 
 def test_resolve_colors_defaults_to_muted_enabled_and_disabled():

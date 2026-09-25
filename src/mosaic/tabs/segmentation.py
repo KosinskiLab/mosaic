@@ -1,18 +1,18 @@
 from functools import partial
-from typing import List, Tuple, Literal
+from typing import Literal
 
-import vtk
 import numpy as np
-from qtpy.QtCore import Qt, QEvent
+import vtk
+from qtpy.QtCore import QEvent, Qt
 from qtpy.QtWidgets import (
-    QWidget,
     QVBoxLayout,
+    QWidget,
 )
 
 from ..registry import MethodRegistry
 from ..utils import Throttle
-from ..widgets.ribbon import create_button
 from ..widgets import MosaicMessageBox
+from ..widgets.ribbon import create_button
 
 
 class SegmentationTab(QWidget):
@@ -482,7 +482,7 @@ class PlaneTrimmer:
         widget.SetOrigin(origin)
         self._update_selection()
 
-    def _setup_plane_widget(self, color: Tuple[float, float, float]):
+    def _setup_plane_widget(self, color: tuple[float, float, float]):
         """Setup an interactive widget for the plane."""
         widget = vtk.vtkImplicitPlaneWidget()
         widget.SetInteractor(
@@ -528,7 +528,7 @@ class PlaneTrimmer:
         widget.AddObserver("InteractionEvent", callback)
         return widget
 
-    def _get_scene_bounds(self) -> List[float]:
+    def _get_scene_bounds(self) -> list[float]:
         """Get the bounds of all visible geometry in the scene."""
         bounds = [float("inf"), float("-inf")] * 3
 
@@ -573,8 +573,8 @@ class PlaneTrimmer:
 
     def _update_selection(self):
         """Update point selection based on current plane positions."""
-        from vtkmodules.vtkFiltersPoints import vtkExtractPoints
         from vtkmodules.util.numpy_support import vtk_to_numpy
+        from vtkmodules.vtkFiltersPoints import vtkExtractPoints
 
         self.data.point_selection.clear()
 

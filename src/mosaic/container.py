@@ -6,7 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import List, Tuple, Union, Dict
+from typing import Union
 
 from .geometry import BASE_COLOR
 
@@ -72,7 +72,7 @@ class DataContainer:
         self.data.append(geometry)
         return len(self.data) - 1
 
-    def remove(self, uuids_or_geometries: Union[List[str], List["Geometry"]]):
+    def remove(self, uuids_or_geometries: list[str] | list["Geometry"]):
         """Remove geometries at specified indices or by geometry objects.
 
         Parameters
@@ -98,7 +98,7 @@ class DataContainer:
                 return index
         return None
 
-    def get(self, index_or_uuid: Union[int, str]):
+    def get(self, index_or_uuid: int | str):
         """
         Retrieve the Geometry object by index or UUID.
 
@@ -145,7 +145,7 @@ class DataContainer:
         self.data[index] = new_geometry
         return True
 
-    def highlight_points(self, uuid_or_geometry, point_ids: set, color: Tuple[float]):
+    def highlight_points(self, uuid_or_geometry, point_ids: set, color: tuple[float]):
         """Highlight specific points in a cloud.
 
         Parameters
@@ -164,7 +164,7 @@ class DataContainer:
             color = geometry._appearance.get("highlight_color", (0.8, 0.2, 0.2))
         geometry.color_points(point_ids, color)
 
-    def highlight(self, uuids_or_geometries: Union[List[str], List["Geometry"]]):
+    def highlight(self, uuids_or_geometries: list[str] | list["Geometry"]):
         """Highlight specified geometries.
 
         Parameters
@@ -187,7 +187,7 @@ class DataContainer:
         self._highlighted_uuids = set(uuids)
 
     def update_appearance(
-        self, uuids_or_geometries: Union[List[str], List["Geometry"]], parameters: Dict
+        self, uuids_or_geometries: list[str] | list["Geometry"], parameters: dict
     ) -> bool:
         """Update appearance parameters for specified geometries.
 
@@ -204,7 +204,7 @@ class DataContainer:
             True if full render required (actor was replaced)
         """
         from .formats.parser import load_density
-        from .geometry import VolumeGeometry, SegmentationGeometry
+        from .geometry import SegmentationGeometry, VolumeGeometry
 
         uuids = self._to_uuids(uuids_or_geometries)
         geometries = [self.get(x) for x in uuids if self.get(x) is not None]
@@ -285,9 +285,7 @@ class DataContainer:
             uuid_or_geometry = uuid_or_geometry.uuid
         return uuid_or_geometry
 
-    def _to_uuids(
-        self, uuids_or_geometries: Union[List[str], List["Geometry"]]
-    ) -> List[str]:
+    def _to_uuids(self, uuids_or_geometries: list[str] | list["Geometry"]) -> list[str]:
         """Convert list of UUIDs or Geometries to UUIDs.
 
         Parameters

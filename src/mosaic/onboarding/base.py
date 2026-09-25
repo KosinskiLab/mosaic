@@ -6,10 +6,11 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Callable, Literal
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Literal
 
-__all__ = ["OnboardingStep", "OnboardingChapter"]
+__all__ = ["OnboardingChapter", "OnboardingStep"]
 
 
 @dataclass

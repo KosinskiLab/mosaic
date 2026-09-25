@@ -12,25 +12,24 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import warnings
-from typing import Tuple
 from abc import ABC, abstractmethod
 
 import igl
 import numpy as np
-from scipy import optimize, interpolate
+from scipy import interpolate, optimize
 
 from . import meshing, utils
 
 __all__ = [
-    "Sphere",
-    "Ellipsoid",
-    "Cylinder",
     "RBF",
-    "BallPivoting",
-    "PoissonMesh",
     "AlphaShape",
-    "ShrinkWrap",
+    "BallPivoting",
+    "Cylinder",
+    "Ellipsoid",
     "FlyingEdges",
+    "PoissonMesh",
+    "ShrinkWrap",
+    "Sphere",
     "SplineCurve",
 ]
 
@@ -409,7 +408,7 @@ class Cylinder(Parametrization):
     @staticmethod
     def _compute_initial_guess(
         positions: np.ndarray,
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Compute initial guess for cylinder parameters using PCA.
 
@@ -663,7 +662,7 @@ class RBF(Parametrization):
         2D interpolation grid ranges.
     """
 
-    def __init__(self, rbf: type, direction: str, grid: Tuple):
+    def __init__(self, rbf: type, direction: str, grid: tuple):
         self.rbf = rbf
         self.grid = grid
         self.direction = direction
@@ -879,8 +878,8 @@ class TriangularMesh(Parametrization):
 
         ext = splitext(file_path)[1].lower()
         if ext in (".tsi", ".q"):
-            from .meshing.utils import to_tsi
             from .formats.writer import write_topology_file
+            from .meshing.utils import to_tsi
 
             data = to_tsi(self.vertices, self.triangles, margin=20)
             return write_topology_file(file_path, data, tsi_format=(ext == ".tsi"))
@@ -1139,7 +1138,7 @@ class TriangularMesh(Parametrization):
         projections: np.ndarray,
         triangle_indices: np.ndarray,
         return_indices: bool = False,
-    ) -> Tuple["TriangularMesh", np.ndarray]:
+    ) -> tuple["TriangularMesh", np.ndarray]:
         """
         Add projected points to the mesh by splitting triangles.
 
@@ -1259,7 +1258,7 @@ class TriangularMesh(Parametrization):
         source_vertices: np.ndarray = None,
         k: int = 1,
         return_indices: bool = False,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute geodesic distance from target vertices to their k-nearest
         source vertices on the mesh.
@@ -1321,7 +1320,7 @@ class BallPivoting(TriangularMesh):
     def fit(
         cls,
         positions: np.ndarray,
-        radii: Tuple[float] = (5.0,),
+        radii: tuple[float] = (5.0,),
         max_hole_size: float = None,
         target_edge_length: float = None,
         smoothness: float = 0.0,
@@ -2020,7 +2019,7 @@ def _grid_faces(rows: int, cols: int) -> np.ndarray:
     return np.vstack([tri_a, tri_b]).astype(np.int32)
 
 
-def merge(models: Tuple[Parametrization]) -> Parametrization:
+def merge(models: tuple[Parametrization]) -> Parametrization:
     # Right now this only really makes sense for meshes
     if not len(models):
         return None

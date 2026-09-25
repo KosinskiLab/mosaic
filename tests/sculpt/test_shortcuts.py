@@ -3,9 +3,8 @@
 from unittest.mock import MagicMock
 
 import pytest
-from qtpy.QtCore import QEvent, Qt
+from qtpy.QtCore import QEvent, QPoint, QPointF, Qt
 from qtpy.QtGui import QKeyEvent, QWheelEvent
-from qtpy.QtCore import QPointF, QPoint
 
 from mosaic.sculpt.controller import Brush, SculptController
 from mosaic.sculpt.shortcuts import SculptShortcutFilter

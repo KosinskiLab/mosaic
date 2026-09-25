@@ -1,8 +1,9 @@
 import warnings
+from collections.abc import Callable
 from functools import lru_cache, wraps
-from typing import Callable, List, Union
 
 import numpy as np
+
 from .geometry import Geometry
 
 __all__ = ["GeometryProperties", "export_property_csv"]
@@ -150,7 +151,7 @@ def mesh_statistics(fit, stat_type: str = "Vertex Count", **kwargs):
 
 def distance(
     geometry: Geometry,
-    queries: List[Union[np.ndarray, Geometry]] = [],
+    queries: list[np.ndarray | Geometry] = [],
     k: int = 1,
     k_start: int = 1,
     aggregation: str = "mean",
@@ -331,7 +332,7 @@ def _projection_normals(geometry: Geometry, projection: str):
 
 def projected_angle(
     geometry: Geometry,
-    queries: List[Geometry],
+    queries: list[Geometry],
     projection: str = "closest",
     **kwargs,
 ):
@@ -384,7 +385,7 @@ def projected_angle(
 
 def projected_curvature(
     geometry: Geometry,
-    queries: List[Geometry],
+    queries: list[Geometry],
     curvature: str,
     radius: int,
     projection: str = "closest",
@@ -435,7 +436,7 @@ def projected_curvature(
 
 def geodesic_distance(
     geometry: Geometry,
-    queries: List[Geometry],
+    queries: list[Geometry],
     k: int = 1,
     k_start=1,
     aggregation: str = "mean",
@@ -532,7 +533,7 @@ def _load_tomogram_cached(file_path: str):
 
 def thickness(
     geometry: Geometry,
-    queries: List[Union[np.ndarray, Geometry]] = [],
+    queries: list[np.ndarray | Geometry] = [],
     smoothing_radius: float = 0.0,
     *args,
     **kwargs,
@@ -602,8 +603,8 @@ def thickness(
     vertex_thickness /= vertex_counts
 
     if smoothing_radius > 0:
-        from scipy.spatial import cKDTree
         from scipy.sparse import csr_matrix
+        from scipy.spatial import cKDTree
 
         tree = cKDTree(model.vertices)
         dist_matrix = tree.sparse_distance_matrix(tree, max_distance=smoothing_radius)

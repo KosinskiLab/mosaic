@@ -8,20 +8,20 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 __all__ = [
     "AXIS_COLORS",
-    "LegendWidget",
-    "ScaleBarWidget",
     "AxesWidget",
     "BoundingBoxManager",
+    "LegendWidget",
+    "ScaleBarWidget",
     "create_bounding_box_actor",
 ]
 
 import vtk
 from vtk import (
-    vtkCubeSource,
-    vtkPolyDataMapper,
     vtkActor,
     vtkAxesActor,
+    vtkCubeSource,
     vtkOrientationMarkerWidget,
+    vtkPolyDataMapper,
 )
 
 from ..stylesheets import Colors

@@ -1,23 +1,23 @@
 import os
-from sys import platform
 from pathlib import Path
-from typing import List, Union
+from sys import platform
 
-from qtpy.QtCore import Qt, QEvent, QObject, QStringListModel
+from qtpy.QtCore import QEvent, QObject, QStringListModel, Qt
 from qtpy.QtGui import QColor, QPalette
 from qtpy.QtWidgets import (
-    QVBoxLayout,
+    QCompleter,
+    QFileDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
+    QVBoxLayout,
     QWidget,
-    QFrame,
-    QFileDialog,
-    QCompleter,
 )
-from ..stylesheets import Colors, Typography
+
 from ..icons import icon, icon_pixmap
+from ..stylesheets import Colors, Typography
 
 
 class _TabCompleteFilter(QObject):
@@ -98,7 +98,7 @@ class PathSelector(QWidget):
 
         self.mode = mode
         self.file_filter = file_filter
-        self._paths: List[str] = []
+        self._paths: list[str] = []
         self._cached_dir = None
 
         main_layout = QVBoxLayout(self)
@@ -144,9 +144,8 @@ class PathSelector(QWidget):
         pal.setColor(QPalette.ColorRole.PlaceholderText, QColor(Colors.ICON_MUTED))
         self.path_input.setPalette(pal)
 
-        self.path_input.focusInEvent = lambda *_: (
-            self.container_frame.setStyleSheet(
-                f"""
+        self.path_input.focusInEvent = lambda *_: self.container_frame.setStyleSheet(
+            f"""
                 #pathSelectorFrame {{
                     border: 1px solid {Colors.BORDER_HOVER};
                     border-radius: {Colors.RADIUS}px;
@@ -155,11 +154,9 @@ class PathSelector(QWidget):
                     border: 1px solid {Colors.BORDER_HOVER};
                 }}
                 """
-            )
         )
-        self.path_input.focusOutEvent = lambda *_: (
-            self.container_frame.setStyleSheet(
-                f"""
+        self.path_input.focusOutEvent = lambda *_: self.container_frame.setStyleSheet(
+            f"""
                 #pathSelectorFrame {{
                     border: 1px solid {Colors.BORDER_DARK};
                     border-radius: {Colors.RADIUS}px;
@@ -168,7 +165,6 @@ class PathSelector(QWidget):
                     border: 1px solid {Colors.BORDER_HOVER};
                 }}
                 """
-            )
         )
 
         self.browse_button = QPushButton()
@@ -320,7 +316,7 @@ class PathSelector(QWidget):
         dialog.accepted.connect(on_accepted)
         dialog.open()
 
-    def get_path(self) -> Union[str, List[str]]:
+    def get_path(self) -> str | list[str]:
         """Return the selected path(s).
 
         Returns a single string for ``"file"``, ``"directory"``, and
@@ -330,7 +326,7 @@ class PathSelector(QWidget):
             return list(self._paths)
         return self.path_input.text()
 
-    def set_path(self, path: Union[str, List[str]]):
+    def set_path(self, path: str | list[str]):
         """Set the path(s) in the input field."""
         if self.mode == "files":
             if isinstance(path, str):

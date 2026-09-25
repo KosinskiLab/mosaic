@@ -10,31 +10,31 @@ import functools
 from pathlib import Path
 
 import numpy as np
+import pyqtgraph as pg
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QWidget,
     QDialog,
     QGroupBox,
-    QTableWidget,
+    QHBoxLayout,
     QHeaderView,
-    QTableWidgetItem,
-    QSplitter,
+    QLabel,
+    QPushButton,
     QSizePolicy,
+    QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
-import pyqtgraph as pg
 
-from ._utils import find_dts_file, parse_dts_content
 from ..icons import icon, icon_button
-from .configure_panel import ConfigurePanel
-from .compute_panel import ComputePanel
-from .analysis_panel import AnalysisPanel
 from ..stylesheets import Colors, Typography
+from ..widgets import MosaicMessageBox, PathSelector, SearchWidget, TabWidget
 from ..widgets.settings import get_widget_value
-from ..widgets import PathSelector, SearchWidget, TabWidget, MosaicMessageBox
+from ._utils import find_dts_file, parse_dts_content
+from .analysis_panel import AnalysisPanel
+from .compute_panel import ComputePanel
+from .configure_panel import ConfigurePanel
 
 __all__ = ["DTSScreeningDialog"]
 
@@ -370,8 +370,8 @@ class DTSScreeningDialog(QDialog):
         run_dir = self._resolve_run_dir(run_id)
         if not run_dir.exists():
             return None
-        from qtpy.QtGui import QDesktopServices
         from qtpy.QtCore import QUrl
+        from qtpy.QtGui import QDesktopServices
 
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(run_dir)))
 
@@ -390,12 +390,12 @@ class DTSScreeningDialog(QDialog):
                 "No trajectory found. Check if .dts file or TrajTSI directory are present.",
             )
 
+        from ..parallel import submit_io_task
         from ._utils import (
-            list_trajectory_files,
             build_trajectory_frames,
             collect_vertex_properties,
+            list_trajectory_files,
         )
-        from ..parallel import submit_io_task
 
         files = list_trajectory_files(str(traj_dir))
         if not files:

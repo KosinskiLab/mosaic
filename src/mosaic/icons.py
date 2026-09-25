@@ -9,13 +9,12 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import warnings
-from typing import Optional, Tuple
 
 import qtawesome as qta
 
 from .stylesheets import Colors
 
-__all__ = ["icon", "icon_pixmap", "icon_button"]
+__all__ = ["icon", "icon_button", "icon_pixmap"]
 
 
 def _role_color(role: str) -> str:
@@ -37,9 +36,9 @@ def _role_color(role: str) -> str:
 
 def _resolve_colors(
     role: str,
-    color: Optional[str],
-    color_disabled: Optional[str],
-) -> Tuple[str, str]:
+    color: str | None,
+    color_disabled: str | None,
+) -> tuple[str, str]:
     """Resolve (enabled_color, disabled_color) for an icon."""
     enabled = color if color is not None else _role_color(role)
     disabled = color_disabled if color_disabled is not None else Colors.ICON
@@ -50,8 +49,8 @@ def icon(
     name: str,
     *,
     role: str = "muted",
-    color: Optional[str] = None,
-    color_disabled: Optional[str] = None,
+    color: str | None = None,
+    color_disabled: str | None = None,
     **qta_kwargs,
 ):
     """Build a QIcon.
@@ -86,7 +85,7 @@ def icon_pixmap(
     size: int,
     *,
     role: str = "muted",
-    color: Optional[str] = None,
+    color: str | None = None,
     **qta_kwargs,
 ):
     """Build a QPixmap of the given size. Uses the same fallback as ``icon``."""

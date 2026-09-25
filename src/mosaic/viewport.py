@@ -10,11 +10,11 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from contextlib import contextmanager
 
-import vtk
 import numpy as np
-from qtpy.QtCore import Qt, QObject, QEvent, QTimer, Signal
+import vtk
+from qtpy.QtCore import QEvent, QObject, Qt, QTimer, Signal
 
-__all__ = ["ViewportInteractor", "PropIdBuffer", "hardware_picking"]
+__all__ = ["PropIdBuffer", "ViewportInteractor", "hardware_picking"]
 
 
 @contextmanager

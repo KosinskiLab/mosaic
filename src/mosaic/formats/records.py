@@ -8,7 +8,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import warnings
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -52,8 +52,8 @@ class GeometryData:
     faces: np.ndarray = None
     quaternions: np.ndarray = None
     vertex_properties: "VertexPropertyContainer" = None
-    shape: List[int] = None
-    sampling: List[float] = (1, 1, 1)
+    shape: list[int] = None
+    sampling: list[float] = (1, 1, 1)
     model: Any = None
 
 
@@ -80,16 +80,16 @@ class GeometryDataContainer:
         Sampling rates along each axis, by default (1, 1, 1).
     """
 
-    vertices: List[np.ndarray] = None
-    normals: List[np.ndarray] = None
-    faces: List[np.ndarray] = None
-    quaternions: List[np.ndarray] = None
-    vertex_properties: List["VertexPropertyContainer"] = None
-    shape: List[int] = None
-    sampling: List[float] = (1, 1, 1)
+    vertices: list[np.ndarray] = None
+    normals: list[np.ndarray] = None
+    faces: list[np.ndarray] = None
+    quaternions: list[np.ndarray] = None
+    vertex_properties: list["VertexPropertyContainer"] = None
+    shape: list[int] = None
+    sampling: list[float] = (1, 1, 1)
 
     def __post_init__(self):
-        from ..utils import compute_bounding_box, NORMAL_REFERENCE
+        from ..utils import NORMAL_REFERENCE, compute_bounding_box
 
         dtype_map = {
             "vertices": np.float32,
@@ -149,7 +149,7 @@ class GeometryDataContainer:
         )
 
     @staticmethod
-    def _to_dtype(data: List[np.ndarray], dtype=np.float32):
+    def _to_dtype(data: list[np.ndarray], dtype=np.float32):
         try:
             n_elements = len(data)
         except Exception:
@@ -173,7 +173,7 @@ class VertexPropertyContainer:
         Dictionary mapping property names to vertex data arrays.
     """
 
-    def __init__(self, properties: Optional[Dict[str, np.ndarray]] = None):
+    def __init__(self, properties: dict[str, np.ndarray] | None = None):
         """
         Initialize vertex property container.
 
@@ -219,7 +219,7 @@ class VertexPropertyContainer:
         """List available vertex properties."""
         return list(self._properties.keys())
 
-    def get_property(self, name: str, default: Any = None) -> Optional[np.ndarray]:
+    def get_property(self, name: str, default: Any = None) -> np.ndarray | None:
         """Get property data by name."""
         return self._properties.get(name, default)
 
@@ -257,7 +257,7 @@ class VertexPropertyContainer:
 
     @classmethod
     def merge(
-        cls, containers: List["VertexPropertyContainer"]
+        cls, containers: list["VertexPropertyContainer"]
     ) -> "VertexPropertyContainer":
         """
         Merge multiple property containers.

@@ -1,12 +1,12 @@
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QDialog,
-    QVBoxLayout,
+    QGridLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QGridLayout,
-    QGroupBox,
+    QVBoxLayout,
 )
 
 from ..formats._utils import read_density_header, read_star_header
@@ -24,10 +24,10 @@ class ImportDataDialog(QDialog):
     def setup_ui(self):
         from ..icons import (
             dialog_accept_icon,
-            dialog_reject_icon,
+            dialog_apply_icon,
             dialog_next_icon,
             dialog_previous_icon,
-            dialog_apply_icon,
+            dialog_reject_icon,
         )
 
         self.setWindowTitle("Import Parameters")

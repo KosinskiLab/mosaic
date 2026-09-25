@@ -6,7 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from .session import Session
 from .registry import CommandRegistry
+from .session import Session
 
-__all__ = ["Session", "CommandRegistry"]
+__all__ = ["CommandRegistry", "Session"]

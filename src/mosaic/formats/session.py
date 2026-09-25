@@ -16,9 +16,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import json
-import struct
 import pickle
-from typing import Dict, Optional
+import struct
 
 from ._utils import CompatibilityUnpickler
 
@@ -32,7 +31,7 @@ def is_session_file(filepath: str) -> bool:
     return filepath.lower().endswith(_SESSION_EXTENSIONS)
 
 
-def _read_index(filepath: str) -> Optional[Dict]:
+def _read_index(filepath: str) -> dict | None:
     """Read the file index, returning ``None`` for legacy pickle files."""
     with open(filepath, "rb") as fh:
         first_four = fh.read(4)
@@ -43,7 +42,7 @@ def _read_index(filepath: str) -> Optional[Dict]:
         return json.loads(fh.read(index_len).decode("utf-8"))
 
 
-def read_session_index(filepath: str) -> Dict:
+def read_session_index(filepath: str) -> dict:
     """Read the session file index.
 
     Returns ``{"format_version": 0}`` for legacy pure-pickle files.
@@ -62,7 +61,7 @@ def read_session_index(filepath: str) -> Dict:
     return index if index is not None else {"format_version": 0}
 
 
-def read_session_section(filepath: str, section: str) -> Optional[bytes]:
+def read_session_section(filepath: str, section: str) -> bytes | None:
     """Read raw bytes for a named section without decoding.
 
     Parameters
@@ -90,7 +89,7 @@ def read_session_section(filepath: str, section: str) -> Optional[bytes]:
         return fh.read(info["size"])
 
 
-def read_session_meta(filepath: str) -> Dict:
+def read_session_meta(filepath: str) -> dict:
     """Read session metadata without loading geometry data.
 
     Parameters
@@ -109,7 +108,7 @@ def read_session_meta(filepath: str) -> Dict:
     return json.loads(data.decode("utf-8"))
 
 
-def open_session(filepath: str) -> Dict:
+def open_session(filepath: str) -> dict:
     """Read session state, handling both legacy and indexed formats.
 
     Parameters

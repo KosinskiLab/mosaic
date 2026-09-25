@@ -7,5 +7,4 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from .controller import Brush, EventKind, SculptController
 
-
 __all__ = ["Brush", "EventKind", "SculptController"]

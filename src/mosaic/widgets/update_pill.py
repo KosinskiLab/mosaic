@@ -21,7 +21,7 @@ class UpdatePill(QPushButton):
         Parent widget.
     """
 
-    update_clicked = Signal(str, str)
+    update_clicked = Signal(str, bool)
 
     def __init__(self, parent=None):
         super().__init__("Update Mosaic", parent)
@@ -29,19 +29,19 @@ class UpdatePill(QPushButton):
         self.setFixedHeight(26)
         self.setVisible(False)
         self._latest = ""
-        self._notes = ""
+        self._has_changelog = False
         self.clicked.connect(self._emit_clicked)
         self._on_theme_changed()
 
-    def show_update(self, latest: str, notes: str = "") -> None:
-        """Reveal the pill, recording version and notes for the click handler."""
+    def show_update(self, latest: str, has_changelog: bool = False) -> None:
+        """Reveal the pill, recording what the click handler needs to pass on."""
         self._latest = latest
-        self._notes = notes
+        self._has_changelog = has_changelog
         self.setVisible(True)
 
     def _emit_clicked(self) -> None:
         if self._latest:
-            self.update_clicked.emit(self._latest, self._notes)
+            self.update_clicked.emit(self._latest, self._has_changelog)
 
     def _on_theme_changed(self) -> None:
         self.setStyleSheet(

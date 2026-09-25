@@ -6,7 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property
+from qtpy.QtCore import Property, QEasingCurve, QPropertyAnimation, Qt
 from qtpy.QtGui import QColor, QFont, QPainter
 from qtpy.QtWidgets import QPushButton
 

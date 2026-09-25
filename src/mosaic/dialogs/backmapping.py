@@ -1,22 +1,23 @@
 from pathlib import Path
 
 from qtpy.QtWidgets import (
-    QVBoxLayout,
-    QHBoxLayout,
-    QDialog,
-    QLabel,
-    QComboBox,
-    QPushButton,
-    QWidget,
-    QDoubleSpinBox,
-    QScrollArea,
-    QGroupBox,
-    QFrame,
-    QLineEdit,
     QCheckBox,
+    QComboBox,
+    QDialog,
+    QDoubleSpinBox,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
+
 from ..icons import icon
-from ..widgets import DialogFooter, PathSelector, MosaicMessageBox
+from ..widgets import DialogFooter, MosaicMessageBox, PathSelector
 
 
 class MeshMappingRow(QWidget):

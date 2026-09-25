@@ -7,10 +7,9 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from functools import lru_cache
-from typing import Tuple, Optional
 
-import vtk
 import numpy as np
+import vtk
 from numpy.typing import NDArray
 from vtk.util import numpy_support
 
@@ -21,7 +20,7 @@ __all__ = ["TextureSampler"]
 
 def compute_uv_coords(
     vertices: NDArray, triangles: NDArray
-) -> Tuple[NDArray, NDArray, NDArray]:
+) -> tuple[NDArray, NDArray, NDArray]:
     """
     Compute UV coordinates using xatlas.
 
@@ -54,7 +53,7 @@ def _compute_sampling_map(
     tri_verts: NDArray,
     tri_normals: NDArray,
     scaled_uvs: NDArray,
-) -> Tuple[NDArray, NDArray]:
+) -> tuple[NDArray, NDArray]:
     """Precompute per-pixel 3D positions and normals."""
     from skimage.draw import polygon
 
@@ -97,7 +96,7 @@ def _compute_sampling_map(
     return positions, normals, np.where(valid_mask)
 
 
-def _compute_barycentric(points: NDArray, triangle: NDArray) -> Optional[NDArray]:
+def _compute_barycentric(points: NDArray, triangle: NDArray) -> NDArray | None:
     """Compute barycentric coordinates for points relative to triangle."""
     v0, v1, v2 = triangle[0], triangle[1], triangle[2]
     d00 = np.dot(v1 - v0, v1 - v0)
@@ -301,8 +300,8 @@ class TextureSampler:
     def update(
         self,
         normal_offset: float = 0.0,
-        colormap: Optional[str] = "gray",
-        scalar_range: Optional[Tuple[float, float]] = None,
+        colormap: str | None = "gray",
+        scalar_range: tuple[float, float] | None = None,
         gamma: float = 1.0,
         quantiles: bool = False,
     ) -> NDArray:

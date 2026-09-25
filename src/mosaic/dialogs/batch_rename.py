@@ -7,19 +7,18 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import re
-from typing import List
 
 from qtpy.QtWidgets import (
+    QCheckBox,
     QDialog,
-    QVBoxLayout,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QGridLayout,
-    QCheckBox,
-    QStackedWidget,
-    QWidget,
     QPushButton,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 from ..stylesheets import Colors, Typography
@@ -48,7 +47,7 @@ class BatchRenameDialog(QDialog):
 
     MODES = ["Replace", "Format"]
 
-    def __init__(self, names: List[str], parent=None):
+    def __init__(self, names: list[str], parent=None):
         super().__init__(parent)
         self.names = names
         self.result_names = list(names)

@@ -5,12 +5,9 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Tuple
-
 import numpy as np
 import vtk
 from vtkmodules.util import numpy_support
-
 
 __all__ = [
     "PolyDataPointWriter",
@@ -20,7 +17,7 @@ __all__ = [
 ]
 
 
-def read_geometry_arrays(geometry) -> Tuple[np.ndarray, np.ndarray]:
+def read_geometry_arrays(geometry) -> tuple[np.ndarray, np.ndarray]:
     """Return ``(vs, fs)`` as numpy arrays for a Mosaic ``Geometry``.
 
     Faces come from ``geometry.model.triangles``; sculpt only ever binds to

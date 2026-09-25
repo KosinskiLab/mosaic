@@ -37,7 +37,7 @@ def test_apply_changes_add_then_undo_removes():
     assert target.container.get(g.uuid) is None
 
 
-from mosaic.swaps import build_changes, place
+from mosaic.swaps import place
 from mosaic.undo import STACK
 
 

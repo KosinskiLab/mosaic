@@ -12,7 +12,6 @@ import struct
 import numpy as np
 import pytest
 
-from mosaic.geometry import Geometry, GeometryData
 from mosaic.formats.parser import (
     NotASegmentationError,
     points_from_flat_array,
@@ -20,10 +19,11 @@ from mosaic.formats.parser import (
     read_ndjson,
     read_star,
     read_txt,
+    resolve_parser,
 )
-from mosaic.formats.parser import resolve_parser
-from mosaic.formats.reader import open_file, is_volume_file, is_likely_density_map
+from mosaic.formats.reader import is_likely_density_map, is_volume_file, open_file
 from mosaic.formats.writer import write_geometries
+from mosaic.geometry import Geometry, GeometryData
 
 
 class TestNdjsonRoundTrip:

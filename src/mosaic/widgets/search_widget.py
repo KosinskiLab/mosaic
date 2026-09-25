@@ -1,5 +1,6 @@
 from qtpy.QtCore import Signal
-from qtpy.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QLabel, QFrame
+from qtpy.QtWidgets import QFrame, QHBoxLayout, QLabel, QLineEdit, QWidget
+
 from ..icons import icon_pixmap
 from ..stylesheets import Colors
 

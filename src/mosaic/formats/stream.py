@@ -8,8 +8,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from collections import OrderedDict
 
-import vtk
 import numpy as np
+import vtk
 from vtkmodules.util import numpy_support
 from vtkmodules.util.vtkAlgorithm import VTKPythonAlgorithmBase
 

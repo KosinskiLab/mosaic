@@ -1,27 +1,28 @@
 import textwrap
 from os import makedirs
-from os.path import join, splitext, basename
+from os.path import basename, join, splitext
 
 import numpy as np
-from tme import Density
 from qtpy.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QLabel,
-    QLineEdit,
-    QGroupBox,
     QCheckBox,
     QComboBox,
+    QDialog,
+    QDoubleSpinBox,
+    QFormLayout,
+    QGridLayout,
+    QGroupBox,
+    QLabel,
+    QLineEdit,
     QScrollArea,
     QSpinBox,
-    QDoubleSpinBox,
+    QVBoxLayout,
     QWidget,
-    QGridLayout,
-    QFormLayout,
 )
+from tme import Density
+
 from ..icons import icon
 from ..stylesheets import Colors, Typography
-from ..widgets import PathSelector, DialogFooter, TabWidget, MosaicMessageBox
+from ..widgets import DialogFooter, MosaicMessageBox, PathSelector, TabWidget
 
 
 class InputDataTab(QWidget):
@@ -713,7 +714,7 @@ class TemplateMatchingDialog(QDialog):
             # Set up environment. Modify as needed
             # source activate your_env
 
-            if [ "{preprocess['skip_preprocessing']}" = "True" ]; then
+            if [ "{preprocess["skip_preprocessing"]}" = "True" ]; then
                 echo "Skip preprocessing - using existing template"
             else
                 echo "Preprocessing template..."

@@ -7,8 +7,8 @@ from mosaic.parametrization import (
     _MESH_CHORD_TOL,
     _MESH_MAX_SEG,
     _edge_length_from_curvature,
-    _n_segments,
     _grid_faces,
+    _n_segments,
 )
 
 

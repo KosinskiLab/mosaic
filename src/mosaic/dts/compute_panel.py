@@ -6,19 +6,20 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
-    QHBoxLayout,
-    QLabel,
-    QComboBox,
-    QSpinBox,
     QCheckBox,
-    QPushButton,
+    QComboBox,
     QFormLayout,
     QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSpinBox,
 )
+
 from ..icons import icon
 from ..widgets import MosaicMessageBox
 
@@ -46,9 +47,9 @@ class ComputePanel(QGroupBox):
         self,
         get_mesh_transform: Callable,
         cdata=None,
-        get_run_ids: Optional[Callable] = None,
-        get_run_dir: Optional[Callable] = None,
-        on_complete: Optional[Callable] = None,
+        get_run_ids: Callable | None = None,
+        get_run_dir: Callable | None = None,
+        on_complete: Callable | None = None,
         parent=None,
     ):
         super().__init__("Compute", parent)

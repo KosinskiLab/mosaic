@@ -6,7 +6,7 @@ Copyright (c) 2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -31,7 +31,6 @@ def _patch_lod():
 
 
 class TestDataContainer:
-
     def test_init_defaults(self):
         c = DataContainer()
         assert c.base_color == (0.7, 0.7, 0.7)

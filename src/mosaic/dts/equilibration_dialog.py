@@ -11,17 +11,17 @@ from pathlib import Path
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QDialog,
-    QVBoxLayout,
     QGridLayout,
-    QLabel,
     QGroupBox,
+    QLabel,
     QPushButton,
+    QVBoxLayout,
     QWidget,
 )
 
 from ..icons import icon
 from ..stylesheets import Colors
-from ..widgets import DialogFooter, PathSelector, MosaicMessageBox
+from ..widgets import DialogFooter, MosaicMessageBox, PathSelector
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
 
 

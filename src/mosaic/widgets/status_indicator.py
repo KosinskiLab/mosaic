@@ -9,24 +9,25 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import enum
 from collections import Counter
 
-from qtpy.QtCore import Qt, QRectF, QTimer, Signal
+from qtpy.QtCore import QRectF, Qt, QTimer, Signal
+from qtpy.QtGui import QColor, QPainter, QPainterPath, QPen, QTextCursor
 from qtpy.QtWidgets import (
-    QWidget,
-    QLabel,
-    QVBoxLayout,
-    QHBoxLayout,
-    QScrollArea,
-    QPushButton,
+    QApplication,
     QFrame,
     QGroupBox,
-    QTextEdit,
+    QHBoxLayout,
+    QLabel,
     QProgressBar,
-    QApplication,
+    QPushButton,
+    QScrollArea,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
-from qtpy.QtGui import QTextCursor, QPainter, QColor, QPen, QPainterPath
-from ..stylesheets import Colors, Typography
+
 from ..icons import icon
 from ..parallel import BackgroundTaskManager
+from ..stylesheets import Colors, Typography
 
 
 class ViewerModes(enum.Enum):
@@ -692,20 +693,6 @@ class StatusIndicator:
             QStatusBar::item {{ border: none; }}
         """
         )
-        if hasattr(self, "progress_bar"):
-            self.progress_bar.setStyleSheet(
-                f"""
-                QProgressBar {{
-                    border: none;
-                    background-color: {Colors.BORDER_DARK};
-                    border-radius: 3px;
-                }}
-                QProgressBar::chunk {{
-                    background-color: {Colors.PRIMARY};
-                    border-radius: 3px;
-                }}
-            """
-            )
         if hasattr(self, "task_button"):
             self.task_button.setIcon(icon("ph.caret-up", role="muted"))
             self.task_button.setStyleSheet(
@@ -768,19 +755,6 @@ class StatusIndicator:
         self.progress_bar.setMaximumHeight(6)
         self.progress_bar.setTextVisible(False)
         self.progress_bar.setVisible(False)
-        self.progress_bar.setStyleSheet(
-            f"""
-            QProgressBar {{
-                border: none;
-                background-color: {Colors.BORDER_DARK};
-                border-radius: 3px;
-            }}
-            QProgressBar::chunk {{
-                background-color: {Colors.PRIMARY};
-                border-radius: 3px;
-            }}
-        """
-        )
 
         self.progress_count = QLabel()
         self.progress_count.setFixedWidth(35)

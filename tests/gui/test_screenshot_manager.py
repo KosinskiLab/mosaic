@@ -51,7 +51,9 @@ def recorded_capture(monkeypatch):
     calls = {}
 
     def fake_capture_frame(render_window, transparent_bg=False, magnification=1, **kw):
-        width = kw["width"] if kw.get("width") is not None else render_window.GetSize()[0]
+        width = (
+            kw["width"] if kw.get("width") is not None else render_window.GetSize()[0]
+        )
         height = (
             kw["height"] if kw.get("height") is not None else render_window.GetSize()[1]
         )
@@ -76,7 +78,9 @@ class TestScreenshotResolution:
 
     def test_capture_honors_explicit_dimensions(self, recorded_capture):
         widget = FakeVTKWidget((800, 600), 2.0)
-        image = ScreenshotManager(widget).capture(width=320, height=240, magnification=1)
+        image = ScreenshotManager(widget).capture(
+            width=320, height=240, magnification=1
+        )
         assert image.size == (320, 240)
 
 
@@ -138,9 +142,7 @@ def _measure(frame):
 class TestRelativeScaling:
     """Screenshots must show the scene at the proportions the viewer shows."""
 
-    def test_point_size_keeps_its_share_of_the_frame(
-        self, require_vtk_render_window
-    ):
+    def test_point_size_keeps_its_share_of_the_frame(self, require_vtk_render_window):
         render_window = _offscreen_window()
 
         base_diameter, base_separation = _measure(
@@ -172,9 +174,7 @@ class TestRelativeScaling:
             diameter / separation, rel=0.15
         )
 
-    def test_cropped_capture_keeps_point_proportions(
-        self, require_vtk_render_window
-    ):
+    def test_cropped_capture_keeps_point_proportions(self, require_vtk_render_window):
         render_window = _offscreen_window()
 
         diameter, separation = _measure(

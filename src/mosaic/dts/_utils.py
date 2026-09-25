@@ -6,11 +6,10 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import re
 import json
+import re
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -22,7 +21,7 @@ class _ParameterParser:
     PARAM_PATTERN = re.compile(r"\{\{(\w+):([^}]+)\}\}")
 
     @classmethod
-    def parse_template(cls, template_content: str) -> Tuple[str, Dict[str, List]]:
+    def parse_template(cls, template_content: str) -> tuple[str, dict[str, list]]:
         """Parse a template and extract ``{{name:range}}`` parameter definitions."""
         parameters = {}
 
@@ -36,7 +35,7 @@ class _ParameterParser:
         return template_processed, parameters
 
     @classmethod
-    def _parse_parameter_definition(cls, param_def: str) -> List:
+    def _parse_parameter_definition(cls, param_def: str) -> list:
         if ":" in param_def:
             parts = param_def.split(":")
             if len(parts) != 3:
@@ -61,14 +60,14 @@ class _ParameterParser:
             return [param_def.strip()]
 
 
-def parse_xvg(path: str) -> Optional[Tuple[List[str], np.ndarray, Dict[str, str]]]:
+def parse_xvg(path: str) -> tuple[list[str], np.ndarray, dict[str, str]] | None:
     """Parse an .xvg file into (column_names, data, metadata) or None."""
     xvg_path = Path(path)
     if not xvg_path.exists():
         return None
 
     column_names, data_lines, metadata = [], [], {}
-    with open(xvg_path, "r") as f:
+    with open(xvg_path) as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -110,7 +109,7 @@ def sanitize_label(label: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "_", label).strip("_").lower()
 
 
-def find_dts_file(run_dir) -> Optional[Path]:
+def find_dts_file(run_dir) -> Path | None:
     """Return the DTS config file for *run_dir*.
 
     Prefers ``input.dts``; falls back to the first ``*.dts`` file found.
@@ -122,7 +121,7 @@ def find_dts_file(run_dir) -> Optional[Path]:
     return next(iter(sorted(run_path.glob("*.dts"))), None)
 
 
-def resolve_trajectory_dir(run_dir) -> Optional[Path]:
+def resolve_trajectory_dir(run_dir) -> Path | None:
     """Return the first existing trajectory directory for a DTS run.
 
     Parses ``input.dts`` for ``VisualizationFormat`` and
@@ -211,10 +210,10 @@ def build_trajectory_frames(
     drop_pbc : bool
         Remove faces that wrap across periodic boundaries.
     """
-    from ..meshing import to_open3d
-    from ..parametrization import TriangularMesh
     from ..formats.parser import VertexPropertyContainer
+    from ..meshing import to_open3d
     from ..parallel import report_progress
+    from ..parametrization import TriangularMesh
 
     total = len(list_trajectory_files(trajectory_dir))
 
@@ -249,7 +248,7 @@ def build_trajectory_frames(
     return frames
 
 
-def parse_time_series(run_dir: str) -> Optional[Tuple[List[str], np.ndarray]]:
+def parse_time_series(run_dir: str) -> tuple[list[str], np.ndarray] | None:
     """Parse ``dts-en.xvg`` energy time series from a DTS run directory."""
     result = parse_xvg(str(Path(run_dir) / "dts-en.xvg"))
     if result is None:
@@ -258,7 +257,7 @@ def parse_time_series(run_dir: str) -> Optional[Tuple[List[str], np.ndarray]]:
     return columns, data
 
 
-def parse_run_time_series(run_dir: str) -> List[Dict]:
+def parse_run_time_series(run_dir: str) -> list[dict]:
     """Scan a run directory for all .xvg time series files."""
     run_path = Path(run_dir)
 
@@ -288,7 +287,7 @@ def parse_run_time_series(run_dir: str) -> List[Dict]:
     return series
 
 
-def load_screen_results(screen_dir: str) -> Dict:
+def load_screen_results(screen_dir: str) -> dict:
     """Load all results from a screen, trajectory collection, or single run."""
     from .screening import get_screen_status
 
@@ -301,7 +300,7 @@ def load_screen_results(screen_dir: str) -> Dict:
 
     parameter_names = []
     if summary_path.exists():
-        with open(summary_path, "r") as f:
+        with open(summary_path) as f:
             summary = json.load(f)
         parameter_names = summary.get("parameters", [])
 
@@ -315,7 +314,7 @@ def load_screen_results(screen_dir: str) -> Dict:
         params = entry.get("parameters", {})
         params_file = run_dir / "params.json"
         if params_file.exists():
-            with open(params_file, "r") as f:
+            with open(params_file) as f:
                 params = json.load(f)
 
         runs.append(
@@ -430,7 +429,7 @@ COUPLING_DEFS = {
 }
 
 
-def extract_volume_path(dts_content: str) -> Optional[Union[str, List[str]]]:
+def extract_volume_path(dts_content: str) -> str | list[str] | None:
     """Extract volume path(s) from DTS config content.
 
     Checks for a ``{{volume_path:...}}`` screening placeholder first,
@@ -465,7 +464,7 @@ def extract_screening_placeholder(value: str):
     return None
 
 
-def parse_screening_ranges(text: str) -> Dict[str, List]:
+def parse_screening_ranges(text: str) -> dict[str, list]:
     """Extract ``{{name:range}}`` placeholders from text and parse values."""
     result = {}
     for match in re.finditer(r"\{\{(\w+):([^}]+)\}\}", text):
@@ -485,7 +484,7 @@ _FILTER_KEY_MAP = {
 }
 
 
-def _parse_filter_line(line: str, known: Dict):
+def _parse_filter_line(line: str, known: dict):
     """Parse a single ``;@filter`` line into *known* under ``_filters``."""
     filters = known.setdefault("_filters", {})
     for token in line[len(";@filter") :].split():
@@ -499,9 +498,9 @@ def _parse_filter_line(line: str, known: Dict):
             filters[mapped] = val.strip()
 
 
-def parse_filter_directives(dts_content: str) -> Dict[str, float]:
+def parse_filter_directives(dts_content: str) -> dict[str, float]:
     """Parse ``; @filter`` directives from DTS content."""
-    known: Dict = {}
+    known: dict = {}
     for line in dts_content.splitlines():
         stripped = line.strip()
         if stripped.startswith(";@filter"):
@@ -638,7 +637,7 @@ def parse_dts_content(content: str):
     return known, extra_lines
 
 
-def collect_vertex_properties(run_dir: str) -> Dict[str, np.ndarray]:
+def collect_vertex_properties(run_dir: str) -> dict[str, np.ndarray]:
     """Collect per-frame per-vertex properties from ``{run_dir}/mosaic/``.
 
     Returns

@@ -2,12 +2,11 @@ import pytest
 
 from mosaic.geometry import Geometry
 
-from .conftest import save_widget_screenshot, make_sphere_points, make_two_blobs
+from .conftest import make_sphere_points, make_two_blobs, save_widget_screenshot
 
 
 @pytest.mark.gui
 class TestCoreUI:
-
     def test_empty_interface(self, mosaic_app, output_dir, qapp):
         mosaic_app.cdata.reset()
         mosaic_app.prime_viewport_placeholder()

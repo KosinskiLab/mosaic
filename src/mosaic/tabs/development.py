@@ -1,19 +1,19 @@
 import time
 
 import numpy as np
-from qtpy.QtCore import Qt, QEvent, QTimer
+from qtpy.QtCore import QEvent, Qt, QTimer
 from qtpy.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QSpinBox,
-    QLabel,
     QFileDialog,
+    QHBoxLayout,
+    QLabel,
     QMessageBox,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
 )
 
-from ..widgets.ribbon import create_button
 from ..widgets import MosaicMessageBox
+from ..widgets.ribbon import create_button
 
 
 class PerformanceMonitor:
@@ -59,10 +59,10 @@ class PerformanceMonitor:
 
 _HAS_ANNOTATION = True
 try:
-    from ..models.slice_viewer import AnnotationOverlayController
     from ..models.dialog import AnnotationDialog
-    from ..models.volume import AnnotationVolume
     from ..models.labels import LabelManager
+    from ..models.slice_viewer import AnnotationOverlayController
+    from ..models.volume import AnnotationVolume
 except Exception:
     _HAS_ANNOTATION = False
 
@@ -724,6 +724,7 @@ class DevelopmentTab(QWidget):
         Mask values: 0 (bg) → black, 1 (fg) → white, 2 (ignore) → gray.
         """
         import os
+
         from PIL import Image
 
         def to_uint8(arr):
@@ -742,8 +743,9 @@ class DevelopmentTab(QWidget):
         Image.fromarray(mask_vis).save(os.path.join(output_dir, f"{idx:04d}_mask.png"))
 
     def _train_model(self):
+        import atexit
         import os
-        import atexit, shutil
+        import shutil
 
         result = self._prepare_manifest(action="train")
         if result is None:
@@ -769,7 +771,9 @@ class DevelopmentTab(QWidget):
         from ..parallel import submit_task
 
         def _on_complete(result):
-            import torch, io
+            import io
+
+            import torch
 
             config = result["config"]
             config["label_name"] = label_name
@@ -896,7 +900,7 @@ class DevelopmentTab(QWidget):
                         else np.ones(3)
                     )
                     geom = Geometry(points=coords * sampling, sampling_rate=sampling)
-                    geom._meta["name"] = f"Prediction"
+                    geom._meta["name"] = "Prediction"
                     self.cdata.data.add(geom)
                     self.cdata.data.render()
 

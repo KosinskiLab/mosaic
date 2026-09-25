@@ -8,7 +8,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from mosaic.commands.theme import MOSAIC_THEME
 
-
 EXPECTED_MOSAIC_KEYS = {
     "mosaic.heading",
     "mosaic.accent",

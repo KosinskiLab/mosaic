@@ -1,15 +1,14 @@
-from qtpy.QtCore import Qt, QSize, QRectF
-from qtpy.QtGui import QPainter, QColor
+from qtpy.QtCore import QSize, Qt
 from qtpy.QtWidgets import (
-    QDockWidget,
     QApplication,
-    QMainWindow,
-    QScrollArea,
+    QDockWidget,
     QFrame,
-    QWidget,
     QHBoxLayout,
     QLabel,
+    QMainWindow,
+    QScrollArea,
     QToolButton,
+    QWidget,
 )
 
 

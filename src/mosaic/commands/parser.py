@@ -13,15 +13,15 @@ import os
 import re
 import shlex
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-__all__ = ["ParsedCommand", "parse_command", "format_value", "format_kwargs"]
+__all__ = ["ParsedCommand", "format_kwargs", "format_value", "parse_command"]
 
 _TARGET_RE = re.compile(r"^#\d+(-\d+)?$")
 _SPECIAL_TARGETS = {"@last", "*"}
 
 
-def _split_tokens(text: str) -> List[str]:
+def _split_tokens(text: str) -> list[str]:
     """Split a command line into shell-like tokens.
 
     Quotes group tokens on every platform.  On Windows the backslash is kept
@@ -169,9 +169,9 @@ class ParsedCommand:
     """
 
     verb: str
-    targets: List[str] = field(default_factory=list)
-    args: List[str] = field(default_factory=list)
-    kwargs: Dict[str, Any] = field(default_factory=dict)
+    targets: list[str] = field(default_factory=list)
+    args: list[str] = field(default_factory=list)
+    kwargs: dict[str, Any] = field(default_factory=dict)
 
     def resolve_positional(self, params) -> None:
         """Map remaining positional *args* into *kwargs* by parameter order.
@@ -205,7 +205,7 @@ class ParsedCommand:
         self.args = remaining
 
 
-def parse_command(text: str) -> Optional[ParsedCommand]:
+def parse_command(text: str) -> ParsedCommand | None:
     """Parse a text command into a :class:`ParsedCommand`.
 
     Parameters

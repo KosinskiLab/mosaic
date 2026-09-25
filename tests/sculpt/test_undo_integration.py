@@ -1,7 +1,6 @@
 """Sculpt records carry both endpoints so STACK can both undo and redo."""
 
 import numpy as np
-import pytest
 
 from mosaic.sculpt.session import (
     PositionRecord,

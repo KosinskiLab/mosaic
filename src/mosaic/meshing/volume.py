@@ -10,9 +10,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Tuple, List
 from os import listdir, makedirs
-from os.path import join, basename
+from os.path import basename, join
 from tempfile import TemporaryDirectory
 
 import numpy as np
@@ -20,11 +19,11 @@ import numpy as np
 from .utils import merge_meshes, to_open3d
 
 __all__ = [
-    "mesh_volume",
-    "simplify_mesh",
     "MeshCreator",
     "MeshMerger",
     "MeshSimplifier",
+    "mesh_volume",
+    "simplify_mesh",
 ]
 
 
@@ -49,8 +48,8 @@ class MeshCreator:
         self,
         data_path: str,
         output_dir: str,
-        shape: Tuple[int, int, int],
-        offset: Tuple[int, int, int],
+        shape: tuple[int, int, int],
+        offset: tuple[int, int, int],
         **kwargs,
     ):
         """
@@ -86,6 +85,7 @@ class MeshCreator:
 
     def execute(self):
         from zmesh import Mesher
+
         from ..formats.parser import load_density
 
         self._volume = load_density(self.data_path, use_memmap=True)
@@ -253,7 +253,7 @@ def _execute(task):
     return task.execute()
 
 
-def _split_volume(shape, box) -> List:
+def _split_volume(shape, box) -> list:
     sx, sy, sz = np.ceil(np.divide(shape, box)).astype(int)
     sxy = sx * sy
     num_tasks = sxy * sz
@@ -270,7 +270,7 @@ def _split_volume(shape, box) -> List:
 def mesh_volume(
     volume_path: str,
     output_dir: str = None,
-    shape: Tuple[int, int, int] = (448, 448, 448),
+    shape: tuple[int, int, int] = (448, 448, 448),
     num_workers: int = 8,
     closed_dataset_edges: bool = True,
     max_simplification_error: float = 40,

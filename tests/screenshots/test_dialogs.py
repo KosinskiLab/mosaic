@@ -1,7 +1,7 @@
 import pytest
 
-from mosaic.dialogs.import_data import ImportDataDialog
 from mosaic.dialogs.export import ExportDialog
+from mosaic.dialogs.import_data import ImportDataDialog
 from mosaic.dialogs.properties import GeometryPropertiesDialog
 from mosaic.geometry import BASE_COLOR
 
@@ -10,7 +10,6 @@ from .conftest import save_widget_screenshot
 
 @pytest.mark.gui
 class TestDialogs:
-
     def test_import_dialog(self, mosaic_app, output_dir, qapp):
         dialog = ImportDataDialog(mosaic_app)
         dialog.set_files(["membrane_segmentation.star"])

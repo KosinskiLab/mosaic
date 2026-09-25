@@ -7,13 +7,13 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import sys
-import json
 import argparse
-from pathlib import Path
+import json
+import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
 
-from mosaic.pipeline.executor import generate_runs, execute_run
+from mosaic.pipeline.executor import execute_run, generate_runs
 
 
 def run_wrapper(run_config, skip_complete: bool = False):
@@ -66,7 +66,7 @@ Examples:
         print(f"Error: {args.config} not found", file=sys.stderr)
         return 1
 
-    with open(args.config, mode="r") as ifile:
+    with open(args.config) as ifile:
         pipeline_config = json.load(ifile)
 
     try:
@@ -88,7 +88,7 @@ Examples:
     if args.index is not None:
         if args.index < 0 or args.index >= len(runs):
             print(
-                f"Error: index {args.index} out of range [0, {len(runs)-1}]",
+                f"Error: index {args.index} out of range [0, {len(runs) - 1}]",
                 file=sys.stderr,
             )
             return 1
@@ -120,8 +120,7 @@ Examples:
             except Exception as e:
                 failed += 1
                 print(
-                    f"[{completed}/{total}] {run['run_id']}: "
-                    f"Unexpected error - {e}",
+                    f"[{completed}/{total}] {run['run_id']}: Unexpected error - {e}",
                     file=sys.stderr,
                 )
 

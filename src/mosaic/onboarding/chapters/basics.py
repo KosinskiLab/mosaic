@@ -21,8 +21,8 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
 )
 
-from . import register
 from ..base import OnboardingChapter, OnboardingStep
+from . import register
 
 __all__ = ["BasicsChapter"]
 
@@ -53,8 +53,8 @@ class BasicsChapter(OnboardingChapter):
         self._data_dir: Path | None = None
 
     def _download(self, parent) -> bool:
-        from mosaic.widgets import MosaicMessageBox
         from mosaic.stylesheets import Colors, Typography
+        from mosaic.widgets import MosaicMessageBox
 
         assert self._data_dir is not None
         n = len(_DOWNLOADS)
@@ -82,7 +82,7 @@ class BasicsChapter(OnboardingChapter):
 
         status = QLabel("Starting")
         status.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED};" f"font-size: {Typography.SMALL}px;"
+            f"color: {Colors.TEXT_MUTED};font-size: {Typography.SMALL}px;"
         )
 
         bar = QProgressBar()
@@ -90,19 +90,13 @@ class BasicsChapter(OnboardingChapter):
         bar.setValue(0)
         bar.setTextVisible(False)
         bar.setFixedHeight(6)
-        bar.setStyleSheet(
-            f"QProgressBar {{ border: none; background-color: {Colors.BG_TERTIARY};"
-            "border-radius: 3px; }"
-            f"QProgressBar::chunk {{ background-color: {Colors.PRIMARY};"
-            "border-radius: 3px; }"
-        )
 
         pct_label = QLabel("0%")
         pct_label.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
         pct_label.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED};" f"font-size: {Typography.CAPTION}px;"
+            f"color: {Colors.TEXT_MUTED};font-size: {Typography.CAPTION}px;"
         )
 
         cancel_btn = QPushButton("Cancel")
@@ -674,6 +668,7 @@ class BasicsChapter(OnboardingChapter):
             return None
 
         import shutil
+
         from mosaic.widgets import MosaicMessageBox
 
         box = MosaicMessageBox(main_window)

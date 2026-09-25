@@ -1,10 +1,8 @@
 import warnings
-
-from shutil import which
+from os.path import basename, exists, join, splitext
 from pathlib import Path
-from typing import Tuple
+from shutil import which
 from subprocess import run
-from os.path import splitext, join, basename, exists
 
 import numpy as np
 
@@ -81,8 +79,8 @@ def run_membrainseg(
     out_folder: str = None,
     window_size: int = 160,
     clustering: bool = True,
-    input_sampling_rate: Tuple[float] = None,
-    output_sampling_rate: Tuple[float] = None,
+    input_sampling_rate: tuple[float] = None,
+    output_sampling_rate: tuple[float] = None,
     test_time_augmentation: bool = True,
 ):
     from ..formats.parser import load_density

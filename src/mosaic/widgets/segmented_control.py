@@ -6,12 +6,12 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtCore import Signal, QSize
+from qtpy.QtCore import QSize, Signal
 from qtpy.QtGui import QIcon
-from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton
+from qtpy.QtWidgets import QHBoxLayout, QPushButton, QWidget
 
-from ..stylesheets import Colors
 from ..icons import icon as _icon
+from ..stylesheets import Colors
 
 
 class SegmentedControl(QWidget):

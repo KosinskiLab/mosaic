@@ -45,7 +45,6 @@ def _dispatch(session, text):
 
 
 class TestExpandBraceRange:
-
     def test_simple_range(self):
         assert _expand_brace_range("/data/file_{0..3}.star") == [
             "/data/file_0.star",
@@ -74,7 +73,6 @@ class TestExpandBraceRange:
 
 
 class TestNatsortKey:
-
     def test_numeric_ordering(self):
         paths = ["file_10.star", "file_2.star", "file_1.star"]
         assert sorted(paths, key=_natsort_key) == [
@@ -97,7 +95,6 @@ class TestNatsortKey:
 
 
 class TestIsTargetRef:
-
     @pytest.mark.parametrize("val", ["#0", "#0-5", "@last", "*", "#0,#1,#2"])
     def test_positive(self, val):
         assert _is_target_ref(val) is True
@@ -108,7 +105,6 @@ class TestIsTargetRef:
 
 
 class TestResolveKwargs:
-
     def test_geometry_ref_resolved(self, make_session):
         session = make_session(n=3)
         result = _resolve_kwargs(session, {"queries": "#0"})
@@ -132,7 +128,6 @@ class TestResolveKwargs:
 
 
 class TestDispatchEdgeCases:
-
     def test_help_redirect(self, make_session):
         """'measure help' redirects to 'help measure'."""
         session = make_session(n=1)
@@ -156,7 +151,6 @@ class TestDispatchEdgeCases:
 
 
 class TestCmdList:
-
     def test_list_ids_format(self, make_session):
         session = make_session(n=3)
         result = _dispatch(session, "list format=ids")
@@ -183,7 +177,6 @@ class TestCmdList:
 
 
 class TestCmdInfo:
-
     def test_info_multiple_geometries(self):
         session = _session_with(_geom(10, name="a"), _geom(20, name="b"))
         result = _dispatch(session, "info #0 #1")
@@ -205,7 +198,6 @@ class TestCmdInfo:
 
 
 class TestCmdRename:
-
     def test_rename_regex_global(self):
         g = _geom(10, name="aaa_bbb_aaa")
         session = _session_with(g)
@@ -248,7 +240,6 @@ class TestCmdRename:
 
 
 class TestCmdVisibility:
-
     def test_no_targets(self):
         session = _session_with(_geom(10))
         result = _dispatch(session, "visibility")
@@ -257,7 +248,6 @@ class TestCmdVisibility:
 
 
 class TestCmdGroup:
-
     def test_group_no_targets(self):
         session = _session_with(_geom(10))
         result = _dispatch(session, "group")
@@ -278,7 +268,6 @@ class TestCmdGroup:
 
 
 class TestCmdRemove:
-
     def test_remove_no_targets(self):
         session = _session_with(_geom(10))
         result = _dispatch(session, "remove")
@@ -287,7 +276,6 @@ class TestCmdRemove:
 
 
 class TestCmdSave:
-
     def test_save_no_filepath(self, make_session):
         session = make_session(n=1)
         result = _dispatch(session, "save")
@@ -312,7 +300,6 @@ class TestCmdSave:
 
 
 class TestCmdOpen:
-
     def test_open_no_filepath(self):
         result = _dispatch(Session(quiet=True), "open")
         text = _render(result)
@@ -396,7 +383,6 @@ class TestCmdOpen:
 
 
 class TestCmdHelp:
-
     def test_help_overview(self):
         result = _dispatch(Session(), "help")
         text = _render(result)
@@ -436,7 +422,6 @@ class TestCmdHelp:
 
 
 class TestCmdHistory:
-
     def test_history_empty(self):
         result = _dispatch(Session(), "history")
         text = _render(result)
@@ -453,7 +438,6 @@ class TestCmdHistory:
 
 
 class TestOperationHandler:
-
     def test_operation_no_method(self, make_session):
         session = make_session(n=1)
         result = _dispatch(session, "cluster")
@@ -474,7 +458,6 @@ class TestOperationHandler:
 
 
 class TestCmdFilter:
-
     def test_filter_no_targets(self):
         session = Session(quiet=True)
         result = _dispatch(session, "filter")
@@ -501,7 +484,6 @@ class TestCmdFilter:
 
 
 class TestFilterMembership:
-
     def test_filter_include_categorical(self, make_session):
         session = make_session(n=1, n_points=20)
         g = session._all_geometries()[0]
@@ -538,7 +520,6 @@ class TestFilterMembership:
 
 
 class TestCmdMerge:
-
     def test_merge_too_few(self):
         session = _session_with(_geom(10))
         result = _dispatch(session, "merge #0")
@@ -547,7 +528,6 @@ class TestCmdMerge:
 
 
 class TestPropertiesCommand:
-
     def test_no_targets_defaults_to_all(self, make_session):
         session = make_session(n=2, n_points=10)
         g0, g1 = session._all_geometries()
@@ -683,7 +663,6 @@ class TestPropertiesCommand:
 
 
 class TestMeasureSparkline:
-
     def test_measure_array_result_has_sparkline_column(self, make_session):
         # height returns a per-vertex array, so this hits the array branch
         session = make_session(n=1, n_points=200)
@@ -714,7 +693,6 @@ class TestMeasureSparkline:
 
 
 class TestCommandRegistryAPI:
-
     def test_get_existing(self):
         cmd = CommandRegistry.get("list")
         assert cmd is not None
@@ -733,7 +711,6 @@ class TestCommandRegistryAPI:
 
 
 class TestMeasureVertexPropertyBlocked:
-
     def test_measure_help_does_not_list_vertex_property(self, make_session):
         session = make_session(n=1, n_points=10)
         result = _dispatch(session, "measure help")
@@ -750,8 +727,8 @@ class TestMeasureVertexPropertyBlocked:
 
     def test_calculator_still_callable_from_python(self):
         """The GUI dialog path (GeometryProperties.compute) must keep working."""
-        from mosaic.properties import GeometryProperties
         from mosaic.geometry import Geometry
+        from mosaic.properties import GeometryProperties
 
         g = Geometry(points=np.zeros((5, 3), dtype=np.float32))
         g.vertex_properties.set_property("tag", np.array(["x"] * 5, dtype=object))

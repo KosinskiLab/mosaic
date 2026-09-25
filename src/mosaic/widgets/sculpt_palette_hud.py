@@ -6,7 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtCore import Qt, QEvent, QPoint, QCoreApplication, Signal
+from qtpy.QtCore import QCoreApplication, QEvent, QPoint, Qt, Signal
 from qtpy.QtGui import QColor, QPainter, QPen
 from qtpy.QtWidgets import (
     QButtonGroup,

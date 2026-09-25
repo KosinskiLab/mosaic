@@ -5,11 +5,10 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 import vtk
-
 
 __all__ = ["SculptOverlay"]
 

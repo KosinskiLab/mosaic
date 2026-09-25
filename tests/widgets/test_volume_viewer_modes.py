@@ -1,7 +1,7 @@
 """Tests for VolumeViewer mode behaviour and renderer strategy split."""
 
-import vtk
 import pytest
+import vtk
 
 from mosaic.widgets.volume_viewer import VolumeViewer
 

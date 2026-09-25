@@ -1,14 +1,14 @@
+import warnings
 from functools import partial
 
-import warnings
 import numpy as np
-from qtpy.QtWidgets import QWidget, QVBoxLayout
+from qtpy.QtWidgets import QVBoxLayout, QWidget
 
 from .. import meshing
 from .. import operations as _operations  # noqa: F401  # registers geometry operations
+from ..parallel import submit_task, submit_task_batch
 from ..registry import MethodRegistry
 from ..widgets.ribbon import create_button
-from ..parallel import submit_task, submit_task_batch
 
 
 def _repair_mesh(
@@ -46,7 +46,6 @@ def _repair_mesh(
     hole_fids = np.arange(n_original_fs, len(new_fs))
 
     if not (smoothness == 0 and curvature_weight == 0 and pressure == 0):
-
         new_vs, new_fs, _ = meshing.repair.triangulation_refine_leipa(
             vs, new_fs, hole_fids, np.sqrt(2)
         )

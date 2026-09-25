@@ -1,13 +1,12 @@
 import functools
-from typing import Union
-from os.path import exists, basename, normpath
+from os.path import basename, exists, normpath
 
 import numpy as np
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QApplication, QFileDialog
+from qtpy.QtWidgets import QApplication, QFileDialog, QVBoxLayout, QWidget
 
 from ..parallel import submit_task
-from ..widgets.ribbon import create_button
 from ..widgets import MosaicMessageBox
+from ..widgets.ribbon import create_button
 
 
 class IntelligenceTab(QWidget):
@@ -80,6 +79,7 @@ class IntelligenceTab(QWidget):
 
     def _match_template(self):
         from qtpy.QtWidgets import QApplication
+
         from ..dialogs import TemplateMatchingDialog
 
         dialog = TemplateMatchingDialog(parent=QApplication.activeWindow())
@@ -121,16 +121,17 @@ class IntelligenceTab(QWidget):
         self,
         directory: str = "",
         scale: float = 1.0,
-        offset: Union[str, float] = 0.0,
+        offset: str | float = 0.0,
         drop_pbc: bool = False,
         **kwargs,
     ):
+        from qtpy.QtWidgets import QApplication
+
         from ..dts._utils import (
-            list_trajectory_files,
             build_trajectory_frames,
+            list_trajectory_files,
         )
         from ..parallel import submit_io_task
-        from qtpy.QtWidgets import QApplication
 
         if not directory:
             return MosaicMessageBox.warning(
@@ -190,17 +191,18 @@ class IntelligenceTab(QWidget):
         self.cdata.models.render()
 
     def _screen_parameters(self):
-        from ..dialogs import DTSScreeningDialog
-
         from qtpy.QtWidgets import QApplication
+
+        from ..dialogs import DTSScreeningDialog
 
         dialog = DTSScreeningDialog(self.cdata, parent=QApplication.activeWindow())
         dialog.show()
         self._screen_dialog = dialog
 
     def _map_fit(self):
-        from ..dialogs import MeshMappingDialog
         from qtpy.QtWidgets import QApplication
+
+        from ..dialogs import MeshMappingDialog
 
         fits = self.cdata.format_datalist("models", mesh_only=True)
         clusters = self.cdata.format_datalist("data")
@@ -227,8 +229,8 @@ class IntelligenceTab(QWidget):
         )
 
     def _run_membrain(self, *args, **kwargs):
-        from ..gui import App
         from ..formats import open_file
+        from ..gui import App
         from ..segmentation import run_membrainseg
 
         def _callback(output_name: str):
