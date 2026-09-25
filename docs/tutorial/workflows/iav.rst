@@ -180,6 +180,10 @@ HMFF Simulation
 
 The edge length parameter is related to mesh quality, and FreeDTS will inform you if any edges fall outside this range. The ideal range is 1.0 - 3.0, but upper bounds of 5.0 can still yield stable simulations. Beyond that input mesh quality should be improved. When using meshes created without the *Equilibrate* functionality, you need to set HMFF scale and offset parameter yourself (see ``mosaic.meshing.hmff`` equilibrate_fit for how we compute them).
 
+.. note::
+
+   Depending on your FreeDTS version the HMFF energy may be called differently. From v2.2+, only ``FreeDTS1.0_HMFF`` is supported, whereas older scripts may use ``FreeDTS1.0_MDFF`` and needs to be adapted.
+
 After the background job has completed, navigate to your chosen output directory and from within run_1 execute:
 
 .. code-block:: bash
