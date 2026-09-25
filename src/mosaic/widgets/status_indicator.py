@@ -692,20 +692,6 @@ class StatusIndicator:
             QStatusBar::item {{ border: none; }}
         """
         )
-        if hasattr(self, "progress_bar"):
-            self.progress_bar.setStyleSheet(
-                f"""
-                QProgressBar {{
-                    border: none;
-                    background-color: {Colors.BORDER_DARK};
-                    border-radius: 3px;
-                }}
-                QProgressBar::chunk {{
-                    background-color: {Colors.PRIMARY};
-                    border-radius: 3px;
-                }}
-            """
-            )
         if hasattr(self, "task_button"):
             self.task_button.setIcon(icon("ph.caret-up", role="muted"))
             self.task_button.setStyleSheet(
@@ -768,19 +754,6 @@ class StatusIndicator:
         self.progress_bar.setMaximumHeight(6)
         self.progress_bar.setTextVisible(False)
         self.progress_bar.setVisible(False)
-        self.progress_bar.setStyleSheet(
-            f"""
-            QProgressBar {{
-                border: none;
-                background-color: {Colors.BORDER_DARK};
-                border-radius: 3px;
-            }}
-            QProgressBar::chunk {{
-                background-color: {Colors.PRIMARY};
-                border-radius: 3px;
-            }}
-        """
-        )
 
         self.progress_count = QLabel()
         self.progress_count.setFixedWidth(35)

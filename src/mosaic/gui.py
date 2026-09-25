@@ -1695,18 +1695,15 @@ class App(QMainWindow):
         self.update_checker.update_available.connect(self._on_update_available)
         self.update_checker.start()
 
-    def _on_update_available(self, latest_version: str, release_notes: str):
-        from .settings import Settings
+    def _on_update_available(self, latest_version: str, has_changelog: bool):
+        self.update_pill.show_update(latest_version, has_changelog)
+        self._show_update_dialog(latest_version, has_changelog)
 
-        self.update_pill.show_update(latest_version, release_notes)
-        if Settings.ui.skipped_version != latest_version:
-            self._show_update_dialog(latest_version, release_notes)
-
-    def _show_update_dialog(self, latest_version: str, release_notes: str = ""):
+    def _show_update_dialog(self, latest_version: str, has_changelog: bool = False):
         from .dialogs import UpdateDialog
         from .__version__ import __version__
 
-        UpdateDialog(__version__, latest_version, release_notes, parent=self).exec()
+        UpdateDialog(__version__, latest_version, has_changelog, parent=self).exec()
 
 
 def _read_files_worker(cdata, filenames, file_parameters):

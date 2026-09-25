@@ -176,7 +176,7 @@ class ViewportPlaceholder(QWidget):
 
     def _apply_theme(self):
         self._applying_theme = True
-        mono = "SF Mono, Menlo, Consolas, monospace"
+        mono = Typography.MONO
         self.setStyleSheet(
             f"""
             ViewportPlaceholder {{

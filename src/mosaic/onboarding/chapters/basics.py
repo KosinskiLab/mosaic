@@ -90,12 +90,6 @@ class BasicsChapter(OnboardingChapter):
         bar.setValue(0)
         bar.setTextVisible(False)
         bar.setFixedHeight(6)
-        bar.setStyleSheet(
-            f"QProgressBar {{ border: none; background-color: {Colors.BG_TERTIARY};"
-            "border-radius: 3px; }"
-            f"QProgressBar::chunk {{ background-color: {Colors.PRIMARY};"
-            "border-radius: 3px; }"
-        )
 
         pct_label = QLabel("0%")
         pct_label.setAlignment(

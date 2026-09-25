@@ -32,6 +32,8 @@ class Typography:
         "CAPTION": 0.77,
     }
 
+    MONO: str = "SF Mono, Menlo, Consolas, monospace"
+
     # Defaults assume macOS base of 13 px
     DISPLAY: int = 22
     BODY: int = 13
@@ -496,6 +498,20 @@ def _build_QSlider_style():
 """
 
 
+def _build_QProgressBar_style():
+    return f"""
+    QProgressBar {{
+        border: none;
+        background-color: {Colors.BG_TERTIARY};
+        border-radius: 3px;
+    }}
+    QProgressBar::chunk {{
+        background-color: {Colors.PRIMARY};
+        border-radius: 3px;
+    }}
+"""
+
+
 def _build_QMessageBox_style():
     return f"""
     QMessageBox {{
@@ -666,6 +682,7 @@ _GLOBAL_STYLES = [
     _build_QComboBox_style,
     _build_QCheckBox_style,
     _build_QSlider_style,
+    _build_QProgressBar_style,
     _build_QGroupBox_style,
     _build_QListWidget_style,
     _build_QScrollArea_style,

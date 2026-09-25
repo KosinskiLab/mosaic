@@ -119,7 +119,6 @@ class UISettings:
     theme_mode: str = "system"
     always_open_as_volume: bool = False
     onboarding_done: bool = False
-    skipped_version: str = ""
 
 
 @dataclass
@@ -176,7 +175,7 @@ class SettingsManager:
     def _migrate_vtk_presets(self):
         """Migrate removed or unrecognised vtk presets to balanced."""
         if self.vtk.preset in ("ultra", "balanced"):
-            return None
+            return
         self.vtk.preset = "balanced"
         if self.vtk.point_budget <= 0:
             self.vtk.point_budget = int(2e6)
