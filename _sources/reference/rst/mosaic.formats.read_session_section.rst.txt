@@ -1,0 +1,6 @@
+﻿read\_session\_section
+===================================
+
+.. currentmodule:: mosaic.formats
+
+.. autofunction:: read_session_section

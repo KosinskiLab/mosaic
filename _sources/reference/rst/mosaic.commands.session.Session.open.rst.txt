@@ -1,0 +1,6 @@
+﻿Session.open
+====================================
+
+.. currentmodule:: mosaic.commands.session
+
+.. automethod:: Session.open

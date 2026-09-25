@@ -1,0 +1,6 @@
+﻿sample
+========================
+
+.. currentmodule:: mosaic.operations
+
+.. autofunction:: sample

@@ -1,0 +1,6 @@
+﻿Geometry.\_\_setstate\_\_
+=====================================
+
+.. currentmodule:: mosaic.geometry
+
+.. automethod:: Geometry.__setstate__

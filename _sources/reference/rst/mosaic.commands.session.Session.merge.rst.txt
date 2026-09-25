@@ -1,0 +1,6 @@
+﻿Session.merge
+=====================================
+
+.. currentmodule:: mosaic.commands.session
+
+.. automethod:: Session.merge

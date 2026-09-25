@@ -1,0 +1,36 @@
+﻿RBF
+===
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: RBF
+   :members:
+   :show-inheritance:
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+         
+            RBF.compute_normal
+         
+         
+            RBF.fit
+         
+         
+            RBF.points_per_sampling
+         
+         
+            RBF.sample
+         
+   
+   

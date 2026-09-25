@@ -1,0 +1,6 @@
+﻿Session.log\_command
+===========================================
+
+.. currentmodule:: mosaic.commands.session
+
+.. automethod:: Session.log_command

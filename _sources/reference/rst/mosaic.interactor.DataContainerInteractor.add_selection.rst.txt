@@ -1,0 +1,6 @@
+﻿DataContainerInteractor.add\_selection
+=======================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.add_selection

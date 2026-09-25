@@ -1,0 +1,6 @@
+﻿VolumeGeometry.update\_isovalue
+==============================================
+
+.. currentmodule:: mosaic.geometry
+
+.. automethod:: VolumeGeometry.update_isovalue

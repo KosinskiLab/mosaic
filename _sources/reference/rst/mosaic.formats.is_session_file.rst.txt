@@ -1,0 +1,6 @@
+﻿is\_session\_file
+==============================
+
+.. currentmodule:: mosaic.formats
+
+.. autofunction:: is_session_file

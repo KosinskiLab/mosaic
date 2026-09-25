@@ -1,0 +1,6 @@
+﻿DataContainer.clear
+====================================
+
+.. currentmodule:: mosaic.container
+
+.. automethod:: DataContainer.clear

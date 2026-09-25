@@ -1,0 +1,95 @@
+﻿Geometry
+========
+
+.. currentmodule:: mosaic.geometry
+
+.. autoclass:: Geometry
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+            Geometry.actor
+         
+         
+            Geometry.geometry_type
+         
+         
+            Geometry.has_normals
+         
+         
+            Geometry.model
+         
+         
+            Geometry.normals
+         
+         
+            Geometry.points
+         
+         
+            Geometry.quaternions
+         
+         
+            Geometry.sampling_rate
+         
+         
+            Geometry.vertex_properties
+         
+         
+            Geometry.visible
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+            Geometry.change_representation
+         
+         
+            Geometry.color_points
+         
+         
+            Geometry.get_number_of_points
+         
+         
+            Geometry.get_point_data
+         
+         
+            Geometry.is_mesh_representation
+         
+         
+            Geometry.merge
+         
+         
+            Geometry.set_appearance
+         
+         
+            Geometry.set_color
+         
+         
+            Geometry.set_scalars
+         
+         
+            Geometry.set_visibility
+         
+         
+            Geometry.subset
+         
+         
+            Geometry.swap_data
+         
+   
+   

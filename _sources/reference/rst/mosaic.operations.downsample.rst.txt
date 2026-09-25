@@ -1,0 +1,6 @@
+﻿downsample
+============================
+
+.. currentmodule:: mosaic.operations
+
+.. autofunction:: downsample
