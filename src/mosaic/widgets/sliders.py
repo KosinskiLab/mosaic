@@ -6,19 +6,19 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-__all__ = ["DualHandleSlider", "SliderRow", "HistogramRangeSlider"]
+__all__ = ["DualHandleSlider", "HistogramRangeSlider", "SliderRow"]
 
 import numpy as np
-from qtpy.QtGui import QColor
 from qtpy.QtCore import Qt, Signal
+from qtpy.QtGui import QColor
 from qtpy.QtWidgets import (
-    QWidget,
-    QSlider,
-    QSizePolicy,
-    QHBoxLayout,
-    QVBoxLayout,
-    QLabel,
     QGraphicsOpacityEffect,
+    QHBoxLayout,
+    QLabel,
+    QSizePolicy,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
 )
 
 from ..stylesheets import Colors
@@ -265,7 +265,7 @@ class DualHandleSlider(QWidget):
 
     def paintEvent(self, event):
         """Draw the slider with range visualization."""
-        from qtpy.QtGui import QPainter, QPen, QBrush
+        from qtpy.QtGui import QBrush, QPainter, QPen
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -422,7 +422,7 @@ class MiniHistogram(QWidget):
 
     def paintEvent(self, event):
         """Draw the histogram bars or placeholder."""
-        from qtpy.QtGui import QPainter, QBrush, QPen
+        from qtpy.QtGui import QBrush, QPainter, QPen
 
         painter = QPainter(self)
         width = self.width()

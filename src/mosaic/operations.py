@@ -6,35 +6,34 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import List, Optional
+from typing import Optional
 
 import numpy as np
 
+from . import meshing
 from .registry import (
-    Param,
-    Method,
-    MethodRegistry,
-    operation,
+    _BIDIRECTIONAL,
     _DECORATED_OPERATIONS,
-    _K_NEIGHBORS,
     _FAIRING_PARAMS,
     _HOLE_SIZE,
+    _K_NEIGHBORS,
     _NORMAL_OFFSET,
-    _BIDIRECTIONAL,
+    Method,
+    MethodRegistry,
+    Param,
+    operation,
 )
-
-from . import meshing
 from .utils import (
-    statistical_outlier_removal,
-    eigenvalue_outlier_removal,
-    com_cluster_points,
-    find_closest_points,
-    connected_components,
-    envelope_components,
-    leiden_clustering,
-    dbscan_clustering,
     birch_clustering,
+    com_cluster_points,
+    connected_components,
+    dbscan_clustering,
+    eigenvalue_outlier_removal,
+    envelope_components,
+    find_closest_points,
     kmeans_clustering,
+    leiden_clustering,
+    statistical_outlier_removal,
 )
 
 __all__ = ["GeometryOperations"]
@@ -138,8 +137,8 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
     """
     from .geometry import GeometryData
     from .parametrization import AlphaShape
-    from .utils import skeletonize as _skeletonize
     from .utils import points_to_volume, volume_to_points
+    from .utils import skeletonize as _skeletonize
 
     method = MethodRegistry.resolve_method("skeletonize", method)
     methods = ("core", "outer", "boundary", "outer_hull")
@@ -523,7 +522,7 @@ def cluster(
     use_points: bool = True,
     use_normals: bool = False,
     **kwargs,
-) -> List:
+) -> list:
     """
     Partition points into clusters.
 

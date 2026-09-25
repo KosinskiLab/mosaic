@@ -7,38 +7,36 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import uuid
-from qtpy.QtGui import QFont
-from qtpy.QtCore import Qt, Signal, QTimer
 
+from qtpy.QtCore import Qt, QTimer, Signal
+from qtpy.QtGui import QFont
 from qtpy.QtWidgets import (
-    QFrame,
-    QVBoxLayout,
-    QHBoxLayout,
-    QGridLayout,
-    QLabel,
-    QPushButton,
-    QWidget,
-    QLineEdit,
+    QAbstractItemView,
+    QCheckBox,
     QFileDialog,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSizePolicy,
     QTreeWidget,
     QTreeWidgetItem,
-    QSizePolicy,
-    QCheckBox,
-    QAbstractItemView,
+    QVBoxLayout,
+    QWidget,
 )
 
 from ..dialogs import ImportDataDialog
+from ..stylesheets import Colors, Typography
+from ..widgets.container_list import ContainerListWidget, StyledTreeWidgetItem
 from ..widgets.settings import (
     create_setting_widget,
+    format_tooltip,
     get_widget_value,
     set_widget_value,
-    format_tooltip,
 )
-from ..widgets.container_list import ContainerListWidget, StyledTreeWidgetItem
-
-
-from ._utils import strip_filepath, natural_sort_key
-from ..stylesheets import Colors, Typography
+from ._utils import natural_sort_key, strip_filepath
 
 _COLS = 3  # logical parameter columns (actual grid columns = _COLS * 2)
 

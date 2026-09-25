@@ -6,15 +6,15 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtWidgets import (
-    QVBoxLayout,
-    QLabel,
-    QFrame,
-    QWidget,
-    QSizePolicy,
-)
 from qtpy.QtCore import Qt, Signal
-from qtpy.QtGui import QPixmap, QPainter, QPainterPath
+from qtpy.QtGui import QPainter, QPainterPath, QPixmap
+from qtpy.QtWidgets import (
+    QFrame,
+    QLabel,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ..stylesheets import Colors, Typography
 

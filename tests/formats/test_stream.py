@@ -88,7 +88,7 @@ class TestZarrPyramid:
 
 class TestZarrImageSource:
     def test_vtk_pipeline_produces_output(self):
-        from mosaic.formats.stream import ZarrPyramid, ZarrImageSource
+        from mosaic.formats.stream import ZarrImageSource, ZarrPyramid
 
         levels = _make_pyramid()
         pyramid = ZarrPyramid(levels)
@@ -99,7 +99,7 @@ class TestZarrImageSource:
         assert output.GetNumberOfPoints() > 0
 
     def test_level_tracks_independently(self):
-        from mosaic.formats.stream import ZarrPyramid, ZarrImageSource
+        from mosaic.formats.stream import ZarrImageSource, ZarrPyramid
 
         levels = _make_pyramid()
         pyramid = ZarrPyramid(levels)
@@ -111,7 +111,7 @@ class TestZarrImageSource:
         assert src.spacing == pyramid.level_spacing(2)
 
     def test_defaults_to_coarsest(self):
-        from mosaic.formats.stream import ZarrPyramid, ZarrImageSource
+        from mosaic.formats.stream import ZarrImageSource, ZarrPyramid
 
         levels = _make_pyramid()
         pyramid = ZarrPyramid(levels)

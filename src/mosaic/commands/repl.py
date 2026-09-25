@@ -8,11 +8,10 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import re
 from pathlib import Path
-from typing import Optional
 
 from .parser import parse_command
-from .session import Session
 from .registry import CommandRegistry, _error_panel
+from .session import Session
 from .theme import get_console, render_to_text
 
 try:
@@ -36,7 +35,7 @@ class _Completer:
         self._session = session
         self._matches = []
 
-    def complete(self, text: str, state: int) -> Optional[str]:
+    def complete(self, text: str, state: int) -> str | None:
         if state == 0:
             self._matches = self._build_matches(text)
         if state < len(self._matches):
@@ -194,9 +193,7 @@ class MosaicREPL:
         commands are not logged to disk.
     """
 
-    def __init__(
-        self, session: Optional[Session] = None, log_file: Optional[str] = None
-    ):
+    def __init__(self, session: Session | None = None, log_file: str | None = None):
         self.session = session or Session()
         self._log_file = log_file
         self._console = get_console()
@@ -240,8 +237,8 @@ class MosaicREPL:
                 except Exception as exc:
                     output = _error_panel(str(exc))
                 if output:
-                    from rich.table import Table
                     from rich.columns import Columns
+                    from rich.table import Table
 
                     if isinstance(output, (Table, Columns)):
                         self._console.print()
@@ -395,6 +392,7 @@ class MosaicREPL:
 
         from rich.console import Console
         from rich.text import Text
+
         from .theme import MOSAIC_THEME
 
         buf = StringIO()

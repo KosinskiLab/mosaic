@@ -1,8 +1,7 @@
-import pytest
-from unittest.mock import Mock, patch
 from dataclasses import dataclass
+from unittest.mock import Mock, patch
 
-from mosaic.settings import SettingsProperty, SettingsCategory
+from mosaic.settings import SettingsCategory, SettingsProperty
 
 
 class TestSettingsProperty:
@@ -66,9 +65,8 @@ class TestSettingsProperty:
 
     def test_tuple_type_handling(self):
         """Test handling of tuple types in QSettings."""
-        from typing import Tuple
 
-        prop = SettingsProperty("test_key", (1, 2, 3), Tuple[int, int, int])
+        prop = SettingsProperty("test_key", (1, 2, 3), tuple[int, int, int])
 
         mock_obj = Mock()
         mock_qsettings = Mock()

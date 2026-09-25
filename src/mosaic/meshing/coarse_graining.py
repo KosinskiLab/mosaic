@@ -1,14 +1,12 @@
 import textwrap
 import warnings
-from typing import Dict, List
-from os.path import join, basename
+from os.path import basename, join
 
 import numpy as np
 
-from ..utils import NORMAL_REFERENCE, find_closest_points, normals_to_rot
-
-from . import remesh, center_mesh, compute_scale_factor_lower, scale
 from ..formats.writer import write_topology_file
+from ..utils import NORMAL_REFERENCE, find_closest_points, normals_to_rot
+from . import center_mesh, compute_scale_factor_lower, remesh, scale
 
 __all__ = ["mesh_to_cg"]
 
@@ -16,7 +14,7 @@ __all__ = ["mesh_to_cg"]
 def mesh_to_cg(
     geometry_data,
     output_directory: str,
-    inclusions: List[Dict],
+    inclusions: list[dict],
     edge_length: float = 40.0,
     include_normals: bool = True,
     flip_normals: bool = True,
@@ -177,8 +175,8 @@ def mesh_to_cg(
                 f"""
                 martinize2 \\
                     -f ${inclusion_var} \\
-                    -x {inclusion['name']}.pdb \\
-                    -o {inclusion['name']}.top \\
+                    -x {inclusion["name"]}.pdb \\
+                    -o {inclusion["name"]}.top \\
                     -p backbone \\
                     -elastic \\
                     -maxwarn 2 \\

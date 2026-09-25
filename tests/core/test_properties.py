@@ -31,7 +31,6 @@ def _geom(n=50, seed=0):
 
 
 class TestAggregate:
-
     def test_1d_passthrough(self):
         arr = np.array([1.0, 2.0, 3.0])
         np.testing.assert_array_equal(_aggregate(arr, "mean"), arr)
@@ -57,7 +56,6 @@ class TestAggregate:
 
 
 class TestCoordinateProperties:
-
     def test_width(self):
         g = _geom(20)
         result = width(g)
@@ -91,7 +89,6 @@ class TestCoordinateProperties:
 
 
 class TestVertexProperty:
-
     def test_existing_property(self):
         g = _geom(10)
         g.vertex_properties.set_property("score", np.arange(10, dtype=np.float32))
@@ -112,7 +109,6 @@ class TestVertexProperty:
 
 
 class TestDistance:
-
     def test_self_distance(self):
         g = _geom(30)
         result = distance(g, queries=[g], include_self=True, k=1)
@@ -168,7 +164,6 @@ class TestDistance:
 
 
 class TestGetMeshDecorator:
-
     def test_no_model_returns_none(self):
         g = _geom(10)
         result = GeometryProperties.compute(
@@ -191,7 +186,6 @@ class TestGetMeshDecorator:
 
 
 class TestGeometryPropertiesDispatch:
-
     def test_compute_known_property(self):
         g = _geom(25)
         result = GeometryProperties.compute("n_points", g)
@@ -236,8 +230,8 @@ class TestMeshProperties:
 
     @pytest.fixture
     def mesh_geom(self):
-        from mosaic.operations import fit
         from mosaic.geometry import GeometryData
+        from mosaic.operations import fit
 
         pts = (
             np.array(
@@ -301,7 +295,6 @@ class TestMeshProperties:
 
 
 class TestExportPropertyCsv:
-
     def test_scalar_export(self, tmp_path):
         path = str(tmp_path / "scalar.csv")
         g1, g2 = _geom(10), _geom(20)

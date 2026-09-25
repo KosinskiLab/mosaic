@@ -8,24 +8,22 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import numpy as np
 import pyqtgraph as pg
+from qtpy.QtCore import QSize, Qt, Signal
 from qtpy.QtGui import QColor, QDoubleValidator
-from qtpy.QtCore import Qt, Signal, QSize
-
-from ..utils import Throttle
-
 from qtpy.QtWidgets import (
-    QWidget,
-    QDialog,
-    QVBoxLayout,
-    QLineEdit,
-    QLabel,
-    QSpinBox,
-    QSizePolicy,
     QComboBox,
+    QDialog,
     QGridLayout,
     QGroupBox,
+    QLabel,
+    QLineEdit,
+    QSizePolicy,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
 )
 
+from ..utils import Throttle
 from ..widgets.sliders import DualHandleSlider
 
 

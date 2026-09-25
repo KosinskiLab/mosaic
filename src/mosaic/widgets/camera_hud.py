@@ -7,8 +7,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import numpy as np
-from qtpy.QtCore import Qt, QEvent, QPoint, QCoreApplication
-from qtpy.QtGui import QColor, QPen, QPainter
+from qtpy.QtCore import QCoreApplication, QEvent, QPoint, Qt
+from qtpy.QtGui import QColor, QPainter, QPen
 from qtpy.QtWidgets import QVBoxLayout, QWidget
 
 from ..stylesheets import Typography

@@ -1,12 +1,11 @@
-import pytest
 from unittest.mock import Mock
+
 from qtpy.QtCore import Qt
 
 from mosaic.widgets.container_list import SessionListWidget
 
 
 class TestSessionListWidget:
-
     def test_initial_state(self, qapp):
         widget = SessionListWidget(cdata=Mock())
         assert widget.session_files == []
@@ -188,7 +187,6 @@ class TestSessionListWidget:
 
 
 class TestSessionHeader:
-
     def test_header_widget_exists(self, qapp):
         widget = SessionListWidget(cdata=Mock())
         assert widget._header is not None
@@ -234,7 +232,6 @@ from mosaic.widgets.sidebar import ObjectBrowserSidebar
 
 
 class TestSidebarSessionIntegration:
-
     def test_add_widget(self, qapp):
         sidebar = ObjectBrowserSidebar()
         session_widget = SessionListWidget(cdata=Mock())

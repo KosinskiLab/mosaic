@@ -1,23 +1,23 @@
-from typing import Dict, List
 from os.path import splitext
 
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
+    QCheckBox,
     QDialog,
-    QVBoxLayout,
+    QFileDialog,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
-    QPushButton,
-    QWidget,
-    QGroupBox,
-    QCheckBox,
     QLineEdit,
-    QFileDialog,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
+
 from ..icons import icon as _icon
+from ..stylesheets import Colors, Typography
 from ..widgets import DialogFooter, create_setting_widget, get_widget_value
 from ..widgets.message_box import MosaicMessageBox
-from ..stylesheets import Colors, Typography
 
 LABEL_WIDTH = 80
 
@@ -88,7 +88,7 @@ class ExportDialog(QDialog):
         parent=None,
         parameters={},
         enabled_categories=None,
-        names: List[str] = None,
+        names: list[str] = None,
     ):
         super().__init__(parent)
 
@@ -393,7 +393,7 @@ class ExportDialog(QDialog):
 
         self.settings_layout.addStretch()
 
-    def get_current_settings(self) -> Dict:
+    def get_current_settings(self) -> dict:
         """Extract current settings from the setting widgets"""
         settings = {}
 

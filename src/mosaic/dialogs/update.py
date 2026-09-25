@@ -34,8 +34,6 @@ _GITHUB_RELEASE_API = (
 )
 _GITHUB_RELEASE_URL = "https://github.com/KosinskiLab/mosaic/releases/tag/v{version}"
 
-_MONO = "SF Mono, Menlo, Consolas, monospace"
-
 
 def _fetch_json(url: str, timeout: float = 5.0) -> dict | None:
     """Return the decoded JSON body of *url*, or None if it cannot be read.
@@ -284,7 +282,6 @@ class UpdateDialog(QDialog):
         self.setStyleSheet(f"QDialog {{ background: {Colors.SURFACE}; }}")
         self._apply_state("idle")
 
-
     def _label(
         self, text: str, role: str = "secondary", size: int | None = None
     ) -> QLabel:
@@ -307,7 +304,7 @@ class UpdateDialog(QDialog):
         color = Colors.TEXT_PRIMARY if emphasis else Colors.TEXT_SECONDARY
         label.setStyleSheet(
             f"color: {color}; background: transparent;"
-            f"font-family: {_MONO}; font-size: {Typography.BODY}px;"
+            f"font-family: {Typography.MONO}; font-size: {Typography.BODY}px;"
             f"font-weight: {weight};"
         )
         return label
@@ -364,9 +361,7 @@ class UpdateDialog(QDialog):
         layout.setContentsMargins(0, 0, 0, 14)
         layout.setSpacing(0)
 
-        self.command_label = QLabel(
-            f"{executable} -m pip install -U {PACKAGE_NAME}"
-        )
+        self.command_label = QLabel(f"{executable} -m pip install -U {PACKAGE_NAME}")
         self.command_label.setWordWrap(True)
         self.command_label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
@@ -378,7 +373,7 @@ class UpdateDialog(QDialog):
                 color: {Colors.TEXT_SECONDARY};
                 border-radius: {Colors.RADIUS}px;
                 padding: 8px 10px;
-                font-family: {_MONO};
+                font-family: {Typography.MONO};
                 font-size: {Typography.SMALL}px;
             }}
             """
@@ -450,9 +445,7 @@ class UpdateDialog(QDialog):
         self.setFixedSize(self.WIDTH, self._root.sizeHint().height())
 
     def _open_changelog(self):
-        QDesktopServices.openUrl(
-            QUrl(_GITHUB_RELEASE_URL.format(version=self._latest))
-        )
+        QDesktopServices.openUrl(QUrl(_GITHUB_RELEASE_URL.format(version=self._latest)))
 
     def _copy_command(self):
         clipboard = QApplication.clipboard()

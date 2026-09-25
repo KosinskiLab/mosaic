@@ -7,19 +7,17 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import sys
-from typing import Tuple
 
-from qtpy.QtCore import Qt, Signal, QRect, QTimer
-from qtpy.QtGui import QPainter, QColor
+from qtpy.QtCore import QEasingCurve, QPropertyAnimation, QRect, Qt, QTimer, Signal
+from qtpy.QtGui import QColor, QPainter
 from qtpy.QtWidgets import (
-    QWidget,
+    QButtonGroup,
     QHBoxLayout,
     QPushButton,
-    QButtonGroup,
     QStackedWidget,
     QVBoxLayout,
+    QWidget,
 )
-from qtpy.QtCore import QPropertyAnimation, QEasingCurve
 
 from ..stylesheets import Colors, Typography
 
@@ -58,7 +56,7 @@ class TabBar(QWidget):
     def __init__(
         self,
         parent=None,
-        margins: Tuple[int, int, int, int] = (8, 0, 8, 0),
+        margins: tuple[int, int, int, int] = (8, 0, 8, 0),
     ):
         super().__init__(parent)
         self.setFixedHeight(38)
@@ -225,7 +223,7 @@ class TabWidget(QWidget):
     def __init__(
         self,
         parent=None,
-        tab_bar_margins: Tuple[int, int, int, int] = (8, 0, 8, 0),
+        tab_bar_margins: tuple[int, int, int, int] = (8, 0, 8, 0),
     ):
         super().__init__(parent)
         layout = QVBoxLayout(self)

@@ -1,24 +1,25 @@
-from qtpy.QtCore import Signal, Qt
+from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
-    QWidget,
+    QCheckBox,
+    QComboBox,
     QDialog,
-    QVBoxLayout,
+    QDoubleSpinBox,
+    QFormLayout,
+    QGridLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QSpinBox,
-    QCheckBox,
-    QComboBox,
-    QGroupBox,
-    QFormLayout,
-    QDoubleSpinBox,
-    QGridLayout,
     QPushButton,
     QSizePolicy,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
 )
-from mosaic.widgets import create_setting_widget
+
 from mosaic.icons import icon
 from mosaic.stylesheets import Colors
+from mosaic.widgets import create_setting_widget
 
 
 class AnimationSettings(QGroupBox):

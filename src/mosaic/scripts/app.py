@@ -6,31 +6,33 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
-import sys
-import signal
-import argparse
-from importlib_resources import files
 
+import argparse
+import signal
+import sys
+
+from importlib_resources import files
+from qtpy.QtCore import QLocale, Qt, QTimer
+from qtpy.QtGui import QFont, QFontDatabase, QFontInfo, QIcon
 from qtpy.QtWidgets import QApplication
-from qtpy.QtCore import Qt, QLocale, QTimer
-from qtpy.QtGui import QIcon, QFont, QFontDatabase, QFontInfo
 
 from mosaic import __version__
 from mosaic.stylesheets import (
     Colors,
     Typography,
+    build_appstyle,
     build_global_stylesheet,
     build_qt_palette,
     install_macos_titlebar_filter,
-    build_appstyle,
 )
 
 
 def _prompt_first_launch(window):
     from qtpy.QtWidgets import QMessageBox
-    from mosaic.widgets import MosaicMessageBox
-    from mosaic.settings import Settings
+
     from mosaic.onboarding import launch_onboarding
+    from mosaic.settings import Settings
+    from mosaic.widgets import MosaicMessageBox
 
     box = MosaicMessageBox(window)
     box.setWindowTitle("Welcome to Mosaic")
@@ -59,7 +61,7 @@ def main():
     )
     args = parser.parse_args()
 
-    from mosaic.onboarding import launch_onboarding, all_chapters
+    from mosaic.onboarding import all_chapters, launch_onboarding
 
     chapters = {ch.id: ch for ch in all_chapters()}
 

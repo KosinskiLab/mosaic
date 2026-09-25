@@ -9,24 +9,25 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import enum
 from collections import Counter
 
-from qtpy.QtCore import Qt, QRectF, QTimer, Signal
+from qtpy.QtCore import QRectF, Qt, QTimer, Signal
+from qtpy.QtGui import QColor, QPainter, QPainterPath, QPen, QTextCursor
 from qtpy.QtWidgets import (
-    QWidget,
-    QLabel,
-    QVBoxLayout,
-    QHBoxLayout,
-    QScrollArea,
-    QPushButton,
+    QApplication,
     QFrame,
     QGroupBox,
-    QTextEdit,
+    QHBoxLayout,
+    QLabel,
     QProgressBar,
-    QApplication,
+    QPushButton,
+    QScrollArea,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
-from qtpy.QtGui import QTextCursor, QPainter, QColor, QPen, QPainterPath
-from ..stylesheets import Colors, Typography
+
 from ..icons import icon
 from ..parallel import BackgroundTaskManager
+from ..stylesheets import Colors, Typography
 
 
 class ViewerModes(enum.Enum):

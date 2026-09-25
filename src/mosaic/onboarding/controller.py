@@ -10,8 +10,8 @@ import re
 
 from qtpy.QtCore import QObject, Signal
 
-from .overlay import SpotlightOverlay
 from .base import OnboardingChapter, OnboardingStep
+from .overlay import SpotlightOverlay
 
 __all__ = ["OnboardingController"]
 

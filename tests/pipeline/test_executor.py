@@ -8,11 +8,11 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import os
 import shlex
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mosaic.pipeline.executor import compile_run, generate_runs, execute_run
+from mosaic.pipeline.executor import compile_run, execute_run, generate_runs
 
 
 def _run(operations, run_id="test", input_file="/data/input.star", input_params=None):
@@ -45,7 +45,6 @@ def _op(op_id, settings=None, save_output=True, visible_output=True, group_name=
 
 
 class TestCompileImport:
-
     def test_open(self):
         steps = compile_run(_run([_import_op()]))
         assert steps[0][1] == "open /data/input.star"
@@ -80,7 +79,6 @@ class TestCompileImport:
 
 
 class TestCompileSaveExport:
-
     def test_save_session_path(self, tmp_path):
         r = _run(
             [_import_op(), _op("save_session", {"output_dir": str(tmp_path)})],
@@ -125,7 +123,6 @@ class TestCompileSaveExport:
 
 
 class TestCompileMeshAnalysis:
-
     @patch("mosaic.pipeline.executor.MethodRegistry")
     def test_known_method(self, mock_reg):
         m = MagicMock()
@@ -176,7 +173,6 @@ class TestCompileMeshAnalysis:
 
 
 class TestCompileClusterSelect:
-
     @pytest.mark.parametrize(
         "lower, upper, expected_parts",
         [
@@ -203,7 +199,6 @@ class TestCompileClusterSelect:
 
 
 class TestCompileGeneric:
-
     def test_persist_false(self):
         r = _run(
             [_import_op(), _op("cluster", {"method": "DBSCAN"}, save_output=False)]
@@ -256,7 +251,6 @@ class TestCompileGeneric:
 
 
 class TestGenerateRuns:
-
     @staticmethod
     def _pipeline(files, extra_nodes=None):
         import_node = {
@@ -317,7 +311,6 @@ class TestGenerateRuns:
 
 
 class TestExecuteRun:
-
     def test_skip_complete(self, tmp_path):
         """When output already exists and skip_complete=True, execution is skipped."""
         out_file = tmp_path / "test.pickle"

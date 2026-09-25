@@ -7,33 +7,33 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from qtpy.QtCore import (
-    Qt,
-    Signal,
-    QRect,
-    QRectF,
+    QCoreApplication,
+    QEvent,
     QPoint,
     QPointF,
-    QEvent,
+    QRect,
+    QRectF,
+    Qt,
     QTimer,
-    QCoreApplication,
+    Signal,
 )
 from qtpy.QtGui import (
-    QPainter,
-    QColor,
-    QPainterPath,
     QBrush,
-    QPen,
+    QColor,
     QMouseEvent,
+    QPainter,
+    QPainterPath,
+    QPen,
     QRegion,
 )
 from qtpy.QtWidgets import (
     QApplication,
-    QWidget,
-    QVBoxLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QFrame,
+    QVBoxLayout,
+    QWidget,
 )
 
 __all__ = ["SpotlightOverlay"]

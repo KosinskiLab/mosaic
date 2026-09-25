@@ -7,16 +7,15 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from pathlib import Path
-from typing import Dict, Optional
 
 import numpy as np
 
 from ._utils import (
-    parse_xvg,
-    write_xvg,
-    sanitize_label,
-    list_trajectory_files,
     iter_frames,
+    list_trajectory_files,
+    parse_xvg,
+    sanitize_label,
+    write_xvg,
 )
 
 __all__ = ["compute"]
@@ -105,10 +104,10 @@ def compute(
     *,
     scale: float,
     offset: np.ndarray,
-    output_dir: Optional[str] = None,
+    output_dir: str | None = None,
     force: bool = False,
     **kwargs,
-) -> Dict:
+) -> dict:
     """Run a trajectory analysis.
 
     Parameters
@@ -504,6 +503,7 @@ def _compute_hmff(trajectory_dir, scale, offset, output_dir=None, **kwargs):
         Run directory containing ``input.dts``.
     """
     from scipy.interpolate import RegularGridInterpolator
+
     from ..formats.parser import load_density
     from ..parallel import report_progress
     from ._utils import find_dts_file, parse_dts_content

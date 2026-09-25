@@ -12,8 +12,8 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from mosaic.geometry import Geometry
 from mosaic.formats.writer import write_geometries, write_topology_file
+from mosaic.geometry import Geometry
 
 
 @pytest.fixture
@@ -35,7 +35,6 @@ def cloud_no_quats():
 
 
 class TestWriteGeometriesXyz:
-
     def test_single_file(self, tmp_path, cloud_no_quats):
         path = str(tmp_path / "out.xyz")
         write_geometries([cloud_no_quats], path, format="xyz")
@@ -60,7 +59,6 @@ class TestWriteGeometriesXyz:
 
 
 class TestWriteGeometriesNdjson:
-
     def test_single_file(self, tmp_path, cloud):
         path = str(tmp_path / "out.ndjson")
         write_geometries([cloud], path, format="ndjson")
@@ -94,7 +92,6 @@ class TestWriteGeometriesNdjson:
 
 
 class TestWriteGeometriesEdgeCases:
-
     def test_empty_list_returns_none(self, tmp_path):
         result = write_geometries([], str(tmp_path / "empty.xyz"), format="xyz")
         assert result is None
@@ -116,7 +113,6 @@ class TestWriteGeometriesEdgeCases:
 
 
 class TestWriteGeometriesSampling:
-
     def test_relion_5_format(self, tmp_path, cloud_no_quats):
         # relion_5_format applies only to STAR; other formats absorb it.
         path = str(tmp_path / "relion5.xyz")
@@ -133,7 +129,6 @@ class TestWriteGeometriesSampling:
 
 
 class TestCoerceRecords:
-
     def test_pulls_point_data_and_sampling(self):
         from mosaic.formats.records import GeometryData
         from mosaic.formats.writer import _coerce_records
@@ -179,7 +174,6 @@ class TestCoerceRecords:
 
 
 class TestPrepareOrientedPoints:
-
     def test_scales_by_sampling_and_concatenates(self):
         from mosaic.formats.writer import _coerce_records, _prepare_oriented_points
 
@@ -220,7 +214,6 @@ class TestPrepareOrientedPoints:
 
 
 class TestWriteTopologyFile:
-
     @pytest.fixture
     def topo_data(self):
         return {
@@ -270,7 +263,6 @@ class TestWriteTopologyFile:
 
 
 class TestWriteStar:
-
     def test_writes_star_file(self, tmp_path, cloud):
         from mosaic.formats.writer import _coerce_records, write_star
 
@@ -310,8 +302,8 @@ class TestWriteStar:
 
     def test_relion_5_writes_pixel_size_for_roundtrip(self, tmp_path, cloud):
         """RELION-5 needs the optics pixel size so import can undo the centering."""
-        from mosaic.formats.writer import _coerce_records, write_star
         from mosaic.formats._utils import read_star_header
+        from mosaic.formats.writer import _coerce_records, write_star
 
         path = str(tmp_path / "r5.star")
         write_star(
@@ -338,7 +330,6 @@ class TestWriteStar:
 
 
 class TestWriteTsv:
-
     def test_writes_tsv_with_orientation_columns(self, tmp_path, cloud):
         from mosaic.formats.writer import _coerce_records, write_tsv
 
@@ -350,7 +341,6 @@ class TestWriteTsv:
 
 
 class TestWriteXyz:
-
     def test_writes_concatenated_points(self, tmp_path):
         from mosaic.formats.writer import _coerce_records, write_xyz
 
@@ -363,7 +353,6 @@ class TestWriteXyz:
 
 
 class TestWriteNdjson:
-
     def test_writes_one_record_per_point(self, tmp_path, cloud):
         from mosaic.formats.writer import _coerce_records, write_ndjson
 
@@ -392,7 +381,6 @@ class TestWriteNdjson:
 
 
 class TestWriteMeshes:
-
     def test_no_mesh_raises(self, tmp_path, cloud_no_quats):
         from mosaic.formats.writer import _coerce_records, write_meshes
 
@@ -401,7 +389,6 @@ class TestWriteMeshes:
 
 
 class TestWriteVolume:
-
     def test_writes_volume_file(self, tmp_path):
         from mosaic.formats.writer import _coerce_records, write_volume
 
@@ -412,7 +399,6 @@ class TestWriteVolume:
 
 
 class TestWriteGeometriesMultiFile:
-
     def test_one_file_per_geometry(self, tmp_path, cloud):
         g1 = Geometry(points=cloud.points[:10], quaternions=cloud.quaternions[:10])
         g2 = Geometry(points=cloud.points[10:], quaternions=cloud.quaternions[10:])
@@ -433,7 +419,6 @@ class TestWriteGeometriesMultiFile:
 
 
 class TestShapeInference:
-
     def test_volume_shape_inferred_from_bounds(self, tmp_path):
         # No shape passed; orchestrator should infer it from point bounds.
         g = Geometry(points=np.array([[5.0, 6.0, 7.0]], dtype=np.float32))
@@ -443,7 +428,6 @@ class TestShapeInference:
 
 
 class TestRelion5Centering:
-
     def test_origin_shifted_to_volume_center(self, tmp_path):
         # With sampling 1 and shape (100, 100, 100), the relion_5 center is
         # (50, 50, 50) Å. A point at (50, 50, 50) Å should be written as

@@ -10,24 +10,23 @@ import math
 import shlex
 from types import SimpleNamespace
 
-import pytest
 import numpy as np
+import pytest
 
 from mosaic.commands import parser
 from mosaic.commands.parser import (
-    ParsedCommand,
-    parse_command,
-    format_value,
-    format_kwargs,
-    _coerce_value,
-    _TARGET_RE,
     _SPECIAL_TARGETS,
+    _TARGET_RE,
+    ParsedCommand,
+    _coerce_value,
+    format_kwargs,
+    format_value,
+    parse_command,
 )
 from mosaic.registry import Param
 
 
 class TestParseCommand:
-
     @pytest.mark.parametrize(
         "text, verb, targets, args, kwargs",
         [
@@ -83,7 +82,6 @@ class TestParseCommand:
 
 
 class TestParseCommandEdgeCases:
-
     def test_empty_string(self):
         assert parse_command("") is None
 
@@ -174,7 +172,6 @@ class TestParseCommandEdgeCases:
 
 
 class TestCoerceValue:
-
     @pytest.mark.parametrize(
         "raw, expected",
         [
@@ -199,7 +196,6 @@ class TestCoerceValue:
 
 
 class TestCoerceValueEdgeCases:
-
     @pytest.mark.parametrize("val", ["true", "True", "TRUE", "tRuE"])
     def test_true_variants(self, val):
         assert _coerce_value(val) is True
@@ -275,7 +271,6 @@ class TestCoerceValueEdgeCases:
 
 
 class TestFormatValue:
-
     @pytest.mark.parametrize(
         "value, expected",
         [
@@ -297,7 +292,6 @@ class TestFormatValue:
 
 
 class TestFormatKwargs:
-
     @pytest.mark.parametrize(
         "kwargs",
         [
@@ -351,7 +345,6 @@ class TestFormatKwargs:
 
 
 class TestTargetParsing:
-
     def test_simple_target(self):
         assert _TARGET_RE.match("#0")
         assert _TARGET_RE.match("#999")
@@ -421,7 +414,6 @@ class TestTargetParsing:
 
 
 class TestResolvePositional:
-
     def test_maps_args_to_params(self):
         p = ParsedCommand(verb="test", args=["radius", "5"])
         p.resolve_positional(["method", "voxel_size"])

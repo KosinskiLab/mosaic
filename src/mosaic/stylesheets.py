@@ -13,11 +13,11 @@ from importlib_resources import files
 __all__ = [
     "Colors",
     "Typography",
-    "switch_theme",
     "build_appstyle",
-    "build_qt_palette",
     "build_global_stylesheet",
+    "build_qt_palette",
     "install_macos_titlebar_filter",
+    "switch_theme",
 ]
 
 
@@ -99,6 +99,7 @@ class Colors:
     def alpha(cls, token, value):
         """Return a palette color at the given alpha as an rgba() string."""
         import re
+
         from qtpy.QtGui import QColor
 
         raw = getattr(cls, token)
@@ -839,6 +840,7 @@ def _update_macos_titlebar_color(ns_win):
     try:
         import ctypes
         import ctypes.util
+
         from qtpy.QtGui import QColor
 
         objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("objc"))
@@ -900,8 +902,8 @@ def install_macos_titlebar_filter():
     if sys.platform != "darwin":
         return None
 
-    from qtpy.QtWidgets import QApplication
     from qtpy.QtCore import QEvent, QObject
+    from qtpy.QtWidgets import QApplication
 
     class _MacOSTitleBarFilter(QObject):
         """Event filter that styles the native title bar of every top-level window."""
@@ -928,7 +930,7 @@ def install_macos_titlebar_filter():
 
 def build_appstyle():
 
-    from qtpy.QtWidgets import QProxyStyle, QComboBox, QMenu
+    from qtpy.QtWidgets import QComboBox, QMenu, QProxyStyle
 
     class MosaicStyle(QProxyStyle):
         def __init__(self):
@@ -947,7 +949,7 @@ def build_appstyle():
         @staticmethod
         def _install_menu_popup(combo):
             def _show_popup(combo=combo):
-                from qtpy.QtCore import Qt, QPoint
+                from qtpy.QtCore import QPoint, Qt
 
                 if (old := getattr(combo, "_popup_menu", None)) is not None:
                     old.deleteLater()
@@ -960,7 +962,7 @@ def build_appstyle():
                 # "QWidgetWindow ... must be a top level window" warnings.
                 menu = QMenu(combo.window() or combo)
                 menu.setStyleSheet(
-                    "QMenu { padding: 0px 0px; }" "QMenu::item { padding: 4px 7px; }"
+                    "QMenu { padding: 0px 0px; }QMenu::item { padding: 4px 7px; }"
                 )
                 menu.setWindowFlags(
                     menu.windowFlags()

@@ -7,9 +7,9 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import sys
-from typing import Callable, Iterable, Optional, Tuple
+from collections.abc import Callable, Iterable
 
-from qtpy.QtCore import Qt, QEvent, Signal
+from qtpy.QtCore import QEvent, Qt, Signal
 from qtpy.QtGui import QPainter
 from qtpy.QtWidgets import (
     QFrame,
@@ -26,7 +26,7 @@ from ..stylesheets import Colors, Typography
 __all__ = ["ViewportPlaceholder"]
 
 
-ActionSpec = Tuple[Optional[str], str, Callable[[], None]]
+ActionSpec = tuple[str | None, str, Callable[[], None]]
 
 
 def _modifier_glyph() -> str:
@@ -38,7 +38,7 @@ class _ActionPill(QWidget):
 
     clicked = Signal()
 
-    def __init__(self, shortcut: Optional[str], label: str, parent=None):
+    def __init__(self, shortcut: str | None, label: str, parent=None):
         super().__init__(parent)
         self.setObjectName("actionPill")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -222,7 +222,7 @@ class ViewportPlaceholder(QWidget):
         self._applying_theme = False
 
 
-def default_actions(window) -> Tuple[ActionSpec, ...]:
+def default_actions(window) -> tuple[ActionSpec, ...]:
     """Standard pill set bound to :class:`mosaic.gui.App` methods."""
     mod = _modifier_glyph()
     return (

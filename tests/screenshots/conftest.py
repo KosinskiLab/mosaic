@@ -1,11 +1,11 @@
 import os
 import sys
-import pytest
-import numpy as np
 from pathlib import Path
-from PIL import Image
 
-from qtpy.QtGui import QFont, QFontInfo, QFontDatabase
+import numpy as np
+import pytest
+from PIL import Image
+from qtpy.QtGui import QFont, QFontDatabase, QFontInfo
 from qtpy.QtWidgets import QApplication
 
 from mosaic.stylesheets import (
@@ -14,7 +14,6 @@ from mosaic.stylesheets import (
     build_global_stylesheet,
     build_qt_palette,
 )
-
 
 SCREENSHOT_DIR = Path(__file__).resolve().parents[2] / "docs" / "_static" / "tutorial"
 

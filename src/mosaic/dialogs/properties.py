@@ -8,27 +8,28 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from os.path import exists
 
-from qtpy.QtCore import Signal, Qt
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtWidgets import (
+    QDialog,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from mosaic.geometry import BASE_COLOR
 from mosaic.utils import Throttle
-from qtpy.QtWidgets import (
-    QVBoxLayout,
-    QHBoxLayout,
-    QDialog,
-    QPushButton,
-    QFileDialog,
-    QWidget,
-    QLabel,
-    QGroupBox,
-)
+
 from ..icons import icon
 from ..widgets import (
+    ColorPickerRow,
     DialogFooter,
+    SliderRow,
     create_setting_widget,
     get_widget_value,
-    ColorPickerRow,
-    SliderRow,
 )
 from ..widgets.segmented_control import SegmentedControl
 

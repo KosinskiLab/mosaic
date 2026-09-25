@@ -5,15 +5,12 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Optional
-
 import vtk
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QCursor
 
 from .controller import EventKind
 from .shortcuts import SculptShortcutFilter
-
 
 __all__ = ["SculptInteractorStyle", "SculptMode", "sync_palette"]
 
@@ -48,7 +45,7 @@ class SculptMode:
         self._hud = sculpt_hud
         self.controller = controller
         self.style = None
-        self.camera_style: Optional[vtk.vtkInteractorStyleTrackballCamera] = None
+        self.camera_style: vtk.vtkInteractorStyleTrackballCamera | None = None
         self.shortcut_filter = None
         self._models_listener = None
 

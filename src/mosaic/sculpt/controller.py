@@ -10,7 +10,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import vtk
@@ -25,10 +25,10 @@ from .adapter import (
 )
 from .overlay import SculptOverlay
 from .session import (
-    SculptSession,
-    SculptTarget,
     TOOL_BY_HOTKEY,
     TOOL_BY_ID,
+    SculptSession,
+    SculptTarget,
 )
 from .tools import (
     ActiveSet,
@@ -37,7 +37,6 @@ from .tools import (
     patch_touched_loops,
     smooth_stamp,
 )
-
 
 __all__ = ["Brush", "EventKind", "MeshHit", "SculptController"]
 
@@ -80,7 +79,7 @@ _DEFAULT_SMOOTH_STRENGTH = 0.25
 
 def _radius_defaults(
     vs: np.ndarray, fs: np.ndarray
-) -> Tuple[float, Tuple[float, float]]:
+) -> tuple[float, tuple[float, float]]:
     """Pick a default brush radius + slider bounds from mesh scale."""
     mean_edge = float(_edge_lengths(vs, fs).mean()) if len(fs) else 0.0
     diag = float(np.linalg.norm(vs.max(axis=0) - vs.min(axis=0))) if len(vs) else 0.0
@@ -104,20 +103,20 @@ def _radius_defaults(
 
 
 class SculptController:
-    def __init__(self, brush: Optional[Brush] = None) -> None:
+    def __init__(self, brush: Brush | None = None) -> None:
         self.brush = brush or Brush()
 
         # Track whether the user explicitly chose a radius. If they didn't,
         # ``attach_geometry`` picks a sensible default from the mesh's average
         # edge length so the brush is meaningfully sized on any mesh scale.
         self._radius_set_by_user = brush is not None
-        self.session: Optional[SculptSession] = None
+        self.session: SculptSession | None = None
         self._geometry = None
-        self._writer: Optional[PolyDataPointWriter] = None
+        self._writer: PolyDataPointWriter | None = None
         self._renderer = None
         self._mesh_actor = None
-        self._picker: Optional[vtk.vtkCellPicker] = None
-        self._overlay: Optional[SculptOverlay] = None
+        self._picker: vtk.vtkCellPicker | None = None
+        self._overlay: SculptOverlay | None = None
         self._render_callback = None
 
         # Resolves a geometry uuid to the object currently holding it, mirroring
@@ -128,12 +127,12 @@ class SculptController:
         # sculpted edit. None means "no container wired" (headless/tests), in
         # which case we fall back to the actively-bound geometry.
         self._resolve_geometry = None
-        self._last_cursor_world: Optional[np.ndarray] = None
-        self._tint_color: Tuple[float, float, float] = TOOL_BY_ID["view"].color
+        self._last_cursor_world: np.ndarray | None = None
+        self._tint_color: tuple[float, float, float] = TOOL_BY_ID["view"].color
 
         # Avoid round-tripping ``set_color()`` every move when already cleared.
         self._tint_active: bool = False
-        self.radius_bounds: Tuple[float, float] = (0.5, 500.0)
+        self.radius_bounds: tuple[float, float] = (0.5, 500.0)
         self.smooth_strength: float = _DEFAULT_SMOOTH_STRENGTH
 
     def attach_geometry(self, geometry) -> None:
@@ -496,7 +495,7 @@ class SculptController:
         self._request_render()
         return None
 
-    def _pick(self, x: int, y: int) -> Optional[MeshHit]:
+    def _pick(self, x: int, y: int) -> MeshHit | None:
         if self._renderer is None or self._picker is None or self._mesh_actor is None:
             return None
         return pick_mesh(self._picker, self._renderer, x, y, self._mesh_actor)
@@ -526,7 +525,7 @@ class SculptController:
 
     def _screen_delta_to_world(
         self, cursor_x: int, cursor_y: int, anchor: np.ndarray
-    ) -> Optional[np.ndarray]:
+    ) -> np.ndarray | None:
         if self._renderer is None:
             return None
         self._renderer.SetWorldPoint(
@@ -569,7 +568,7 @@ class SculptController:
 
     def _apply_tool_color(self, tool: str) -> None:
         spec = TOOL_BY_ID.get(tool)
-        rgb: Tuple[float, float, float] = spec.color if spec else (1.0, 1.0, 1.0)
+        rgb: tuple[float, float, float] = spec.color if spec else (1.0, 1.0, 1.0)
         self._tint_color = rgb
         if self._overlay is not None:
             self._overlay.set_tool_color(rgb)

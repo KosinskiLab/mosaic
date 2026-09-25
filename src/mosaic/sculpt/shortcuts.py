@@ -5,12 +5,9 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Optional
-
 from qtpy.QtCore import QEvent, QObject, Qt
 
 from .session import TOOLS
-
 
 __all__ = ["SculptShortcutFilter"]
 
@@ -57,7 +54,7 @@ class SculptShortcutFilter(QObject):
         if key == Qt.Key.Key_Escape:
             return False
 
-        tool: Optional[str] = _TOOL_FOR_KEY.get(key)
+        tool: str | None = _TOOL_FOR_KEY.get(key)
         if tool is not None:
             self._set_tool(tool)
             return True

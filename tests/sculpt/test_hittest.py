@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock
+
 import numpy as np
 
 from mosaic.sculpt.controller import MeshHit, pick_mesh

@@ -8,12 +8,11 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import struct
 import warnings
+from gzip import open as gzip_open
 from io import BytesIO
 from string import ascii_lowercase
-from typing import Dict
 
 import numpy as np
-from gzip import open as gzip_open
 
 from .records import (
     GeometryData,
@@ -65,8 +64,9 @@ def _read_orientations(filename: str):
     dict
         Dictionary containing vertices, normals, and quaternions.
     """
-    from tme import Orientations
     from scipy.spatial.transform import Rotation
+    from tme import Orientations
+
     from ..utils import NORMAL_REFERENCE
 
     data = Orientations.from_file(filename)
@@ -183,11 +183,11 @@ def read_txt(filename: str):
     vertices, normals, quaternions = [], [], []
     for cluster in data:
         cols = ("x", "y", "z")
-        vertices.append((np.hstack([cluster[k][:, None] for k in cols])))
+        vertices.append(np.hstack([cluster[k][:, None] for k in cols]))
         try:
             cols = ("nx", "ny", "nz")
-            normals.append((np.hstack([cluster[k][:, None] for k in cols])))
-        except Exception as e:
+            normals.append(np.hstack([cluster[k][:, None] for k in cols]))
+        except Exception:
             continue
 
     if len(normals) == 0:
@@ -210,7 +210,7 @@ def read_tsv(filename: str) -> GeometryDataContainer:
     GeometryDataContainer
         Parsed geometry data container.
     """
-    with open(filename, mode="r") as infile:
+    with open(filename) as infile:
         header = infile.readline()
     if "euler" not in header:
         return read_txt(filename)
@@ -239,7 +239,7 @@ def read_tsi(filename: str) -> GeometryDataContainer:
 
     try:
         if "inclusions" in data:
-            inclusions = np.zeros((len(data["vertices"])))
+            inclusions = np.zeros(len(data["vertices"]))
             inclusion_type = data["inclusions"][:, 1]
             inclusion_vert = data["inclusions"][:, 2].astype(int)
             inclusions[inclusion_vert] = inclusion_type
@@ -501,7 +501,7 @@ def points_from_flat_array(arr, dims, max_cluster=10000):
     return [coords[bounds[i] : bounds[i + 1]] for i in range(len(bounds) - 1)]
 
 
-def _read_tsi_file(file_path: str) -> Dict:
+def _read_tsi_file(file_path: str) -> dict:
     """
     Reads a topology file [1]_.
 
@@ -524,7 +524,7 @@ def _read_tsi_file(file_path: str) -> Dict:
     _keys = ("version", "box", "n_vertices", "vertices", "n_faces", "faces")
     ret = {k: None for k in _keys}
 
-    with open(file_path, mode="r", encoding="utf-8") as infile:
+    with open(file_path, encoding="utf-8") as infile:
         data = [x.strip() for x in infile.read().split("\n") if len(x.strip())]
 
     # Version prefix
@@ -564,7 +564,7 @@ def _read_tsi_file(file_path: str) -> Dict:
     return ret
 
 
-def _read_vtu_file(file_path: str) -> Dict:
+def _read_vtu_file(file_path: str) -> dict:
     """
     Parse a VTK XML UnstructuredGrid file into a dictionary of numpy arrays.
 
@@ -602,7 +602,7 @@ def _read_vtu_file(file_path: str) -> Dict:
             connectivity = connectivity.reshape(-1, int(strides[0]))
 
     pd = grid.GetPointData()
-    point_data: Dict[str, np.ndarray] = {}
+    point_data: dict[str, np.ndarray] = {}
     for i in range(pd.GetNumberOfArrays()):
         arr = vtk_to_numpy(pd.GetArray(i))
         if arr.ndim == 2 and arr.shape[1] == 1:
@@ -668,11 +668,13 @@ def read_ndjson(filename: str) -> GeometryDataContainer:
         Parsed geometry data container.
     """
     import json
+
     from scipy.spatial.transform import Rotation
+
     from ..utils import NORMAL_REFERENCE
 
     records = []
-    with open(filename, "r") as f:
+    with open(filename) as f:
         for line in f:
             line = line.strip()
             if line:

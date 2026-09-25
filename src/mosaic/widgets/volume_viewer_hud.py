@@ -6,20 +6,20 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtGui import QColor, QPen, QCursor, QPainter
-from qtpy.QtCore import Qt, QEvent, QTimer, QPoint, QCoreApplication
+from qtpy.QtCore import QCoreApplication, QEvent, QPoint, Qt, QTimer
+from qtpy.QtGui import QColor, QCursor, QPainter, QPen
 from qtpy.QtWidgets import (
-    QVBoxLayout,
-    QHBoxLayout,
-    QWidget,
-    QPushButton,
     QApplication,
+    QHBoxLayout,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
 
 from ..icons import icon
 from ..stylesheets import Typography
-from .volume_viewer import VolumeViewer
 from .segmented_control import SegmentedControl
+from .volume_viewer import VolumeViewer
 
 _ICON = "#d4d4d8"
 _BTN = 28

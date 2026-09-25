@@ -4,7 +4,6 @@ from mosaic.dialogs.import_data import ImportDataDialog
 from mosaic.formats._utils import read_star_header
 from mosaic.widgets.settings import get_widget_value
 
-
 RELION4_PIXEL_STAR = textwrap.dedent(
     """\
     data_optics

@@ -1,23 +1,21 @@
-from typing import Dict
-
 from qtpy.QtGui import QDoubleValidator
 from qtpy.QtWidgets import (
-    QSpinBox,
-    QDoubleSpinBox,
-    QComboBox,
     QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
     QFormLayout,
     QLineEdit,
+    QSpinBox,
 )
 
 from ..stylesheets import Colors, Typography
 
 __all__ = [
-    "format_tooltip",
     "create_setting_widget",
+    "format_tooltip",
+    "get_layout_widget_value",
     "get_widget_value",
     "set_widget_value",
-    "get_layout_widget_value",
 ]
 
 
@@ -43,9 +41,8 @@ def format_tooltip(description=None, default=None, notes=None, **kwargs):
     return "".join(lines)
 
 
-def create_setting_widget(setting: Dict):
+def create_setting_widget(setting: dict):
     if setting["type"] in ("number", "float"):
-
         widget = QSpinBox()
         wrange = int(setting.get("min", 0)), int(setting.get("max", 1 << 30))
         if setting["type"] == "float":

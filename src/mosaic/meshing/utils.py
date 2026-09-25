@@ -7,28 +7,26 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import sys
-import h5py
-import warnings
 import textwrap
-
+import warnings
 from subprocess import run
-from typing import List, Dict
 from tempfile import NamedTemporaryFile
 
+import h5py
 import numpy as np
 
 __all__ = [
-    "to_open3d",
+    "center_mesh",
     "compute_edge_lengths",
-    "scale",
-    "remesh",
-    "merge_meshes",
-    "equilibrate_edges",
     "compute_scale_factor",
     "compute_scale_factor_lower",
-    "center_mesh",
-    "to_tsi",
+    "equilibrate_edges",
     "fill_mesh",
+    "merge_meshes",
+    "remesh",
+    "scale",
+    "to_open3d",
+    "to_tsi",
 ]
 
 
@@ -109,9 +107,9 @@ def remesh(mesh, target_edge_length=None, n_iter=100, feature=None):
 
 
 def merge_meshes(
-    vertices: List[np.ndarray],
-    faces: List[np.ndarray],
-    normals: List[np.ndarray] = None,
+    vertices: list[np.ndarray],
+    faces: list[np.ndarray],
+    normals: list[np.ndarray] = None,
 ):
     if len(vertices) != len(faces):
         raise ValueError("Length of vertex and face list needs to match.")
@@ -186,9 +184,9 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
 
         [BONDS]
         bond_type = Edge
-        r = {default_args['bond_r']}
-        lc0 = {default_args['lc0']}
-        lc1 = {default_args['lc1']}
+        r = {default_args["bond_r"]}
+        lc0 = {default_args["lc0"]}
+        lc1 = {default_args["lc1"]}
 
         [SURFACEREPULSION]
         n_search = cell-list
@@ -198,17 +196,17 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
         r = 2
 
         [ENERGY]
-        kappa_a = {default_args['kappa_a']}
-        kappa_b = {default_args['kappa_b']}
-        kappa_c = {default_args['kappa_c']}
-        kappa_v = {default_args['kappa_v']}
-        kappa_t = {default_args['kappa_t']}
-        kappa_r = {default_args['kappa_r']}
-        area_fraction = {default_args['area_fraction']}
-        volume_fraction = {default_args['volume_fraction']}
-        curvature_fraction = {default_args['curvature_fraction']}
-        continuation_delta = {default_args['continuation_delta']}
-        continuation_lambda = {default_args['continuation_lambda']}
+        kappa_a = {default_args["kappa_a"]}
+        kappa_b = {default_args["kappa_b"]}
+        kappa_c = {default_args["kappa_c"]}
+        kappa_v = {default_args["kappa_v"]}
+        kappa_t = {default_args["kappa_t"]}
+        kappa_r = {default_args["kappa_r"]}
+        area_fraction = {default_args["area_fraction"]}
+        volume_fraction = {default_args["volume_fraction"]}
+        curvature_fraction = {default_args["curvature_fraction"]}
+        continuation_delta = {default_args["continuation_delta"]}
+        continuation_lambda = {default_args["continuation_lambda"]}
 
         [MINIMIZATION]
         maxiter = {steps}
@@ -296,7 +294,7 @@ def center_mesh(mesh, center: bool = True, margin=20):
     return data, offset
 
 
-def to_tsi(vertices, faces, margin: int = 0) -> Dict:
+def to_tsi(vertices, faces, margin: int = 0) -> dict:
     vertices = np.asarray(vertices)
     faces = np.asarray(faces)
 

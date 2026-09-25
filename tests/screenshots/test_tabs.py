@@ -3,7 +3,6 @@ import pytest
 
 @pytest.mark.gui
 class TestTabs:
-
     def test_segmentation_tab(self, mosaic_app, qapp):
         mosaic_app.tab_bar.setCurrentIndex(0)
         qapp.processEvents()

@@ -5,6 +5,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import time
+
 import pytest
 
 from mosaic.parallel import BackgroundTaskManager
@@ -67,9 +68,9 @@ def test_submit_task_process_backend_still_works(fresh_manager):
         args=(3,),
     )
 
-    assert _wait_for(
-        lambda: results == [27], timeout=30.0
-    ), f"process task never completed: {results}"
+    assert _wait_for(lambda: results == [27], timeout=30.0), (
+        f"process task never completed: {results}"
+    )
 
 
 def _boom():
@@ -135,7 +136,9 @@ def _slow_worker(barrier_event, n):
 
 def test_status_indicator_owner_handoff(fresh_manager, qtbot, qapp):
     import threading
+
     from qtpy.QtWidgets import QMainWindow
+
     from mosaic.widgets.status_indicator import StatusIndicator
 
     mw = QMainWindow()
@@ -154,9 +157,9 @@ def test_status_indicator_owner_handoff(fresh_manager, qtbot, qapp):
             args=(release_a, 3),
         )
         # Wait for A to become the active owner.
-        assert _wait_for(
-            lambda: indicator._active_io_task_id == a
-        ), f"A never became active owner; got {indicator._active_io_task_id}"
+        assert _wait_for(lambda: indicator._active_io_task_id == a), (
+            f"A never became active owner; got {indicator._active_io_task_id}"
+        )
 
         # Submit task B — should take over ownership (most-recent-wins).
         b = fresh_manager.submit_io_task(
@@ -164,21 +167,21 @@ def test_status_indicator_owner_handoff(fresh_manager, qtbot, qapp):
             func=_slow_worker,
             args=(release_b, 3),
         )
-        assert _wait_for(
-            lambda: indicator._active_io_task_id == b
-        ), f"B never took ownership; got {indicator._active_io_task_id}"
+        assert _wait_for(lambda: indicator._active_io_task_id == b), (
+            f"B never took ownership; got {indicator._active_io_task_id}"
+        )
 
         # Let B complete first. Ownership should hand back to A (still running).
         release_b.set()
-        assert _wait_for(
-            lambda: indicator._active_io_task_id == a
-        ), f"handoff to A failed; got {indicator._active_io_task_id}"
+        assert _wait_for(lambda: indicator._active_io_task_id == a), (
+            f"handoff to A failed; got {indicator._active_io_task_id}"
+        )
 
         # Let A finish. Ownership should clear.
         release_a.set()
-        assert _wait_for(
-            lambda: indicator._active_io_task_id is None
-        ), f"ownership never cleared; got {indicator._active_io_task_id}"
+        assert _wait_for(lambda: indicator._active_io_task_id is None), (
+            f"ownership never cleared; got {indicator._active_io_task_id}"
+        )
     finally:
         # Unblock worker threads regardless of assertion outcome so the
         # fresh_manager teardown doesn't race with parked threads.
@@ -194,6 +197,7 @@ def test_status_indicator_owner_handoff(fresh_manager, qtbot, qapp):
 
 def test_status_indicator_ignores_process_tasks(fresh_manager, qtbot, qapp):
     from qtpy.QtWidgets import QMainWindow
+
     from mosaic.widgets.status_indicator import StatusIndicator
 
     mw = QMainWindow()

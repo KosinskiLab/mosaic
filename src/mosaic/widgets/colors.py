@@ -6,32 +6,31 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Dict, List, Optional
-
-from qtpy.QtCore import Qt, Signal, QPointF, QRect
-from qtpy.QtGui import QColor, QPainter, QLinearGradient, QPen
+from qtpy.QtCore import QPointF, QRect, Qt, Signal
+from qtpy.QtGui import QColor, QLinearGradient, QPainter, QPen
 from qtpy.QtWidgets import (
-    QWidget,
-    QPushButton,
     QColorDialog,
-    QVBoxLayout,
     QHBoxLayout,
     QLabel,
     QMenu,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
     QWidgetAction,
 )
+
 from ..icons import icon
 from ..stylesheets import Colors, Typography
 
 __all__ = [
     "ColorMapSelector",
-    "ColorSwatch",
     "ColorPickerRow",
+    "ColorSwatch",
     "generate_gradient_colors",
 ]
 
 # Default colormap categories
-DEFAULT_COLORMAP_CATEGORIES: Dict[str, List[str]] = {
+DEFAULT_COLORMAP_CATEGORIES: dict[str, list[str]] = {
     "Sequential": [
         "viridis",
         "plasma",
@@ -66,7 +65,7 @@ DEFAULT_COLORMAP_CATEGORIES: Dict[str, List[str]] = {
 }
 
 
-def generate_gradient_colors(cmap_name: str, n_colors: int = 10) -> List[QColor]:
+def generate_gradient_colors(cmap_name: str, n_colors: int = 10) -> list[QColor]:
     """Generate a list of QColors from a matplotlib colormap."""
     from ..utils import get_cmap
 
@@ -162,8 +161,8 @@ class ColorMapSelector(QPushButton):
 
     def __init__(
         self,
-        categories: Optional[Dict[str, List[str]]] = None,
-        default: Optional[str] = None,
+        categories: dict[str, list[str]] | None = None,
+        default: str | None = None,
         parent=None,
     ):
         super().__init__(parent)

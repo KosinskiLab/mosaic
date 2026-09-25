@@ -8,13 +8,13 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from qtpy.QtCore import Qt, QTimer, Signal
 from qtpy.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QFrame,
     QHBoxLayout,
+    QLabel,
     QPushButton,
     QSlider,
-    QLabel,
-    QFrame,
+    QVBoxLayout,
+    QWidget,
 )
 
 from ..icons import icon

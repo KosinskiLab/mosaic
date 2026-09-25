@@ -6,10 +6,11 @@ Uses fixtures and parametrize to reduce code duplication.
 """
 
 import pickle
-import pytest
-import numpy as np
 
-from mosaic.parametrization import PARAMETRIZATION_TYPE, TriangularMesh, BallPivoting
+import numpy as np
+import pytest
+
+from mosaic.parametrization import PARAMETRIZATION_TYPE, BallPivoting
 
 PARAMETRIZATION_CONFIG = [
     ("Sphere", "sphere", {}),
@@ -163,7 +164,6 @@ class TestParametrizationBase:
 
 
 class TestMeshSpecific:
-
     @pytest.fixture(scope="class")
     def mesh(self):
         points = generate_random_points(100, "sphere")

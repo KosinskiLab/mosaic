@@ -9,7 +9,6 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Dict, List
 from dataclasses import dataclass, field
 
 __all__ = ["TreeState", "TreeStateData"]
@@ -20,11 +19,11 @@ class TreeState:
     """Legacy tree structure (deprecated - kept for backward compatibility)."""
 
     #: {'Group 1': ['uuid1', 'uuid2'], ...}
-    groups: Dict[str, List[str]] = field(default_factory=dict)
+    groups: dict[str, list[str]] = field(default_factory=dict)
     #: {'Group 1', 'uuid1', ...}
-    root_order: Dict[str, int] = field(default_factory=dict)
+    root_order: dict[str, int] = field(default_factory=dict)
     #: ['uuid3', 'uuid4', ...]
-    root_items: List[str] = field(default_factory=list)
+    root_items: list[str] = field(default_factory=list)
 
     def get_all_uuids(self):
         """Get all UUIDs currently in the tree."""
@@ -52,11 +51,11 @@ class TreeStateData:
     """Minimal tree structure tracking."""
 
     #: Maps group UUIDs to list of geometry UUIDs
-    groups: Dict[str, List[str]] = field(default_factory=dict)
+    groups: dict[str, list[str]] = field(default_factory=dict)
     #: Maps group UUIDs to display names
-    group_names: Dict[str, str] = field(default_factory=dict)
+    group_names: dict[str, str] = field(default_factory=dict)
     #: Top-level items in display order (mix of group UUIDs and geometry UUIDs)
-    root_items: List[str] = field(default_factory=list)
+    root_items: list[str] = field(default_factory=list)
 
     def get_all_uuids(self):
         """Get all UUIDs currently in the tree."""

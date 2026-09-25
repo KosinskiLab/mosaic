@@ -6,7 +6,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 import igl
 import numpy as np
@@ -14,16 +13,15 @@ from scipy.sparse import csr_matrix
 
 from mosaic.meshing.repair import _close_hole, fair_mesh, triangulation_refine_leipa
 
-
 __all__ = [
     "ActiveSet",
     "brush_query",
     "build_adjacency",
     "compute_boundary_mask",
-    "wendland",
     "grab_apply",
-    "smooth_stamp",
     "patch_touched_loops",
+    "smooth_stamp",
+    "wendland",
 ]
 
 
@@ -62,8 +60,8 @@ def brush_query(
     vs: np.ndarray,
     hit_point: np.ndarray,
     radius: float,
-    vertex_normals: Optional[np.ndarray] = None,
-    camera_position: Optional[np.ndarray] = None,
+    vertex_normals: np.ndarray | None = None,
+    camera_position: np.ndarray | None = None,
 ) -> ActiveSet:
     """Return the ActiveSet for ``hit_point`` against ``vs``.
 
@@ -198,7 +196,7 @@ def patch_touched_loops(
     density_factor: float = float(np.sqrt(2)),
     n_ring: int = 2,
     smoothness: float = 1.0,
-) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+) -> tuple[np.ndarray, np.ndarray] | None:
     """Close the boundary loop the user painted most heavily.
 
     When a Patch stroke crosses vertices from several open boundary loops
@@ -213,7 +211,7 @@ def patch_touched_loops(
     }
     if not touched:
         return None
-    best_loop: Optional[List[int]] = None
+    best_loop: list[int] | None = None
     best_overlap = 0
     for loop in igl.boundary_loop_all(fs):
         loop_list = [int(v) for v in loop]

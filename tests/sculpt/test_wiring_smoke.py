@@ -5,10 +5,10 @@ and detach. The point is to catch wiring regressions across the
 SculptController -> SculptSession -> SculptTarget seam.
 """
 
-import pytest
 from unittest.mock import MagicMock
 
 import numpy as np
+import pytest
 import vtk
 from vtkmodules.util import numpy_support
 
@@ -136,16 +136,16 @@ def test_full_patch_stroke_lifecycle(punched_grid_mesh):
     c.handle_event(EventKind.LMB_UP, 10, 10)
 
     face_count_filled = len(c.session.target.fs)
-    assert (
-        face_count_filled > face_count_before
-    ), "patch must have added faces to close the hole"
+    assert face_count_filled > face_count_before, (
+        "patch must have added faces to close the hole"
+    )
 
     assert STACK.undo() is not None
-    assert (
-        len(c.session.target.fs) == face_count_before
-    ), "undo must revert to original face count"
+    assert len(c.session.target.fs) == face_count_before, (
+        "undo must revert to original face count"
+    )
 
     STACK.redo()
-    assert (
-        len(c.session.target.fs) == face_count_filled
-    ), "redo must reapply the filled topology"
+    assert len(c.session.target.fs) == face_count_filled, (
+        "redo must reapply the filled topology"
+    )

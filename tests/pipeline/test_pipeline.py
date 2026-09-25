@@ -7,13 +7,13 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from mosaic.pipeline._utils import (
-    strip_filepath,
     natural_sort_key,
+    strip_filepath,
     topological_sort,
 )
 from mosaic.pipeline.executor import generate_runs
@@ -407,8 +407,9 @@ class TestCLI:
 
     def test_cli_config_not_found(self, tmp_path):
         """Test CLI with non-existent config file."""
-        from mosaic.scripts.pipeline import main
         import sys
+
+        from mosaic.scripts.pipeline import main
 
         nonexistent = tmp_path / "nonexistent.json"
 
@@ -419,8 +420,9 @@ class TestCLI:
 
     def test_cli_dry_run(self, valid_config, pipeline_config_data, capsys):
         """Test CLI dry-run mode lists all runs from config."""
-        from mosaic.scripts.pipeline import main
         import sys
+
+        from mosaic.scripts.pipeline import main
 
         # Derive expected values from config
         import_node = next(
@@ -445,8 +447,9 @@ class TestCLI:
 
     def test_cli_index_out_of_range(self, valid_config, pipeline_config_data):
         """Test CLI with invalid index returns error."""
-        from mosaic.scripts.pipeline import main
         import sys
+
+        from mosaic.scripts.pipeline import main
 
         # Derive the valid range from config
         import_node = next(
@@ -468,8 +471,9 @@ class TestCLI:
 
     def test_cli_index_valid(self, valid_config, pipeline_config_data, capsys):
         """Test CLI with valid index selects correct run."""
-        from mosaic.scripts.pipeline import main
         import sys
+
+        from mosaic.scripts.pipeline import main
 
         # Get first file's expected run_id
         import_node = next(
@@ -493,9 +497,10 @@ class TestCLI:
 
     def test_cli_invalid_config(self, tmp_path):
         """Test CLI with invalid JSON config raises JSONDecodeError."""
-        from mosaic.scripts.pipeline import main
         import json
         import sys
+
+        from mosaic.scripts.pipeline import main
 
         config_file = tmp_path / "invalid.json"
         config_file.write_text("not valid json {")
@@ -506,8 +511,9 @@ class TestCLI:
 
     def test_cli_empty_pipeline(self, tmp_path):
         """Test CLI with empty pipeline."""
-        from mosaic.scripts.pipeline import main
         import sys
+
+        from mosaic.scripts.pipeline import main
 
         config = {"version": "2.0", "nodes": []}
         config_file = tmp_path / "empty.json"
@@ -524,9 +530,10 @@ class TestCLI:
         self, mock_executor_class, mock_execute, valid_config, pipeline_config_data
     ):
         """Test CLI executes correct number of runs from config."""
-        from mosaic.scripts.pipeline import main
         import sys
         from concurrent.futures import Future
+
+        from mosaic.scripts.pipeline import main
 
         # Derive expected run count from config
         import_node = next(
@@ -626,6 +633,6 @@ class TestOperationCategories:
 
         for preset_name, preset_ops in PIPELINE_PRESETS.items():
             for op in preset_ops:
-                assert (
-                    op["name"] in valid_ops
-                ), f"Preset {preset_name} references invalid operation {op['name']}"
+                assert op["name"] in valid_ops, (
+                    f"Preset {preset_name} references invalid operation {op['name']}"
+                )

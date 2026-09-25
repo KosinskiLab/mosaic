@@ -6,36 +6,37 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import io
-import sys
-import uuid
-import queue
-import warnings
-import threading
 import concurrent
+import io
 import multiprocessing
-from enum import Enum
-from typing import Callable, Any, Dict, Optional
+import queue
+import sys
+import threading
+import uuid
+import warnings
+from collections.abc import Callable
 from dataclasses import dataclass
+from enum import Enum
+from typing import Any
+
+from qtpy.QtCore import QObject, QTimer, Signal
 
 from .settings import Settings
-from qtpy.QtCore import QObject, Signal, QTimer
-
 
 __all__ = [
     "_init_worker",
     "_wrap_task",
     "report_progress",
+    "submit_io_task",
     "submit_task",
     "submit_task_batch",
-    "submit_io_task",
 ]
 
 # Worker-side globals (set by initializer, used by worker functions)
-_worker_queue: Optional[multiprocessing.Queue] = None
-_worker_task_id: Optional[str] = None
-_original_stdout: Optional[io.TextIOBase] = None
-_original_stderr: Optional[io.TextIOBase] = None
+_worker_queue: "multiprocessing.Queue | None" = None
+_worker_task_id: str | None = None
+_original_stdout: io.TextIOBase | None = None
+_original_stderr: io.TextIOBase | None = None
 
 # I/O worker-side thread-local context (set by _wrap_io_task).
 _IO_WORKER_CONTEXT = threading.local()
@@ -57,8 +58,8 @@ class WorkerMessage:
     task_id: str
     type: MessageType
     value: Any
-    current: Optional[int] = None
-    total: Optional[int] = None
+    current: int | None = None
+    total: int | None = None
 
 
 class QueueStream(io.TextIOBase):
@@ -171,7 +172,7 @@ def _init_worker_with_queue(progress_queue: multiprocessing.Queue):
     sys.stderr = QueueStream(progress_queue, MessageType.STDERR, _original_stderr)
 
 
-def _format_captured_warnings(warning_list) -> Optional[str]:
+def _format_captured_warnings(warning_list) -> str | None:
     """
     Format a list of captured warnings into the wire-format string.
 
@@ -189,7 +190,7 @@ def _format_captured_warnings(warning_list) -> Optional[str]:
     return warning_msg.rstrip() if warning_msg else None
 
 
-def _run_with_warning_capture(func, *args, **kwargs) -> Dict[str, Any]:
+def _run_with_warning_capture(func, *args, **kwargs) -> dict[str, Any]:
     """
     Execute ``func`` with warnings captured, returning the completion dict.
 
@@ -263,6 +264,7 @@ def _default_handler(task_id, task_name, msg, is_warning=False):
 
 def _flush_messages():
     from qtpy.QtWidgets import QMessageBox
+
     from .widgets import MosaicMessageBox
 
     if not _pending_messages:
@@ -337,17 +339,17 @@ class BackgroundTaskManager(QObject):
 
         # Task tracking
         self.task_queue: list = []
-        self.task_info: Dict[str, Dict[str, Any]] = {}
-        self.futures: Dict[str, concurrent.futures.Future] = {}
-        self.io_futures: Dict[str, concurrent.futures.Future] = {}
+        self.task_info: dict[str, dict[str, Any]] = {}
+        self.futures: dict[str, concurrent.futures.Future] = {}
+        self.io_futures: dict[str, concurrent.futures.Future] = {}
 
         # Batch limits
-        self.batch_limits: Dict[str, int] = {}
-        self.batch_running: Dict[str, set] = {}
+        self.batch_limits: dict[str, int] = {}
+        self.batch_running: dict[str, set] = {}
 
         # Output accumulation
-        self._task_stdout: Dict[str, list] = {}
-        self._task_stderr: Dict[str, list] = {}
+        self._task_stdout: dict[str, list] = {}
+        self._task_stderr: dict[str, list] = {}
 
         self._initialize()
 
@@ -765,7 +767,7 @@ class BackgroundTaskManager(QObject):
         if executor_broken:
             self._initialize()
 
-    def get_task_output(self, task_id: str) -> Dict[str, str]:
+    def get_task_output(self, task_id: str) -> dict[str, str]:
         """
         Get accumulated stdout/stderr for a task.
 

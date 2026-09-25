@@ -13,14 +13,13 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import os
 import pickle
 import warnings
-from uuid import uuid4
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import List, Optional
+from uuid import uuid4
 
 import numpy as np
 
 from ..container import DataContainer
-from ..tree_state import TreeStateData, TreeState
+from ..tree_state import TreeState, TreeStateData
 
 __all__ = ["Session"]
 
@@ -69,7 +68,7 @@ class Session:
         self._file_sections: dict = {}
         self._order: list = []
         self._last_results: list = []
-        self._log: List[str] = []
+        self._log: list[str] = []
         self._counter: int = 0
         self.metadata: dict = {}
         self.quiet: bool = quiet
@@ -159,7 +158,7 @@ class Session:
 
         raise ValueError(f"Invalid target specifier: {spec!r}")
 
-    def resolve_many(self, specs: List[str]) -> list:
+    def resolve_many(self, specs: list[str]) -> list:
         """Resolve multiple specifiers, preserving order and deduplicating."""
         seen, result = set(), []
         for spec in specs:
@@ -178,7 +177,7 @@ class Session:
         persist=True,
         segmentation=False,
         **kwargs,
-    ) -> List[int]:
+    ) -> list[int]:
         """Load geometries from a file.
 
         Parameters
@@ -486,19 +485,22 @@ class Session:
         errors = []
 
         from rich.progress import (
+            BarColumn,
+            MofNCompleteColumn,
             Progress,
             SpinnerColumn,
-            BarColumn,
             TextColumn,
             TimeRemainingColumn,
-            MofNCompleteColumn,
         )
+
         from .theme import get_console
 
         console = get_console()
         if self.quiet:
             from io import StringIO
+
             from rich.console import Console
+
             from .theme import MOSAIC_THEME
 
             console = Console(file=StringIO(), theme=MOSAIC_THEME)
@@ -533,7 +535,7 @@ class Session:
         pool.shutdown(wait=False)
         return results, errors
 
-    def apply(self, operation_name: str, geometries: List, **kwargs) -> List:
+    def apply(self, operation_name: str, geometries: list, **kwargs) -> list:
         """Apply a :class:`~mosaic.operations.GeometryOperations` function.
 
         Parameters
@@ -615,7 +617,7 @@ class Session:
         self._last_results = created
         return created
 
-    def measure(self, property_name: str, geometries: List, **kwargs) -> List:
+    def measure(self, property_name: str, geometries: list, **kwargs) -> list:
         """Compute a property via :class:`~mosaic.properties.GeometryProperties`.
 
         Parameters
@@ -668,7 +670,7 @@ class Session:
 
     def filter(
         self,
-        geometries: List,
+        geometries: list,
         prop_name: str,
         lower=None,
         upper=None,
@@ -842,10 +844,10 @@ class Session:
 
     def list_filtered(
         self,
-        type: Optional[str] = None,
-        name: Optional[str] = None,
-        group: Optional[str] = None,
-        visible: Optional[bool] = None,
+        type: str | None = None,
+        name: str | None = None,
+        group: str | None = None,
+        visible: bool | None = None,
     ) -> list:
         """Return matching geometries as ``(index, geometry)`` pairs.
 
@@ -886,7 +888,7 @@ class Session:
 
         return entries
 
-    def remove(self, geometries: List) -> int:
+    def remove(self, geometries: list) -> int:
         """Remove geometries from the session.
 
         Parameters
@@ -916,7 +918,7 @@ class Session:
             ]
         return count
 
-    def merge(self, geometries: List, name: Optional[str] = None) -> "Geometry":
+    def merge(self, geometries: list, name: str | None = None) -> "Geometry":
         """Merge multiple geometries into one.
 
         Parameters
@@ -956,7 +958,7 @@ class Session:
         self._last_results = [merged]
         return merged
 
-    def group(self, geometries: List, name: str) -> str:
+    def group(self, geometries: list, name: str) -> str:
         """Assign geometries to a named group.
 
         Parameters
@@ -1017,7 +1019,7 @@ class Session:
 
         return group_id
 
-    def ungroup(self, geometries: List) -> int:
+    def ungroup(self, geometries: list) -> int:
         """Remove geometries from their groups.
 
         Parameters

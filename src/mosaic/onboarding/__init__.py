@@ -6,7 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from .chapters import get_chapter, all_chapters
+from .chapters import all_chapters, get_chapter
 
 
 def launch_onboarding(main_window, chapter_id: str):

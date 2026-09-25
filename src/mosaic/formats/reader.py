@@ -25,7 +25,7 @@ def is_likely_density_map(filepath: str, max_cluster: int = 10000) -> bool:
     if not is_volume_file(filepath):
         return False
 
-    from .parser import read_mrc_dtype, read_mrc_flat, load_density
+    from .parser import load_density, read_mrc_dtype, read_mrc_flat
 
     dtype = read_mrc_dtype(filepath)
     if dtype is not None and not np.issubdtype(dtype, np.integer):

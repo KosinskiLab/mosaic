@@ -11,20 +11,20 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional
 
 import numpy as np
 
 __all__ = [
-    "GeometrySwap",
     "GeometrySubset",
-    "restore_geometry",
-    "undo_subset_removal",
-    "redo_subset_removal",
+    "GeometrySwap",
     "apply_changes",
-    "record",
     "build_changes",
     "place",
+    "record",
+    "redo_subset_removal",
+    "restore_geometry",
+    "undo_subset_removal",
 ]
 
 
@@ -88,7 +88,7 @@ def redo_subset_removal(target, record) -> None:
     return None
 
 
-def apply_changes(target, changes: List, *, undo: bool) -> None:
+def apply_changes(target, changes: list, *, undo: bool) -> None:
     """Apply each change to ``target`` in the given direction."""
     for change in changes:
         if isinstance(change, GeometrySubset):
@@ -103,7 +103,7 @@ def apply_changes(target, changes: List, *, undo: bool) -> None:
     return None
 
 
-def record(target, changes: List, label: str) -> None:
+def record(target, changes: list, label: str) -> None:
     """Register one undo entry for an already-applied set of changes.
 
     The caller has performed the forward mutation; this only wires undo/redo
@@ -119,7 +119,7 @@ def record(target, changes: List, label: str) -> None:
     return None
 
 
-def build_changes(*, add=(), remove=()) -> List[GeometrySwap]:
+def build_changes(*, add=(), remove=()) -> list[GeometrySwap]:
     """Map add/remove geometries to a flat swap list (removals first).
 
     Parameters

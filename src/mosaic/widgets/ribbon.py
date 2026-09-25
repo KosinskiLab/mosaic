@@ -1,19 +1,20 @@
-from qtpy.QtGui import QPainter, QPainterPath, QColor, QPen
-from qtpy.QtCore import Qt, QSize, Signal, QPoint, QTimer, QRectF, QEvent
+from qtpy.QtCore import QEvent, QPoint, QRectF, QSize, Qt, QTimer, Signal
+from qtpy.QtGui import QColor, QPainter, QPainterPath, QPen
 from qtpy.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QLabel,
-    QHBoxLayout,
-    QPushButton,
+    QApplication,
     QFrame,
     QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
     QSizePolicy,
-    QApplication,
+    QVBoxLayout,
+    QWidget,
 )
-from .settings import create_setting_widget
-from ..stylesheets import Colors, Typography
+
 from ..icons import icon
+from ..stylesheets import Colors, Typography
+from .settings import create_setting_widget
 
 
 class SettingsPanel(QFrame):

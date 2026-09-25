@@ -6,7 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from ..base import OnboardingStep, OnboardingChapter
+from ..base import OnboardingChapter, OnboardingStep
 
 CHAPTERS: dict[str, type[OnboardingChapter]] = {}
 

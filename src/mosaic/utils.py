@@ -6,31 +6,31 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import List, Optional, Callable
+from collections.abc import Callable
 
 import numpy as np
 
 __all__ = [
-    "points_to_volume",
-    "volume_to_points",
-    "connected_components",
-    "envelope_components",
-    "dbscan_clustering",
+    "NORMAL_REFERENCE",
+    "Throttle",
+    "apply_quat",
     "birch_clustering",
+    "cmap_to_vtkctf",
+    "com_cluster_points",
+    "compute_bounding_box",
+    "compute_normals",
+    "connected_components",
+    "dbscan_clustering",
     "eigenvalue_outlier_removal",
-    "statistical_outlier_removal",
+    "envelope_components",
     "find_closest_points",
     "find_closest_points_cutoff",
-    "com_cluster_points",
-    "compute_normals",
-    "compute_bounding_box",
-    "cmap_to_vtkctf",
     "get_cmap",
     "normals_to_rot",
-    "apply_quat",
-    "NORMAL_REFERENCE",
+    "points_to_volume",
     "skeletonize",
-    "Throttle",
+    "statistical_outlier_removal",
+    "volume_to_points",
 ]
 
 NORMAL_REFERENCE = (0, 0, 1)
@@ -153,7 +153,7 @@ def volume_to_points(
     volume,
     sampling_rate,
     reverse_order: bool = False,
-    max_cluster: Optional[int] = None,
+    max_cluster: int | None = None,
 ):
     """
     Convert volumetric segmentation to point clouds.
@@ -226,8 +226,8 @@ def volume_to_points(
 
 
 def _get_adjacency_matrix(points, symmetric: bool = False, eps: float = 0.0):
-    from scipy.spatial import KDTree
     from scipy.sparse import coo_matrix
+    from scipy.spatial import KDTree
 
     # Leafsize needs to be tuned depending on the structure of the input data.
     # Points typically originates from voxel membrane segmentation on regular grids.
@@ -319,8 +319,8 @@ def leiden_clustering(data, resolution_parameter: float = -7.3, **kwargs):
     ndarray
         Cluster labels.
     """
-    import leidenalg
     import igraph as ig
+    import leidenalg
 
     adjacency = _get_adjacency_matrix(data, eps=0.1)
 
@@ -664,7 +664,7 @@ def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
     return np.array(clusters)
 
 
-def compute_bounding_box(points: List[np.ndarray]) -> List[float]:
+def compute_bounding_box(points: list[np.ndarray]) -> list[float]:
     """
     Compute the axis-aligned bounding box enclosing a collection of point clouds.
 

@@ -13,22 +13,21 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from dataclasses import dataclass
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple
 
 import igl
 import numpy as np
 
 from .tools import build_adjacency, compute_boundary_mask
 
-
 __all__ = [
-    "PositionRecord",
-    "SnapshotRecord",
-    "SculptTarget",
-    "SculptSession",
     "TOOLS",
     "TOOL_BY_HOTKEY",
     "TOOL_BY_ID",
+    "PositionRecord",
+    "SculptSession",
+    "SculptTarget",
+    "SnapshotRecord",
     "ToolSpec",
 ]
 
@@ -58,10 +57,10 @@ class ToolSpec(NamedTuple):
     id: str
     hotkey: str
     label: str
-    color: Tuple[float, float, float]
+    color: tuple[float, float, float]
 
 
-TOOLS: Tuple[ToolSpec, ...] = (
+TOOLS: tuple[ToolSpec, ...] = (
     ToolSpec("view", "1", "1  View", (0.75, 0.78, 0.82)),
     ToolSpec("grab", "2", "2  Grab", (0.98, 0.75, 0.18)),
     ToolSpec("smooth", "3", "3  Smooth", (0.18, 0.62, 0.78)),
@@ -72,7 +71,7 @@ TOOL_BY_ID: dict[str, ToolSpec] = {t.id: t for t in TOOLS}
 TOOL_BY_HOTKEY: dict[str, str] = {t.hotkey: t.id for t in TOOLS}
 
 
-def _opt_copy(arr, dtype) -> Optional[np.ndarray]:
+def _opt_copy(arr, dtype) -> np.ndarray | None:
     return None if arr is None else np.asarray(arr, dtype=dtype).copy()
 
 
@@ -85,8 +84,8 @@ class SculptTarget:
         self.vs = np.ascontiguousarray(vs, dtype=np.float64)
         self.fs = np.ascontiguousarray(fs, dtype=np.int64)
         self._adjacency = None
-        self._normals: Optional[np.ndarray] = None
-        self._boundary_mask: Optional[np.ndarray] = None
+        self._normals: np.ndarray | None = None
+        self._boundary_mask: np.ndarray | None = None
 
     @property
     def n(self) -> int:
@@ -134,11 +133,11 @@ class SculptSession:
         self.target = target
         self.tool: str = "view"
         self.in_stroke: bool = False
-        self._stroke_snapshot: Optional[np.ndarray] = None
-        self.anchor_world: Optional[np.ndarray] = None
-        self.locked_indices: Optional[np.ndarray] = None
-        self.locked_weights: Optional[np.ndarray] = None
-        self.rest_positions: Optional[np.ndarray] = None
+        self._stroke_snapshot: np.ndarray | None = None
+        self.anchor_world: np.ndarray | None = None
+        self.locked_indices: np.ndarray | None = None
+        self.locked_weights: np.ndarray | None = None
+        self.rest_positions: np.ndarray | None = None
         self._painted_boundary: set = set()
 
     def set_tool(self, tool: str) -> None:
@@ -148,9 +147,9 @@ class SculptSession:
 
     def begin_stroke(
         self,
-        anchor_world: Optional[np.ndarray] = None,
-        locked_indices: Optional[np.ndarray] = None,
-        locked_weights: Optional[np.ndarray] = None,
+        anchor_world: np.ndarray | None = None,
+        locked_indices: np.ndarray | None = None,
+        locked_weights: np.ndarray | None = None,
     ) -> None:
         self.in_stroke = True
         self._stroke_snapshot = self.target.vs.copy()
@@ -185,7 +184,7 @@ class SculptSession:
         self._reset_stroke_fields()
         return None
 
-    def commit_stroke(self) -> Optional[PositionRecord]:
+    def commit_stroke(self) -> PositionRecord | None:
         """Compute the stroke diff, finish the stroke, return the record."""
         if not self.in_stroke or self._stroke_snapshot is None:
             self._reset_stroke_fields()
@@ -199,7 +198,7 @@ class SculptSession:
             )
         diff = np.linalg.norm(after - before, axis=1)
         changed = np.where(diff > 1e-9)[0].astype(np.int64)
-        record: Optional[PositionRecord] = None
+        record: PositionRecord | None = None
         if changed.size > 0:
             record = PositionRecord(
                 indices=changed,
@@ -227,7 +226,7 @@ class SculptSession:
 
     def grab_state(
         self,
-    ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
         """Return ``(indices, weights, rest, anchor)`` for Grab, or None.
 
         The four Grab fields are populated by ``begin_stroke`` together and

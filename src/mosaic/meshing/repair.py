@@ -11,8 +11,6 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Tuple
-
 import igl
 import numpy as np
 import scipy.sparse
@@ -20,10 +18,10 @@ import scipy.sparse
 _epsilon = 1e-16
 
 __all__ = [
+    "bridge_boundaries",
+    "close_holes",
     "fair_mesh",
     "get_ring_vertices",
-    "close_holes",
-    "bridge_boundaries",
     "triangulation_refine_leipa",
 ]
 
@@ -192,6 +190,7 @@ def bridge_boundaries(vs: np.ndarray, fs: np.ndarray, alpha: float) -> np.ndarra
         Face indices with bridging faces appended.
     """
     from scipy.spatial import cKDTree
+
     from ..parametrization import AlphaShape
 
     fs = np.asarray(fs, dtype=np.int64)
@@ -541,7 +540,7 @@ def triangulation_refine_leipa(
 
 def _robust_laplacian(
     vs, fs, mollify_factor=1e-5
-) -> Tuple[scipy.sparse.csc_matrix, scipy.sparse.csc_matrix]:
+) -> tuple[scipy.sparse.csc_matrix, scipy.sparse.csc_matrix]:
     """
     Get a laplacian with intrinsic Delaunay triangulation and intrinsic mollification.
 

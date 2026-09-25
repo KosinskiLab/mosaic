@@ -7,38 +7,37 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from pathlib import Path
-from typing import Dict, List
 
 import numpy as np
+import pyqtgraph as pg
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
-    QVBoxLayout,
+    QCheckBox,
+    QComboBox,
+    QFormLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
-    QComboBox,
-    QCheckBox,
-    QPushButton,
-    QFormLayout,
-    QWidget,
-    QGroupBox,
-    QScrollArea,
     QLineEdit,
     QPlainTextEdit,
+    QPushButton,
+    QScrollArea,
     QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
-import pyqtgraph as pg
 
-from ..widgets import PathSelector, generate_gradient_colors, MosaicMessageBox
 from ..icons import icon
-from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
 from ..stylesheets import Colors, Typography
-
+from ..widgets import MosaicMessageBox, PathSelector, generate_gradient_colors
+from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
 from ._utils import (
     COUPLING_DEFS as _COUPLING_DEFS,
-    parse_screening_ranges,
-    parse_dts_content,
 )
-
+from ._utils import (
+    parse_dts_content,
+    parse_screening_ranges,
+)
 
 _EXTRA_CONFIG_PLACEHOLDER = (
     "# Fixed:   Kappa = 25.0 0 0\n"
@@ -667,7 +666,7 @@ class ConfigurePanel(QScrollArea):
             if label is not None:
                 label.setVisible(show)
 
-    def _get_screen_params(self) -> Dict[str, str]:
+    def _get_screen_params(self) -> dict[str, str]:
         params = {}
         for key, cb in self._screen_cbs.items():
             if cb.isChecked():
@@ -676,7 +675,7 @@ class ConfigurePanel(QScrollArea):
                     params[key] = text
         return params
 
-    def _get_all_screened_values(self) -> Dict[str, List]:
+    def _get_all_screened_values(self) -> dict[str, list]:
         result = {}
         for key, range_str in self._get_screen_params().items():
             try:

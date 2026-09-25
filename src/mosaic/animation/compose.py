@@ -8,43 +8,43 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import json
 from dataclasses import dataclass
-from typing import Dict, List, Any
+from typing import Any
 from uuid import uuid4
 
 import imageio
-from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
-from qtpy.QtCore import Qt, QTimer, QSize
+from qtpy.QtCore import QSize, Qt, QTimer
 from qtpy.QtGui import QKeySequence, QShortcut
 from qtpy.QtWidgets import (
-    QDialog,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QGridLayout,
-    QPushButton,
-    QToolButton,
-    QSpinBox,
-    QGroupBox,
-    QFileDialog,
     QApplication,
-    QSizePolicy,
     QCheckBox,
+    QDialog,
+    QFileDialog,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
     QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QSpinBox,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
 )
-from .timeline import TimelineWidget
-from .animations import AnimationType, BaseAnimation
-from .settings import AnimationSettings, ExportDialog
+from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
+
+from ..icons import icon
+from ..stylesheets import Colors
+from ..utils import Throttle
+from ..widgets import MosaicMessageBox
 from ._utils import (
     FrameWriter,
     capture_frame,
     read_frame,
     scaled_device_pixel_attributes,
 )
-
-from ..icons import icon
-from ..utils import Throttle
-from ..stylesheets import Colors
-from ..widgets import MosaicMessageBox
+from .animations import AnimationType, BaseAnimation
+from .settings import AnimationSettings, ExportDialog
+from .timeline import TimelineWidget
 
 
 @dataclass
@@ -66,7 +66,7 @@ class AnimationComposerDialog(QDialog):
 
     def __init__(self, vtk_widget, volume_viewer=None, cdata=None, parent=None):
         super().__init__(parent)
-        self.tracks: List[Track] = []
+        self.tracks: list[Track] = []
         self.selected_track = None
         self.current_frame = 0
 
@@ -393,7 +393,7 @@ class AnimationComposerDialog(QDialog):
         self.properties_panel.global_start_spin.setValue(new_frame)
         self.timeline.update()
 
-    def _on_animation_changed(self, changes: Dict[str, Any]):
+    def _on_animation_changed(self, changes: dict[str, Any]):
         self.timeline.update()
 
     def _get_total_frames(self) -> int:
@@ -645,9 +645,7 @@ class AnimationComposerDialog(QDialog):
             render_height = height * magnification
             render_window.SetSize(render_width, render_height)
 
-            pixel_scale = (
-                render_height / original_size[1] if original_size[1] else 1
-            )
+            pixel_scale = render_height / original_size[1] if original_size[1] else 1
             with scaled_device_pixel_attributes(render_window, pixel_scale):
                 render_window.Render()
 
@@ -749,7 +747,7 @@ class AnimationComposerDialog(QDialog):
         except Exception as e:
             MosaicMessageBox.warning(self, "Save Error", f"Failed to save project: {e}")
 
-    def _serialize_parameters(self, params: Dict) -> Dict:
+    def _serialize_parameters(self, params: dict) -> dict:
         """Convert parameters to JSON-serializable format."""
         serialized = {}
         for key, value in params.items():
@@ -787,7 +785,7 @@ class AnimationComposerDialog(QDialog):
             self.toggle_play()
 
         try:
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 project_data = json.load(f)
         except Exception as e:
             MosaicMessageBox.warning(

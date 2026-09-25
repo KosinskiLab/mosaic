@@ -7,9 +7,9 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import numpy as np
 
-from mosaic.geometry import Geometry, merge_geometries
-from mosaic.utils import normals_to_rot, NORMAL_REFERENCE
 import mosaic.operations as ops
+from mosaic.geometry import Geometry, merge_geometries
+from mosaic.utils import NORMAL_REFERENCE, normals_to_rot
 
 
 def _pts(n=2000, seed=0):
@@ -179,6 +179,7 @@ def test_swap_data_points_only_clears_stale_quaternions():
 
 def _icosphere_mesh(radius=20.0, iterations=2):
     import open3d as o3d
+
     from mosaic.parametrization import TriangularMesh
 
     mesh = o3d.geometry.TriangleMesh.create_icosahedron(radius=radius)

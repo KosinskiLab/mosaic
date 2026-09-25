@@ -8,70 +8,68 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import os
 import sys
-from typing import List
 from os.path import exists
 
-import vtk
 import numpy as np
+import vtk
 from qtpy.QtCore import (
-    Qt,
     QEvent,
     QSize,
+    Qt,
     QTimer,
 )
-from qtpy.QtWidgets import (
-    QMainWindow,
-    QVBoxLayout,
-    QGridLayout,
-    QWidget,
-    QStackedWidget,
-    QSplitter,
-    QFileDialog,
-    QMenu,
-    QPushButton,
-    QDockWidget,
-    QFrame,
-    QMessageBox,
-    QDialog,
-)
-from .widgets import MosaicMessageBox
 from qtpy.QtGui import (
     QAction,
-    QGuiApplication,
     QActionGroup,
+    QDragEnterEvent,
+    QGuiApplication,
     QKeySequence,
     QShortcut,
-    QDragEnterEvent,
+)
+from qtpy.QtWidgets import (
+    QDialog,
+    QDockWidget,
+    QFileDialog,
+    QFrame,
+    QGridLayout,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QSplitter,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-from .data import MosaicData
-from .icons import icon
-from .settings import Settings
-from .undo import STACK
-from .stylesheets import Colors
 from .animation._utils import ScreenshotManager
-from .parallel import BackgroundTaskManager
-from .tabs import SegmentationTab, ModelTab, IntelligenceTab, DevelopmentTab
+from .data import MosaicData
 from .dialogs import ImportDataDialog
+from .icons import icon
+from .parallel import BackgroundTaskManager
+from .settings import Settings
+from .stylesheets import Colors
+from .tabs import DevelopmentTab, IntelligenceTab, ModelTab, SegmentationTab
+from .undo import STACK
 from .widgets import (
     AxesWidget,
+    BoundingBoxManager,
+    CursorModeHandler,
+    LegendWidget,
+    MosaicMessageBox,
+    ObjectBrowserSidebar,
     RibbonToolBar,
+    ScaleBarWidget,
+    StatusIndicator,
     TabBar,
     TrajectoryPlayer,
-    LegendWidget,
-    ScaleBarWidget,
-    ObjectBrowserSidebar,
     UpdatePill,
     ViewerModes,
-    StatusIndicator,
-    CursorModeHandler,
-    BoundingBoxManager,
 )
 from .widgets.dock import toggle_dock
-from .widgets.volume_viewer_hud import VolumeViewerHUD
 from .widgets.viewport_placeholder import ViewportPlaceholder, default_actions
-
+from .widgets.volume_viewer_hud import VolumeViewerHUD
 
 # From v1.3.2 these are no longer configurable in favor of vtk recommended defaults
 DEPTH_PEEL_OCCLUSION_RATIO = 0.1
@@ -79,7 +77,6 @@ DEPTH_PEEL_MAX_LAYERS = 4
 
 
 class App(QMainWindow):
-
     def __init__(self):
         super().__init__()
         self.setWindowState(Qt.WindowNoState)
@@ -261,8 +258,8 @@ class App(QMainWindow):
         self._handle_import(paths)
 
     def _handle_import(self, file_paths):
-        from .formats.session import is_session_file
         from .formats.reader import is_volume_file
+        from .formats.session import is_session_file
 
         session_files = [f for f in file_paths if is_session_file(f)]
         volume_files = [
@@ -296,7 +293,7 @@ class App(QMainWindow):
     def show(self):
         """Override show to restore saved geometry or use default size."""
         if sys.platform == "darwin":
-            from .stylesheets import _get_nswindow, _apply_macos_titlebar
+            from .stylesheets import _apply_macos_titlebar, _get_nswindow
 
             ns_win = _get_nswindow(self)
             if ns_win:
@@ -1225,8 +1222,8 @@ class App(QMainWindow):
     def open_batch_pipeline(self):
         """Open the PipelineBuilderDialog dialog."""
         from .parallel import submit_task_batch
-        from .pipeline.executor import execute_run
         from .pipeline.builder import PipelineBuilderDialog
+        from .pipeline.executor import execute_run
 
         dialog = PipelineBuilderDialog(self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
@@ -1300,8 +1297,9 @@ class App(QMainWindow):
             self.status_indicator.update_status(target="Models")
 
     def _animate(self):
-        from .widgets.dock import create_or_toggle_dock
         from mosaic.animation.compose import AnimationComposerDialog
+
+        from .widgets.dock import create_or_toggle_dock
 
         dialog = AnimationComposerDialog(
             self.vtk_widget, self.volume_viewer, self.cdata
@@ -1482,7 +1480,7 @@ class App(QMainWindow):
         if render:
             self.set_camera_view("z")
 
-    def _open_files(self, filenames: List[str]):
+    def _open_files(self, filenames: list[str]):
         from .formats.session import is_session_file
 
         if isinstance(filenames, str):
@@ -1586,13 +1584,14 @@ class App(QMainWindow):
 
     def _capture_thumbnail(self):
         """Capture a PNG thumbnail cropped to visible data."""
+        from qtpy.QtCore import QBuffer, QIODevice
+        from qtpy.QtGui import QImage
+
         from .animation._utils import (
-            compute_crop_context,
             capture_cropped,
+            compute_crop_context,
             restore_window_size,
         )
-        from qtpy.QtGui import QImage
-        from qtpy.QtCore import QBuffer, QIODevice
 
         try:
             rw = self.vtk_widget.GetRenderWindow()
@@ -1687,8 +1686,8 @@ class App(QMainWindow):
         return self._open_files([file_path])
 
     def _check_for_updates(self):
-        from .dialogs import UpdateChecker
         from .__version__ import __version__
+        from .dialogs import UpdateChecker
 
         # We assign the thread to keep it alive
         self.update_checker = UpdateChecker(__version__, parent=self)
@@ -1700,8 +1699,8 @@ class App(QMainWindow):
         self._show_update_dialog(latest_version, has_changelog)
 
     def _show_update_dialog(self, latest_version: str, has_changelog: bool = False):
-        from .dialogs import UpdateDialog
         from .__version__ import __version__
+        from .dialogs import UpdateDialog
 
         UpdateDialog(__version__, latest_version, has_changelog, parent=self).exec()
 
@@ -1727,6 +1726,7 @@ def _read_files_worker(cdata, filenames, file_parameters):
         ``(filename, exception_or_None)`` per input file, in input order.
     """
     from pathlib import Path
+
     from .parallel import report_progress
 
     results = []

@@ -8,19 +8,18 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QLabel,
     QSizePolicy,
     QSplitter,
+    QVBoxLayout,
+    QWidget,
 )
 
-from .search_widget import SearchWidget
 from ..stylesheets import Colors, Typography
+from .search_widget import SearchWidget
 
 
 class ObjectBrowserSidebar(QWidget):
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)

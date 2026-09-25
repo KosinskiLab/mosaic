@@ -8,10 +8,10 @@ Copyright (c) 2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from mosaic.commands.repl import MosaicREPL
-from mosaic.commands.session import Session
 from mosaic.commands.parser import parse_command
 from mosaic.commands.registry import CommandRegistry
+from mosaic.commands.repl import MosaicREPL
+from mosaic.commands.session import Session
 from mosaic.commands.theme import render_to_text as _render
 
 
@@ -22,7 +22,6 @@ def _dispatch(session, text):
 
 
 class TestDispatch:
-
     def test_list_empty(self):
         result = _dispatch(Session(), "list")
         assert "no geometries" in _render(result).lower()
@@ -83,7 +82,6 @@ class TestDispatch:
 
 
 class TestREPLExecute:
-
     def test_execute_returns_output(self, make_session):
         repl = MosaicREPL(session=make_session(n=1))
         output = repl.execute("info #0")
@@ -113,7 +111,6 @@ class TestREPLExecute:
 
 
 class TestMeasureFilterDispatch:
-
     def test_measure_n_points(self, make_session):
         session = make_session(n=2, n_points=50)
         result = _dispatch(session, "measure n_points *")
@@ -127,8 +124,9 @@ class TestMeasureFilterDispatch:
 
     def test_filter_population(self):
         session = Session(quiet=True)
-        from mosaic.geometry import Geometry
         import numpy as np
+
+        from mosaic.geometry import Geometry
 
         for size in range(10, 110, 10):
             g = Geometry(

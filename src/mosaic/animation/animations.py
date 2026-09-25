@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Dict, Any
+from typing import Any
 
-from vtk import vtkTransform
 from qtpy.QtWidgets import QDialog
+from vtk import vtkTransform
 
 from ..stylesheets import Colors, Typography
 
@@ -44,7 +44,7 @@ class BaseAnimation(ABC):
         pass
 
     @abstractmethod
-    def get_settings(self) -> List[Dict[str, Any]]:
+    def get_settings(self) -> list[dict[str, Any]]:
         """Return a list of setting definitions for the UI"""
         pass
 
@@ -180,7 +180,7 @@ class TrajectoryAnimation(BaseAnimation):
 
         return super().update_parameters(**kwargs)
 
-    def get_settings(self) -> List[Dict[str, Any]]:
+    def get_settings(self) -> list[dict[str, Any]]:
         n_frames = getattr(self, "_trajectory", None)
         n_frames = n_frames.frames if n_frames is not None else 0
         available = self._available_trajectories()
@@ -271,7 +271,7 @@ class VolumeAnimation(BaseAnimation):
             return 0
         return shape[_mapping.get(axis.lower(), 0)]
 
-    def get_settings(self) -> List[Dict[str, Any]]:
+    def get_settings(self) -> list[dict[str, Any]]:
         projection = [
             self.volume_viewer.primary.project_selector.itemText(i)
             for i in range(self.volume_viewer.primary.project_selector.count())
@@ -396,7 +396,7 @@ class CameraAnimation(BaseAnimation):
         self.stop_frame = 180
         self._transform = vtkTransform()
 
-    def get_settings(self) -> List[Dict[str, Any]]:
+    def get_settings(self) -> list[dict[str, Any]]:
         return [
             {
                 "label": "axis",
@@ -484,13 +484,13 @@ class ActorSelectionDialog(QDialog):
 
     def __init__(self, cdata, current_selection=None, parent=None):
         from qtpy.QtWidgets import (
-            QVBoxLayout,
-            QHBoxLayout,
-            QTreeWidget,
-            QLabel,
             QFrame,
-            QPushButton,
             QGroupBox,
+            QHBoxLayout,
+            QLabel,
+            QPushButton,
+            QTreeWidget,
+            QVBoxLayout,
         )
 
         from mosaic.widgets import DialogFooter
@@ -604,7 +604,7 @@ class VisibilityAnimation(BaseAnimation):
         self._original_opacities = {}
         self._cached_actors = None
 
-    def get_settings(self) -> List[Dict[str, Any]]:
+    def get_settings(self) -> list[dict[str, Any]]:
         return [
             {
                 "label": "start_opacity",
@@ -775,6 +775,7 @@ class WaypointAnimation(BaseAnimation):
     def _init_spline(self):
         """Initialize the spline curve from waypoints."""
         import numpy as np
+
         from mosaic.parametrization import SplineCurve
 
         waypoints = self.parameters.get("waypoints", [])
@@ -911,7 +912,7 @@ class WaypointAnimation(BaseAnimation):
         except Exception:
             self._path_actors.clear()
 
-    def get_settings(self) -> List[Dict[str, Any]]:
+    def get_settings(self) -> list[dict[str, Any]]:
         n = len(self.parameters.get("waypoints", []))
         count_text = f"{n} waypoint{'s' if n != 1 else ''} defined"
         return [
@@ -1015,7 +1016,7 @@ class ZoomAnimation(BaseAnimation):
         )
         self._initial_distance = None
 
-    def get_settings(self) -> List[Dict[str, Any]]:
+    def get_settings(self) -> list[dict[str, Any]]:
         return [
             {
                 "label": "zoom_factor",

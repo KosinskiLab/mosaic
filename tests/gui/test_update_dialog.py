@@ -13,8 +13,10 @@ def _payload(*versions, info_version=None, yanked=(), files=True):
             releases[version] = []
             continue
         releases[version] = [{"yanked": version in yanked}]
-    return {"info": {"version": info_version or (versions[-1] if versions else "")},
-            "releases": releases}
+    return {
+        "info": {"version": info_version or (versions[-1] if versions else "")},
+        "releases": releases,
+    }
 
 
 class TestNewerVersion:
@@ -73,7 +75,9 @@ class TestNewerVersion:
 
 class TestReleaseExists:
     def test_true_when_tag_endpoint_resolves(self):
-        with patch("mosaic.dialogs.update._fetch_json", return_value={"tag_name": "v1.6.0"}):
+        with patch(
+            "mosaic.dialogs.update._fetch_json", return_value={"tag_name": "v1.6.0"}
+        ):
             assert release_exists("1.6.0") is True
 
     def test_false_when_tag_endpoint_is_missing(self):

@@ -100,3 +100,17 @@ PYQT5 = false
 PYSIDE2 = false
 PYQT6 = true
 PYSIDE6 = false
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+# Subsets of B and PLR, the only ones that need no ignore list.
+select = ["B006", "B008", "E", "F", "I", "PLR1722", "RUF013", "RUF022", "SIM102", "UP"]
+ignore = [
+    "E501", # line-too-long
+    "E741", # ambiguous-variable-name
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]

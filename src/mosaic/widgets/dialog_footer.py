@@ -1,22 +1,21 @@
-from typing import Tuple
-
 from qtpy.QtWidgets import (
-    QLabel,
-    QHBoxLayout,
-    QPushButton,
-    QFrame,
     QDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
 )
+
 from ..stylesheets import Colors, Typography
 
 
 class DialogFooter(QFrame):
     def __init__(
-        self, info_text: str = None, dialog: QDialog = None, margin: Tuple[int] = None
+        self, info_text: str = None, dialog: QDialog = None, margin: tuple[int] = None
     ):
         super().__init__()
 
-        from mosaic.icons import dialog_reject_icon, dialog_accept_icon, info_icon
+        from mosaic.icons import dialog_accept_icon, dialog_reject_icon, info_icon
 
         HelpLabel_style = f"""
             QLabel {{

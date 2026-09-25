@@ -7,7 +7,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import numpy as np
-import pytest
 
 from mosaic.formats.parser import GeometryDataContainer, VertexPropertyContainer
 

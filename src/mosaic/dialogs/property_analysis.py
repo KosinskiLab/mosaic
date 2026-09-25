@@ -7,50 +7,50 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import warnings
+from dataclasses import dataclass
+from typing import Any
+
 import numpy as np
-from qtpy.QtCore import Qt, QSize, QTimer
+import pyqtgraph as pg
+from qtpy.QtCore import QSize, Qt, QTimer
 from qtpy.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QComboBox,
-    QListWidget,
-    QGroupBox,
+    QAbstractItemView,
     QCheckBox,
-    QSpinBox,
-    QPushButton,
+    QComboBox,
+    QDialog,
+    QDoubleSpinBox,
+    QFileDialog,
     QFormLayout,
-    QWidget,
-    QTableWidget,
+    QGroupBox,
+    QHBoxLayout,
     QHeaderView,
+    QLabel,
+    QListWidget,
+    QPushButton,
+    QSizePolicy,
+    QSpinBox,
+    QStackedWidget,
+    QTableWidget,
     QTableWidgetItem,
     QTreeWidgetItem,
-    QFileDialog,
-    QDoubleSpinBox,
-    QStackedWidget,
-    QAbstractItemView,
-    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
-import pyqtgraph as pg
 
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
-
-from ..utils import Throttle
-from ..stylesheets import Colors
 from ..icons import icon as _icon
-from ..widgets.settings import get_widget_value
+from ..stylesheets import Colors
+from ..utils import Throttle
 from ..widgets import (
-    ContainerTreeWidget,
-    StyledListWidgetItem,
     ColorMapSelector,
+    ContainerTreeWidget,
     HistogramRangeSlider,
+    MosaicMessageBox,
+    StyledListWidgetItem,
     TabWidget,
     generate_gradient_colors,
-    MosaicMessageBox,
 )
 from ..widgets.segmented_control import SegmentedControl
+from ..widgets.settings import get_widget_value
 
 
 def to_numeric(arr):
@@ -67,9 +67,9 @@ class CacheEntry:
     """Single cache entry storing a computed value with its context."""
 
     value: Any
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     geometry_uuid: str
-    model_id: Optional[int]
+    model_id: int | None
     point_count: int
 
 
@@ -77,9 +77,9 @@ class PropertyCache:
     """Cache for computed geometry properties."""
 
     def __init__(self):
-        self._entries: Dict[str, CacheEntry] = {}
+        self._entries: dict[str, CacheEntry] = {}
 
-    def get(self, geometry, parameters: Dict[str, Any]) -> Optional[Any]:
+    def get(self, geometry, parameters: dict[str, Any]) -> Any | None:
         """Get cached value if still valid, None otherwise."""
         entry = self._entries.get(geometry.uuid)
         if entry is None:
@@ -97,7 +97,7 @@ class PropertyCache:
 
         return entry.value
 
-    def set(self, geometry, parameters: Dict[str, Any], value: Any):
+    def set(self, geometry, parameters: dict[str, Any], value: Any):
         """Store a computed value with its computation context."""
         model_id = id(geometry.model) if geometry.model is not None else None
         self._entries[geometry.uuid] = CacheEntry(
@@ -108,7 +108,7 @@ class PropertyCache:
             point_count=geometry.points.shape[0],
         )
 
-    def get_value(self, geometry_uuid: str) -> Optional[Any]:
+    def get_value(self, geometry_uuid: str) -> Any | None:
         """Get cached value by UUID without validation (for display)."""
         entry = self._entries.get(geometry_uuid)
         if entry is None:
@@ -121,7 +121,7 @@ class PropertyCache:
         """Clear all cached entries."""
         self._entries.clear()
 
-    def _parameters_equal(self, cached: Dict, current: Dict) -> bool:
+    def _parameters_equal(self, cached: dict, current: dict) -> bool:
         """Check if two parameter dicts are equivalent."""
         if set(cached.keys()) != set(current.keys()):
             return False
@@ -363,8 +363,7 @@ def _build_tomogram_options(dlg):
         steps=80,
     )
     offset_slider.setToolTip(
-        "Offset along surface normals in voxels. "
-        "Positive = outward, negative = inward."
+        "Offset along surface normals in voxels. Positive = outward, negative = inward."
     )
     offset_slider.valueChanged.connect(dlg._preview_throttle)
     layout.addRow(offset_slider)
@@ -1218,7 +1217,7 @@ class PropertyAnalysisDialog(QDialog):
     def _current_metric(self) -> str:
         return self.property_combo.currentText()
 
-    def _update_property_list(self, category: Optional[str] = None) -> None:
+    def _update_property_list(self, category: str | None = None) -> None:
         category = category or self.category_segments.currentText()
 
         previous = self.property_combo.currentText()
@@ -1235,7 +1234,7 @@ class PropertyAnalysisDialog(QDialog):
             self._update_options(self.property_combo.currentText())
         return None
 
-    def _update_options(self, property_name: Optional[str] = None) -> None:
+    def _update_options(self, property_name: str | None = None) -> None:
         if property_name is None:
             property_name = self._current_metric()
 
@@ -1761,7 +1760,9 @@ class PropertyAnalysisDialog(QDialog):
             lambda: (
                 self._update_plot()
                 if current_tab_index == 1
-                else self._update_statistics() if current_tab_index == 2 else None
+                else self._update_statistics()
+                if current_tab_index == 2
+                else None
             ),
         )
 

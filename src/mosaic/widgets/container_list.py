@@ -1,37 +1,37 @@
 from uuid import uuid4
-from typing import Dict, List, Union
 
-from qtpy.QtGui import QColor, QIcon, QPainter
 from qtpy.QtCore import (
-    Qt,
-    QRect,
     QEvent,
     QItemSelection,
     QItemSelectionModel,
+    QRect,
+    Qt,
     Signal,
 )
+from qtpy.QtGui import QColor, QPainter
 from qtpy.QtWidgets import (
-    QFrame,
-    QVBoxLayout,
-    QHBoxLayout,
-    QWidget,
-    QTreeWidget,
-    QTreeWidgetItem,
-    QApplication,
-    QStyledItemDelegate,
-    QStyle,
     QAbstractItemView,
-    QPushButton,
-    QLabel,
+    QApplication,
     QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
     QMenu,
     QMessageBox,
+    QPushButton,
+    QStyle,
+    QStyledItemDelegate,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
+
 from ..icons import icon as _icon_factory
-from ..tree_state import TreeState, TreeStateData
-from ..stylesheets import Colors, Typography
-from .message_box import MosaicMessageBox
 from ..pipeline._utils import natural_sort_key, strip_filepath
+from ..stylesheets import Colors, Typography
+from ..tree_state import TreeState, TreeStateData
+from .message_box import MosaicMessageBox
 
 
 class SelectionIndicator(QWidget):
@@ -244,7 +244,7 @@ class ContainerTreeWidget(QFrame):
                 state.groups[group_uuid].append(uuid)
         return state
 
-    def apply_state(self, state: Union[TreeStateData, TreeState], uuid_to_items: Dict):
+    def apply_state(self, state: TreeStateData | TreeState, uuid_to_items: dict):
         """Apply tree structure to existing items.
 
         Parameters
@@ -504,7 +504,7 @@ class ContainerTreeWidget(QFrame):
 
     def set_selection(
         self,
-        uuids: List[str],
+        uuids: list[str],
         selection_flag=QItemSelectionModel.SelectionFlag.ClearAndSelect,
     ):
         """

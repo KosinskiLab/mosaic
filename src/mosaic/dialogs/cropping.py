@@ -8,21 +8,22 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
-    QVBoxLayout,
     QDialog,
-    QLabel,
     QDoubleSpinBox,
+    QFrame,
+    QGroupBox,
     QHBoxLayout,
+    QLabel,
     QPushButton,
     QTreeWidget,
-    QGroupBox,
-    QFrame,
+    QVBoxLayout,
 )
+
 from ..icons import icon
 from ..stylesheets import Colors, Typography
+from ..widgets import MosaicMessageBox
 from ..widgets.container_list import ContainerTreeWidget, StyledTreeWidgetItem
 from ..widgets.segmented_control import SegmentedControl
-from ..widgets import MosaicMessageBox
 
 
 class DistanceCropDialog(QDialog):
@@ -250,8 +251,9 @@ class DistanceCropDialog(QDialog):
         params : dict
             Crop parameters with sources, targets, distance, keep_smaller.
         """
-        from ..properties import GeometryProperties
         import numpy as np
+
+        from ..properties import GeometryProperties
 
         sources = params["sources"]
         targets = params["targets"]

@@ -11,11 +11,10 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional
 
-
-__all__ = ["UndoEntry", "UndoStack", "STACK"]
+__all__ = ["STACK", "UndoEntry", "UndoStack"]
 
 
 @dataclass(frozen=True)
@@ -47,7 +46,7 @@ class UndoStack:
         """Build an :class:`UndoEntry` from its parts and push it."""
         self.push(UndoEntry(label=label, undo=undo, redo=redo))
 
-    def undo(self) -> Optional[UndoEntry]:
+    def undo(self) -> UndoEntry | None:
         if not self._undo:
             return None
         entry = self._undo.pop()
@@ -55,7 +54,7 @@ class UndoStack:
         self._redo.append(entry)
         return entry
 
-    def redo(self) -> Optional[UndoEntry]:
+    def redo(self) -> UndoEntry | None:
         if not self._redo:
             return None
         entry = self._redo.pop()

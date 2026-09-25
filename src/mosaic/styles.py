@@ -6,9 +6,9 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import numpy as np
 import vtk
 from vtkmodules.util import numpy_support
-import numpy as np
 
 from mosaic.viewport import hardware_picking
 
@@ -162,8 +162,8 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
     def create_new_face(self):
         from .geometry import Geometry
+        from .meshing import merge_meshes, to_open3d
         from .parametrization import TriangularMesh
-        from .meshing import to_open3d, merge_meshes
 
         sampling, appearance, points, geoms = 1, {}, [], []
         for geometry, point_id in self.selected_points:

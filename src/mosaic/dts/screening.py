@@ -6,23 +6,22 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import re
 import json
+import re
 import shutil
 import textwrap
 import warnings
-from pathlib import Path
-from os import makedirs
 from datetime import datetime
 from itertools import product
-from typing import Dict, List, Optional, Union
+from os import makedirs
+from pathlib import Path
 
 import numpy as np
 
 from ..parallel import report_progress
 from ._utils import _ParameterParser
 
-__all__ = ["generate_screen", "extend_screen", "get_screen_status"]
+__all__ = ["extend_screen", "generate_screen", "get_screen_status"]
 
 
 _SENTINEL = ".done"
@@ -45,9 +44,9 @@ def run_status(run_dir: Path) -> str:
 def _filter_single_volume(
     volume_path: str,
     output_path: str,
-    lowpass_cutoff: Optional[float],
-    highpass_cutoff: Optional[float],
-    plane_norm: Optional[str],
+    lowpass_cutoff: float | None,
+    highpass_cutoff: float | None,
+    plane_norm: str | None,
 ) -> str:
     """Apply bandpass filtering to a single volume.
 
@@ -107,13 +106,13 @@ def _filter_single_volume(
 
 
 def _prepare_volume(
-    volume_path: Union[str, List[str]],
+    volume_path: str | list[str],
     output_dir: str,
     use_filters: bool = False,
-    lowpass_cutoff: Optional[float] = None,
-    highpass_cutoff: Optional[float] = None,
-    plane_norm: Optional[str] = None,
-) -> List[str]:
+    lowpass_cutoff: float | None = None,
+    highpass_cutoff: float | None = None,
+    plane_norm: str | None = None,
+) -> list[str]:
     """Apply bandpass filtering to volume(s) if requested.
 
     Parameters
@@ -154,13 +153,13 @@ def _prepare_volume(
 
 
 def _build_dts_template(
-    volume_path: Optional[str],
+    volume_path: str | None,
     mesh_scale: str,
     mesh_offset: str,
-    hmff_params: Dict,
-    sim_params: Dict,
+    hmff_params: dict,
+    sim_params: dict,
     extra_config: str = "",
-    coupling_params: Optional[Dict] = None,
+    coupling_params: dict | None = None,
 ) -> str:
     """Build a DTS config template with screening placeholders.
 
@@ -262,9 +261,9 @@ def _build_dts_template(
 def _expand_screen(
     screen_dir: Path,
     template_content: str,
-    param_values: Dict[str, List],
-    existing_runs: Optional[List[Dict]] = None,
-) -> List[Dict]:
+    param_values: dict[str, list],
+    existing_runs: list[dict] | None = None,
+) -> list[dict]:
     """Generate new parameter combinations and create run directories.
 
     Parameters
@@ -322,9 +321,9 @@ def _expand_screen(
 def _write_summary(
     screen_dir: Path,
     template_file: str,
-    parameters: Dict[str, List],
-    runs: List[Dict],
-) -> Dict:
+    parameters: dict[str, list],
+    runs: list[dict],
+) -> dict:
     """Write ``screen_summary.json``.
 
     Parameters
@@ -369,7 +368,7 @@ def _write_summary(
 
 def _finalize_runs(
     screen_dir: Path,
-    summary: Dict,
+    summary: dict,
     mesh_name: str = "",
 ) -> None:
     """Write run.sh for every run, then write launcher scripts.
@@ -399,7 +398,7 @@ def _finalize_runs(
     _write_launcher_scripts(screen_dir, summary)
 
 
-def _write_run_script(run_dir: Path, params: Dict, mesh_name: str = "") -> None:
+def _write_run_script(run_dir: Path, params: dict, mesh_name: str = "") -> None:
     """Write a run.sh script for a single screen run.
 
     Parameters
@@ -458,7 +457,7 @@ def _pending_runs_preamble(output_dir: Path) -> str:
     )
 
 
-def _write_launcher_scripts(output_dir: Path, summary: Dict) -> None:
+def _write_launcher_scripts(output_dir: Path, summary: dict) -> None:
     """Write local and SLURM launcher scripts for a screen."""
     preamble = _pending_runs_preamble(output_dir)
 
@@ -583,12 +582,12 @@ def _is_run_directory(path: Path) -> bool:
     return run_status(path) == "available" or (path / "input.dts").exists()
 
 
-def _run_info(run_dir: Path) -> Dict:
+def _run_info(run_dir: Path) -> dict:
     """Build a status dict for a single run directory."""
     params = {}
     params_file = run_dir / "params.json"
     if params_file.exists():
-        with open(params_file, "r") as f:
+        with open(params_file) as f:
             params = json.load(f)
 
     return {
@@ -602,7 +601,7 @@ def generate_screen(
     output_dir: str,
     mesh: str,
     dts_content: str,
-) -> Dict:
+) -> dict:
     """Generate a DTS parameter screen from a DTS config template.
 
     Parameters
@@ -627,7 +626,7 @@ def generate_screen(
     may contain ``{{name:range}}`` screening placeholders and
     ``;@filter`` directives for volume filtering.
     """
-    from ._utils import parse_filter_directives, extract_volume_path
+    from ._utils import extract_volume_path, parse_filter_directives
 
     volume_path = extract_volume_path(dts_content)
     filter_params = parse_filter_directives(dts_content)
@@ -678,7 +677,7 @@ def generate_screen(
     merged_parameters = dict(parameters)
     summary_path = screen_dir / "screen_summary.json"
     if summary_path.exists():
-        with open(summary_path, "r") as f:
+        with open(summary_path) as f:
             old_summary = json.load(f)
         existing_runs = old_summary["runs"]
         merged_parameters = _merge_parameters(old_summary, parameters)
@@ -699,7 +698,7 @@ def generate_screen(
     }
 
 
-def extend_screen(screen_dir: str, new_screen_params: Dict[str, str]) -> Dict:
+def extend_screen(screen_dir: str, new_screen_params: dict[str, str]) -> dict:
     """Extend an existing screen with new parameter combinations.
 
     Parameters
@@ -716,7 +715,7 @@ def extend_screen(screen_dir: str, new_screen_params: Dict[str, str]) -> Dict:
     """
     screen_path = Path(screen_dir)
 
-    with open(screen_path / "screen_summary.json", "r") as f:
+    with open(screen_path / "screen_summary.json") as f:
         summary = json.load(f)
 
     dts_content = (screen_path / "screen.dts").read_text()
@@ -752,7 +751,7 @@ def extend_screen(screen_dir: str, new_screen_params: Dict[str, str]) -> Dict:
     }
 
 
-def get_screen_status(screen_dir: str) -> List[Dict]:
+def get_screen_status(screen_dir: str) -> list[dict]:
     """Check status of all runs in a screen or trajectory directory.
 
     Parameters
@@ -778,7 +777,7 @@ def get_screen_status(screen_dir: str) -> List[Dict]:
 
     summary_path = root / "screen_summary.json"
     if summary_path.exists():
-        with open(summary_path, "r") as f:
+        with open(summary_path) as f:
             summary = json.load(f)
         runs = sorted(summary["runs"], key=lambda r: _natural_sort_key(r["run_id"]))
         return [_run_info(root / r["run_id"]) for r in runs]

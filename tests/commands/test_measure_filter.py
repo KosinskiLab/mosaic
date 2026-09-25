@@ -8,9 +8,9 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import numpy as np
 
-from mosaic.commands.session import Session
 from mosaic.commands.parser import parse_command
 from mosaic.commands.registry import CommandRegistry
+from mosaic.commands.session import Session
 from mosaic.commands.theme import render_to_text
 from mosaic.geometry import Geometry
 
@@ -93,9 +93,9 @@ class TestMeasureStore:
         geoms = session._all_geometries()
         for g in geoms:
             props = g.vertex_properties.properties
-            assert (
-                "n_points" not in props
-            ), "Scalar result should not be stored as vertex property"
+            assert "n_points" not in props, (
+                "Scalar result should not be stored as vertex property"
+            )
 
     def test_store_per_vertex_array(self):
         """If measure returns per-vertex arrays, store=true should store them."""

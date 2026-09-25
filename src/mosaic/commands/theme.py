@@ -15,11 +15,11 @@ from rich.theme import Theme
 from ..stylesheets import Colors
 
 __all__ = [
+    "BOX_PANEL",
+    "BOX_TABLE",
     "MOSAIC_THEME",
     "get_console",
     "render_to_text",
-    "BOX_TABLE",
-    "BOX_PANEL",
 ]
 
 BOX_TABLE = SIMPLE_HEAD

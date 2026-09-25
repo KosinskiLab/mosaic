@@ -1,27 +1,20 @@
-import shutil
-import warnings
-import textwrap
 from os import makedirs
-from typing import Dict
-from os.path import join
 
-import numpy as np
-
-from ..parallel import report_progress
 from ..formats.writer import write_topology_file
 from ..meshing.utils import (
+    center_mesh,
+    compute_edge_lengths,
+    compute_scale_factor_lower,
     equilibrate_edges,
     remesh,
-    compute_edge_lengths,
     scale,
-    compute_scale_factor_lower,
-    center_mesh,
 )
+from ..parallel import report_progress
 
 __all__ = ["equilibrate_fit"]
 
 
-def equilibrate_fit(geometry, directory: str, parameters: Dict):
+def equilibrate_fit(geometry, directory: str, parameters: dict):
     makedirs(directory, exist_ok=True)
     mesh_base = geometry.model.mesh
 

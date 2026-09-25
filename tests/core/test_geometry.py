@@ -1,6 +1,7 @@
-import numpy as np
 import warnings
-from unittest.mock import Mock, patch, ANY
+from unittest.mock import ANY, Mock, patch
+
+import numpy as np
 
 from mosaic.geometry import Geometry
 

@@ -1,8 +1,6 @@
 import pickle
-
+from os.path import basename, splitext
 from typing import Any
-from os.path import splitext, basename
-
 
 __all__ = [
     "CompatibilityUnpickler",

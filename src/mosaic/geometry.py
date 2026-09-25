@@ -7,27 +7,26 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import warnings
-from uuid import uuid4
 from contextlib import contextmanager
-from typing import Dict, List, Optional, Tuple
+from uuid import uuid4
 
 import numpy as np
-from vtkmodules.vtkCommonCore import vtkPoints, vtkLookupTable
-from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
 from vtkmodules.util import numpy_support
+from vtkmodules.vtkCommonCore import vtkLookupTable, vtkPoints
+from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
 
 from . import lod
 from .stylesheets import Colors
-from .utils import normals_to_rot, apply_quat, NORMAL_REFERENCE
+from .utils import NORMAL_REFERENCE, apply_quat, normals_to_rot
 
 __all__ = [
-    "GeometryData",
     "Geometry",
-    "VolumeGeometry",
-    "SegmentationGeometry",
+    "GeometryData",
     "GeometryTrajectory",
-    "merge_geometries",
+    "SegmentationGeometry",
+    "VolumeGeometry",
     "get_render_scale",
+    "merge_geometries",
     "render_scale",
 ]
 
@@ -172,7 +171,7 @@ class GeometryData:
         self.polydata.Modified()
 
     @property
-    def normals(self) -> Optional[np.ndarray]:
+    def normals(self) -> np.ndarray | None:
         n = self.polydata.GetPointData().GetNormals()
         if n is None or n.GetNumberOfTuples() == 0:
             return None
@@ -194,7 +193,7 @@ class GeometryData:
         return n is not None and n.GetNumberOfTuples() > 0
 
     @property
-    def quaternions(self) -> Optional[np.ndarray]:
+    def quaternions(self) -> np.ndarray | None:
         arr = self.polydata.GetPointData().GetArray("OrientationQuaternion")
         if arr is None or arr.GetNumberOfTuples() == 0:
             return None
@@ -805,7 +804,7 @@ class Geometry:
         """Set triangular face connectivity. Delegates to GeometryData."""
         self._geometry_data.set_faces(faces)
 
-    def set_color(self, color: Tuple[int] = None):
+    def set_color(self, color: tuple[int] = None):
         """
         Set uniform color for all points in the geometry.
 
@@ -843,7 +842,7 @@ class Geometry:
         ambient: float = None,
         diffuse: float = None,
         specular: float = None,
-        base_color: Tuple[float] = None,
+        base_color: tuple[float] = None,
         **kwargs,
     ):
         """
@@ -1044,7 +1043,7 @@ class Geometry:
         if use_point:
             mapper.SetScalarModeToUsePointData()
 
-    def color_points(self, point_ids: set, color: Tuple[float]):
+    def color_points(self, point_ids: set, color: tuple[float]):
         """
         Color specific points in the geometry using set_scalars backend.
 
@@ -1084,7 +1083,7 @@ class Geometry:
         faces=None,
         quaternions=None,
         model=None,
-        meta: Dict = None,
+        meta: dict = None,
         **kwargs,
     ):
         """
@@ -2218,7 +2217,7 @@ class GeometryTrajectory(Geometry):
         Additional keyword arguments passed to parent Geometry class.
     """
 
-    def __init__(self, trajectory: List[Dict], **kwargs):
+    def __init__(self, trajectory: list[dict], **kwargs):
         super().__init__(**kwargs)
         self._trajectory = trajectory
 

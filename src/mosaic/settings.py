@@ -7,7 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from dataclasses import dataclass, fields
-from typing import Tuple, get_origin, Dict
+from typing import get_origin
 
 from qtpy.QtCore import QSettings, QThread
 
@@ -79,7 +79,7 @@ class SettingsCategory:
 
             self._fields.append(field.name)
 
-    def get_settings(self) -> Dict:
+    def get_settings(self) -> dict:
         """Return all settings associated with the class"""
         return {field_name: getattr(self, field_name) for field_name in self._fields}
 
@@ -88,8 +88,8 @@ class SettingsCategory:
 class RenderingSettings:
     """VTK rendering configuration."""
 
-    background_color: Tuple[float, float, float] = (0.094, 0.094, 0.106)
-    background_color_alt: Tuple[float, float, float] = (1.0, 1.0, 1.0)
+    background_color: tuple[float, float, float] = (0.094, 0.094, 0.106)
+    background_color_alt: tuple[float, float, float] = (1.0, 1.0, 1.0)
     use_gradient_background: bool = False
     target_fps: float = 30.0
     parallel_worker: int = max(1, min(8, QThread.idealThreadCount() - 1))
@@ -106,13 +106,13 @@ class UISettings:
     """User interface configuration."""
 
     window_geometry: bytes = b""
-    window_size_ratio: Tuple[float, float] = (0.9, 0.9)
+    window_size_ratio: tuple[float, float] = (0.9, 0.9)
     splitter_ratio: float = 0.85
     tab_height: int = 40
     tab_border_color: str = "#6b7280"
     tab_active_color: str = "rgba(99, 102, 241, 1.0)"
     menu_border_color: str = "#6b7280"
-    recent_files: Tuple[str, ...] = ()
+    recent_files: tuple[str, ...] = ()
     max_recent_files: int = 10
     auto_save_session: bool = False
     auto_save_interval: int = 300

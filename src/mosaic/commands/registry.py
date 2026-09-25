@@ -9,8 +9,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional
 
 from rich.columns import Columns
 from rich.console import Group
@@ -19,9 +19,9 @@ from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
+from ..formats.session import is_session_file
 from ..registry import _UNSET
 from .parser import ParsedCommand
-from ..formats.session import is_session_file
 from .theme import BOX_PANEL, BOX_TABLE, get_console
 
 __all__ = ["Command", "CommandRegistry"]
@@ -53,7 +53,7 @@ class Command:
 class CommandRegistry:
     """Global registry mapping verb strings to :class:`Command` handlers."""
 
-    _commands: Dict[str, Command] = {}
+    _commands: dict[str, Command] = {}
 
     @classmethod
     def register(
@@ -146,12 +146,12 @@ class CommandRegistry:
         return cmd.handler(session, parsed)
 
     @classmethod
-    def get(cls, name: str) -> Optional[Command]:
+    def get(cls, name: str) -> Command | None:
         """Retrieve a command by name."""
         return cls._commands.get(name)
 
     @classmethod
-    def list_commands(cls) -> List[Command]:
+    def list_commands(cls) -> list[Command]:
         """Return all registered commands sorted by name."""
         return sorted(cls._commands.values(), key=lambda c: c.name)
 
@@ -184,13 +184,13 @@ def _resolve_targets(session, parsed: ParsedCommand):
 
 def _is_target_ref(value: str) -> bool:
     """Check if *value* looks like a geometry reference (``#0``, ``@last``, etc.)."""
-    from .parser import _TARGET_RE, _SPECIAL_TARGETS
+    from .parser import _SPECIAL_TARGETS, _TARGET_RE
 
     parts = [v.strip() for v in value.split(",")]
     return all(_TARGET_RE.match(v) or v in _SPECIAL_TARGETS for v in parts)
 
 
-def _resolve_kwargs(session, kwargs: Dict[str, object]) -> Dict[str, object]:
+def _resolve_kwargs(session, kwargs: dict[str, object]) -> dict[str, object]:
     """Replace geometry references in kwarg values with resolved Geometry objects.
 
     Recognises ``#N``, ``#N-M``, ``@last``, ``*``, and comma-separated
@@ -689,7 +689,7 @@ def _cmd_help(session, parsed: ParsedCommand):
             cmd.name, Text(cmd.description), Text(), _usage_line(cmd.usage)
         )
 
-    groups: Dict[str, List[Command]] = {}
+    groups: dict[str, list[Command]] = {}
     for cmd in CommandRegistry.list_commands():
         groups.setdefault(cmd.group or "Other", []).append(cmd)
 
@@ -1010,8 +1010,9 @@ def _cmd_dts_screen(session, parsed: ParsedCommand):
 
 
 def _cmd_dts_analysis(session, parsed: ParsedCommand):
-    import numpy as np
     from pathlib import Path
+
+    import numpy as np
 
     if not parsed.args:
         return _registry_method_listing("dts-analysis")
@@ -1061,8 +1062,8 @@ def _cmd_dts_analysis(session, parsed: ParsedCommand):
         kwargs.setdefault("reference_label", label)
         kwargs["invert"] = bool(kwargs.pop("invert", False))
 
-    from ..dts._utils import resolve_trajectory_dir, find_dts_file, parse_dts_content
     from ..dts import compute
+    from ..dts._utils import find_dts_file, parse_dts_content, resolve_trajectory_dir
 
     traj_dir = resolve_trajectory_dir(run_path)
     if traj_dir is None:
@@ -1441,7 +1442,6 @@ def _register_builtins():
         CommandRegistry.register(name, handler, desc, usage, group=group)
 
     for attr_name in dir(GeometryOperations):
-
         func = getattr(GeometryOperations, attr_name)
         if attr_name.startswith("_") or attr_name == "register" or not callable(func):
             continue
