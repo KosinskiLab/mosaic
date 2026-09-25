@@ -153,6 +153,25 @@ class TestRelativeScaling:
         assert scaled_separation == pytest.approx(2 * base_separation, rel=0.05)
         assert scaled_diameter == pytest.approx(2 * base_diameter, rel=0.2)
 
+    def test_point_size_follows_the_scene_when_aspect_changes(
+        self, require_vtk_render_window
+    ):
+        """VTK keeps the vertical field of view when a window is resized, so the
+        scene grows with the capture height alone.
+        """
+        render_window = _offscreen_window((400, 300))
+
+        diameter, separation = _measure(
+            _utils.capture_frame(render_window, width=400, height=300)
+        )
+        wide_diameter, wide_separation = _measure(
+            _utils.capture_frame(render_window, width=1920, height=1080)
+        )
+
+        assert wide_diameter / wide_separation == pytest.approx(
+            diameter / separation, rel=0.15
+        )
+
     def test_cropped_capture_keeps_point_proportions(
         self, require_vtk_render_window
     ):
@@ -258,3 +277,125 @@ class TestLineAndTextScaling:
         )
 
         assert scaled == pytest.approx(2 * base, rel=0.3)
+
+
+def _geometry_window(size=(400, 300)):
+    """Render window holding a :py:class:`Geometry` point cloud."""
+    import vtk
+
+    from mosaic.geometry import Geometry
+
+    points = np.array([[-5.0, -4.0, 0.0], [5.0, 4.0, 0.0]])
+    geometry = Geometry(points=points, sampling_rate=np.ones(3))
+    geometry.set_color((1, 1, 1))
+
+    renderer = vtk.vtkRenderer()
+    renderer.AddActor(geometry.actor)
+    renderer.SetBackground(0, 0, 0)
+
+    render_window = vtk.vtkRenderWindow()
+    render_window.SetOffScreenRendering(1)
+    render_window.AddRenderer(renderer)
+    render_window.SetSize(*size)
+    render_window.Render()
+    renderer.ResetCamera()
+    render_window.Render()
+    return render_window, geometry
+
+
+class TestRenderScale:
+    """Actors rebuilt during a capture keep the capture's pixel scale."""
+
+    def test_rebuilt_actor_keeps_scaled_point_size(self):
+        from mosaic.geometry import Geometry, get_render_scale, render_scale
+
+        geometry = Geometry(points=np.zeros((2, 3)), sampling_rate=np.ones(3))
+        on_screen = geometry.actor.GetProperty().GetPointSize()
+
+        with render_scale(4.0):
+            geometry.swap_data(points=np.ones((2, 3)))
+            assert geometry.actor.GetProperty().GetPointSize() == 4 * on_screen
+
+        assert get_render_scale() == 1.0
+        geometry.swap_data(points=np.zeros((2, 3)))
+        assert geometry.actor.GetProperty().GetPointSize() == on_screen
+
+    def test_nested_scales_compound(self):
+        from mosaic.geometry import Geometry, render_scale
+
+        geometry = Geometry(points=np.zeros((2, 3)), sampling_rate=np.ones(3))
+        on_screen = geometry.actor.GetProperty().GetPointSize()
+
+        with render_scale(2.0):
+            with render_scale(3.0):
+                geometry.swap_data(points=np.ones((2, 3)))
+                assert geometry.actor.GetProperty().GetPointSize() == 6 * on_screen
+
+            geometry.swap_data(points=np.zeros((2, 3)))
+            assert geometry.actor.GetProperty().GetPointSize() == 2 * on_screen
+
+
+@pytest.mark.gui
+class TestAnimationFrameScaling:
+    """Trajectory frames swap geometry data while the export is in flight."""
+
+    def test_point_size_survives_a_frame_update(self, require_vtk_render_window):
+        render_window, geometry = _geometry_window()
+        points = np.array([[-5.0, -4.0, 0.0], [5.0, 4.0, 0.0]])
+
+        base_diameter, _ = _measure(
+            _utils.capture_frame(render_window, width=400, height=300, magnification=1)
+        )
+
+        with _utils.scaled_device_pixel_attributes(render_window, 2.0):
+            geometry.swap_data(points=points)
+            frame = _utils.capture_frame(
+                render_window,
+                width=400,
+                height=300,
+                magnification=2,
+                pixel_scale=1,
+            )
+
+        scaled_diameter, _ = _measure(frame)
+        assert scaled_diameter == pytest.approx(2 * base_diameter, rel=0.2)
+
+    def test_exported_frames_keep_the_on_screen_point_size(
+        self, require_vtk_render_window
+    ):
+        import vtk
+
+        render_window, geometry = _geometry_window()
+        points = np.array([[-5.0, -4.0, 0.0], [5.0, 4.0, 0.0]])
+
+        width, height, magnification = 400, 300, 3
+        on_screen_diameter, _ = _measure(
+            _utils.capture_frame(render_window, width=width, height=height)
+        )
+
+        original_size = render_window.GetSize()
+        render_window.SetSize(width * magnification, height * magnification)
+        pixel_scale = width * magnification / original_size[0]
+
+        diameters = []
+        with _utils.scaled_device_pixel_attributes(render_window, pixel_scale):
+            render_window.Render()
+
+            window_to_image = vtk.vtkWindowToImageFilter()
+            window_to_image.SetInput(render_window)
+            window_to_image.SetInputBufferTypeToRGBA()
+            window_to_image.SetScale(1)
+            window_to_image.ReadFrontBufferOff()
+            window_to_image.ShouldRerenderOff()
+
+            for _ in range(3):
+                geometry.swap_data(points=points)
+                render_window.Render()
+                frame = _utils.read_frame(
+                    window_to_image, width, height, magnification, False
+                )
+                diameters.append(_measure(frame)[0])
+
+        render_window.SetSize(*original_size)
+        for diameter in diameters:
+            assert diameter == pytest.approx(on_screen_diameter, rel=0.2)

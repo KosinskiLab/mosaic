@@ -8,6 +8,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import warnings
 from uuid import uuid4
+from contextlib import contextmanager
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -26,10 +27,50 @@ __all__ = [
     "SegmentationGeometry",
     "GeometryTrajectory",
     "merge_geometries",
+    "get_render_scale",
+    "render_scale",
 ]
 
 
 BASE_COLOR = (0.7, 0.7, 0.7)
+
+_RENDER_SCALE = 1.0
+
+
+def get_render_scale() -> float:
+    """Return the factor applied to pixel-denominated actor attributes.
+
+    Returns
+    -------
+    float
+        One during interactive rendering, the capture-to-window height ratio
+        while a screenshot or animation frame is being rendered.
+    """
+    return _RENDER_SCALE
+
+
+@contextmanager
+def render_scale(factor: float):
+    """Scale pixel-denominated actor attributes for the duration of a capture.
+
+    Parameters
+    ----------
+    factor : float
+        Ratio of the capture height to the on-screen window height, the axis
+        the rendered scene scales along. Nested scopes compound.
+
+    Yields
+    ------
+    None
+    """
+    global _RENDER_SCALE
+
+    previous = _RENDER_SCALE
+    _RENDER_SCALE = previous * factor
+    try:
+        yield
+    finally:
+        _RENDER_SCALE = previous
 
 
 class GeometryData:
@@ -852,7 +893,7 @@ class Geometry:
         if not self._appearance.get("render_spheres", True):
             prop.SetRenderPointsAsSpheres(False)
 
-        prop.SetPointSize(self._appearance.get("size", 8))
+        prop.SetPointSize(self._appearance.get("size", 8) * get_render_scale())
         prop.SetOpacity(self._appearance.get("opacity", 1.0))
         prop.SetAmbient(self._appearance.get("ambient", 0.3))
         prop.SetDiffuse(self._appearance.get("diffuse", 0.7))
@@ -1191,7 +1232,7 @@ class Geometry:
         scale = 15 * np.max(self.sampling_rate)
         mapper, prop = self._actor.GetMapper(), self._actor.GetProperty()
         prop.SetOpacity(self._appearance["opacity"])
-        prop.SetPointSize(self._appearance["size"])
+        prop.SetPointSize(self._appearance["size"] * get_render_scale())
         prop.SetRenderPointsAsSpheres(self._appearance["render_spheres"])
 
         self._representation = representation

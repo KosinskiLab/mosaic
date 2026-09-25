@@ -646,7 +646,7 @@ class AnimationComposerDialog(QDialog):
             render_window.SetSize(render_width, render_height)
 
             pixel_scale = (
-                render_width / original_size[0] if original_size[0] else 1
+                render_height / original_size[1] if original_size[1] else 1
             )
             with scaled_device_pixel_attributes(render_window, pixel_scale):
                 render_window.Render()

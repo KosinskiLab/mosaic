@@ -16,6 +16,8 @@ from qtpy.QtWidgets import QFileDialog
 from vtkmodules.util import numpy_support
 from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
 
+from ..geometry import render_scale
+
 
 def read_frame(
     window_to_image, target_width, target_height, magnification=1, transparent_bg=False
@@ -115,7 +117,16 @@ def scaled_device_pixel_attributes(render_window, factor: float):
     render_window : vtkRenderWindow
         The render window whose props are rescaled.
     factor : float
-        Ratio of the capture size to the on-screen window size.
+        Ratio of the capture height to the on-screen window height.
+
+    Yields
+    ------
+    None
+
+    See Also
+    --------
+    :py:func:`mosaic.geometry.render_scale` : keeps actors rebuilt mid-capture,
+        such as trajectory frames, at the same scale.
     """
     if factor == 1:
         yield
@@ -153,7 +164,8 @@ def scaled_device_pixel_attributes(render_window, factor: float):
             )
 
     try:
-        yield
+        with render_scale(factor):
+            yield
     finally:
         for setter, original in restore:
             setter(original)
@@ -194,8 +206,8 @@ def capture_frame(
         Custom target height, uses current window height by default.
     pixel_scale : float, optional
         Factor applied to device-pixel attributes such as point size and line
-        width. Defaults to the ratio between capture and window size; pass it
-        explicitly when the window was already resized by the caller.
+        width. Defaults to the ratio between capture and window height; pass
+        it explicitly when the window was already resized by the caller.
 
     Returns
     -------
@@ -217,7 +229,7 @@ def capture_frame(
 
     size_changed = target_width != original_size[0] or target_height != original_size[1]
     if pixel_scale is None:
-        pixel_scale = target_width / original_size[0] if original_size[0] else 1
+        pixel_scale = target_height / original_size[1] if original_size[1] else 1
 
     with scaled_device_pixel_attributes(render_window, pixel_scale):
         if size_changed:
@@ -342,9 +354,9 @@ def capture_cropped(render_window, ctx):
         Cropped RGB image of exactly ``ctx["width"]`` x ``ctx["height"]``.
     """
     rw, rh = ctx["render_size"]
-    ow = ctx["original_size"][0]
+    oh = ctx["original_size"][1]
     frame = capture_frame(
-        render_window, width=rw, height=rh, pixel_scale=rw / ow if ow else 1
+        render_window, width=rw, height=rh, pixel_scale=rh / oh if oh else 1
     )
 
     fh = frame.shape[0]

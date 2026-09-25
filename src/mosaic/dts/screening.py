@@ -212,7 +212,7 @@ def _build_dts_template(
             else invert_contrast
         )
         energy_line = (
-            f"EnergyMethod             = FreeDTS1.0_MDFF {volume_path} {xi} 0 "
+            f"EnergyMethod             = FreeDTS1.0_HMFF {volume_path} {xi} 0 "
             f"{mesh_scale} {mesh_offset} {invert_flag} 0"
         )
     else:
