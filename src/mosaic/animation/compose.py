@@ -24,8 +24,10 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QSpinBox,
+    QSplitter,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -80,6 +82,7 @@ class AnimationComposerDialog(QDialog):
         self.vtk_widget = vtk_widget
         self.volume_viewer = volume_viewer
 
+        self.setWindowTitle("Animation")
         self._setup_ui()
         self._setup_shortcuts()
 
@@ -152,12 +155,18 @@ class AnimationComposerDialog(QDialog):
         self.timeline.content.trackSelected.connect(self._on_track_selected)
         self.timeline.frameMoved.connect(self._frame_throttle)
         self.timeline.trackMoved.connect(self._on_track_moved)
+        self.timeline.trackResized.connect(self._on_track_resized)
         self.timeline.trackRemoved.connect(self.delete_track)
-        self.timeline.setMinimumHeight(120)
+        self.timeline.setMinimumHeight(220)
         self.timeline.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        main_layout.addWidget(self.timeline, 1)
+
+        # Settings scroll below the timeline instead of squeezing it
+        settings = QWidget()
+        settings_layout = QVBoxLayout(settings)
+        settings_layout.setContentsMargins(0, 0, 0, 0)
+        settings_layout.setSpacing(8)
 
         presets_group = QGroupBox("Presets")
         presets_layout = QVBoxLayout(presets_group)
@@ -181,7 +190,7 @@ class AnimationComposerDialog(QDialog):
             btn.clicked.connect(lambda _, p=preset_type: self._load_preset(p))
             presets_row.addWidget(btn)
         presets_layout.addLayout(presets_row)
-        main_layout.addWidget(presets_group)
+        settings_layout.addWidget(presets_group)
 
         # Add Animation group (2 rows x 3 cols for compactness)
         anims_group = QGroupBox("Add Animation")
@@ -197,11 +206,35 @@ class AnimationComposerDialog(QDialog):
             btn.setFixedHeight(Colors.WIDGET_HEIGHT)
             btn.clicked.connect(lambda _, t=anim_type: self.add_animation(t))
             anims_layout.addWidget(btn, i // cols, i % cols)
-        main_layout.addWidget(anims_group)
+        settings_layout.addWidget(anims_group)
 
         self.properties_panel = AnimationSettings()
         self.properties_panel.animationChanged.connect(self._on_animation_changed)
-        main_layout.addWidget(self.properties_panel)
+        settings_layout.addWidget(self.properties_panel)
+        settings_layout.addStretch()
+
+        settings_scroll = QScrollArea()
+        settings_scroll.setWidget(settings)
+        settings_scroll.setWidgetResizable(True)
+        settings_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        settings_scroll.setStyleSheet(
+            "QScrollArea { border: none; background: transparent; }"
+        )
+        settings.setObjectName("composerSettings")
+        settings.setStyleSheet("#composerSettings { background: transparent; }")
+
+        splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter.addWidget(self.timeline)
+        splitter.addWidget(settings_scroll)
+        splitter.setChildrenCollapsible(False)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([400, 400])
+        splitter.setHandleWidth(6)
+        splitter.setStyleSheet("QSplitter::handle { background: transparent; }")
+        main_layout.addWidget(splitter, 1)
 
         self.setMinimumWidth(280)
         self.resize(300, 700)
@@ -264,8 +297,7 @@ class AnimationComposerDialog(QDialog):
 
         This creates a sequence that:
         1. Slices through the volume (forward) with all actors hidden
-        2. Reveals all actors at the midpoint
-        3. Slices back through the volume (backward)
+        2. Slices back through the volume (backward) with actors revealed
         """
         if self.volume_viewer is None:
             MosaicMessageBox.warning(
@@ -286,36 +318,18 @@ class AnimationComposerDialog(QDialog):
         for _, obj in self.cdata.format_datalist("models"):
             all_objects.append(id(obj))
 
-        hide_anim = self.add_animation(AnimationType.VISIBILITY)
-        if hide_anim:
-            hide_anim.name = "Hide Actors"
-            hide_anim.update_parameters(
-                start_opacity=1.0,
-                target_opacity=0.0,
-                easing="instant",
-                selected_objects=all_objects,
-            )
-            hide_anim.start_frame = 0
-            hide_anim.stop_frame = 1
-
         forward_slice = self.add_animation(AnimationType.SLICE)
         if forward_slice:
             forward_slice.name = "Slice Forward"
             forward_slice.update_parameters(direction="forward")
 
-        reveal_anim = self.add_animation(AnimationType.VISIBILITY)
-        if reveal_anim:
-            reveal_anim.name = "Reveal Actors"
-            reveal_anim.update_parameters(
-                start_opacity=0.0,
-                target_opacity=1.0,
-                easing="instant",
-                selected_objects=all_objects,
-            )
-            reveal_anim.start_frame = 0
-            reveal_anim.stop_frame = 1
+            hide_anim = self.add_animation(AnimationType.VISIBILITY)
+            if hide_anim:
+                hide_anim.name = "Hide Actors"
+                hide_anim.update_parameters(selected_objects=all_objects)
+                hide_anim.global_start_frame = forward_slice.global_start_frame
+                hide_anim.set_duration(forward_slice.duration)
 
-        # 4. Volume slice backward
         backward_slice = self.add_animation(AnimationType.SLICE)
         if backward_slice:
             backward_slice.name = "Slice Backward"
@@ -360,11 +374,12 @@ class AnimationComposerDialog(QDialog):
         )
 
     def _cleanup_tracks(self, tracks=None):
-        """Reset animation state and remove preview actors for the given tracks."""
-        for track in tracks or self.tracks:
+        """Restore state modified by the given tracks."""
+        tracks = tracks or self.tracks
+        for track in tracks:
             track.animation.reset()
-            if hasattr(track.animation, "cleanup_preview"):
-                track.animation.cleanup_preview()
+        for track in tracks:
+            track.animation.commit()
 
     def _get_track(self, track_id: str):
         return next((t for t in self.tracks if t.id == track_id), None)
@@ -392,9 +407,22 @@ class AnimationComposerDialog(QDialog):
         track.animation.global_start_frame = new_frame
         self.properties_panel.global_start_spin.setValue(new_frame)
         self.timeline.update()
+        self._frame_throttle(self.current_frame)
+
+    def _on_track_resized(self, track_id: str, duration: int):
+        if (track := self._get_track(track_id)) is None:
+            return None
+
+        track.animation.set_duration(duration)
+        if self.selected_track == track_id:
+            self.properties_panel.sync_timing()
+        self.timeline.update()
+        self._frame_throttle(self.current_frame)
+        return None
 
     def _on_animation_changed(self, changes: dict[str, Any]):
         self.timeline.update()
+        self._frame_throttle(self.current_frame)
 
     def _get_total_frames(self) -> int:
         """Get the total number of frames across all tracks."""
@@ -431,30 +459,23 @@ class AnimationComposerDialog(QDialog):
             track.animation.reset()
         for track in self.tracks:
             track.animation.update(self.current_frame)
+        for track in self.tracks:
+            track.animation.commit()
 
-        self.vtk_widget.GetRenderWindow().Render()
+        self.cdata.viewport.render_vtk()
 
     def _go_to_end(self):
         """Jump to the last frame."""
         self.set_current_frame(self._get_total_frames())
-
-    def _set_preview_visibility(self, visible: bool):
-        """Show or hide preview actors (e.g. waypoint path) on all tracks."""
-        for track in self.tracks:
-            for actor in getattr(track.animation, "_path_actors", []):
-                actor.SetVisibility(visible)
-        self.vtk_widget.GetRenderWindow().Render()
 
     def toggle_play(self):
         """Toggle playback state."""
         self.is_playing = not self.is_playing
 
         if self.is_playing:
-            self._set_preview_visibility(False)
             self.play_btn.setIcon(icon("ph.pause", role="muted"))
             self.timer.start(1000 // self.playback_fps)
         else:
-            self._set_preview_visibility(True)
             self.play_btn.setIcon(icon("ph.play", role="primary"))
             self.timer.stop()
 
@@ -636,7 +657,6 @@ class AnimationComposerDialog(QDialog):
         n_frames = len(frames)
 
         try:
-            self._set_preview_visibility(False)
             render_window.SetOffScreenRendering(1)
             render_window.SetMultiSamples(multisamples)
             render_window.SetAlphaBitPlanes(1 if transparent_bg else 0)
@@ -687,7 +707,6 @@ class AnimationComposerDialog(QDialog):
         finally:
             if indicator is not None:
                 indicator.hide_progress()
-            self._set_preview_visibility(True)
             render_window.SetAlphaBitPlanes(original_alpha)
             render_window.SetMultiSamples(original_multisamples)
             render_window.SetOffScreenRendering(0)

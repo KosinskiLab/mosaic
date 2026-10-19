@@ -38,6 +38,7 @@ from qtpy.QtWidgets import (
     QPushButton,
     QSplitter,
     QStackedWidget,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -80,6 +81,9 @@ class App(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowState(Qt.WindowNoState)
+        self.setTabPosition(
+            Qt.DockWidgetArea.AllDockWidgetAreas, QTabWidget.TabPosition.North
+        )
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)

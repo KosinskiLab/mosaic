@@ -180,7 +180,26 @@ def create_or_toggle_dock(
     if main_window is None:
         return dialog_widget.show()
 
+    dock.setWindowTitle(dialog_widget.windowTitle())
     main_window.addDockWidget(dock_area, dock)
+
+    sibling = next(
+        (
+            other
+            for other in main_window.findChildren(QDockWidget)
+            if other is not dock
+            and other.isVisible()
+            and not other.isFloating()
+            and isinstance(other.titleBarWidget(), _DockTitleBar)
+            and main_window.dockWidgetArea(other) == dock_area
+        ),
+        None,
+    )
+    if sibling is not None:
+        width = sibling.width()
+        main_window.tabifyDockWidget(sibling, dock)
+        main_window.resizeDocks([dock], [width], Qt.Orientation.Horizontal)
+
     setattr(instance, dock_attr_name, dock)
     dock.show()
     dock.raise_()

@@ -496,6 +496,9 @@ class ConfigurePanel(QScrollArea):
                 widget.setValue(widget.minimum())
             widget.blockSignals(False)
 
+        set_widget_value(self._param_widgets["scale_factor"], 1.0)
+        self._param_widgets["offset"].setText("0,0,0")
+
         self._volume_screen_cb.blockSignals(True)
         self._volume_screen_cb.setChecked(False)
         self._volume_screen_cb.blockSignals(False)
