@@ -122,6 +122,28 @@ class TestDistance:
         assert result is not None
         assert result.shape[0] == 30
 
+    def test_only_self_single_point_is_nan(self):
+        g = Geometry(points=np.zeros((1, 3), dtype=np.float32))
+        for k in (1, 2):
+            assert np.isnan(distance(g, only_self=True, k=k)).all()
+
+    def test_only_self_k_exceeds_neighbors(self):
+        points = np.array([[0, 0, 0], [3, 4, 0]], dtype=np.float32)
+        g = Geometry(points=points)
+        for k in (1, 2, 5):
+            np.testing.assert_allclose(distance(g, only_self=True, k=k), [5, 5])
+
+    def test_k_exceeds_query_size(self):
+        g = Geometry(points=np.zeros((1, 3), dtype=np.float32))
+        query = np.array([[3, 4, 0], [6, 8, 0]], dtype=np.float32)
+        np.testing.assert_allclose(distance(g, queries=[query], k=5), [7.5])
+
+    def test_self_and_other_query_k1(self):
+        g = Geometry(points=np.array([[0, 0, 0], [3, 4, 0]], dtype=np.float32))
+        other = np.array([[-1, 0, 0], [100, 0, 0]], dtype=np.float32)
+        result = distance(g, queries=[other, g], include_self=True, k=1)
+        np.testing.assert_allclose(result, [1, 5], rtol=1e-6)
+
     def test_exclude_self(self):
         g = _geom(30)
         result = distance(g, queries=[g], include_self=False, k=1)
