@@ -177,17 +177,17 @@ class PipelineBuilderDialog(QDialog):
 
         load_btn = QPushButton("Load Pipeline")
         load_btn.clicked.connect(self._load_config)
-        load_btn.setIcon(icon("ph.upload", role="primary"))
+        load_btn.setIcon(icon("ph.upload", role="muted"))
         footer_layout.addWidget(load_btn)
 
         export_btn = QPushButton("Export Pipeline")
         export_btn.clicked.connect(self._export_config)
-        export_btn.setIcon(icon("ph.download", role="primary"))
+        export_btn.setIcon(icon("ph.download", role="muted"))
         footer_layout.addWidget(export_btn)
 
         validate_btn = QPushButton("Validate Pipeline")
         validate_btn.clicked.connect(self._validate_pipeline)
-        validate_btn.setIcon(icon("ph.check", role="primary"))
+        validate_btn.setIcon(icon("ph.check", role="muted"))
         footer_layout.addWidget(validate_btn)
 
         footer_layout.addStretch()
@@ -227,7 +227,9 @@ class PipelineBuilderDialog(QDialog):
             cat_header_font.setBold(True)
             cat_header_font.setPixelSize(Typography.SMALL)
             cat_header.setFont(cat_header_font)
-            cat_header.setStyleSheet(f"color: {category['color']}; margin-top: 8px;")
+            cat_header.setStyleSheet(
+                f"color: {Colors.TEXT_SECONDARY}; margin-top: 8px;"
+            )
             layout.addWidget(cat_header)
 
             for op_name, op_info in category["operations"].items():
@@ -284,7 +286,7 @@ class PipelineBuilderDialog(QDialog):
 
         name_label = QLabel(name)
         name_label.setStyleSheet(
-            f"color: {color}; font-weight: 600; font-size: {Typography.SMALL}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Typography.SMALL}px;"
         )
         text_layout.addWidget(name_label)
 

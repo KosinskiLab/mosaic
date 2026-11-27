@@ -156,18 +156,18 @@ class Colors:
 
     CATEGORY = {
         # Pipeline operation categories
-        "input": "#6366f1",  # Indigo
-        "preprocessing": "#3b82f6",  # Blue
-        "parametrization": "#10b981",  # Emerald
-        "analysis": "#06b6d4",  # Cyan
-        "export": "#f97316",  # Orange
+        "input": "#766ae7",  # Iris
+        "preprocessing": "#287cdc",  # Sapphire
+        "parametrization": "#178c65",  # Emerald
+        "analysis": "#19869c",  # Peacock
+        "export": "#a9701b",  # Amber
         # Animation types
-        "trajectory": "#3b82f6",  # Blue
-        "camera": "#10b981",  # Emerald
-        "zoom": "#14b8a6",  # Teal
-        "volume": "#eab308",  # Yellow
-        "visibility": "#8b5cf6",  # Violet
-        "waypoint": "#ec4899",  # Pink
+        "trajectory": "#287cdc",  # Sapphire
+        "camera": "#178c65",  # Emerald
+        "zoom": "#19869c",  # Peacock
+        "volume": "#a9701b",  # Amber
+        "visibility": "#766ae7",  # Iris
+        "waypoint": "#d4496e",  # Garnet
     }
 
 
@@ -198,7 +198,7 @@ def _build_QGroupBox_style():
     QGroupBox::title {{
         subcontrol-origin: padding;
         left: 0px;
-        color: {Colors.TEXT_MUTED};
+        color: {Colors.TEXT_SECONDARY};
     }}
 """
 

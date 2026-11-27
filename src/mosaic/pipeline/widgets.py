@@ -180,9 +180,7 @@ class OperationCardWidget(QFrame):
         title = QLabel(self.operation_name)
         title_font = QFont()
         title_font.setPixelSize(Typography.BODY)
-        title_font.setBold(True)
         title.setFont(title_font)
-        title.setStyleSheet(f"color: {self.category_color};")
         header_layout.addWidget(title)
         header_layout.addStretch()
 
@@ -208,14 +206,14 @@ class OperationCardWidget(QFrame):
 
         self.desc = QLabel(self.operation_info["description"])
         self.desc.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
         )
         self.desc.setWordWrap(True)
         layout.addWidget(self.desc)
 
         self.params_summary = QLabel("No parameters set")
         self.params_summary.setStyleSheet(
-            f"color: {Colors.ICON_MUTED}; font-size: {Typography.SMALL}px; font-style: italic;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
         )
         self.params_summary.setWordWrap(True)
         layout.addWidget(self.params_summary)
