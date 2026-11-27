@@ -725,8 +725,7 @@ class StatusIndicator:
                     f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
                 )
 
-        persistent = getattr(self, "_persistent_task", None)
-        if persistent is not None and persistent[2]:
+        if getattr(self, "_task_warning", False):
             self._set_task_style(True)
 
     def _setup_status_bar(self):
@@ -871,6 +870,7 @@ class StatusIndicator:
             self.show_task(task)
 
     def _set_task_style(self, warning: bool):
+        self._task_warning = warning
         color = Colors.WARNING_TEXT if warning else Colors.TEXT_SECONDARY
         self.task_label.setStyleSheet(
             f"color: {color}; font-size: {Typography.SMALL}px;"

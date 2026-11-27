@@ -35,3 +35,20 @@ def test_missing_warning_persists_until_cleared(indicator):
 
 def test_label_is_wider(indicator):
     assert indicator.task_label.width() == 260
+
+
+def test_warning_survives_theme_refresh(indicator):
+    indicator.show_task(
+        "Tomogram missing: ", path="/d/a.mrc", warning=True, persist=True
+    )
+    indicator._setup_status_bar_style()
+    assert Colors.WARNING_TEXT in indicator.task_label.styleSheet()
+
+
+def test_transient_over_warning_stays_secondary_on_refresh(indicator):
+    indicator.show_task(
+        "Tomogram missing: ", path="/d/a.mrc", warning=True, persist=True
+    )
+    indicator.show_task("Saved as ", path="/d/a.mosaic")
+    indicator._setup_status_bar_style()
+    assert Colors.WARNING_TEXT not in indicator.task_label.styleSheet()
