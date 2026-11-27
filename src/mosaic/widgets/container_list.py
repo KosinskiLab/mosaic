@@ -801,7 +801,7 @@ class MetadataItemDelegate(QStyledItemDelegate):
 
 
 def _menu_pos_above(button_rect: QRect, menu_size: QSize) -> QPoint:
-    """Top-left for a menu whose bottom-right sits above a button's top-right.
+    """Top-left for a menu whose bottom-left sits above a button's top-left.
 
     Parameters
     ----------
@@ -815,10 +815,7 @@ def _menu_pos_above(button_rect: QRect, menu_size: QSize) -> QPoint:
     QPoint
         Global position of the menu's top-left corner.
     """
-    return QPoint(
-        button_rect.right() + 1 - menu_size.width(),
-        button_rect.top() - menu_size.height(),
-    )
+    return QPoint(button_rect.left(), button_rect.top() - menu_size.height())
 
 
 class _CheckableMenu(QMenu):

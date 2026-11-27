@@ -240,9 +240,8 @@ class TestSessionHeader:
 
         button = QRect(QPoint(200, 500), QSize(24, 24))
         pos = _menu_pos_above(button, QSize(150, 80))
-        assert pos == QPoint(200 + 24 - 150, 500 - 80)
+        assert pos == QPoint(200, 500 - 80)
         assert pos.y() + 80 == button.top()
-        assert pos.x() + 150 == button.right() + 1
 
     def test_autosave_action_toggles_flag(self, qapp):
         widget = SessionListWidget(cdata=Mock())
