@@ -27,8 +27,12 @@ def _link(hud, enabled):
 
 
 def _texts(viewer):
-    combo = viewer._path_combo
-    return [combo.itemText(i) for i in range(combo.count())]
+    combo = viewer.load_combo
+    return [
+        combo.itemText(i)
+        for i in range(combo.count())
+        if isinstance(combo.itemData(i), str)
+    ]
 
 
 @pytest.mark.parametrize("enabled", [True, False])
@@ -38,7 +42,7 @@ def test_restored_link_is_first_recent(hud, tmp_path, vols, enabled):
     hud.set_recent_paths(vols)
     _link(hud, enabled).restore({"tomogram": str(tomo)})
     assert _texts(hud.primary) == ["t.mrc", "a.mrc", "b.mrc"]
-    assert hud.primary._path_combo.itemData(0) == str(tomo)
+    assert hud.primary.load_combo.itemData(0) == str(tomo)
 
 
 def test_relink_moves_new_path_to_front(hud, tmp_path, vols):
