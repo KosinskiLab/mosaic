@@ -1281,7 +1281,7 @@ class App(QMainWindow):
 
     def _open_link_tomograms(self):
         from .dialogs.link_tomograms import LinkTomogramsDialog
-        from .formats.tomogram_matching import link_summary, write_tomogram_links
+        from .formats.tomogram_matching import write_tomogram_links
         from .parallel import submit_io_task
 
         widget = self._session_list_widget
@@ -1293,19 +1293,26 @@ class App(QMainWindow):
         if not changes:
             return None
 
-        def _on_written(result):
-            current = self._current_session_path
-            widget.replace_paths(result.paths)
-            if current in changes:
-                self._tomogram_link.set(changes[current], load=True)
+        submit_io_task(
+            "Link tomograms",
+            write_tomogram_links,
+            lambda result: self._apply_link_result(widget, changes, result),
+            changes,
+        )
+        return None
 
-            message, warning = link_summary(result, len(changes))
-            self.status_indicator.show_task(message, warning=warning)
-            for path, error in result.errors.items():
-                print(f"Link tomograms: {path}: {error}")
-            return None
+    def _apply_link_result(self, widget, changes, result):
+        from .formats.tomogram_matching import link_summary
 
-        submit_io_task("Link tomograms", write_tomogram_links, _on_written, changes)
+        current = self._current_session_path
+        widget.replace_paths(result.paths)
+        if current in changes and current not in result.errors:
+            self._tomogram_link.set(changes[current], load=True)
+
+        message, warning = link_summary(result, len(changes))
+        self.status_indicator.show_task(message, warning=warning)
+        for path, error in result.errors.items():
+            print(f"Link tomograms: {path}: {error}")
         return None
 
     def _on_session_path_changed(self, old: str, new: str):
