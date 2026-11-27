@@ -277,7 +277,12 @@ class LinkTomogramsDialog(QDialog):
         return self._detect()
 
     def _detect(self) -> None:
-        found = detect_key(self._sessions, self._tomograms, self._root())
+        found = detect_key(
+            self._sessions,
+            self._tomograms,
+            self._root(),
+            case_sensitive=self.case_sensitive.isChecked(),
+        )
         self.key_input.blockSignals(True)
         self.key_input.setText(found or "")
         self.key_input.blockSignals(False)

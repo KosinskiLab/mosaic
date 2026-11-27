@@ -1,13 +1,8 @@
 """
 Match session names to tomogram files in a folder.
 
-Auto mode scores the leading name tokens (split on ``_ - . space /``, digit
-tokens as integers) a tomogram shares with a session. A numeric mismatch at the
-first differing token disqualifies it. The score must exceed the leading run
-common to all tomograms, cut before its first numeric token (at least 1 for a
-single tomogram). A unique best score matches, a tie is ambiguous.
-
-Key mode searches a regular expression in both names and pairs equal keys.
+A key regular expression is searched in both names and equal keys are paired.
+Detection proposes the key that pairs the most sessions.
 
 Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
@@ -50,6 +45,7 @@ __all__ = [
 NO_TOMOGRAM = ""
 
 _SEPARATORS = r"_\-.\s/\\"
+_MAX_CANDIDATES = 50
 
 
 @dataclass(frozen=True)
@@ -145,41 +141,57 @@ def match_tomograms(
     re.error
         If ``key`` is not a valid regular expression.
     """
-    names = [_tomogram_name(p, root) for p in tomogram_paths]
     if not key:
         return [Match(s, None, (), "missing") for s in session_paths]
 
+    stems = [_stem(s) for s in session_paths]
+    names = [_tomogram_name(p, root) for p in tomogram_paths]
+    return _pair(session_paths, stems, tomogram_paths, names, key, case_sensitive)
+
+
+def _stem(path: str) -> str:
+    return strip_extension(os.path.basename(path))
+
+
+def _pair(
+    session_paths: list[str],
+    stems: list[str],
+    tomogram_paths: list[str],
+    names: list[str],
+    key: str,
+    case_sensitive: bool,
+) -> list[Match]:
     regex = re.compile(key, 0 if case_sensitive else re.IGNORECASE)
-    tomo_keys = [_key(regex, n, case_sensitive) for n in names]
+    by_key = {}
+    for path, name in zip(tomogram_paths, names):
+        by_key.setdefault(_key(regex, name, case_sensitive), []).append(path)
+    by_key.pop(None, None)
 
     matches = []
-    for session in session_paths:
-        stem = os.path.splitext(os.path.basename(session))[0]
-        session_key = _key(regex, stem, case_sensitive)
-        candidates = tuple(
-            p
-            for p, k in zip(tomogram_paths, tomo_keys)
-            if session_key is not None and k == session_key
-        )
+    for session, stem in zip(session_paths, stems):
+        candidates = tuple(by_key.get(_key(regex, stem, case_sensitive), ()))
         if not candidates:
             matches.append(Match(session, None, (), "missing"))
         elif len(candidates) == 1:
             matches.append(Match(session, candidates[0], candidates, "matched"))
         else:
             matches.append(Match(session, None, candidates, "ambiguous"))
-
     return matches
 
 
 def detect_key(
-    session_paths: list[str], tomogram_paths: list[str], root: str | None = None
+    session_paths: list[str],
+    tomogram_paths: list[str],
+    root: str | None = None,
+    case_sensitive: bool = False,
 ) -> str | None:
     r"""
-    Suggest the key that pairs the most sessions with exactly one tomogram.
+    Suggest the key that pairs the most sessions with a tomogram.
 
-    Candidates are runs of name parts from the session names, with digit
-    runs as ``\d+``. Ties prefer fewer ambiguous sessions, then the longer
-    key.
+    Candidates are the runs of name parts found in the most session names,
+    with digit runs as ``\d+``. Keys rank by sessions with exactly one
+    tomogram, then sessions with any, then fewer candidates, then fewer
+    ``\d+`` and longer keys.
 
     Parameters
     ----------
@@ -189,32 +201,51 @@ def detect_key(
         Tomogram paths.
     root : str, optional
         Folder the tomogram names are taken relative to.
+    case_sensitive : bool, optional
+        Compare keys case sensitively. Defaults to False.
 
     Returns
     -------
     str or None
         Key regex, or None if no candidate pairs any session.
     """
-    candidates = set()
-    for session in session_paths:
-        stem = strip_extension(os.path.basename(session))
+    stems = [_stem(s) for s in session_paths]
+    sources = {}
+    for session, stem in zip(session_paths, stems):
         parts = list(re.finditer(f"[^{_SEPARATORS}]+", stem))
         for i, j in itertools.combinations(range(len(parts) + 1), 2):
             text = stem[parts[i].start() : parts[j - 1].end()]
             if re.search(r"\d", text):
                 runs = re.split(r"(\d+)", text)
-                candidates.add(
-                    "".join(
-                        r"\d+" if k % 2 else re.escape(r) for k, r in enumerate(runs)
-                    )
+                key = "".join(
+                    r"\d+" if k % 2 else re.escape(r) for k, r in enumerate(runs)
                 )
+                sources.setdefault(key, set()).add(session)
 
-    best, best_score = None, (0,)
-    for key in sorted(candidates):
-        matches = match_tomograms(session_paths, tomogram_paths, root, key)
-        status = [m.status for m in matches]
-        score = (status.count("matched"), -status.count("ambiguous"), len(key))
-        if score[0] > 0 and score > best_score:
+    minimum = 2 if len(session_paths) > 1 else 1
+    common = sorted(
+        (k for k, found_in in sources.items() if len(found_in) >= minimum),
+        key=lambda k: (-len(sources[k]), k),
+    )[:_MAX_CANDIDATES]
+
+    names = [_tomogram_name(p, root) for p in tomogram_paths]
+    best, best_score = None, None
+    for key in common:
+        matches = _pair(
+            session_paths, stems, tomogram_paths, names, key, case_sensitive
+        )
+        paired = [len(m.candidates) for m in matches if m.candidates]
+        if not paired:
+            continue
+        score = (
+            paired.count(1),
+            len(paired),
+            -sum(paired),
+            -key.count(r"\d+"),
+            len(key),
+            key,
+        )
+        if best_score is None or score > best_score:
             best, best_score = key, score
     return best
 

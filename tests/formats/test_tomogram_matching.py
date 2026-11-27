@@ -56,7 +56,38 @@ def test_detect_returns_none_without_pairs():
 
 
 def test_detect_escapes_text():
-    assert detect_key(["/s/a+b.12_seg.mosaic"], ["/t/a+b.12.mrc"]) == r"a\+b\.\d+"
+    tomos = ["/t/a+b.12.mrc", "/t/c.12.mrc"]
+    assert detect_key(["/s/a+b.12_seg.mosaic"], tomos) == r"a\+b\.\d+"
+
+
+def test_detect_suggests_key_when_all_sessions_ambiguous():
+    sessions = ["/s/TS_012_MemBrain_seg.mosaic", "/s/TS_013_MemBrain_seg.mosaic"]
+    tomos = [f"/t/TS_01{i}.{kind}.mrc" for i in (2, 3) for kind in ("rec", "denoised")]
+    key = detect_key(sessions, tomos)
+    statuses = [m.status for m in match_tomograms(sessions, tomos, key=key)]
+    assert statuses == ["ambiguous", "ambiguous"]
+
+
+def test_detect_prefers_readable_key_on_ties():
+    names = ["PR8-TS10_10.00Apx", "PR8-TS17_10.00Apx"]
+    sessions = [f"/s/{n}_MemBrain_seg.mosaic" for n in names]
+    tomos = [f"/t/{n}.mrc" for n in names]
+    assert detect_key(sessions, tomos) == r"TS\d+"
+
+
+def test_detect_respects_case_sensitivity():
+    sessions = ["/s/ts_012_seg.mosaic", "/s/ts_013_seg.mosaic"]
+    tomos = ["/t/TS_012.mrc", "/t/TS_013.mrc"]
+    assert detect_key(sessions, tomos) == r"ts_\d+"
+    key = detect_key(sessions, tomos, case_sensitive=True)
+    matches = match_tomograms(sessions, tomos, key=key, case_sensitive=True)
+    assert [m.status for m in matches] == ["matched", "matched"]
+
+
+def test_detect_ignores_parts_unique_to_one_session():
+    sessions = [f"/s/TS_00{i}_{h}_seg.mosaic" for i, h in ((1, "a3f9"), (2, "b7e1"))]
+    tomos = ["/t/TS_001.mrc", "/t/TS_002.mrc"]
+    assert detect_key(sessions, tomos) == r"TS_\d+"
 
 
 def test_empty_key_matches_nothing():
