@@ -13,7 +13,12 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from mosaic.pipeline.executor import compile_run, execute_run, generate_runs
+from mosaic.pipeline.executor import (
+    compile_run,
+    execute_run,
+    generate_runs,
+    run_complete,
+)
 
 
 def _run(operations, run_id="test", input_file="/data/input.star", input_params=None):
@@ -368,3 +373,22 @@ def test_outlier_removal_drops_stray_points(tmp_path):
     points = np.concatenate([data.vertices for data in exported])
     assert len(points) < len(cloud)
     assert not np.any(np.all(np.isclose(points, 500), axis=1))
+
+
+def test_run_complete_needs_every_output(tmp_path):
+    r = _run(
+        [
+            _import_op(),
+            _op("save_session", {"output_dir": str(tmp_path)}),
+            _op("export_data", {"output_dir": str(tmp_path), "format": "star"}),
+        ]
+    )
+    assert not run_complete(r)
+    (tmp_path / "test.mosaic").touch()
+    assert not run_complete(r)
+    (tmp_path / "test.star").touch()
+    assert run_complete(r)
+
+
+def test_run_without_outputs_is_never_complete():
+    assert not run_complete(_run([_import_op()]))

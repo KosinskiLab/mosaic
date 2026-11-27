@@ -451,6 +451,7 @@ class OperationCardWidget(QFrame):
         self.file_count_label.setText(f"{count} file{'s' if count != 1 else ''}")
 
         self.params_btn.setEnabled(True)
+        self.settings_changed.emit()
 
     def _configure_parameters(self):
         """Open dialog to configure import parameters for each file."""
@@ -614,6 +615,7 @@ class PipelineTreeWidget(QTreeWidget):
     def clear(self):
         super().clear()
         self._add_tail_spacer()
+        self.pipeline_changed.emit()
 
     def _insert_before_spacer(self, item: QTreeWidgetItem):
         idx = self.indexOfTopLevelItem(self._tail_spacer)
@@ -652,6 +654,7 @@ class PipelineTreeWidget(QTreeWidget):
 
         card_widget.removed.connect(lambda w: self._remove_card(item))
         card_widget.settings_changed.connect(lambda: self.scheduleDelayedItemsLayout())
+        card_widget.settings_changed.connect(self.pipeline_changed)
         self.pipeline_changed.emit()
         return item
 
