@@ -137,7 +137,6 @@ class LinkTomogramsDialog(QDialog):
         self.key_input = QLineEdit()
         self.key_input.setFixedHeight(Colors.WIDGET_HEIGHT)
 
-        # The global vertical padding clips underscores at this height.
         self.key_input.setStyleSheet("padding: 0px 8px;")
         self.key_input.setPlaceholderText(r"Regular expression, e.g. TS_\d+")
         self.detect_button = QPushButton("Detect")
@@ -192,7 +191,6 @@ class LinkTomogramsDialog(QDialog):
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
 
-        # Wide enough for every status, so the column keeps its width.
         status_width = self.table.fontMetrics().horizontalAdvance("99 candidates")
         header.resizeSection(1, status_width + 48)
 
@@ -219,7 +217,6 @@ class LinkTomogramsDialog(QDialog):
         self.footer = DialogFooter(info_text="", dialog=self, margin=(0, 8, 0, 0))
         self.footer.accept_button.setText("Apply")
 
-        # Enter in the folder or key fields must not apply the links.
         self.footer.accept_button.setAutoDefault(False)
         self.footer.reject_button.setAutoDefault(False)
         layout.addWidget(self.footer)
@@ -261,7 +258,6 @@ class LinkTomogramsDialog(QDialog):
         return (self._scanned[0] or None) if self._scanned else None
 
     def _on_folder_text(self) -> None:
-        # Typed text rescans on editingFinished, set_path from Browse does not emit it.
         if not self.folder_picker.path_input.isModified():
             self._rescan()
         return None
@@ -329,14 +325,12 @@ class LinkTomogramsDialog(QDialog):
         for i, row in enumerate(self._rows):
             session = QTableWidgetItem()
 
-            # Caps the Session column so the Tomogram column keeps room.
             set_path_text(session, os.path.splitext(row.session)[0], width=220)
             session.setToolTip(row.session)
             width = max(width, metrics.horizontalAdvance(session.text()))
             self.table.setItem(i, 0, session)
             self.table.setItem(i, 1, QTableWidgetItem())
 
-            # A replaced cell widget stays visible until exec() returns.
             if self._combo(i) is None:
                 combo = _Combo()
                 combo.setPlaceholderText("Choose…")

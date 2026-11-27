@@ -1411,7 +1411,6 @@ class App(QMainWindow):
             ),
         )
 
-        # Registered last so the link is added after volume_paths replaces recents.
         self.cdata.register_session_hook(
             self._tomogram_link.collect, self._tomogram_link.restore
         )

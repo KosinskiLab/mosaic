@@ -163,7 +163,6 @@ def _write_sections(filepath: str, sections_data: dict) -> None:
         },
     }
 
-    # Offsets are digits inside the index, so its length depends on them.
     index_bytes = b""
     while True:
         cursor = 4 + len(index_bytes)

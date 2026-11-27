@@ -24,7 +24,6 @@ from .dock import menu_pos_above
 from .segmented_control import SegmentedControl
 from .volume_viewer import VolumeViewer
 
-# The HUD is dark in both themes, so it always takes the light palette's value.
 _ICON = Colors.LIGHT["BORDER_HOVER"]
 _BTN = 28
 
@@ -175,13 +174,11 @@ class _LoadButton(QToolButton):
         super().__init__(parent)
         self.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
-        # Parentless so the menu takes the app's opaque style, not the HUD's.
         self.recent_menu = QMenu()
         self.recent_menu.setToolTipsVisible(True)
         self.recent_menu.installEventFilter(self)
 
     def eventFilter(self, obj, event):
-        # Qt would open the menu below the button, which sits at the screen bottom.
         if obj is self.recent_menu and event.type() == QEvent.Type.Show:
             rect = QRect(self.mapToGlobal(QPoint(0, 0)), self.size())
             obj.move(menu_pos_above(rect, obj.size()))

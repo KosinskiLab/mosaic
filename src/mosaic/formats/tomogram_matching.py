@@ -257,7 +257,6 @@ def detect_key(matches: list[Match]) -> tuple[str, str, str] | None:
     stem = os.path.splitext(os.path.basename(example.session))[0]
     session_tokens = _tokens(stem)
 
-    # The scan root is unknown here, so try each trailing run of path parts.
     path = example.tomogram.rstrip("/\\")
     starts = [0] + [m.end() for m in re.finditer(r"[/\\]", path)]
     name, shared = path, -1
@@ -435,7 +434,6 @@ def initial_folder(
     except ValueError:
         common = None
 
-    # A filesystem root is too broad to scan, especially with subfolders.
     if common and os.path.dirname(common) != common:
         return common
     return last or None

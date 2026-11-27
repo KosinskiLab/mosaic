@@ -871,7 +871,6 @@ class _SessionHeader(QWidget):
         self._apply_btn_style()
 
     def _build_menu(self):
-        # Without a parent the menu takes the app stylesheet, not the sidebar's.
         menu = _CheckableMenu()
         menu.setWindowFlags(
             menu.windowFlags()
