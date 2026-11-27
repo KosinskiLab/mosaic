@@ -1,0 +1,6 @@
+﻿DataContainerInteractor.duplicate
+===================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.duplicate

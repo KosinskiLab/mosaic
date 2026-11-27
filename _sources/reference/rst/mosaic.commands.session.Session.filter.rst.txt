@@ -1,0 +1,6 @@
+﻿Session.filter
+======================================
+
+.. currentmodule:: mosaic.commands.session
+
+.. automethod:: Session.filter

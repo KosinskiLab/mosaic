@@ -1,0 +1,6 @@
+﻿Session.measure
+=======================================
+
+.. currentmodule:: mosaic.commands.session
+
+.. automethod:: Session.measure

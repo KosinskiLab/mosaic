@@ -1,0 +1,6 @@
+﻿Session.group
+=====================================
+
+.. currentmodule:: mosaic.commands.session
+
+.. automethod:: Session.group

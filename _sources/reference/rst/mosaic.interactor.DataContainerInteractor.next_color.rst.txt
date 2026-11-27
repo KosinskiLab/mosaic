@@ -1,0 +1,6 @@
+﻿DataContainerInteractor.next\_color
+====================================================
+
+.. currentmodule:: mosaic.interactor
+
+.. automethod:: DataContainerInteractor.next_color

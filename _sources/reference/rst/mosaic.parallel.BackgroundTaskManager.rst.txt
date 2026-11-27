@@ -1,0 +1,120 @@
+﻿BackgroundTaskManager
+=====================
+
+.. currentmodule:: mosaic.parallel
+
+.. autoclass:: BackgroundTaskManager
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+         
+         
+            BackgroundTaskManager.running_tasks
+         
+         
+         
+            BackgroundTaskManager.task_completed
+         
+         
+            BackgroundTaskManager.task_failed
+         
+         
+            BackgroundTaskManager.task_message
+         
+         
+            BackgroundTaskManager.task_output
+         
+         
+            BackgroundTaskManager.task_progress
+         
+         
+            BackgroundTaskManager.task_queued
+         
+         
+            BackgroundTaskManager.task_started
+         
+         
+            BackgroundTaskManager.task_warning
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+         
+            BackgroundTaskManager.cancel_task
+         
+         
+         
+         
+            BackgroundTaskManager.clear_finished_tasks
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+            BackgroundTaskManager.get_task_output
+         
+         
+         
+         
+            BackgroundTaskManager.instance
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+            BackgroundTaskManager.submit_io_task
+         
+         
+            BackgroundTaskManager.submit_task
+         
+         
+            BackgroundTaskManager.submit_task_batch
+         
+         
+         
+         
+   
+   

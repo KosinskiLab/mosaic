@@ -1,0 +1,6 @@
+﻿GeometryTrajectory.frames
+=========================================
+
+.. currentmodule:: mosaic.geometry
+
+.. autoproperty:: GeometryTrajectory.frames

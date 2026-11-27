@@ -1,0 +1,6 @@
+﻿Session.apply
+=====================================
+
+.. currentmodule:: mosaic.commands.session
+
+.. automethod:: Session.apply

@@ -1,0 +1,6 @@
+﻿Session.resolve\_many
+============================================
+
+.. currentmodule:: mosaic.commands.session
+
+.. automethod:: Session.resolve_many

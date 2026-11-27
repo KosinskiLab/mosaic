@@ -1,0 +1,6 @@
+﻿MosaicData.reset
+============================
+
+.. currentmodule:: mosaic.data
+
+.. automethod:: MosaicData.reset

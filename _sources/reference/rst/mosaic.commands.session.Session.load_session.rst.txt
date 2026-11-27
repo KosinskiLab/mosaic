@@ -1,0 +1,6 @@
+﻿Session.load\_session
+============================================
+
+.. currentmodule:: mosaic.commands.session
+
+.. automethod:: Session.load_session

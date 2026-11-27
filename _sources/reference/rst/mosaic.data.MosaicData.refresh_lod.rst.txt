@@ -1,0 +1,6 @@
+﻿MosaicData.refresh\_lod
+==================================
+
+.. currentmodule:: mosaic.data
+
+.. automethod:: MosaicData.refresh_lod

@@ -1,0 +1,46 @@
+﻿ViewerModes
+===========
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: ViewerModes
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+            ViewerModes.VIEWING
+         
+         
+            ViewerModes.SELECTION
+         
+         
+            ViewerModes.DRAWING
+         
+         
+            ViewerModes.PICKING
+         
+         
+            ViewerModes.MESH_DELETE
+         
+         
+            ViewerModes.MESH_ADD
+         
+         
+            ViewerModes.CURVE
+         
+         
+            ViewerModes.SCULPT
+         
+   
+   
+
+   
+   
+   

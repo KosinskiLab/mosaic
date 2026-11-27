@@ -1,0 +1,6 @@
+﻿Geometry.model
+==============================
+
+.. currentmodule:: mosaic.geometry
+
+.. autoproperty:: Geometry.model

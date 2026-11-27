@@ -1,0 +1,47 @@
+﻿StatusIndicator
+===============
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: StatusIndicator
+   :members:
+   :show-inheritance:
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+            StatusIndicator.connect_signals
+         
+         
+            StatusIndicator.hide
+         
+         
+            StatusIndicator.hide_progress
+         
+         
+            StatusIndicator.instance
+         
+         
+            StatusIndicator.show
+         
+         
+            StatusIndicator.show_progress
+         
+         
+            StatusIndicator.update_progress
+         
+         
+            StatusIndicator.update_status
+         
+   
+   

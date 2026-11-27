@@ -1,0 +1,6 @@
+﻿open\_omezarr
+===========================
+
+.. currentmodule:: mosaic.formats
+
+.. autofunction:: open_omezarr

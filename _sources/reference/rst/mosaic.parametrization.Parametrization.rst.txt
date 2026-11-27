@@ -1,0 +1,38 @@
+﻿Parametrization
+===============
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: Parametrization
+   :members:
+   :show-inheritance:
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+            Parametrization.compute_distance
+         
+         
+            Parametrization.compute_normal
+         
+         
+            Parametrization.fit
+         
+         
+            Parametrization.points_per_sampling
+         
+         
+            Parametrization.sample
+         
+   
+   

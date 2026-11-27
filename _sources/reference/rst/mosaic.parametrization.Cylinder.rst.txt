@@ -1,0 +1,38 @@
+﻿Cylinder
+========
+
+.. currentmodule:: mosaic.parametrization
+
+.. autoclass:: Cylinder
+   :members:
+   :show-inheritance:
+
+   
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+            Cylinder.compute_distance
+         
+         
+            Cylinder.compute_normal
+         
+         
+            Cylinder.fit
+         
+         
+            Cylinder.points_per_sampling
+         
+         
+            Cylinder.sample
+         
+   
+   

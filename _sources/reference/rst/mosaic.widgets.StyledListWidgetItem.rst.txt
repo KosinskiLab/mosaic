@@ -1,0 +1,106 @@
+﻿StyledListWidgetItem
+====================
+
+.. currentmodule:: mosaic.widgets
+
+.. autoclass:: StyledListWidgetItem
+   :members:
+   :show-inheritance:
+
+   
+   
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+      
+         
+         
+         
+         
+         
+   
+   
+
+   
+   
+
+   .. rubric:: Methods
+
+   .. autosummary::
+      
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+            StyledListWidgetItem.data
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+            StyledListWidgetItem.setData
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+            StyledListWidgetItem.set_visible
+         
+         
+         
+         
+         
+         
+         
+            StyledListWidgetItem.text
+         
+         
+         
+         
+         
+         
+            StyledListWidgetItem.update
+         
+         
+            StyledListWidgetItem.update_icon
+         
+         
+         
+   
+   

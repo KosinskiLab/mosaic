@@ -1,0 +1,6 @@
+﻿SegmentationTab.show\_ribbon
+=======================================
+
+.. currentmodule:: mosaic.tabs
+
+.. automethod:: SegmentationTab.show_ribbon
