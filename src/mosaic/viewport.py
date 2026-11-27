@@ -490,12 +490,16 @@ class ViewportInteractor(QObject):
         if self._prop_ids is not None:
             self._prop_ids.invalidate()
 
+        geometries = [g for pane in self.panes for g in pane.container.data]
         current_actors = set()
-        for pane in self.panes:
-            for geom in pane.container.data:
-                current_actors.add(geom.actor)
-                if geom.lod.actor is not None:
-                    current_actors.add(geom.lod.actor)
+        for geom in geometries:
+            current_actors.add(geom.actor)
+            if geom.lod.actor is not None:
+                current_actors.add(geom.lod.actor)
+
+        self.clip_cut.retain(geometries)
+        if self._interaction_mode == "clip":
+            self._active_mode.retain(geometries)
 
         actors_to_remove = self.rendered_actors - current_actors
         for actor in actors_to_remove:

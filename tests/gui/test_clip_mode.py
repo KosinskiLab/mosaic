@@ -1,3 +1,5 @@
+import gc
+import weakref
 from unittest.mock import Mock, call
 
 import numpy as np
@@ -279,3 +281,138 @@ def test_style_forwards_right_drag_and_f():
         call.right_release(10, 50),
         call.key("f"),
     ]
+
+
+def _select_all(pane, geometries):
+    pane.set_selection_by_uuid([g.uuid for g in geometries])
+    assert pane.get_selected_geometries() == geometries
+
+
+def test_removed_object_leaves_cut_and_targets(md):
+    first, second = _add_cloud(md.data, seed=0), _add_cloud(md.data, seed=1)
+    _select_all(md.data, [first, second])
+    mode = ClipMode(md.viewport, md.viewport.clip_cut, lambda text: None)
+    mode.activate()
+    cut = md.viewport.clip_cut
+    _drag(mode, (100, 100), (100, 60))
+    md.viewport._interaction_mode, md.viewport._active_mode = "clip", mode
+
+    md.data.remove([second])
+    md.data.render(defer_render=True)
+
+    assert cut.geometries == [first]
+    assert _planes(second) == []
+    assert _planes(first) == [cut.plane]
+
+    _drag(mode, (100, 100), (100, 100))
+    _drag(mode, (100, 100), (100, 60))
+    assert cut.geometries == [first]
+
+
+def test_removing_all_clipped_clears_cut(md):
+    cloud = _add_cloud(md.data)
+    mode = _active(md, cloud)
+    cut = md.viewport.clip_cut
+    _drag(mode, (100, 100), (100, 60))
+    md.viewport._interaction_mode, md.viewport._active_mode = "clip", mode
+
+    md.data.remove([cloud])
+    md.data.render(defer_render=True)
+
+    assert not cut.has_pose
+    assert _planes(cloud) == []
+
+    _drag(mode, (100, 100), (100, 60))
+    mode.key("f")
+    assert not cut.has_pose
+
+
+def test_pose_without_geometries_recuts_targets(md):
+    cloud = _add_cloud(md.data)
+    mode = _active(md, cloud)
+    cut = md.viewport.clip_cut
+    _drag(mode, (100, 100), (100, 60))
+    origin, normal = _pose(cut)
+    cut.set_objects([])
+
+    mode.key("f")
+    _drag(mode, (100, 100), (100, 60))
+
+    assert cut.geometries == [cloud]
+    np.testing.assert_allclose(_pose(cut)[1], normal)
+    assert _pose(cut)[0] @ normal > origin @ normal
+
+
+def test_cut_emptied_mid_drag_stops_pushing(md):
+    cloud = _add_cloud(md.data)
+    mode = _active(md, cloud)
+    cut = md.viewport.clip_cut
+    mode.right_press(100, 100)
+    mode.right_move(100, 60, False)
+    origin = _pose(cut)[0]
+
+    cut.set_objects([])
+    mode.right_move(100, 20, False)
+    mode.right_release(100, 20)
+
+    np.testing.assert_allclose(_pose(cut)[0], origin)
+
+
+def test_lod_ends_on_dragged_geometries(md, monkeypatch):
+    first, second = _add_cloud(md.data, seed=0), _add_cloud(md.data, seed=1)
+    _select_all(md.data, [first, second])
+    mode = ClipMode(md.viewport, md.viewport.clip_cut, lambda text: None)
+    mode.activate()
+    calls = []
+    for name, geometry in (("first", first), ("second", second)):
+        monkeypatch.setattr(geometry.lod, "begin", lambda n=name: calls.append(n))
+        monkeypatch.setattr(geometry.lod, "end", lambda n=name: calls.append(n))
+
+    mode.right_press(100, 100)
+    mode.right_move(100, 60, False)
+    md.viewport.clip_cut.set_objects([first])
+    mode.right_release(100, 60)
+
+    assert calls == ["first", "second", "first", "second"]
+
+
+def test_new_press_ends_running_drag(md, monkeypatch):
+    cloud = _add_cloud(md.data)
+    mode = _active(md, cloud)
+    calls = []
+    monkeypatch.setattr(cloud.lod, "begin", lambda: calls.append("begin"))
+    monkeypatch.setattr(cloud.lod, "end", lambda: calls.append("end"))
+
+    mode.right_press(100, 100)
+    mode.right_move(100, 60, False)
+    mode.right_press(100, 100)
+    assert calls == ["begin", "end"]
+
+    mode.right_release(100, 100)
+    assert calls == ["begin", "end"]
+    assert md.viewport.clip_cut.geometries == []
+
+
+def test_leaving_mode_releases_it(md):
+    window = md.viewport.vtk_widget.GetRenderWindow()
+    window.GetInteractor.return_value = vtk.vtkGenericRenderWindowInteractor()
+    viewport = md.viewport
+
+    viewport.set_mode(ViewerModes.CLIP)
+    mode = weakref.ref(viewport._active_mode)
+    viewport.set_mode(ViewerModes.VIEWING)
+    gc.collect()
+
+    assert mode() is None
+
+
+def test_style_cleanup_stops_forwarding():
+    mode = Mock()
+    interactor = vtk.vtkGenericRenderWindowInteractor()
+    style = ClipInteractorStyle(mode)
+    interactor.SetInteractorStyle(style)
+
+    style.cleanup()
+    interactor.InvokeEvent("RightButtonPressEvent")
+
+    assert mode.mock_calls == []

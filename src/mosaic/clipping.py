@@ -10,7 +10,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 from vtkmodules.vtkCommonDataModel import vtkPlane
 
-__all__ = ["ClipCut", "clip_targets", "eligible"]
+__all__ = ["ClipCut", "bounds", "clip_targets", "eligible"]
 
 
 def eligible(geometry) -> bool:
@@ -62,6 +62,25 @@ def clip_targets(data_pane, models_pane) -> list:
     return [
         g for pane in panes for g in pane.container.data if g.visible and eligible(g)
     ]
+
+
+def bounds(geometries: list) -> tuple:
+    """Return the combined bounds of geometries.
+
+    Parameters
+    ----------
+    geometries : list of Geometry
+        At least one geometry.
+
+    Returns
+    -------
+    tuple of float
+        Bounds (xmin, xmax, ymin, ymax, zmin, zmax) of their actors.
+    """
+    actor_bounds = np.array([g.actor.GetBounds() for g in geometries])
+    lower = actor_bounds[:, 0::2].min(axis=0)
+    upper = actor_bounds[:, 1::2].max(axis=0)
+    return tuple(np.column_stack([lower, upper]).ravel())
 
 
 def _mappers(geometry):
@@ -192,11 +211,29 @@ class ClipCut:
             Smallest and largest projection of the combined bounds corners
             on the normal.
         """
-        bounds = np.array([g.actor.GetBounds() for g in self._geometries])
-        lower, upper = bounds[:, 0::2].min(axis=0), bounds[:, 1::2].max(axis=0)
-        corners = _corners(np.column_stack([lower, upper]).ravel())
+        corners = _corners(bounds(self._geometries))
         depths = corners @ np.array(self.plane.GetNormal())
         return float(depths.min()), float(depths.max())
+
+    def retain(self, geometries: list) -> None:
+        """Drop clipped geometries that are not in ``geometries``.
+
+        Parameters
+        ----------
+        geometries : list of Geometry
+            Geometries still in the session. The cut is removed when none
+            of its geometries is among them.
+        """
+        alive = set(map(id, geometries))
+        remaining = [g for g in self._geometries if id(g) in alive]
+        if len(remaining) == len(self._geometries):
+            return None
+
+        if remaining:
+            self.set_objects(remaining)
+        else:
+            self.clear()
+        return None
 
     def clear(self) -> None:
         """Remove the cut from all geometries and forget its pose."""

@@ -539,6 +539,9 @@ class App(QMainWindow):
         self.cdata.models.remove_selection()
 
     def on_right_click(self, obj, event):
+        if self.cdata.viewport._interaction_mode == "clip":
+            return None
+
         self.cdata.data.deselect()
         self.cdata.models.deselect()
 
@@ -706,6 +709,7 @@ class App(QMainWindow):
         )
 
         self.status_indicator.connect_signals()
+        self.cdata.viewport.status_message.connect(self.status_indicator.show_task)
 
         from .widgets.appsettings import AppSettingsPanel
 
@@ -1156,6 +1160,10 @@ class App(QMainWindow):
             lambda: self._transition_modes(ViewerModes.SCULPT)
         )
 
+        clip_action = QAction(icon("ph.scissors"), "Clip", self)
+        clip_action.setShortcut(QKeySequence("K"))
+        clip_action.triggered.connect(lambda: self._transition_modes(ViewerModes.CLIP))
+
         curve_action = QAction(icon("ph.path"), "Curve Drawing", self)
         curve_action.setShortcut(QKeySequence("Shift+A"))
         curve_action.triggered.connect(
@@ -1225,6 +1233,7 @@ class App(QMainWindow):
         interact_menu.addSeparator()
 
         interact_menu.addAction(sculpt_action)
+        interact_menu.addAction(clip_action)
 
     def open_batch_pipeline(self):
         """Open the PipelineBuilderDialog dialog."""
@@ -1414,6 +1423,18 @@ class App(QMainWindow):
         self.cdata.register_session_hook(
             self._tomogram_link.collect, self._tomogram_link.restore
         )
+        self.cdata.register_session_hook(self._collect_clip, self._restore_clip)
+
+    def _collect_clip(self) -> dict:
+        panes = (self.cdata.data, self.cdata.models)
+        uuids = {g.uuid for pane in panes for g in pane.container.data}
+        return {"clip": self.cdata.viewport.clip_cut.to_state(uuids)}
+
+    def _restore_clip(self, meta: dict) -> None:
+        panes = (self.cdata.data, self.cdata.models)
+        geometries = {g.uuid: g for pane in panes for g in pane.container.data}
+        self.cdata.viewport.clip_cut.from_state(meta.get("clip"), geometries)
+        return None
 
     def _show_volume_viewer(self) -> None:
         if not self.volume_viewer.isVisible():
@@ -1551,6 +1572,7 @@ class App(QMainWindow):
 
         self._tomogram_link.set(None, load=False)
         self.status_indicator.clear_persistent_task()
+        self.cdata.viewport.clip_cut.clear()
         self.cdata.reset()
         self.cdata.viewport.render(defer_render=True)
         self._current_session_path = None

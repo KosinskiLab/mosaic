@@ -6,7 +6,7 @@ from vtkmodules.vtkCommonDataModel import vtkPlane
 from vtkmodules.vtkCommonTransforms import vtkTransform
 
 from mosaic import lod
-from mosaic.clipping import ClipCut, clip_targets, eligible
+from mosaic.clipping import ClipCut, bounds, clip_targets, eligible
 from mosaic.geometry import Geometry, SegmentationGeometry
 
 
@@ -276,3 +276,15 @@ def test_state_round_trip_skips_missing():
     assert restored.geometries == []
     assert restored.plane not in _planes(a.actor.GetMapper())
     assert restored.to_state({a.uuid}) is None
+
+
+def test_bounds_merges_geometries():
+    first = _cloud(seed=0, low=(10, -5, 100), high=(30, 40, 160))
+    second = _cloud(seed=1, low=(-20, 0, 120), high=(0, 60, 130))
+
+    merged = np.array(bounds([first, second]))
+
+    lower = np.minimum(first.points.min(axis=0), second.points.min(axis=0))
+    upper = np.maximum(first.points.max(axis=0), second.points.max(axis=0))
+    np.testing.assert_allclose(merged[0::2], lower, rtol=1e-6)
+    np.testing.assert_allclose(merged[1::2], upper, rtol=1e-6)

@@ -13,16 +13,10 @@ import vtk
 from qtpy.QtCore import QTimer
 from qtpy.QtGui import QColor
 
-from .clipping import ClipCut, clip_targets
+from .clipping import ClipCut, bounds, clip_targets
 from .stylesheets import Colors
 
 __all__ = ["ClipInteractorStyle", "ClipMode"]
-
-
-def _bounds(geometries) -> tuple:
-    bounds = np.array([g.actor.GetBounds() for g in geometries])
-    lower, upper = bounds[:, 0::2].min(axis=0), bounds[:, 1::2].max(axis=0)
-    return tuple(np.column_stack([lower, upper]).ravel())
 
 
 class ClipMode:
@@ -46,9 +40,11 @@ class ClipMode:
         self._notify = notify
         self._targets = []
         self._renderer = None
+        self._style = None
         self._press = None
         self._last = None
         self._dragging = False
+        self._lod_geometries = []
 
         self._cube = vtk.vtkCubeSource()
         cutter = vtk.vtkCutter()
@@ -92,7 +88,8 @@ class ClipMode:
 
         interactor = window.GetInteractor()
         if interactor is not None:
-            interactor.SetInteractorStyle(ClipInteractorStyle(self))
+            self._style = ClipInteractorStyle(self)
+            interactor.SetInteractorStyle(self._style)
         viewport.render_vtk()
         return None
 
@@ -105,15 +102,34 @@ class ClipMode:
         if self._renderer is not None:
             self._renderer.RemoveActor(self._outline)
 
+        if self._style is not None:
+            self._style.cleanup()
+            self._style = None
+
         interactor = self._viewport.vtk_widget.GetRenderWindow().GetInteractor()
         if interactor is not None:
             interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
         return None
 
+    def retain(self, geometries: list) -> None:
+        """Drop targets that are not in ``geometries``.
+
+        Parameters
+        ----------
+        geometries : list of Geometry
+            Geometries still in the session.
+        """
+        alive = set(map(id, geometries))
+        self._targets = [g for g in self._targets if id(g) in alive]
+        return None
+
     def right_press(self, x: int, y: int) -> None:
         """Start a right-button gesture at display position ``x``, ``y``."""
+        # A release lost outside the window leaves the previous drag running.
+        if self._dragging:
+            self._end_drag()
+
         self._press = self._last = (x, y)
-        self._dragging = False
         return None
 
     def right_move(self, x: int, y: int, shift: bool) -> None:
@@ -125,6 +141,9 @@ class ClipMode:
             if np.hypot(x - self._press[0], y - self._press[1]) <= 4:
                 return None
             self._begin_drag()
+
+        if not self._cut.geometries:
+            return None
 
         dx, dy = x - self._last[0], y - self._last[1]
         self._last = (x, y)
@@ -160,7 +179,7 @@ class ClipMode:
 
     def key(self, name: str) -> None:
         """Handle key ``name``. ``f`` turns the cut to face the camera."""
-        if name.lower() != "f" or not self._cut.has_pose:
+        if name.lower() != "f" or not (self._cut.has_pose and self._cut.geometries):
             return None
 
         camera = self._renderer.GetActiveCamera()
@@ -170,26 +189,30 @@ class ClipMode:
 
     def _begin_drag(self):
         self._dragging = True
+        if not (self._cut.has_pose and self._cut.geometries):
+            self._cut.set_objects(self._targets)
+
         if not self._cut.has_pose:
             camera = self._renderer.GetActiveCamera()
-            self._cut.set_objects(self._targets)
             self._cut.place_facing(
-                camera.GetDirectionOfProjection(), _bounds(self._targets)
+                camera.GetDirectionOfProjection(), bounds(self._targets)
             )
 
-        for geometry in self._cut.geometries:
+        self._lod_geometries = self._cut.geometries
+        for geometry in self._lod_geometries:
             geometry.lod.begin()
         return None
 
     def _end_drag(self):
         self._dragging = False
-        for geometry in self._cut.geometries:
+        for geometry in self._lod_geometries:
             geometry.lod.end()
+        self._lod_geometries = []
         self._viewport.render_vtk()
         return None
 
     def _show_outline(self):
-        self._cube.SetBounds(_bounds(self._cut.geometries))
+        self._cube.SetBounds(bounds(self._cut.geometries))
         self._outline.SetVisibility(True)
         self._hide_timer.start()
         self._viewport.render_vtk()
@@ -215,10 +238,19 @@ class ClipInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         super().__init__()
         self._mode = mode
         self._right_down = False
-        self.AddObserver("RightButtonPressEvent", self._on_right_press)
-        self.AddObserver("RightButtonReleaseEvent", self._on_right_release)
-        self.AddObserver("MouseMoveEvent", self._on_mouse_move)
-        self.AddObserver("CharEvent", self._on_char)
+        self._observers = [
+            self.AddObserver("RightButtonPressEvent", self._on_right_press),
+            self.AddObserver("RightButtonReleaseEvent", self._on_right_release),
+            self.AddObserver("MouseMoveEvent", self._on_mouse_move),
+            self.AddObserver("CharEvent", self._on_char),
+        ]
+
+    def cleanup(self) -> None:
+        """Remove the event observers."""
+        for tag in self._observers:
+            self.RemoveObserver(tag)
+        self._observers = []
+        return None
 
     def _on_right_press(self, obj, event):
         self._right_down = True
