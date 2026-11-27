@@ -40,6 +40,7 @@ class ViewerModes(enum.Enum):
     MESH_ADD = "MeshAdd"
     CURVE = "Curve"
     SCULPT = "Sculpt"
+    CLIP = "Clip"
 
 
 class TextSpinnerLabel(QLabel):
@@ -1025,6 +1026,7 @@ class CursorModeHandler:
             # is swapped in dynamically by ``SculptMode.set_tool`` when the
             # user picks Grab/Smooth/Patch.
             ViewerModes.SCULPT: Qt.CursorShape.ArrowCursor,
+            ViewerModes.CLIP: Qt.CursorShape.ArrowCursor,
         }
 
     def update_mode(self, mode: ViewerModes):
