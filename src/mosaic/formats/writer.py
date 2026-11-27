@@ -231,7 +231,10 @@ def write_star(records, path, sampling, shape=None, relion_5_format=False, **_):
     sampling : float, optional
         Sampling override, None defaults to value associated with each record.
     shape : tuple of int, optional
-        Tomogram shape; required when ``relion_5_format`` is True.
+        Tomogram dimensions (x, y, z) in voxels at ``sampling``, used as the
+        centering origin and written as ``rlnTomoSize``. Required when
+        ``relion_5_format`` is True. RELION-5 nominally expects the unbinned
+        tilt-series dimensions, which cannot be derived from the records.
     relion_5_format : bool, optional
         Write origin-centered RELION-5 coordinates.
     """
