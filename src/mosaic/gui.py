@@ -49,6 +49,7 @@ from .data import MosaicData
 from .dialogs import ImportDataDialog
 from .icons import icon
 from .parallel import BackgroundTaskManager
+from .path_display import display_paths
 from .settings import Settings
 from .stylesheets import Colors
 from .tabs import DevelopmentTab, IntelligenceTab, ModelTab, SegmentationTab
@@ -795,6 +796,7 @@ class App(QMainWindow):
         self.recent_file_actions = []
         self.recent_menu = _style_popup(QMenu("Recent Files", self))
         self.recent_menu.setIcon(icon("ph.clock-counter-clockwise"))
+        self.recent_menu.setToolTipsVisible(True)
         for i in range(Settings.ui.max_recent_files):
             action = QAction(self)
             action.setVisible(False)
@@ -1741,9 +1743,10 @@ class App(QMainWindow):
         Settings.ui.recent_files = [x for x in Settings.ui.recent_files if exists(x)]
 
         files_to_show = list(dict.fromkeys(Settings.ui.recent_files))
-        for i, file_path in enumerate(files_to_show):
-            text = f"&{i + 1} {os.path.basename(file_path)}"
-            self.recent_file_actions[i].setText(text)
+        labels = display_paths(files_to_show)
+        for i, (file_path, label) in enumerate(zip(files_to_show, labels)):
+            self.recent_file_actions[i].setText(f"&{i + 1} {label}")
+            self.recent_file_actions[i].setToolTip(file_path)
             self.recent_file_actions[i].setData(file_path)
             self.recent_file_actions[i].setVisible(True)
 

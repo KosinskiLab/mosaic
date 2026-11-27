@@ -6,6 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import os
 from contextlib import contextmanager
 
 import vtk
@@ -549,7 +550,7 @@ class VolumeViewer(QWidget):
         self._setup_after_load()
 
     def _rebuild_load_menu(self, paths=None):
-        paths = paths or []
+        paths = [p for p in paths or [] if "://" in p or os.path.exists(p)]
 
         self._path_combo.blockSignals(True)
         self._path_combo.clear()
