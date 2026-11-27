@@ -9,241 +9,159 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from typing import TYPE_CHECKING
 
 import numpy as np
-import pyqtgraph as pg
 from numpy.typing import ArrayLike
-from qtpy.QtCore import QSize, Qt, Signal
-from qtpy.QtGui import QCloseEvent, QColor, QDoubleValidator
+from qtpy.QtCore import QSize, Signal
+from qtpy.QtGui import QCloseEvent, QIntValidator
 from qtpy.QtWidgets import (
-    QComboBox,
     QDialog,
     QGridLayout,
     QGroupBox,
     QLabel,
     QLineEdit,
     QSizePolicy,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
+from ..stylesheets import Colors
 from ..utils import Throttle
-from ..widgets.sliders import DualHandleSlider
+from ..widgets.segmented_control import SegmentedControl
+from ..widgets.sliders import HistogramRangeSlider
 
 if TYPE_CHECKING:
     from ..data import MosaicData
 
 
 class HistogramWidget(QWidget):
+    """Cluster size histogram with a range selection.
+
+    Only user input emits ``cutoff_changed``; redraws keep the bounds.
+    """
+
     cutoff_changed = Signal(float, float)
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
+        self.data = np.zeros(0)
+        self.bounds = None
+        self._log = True
 
-        self.data = []
-        self.min_value = 0
-        self.max_value = 1
-        self.bin_count = 20
-
-        self._setup_ui()
-
-    def _setup_ui(self):
-        main_layout = QVBoxLayout(self)
-
-        self.histogram_plot = pg.PlotWidget()
-        self.histogram_plot.setBackground(None)
-        self.histogram_plot.getAxis("left").setPen(pg.mkPen(color=(0, 0, 0)))
-        self.histogram_plot.getAxis("bottom").setPen(pg.mkPen(color=(0, 0, 0)))
-        self.histogram_plot.setLabel("left", "Count")
-        self.histogram_plot.setLabel("bottom", "Cluster Size")
-        self.histogram_plot.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-        # Visual reference but no longer moveable since v1.0.16
-        self.lower_cutoff_line = pg.InfiniteLine(
-            angle=90,
-            movable=False,
-            pen=pg.mkPen(QColor(70, 130, 180), width=2, style=Qt.PenStyle.DashLine),
+        self.histogram = HistogramRangeSlider()
+        self.histogram.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        self.upper_cutoff_line = pg.InfiniteLine(
-            angle=90,
-            movable=False,
-            pen=pg.mkPen(QColor(220, 70, 70), width=2, style=Qt.PenStyle.DashLine),
-        )
-        self.histogram_plot.addItem(self.lower_cutoff_line)
-        self.histogram_plot.addItem(self.upper_cutoff_line)
+        self._throttle = Throttle(self._on_slider, interval_ms=100)
+        self.histogram.rangeChanged.connect(self._throttle)
+        self.histogram.rangeReleased.connect(self._on_slider)
 
-        controls_layout = self._create_controls()
+        self.scale = SegmentedControl(["Linear", "Log"], default=1)
+        self.scale.selectionChanged.connect(self._on_scale)
 
-        self.range_slider = DualHandleSlider()
-        self._cutoff_throttle = Throttle(self._update_cutoff_values, interval_ms=100)
-        self.range_slider.rangeChanged.connect(self._cutoff_throttle)
-        self.range_slider.rangeReleased.connect(self._update_cutoff_values)
-        self.range_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
-        main_layout.addWidget(self.histogram_plot)
-        main_layout.addLayout(controls_layout)
-        main_layout.addWidget(self.range_slider)
-
-    def _create_controls(self):
-        """Create all control widgets and layouts"""
-        controls_layout = QGridLayout()
-        controls_layout.setSpacing(8)
-        controls_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.min_value_input = QLineEdit()
-        self.max_value_input = QLineEdit()
-        self.transform_combo = QComboBox()
-        self.bin_count_spinner = QSpinBox()
-
-        widget_width = 80
-        for widget in [
-            self.min_value_input,
-            self.max_value_input,
-            self.transform_combo,
-            self.bin_count_spinner,
-        ]:
-            widget.setMinimumWidth(widget_width)
-
-        validator = QDoubleValidator()
-        self.min_value_input.setValidator(validator)
-        self.max_value_input.setValidator(validator)
-
-        self.transform_combo.addItems(["Linear", "Log"])
-        self.transform_combo.currentTextChanged.connect(self._draw_histogram)
-
-        self.bin_count_spinner.setRange(5, 100)
-        self.bin_count_spinner.setValue(self.bin_count)
-        self.bin_count_spinner.valueChanged.connect(self._on_bin_count_changed)
-
-        self.min_value_input.editingFinished.connect(
-            lambda: self._handle_input_change(is_lower=True)
-        )
-        self.max_value_input.editingFinished.connect(
-            lambda: self._handle_input_change(is_lower=False)
-        )
-
-        controls_layout.addWidget(QLabel("Scale:"), 0, 0, Qt.AlignmentFlag.AlignRight)
-        controls_layout.addWidget(self.transform_combo, 0, 1)
-        controls_layout.addWidget(QLabel("Bins:"), 0, 3, Qt.AlignmentFlag.AlignRight)
-        controls_layout.addWidget(self.bin_count_spinner, 0, 4)
-
-        controls_layout.addWidget(QLabel("Min:"), 1, 0, Qt.AlignmentFlag.AlignRight)
-        controls_layout.addWidget(self.min_value_input, 1, 1)
-        controls_layout.addWidget(QLabel("Max:"), 1, 3, Qt.AlignmentFlag.AlignRight)
-        controls_layout.addWidget(self.max_value_input, 1, 4)
-
-        return controls_layout
-
-    def update_histogram(self, data: ArrayLike):
-        """Update the histogram with new data"""
-        self.data = np.asarray(data)
-
-        if self.data.size == 0:
-            try:
-                return self.histogram_plot.clear()
-            except Exception:
-                return None
-        return self._draw_histogram()
-
-    def _invert_scaling(self, value: float):
-        if self.transform_combo.currentText().lower() == "log":
-            return 10**value
-        return value
-
-    def _draw_histogram(self):
-        self.histogram_plot.clear()
-
-        data = self.data
-        log_scale = self.transform_combo.currentText().lower() == "log"
-        if log_scale:
-            data = np.log10(self.data[self.data > 0])
-
-        if data.size == 0:
-            return None
-
-        self.min_value = data.min() * 0.999
-        self.max_value = data.max() * 1.001
-
-        self._update_cutoff_values(emit=False)
-        y, x = np.histogram(data, bins=self.bin_count)
-
-        bin_centers = (x[:-1] + x[1:]) / 2
-        bar_graph = pg.BarGraphItem(
-            x=bin_centers,
-            height=y,
-            width=(x[1] - x[0]) * 0.8,
-            brush=QColor(148, 163, 184),
-        )
-        self.histogram_plot.addItem(bar_graph)
-
-        self.histogram_plot.addItem(self.lower_cutoff_line)
-        self.histogram_plot.addItem(self.upper_cutoff_line)
-
-        label = "Cluster Size" + (" (log scale)" if log_scale else "")
-        self.histogram_plot.setLabel("bottom", label)
-
-    def _update_cutoff_values(
-        self,
-        lower_value: float | None = None,
-        upper_value: float | None = None,
-        emit: bool = True,
-    ):
-        """Update cutoff values and propagate changes to UI elements."""
-
-        if lower_value is None:
-            lower_value = self.range_slider.lower_pos
-            if self.range_slider.min_val != self.min_value:
-                lower_value = self.min_value
-
-        if upper_value is None:
-            upper_value = self.range_slider.upper_pos
-            if self.range_slider.max_val != self.max_value:
-                upper_value = self.max_value
-
-        if lower_value > upper_value:
-            lower_value, upper_value = upper_value, lower_value
-
-        lower_value = max(lower_value, self.min_value)
-        upper_value = min(upper_value, self.max_value)
-
-        block = [self.range_slider, self.min_value_input, self.max_value_input]
-        for element in block:
-            element.blockSignals(True)
-
-        self.range_slider.setRange(self.min_value, self.max_value)
-        self.range_slider.setValues(lower_value, upper_value)
-
-        self.lower_cutoff_line.setValue(lower_value)
-        self.upper_cutoff_line.setValue(upper_value)
-
-        self.min_value_input.setText(f"{float(lower_value):.2f}")
-        self.max_value_input.setText(f"{float(upper_value):.2f}")
-
-        for element in block:
-            element.blockSignals(False)
-
-        if emit:
-            self.cutoff_changed.emit(
-                self._invert_scaling(lower_value), self._invert_scaling(upper_value)
+        self.min_value_input, self.max_value_input = QLineEdit(), QLineEdit()
+        for field, is_lower in (
+            (self.min_value_input, True),
+            (self.max_value_input, False),
+        ):
+            field.setValidator(QIntValidator(0, 2**31 - 1))
+            field.setFixedHeight(Colors.WIDGET_HEIGHT)
+            field.editingFinished.connect(
+                lambda lower=is_lower: self._handle_input_change(is_lower=lower)
             )
 
-    def _handle_input_change(self, is_lower: bool):
-        """Handle changes to either min/max input field."""
+        controls = QGridLayout()
+        controls.setSpacing(8)
+        controls.addWidget(QLabel("Scale"), 0, 0)
+        controls.addWidget(self.scale, 0, 1, 1, 3)
+        controls.addWidget(QLabel("Min"), 1, 0)
+        controls.addWidget(self.min_value_input, 1, 1)
+        controls.addWidget(QLabel("Max"), 1, 2)
+        controls.addWidget(self.max_value_input, 1, 3)
+        controls.setColumnStretch(1, 1)
+        controls.setColumnStretch(3, 1)
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(12)
+        layout.addWidget(self.histogram, 1)
+        layout.addLayout(controls)
+
+    def update_histogram(self, data: ArrayLike) -> None:
+        """Show new cluster sizes, keeping the chosen bounds.
+
+        Parameters
+        ----------
+        data : array_like
+            Cluster sizes.
+        """
+        previous, self.data = self.data, np.asarray(data)
+        if self.data.size == 0:
+            self.bounds = None
+            self.histogram.setData([])
+            self.min_value_input.clear()
+            self.max_value_input.clear()
+            return None
+
+        low, high = self.data.min(), self.data.max()
+        lower, upper = self.bounds or (low, high)
+        # Bounds at the edge of the data follow it, e.g. a newly merged largest cluster.
+        if previous.size and lower <= previous.min():
+            lower = low
+        if previous.size and upper >= previous.max():
+            upper = high
+
+        self.histogram.setData(self._to_axis(self.data))
+        self._show(np.clip(lower, low, high), np.clip(upper, low, high))
+        return None
+
+    def _to_axis(self, values: ArrayLike) -> np.ndarray:
+        values = np.asarray(values, dtype=float)
+        return np.log10(np.maximum(values, 1)) if self._log else values
+
+    def _from_axis(self, value: float) -> float:
+        return 10**value if self._log else value
+
+    def _show(self, lower: float, upper: float) -> None:
+        self.bounds = (lower, upper)
+        self.histogram.setSelection(*self._to_axis([lower, upper]))
+        self.min_value_input.setText(f"{lower:g}")
+        self.max_value_input.setText(f"{upper:g}")
+        return None
+
+    def _set_bounds(self, lower: float, upper: float) -> None:
+        low, high = self.data.min(), self.data.max()
+        lower, upper = sorted(
+            np.clip(round(value), low, high) for value in (lower, upper)
+        )
+        self._show(lower, upper)
+        self.cutoff_changed.emit(float(lower), float(upper))
+        return None
+
+    def _on_slider(self, lower: float, upper: float) -> None:
+        if self.data.size:
+            self._set_bounds(self._from_axis(lower), self._from_axis(upper))
+        return None
+
+    def _handle_input_change(self, is_lower: bool) -> None:
+        """Apply a typed bound, or restore the field if it is not a number."""
+        if not self.data.size:
+            return None
+
+        field = self.min_value_input if is_lower else self.max_value_input
+        lower, upper = self.bounds
         try:
-            input_field = self.min_value_input if is_lower else self.max_value_input
-            value = float(input_field.text())
+            value = float(field.text())
+        except ValueError:
+            return self._show(lower, upper)
 
-            if is_lower:
-                return self._update_cutoff_values(lower_value=value)
-            return self._update_cutoff_values(upper_value=value)
+        if is_lower:
+            return self._set_bounds(value, upper)
+        return self._set_bounds(lower, value)
 
-        except (ValueError, AttributeError):
-            line = self.lower_cutoff_line if is_lower else self.upper_cutoff_line
-            input_field.setText(str(int(line.value())))
-
-    def _on_bin_count_changed(self, value: int):
-        """Update the number of bins used in the histogram"""
-        self.bin_count = value
-        self._draw_histogram()
+    def _on_scale(self, text: str) -> None:
+        self._log = text == "Log"
+        if self.data.size:
+            self.histogram.setData(self._to_axis(self.data))
+            self._show(*self.bounds)
+        return None
 
 
 class HistogramDialog(QDialog):
@@ -289,7 +207,6 @@ class HistogramDialog(QDialog):
 
     def closeEvent(self, event: QCloseEvent):
         """Disconnect when dialog closes"""
-        self.histogram_widget.histogram_plot.close()
         try:
             self.cdata.data.data_changed.disconnect(self.update_histogram)
             self.histogram_widget.cutoff_changed.disconnect(self._on_cutoff_changed)
