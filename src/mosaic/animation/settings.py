@@ -67,7 +67,7 @@ class AnimationSettings(QGroupBox):
         frame_layout.setColumnStretch(1, 1)
         frame_layout.setColumnStretch(3, 1)
 
-        frame_layout.addWidget(QLabel("Start:"), 0, 0)
+        frame_layout.addWidget(QLabel("Start"), 0, 0)
         self.global_start_spin = QSpinBox()
         self.global_start_spin.setRange(0, 2 << 29)
         self.global_start_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
@@ -77,7 +77,7 @@ class AnimationSettings(QGroupBox):
         )
         frame_layout.addWidget(self.global_start_spin, 0, 1)
 
-        frame_layout.addWidget(QLabel("Duration:"), 0, 2)
+        frame_layout.addWidget(QLabel("Duration"), 0, 2)
         self.duration_spin = QSpinBox()
         self.duration_spin.setRange(1, 2 << 29)
         self.duration_spin.setSuffix(" f")
@@ -86,7 +86,7 @@ class AnimationSettings(QGroupBox):
         self.duration_spin.valueChanged.connect(self._on_duration_changed)
         frame_layout.addWidget(self.duration_spin, 0, 3)
 
-        self._rate_label = QLabel("Rate:")
+        self._rate_label = QLabel("Rate")
         frame_layout.addWidget(self._rate_label, 1, 0)
         self.rate_spin = QDoubleSpinBox()
         self.rate_spin.setRange(0.1, 10.0)
@@ -228,7 +228,7 @@ class AnimationSettings(QGroupBox):
                 widget.textChanged.connect(lambda x, lab=label: self.on_change(x, lab))
 
             label_clean = label.title().replace("_", " ")
-            self.params_layout.addRow(f"{label_clean}:", widget)
+            self.params_layout.addRow(label_clean, widget)
             self.parameter_widgets[label] = widget
 
     def on_change(self, value: Any, key: str):
@@ -287,13 +287,13 @@ class ExportDialog(QDialog):
         format_layout = QGridLayout(format_group)
         format_layout.setSpacing(8)
 
-        format_layout.addWidget(QLabel("Format:"), 0, 0)
+        format_layout.addWidget(QLabel("Format"), 0, 0)
         self.format_combo = QComboBox()
         self.format_combo.addItems(["MP4", "AVI", "WebM", "PNG Sequence"])
         self.format_combo.currentTextChanged.connect(self._on_format_changed)
         format_layout.addWidget(self.format_combo, 0, 1)
 
-        format_layout.addWidget(QLabel("Quality:"), 1, 0)
+        format_layout.addWidget(QLabel("Quality"), 1, 0)
         self.quality_spin = QSpinBox()
         self.quality_spin.setRange(10, 100)
         self.quality_spin.setValue(80)
@@ -306,7 +306,7 @@ class ExportDialog(QDialog):
         resolution_layout = QGridLayout(resolution_group)
         resolution_layout.setSpacing(8)
 
-        resolution_layout.addWidget(QLabel("Preset:"), 0, 0)
+        resolution_layout.addWidget(QLabel("Preset"), 0, 0)
         self.resolution_combo = QComboBox()
         self.resolution_combo.addItems(list(self.RESOLUTION_PRESETS.keys()))
         self.resolution_combo.currentTextChanged.connect(
@@ -314,7 +314,7 @@ class ExportDialog(QDialog):
         )
         resolution_layout.addWidget(self.resolution_combo, 0, 1, 1, 3)
 
-        resolution_layout.addWidget(QLabel("Width:"), 1, 0)
+        resolution_layout.addWidget(QLabel("Width"), 1, 0)
         self.width_spin = QSpinBox()
         self.width_spin.setRange(128, 7680)
         self.width_spin.setValue(self.current_width)
@@ -322,7 +322,7 @@ class ExportDialog(QDialog):
         self.width_spin.valueChanged.connect(self._on_width_changed)
         resolution_layout.addWidget(self.width_spin, 1, 1)
 
-        resolution_layout.addWidget(QLabel("Height:"), 1, 2)
+        resolution_layout.addWidget(QLabel("Height"), 1, 2)
         self.height_spin = QSpinBox()
         self.height_spin.setRange(128, 4320)
         self.height_spin.setValue(self.current_height)
@@ -336,7 +336,7 @@ class ExportDialog(QDialog):
         quality_layout = QGridLayout(quality_group)
         quality_layout.setSpacing(8)
 
-        quality_layout.addWidget(QLabel("Supersampling:"), 0, 0)
+        quality_layout.addWidget(QLabel("Supersampling"), 0, 0)
         self.magnification_spin = QSpinBox()
         self.magnification_spin.setRange(1, 8)
         self.magnification_spin.setValue(2)
@@ -345,7 +345,7 @@ class ExportDialog(QDialog):
         )
         quality_layout.addWidget(self.magnification_spin, 0, 1)
 
-        quality_layout.addWidget(QLabel("Multisampling:"), 0, 2)
+        quality_layout.addWidget(QLabel("Multisampling"), 0, 2)
         self.multisamples_spin = QSpinBox()
         self.multisamples_spin.setRange(0, 16)
         self.multisamples_spin.setValue(8)
@@ -358,27 +358,27 @@ class ExportDialog(QDialog):
         timing_layout = QGridLayout(timing_group)
         timing_layout.setSpacing(8)
 
-        timing_layout.addWidget(QLabel("Frame Rate:"), 0, 0)
+        timing_layout.addWidget(QLabel("Frame Rate"), 0, 0)
         self.frame_rate = QSpinBox()
         self.frame_rate.setRange(1, 120)
         self.frame_rate.setValue(30)
         self.frame_rate.setSuffix(" fps")
         timing_layout.addWidget(self.frame_rate, 0, 1)
 
-        timing_layout.addWidget(QLabel("Stride:"), 0, 2)
+        timing_layout.addWidget(QLabel("Stride"), 0, 2)
         self.frame_stride = QSpinBox()
         self.frame_stride.setRange(1, 100)
         self.frame_stride.setValue(1)
         self.frame_stride.setToolTip("Export every Nth frame")
         timing_layout.addWidget(self.frame_stride, 0, 3)
 
-        timing_layout.addWidget(QLabel("Start:"), 1, 0)
+        timing_layout.addWidget(QLabel("Start"), 1, 0)
         self.start_frame = QSpinBox()
         self.start_frame.setRange(0, self.total_frames)
         self.start_frame.setValue(0)
         timing_layout.addWidget(self.start_frame, 1, 1)
 
-        timing_layout.addWidget(QLabel("End:"), 1, 2)
+        timing_layout.addWidget(QLabel("End"), 1, 2)
         self.end_frame = QSpinBox()
         self.end_frame.setRange(0, self.total_frames)
         self.end_frame.setValue(self.total_frames)

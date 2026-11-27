@@ -96,7 +96,7 @@ class SettingsPanel(QFrame):
 
             for setting in self.config["settings"][offset:]:
                 widget = create_setting_widget(setting)
-                self._add_form_row(f"{setting['label']}:", widget)
+                self._add_form_row(setting["label"], widget)
 
         # Track where method-specific rows start
         self.method_row_start = None
@@ -192,7 +192,7 @@ class SettingsPanel(QFrame):
         settings = self.config.get("method_settings", {}).get(method, [])
         for setting in settings:
             widget = create_setting_widget(setting)
-            self._add_form_row(f"{setting['label']}:", widget)
+            self._add_form_row(setting["label"], widget)
             self.current_method_widgets.append(widget)
 
         QTimer.singleShot(0, self.adjustSize)

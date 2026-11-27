@@ -107,7 +107,7 @@ class MeshMappingDialog(QDialog):
 
         output_group = QGroupBox("Output")
         output_layout = QHBoxLayout(output_group)
-        output_label = QLabel("Directory:")
+        output_label = QLabel("Directory")
         self.output_selector = PathSelector(
             placeholder="Output directory for coarse-grained mesh",
             mode="directory",
@@ -121,7 +121,7 @@ class MeshMappingDialog(QDialog):
         config_layout.setSpacing(8)
 
         fit_layout = QHBoxLayout()
-        fit_label = QLabel("Surface:")
+        fit_label = QLabel("Surface")
         self.fit_combo = QComboBox()
         for name, data in self.fits:
             self.fit_combo.addItem(name, data)
@@ -130,7 +130,7 @@ class MeshMappingDialog(QDialog):
         config_layout.addLayout(fit_layout)
 
         edge_layout = QHBoxLayout()
-        edge_label = QLabel("Output Edge Length:")
+        edge_label = QLabel("Output Edge Length")
         self.edge_length = QDoubleSpinBox()
         self.edge_length.setValue(40.0)
         self.edge_length.setRange(0, 1e32)

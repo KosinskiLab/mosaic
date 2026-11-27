@@ -72,7 +72,7 @@ class ImportDataDialog(QDialog):
         grid_layout.addWidget(self.y_label, 0, 2)
         grid_layout.addWidget(self.z_label, 0, 3)
 
-        sampling_label = QLabel("Sampling Rate:")
+        sampling_label = QLabel("Sampling Rate")
         sampling_settings = {
             "label": "Sampling Rate",
             "type": "text",
@@ -90,7 +90,7 @@ class ImportDataDialog(QDialog):
         grid_layout.addWidget(self.sampling_y, 1, 2)
         grid_layout.addWidget(self.sampling_z, 1, 3)
 
-        offset_label = QLabel("Offset:")
+        offset_label = QLabel("Offset")
         offset_settings = {
             "label": "Offset",
             "type": "text",
@@ -108,7 +108,7 @@ class ImportDataDialog(QDialog):
         grid_layout.addWidget(self.offset_y, 2, 2)
         grid_layout.addWidget(self.offset_z, 2, 3)
 
-        self.scale_label = scale_label = QLabel("Scale Factor:")
+        self.scale_label = scale_label = QLabel("Scale Factor")
         scale_input = {
             "label": "Scale Factor",
             "type": "text",

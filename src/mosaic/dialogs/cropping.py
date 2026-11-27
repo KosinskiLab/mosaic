@@ -111,7 +111,7 @@ class DistanceCropDialog(QDialog):
         settings_layout.setSpacing(8)
 
         distance_layout = QHBoxLayout()
-        distance_label = QLabel("Max Distance:")
+        distance_label = QLabel("Max Distance")
         distance_layout.addWidget(distance_label)
         distance_layout.addStretch()
 
@@ -126,7 +126,7 @@ class DistanceCropDialog(QDialog):
         settings_layout.addLayout(distance_layout)
 
         direction_layout = QHBoxLayout()
-        direction_label = QLabel("Keep:")
+        direction_label = QLabel("Keep")
         direction_layout.addWidget(direction_label)
         direction_layout.addStretch()
 

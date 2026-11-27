@@ -85,7 +85,7 @@ class ComputePanel(QGroupBox):
             ]
         )
         self._type_combo.currentTextChanged.connect(self._on_type_changed)
-        self._form.addRow("Type:", self._type_combo)
+        self._form.addRow("Type", self._type_combo)
 
         bottom = QHBoxLayout()
         self._ignore_cache_cb = QCheckBox("Ignore cache")

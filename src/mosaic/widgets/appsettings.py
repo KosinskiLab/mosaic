@@ -241,7 +241,7 @@ def _checkbox_row(label_text: str, checked: bool, tooltip: str = ""):
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(12)
 
-    label = QLabel(f"{label_text}:")
+    label = QLabel(label_text)
     cb = QCheckBox()
     cb.setChecked(checked)
 
@@ -372,7 +372,7 @@ class AppSettingsPanel(QFrame):
     def _build_theme_section(self):
         layout = self._body_layout
 
-        bg_label = QLabel("Background:")
+        bg_label = QLabel("Background")
         layout.addWidget(bg_label)
 
         cards_row = QHBoxLayout()
@@ -447,7 +447,7 @@ class AppSettingsPanel(QFrame):
         )
         layout.addWidget(grad_row)
 
-        layout.addWidget(QLabel("Lighting:"))
+        layout.addWidget(QLabel("Lighting"))
 
         lighting_labels = [lbl for _, lbl, _ in LIGHTING_MODES]
         lighting_tooltips = {lbl: tip for _, lbl, tip in LIGHTING_MODES}
@@ -529,7 +529,7 @@ class AppSettingsPanel(QFrame):
         preset_row = QHBoxLayout()
         preset_row.setContentsMargins(0, 0, 0, 0)
         preset_row.setSpacing(12)
-        preset_row.addWidget(QLabel("Rendering:"))
+        preset_row.addWidget(QLabel("Rendering"))
         preset_row.addWidget(self._preset_control, 1)
         self._body_layout.addLayout(preset_row)
 
@@ -636,7 +636,7 @@ class AppSettingsPanel(QFrame):
         smooth_layout.setContentsMargins(0, 0, 0, 0)
         smooth_layout.setSpacing(12)
 
-        smooth_label = QLabel("Smoothing:")
+        smooth_label = QLabel("Smoothing")
         smooth_layout.addWidget(smooth_label, 0, Qt.AlignmentFlag.AlignVCenter)
         smooth_layout.addStretch(1)
 

@@ -62,7 +62,7 @@ def _add_to_grid(
     wide: bool = False,
 ):
     """Add a label: widget pair to the grid at the given logical column."""
-    label = QLabel(f"{label_text}:")
+    label = QLabel(label_text)
     widget.setFixedHeight(Colors.WIDGET_HEIGHT)
 
     width, gcol = 1, 2 * col
@@ -305,7 +305,7 @@ class OperationCardWidget(QFrame):
             file_layout.setSpacing(8)
 
             count_layout = QHBoxLayout()
-            count_layout.addWidget(QLabel("Selected:"))
+            count_layout.addWidget(QLabel("Selected"))
             self.file_count_label = QLabel("0 files")
             self.file_count_label.setStyleSheet(
                 f"color: {Colors.TEXT_MUTED}; font-weight: 500;"
