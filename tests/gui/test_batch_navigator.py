@@ -227,7 +227,22 @@ class TestSessionHeader:
         widgets = [w for w in items if w is not None]
         header = widget._header
         assert widgets == [header._add_btn, header._reload_btn, header._menu_btn]
-        assert header._add_btn.text() == "Add sessions"
+        assert header._add_btn.text() == ""
+        assert not header._add_btn.icon().isNull()
+        assert header._add_btn.toolTip() == "Add session files"
+        assert layout.itemAt(2).spacerItem() is not None
+        assert not header._action("Clear all sessions").icon().isNull()
+
+    def test_menu_position_above_button_right_aligned(self, qapp):
+        from qtpy.QtCore import QPoint, QRect, QSize
+
+        from mosaic.widgets.container_list import _menu_pos_above
+
+        button = QRect(QPoint(200, 500), QSize(24, 24))
+        pos = _menu_pos_above(button, QSize(150, 80))
+        assert pos == QPoint(200 + 24 - 150, 500 - 80)
+        assert pos.y() + 80 == button.top()
+        assert pos.x() + 150 == button.right() + 1
 
     def test_autosave_action_toggles_flag(self, qapp):
         widget = SessionListWidget(cdata=Mock())
@@ -321,15 +336,17 @@ class TestSidebarSessionIntegration:
         sidebar.remove_widget("Sessions")
         assert len(session_widget.session_files) == 0
 
-    def test_add_button_fits_at_minimum_width(self, qapp):
+    def test_header_buttons_fit_at_minimum_width(self, qapp):
         sidebar = ObjectBrowserSidebar()
         session_widget = SessionListWidget(cdata=Mock())
         sidebar.add_widget("Sessions", session_widget)
         sidebar.resize(sidebar.minimumWidth(), 400)
         sidebar.show()
         qapp.processEvents()
-        button = session_widget._header._add_btn
-        assert button.width() >= button.sizeHint().width()
+        header = session_widget._header
+        for button in (header._add_btn, header._reload_btn, header._menu_btn):
+            assert button.width() == button.height()
+            assert header.rect().contains(button.geometry())
         sidebar.close()
 
     def test_header_menu_is_opaque(self, qapp, app_stylesheet):

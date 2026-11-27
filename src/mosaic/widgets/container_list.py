@@ -5,7 +5,9 @@ from qtpy.QtCore import (
     QEvent,
     QItemSelection,
     QItemSelectionModel,
+    QPoint,
     QRect,
+    QSize,
     Qt,
     Signal,
 )
@@ -798,6 +800,27 @@ class MetadataItemDelegate(QStyledItemDelegate):
         painter.restore()
 
 
+def _menu_pos_above(button_rect: QRect, menu_size: QSize) -> QPoint:
+    """Top-left for a menu whose bottom-right sits above a button's top-right.
+
+    Parameters
+    ----------
+    button_rect : QRect
+        Button rectangle in global coordinates.
+    menu_size : QSize
+        Size of the menu.
+
+    Returns
+    -------
+    QPoint
+        Global position of the menu's top-left corner.
+    """
+    return QPoint(
+        button_rect.right() + 1 - menu_size.width(),
+        button_rect.top() - menu_size.height(),
+    )
+
+
 class _CheckableMenu(QMenu):
     """Menu that stays open when a checkable action is clicked."""
 
@@ -842,12 +865,12 @@ class _SessionHeader(QWidget):
         lay.setContentsMargins(0, 2, 0, 4)
         lay.setSpacing(4)
 
-        self._add_btn = QPushButton("Add sessions")
-        self._add_btn.setFixedHeight(h)
+        self._add_btn = QPushButton()
+        self._add_btn.setIcon(icon("ph.plus", role="muted"))
+        self._add_btn.setFixedSize(h, h)
         self._add_btn.setToolTip("Add session files")
         self._add_btn.clicked.connect(session_widget.add_sessions)
         lay.addWidget(self._add_btn)
-        lay.addStretch(1)
 
         self._reload_btn = QPushButton()
         self._reload_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
@@ -855,6 +878,7 @@ class _SessionHeader(QWidget):
         self._reload_btn.setToolTip("Reload current session")
         self._reload_btn.clicked.connect(session_widget.reload_current)
         lay.addWidget(self._reload_btn)
+        lay.addStretch(1)
 
         self._menu_btn = QPushButton()
         self._menu_btn.setIcon(icon("ph.gear", role="muted"))
@@ -891,7 +915,9 @@ class _SessionHeader(QWidget):
         load_tomogram.toggled.connect(self._on_load_tomogram_toggled)
         menu.addSeparator()
 
-        clear = menu.addAction("Clear all sessions")
+        clear = menu.addAction(
+            _icon_factory("ph.trash", role="muted"), "Clear all sessions"
+        )
         clear.triggered.connect(
             lambda: self._session_widget.clear_sessions_with_prompt()
         )
@@ -901,8 +927,9 @@ class _SessionHeader(QWidget):
         return next(a for a in self._menu.actions() if a.text() == text)
 
     def _show_menu(self):
-        pos = self._menu_btn.mapToGlobal(self._menu_btn.rect().bottomLeft())
-        self._menu.exec(pos)
+        top_left = self._menu_btn.mapToGlobal(QPoint(0, 0))
+        button_rect = QRect(top_left, self._menu_btn.size())
+        self._menu.exec(_menu_pos_above(button_rect, self._menu.sizeHint()))
 
     def _on_auto_save_toggled(self, checked):
         self._session_widget._auto_save = checked
@@ -927,6 +954,8 @@ class _SessionHeader(QWidget):
 
         self._reload_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
         self._menu_btn.setIcon(icon("ph.gear", role="muted"))
+        self._add_btn.setIcon(icon("ph.plus", role="muted"))
+        self._action("Clear all sessions").setIcon(icon("ph.trash", role="muted"))
 
 
 def confirm_session_overwrite(parent, source: str) -> bool:
