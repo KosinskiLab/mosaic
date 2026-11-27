@@ -256,3 +256,32 @@ def test_wheel_leaves_combo_selection(qapp, dataset, monkeypatch):
     qapp.sendEvent(combo, wheel)
     assert combo.currentIndex() == index
     choose.assert_not_called()
+
+
+def test_empty_folder_shows_unresolved(qapp, dataset, tmp_path):
+    sessions, tomos = dataset
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    dlg = LinkTomogramsDialog(sessions)
+    dlg.set_folder(str(empty))
+    assert [dlg._status(i) for i in range(len(sessions))] == ["No match"] * 3
+    assert dlg.footer.info_label.text() == "3 to resolve"
+
+
+def test_cleared_folder_hides_all_statuses(qapp, dataset):
+    sessions, tomos = dataset
+    update_session_meta(sessions[0], {"tomogram": str(tomos / "TS_012.mrc")})
+    dlg = LinkTomogramsDialog(sessions)
+    dlg.set_folder("")
+    assert [dlg._status(i) for i in range(len(sessions))] == ["", "", ""]
+    assert dlg.footer.info_label.isHidden()
+
+
+def test_cleared_key_uses_auto_matcher(qapp, dataset):
+    sessions, tomos = dataset
+    dlg = LinkTomogramsDialog(sessions)
+    dlg.set_folder(str(tomos))
+    dlg.set_key(r"TS_\d+_seg")
+    assert dlg.footer.info_label.text() == "3 to resolve"
+    dlg.set_key("")
+    assert dlg.footer.info_label.text() == "1 to resolve"
