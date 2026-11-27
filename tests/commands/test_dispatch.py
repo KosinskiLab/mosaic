@@ -140,3 +140,29 @@ class TestMeasureFilterDispatch:
         assert len(remaining) == 8
         for g in remaining:
             assert g.get_number_of_points() >= 30
+
+
+def test_text_parameter_keeps_numeric_looking_value(make_session):
+    session = make_session(n=2)
+    _dispatch(session, "merge #0 #1 name=001")
+    names = [g._meta.get("name") for g in session._all_geometries()]
+    assert "001" in names
+
+
+def test_ball_pivoting_script_radius(make_session):
+    import numpy as np
+
+    from mosaic.geometry import Geometry
+
+    session = make_session(n=0)
+    t, p = np.meshgrid(np.linspace(0.1, np.pi - 0.1, 20), np.linspace(0, 2 * np.pi, 20))
+    sphere = np.stack(
+        [np.sin(t) * np.cos(p), np.sin(t) * np.sin(p), np.cos(t)], axis=-1
+    ).reshape(-1, 3)
+    geometry = Geometry(points=(sphere * 50).astype(np.float32))
+    session._data.add(geometry)
+    session._order.append(geometry)
+
+    _dispatch(session, "fit ball_pivoting #0 radii=50")
+
+    assert len(session._all_geometries()) == 2
