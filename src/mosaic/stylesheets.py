@@ -67,10 +67,6 @@ class Colors:
         "BG_TERTIARY": "#f4f4f5",  # Surface tint (Zinc 100)
         "BG_HOVER": "rgba(0, 0, 0, 0.06)",
         "BG_PRESSED": "rgba(0, 0, 0, 0.10)",
-        "SUCCESS": "#10b981",
-        "WARNING": "#f59e0b",
-        "WARNING_TEXT": "#b45309",
-        "ERROR": "#ef4444",
     }
 
     DARK = {
@@ -85,10 +81,6 @@ class Colors:
         "BG_TERTIARY": "#27272a",  # Surface tint (Zinc 800)
         "BG_HOVER": "rgba(255, 255, 255, 0.06)",
         "BG_PRESSED": "rgba(255, 255, 255, 0.10)",
-        "SUCCESS": "#34d399",
-        "WARNING": "#fbbf24",
-        "WARNING_TEXT": "#fbbf24",
-        "ERROR": "#f87171",
     }
 
     @classmethod
@@ -120,6 +112,10 @@ class Colors:
     def is_dark(cls):
         """Return True if the current palette is dark."""
         return cls.PRIMARY == cls.DARK["PRIMARY"]
+
+    SUCCESS = "#178c65"  # Emerald
+    WARNING = "#a9701b"  # Amber
+    ERROR = "#de4151"  # Ruby
 
     RADIUS = 6  # Standard border radius for controls (px)
     WIDGET_HEIGHT = 30  # Standard height for input widgets (px)

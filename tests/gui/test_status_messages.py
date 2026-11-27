@@ -25,7 +25,7 @@ def test_missing_warning_persists_until_cleared(indicator):
         "Tomogram missing: ", path="/d/TS_031_rec.mrc", warning=True, persist=True
     )
     assert not indicator._task_timer.isActive()
-    assert Colors.WARNING_TEXT in indicator.task_label.styleSheet()
+    assert Colors.WARNING in indicator.task_label.styleSheet()
     indicator.show_task("Saved as ", path="/d/TS_031.mosaic")
     indicator._task_timer.timeout.emit()
     assert "TS_031_rec.mrc" in indicator.task_label.text()
@@ -46,7 +46,7 @@ def test_warning_survives_theme_refresh(indicator):
         "Tomogram missing: ", path="/d/a.mrc", warning=True, persist=True
     )
     indicator._setup_status_bar_style()
-    assert Colors.WARNING_TEXT in indicator.task_label.styleSheet()
+    assert Colors.WARNING in indicator.task_label.styleSheet()
 
 
 def test_transient_over_warning_stays_secondary_on_refresh(indicator):
@@ -55,7 +55,7 @@ def test_transient_over_warning_stays_secondary_on_refresh(indicator):
     )
     indicator.show_task("Saved as ", path="/d/a.mosaic")
     indicator._setup_status_bar_style()
-    assert Colors.WARNING_TEXT not in indicator.task_label.styleSheet()
+    assert Colors.WARNING not in indicator.task_label.styleSheet()
 
 
 def test_task_card_shortens_long_names(qapp):
