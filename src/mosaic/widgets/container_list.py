@@ -36,7 +36,7 @@ from ..settings import Settings
 from ..pipeline._utils import natural_sort_key, strip_filepath
 from ..stylesheets import Colors, Typography
 from ..tree_state import TreeState, TreeStateData
-from .dock import menu_pos_above
+from .dock import menu_pos_above, style_popup
 from .message_box import MosaicMessageBox
 
 
@@ -871,13 +871,7 @@ class _SessionHeader(QWidget):
         self._apply_btn_style()
 
     def _build_menu(self):
-        menu = _CheckableMenu()
-        menu.setWindowFlags(
-            menu.windowFlags()
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.NoDropShadowWindowHint
-        )
-        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        menu = style_popup(_CheckableMenu())
 
         link = menu.addAction("Link tomograms…")
         link.triggered.connect(self._session_widget.link_tomograms_requested)
@@ -1244,13 +1238,7 @@ class SessionListWidget(QWidget):
             return None
 
         index = self._tree.indexOfTopLevelItem(item)
-        menu = QMenu(self.window())
-        menu.setWindowFlags(
-            menu.windowFlags()
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.NoDropShadowWindowHint
-        )
-        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        menu = style_popup(QMenu(self.window()))
         remove_action = menu.addAction("Remove from list")
         action = menu.exec(self._tree.viewport().mapToGlobal(pos))
         if action == remove_action:

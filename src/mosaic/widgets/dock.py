@@ -30,6 +30,28 @@ def menu_pos_above(button_rect: QRect, menu_size: QSize) -> QPoint:
     return QPoint(button_rect.left(), button_rect.top() - menu_size.height())
 
 
+def style_popup(menu):
+    """Give a menu the app's frameless, rounded popup look.
+
+    Parameters
+    ----------
+    menu : QMenu
+        Menu to style.
+
+    Returns
+    -------
+    QMenu
+        The same menu.
+    """
+    menu.setWindowFlags(
+        menu.windowFlags()
+        | Qt.WindowType.FramelessWindowHint
+        | Qt.WindowType.NoDropShadowWindowHint
+    )
+    menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+    return menu
+
+
 def toggle_dock(dock, show):
     """Show or hide a QDockWidget.
 

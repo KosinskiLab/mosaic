@@ -20,7 +20,7 @@ from qtpy.QtWidgets import (
 
 from ..icons import icon
 from ..stylesheets import Colors, Typography, _get_resource_path
-from .dock import menu_pos_above
+from .dock import menu_pos_above, style_popup
 from .segmented_control import SegmentedControl
 from .volume_viewer import VolumeViewer
 
@@ -174,7 +174,7 @@ class _LoadButton(QToolButton):
         super().__init__(parent)
         self.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
-        self.recent_menu = QMenu()
+        self.recent_menu = style_popup(QMenu())
         self.recent_menu.setToolTipsVisible(True)
         self.recent_menu.installEventFilter(self)
 
