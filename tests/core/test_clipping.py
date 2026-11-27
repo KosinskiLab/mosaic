@@ -254,39 +254,6 @@ def test_swap_data_keeps_plane():
     assert _planes(a.actor.GetMapper()) == [cut.plane]
 
 
-def test_state_round_trip_skips_missing():
-    a, b = _cloud(seed=1), _cloud(seed=2)
-    cut = _placed([a, b], direction=(1, 0, 0))
-    cut.push(5.0)
-
-    state = cut.to_state({a.uuid})
-    assert state == {
-        "origin": list(cut.plane.GetOrigin()),
-        "normal": list(cut.plane.GetNormal()),
-        "uuids": [a.uuid],
-    }
-
-    restored = ClipCut()
-    restored.from_state({**state, "uuids": [a.uuid, "gone"]}, {a.uuid: a, b.uuid: b})
-    assert restored.has_pose
-    assert restored.geometries == [a]
-    assert restored.plane.GetOrigin() == cut.plane.GetOrigin()
-    assert restored.plane.GetNormal() == cut.plane.GetNormal()
-    assert restored.plane in _planes(a.actor.GetMapper())
-
-    restored.from_state({**state, "uuids": ["gone"]}, {a.uuid: a})
-    assert not restored.has_pose
-    assert restored.geometries == []
-    assert restored.plane not in _planes(a.actor.GetMapper())
-
-    restored.from_state(state, {a.uuid: a})
-    restored.from_state(None, {a.uuid: a})
-    assert not restored.has_pose
-    assert restored.geometries == []
-    assert restored.plane not in _planes(a.actor.GetMapper())
-    assert restored.to_state({a.uuid}) is None
-
-
 def test_bounds_merges_geometries():
     first = _cloud(seed=0, low=(10, -5, 100), high=(30, 40, 160))
     second = _cloud(seed=1, low=(-20, 0, 120), high=(0, 60, 130))

@@ -24,7 +24,6 @@ from qtpy.QtGui import (
     QDragEnterEvent,
     QGuiApplication,
     QKeySequence,
-    QShortcut,
 )
 from qtpy.QtWidgets import (
     QDialog,
@@ -510,11 +509,6 @@ class App(QMainWindow):
                     panel._workers_slider.blockSignals(False)
                     return
             btm._initialize()
-
-    def handle_escape_key(self, *args, **kwargs):
-        """Switch to viewing mode if not already in it."""
-        self._transition_modes(self.cursor_handler.current_mode)
-        self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
 
     def toggle_background(self):
         self._use_alt_background = not getattr(self, "_use_alt_background", False)
@@ -1100,7 +1094,9 @@ class App(QMainWindow):
 
         viewing_action = QAction(icon("ph.eye"), "Viewing Mode", self)
         viewing_action.setShortcut(QKeySequence(Qt.Key.Key_Escape))
-        viewing_action.triggered.connect(self.handle_escape_key)
+        viewing_action.triggered.connect(
+            lambda: self._transition_modes(ViewerModes.VIEWING)
+        )
 
         background_action = QAction(icon("ph.circle-half"), "Toggle Background", self)
         background_action.setShortcut(QKeySequence("D"))
@@ -1386,13 +1382,6 @@ class App(QMainWindow):
         # it connects/disconnects in activate()/deactivate().
         self.cdata.viewport.register_sculpt_hud(self.sculpt_palette)
 
-        # Escape returns to viewing mode from any non-viewing mode. Lives at
-        # the gui level so the sculpt shortcut filter doesn't need a back-ref.
-        escape_shortcut = QShortcut(QKeySequence("Escape"), self)
-        escape_shortcut.activated.connect(
-            lambda: self._transition_modes(ViewerModes.VIEWING)
-        )
-
     def _setup_volume_viewer(self):
         # HUD is a top-level translucent tool window that tracks the
         # viewport, it is NOT added to any layout. See
@@ -1423,18 +1412,6 @@ class App(QMainWindow):
         self.cdata.register_session_hook(
             self._tomogram_link.collect, self._tomogram_link.restore
         )
-        self.cdata.register_session_hook(self._collect_clip, self._restore_clip)
-
-    def _collect_clip(self) -> dict:
-        panes = (self.cdata.data, self.cdata.models)
-        uuids = {g.uuid for pane in panes for g in pane.container.data}
-        return {"clip": self.cdata.viewport.clip_cut.to_state(uuids)}
-
-    def _restore_clip(self, meta: dict) -> None:
-        panes = (self.cdata.data, self.cdata.models)
-        geometries = {g.uuid: g for pane in panes for g in pane.container.data}
-        self.cdata.viewport.clip_cut.from_state(meta.get("clip"), geometries)
-        return None
 
     def _show_volume_viewer(self) -> None:
         if not self.volume_viewer.isVisible():

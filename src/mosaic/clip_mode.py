@@ -94,9 +94,10 @@ class ClipMode:
         return None
 
     def deactivate(self) -> None:
-        """Remove the outline and restore camera interaction, keeping the cut."""
+        """Lift the cut off the objects, keeping its pose, and restore the camera."""
         if self._dragging:
             self._end_drag()
+        self._cut.set_objects([])
 
         self._hide_timer.stop()
         if self._renderer is not None:
@@ -109,6 +110,7 @@ class ClipMode:
         interactor = self._viewport.vtk_widget.GetRenderWindow().GetInteractor()
         if interactor is not None:
             interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
+        self._viewport.render_vtk()
         return None
 
     def sync(self, geometries: list) -> None:
@@ -177,7 +179,7 @@ class ClipMode:
         else:
             height = self._viewport.vtk_widget.GetRenderWindow().GetSize()[1]
             lower, upper = self._cut.extent()
-            self._cut.push(-dy / height * (upper - lower))
+            self._cut.push(dy / height * (upper - lower))
 
         self._show_outline()
         return None

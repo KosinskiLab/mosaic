@@ -7,7 +7,6 @@ import vtk
 
 from mosaic.clip_mode import ClipInteractorStyle
 from mosaic.data import MosaicData
-from mosaic.formats import read_session_meta
 from mosaic.gui import App
 from mosaic.undo import STACK
 from mosaic.widgets.status_indicator import ViewerModes
@@ -38,47 +37,11 @@ def _cut(md, geometries):
     return cut
 
 
-def _register(md):
-    fake = SimpleNamespace(cdata=md)
-    md.register_session_hook(
-        lambda: App._collect_clip(fake), lambda meta: App._restore_clip(fake, meta)
-    )
-    return None
-
-
 def _planes(geometry):
     planes = geometry.actor.GetMapper().GetClippingPlanes()
     if planes is None:
         return []
     return [planes.GetItem(i) for i in range(planes.GetNumberOfItems())]
-
-
-def test_session_round_trip_restores_cut(md, mock_vtk_widget, tmp_path):
-    cloud = _add_cloud(md.data)
-    _register(md)
-    cut = _cut(md, [cloud])
-    path = md.to_file(str(tmp_path / "s.mosaic"))
-
-    loaded = MosaicData(mock_vtk_widget)
-    _register(loaded)
-    loaded.load_session(path)
-
-    restored = loaded.data.container.get(cloud.uuid)
-    plane = loaded.viewport.clip_cut.plane
-    assert _planes(restored) == [plane]
-    np.testing.assert_allclose(plane.GetOrigin(), cut.plane.GetOrigin())
-    np.testing.assert_allclose(plane.GetNormal(), cut.plane.GetNormal())
-
-
-def test_removed_object_not_saved(md, tmp_path):
-    first, second = _add_cloud(md.data, seed=0), _add_cloud(md.data, seed=1)
-    _register(md)
-    _cut(md, [first, second])
-
-    md.data.remove([second])
-    path = md.to_file(str(tmp_path / "s.mosaic"))
-
-    assert read_session_meta(path)["clip"]["uuids"] == [first.uuid]
 
 
 def test_right_click_does_not_deselect_in_clip_mode(md):
@@ -153,10 +116,6 @@ def test_close_session_leaves_clip_mode(md):
     fake.cursor_handler.update_mode.assert_called_with(ViewerModes.VIEWING)
 
 
-def _collected_uuids(md):
-    return App._collect_clip(SimpleNamespace(cdata=md))["clip"]["uuids"]
-
-
 def test_representation_copy_keeps_cut(md):
     cloud = _add_cloud(md.data)
     cut = _cut(md, [cloud])
@@ -169,7 +128,6 @@ def test_representation_copy_keeps_cut(md):
     assert cut.geometries == [replaced]
     assert _planes(replaced) == [cut.plane]
     assert _planes(cloud) == []
-    assert _collected_uuids(md) == [cloud.uuid]
 
 
 def _assert_cut_on(md, uuid):
@@ -177,7 +135,6 @@ def _assert_cut_on(md, uuid):
     geometry = md.data.container.get(uuid)
     assert cut.geometries == [geometry]
     assert _planes(geometry) == [cut.plane]
-    assert _collected_uuids(md) == [uuid]
 
 
 def test_point_removal_keeps_cut(md):

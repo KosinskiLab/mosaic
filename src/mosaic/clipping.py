@@ -276,53 +276,6 @@ class ClipCut:
         self._has_pose = False
         return None
 
-    def to_state(self, existing_uuids: set[str]) -> dict | None:
-        """Return the cut as session metadata.
-
-        Parameters
-        ----------
-        existing_uuids : set of str
-            Uuids of geometries still in the session.
-
-        Returns
-        -------
-        dict or None
-            Plane origin, normal and uuids of existing clipped geometries,
-            or None without a cut.
-        """
-        if not self._has_pose:
-            return None
-        return {
-            "origin": list(self.plane.GetOrigin()),
-            "normal": list(self.plane.GetNormal()),
-            "uuids": [g.uuid for g in self._geometries if g.uuid in existing_uuids],
-        }
-
-    def from_state(self, state: dict | None, geometries_by_uuid: dict) -> None:
-        """Restore the cut from session metadata.
-
-        Parameters
-        ----------
-        state : dict or None
-            Output of :meth:`to_state`. None removes the cut.
-        geometries_by_uuid : dict
-            Geometries in the session by uuid. Unknown uuids are skipped,
-            and the cut is removed when none is known.
-        """
-        self.clear()
-        if state is None:
-            return None
-
-        uuids = [u for u in state["uuids"] if u in geometries_by_uuid]
-        if not uuids:
-            return None
-
-        self.plane.SetOrigin(state["origin"])
-        self.plane.SetNormal(state["normal"])
-        self._has_pose = True
-        self.set_objects([geometries_by_uuid[u] for u in uuids])
-        return None
-
     def _attach(self):
         if not self._has_pose:
             return None
