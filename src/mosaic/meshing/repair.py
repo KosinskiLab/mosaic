@@ -159,14 +159,17 @@ def close_holes(
     .. [1] Code adapted from https://github.com/kentechx/hole-filling
     """
     out_fs = fs.copy()
-    for b in igl.boundary_loop_all(out_fs):
-        if len(b) < 3:
-            continue
-        b = np.asarray(b)
-        perimeter = np.linalg.norm(vs[np.roll(b, -1)] - vs[b], axis=1).sum()
-        if hole_len_thr is not None and perimeter > hole_len_thr:
-            continue
-        out_fs = _close_hole(vs, out_fs, b, fast)
+    # boundary_loop_all breaks holes that touch at a vertex into fragments;
+    # once the first is filled, a second pass sees the other as a clean loop.
+    for _ in range(2):
+        for b in igl.boundary_loop_all(out_fs):
+            if len(b) < 3:
+                continue
+            b = np.asarray(b)
+            perimeter = np.linalg.norm(vs[np.roll(b, -1)] - vs[b], axis=1).sum()
+            if hole_len_thr is not None and perimeter > hole_len_thr:
+                continue
+            out_fs = _close_hole(vs, out_fs, b, fast)
     return out_fs
 
 

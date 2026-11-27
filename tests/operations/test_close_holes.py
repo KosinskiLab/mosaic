@@ -1,0 +1,30 @@
+import numpy as np
+
+from mosaic.meshing.repair import close_holes
+
+
+def _grid_with_holes(n, holes):
+    xs, ys = np.meshgrid(np.arange(n), np.arange(n))
+    vs = np.stack([xs.ravel(), ys.ravel(), np.zeros(n * n)], axis=1).astype(float)
+    fs = []
+    for i in range(n - 1):
+        for j in range(n - 1):
+            if (i, j) in holes:
+                continue
+            a, b, c, d = i * n + j, i * n + j + 1, (i + 1) * n + j, (i + 1) * n + j + 1
+            fs += [[a, b, d], [a, d, c]]
+    return vs, np.array(fs)
+
+
+def _open_edges(fs):
+    edges = np.sort(
+        np.concatenate([fs[:, [0, 1]], fs[:, [1, 2]], fs[:, [2, 0]]]), axis=1
+    )
+    _, counts = np.unique(edges, axis=0, return_counts=True)
+    return int((counts == 1).sum())
+
+
+def test_fills_holes_touching_at_a_vertex():
+    vs, fs = _grid_with_holes(6, {(1, 1), (2, 2)})
+    filled = close_holes(vs, fs, 10)
+    assert _open_edges(filled) == 4 * 5
