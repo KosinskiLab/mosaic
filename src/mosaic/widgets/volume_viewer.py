@@ -297,6 +297,7 @@ class _Volume3DRenderer(_ViewerRenderer):
 class VolumeViewer(QWidget):
     data_changed = Signal()
     mode_changed = Signal(str)
+    recents_changed = Signal()
 
     def __init__(self, vtk_widget, legend=None, parent=None):
         super().__init__(parent)
@@ -559,6 +560,7 @@ class VolumeViewer(QWidget):
             self._path_combo.setItemData(i, path, Qt.ItemDataRole.ToolTipRole)
         self._path_combo.setCurrentIndex(-1)
         self._path_combo.blockSignals(False)
+        self.recents_changed.emit()
 
     def _on_path_selected(self, index):
         path = self._path_combo.itemData(index)

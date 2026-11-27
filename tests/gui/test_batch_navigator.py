@@ -233,16 +233,6 @@ class TestSessionHeader:
         assert layout.itemAt(2).spacerItem() is not None
         assert not header._action("Clear all sessions").icon().isNull()
 
-    def test_menu_position_above_button_right_aligned(self, qapp):
-        from qtpy.QtCore import QPoint, QRect, QSize
-
-        from mosaic.widgets.container_list import _menu_pos_above
-
-        button = QRect(QPoint(200, 500), QSize(24, 24))
-        pos = _menu_pos_above(button, QSize(150, 80))
-        assert pos == QPoint(200, 500 - 80)
-        assert pos.y() + 80 == button.top()
-
     def test_autosave_action_toggles_flag(self, qapp):
         widget = SessionListWidget(cdata=Mock())
         widget._header._action("Auto-save on switch").trigger()

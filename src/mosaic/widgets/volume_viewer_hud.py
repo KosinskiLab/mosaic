@@ -6,7 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtCore import QCoreApplication, QEvent, QPoint, Qt, QTimer
+from qtpy.QtCore import QCoreApplication, QEvent, QPoint, QRect, Qt, QTimer
 from qtpy.QtGui import QColor, QCursor, QPainter, QPen
 from qtpy.QtWidgets import (
     QApplication,
@@ -18,6 +18,7 @@ from qtpy.QtWidgets import (
 
 from ..icons import icon
 from ..stylesheets import Typography
+from .dock import menu_pos_above
 from .segmented_control import SegmentedControl
 from .volume_viewer import VolumeViewer
 
@@ -250,6 +251,10 @@ class _ViewerStrip(QWidget):
         self._recent_btn.setFixedSize(22, _BTN)
         self._recent_btn.setToolTip("Recent volumes")
         self._recent_btn.clicked.connect(self._show_recent_menu)
+        self._recent_btn.setEnabled(v._path_combo.count() > 0)
+        v.recents_changed.connect(
+            lambda: self._recent_btn.setEnabled(v._path_combo.count() > 0)
+        )
         v._path_combo.hide()
 
         split = QHBoxLayout()
@@ -378,22 +383,20 @@ class _ViewerStrip(QWidget):
         from qtpy.QtWidgets import QMenu
 
         combo = self.viewer._path_combo
-        if combo.count() == 0:
-            return None
-
-        menu = QMenu(self)
-        menu.setWindowFlags(
-            menu.windowFlags()
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.NoDropShadowWindowHint
-        )
-        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-
+        # Parentless so the menu takes the app's opaque style, not the HUD's.
+        menu = QMenu()
+        menu.setToolTipsVisible(True)
         for i in range(combo.count()):
-            text = combo.itemText(i)
-            data = combo.itemData(i)
-            menu.addAction(text, lambda d=data: self.viewer._load_from_path(d))
-        menu.exec(self._recent_btn.mapToGlobal(self._recent_btn.rect().bottomLeft()))
+            path = combo.itemData(i)
+            action = menu.addAction(
+                combo.itemText(i), lambda p=path: self.viewer._load_from_path(p)
+            )
+            action.setToolTip(path)
+
+        top_left = self._recent_btn.mapToGlobal(QPoint(0, 0))
+        button_rect = QRect(top_left, self._recent_btn.size())
+        menu.exec(menu_pos_above(button_rect, menu.sizeHint()))
+        return None
 
     def _set_orientation(self, axis):
         self.viewer.orientation_selector.setCurrentText(axis)

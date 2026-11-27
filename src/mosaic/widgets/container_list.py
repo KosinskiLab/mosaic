@@ -36,6 +36,7 @@ from ..settings import Settings
 from ..pipeline._utils import natural_sort_key, strip_filepath
 from ..stylesheets import Colors, Typography
 from ..tree_state import TreeState, TreeStateData
+from .dock import menu_pos_above
 from .message_box import MosaicMessageBox
 
 
@@ -800,24 +801,6 @@ class MetadataItemDelegate(QStyledItemDelegate):
         painter.restore()
 
 
-def _menu_pos_above(button_rect: QRect, menu_size: QSize) -> QPoint:
-    """Top-left for a menu whose bottom-left sits above a button's top-left.
-
-    Parameters
-    ----------
-    button_rect : QRect
-        Button rectangle in global coordinates.
-    menu_size : QSize
-        Size of the menu.
-
-    Returns
-    -------
-    QPoint
-        Global position of the menu's top-left corner.
-    """
-    return QPoint(button_rect.left(), button_rect.top() - menu_size.height())
-
-
 class _CheckableMenu(QMenu):
     """Menu that stays open when a checkable action is clicked."""
 
@@ -926,7 +909,7 @@ class _SessionHeader(QWidget):
     def _show_menu(self):
         top_left = self._menu_btn.mapToGlobal(QPoint(0, 0))
         button_rect = QRect(top_left, self._menu_btn.size())
-        self._menu.exec(_menu_pos_above(button_rect, self._menu.sizeHint()))
+        self._menu.exec(menu_pos_above(button_rect, self._menu.sizeHint()))
 
     def _on_auto_save_toggled(self, checked):
         self._session_widget._auto_save = checked

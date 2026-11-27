@@ -1,4 +1,4 @@
-from qtpy.QtCore import QSize, Qt
+from qtpy.QtCore import QPoint, QRect, QSize, Qt
 from qtpy.QtWidgets import (
     QApplication,
     QDockWidget,
@@ -10,6 +10,24 @@ from qtpy.QtWidgets import (
     QToolButton,
     QWidget,
 )
+
+
+def menu_pos_above(button_rect: QRect, menu_size: QSize) -> QPoint:
+    """Top-left for a menu whose bottom-left sits above a button's top-left.
+
+    Parameters
+    ----------
+    button_rect : QRect
+        Button rectangle in global coordinates.
+    menu_size : QSize
+        Size of the menu.
+
+    Returns
+    -------
+    QPoint
+        Global position of the menu's top-left corner.
+    """
+    return QPoint(button_rect.left(), button_rect.top() - menu_size.height())
 
 
 def toggle_dock(dock, show):
