@@ -33,8 +33,12 @@ def test_missing_warning_persists_until_cleared(indicator):
     assert indicator.task_label.text() == ""
 
 
-def test_label_is_wider(indicator):
-    assert indicator.task_label.width() == 260
+def test_long_message_fits_wide_window(indicator):
+    indicator.main_window.resize(1400, 800)
+    indicator.main_window.show()
+    message = "Right-drag to cut · Shift+right-drag to tilt · F to face · Right-click to remove"
+    indicator.show_task(message)
+    assert indicator.task_label.text() == message
 
 
 def test_warning_survives_theme_refresh(indicator):

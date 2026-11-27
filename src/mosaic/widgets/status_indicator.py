@@ -747,7 +747,8 @@ class StatusIndicator:
         )
 
         self.task_label = QLabel()
-        self.task_label.setFixedWidth(260)
+        self.task_label.setMinimumWidth(260)
+        self.task_label.setContentsMargins(12, 0, 0, 0)
         self.task_label.setStyleSheet(
             f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
         )
@@ -837,10 +838,8 @@ class StatusIndicator:
         task_layout.addWidget(self.task_button)
         right_layout.addWidget(task_group)
 
-        left_spacer = QWidget()
         right_spacer = QWidget()
-        status_bar.addWidget(self.task_label)
-        status_bar.addWidget(left_spacer, 1)
+        status_bar.addWidget(self.task_label, 1)
         status_bar.addWidget(self.progress_label)
         status_bar.addWidget(self.progress_bar)
         status_bar.addWidget(self.progress_count)
@@ -885,12 +884,13 @@ class StatusIndicator:
         )
 
     def _display_task(self, prefix, path, warning):
+        width = self.task_label.contentsRect().width()
         if path is not None:
-            set_path_text(self.task_label, path, prefix=prefix)
+            set_path_text(self.task_label, path, prefix=prefix, width=width)
         else:
             self.task_label.setText(
                 QFontMetrics(self.task_label.font()).elidedText(
-                    prefix, Qt.TextElideMode.ElideMiddle, self.task_label.width()
+                    prefix, Qt.TextElideMode.ElideMiddle, width
                 )
             )
             self.task_label.setToolTip(prefix)
