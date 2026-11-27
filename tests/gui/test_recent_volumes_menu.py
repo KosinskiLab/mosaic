@@ -1,8 +1,8 @@
 from unittest.mock import Mock
 
 import pytest
-from qtpy.QtCore import QPoint, QRect, QSize
-from qtpy.QtWidgets import QMenu
+import vtk
+from qtpy.QtCore import QPoint, QRect, QSize, QTimer
 
 from mosaic.widgets.dock import menu_pos_above
 from mosaic.widgets.volume_viewer_hud import VolumeViewerHUD
@@ -11,7 +11,9 @@ from mosaic.widgets.volume_viewer_hud import VolumeViewerHUD
 @pytest.fixture
 def hud(qapp, mock_vtk_widget):
     mock_vtk_widget.update = Mock()
-    return VolumeViewerHUD(mock_vtk_widget)
+    hud = VolumeViewerHUD(mock_vtk_widget)
+    yield hud
+    hud.hide()
 
 
 @pytest.fixture
@@ -24,26 +26,19 @@ def vols(tmp_path):
     return paths
 
 
-@pytest.fixture
-def strip(hud):
+@pytest.fixture(params=["primary", "added"])
+def strip(request, hud):
+    if request.param == "added":
+        hud.add_viewer()
+        return hud._strips[-1]
     return hud._primary_strip
 
 
-def _caret_menu(strip, monkeypatch):
-    shown = {}
-
-    def fake_exec(menu, pos=None):
-        shown["menu"] = menu
-        shown["pos"] = pos
-        shown["parent"] = menu.parent()
-        shown["actions"] = [(a.text(), a.toolTip()) for a in menu.actions()]
-        shown["tips"] = menu.toolTipsVisible()
-        shown["triggers"] = menu.actions()
-        return None
-
-    monkeypatch.setattr(QMenu, "exec", fake_exec)
-    strip._show_recent_menu()
-    return shown
+def _volume():
+    image = vtk.vtkImageData()
+    image.SetDimensions(4, 5, 6)
+    image.AllocateScalars(vtk.VTK_FLOAT, 1)
+    return image
 
 
 def test_menu_position_above_button():
@@ -53,43 +48,63 @@ def test_menu_position_above_button():
     assert pos.y() + 80 == button.top()
 
 
-def test_caret_disabled_without_recents_enabled_with(hud, strip, vols):
+def test_click_opens_browser_when_empty(strip):
+    strip.viewer.open_volume = Mock()
+    strip._load_btn.click()
+    strip.viewer.open_volume.assert_called_once_with()
+
+
+def test_click_closes_loaded_volume(strip):
+    strip.viewer.swap_volume(_volume())
+    strip.viewer.open_volume = Mock()
+    strip._load_btn.click()
+    assert strip.viewer.volume is None
+    strip.viewer.open_volume.assert_not_called()
+
+
+def test_menu_lists_existing_recents_with_path_tooltips(hud, strip, vols, tmp_path):
+    hud.set_recent_paths([str(tmp_path / "gone.mrc"), *vols])
+    menu = strip._load_btn.menu()
+    shown = [(a.toolTip(), a.text()) for a in menu.actions()]
+    assert shown == strip.viewer.recents
+    assert [path for path, _ in shown] == vols
+    assert menu.toolTipsVisible()
+
+
+def test_selecting_entry_loads_that_path(hud, strip, vols):
+    hud.set_recent_paths(vols)
+    strip.viewer._load_from_path = Mock()
+    strip._load_btn.menu().actions()[1].trigger()
+    strip.viewer._load_from_path.assert_called_once_with(vols[1])
+
+
+def test_menu_inert_without_recents(hud, strip, vols):
+    button = strip._load_btn
     hud.set_recent_paths([])
-    assert not strip._recent_btn.isEnabled()
+    assert button.menu() is None
     hud.set_recent_paths(vols)
-    assert strip._recent_btn.isEnabled()
+    assert len(button.menu().actions()) == 2
     hud.set_recent_paths([])
-    assert not strip._recent_btn.isEnabled()
+    assert button.menu() is None
+    assert button.isEnabled()
 
 
-def test_menu_lists_recents_with_full_path_tooltips(
-    hud, strip, vols, monkeypatch
-):
+def test_menu_opens_above_button_left_edge(hud, strip, vols):
     hud.set_recent_paths(vols)
-    combo = hud.primary._path_combo
-    shown = _caret_menu(strip, monkeypatch)
-    assert shown["actions"] == [
-        (combo.itemText(i), combo.itemData(i)) for i in range(combo.count())
-    ]
-    assert [t for _, t in shown["actions"]] == vols
-    assert shown["tips"]
+    hud.move(100, 400)
+    hud.show()
+    button = strip._load_btn
+    menu = button.menu()
+    shown = {}
 
+    def grab():
+        shown["geometry"] = menu.geometry()
+        menu.hide()
+        return None
 
-def test_menu_opens_above_caret_left_edge_without_parent(
-    hud, strip, vols, monkeypatch
-):
-    hud.set_recent_paths(vols)
-    btn = strip._recent_btn
-    shown = _caret_menu(strip, monkeypatch)
-    top_left = btn.mapToGlobal(QPoint(0, 0))
-    assert shown["parent"] is None
-    assert shown["pos"].x() == top_left.x()
-    assert shown["pos"].y() + shown["menu"].sizeHint().height() == top_left.y()
-
-
-def test_selecting_entry_loads_that_path(hud, strip, vols, monkeypatch):
-    hud.set_recent_paths(vols)
-    hud.primary._load_from_path = Mock()
-    shown = _caret_menu(strip, monkeypatch)
-    shown["triggers"][1].trigger()
-    hud.primary._load_from_path.assert_called_once_with(vols[1])
+    QTimer.singleShot(0, grab)
+    button.showMenu()
+    top_left = button.mapToGlobal(QPoint(0, 0))
+    assert menu.parent() is None
+    assert shown["geometry"].left() == top_left.x()
+    assert shown["geometry"].bottom() + 1 == top_left.y()

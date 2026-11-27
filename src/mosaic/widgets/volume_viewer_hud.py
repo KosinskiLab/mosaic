@@ -7,11 +7,15 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from qtpy.QtCore import QCoreApplication, QEvent, QPoint, QRect, Qt, QTimer
-from qtpy.QtGui import QColor, QCursor, QPainter, QPen
+from qtpy.QtGui import QColor, QCursor, QIcon, QPainter, QPen
 from qtpy.QtWidgets import (
     QApplication,
     QHBoxLayout,
+    QMenu,
     QPushButton,
+    QStyle,
+    QStyleOptionToolButton,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -28,7 +32,7 @@ _BTN = 28
 _MAX_PILL_WIDTH = 720
 
 _STRIP_STYLE = f"""
-QPushButton {{
+QPushButton, QToolButton {{
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 4px;
@@ -36,11 +40,13 @@ QPushButton {{
     padding: 2px 8px;
     font-size: {Typography.SMALL}px;
 }}
-QPushButton:hover {{
+QPushButton:hover, QToolButton:hover {{
     background: rgba(255, 255, 255, 0.14);
     border-color: rgba(255, 255, 255, 0.10);
 }}
-QPushButton:pressed {{ background: rgba(255, 255, 255, 0.19); }}
+QPushButton:pressed, QToolButton:pressed {{
+    background: rgba(255, 255, 255, 0.19);
+}}
 QPushButton:checked {{
     border: 1px solid rgba(255, 255, 255, 0.35);
     background: rgba(255, 255, 255, 0.10);
@@ -50,18 +56,16 @@ QPushButton:disabled {{
     background: rgba(255, 255, 255, 0.03);
     border-color: transparent;
 }}
-
-QPushButton#loadClose {{
-    padding: 3px 10px;
-    border-top-right-radius: 0; border-bottom-right-radius: 0;
-    border-right: none;
+QToolButton {{ padding-right: 22px; }}
+QToolButton::menu-button {{
+    width: 20px;
+    border: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.10);
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
 }}
-QPushButton#recentDrop {{
-    padding: 2px 4px;
-    border-top-left-radius: 0; border-bottom-left-radius: 0;
-    border-left: none;
-    min-width: 18px; max-width: 18px;
-}}
+QToolButton::menu-button:hover {{ background: rgba(255, 255, 255, 0.10); }}
+QToolButton::menu-arrow {{ image: none; }}
 
 QComboBox {{
     background: rgba(255, 255, 255, 0.07);
@@ -159,6 +163,42 @@ def _dark_dual_slider(slider):
     slider.border_disabled = QColor(255, 255, 255, 8)
 
 
+class _LoadButton(QToolButton):
+    """Load/Close button whose arrow opens the recent volumes upward."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        self._caret = icon("ph.caret-up", color=_ICON, color_disabled="#52525b")
+
+        # Parentless so the menu takes the app's opaque style, not the HUD's.
+        self.recent_menu = QMenu()
+        self.recent_menu.setToolTipsVisible(True)
+        self.recent_menu.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if obj is self.recent_menu and event.type() == QEvent.Type.Show:
+            rect = QRect(self.mapToGlobal(QPoint(0, 0)), self.size())
+            obj.move(menu_pos_above(rect, obj.size()))
+        return super().eventFilter(obj, event)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        option = QStyleOptionToolButton()
+        self.initStyleOption(option)
+        rect = self.style().subControlRect(
+            QStyle.ComplexControl.CC_ToolButton,
+            option,
+            QStyle.SubControl.SC_ToolButtonMenu,
+            self,
+        )
+        mode = QIcon.Mode.Normal if self.menu() else QIcon.Mode.Disabled
+        painter = QPainter(self)
+        self._caret.paint(painter, rect.adjusted(4, 4, -4, -4), mode=mode)
+        painter.end()
+        return None
+
+
 class _ViewerStrip(QWidget):
     """A single volume viewer instance."""
 
@@ -193,12 +233,9 @@ class _ViewerStrip(QWidget):
     def _restyle_viewer(self):
         v = self.viewer
 
-        v.open_button.setStyleSheet("")
-        v._path_combo.setStyleSheet("")
         v.slice_row.value_label.setStyleSheet("")
         v.gamma_row.value_label.setStyleSheet("")
 
-        v.open_button.hide()
         v.close_button.hide()
         v.orientation_selector.hide()
 
@@ -206,10 +243,6 @@ class _ViewerStrip(QWidget):
         v.visibility_button.setFixedSize(_BTN, _BTN)
         v.auto_contrast_button.setIcon(icon("ph.magic-wand", color=_ICON))
         v.auto_contrast_button.setFixedSize(_BTN, _BTN)
-
-        v._path_combo.setToolTip("Recent volumes")
-        v._path_combo.setObjectName("splitRight")
-        v._path_combo.setFixedHeight(_BTN)
 
         _dark_dual_slider(v.contrast_slider)
 
@@ -238,31 +271,14 @@ class _ViewerStrip(QWidget):
         row = QHBoxLayout()
         row.setSpacing(3)
 
-        self._load_close_btn = QPushButton("Load")
-        self._load_close_btn.setObjectName("loadClose")
-        self._load_close_btn.setFixedHeight(_BTN)
-        self._load_close_btn.setToolTip("Load volume")
-        self._load_close_btn.clicked.connect(self._on_load_close)
-        self._load_close_btn.setFixedWidth(60)
-
-        self._recent_btn = QPushButton()
-        self._recent_btn.setObjectName("recentDrop")
-        self._recent_btn.setIcon(icon("ph.caret-down", color=_ICON))
-        self._recent_btn.setFixedSize(22, _BTN)
-        self._recent_btn.setToolTip("Recent volumes")
-        self._recent_btn.clicked.connect(self._show_recent_menu)
-        self._recent_btn.setEnabled(v._path_combo.count() > 0)
-        v.recents_changed.connect(
-            lambda: self._recent_btn.setEnabled(v._path_combo.count() > 0)
-        )
-        v._path_combo.hide()
-
-        split = QHBoxLayout()
-        split.setSpacing(0)
-        split.setContentsMargins(0, 0, 0, 0)
-        split.addWidget(self._load_close_btn)
-        split.addWidget(self._recent_btn)
-        row.addLayout(split)
+        self._load_btn = _LoadButton()
+        self._load_btn.setText("Load")
+        self._load_btn.setToolTip("Load volume")
+        self._load_btn.setFixedSize(80, _BTN)
+        self._load_btn.clicked.connect(self._on_load_close)
+        v.recents_changed.connect(self._sync_recents)
+        self._sync_recents()
+        row.addWidget(self._load_btn)
 
         self._ori_seg = SegmentedControl(["X", "Y", "Z"], default=2)
         self._ori_seg.selectionChanged.connect(self._set_orientation)
@@ -377,25 +393,18 @@ class _ViewerStrip(QWidget):
         if self.viewer.volume is not None:
             self.viewer.close_button.click()
         else:
-            self.viewer.open_button.click()
+            self.viewer.open_volume()
+        return None
 
-    def _show_recent_menu(self):
-        from qtpy.QtWidgets import QMenu
-
-        combo = self.viewer._path_combo
-        # Parentless so the menu takes the app's opaque style, not the HUD's.
-        menu = QMenu()
-        menu.setToolTipsVisible(True)
-        for i in range(combo.count()):
-            path = combo.itemData(i)
+    def _sync_recents(self):
+        menu = self._load_btn.recent_menu
+        menu.clear()
+        for path, label in self.viewer.recents:
             action = menu.addAction(
-                combo.itemText(i), lambda p=path: self.viewer._load_from_path(p)
+                label, lambda p=path: self.viewer._load_from_path(p)
             )
             action.setToolTip(path)
-
-        top_left = self._recent_btn.mapToGlobal(QPoint(0, 0))
-        button_rect = QRect(top_left, self._recent_btn.size())
-        menu.exec(menu_pos_above(button_rect, menu.sizeHint()))
+        self._load_btn.setMenu(menu if self.viewer.recents else None)
         return None
 
     def _set_orientation(self, axis):
@@ -460,11 +469,11 @@ class _ViewerStrip(QWidget):
         self.viewer.slice_row.setEnabled(has_vol and is_2d)
         self._mode_btn.setEnabled(has_vol)
         if has_vol:
-            self._load_close_btn.setText("Close")
-            self._load_close_btn.setToolTip("Close volume")
+            self._load_btn.setText("Close")
+            self._load_btn.setToolTip("Close volume")
         else:
-            self._load_close_btn.setText("Load")
-            self._load_close_btn.setToolTip("Load volume")
+            self._load_btn.setText("Load")
+            self._load_btn.setToolTip("Load volume")
 
     def paintEvent(self, event):
         p = QPainter(self)
@@ -682,9 +691,9 @@ class VolumeViewerHUD(QWidget):
         self._update_all_menus()
 
     def _update_all_menus(self):
-        self.primary._rebuild_load_menu(self._recent_paths)
+        self.primary.set_recents(self._recent_paths)
         for strip in self._strips:
-            strip.viewer._rebuild_load_menu(self._recent_paths)
+            strip.viewer.set_recents(self._recent_paths)
 
     @property
     def additional_viewers(self):
@@ -700,7 +709,7 @@ class VolumeViewerHUD(QWidget):
             viewer.swap_volume(self.primary.volume)
 
         viewer.data_changed.connect(lambda v=viewer: self._on_volume_changed(v))
-        viewer._rebuild_load_menu(self._recent_paths)
+        viewer.set_recents(self._recent_paths)
 
         self._strips.append(strip)
         # Newest viewer on top, primary stays at the bottom.
