@@ -247,13 +247,13 @@ def detected_key(matches: list[Match]) -> tuple[str, str, str] | None:
     session_tokens = _tokens(stem)
 
     # The scan root is unknown here, so try each trailing run of path parts.
-    parts = example.tomogram.rstrip("/").split("/")
-    name, shared = parts[-1], -1
-    for i in range(len(parts) - 1, -1, -1):
-        candidate = "/".join(parts[i:])
-        n = _shared_run(session_tokens, _tokens(_strip_extension(candidate)))
+    path = example.tomogram.rstrip("/\\")
+    starts = [0] + [m.end() for m in re.finditer(r"[/\\]", path)]
+    name, shared = path, -1
+    for start in reversed(starts):
+        n = _shared_run(session_tokens, _tokens(_strip_extension(path[start:])))
         if n > shared:
-            name, shared = candidate, n
+            name, shared = path[start:], n
 
     spans = list(re.finditer(f"[^{_SEPARATORS}]+", stem))
     key = stem[: spans[shared - 1].end()] if shared > 0 else ""
@@ -417,8 +417,14 @@ def initial_folder(
         Common folder of the existing links, otherwise ``last``.
     """
     parents = [os.path.dirname(p) for p in current_links.values() if p]
-    if parents:
-        return os.path.commonpath(parents)
+    try:
+        common = os.path.commonpath(parents)
+    except ValueError:
+        common = None
+
+    # A filesystem root is too broad to scan, especially with subfolders.
+    if common and os.path.dirname(common) != common:
+        return common
     return last or None
 
 

@@ -225,6 +225,17 @@ def test_initial_folder():
     assert initial_folder({}, "") is None
 
 
+@pytest.mark.parametrize(
+    "links",
+    [
+        {"/s/a.mosaic": "/data/x.mrc", "/s/b.mosaic": "/other/y.mrc"},
+        {"/s/a.mosaic": "/data/x.mrc", "/s/b.mosaic": "rel/y.mrc"},
+    ],
+)
+def test_initial_folder_falls_back_to_last(links):
+    assert initial_folder(links, "/last") == "/last"
+
+
 def test_detected_key():
     matches = match_tomograms(
         ["/s/TS_013_membrane.mosaic", "/s/TS_012_membrane.mosaic"],
@@ -241,6 +252,16 @@ def test_detected_key_nested_folders(tmp_path):
     tomos = scan_tomograms(str(tmp_path), recursive=True)
     matches = match_tomograms(["/s/ts_12-seg.mosaic"], tomos, root=str(tmp_path))
     assert detected_key(matches) == ("ts_##", "ts_12-seg", "TS_012/tomogram.mrc")
+
+
+def test_detected_key_backslash_paths():
+    match = Match(
+        "/s/TS_012_seg.mosaic",
+        "C:\\data\\TS_012\\tomogram.mrc",
+        ("C:\\data\\TS_012\\tomogram.mrc",),
+        "matched",
+    )
+    assert detected_key([match]) == ("TS_###", "TS_012_seg", "TS_012\\tomogram.mrc")
 
 
 def test_write_links_converts_legacy_and_continues_on_error(tmp_path):
