@@ -1006,7 +1006,9 @@ class SessionListWidget(QWidget):
 
     def clear_sessions(self):
         if self._auto_save and self._session_modified:
-            self.save_current()
+            if not self.save_current():
+                return None
+
         self.session_files.clear()
         self.current_index = -1
         self._rebuild_items()
@@ -1020,7 +1022,7 @@ class SessionListWidget(QWidget):
 
     def save_current(self):
         if self.current_index < 0 or self.current_index >= len(self.session_files):
-            return None
+            return True
         if not self._save_to(self.session_files[self.current_index]):
             return False
 

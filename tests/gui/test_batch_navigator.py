@@ -318,3 +318,27 @@ class TestSessionPathRedirect:
         widget.replace_paths({"/p/b.pickle": "/p/b.mosaic"})
         assert widget.session_files == ["/p/a.pickle", "/p/b.mosaic"]
         assert widget.current_index == 1
+
+    def test_stale_modified_flag_without_current_still_switches(self, qapp):
+        cdata = Mock()
+        widget = SessionListWidget(cdata=cdata)
+        widget.set_sessions(["/p/a.mosaic", "/p/b.mosaic"])
+        widget.current_index, widget._session_modified = -1, True
+        loaded = Mock()
+        widget.load_requested.connect(loaded)
+        widget._on_item_clicked(widget._items[1])
+        cdata.to_file.assert_not_called()
+        loaded.assert_called_once_with("/p/b.mosaic")
+
+    def test_declined_overwrite_aborts_clear(self, qapp, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "mosaic.widgets.container_list.confirm_session_overwrite",
+            lambda *_: False,
+        )
+        widget = SessionListWidget(cdata=Mock())
+        widget.session_files = [str(tmp_path / "a.pickle")]
+        widget._rebuild_items()
+        widget.current_index, widget._session_modified = 0, True
+        widget.clear_sessions()
+        assert widget.session_files == [str(tmp_path / "a.pickle")]
+        assert widget._session_modified
