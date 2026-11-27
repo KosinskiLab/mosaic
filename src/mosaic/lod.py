@@ -361,6 +361,7 @@ class InteractionLOD:
         if actor is not None:
             self.actor, self.data, self.indices = actor, data, indices
             self._sync_mtime = -1
+            self._sync_clipping()
 
     def begin(self):
         """Hide the main actor and show the LOD actor for fast interaction."""
@@ -398,6 +399,17 @@ class InteractionLOD:
         lut = src.GetLookupTable()
         if lut is not None:
             dst.SetLookupTable(lut)
+        self._sync_clipping()
+
+    def _sync_clipping(self):
+        src, dst = self._owner._actor.GetMapper(), self.actor.GetMapper()
+        dst.RemoveAllClippingPlanes()
+        planes = src.GetClippingPlanes()
+        if planes is None:
+            return None
+
+        for i in range(planes.GetNumberOfItems()):
+            dst.AddClippingPlane(planes.GetItem(i))
 
     def _sync_arrays(self):
         owner = self._owner
