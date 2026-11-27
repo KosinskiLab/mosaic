@@ -6,6 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import re
 from typing import List, Optional
 
 from qtpy.QtCore import Qt
@@ -14,8 +15,8 @@ from qtpy.QtGui import QFontMetrics
 __all__ = ["display_path", "display_paths", "set_path_text"]
 
 
-def _parent_and_name(path: str):
-    parts = path.rstrip("/").rsplit("/", 2)
+def _parent_and_name(path: str) -> tuple[str, str]:
+    parts = re.split(r"[/\\]", path.rstrip("/\\"))
     return parts[-2] if len(parts) > 1 else "", parts[-1]
 
 
@@ -40,12 +41,12 @@ def display_path(path: str, root: Optional[str] = None) -> str:
         Path relative to ``root``, ``…/parent/name`` if outside ``root``,
         or the base name if no ``root`` is given.
     """
-    path = path.rstrip("/")
+    path = path.rstrip("/\\")
     if root is None:
         return _parent_and_name(path)[1]
 
-    prefix = root.rstrip("/") + "/"
-    if path.startswith(prefix):
+    prefix = root.rstrip("/\\").replace("\\", "/") + "/"
+    if path.replace("\\", "/").startswith(prefix):
         return path[len(prefix) :]
     return _with_parent(path)
 

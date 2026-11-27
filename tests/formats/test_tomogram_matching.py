@@ -133,9 +133,17 @@ def test_pattern_ambiguous_and_missing():
     assert len(ms[0].candidates) == 2
 
 
-def test_pattern_without_key_raises():
+@pytest.mark.parametrize(
+    "pattern", [("*", "{key}"), ("{key}_{key}", "{key}"), ("{key}", "{key}{key}")]
+)
+def test_pattern_needs_one_key(pattern):
     with pytest.raises(ValueError):
-        match_tomograms(["/s/a.mosaic"], ["/t/a.mrc"], pattern=("*", "{key}"))
+        match_tomograms(["/s/a_a.mosaic"], ["/t/aa.mrc"], pattern=pattern)
+
+
+def test_non_ascii_digit_token():
+    (m,) = match_tomograms(["/s/TS_²_seg.mosaic"], ["/t/TS_².mrc", "/t/TS_3.mrc"])
+    assert m.tomogram == "/t/TS_².mrc"
 
 
 @pytest.mark.parametrize(
@@ -220,7 +228,7 @@ def test_initial_folder():
         "/s/b.mosaic": "/data/tomos/TS_2/tomogram.mrc",
         "/s/c.mosaic": None,
     }
-    assert initial_folder(links, "/last") == "/data/tomos"
+    assert initial_folder(links, "/last") == os.path.normpath("/data/tomos")
     assert initial_folder({"/s/a.mosaic": None}, "/last") == "/last"
     assert initial_folder({}, "") is None
 
@@ -251,7 +259,8 @@ def test_detected_key_nested_folders(tmp_path):
         (tmp_path / run / "tomogram.mrc").write_bytes(b"")
     tomos = scan_tomograms(str(tmp_path), recursive=True)
     matches = match_tomograms(["/s/ts_12-seg.mosaic"], tomos, root=str(tmp_path))
-    assert detected_key(matches) == ("ts_##", "ts_12-seg", "TS_012/tomogram.mrc")
+    expected = ("ts_##", "ts_12-seg", os.path.join("TS_012", "tomogram.mrc"))
+    assert detected_key(matches) == expected
 
 
 def test_detected_key_backslash_paths():
@@ -297,3 +306,25 @@ def test_write_links_removes_link(tmp_path):
     write_session(path, {}, sections={"meta": ("json", b'{"tomogram": "/t/a.mrc"}')})
     result = write_tomogram_links({path: None})
     assert "tomogram" not in read_session_meta(path) and not result.errors
+
+
+def test_write_links_continues_on_unexpected_error(tmp_path, monkeypatch):
+    import mosaic.formats.tomogram_matching as tm
+
+    legacy = tmp_path / "a.pickle"
+    legacy.write_bytes(pickle.dumps({}))
+    good = str(tmp_path / "b.mosaic")
+    write_session(good, {})
+    converted = str(tmp_path / "a.mosaic")
+    update = tm.update_session_meta
+
+    def flaky_update(path, meta):
+        if path == converted:
+            raise RuntimeError
+        return update(path, meta)
+
+    monkeypatch.setattr(tm, "update_session_meta", flaky_update)
+    result = write_tomogram_links({str(legacy): "/t/a.mrc", good: "/t/b.mrc"})
+    assert result.paths == {str(legacy): converted}
+    assert set(result.errors) == {str(legacy)}
+    assert read_session_meta(good)["tomogram"] == "/t/b.mrc"

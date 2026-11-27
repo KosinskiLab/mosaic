@@ -375,7 +375,9 @@ class Session:
 
         target = session_save_path(filepath)
         if target != filepath:
-            warnings.warn(f"Session files are saved as .mosaic; writing {target}")
+            warnings.warn(
+                f"Session files are saved as .mosaic; writing {target}", stacklevel=2
+            )
 
         merged = dict(self._file_sections)
         if sections:

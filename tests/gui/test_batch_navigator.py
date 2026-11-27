@@ -1,5 +1,6 @@
 from unittest.mock import Mock
 
+import pytest
 from qtpy.QtCore import Qt
 
 from mosaic.formats.session import session_save_path
@@ -237,7 +238,6 @@ class TestSessionHeader:
         Settings.ui.load_linked_tomogram = True
         widget._header._action("Load tomogram on switch").trigger()
         assert Settings.ui.load_linked_tomogram is False
-        Settings.ui.load_linked_tomogram = True
 
     def test_link_action_emits(self, qapp):
         widget = SessionListWidget(cdata=Mock())
@@ -349,6 +349,15 @@ class TestSessionPathRedirect:
         widget.replace_paths({"/p/b.pickle": "/p/b.mosaic"})
         assert widget.session_files == ["/p/a.pickle", "/p/b.mosaic"]
         assert widget.current_index == 1
+
+    @pytest.mark.parametrize("current, expected", [(1, 0), (2, 1)])
+    def test_replace_paths_merges_duplicates(self, qapp, current, expected):
+        widget = SessionListWidget(cdata=Mock())
+        widget.session_files = ["/p/a.mosaic", "/p/a.pickle", "/p/b.mosaic"]
+        widget.current_index = current
+        widget.replace_paths({"/p/a.pickle": "/p/a.mosaic"})
+        assert widget.session_files == ["/p/a.mosaic", "/p/b.mosaic"]
+        assert widget.current_index == expected
 
     def test_stale_modified_flag_without_current_still_switches(self, qapp):
         cdata = Mock()

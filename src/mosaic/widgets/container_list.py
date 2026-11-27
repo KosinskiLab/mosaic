@@ -1045,7 +1045,14 @@ class SessionListWidget(QWidget):
 
     def replace_paths(self, mapping):
         """Swap list entries using an old to new mapping."""
-        self.session_files = [mapping.get(x, x) for x in self.session_files]
+        current = None
+        if 0 <= self.current_index < len(self.session_files):
+            current = self.session_files[self.current_index]
+
+        mapped = [mapping.get(x, x) for x in self.session_files]
+        self.session_files = list(dict.fromkeys(mapped))
+        if current is not None:
+            self.current_index = self.session_files.index(mapping.get(current, current))
         self._rebuild_items()
 
         for old, new in mapping.items():

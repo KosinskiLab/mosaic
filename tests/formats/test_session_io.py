@@ -8,6 +8,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import os
 import pickle
+import stat
+import sys
 
 import pytest
 
@@ -90,6 +92,15 @@ class TestSessionRewrite:
             write_session(path, {"_data": 2}, sections={"meta": ("json", "text")})
         assert (tmp_path / "s.mosaic").read_bytes() == before
         assert os.listdir(tmp_path) == ["s.mosaic"]
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
+    def test_rewrite_keeps_permissions(self, tmp_path):
+        path = str(tmp_path / "s.mosaic")
+        write_session(path, {"_data": 1})
+        os.chmod(path, 0o660)
+        write_session(path, {"_data": 2})
+        update_session_meta(path, {"tomogram": "/t/a.mrc"})
+        assert stat.S_IMODE(os.stat(path).st_mode) == 0o660
 
     def test_convert_legacy_is_byte_copy(self, tmp_path):
         raw = pickle.dumps({"_data": [1, 2, 3]})

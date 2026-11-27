@@ -86,11 +86,9 @@ def _text_button(text: str) -> QPushButton:
 class _Combo(QComboBox):
     """Combo box drawing its chevron in the muted text color."""
 
-    row_hovered = False
-
     def paintEvent(self, event) -> None:
         super().paintEvent(event)
-        hovered = self.row_hovered or self.underMouse()
+        hovered = bool(self.property("rowHovered")) or self.underMouse()
         pen = QPen(QColor(Colors.TEXT_SECONDARY if hovered else Colors.TEXT_MUTED))
         pen.setWidthF(1.5)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
@@ -243,6 +241,9 @@ class LinkTomogramsDialog(QDialog):
             }}
             QComboBox::down-arrow {{
                 image: none;
+            }}
+            QComboBox[rowHovered="true"]:!focus {{
+                border: 1px solid {Colors.BORDER_HOVER};
             }}
             """
         )
@@ -413,8 +414,10 @@ class LinkTomogramsDialog(QDialog):
 
         for row in (self._hovered, i):
             if 0 <= row < self.table.rowCount():
-                self._combo(row).row_hovered = row == i
-                self._combo(row).update()
+                combo = self._combo(row)
+                combo.setProperty("rowHovered", row == i)
+                combo.style().polish(combo)
+                combo.update()
         self._hovered = i
         return None
 

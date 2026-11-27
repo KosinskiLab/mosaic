@@ -14,6 +14,9 @@ from mosaic.path_display import display_path, display_paths, set_path_text
         ("/data/tomos/TS_012.zarr/", None, "TS_012.zarr"),
         ("s3://bucket/run/TS_012.zarr", None, "TS_012.zarr"),
         ("/data/tomos/TS_012.mrc", None, "TS_012.mrc"),
+        ("C:\\tomos\\TS_012\\tomogram.mrc", "C:/tomos", "TS_012\\tomogram.mrc"),
+        ("C:\\data\\extra\\TS_031.mrc", "C:/tomos/", "…/extra/TS_031.mrc"),
+        ("C:\\data\\tomos\\TS_012.mrc", None, "TS_012.mrc"),
     ],
 )
 def test_display_path(path, root, expected):

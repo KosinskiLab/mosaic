@@ -85,7 +85,7 @@ def test_choose_file_cancel_keeps_selection(qapp, dataset, monkeypatch):
 
     combo = dlg._combo(0)
 
-    picked = str(tomos / "TS_099_manual.mrc")
+    picked = (tomos / "TS_099_manual.mrc").as_posix()
     monkeypatch.setattr(
         "mosaic.dialogs.link_tomograms.QFileDialog.getOpenFileName",
         Mock(return_value=(picked, "")),
@@ -162,3 +162,23 @@ def test_key_line_hidden_without_match(qapp, dataset):
     assert dlg.key_label.isHidden()
     dlg.set_folder(str(tomos))
     assert not dlg.key_label.isHidden()
+
+
+def test_row_hover_outlines_combo(qapp, dataset):
+    from qtpy.QtGui import QColor
+
+    from mosaic.stylesheets import Colors
+
+    sessions, tomos = dataset
+    dlg = LinkTomogramsDialog(sessions)
+    dlg.set_folder(str(tomos))
+    combo = dlg._combo(1)
+
+    def border():
+        image = combo.grab().toImage()
+        return QColor(image.pixel(0, image.height() // 2)).name()
+
+    dlg._set_hovered(1)
+    assert border() == QColor(Colors.BORDER_HOVER).name()
+    dlg._set_hovered(0)
+    assert border() != QColor(Colors.BORDER_HOVER).name()

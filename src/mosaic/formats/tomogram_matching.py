@@ -107,7 +107,7 @@ def _tomogram_name(path: str, root: str | None) -> str:
 
 def _tokens(name: str) -> list[str]:
     tokens = re.split(f"[{_SEPARATORS}]+", name.lower())
-    return [str(int(t)) if t.isdigit() else t for t in tokens if t]
+    return [str(int(t)) if t.isascii() and t.isdigit() else t for t in tokens if t]
 
 
 def _shared_run(a: list[str], b: list[str]) -> int:
@@ -121,7 +121,9 @@ def _shared_run(a: list[str], b: list[str]) -> int:
 
 def _numeric_conflict(a: list[str], b: list[str]) -> bool:
     n = _shared_run(a, b)
-    return n < min(len(a), len(b)) and a[n].isdigit() and b[n].isdigit()
+    return n < min(len(a), len(b)) and all(
+        t.isascii() and t.isdigit() for t in (a[n], b[n])
+    )
 
 
 def _auto_match(session: str, names: list[str], tomograms: list[str]) -> Match:
@@ -132,7 +134,12 @@ def _auto_match(session: str, names: list[str], tomograms: list[str]) -> Match:
     if len(tomo_tokens) > 1:
         common = min(_shared_run(tomo_tokens[0], t) for t in tomo_tokens[1:])
         baseline = next(
-            (i for i, t in enumerate(tomo_tokens[0][:common]) if t.isdigit()), common
+            (
+                i
+                for i, t in enumerate(tomo_tokens[0][:common])
+                if t.isascii() and t.isdigit()
+            ),
+            common,
         )
 
     scores = [
@@ -150,8 +157,8 @@ def _auto_match(session: str, names: list[str], tomograms: list[str]) -> Match:
 
 
 def _compile(template: str) -> re.Pattern:
-    if "{key}" not in template:
-        raise ValueError(f"Pattern '{template}' has no {{key}}")
+    if template.count("{key}") != 1:
+        raise ValueError(f"Pattern '{template}' needs exactly one {{key}}")
 
     parts = re.split(r"(\{key\}|\*)", template)
     regex = "".join(
@@ -462,7 +469,7 @@ def write_tomogram_links(changes: dict[str, str | None]) -> LinkWriteResult:
                 target = convert_legacy_session(path)
                 paths[path] = target
             update_session_meta(target, {"tomogram": tomogram})
-        except (OSError, ValueError) as e:
+        except Exception as e:
             errors[path] = str(e)
 
     report_progress(current=len(changes), total=len(changes))

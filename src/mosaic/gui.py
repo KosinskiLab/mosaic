@@ -1318,6 +1318,7 @@ class App(QMainWindow):
     def _on_session_path_changed(self, old: str, new: str):
         if self._current_session_path == old:
             self._current_session_path = new
+            self._add_file_to_recent(new)
         self.status_indicator.show_task("Saved as ", path=new)
         return None
 
@@ -1724,6 +1725,9 @@ class App(QMainWindow):
         if not file_path:
             return -1
 
+        from .formats.session import session_save_path
+
+        file_path = session_save_path(file_path)
         if not file_path.lower().endswith(".mosaic"):
             file_path += ".mosaic"
         file_path = self.cdata.to_file(file_path)

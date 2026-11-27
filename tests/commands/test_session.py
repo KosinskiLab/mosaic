@@ -516,7 +516,8 @@ class TestSaveLoad:
     def test_save_session_pickle_roundtrip(self, make_session, tmp_path):
         session = make_session(n=2, n_points=30)
         session.group(session._all_geometries(), "TestGroup")
-        path = session.save_session(str(tmp_path / "session.pickle"))
+        with pytest.warns(UserWarning):
+            path = session.save_session(str(tmp_path / "session.pickle"))
 
         loaded = Session(quiet=True)
         loaded.load_session(path)
@@ -524,7 +525,8 @@ class TestSaveLoad:
 
     def test_save_session_pickle_target_writes_mosaic(self, make_session, tmp_path):
         session = make_session(n=1, n_points=10)
-        written = session.save_session(str(tmp_path / "s.pickle"))
+        with pytest.warns(UserWarning):
+            written = session.save_session(str(tmp_path / "s.pickle"))
         assert written == str(tmp_path / "s.mosaic")
         assert not (tmp_path / "s.pickle").exists()
         assert read_session_index(written)["format_version"] == 1
@@ -542,7 +544,7 @@ class TestSaveLoad:
 
     def test_load_session_persist_false(self, make_session, tmp_path):
         session = make_session(n=2, n_points=10)
-        path = session.save_session(str(tmp_path / "session.pickle"))
+        path = session.save_session(str(tmp_path / "session.mosaic"))
 
         loaded = Session(quiet=True)
         loaded.load_session(path, persist=False)

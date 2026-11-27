@@ -18,6 +18,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import json
 import os
 import pickle
+import shutil
 import struct
 
 from ._utils import CompatibilityUnpickler
@@ -184,6 +185,8 @@ def _write_sections(filepath: str, sections_data: dict) -> None:
             for _, blob in sections_data.values():
                 fh.write(blob)
 
+        if os.path.exists(filepath):
+            shutil.copymode(filepath, tmp_path)
         os.replace(tmp_path, filepath)
     except BaseException:
         if os.path.exists(tmp_path):

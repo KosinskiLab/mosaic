@@ -5,6 +5,7 @@ from functools import lru_cache
 
 import numpy as np
 import pytest
+from qtpy.QtCore import QSettings
 from qtpy.QtWidgets import QApplication
 
 _RENDER_PROBE = """
@@ -43,6 +44,29 @@ def require_vtk_render_window():
     if not vtk_offscreen_available():
         pytest.skip("VTK cannot create an offscreen render window here")
     return None
+
+
+@pytest.fixture(scope="session", autouse=True)
+def isolated_settings(tmp_path_factory):
+    """Point every settings category at a scratch store, never the user's."""
+    from mosaic.settings import Settings, SettingsCategory, SettingsProperty
+
+    store = QSettings(
+        str(tmp_path_factory.mktemp("settings") / "s.ini"),
+        QSettings.Format.IniFormat,
+    )
+    patch = pytest.MonkeyPatch()
+    for category in vars(Settings).values():
+        if isinstance(category, SettingsCategory):
+            patch.setattr(category, "_qsettings", store)
+
+    # Values cached from the user's store would otherwise leak into tests.
+    for prop in vars(SettingsCategory).values():
+        if isinstance(prop, SettingsProperty):
+            patch.setattr(prop, "_loaded", False)
+
+    yield store
+    patch.undo()
 
 
 @pytest.fixture(scope="session")
