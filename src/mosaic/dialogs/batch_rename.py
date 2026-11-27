@@ -23,17 +23,22 @@ from ..widgets import DialogFooter
 
 __all__ = ["BatchRenameDialog", "rename"]
 
-_TOKEN = re.compile(r"\{name\}|\{i(?::(\d+))?\}")
+_TOKEN = re.compile(r"\{name\}|\{i(?::(\d{1,3}))?\}")
 
 
-def _expand(template: str, name: str, index: int) -> str:
-    def token(match):
-        if match.group(0) == "{name}":
-            return name
-        width = int(match.group(1) or 0)
-        return str(index).zfill(width)
-
-    return _TOKEN.sub(token, template)
+def _expand(template: str, name: str, index: int, match=None) -> str:
+    parts, pos = [], 0
+    for token in _TOKEN.finditer(template):
+        literal = template[pos : token.start()]
+        parts.append(match.expand(literal) if match else literal)
+        if token.group(0) == "{name}":
+            parts.append(name)
+        else:
+            parts.append(str(index).zfill(int(token.group(1) or 0)))
+        pos = token.end()
+    literal = template[pos:]
+    parts.append(match.expand(literal) if match else literal)
+    return "".join(parts)
 
 
 def rename(
@@ -82,11 +87,14 @@ def rename(
 
     result = []
     for index, name in enumerate(names, start=1):
-        text = _expand(replace, name, index)
         if regex:
-            result.append(compiled.sub(text, name))
+            new = compiled.sub(
+                lambda m, n=name, i=index: _expand(replace, n, i, m), name
+            )
         else:
-            result.append(compiled.sub(lambda _, t=text: t, name))
+            text = _expand(replace, name, index)
+            new = compiled.sub(lambda _, t=text: t, name)
+        result.append(new)
     return result
 
 

@@ -80,3 +80,17 @@ def test_dialog_invalid_regex_keeps_names(qapp):
     dlg.find_input.setText("TS_(")
     assert dlg.result_names == NAMES
     assert not dlg.error_label.isHidden()
+
+
+def test_group_followed_by_number_token():
+    assert rename(["TS_001"], r"TS_(\d+)", r"\1{i}", regex=True) == ["0011"]
+    assert rename(["TS_001"], r"TS_(\d+)", r"\1{i:03}", regex=True) == ["001001"]
+
+
+def test_name_token_with_backslash_in_regex_mode():
+    assert rename([r"C:\tmp"], "", "{name}", regex=True) == [r"C:\tmp"]
+    assert rename([r"a\d"], "", "{name}_x", regex=True) == [r"a\d_x"]
+
+
+def test_huge_width_stays_literal():
+    assert rename(["a"], "", "{i:9999999999}") == ["{i:9999999999}"]
