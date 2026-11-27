@@ -103,6 +103,22 @@ def test_first_drag_places_then_pushes(md):
     assert _planes(cloud) == [cut.plane]
 
 
+def test_empty_drawing_cluster_is_not_cut(md):
+    cloud = _add_cloud(md.data, low=(1000, 1000, 1000), high=(1100, 1100, 1100))
+    md.viewport.set_mode(ViewerModes.DRAWING)
+    md.viewport.set_mode(ViewerModes.VIEWING)
+    assert len(md.data.container.data) == 2
+
+    mode = ClipMode(md.viewport, md.viewport.clip_cut, lambda text: None)
+    mode.activate()
+    _drag(mode, (100, 100), (100, 60))
+
+    zmin, zmax = cloud.actor.GetBounds()[4:6]
+    origin, normal = _pose(md.viewport.clip_cut)
+    assert md.viewport.clip_cut.geometries == [cloud]
+    assert origin @ normal == pytest.approx(-zmax + 40 / 400 * (zmax - zmin))
+
+
 def test_drag_up_pulls_back(md):
     cloud = _add_cloud(md.data)
     mode = _active(md, cloud)

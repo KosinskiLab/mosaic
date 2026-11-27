@@ -1556,6 +1556,9 @@ class App(QMainWindow):
             self._session_list_widget.current_index = -1
             self._session_list_widget._update_highlight()
 
+        if self.cdata.viewport._interaction_mode == "clip":
+            self._transition_modes(ViewerModes.VIEWING)
+
         self.renderer.RemoveAllViewProps()
         self.volume_viewer.close()
 

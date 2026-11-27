@@ -77,6 +77,7 @@ def test_eligible_kinds():
     assert eligible(_mesh())
     assert not eligible(sphere)
     assert not eligible(segmentation)
+    assert not eligible(Geometry(points=np.empty((0, 3), np.float32)))
 
 
 def test_targets_selected_eligible_across_panes():
@@ -93,6 +94,14 @@ def test_targets_all_visible_when_nothing_selected():
     b.set_visibility(False)
 
     assert clip_targets(_pane([a, b]), _pane([c])) == [a, c]
+
+
+def test_targets_skip_empty_geometries():
+    a = _cloud(n=10, low=(1000, 1000, 1000), high=(1100, 1100, 1100))
+    empty = Geometry(points=np.empty((0, 3), np.float32))
+
+    assert clip_targets(_pane([a, empty]), _pane([])) == [a]
+    assert clip_targets(_pane([a, empty], selected=[empty]), _pane([])) == []
 
 
 def test_targets_empty_when_selection_ineligible():

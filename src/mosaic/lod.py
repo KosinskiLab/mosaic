@@ -410,6 +410,7 @@ class InteractionLOD:
 
         for i in range(planes.GetNumberOfItems()):
             dst.AddClippingPlane(planes.GetItem(i))
+        return None
 
     def _sync_arrays(self):
         owner = self._owner

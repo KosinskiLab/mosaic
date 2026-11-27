@@ -129,7 +129,13 @@ class ClipMode:
         return None
 
     def right_press(self, x: int, y: int) -> None:
-        """Start a right-button gesture at display position ``x``, ``y``."""
+        """Start a right-button gesture.
+
+        Parameters
+        ----------
+        x, y : int
+            Display position of the press.
+        """
         # A release lost outside the window leaves the previous drag running.
         if self._dragging:
             self._end_drag()
@@ -138,7 +144,15 @@ class ClipMode:
         return None
 
     def right_move(self, x: int, y: int, shift: bool) -> None:
-        """Push the cut on a vertical drag, or tilt it with ``shift``."""
+        """Push the cut on a vertical drag, or tilt it with ``shift``.
+
+        Parameters
+        ----------
+        x, y : int
+            Display position of the pointer.
+        shift : bool
+            Whether Shift is held.
+        """
         if self._press is None or not self._targets:
             return None
 
@@ -169,7 +183,13 @@ class ClipMode:
         return None
 
     def right_release(self, x: int, y: int) -> None:
-        """Finish a drag, or remove the cut after a click."""
+        """Finish a drag, or remove the cut after a click.
+
+        Parameters
+        ----------
+        x, y : int
+            Display position of the release.
+        """
         if self._press is None:
             return None
 
@@ -183,7 +203,13 @@ class ClipMode:
         return None
 
     def key(self, name: str) -> None:
-        """Handle key ``name``. ``f`` turns the cut to face the camera."""
+        """Handle a key press. ``f`` turns the cut to face the camera.
+
+        Parameters
+        ----------
+        name : str
+            Key symbol.
+        """
         if name.lower() != "f" or not (self._cut.has_pose and self._cut.geometries):
             return None
 

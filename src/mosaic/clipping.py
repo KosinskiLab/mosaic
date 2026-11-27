@@ -24,9 +24,12 @@ def eligible(geometry) -> bool:
     Returns
     -------
     bool
-        True for point clouds, trajectories and mesh models.
+        True for non-empty point clouds, trajectories and mesh models.
     """
     from .parametrization import TriangularMesh
+
+    if geometry.get_number_of_points() == 0:
+        return False
 
     if geometry._representation in ("volume", "segmentation"):
         return False
@@ -163,20 +166,20 @@ class ClipCut:
         self._attach()
         return None
 
-    def place_facing(self, view_direction, bounds) -> None:
-        """Place the plane facing the viewer in front of ``bounds``.
+    def place_facing(self, view_direction, box) -> None:
+        """Place the plane facing the viewer in front of ``box``.
 
         Parameters
         ----------
         view_direction : array_like
             Direction from the camera to its focal point (3,).
-        bounds : tuple of float
+        box : tuple of float
             Bounds (xmin, xmax, ymin, ymax, zmin, zmax) to place the plane
             in front of.
         """
         normal = np.asarray(view_direction, dtype=float)
         normal = normal / np.linalg.norm(normal)
-        corners = _corners(bounds)
+        corners = _corners(box)
         center = corners.mean(axis=0)
         depth = (corners @ normal).min()
 

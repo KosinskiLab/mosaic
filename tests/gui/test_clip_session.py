@@ -5,10 +5,12 @@ import numpy as np
 import pytest
 import vtk
 
+from mosaic.clip_mode import ClipInteractorStyle
 from mosaic.data import MosaicData
 from mosaic.formats import read_session_meta
 from mosaic.gui import App
 from mosaic.undo import STACK
+from mosaic.widgets.status_indicator import ViewerModes
 
 
 @pytest.fixture
@@ -115,6 +117,40 @@ def test_close_session_clears_cut(md):
     assert not cut.has_pose
     assert cut.geometries == []
     assert _planes(cloud) == []
+
+
+def test_close_session_leaves_clip_mode(md):
+    cloud = _add_cloud(md.data)
+    md.data.set_selection_by_uuid([cloud.uuid])
+    md.viewport.set_mode(ViewerModes.CLIP)
+    names = (
+        "renderer",
+        "volume_viewer",
+        "bbox_manager",
+        "trajectory_player",
+        "dataset_bbox",
+        "computed_bbox",
+        "scale_bar",
+        "status_indicator",
+        "_tomogram_link",
+        "prime_viewport_placeholder",
+        "vtk_widget",
+    )
+    fake = SimpleNamespace(
+        cdata=md,
+        cursor_handler=MagicMock(current_mode=ViewerModes.CLIP),
+        **{name: MagicMock() for name in names},
+    )
+    fake._transition_modes = lambda mode: App._transition_modes(fake, mode)
+
+    App.close_session(fake, render=False)
+
+    interactor = md.viewport.vtk_widget.GetRenderWindow().GetInteractor()
+    style = interactor.SetInteractorStyle.call_args.args[0]
+    assert md.viewport._interaction_mode is None
+    assert md.viewport._active_mode is None
+    assert not isinstance(style, ClipInteractorStyle)
+    fake.cursor_handler.update_mode.assert_called_with(ViewerModes.VIEWING)
 
 
 def _collected_uuids(md):
