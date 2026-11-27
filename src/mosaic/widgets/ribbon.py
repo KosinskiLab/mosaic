@@ -25,6 +25,7 @@ from qtpy.QtWidgets import (
 
 from ..icons import icon
 from ..stylesheets import Colors, Typography
+from .follow_window import follow_window
 from .settings import create_setting_widget
 
 
@@ -58,6 +59,7 @@ class SettingsPanel(QFrame):
         self.setFixedWidth(self.PANEL_WIDTH)
 
         self._setup_ui()
+        follow_window(self, self._place)
 
     def _setup_ui(self):
         # Main container with padding for the custom border
@@ -206,13 +208,7 @@ class SettingsPanel(QFrame):
         """Position and show the panel below the button."""
         self.parent_button = button
         self.adjustSize()
-
-        btn_rect = button.rect()
-        global_pos = button.mapToGlobal(QPoint(0, btn_rect.height()))
-
-        # Offset X by margin (8px) to align panel border with button border
-        # Offset Y by -1 to overlap with button's bottom edge
-        self.move(global_pos.x() - 8, global_pos.y() - 1)
+        self._place()
         self.show()
 
         # Certain SettingsWidgets appear to draw focus. This pre-clears them.
@@ -223,6 +219,14 @@ class SettingsPanel(QFrame):
 
         if hasattr(button, "_set_panel_open"):
             button._set_panel_open(True)
+
+    def _place(self):
+        button = self.parent_button
+        global_pos = button.mapToGlobal(QPoint(0, button.height()))
+
+        # Offset X by margin (8px) to align panel border with button border
+        # Offset Y by -1 to overlap with button's bottom edge
+        self.move(global_pos.x() - 8, global_pos.y() - 1)
 
     def closeEvent(self, event: QCloseEvent):
         app = QApplication.instance()

@@ -75,6 +75,7 @@ from .widgets import (
     ViewerModes,
 )
 from .widgets.dock import style_popup, toggle_dock
+from .widgets.follow_window import follow_window
 from .widgets.viewport_placeholder import ViewportPlaceholder, default_actions
 from .widgets.volume_viewer_hud import VolumeViewerHUD
 
@@ -629,11 +630,15 @@ class App(QMainWindow):
         if panel.isVisible():
             panel.hide()
             return
+        self._place_appearance_panel()
+        panel.show()
+        panel.raise_()
+
+    def _place_appearance_panel(self):
+        panel = self.appearance_panel
         m = panel._MARGIN
         pos = self._tab_gear.mapToGlobal(self._tab_gear.rect().bottomRight())
         panel.move(pos.x() - panel.width() + m, pos.y() + 4 - m)
-        panel.show()
-        panel.raise_()
 
     def _on_theme_toggled(self, checked: bool):
         from .stylesheets import Colors, switch_theme
@@ -724,6 +729,7 @@ class App(QMainWindow):
         # Gear button is connected after tab bar creation in __init__
         self.appearance_panel = AppSettingsPanel(self)
         self.appearance_panel.settingsChanged.connect(self.apply_render_settings)
+        follow_window(self.appearance_panel, self._place_appearance_panel)
 
         self._setup_trajectory_player()
 
