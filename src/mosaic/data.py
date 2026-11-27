@@ -157,6 +157,9 @@ class MosaicData:
         # so we only refresh the trees from the restored state.
         self.data.update(tree_state=self._session._data_tree)
         self.models.update(tree_state=self._session._models_tree)
+        # Default mode would overwrite colors saved with the session.
+        if self.viewport.coloring_mode == "entity":
+            self.viewport.set_coloring_mode("entity")
 
         meta_entry = self._session._file_sections.get("meta")
         meta = {}

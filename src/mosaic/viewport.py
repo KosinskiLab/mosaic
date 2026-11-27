@@ -179,6 +179,7 @@ class ViewportInteractor(QObject):
         self._sculpt_hud = None
         self._sculpt_controller = None
         self.clip_cut = ClipCut()
+        self.coloring_mode = "default"
 
         for pane in self.panes:
             pane.attach_viewport(self)
@@ -548,6 +549,7 @@ class ViewportInteractor(QObject):
 
     def set_coloring_mode(self, mode: str):
         """Apply a coloring mode to every pane and render once."""
+        self.coloring_mode = mode
         for pane in self.panes:
             pane.set_coloring_mode(mode)
         self.render_vtk()
