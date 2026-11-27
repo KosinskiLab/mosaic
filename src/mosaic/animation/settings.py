@@ -71,7 +71,17 @@ class AnimationSettings(QGroupBox):
         )
         frame_layout.addWidget(self.global_start_spin, 0, 1)
 
-        frame_layout.addWidget(QLabel("Rate:"), 0, 2)
+        frame_layout.addWidget(QLabel("Duration:"), 0, 2)
+        self.duration_spin = QSpinBox()
+        self.duration_spin.setRange(1, 2 << 29)
+        self.duration_spin.setSuffix(" f")
+        self.duration_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
+        self.duration_spin.setMinimumWidth(0)
+        self.duration_spin.valueChanged.connect(self._on_duration_changed)
+        frame_layout.addWidget(self.duration_spin, 0, 3)
+
+        self._rate_label = QLabel("Rate:")
+        frame_layout.addWidget(self._rate_label, 1, 0)
         self.rate_spin = QDoubleSpinBox()
         self.rate_spin.setRange(0.1, 10.0)
         self.rate_spin.setValue(1.0)
@@ -80,9 +90,7 @@ class AnimationSettings(QGroupBox):
         self.rate_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.rate_spin.setMinimumWidth(0)
         self.rate_spin.valueChanged.connect(self._on_rate_changed)
-        frame_layout.addWidget(self.rate_spin, 0, 3)
-
-        self._base_duration = 100  # Reference duration at rate=1.0
+        frame_layout.addWidget(self.rate_spin, 1, 1)
 
         main_layout.addLayout(frame_layout)
 
@@ -114,13 +122,37 @@ class AnimationSettings(QGroupBox):
             label.setStyleSheet(muted)
 
     def _on_rate_changed(self, rate):
-        """Handle rate change by updating the derived stop_frame."""
-        if rate <= 0:
+        if not self.animation:
             return None
-        new_duration = max(1, int(self._base_duration / rate))
-        if self.animation:
-            self.animation.rate = rate
-        self.on_change(new_duration, "stop_frame")
+        self.animation.set_rate(rate)
+        self.sync_timing()
+        self.animationChanged.emit({"rate": rate})
+        return None
+
+    def _on_duration_changed(self, frames):
+        if not self.animation:
+            return None
+        self.animation.set_duration(frames)
+        self.sync_timing()
+        self.animationChanged.emit({"duration": frames})
+        return None
+
+    def sync_timing(self):
+        """Refresh duration and rate widgets from the current animation."""
+        if not self.animation:
+            return None
+
+        for widget in (self.duration_spin, self.rate_spin):
+            widget.blockSignals(True)
+        self.duration_spin.setValue(self.animation.duration)
+        self.rate_spin.setValue(self.animation.rate)
+        for widget in (self.duration_spin, self.rate_spin):
+            widget.blockSignals(False)
+
+        has_rate = self.animation.has_rate
+        self._rate_label.setVisible(has_rate)
+        self.rate_spin.setVisible(has_rate)
+        return None
 
     def set_animation(self, animation):
         self.animation = animation
@@ -130,25 +162,18 @@ class AnimationSettings(QGroupBox):
             self.name_edit,
             self.global_start_spin,
             self.enabled_check,
-            self.rate_spin,
         ]:
             widget.blockSignals(True)
 
         self.name_edit.setText(animation.name)
         self.global_start_spin.setValue(animation.global_start_frame)
         self.enabled_check.setChecked(animation.enabled)
-
-        if animation._base_duration is not None:
-            self._base_duration = animation._base_duration
-        else:
-            self._base_duration = animation.stop_frame * animation.rate
-        self.rate_spin.setValue(animation.rate)
+        self.sync_timing()
 
         for widget in [
             self.name_edit,
             self.global_start_spin,
             self.enabled_check,
-            self.rate_spin,
         ]:
             widget.blockSignals(False)
 
@@ -209,10 +234,7 @@ class AnimationSettings(QGroupBox):
 
         # Data range changes update stop_frame; sync the UI
         if key in ("data_start", "data_stop"):
-            self._base_duration = self.animation._base_duration or self._base_duration
-            self.rate_spin.blockSignals(True)
-            self.rate_spin.setValue(self.animation.rate)
-            self.rate_spin.blockSignals(False)
+            self.sync_timing()
 
         self.animationChanged.emit({key: value})
 

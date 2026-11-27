@@ -40,15 +40,15 @@ def _aggregate(data, mode: str):
     mode = mode.lower()
     if data.ndim == 2:
         if mode == "mean":
-            data = data.mean(axis=1)
+            data = np.nanmean(data, axis=1)
         elif mode == "min":
-            data = data.min(axis=1)
+            data = np.nanmin(data, axis=1)
         elif mode == "max":
-            data = data.max(axis=1)
+            data = np.nanmax(data, axis=1)
         elif mode == "median":
-            data = np.median(data, axis=1)
+            data = np.nanmedian(data, axis=1)
         elif mode == "std":
-            data = np.std(data, axis=1)
+            data = np.nanstd(data, axis=1)
     return data
 
 
@@ -213,19 +213,22 @@ def distance(
 
             fetch_k = k + 1 if is_self_query else k
             dist, _ = find_closest_points(query, geometry.points, k=fetch_k)
-            if is_self_query:
-                dist = dist[:, 1:] if dist.ndim == 2 else dist
 
-        if distance is None:
-            distance = dist
-        distance = np.minimum(distance, dist)
+            # KDTree pads neighbors beyond the query size with inf
+            dist = np.where(np.isinf(dist), np.nan, dist)
+            if is_self_query:
+                dist = dist[:, 1:]
+
+        dist = np.asarray(dist).reshape(geometry.points.shape[0], -1)
+        distance = dist if distance is None else np.fmin(distance, dist)
 
     if distance is None:
         return None
 
-    if distance.ndim == 2:
-        distance = distance[:, k_start - 1 : k]
-    return _aggregate(distance, mode=aggregation)
+    distance = distance[:, k_start - 1 : k]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        return _aggregate(distance, mode=aggregation)
 
 
 def box_size(geometry, axis: int = None):

@@ -2220,11 +2220,16 @@ class GeometryTrajectory(Geometry):
     def __init__(self, trajectory: list[dict], **kwargs):
         super().__init__(**kwargs)
         self._trajectory = trajectory
+        self._current_frame = None
 
     def __getstate__(self):
         state = super().__getstate__()
         state.update({"trajectory": self._trajectory})
         return state
+
+    def swap_data(self, *args, **kwargs):
+        self._current_frame = None
+        return super().swap_data(*args, **kwargs)
 
     @property
     def frames(self):
@@ -2268,7 +2273,20 @@ class GeometryTrajectory(Geometry):
             meta=meta,
             model=model,
         )
+        self._current_frame = frame_idx
         return True
+
+    @property
+    def current_frame(self):
+        """
+        Index of the displayed frame.
+
+        Returns
+        -------
+        int or None
+            Frame last shown via :py:meth:`display_frame`, or None if unknown.
+        """
+        return getattr(self, "_current_frame", None)
 
 
 # For backwards compatibility

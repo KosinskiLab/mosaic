@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
@@ -10,6 +11,10 @@ from ..stylesheets import Colors, Typography
 
 class BaseAnimation(ABC):
     """Base class for all animations"""
+
+    #: Whether playback speed is meaningful, i.e. duration derives from a
+    #: reference length divided by rate. Span-like animations disable this.
+    has_rate = True
 
     def __init__(
         self,
@@ -70,6 +75,32 @@ class BaseAnimation(ABC):
             self.stop_frame = max(1, int(self._base_duration / self.rate))
         self.parameters.update(**kwargs)
 
+    def _reference_duration(self) -> float:
+        if self._base_duration is None:
+            self._base_duration = self.duration * self.rate
+        return self._base_duration
+
+    def set_duration(self, frames: int) -> None:
+        """Set the animation length in frames.
+
+        For animations with a rate, the rate is adjusted so that the
+        reference duration plays back over the requested number of frames.
+        """
+        frames = max(1, int(frames))
+        if self.has_rate:
+            self.rate = self._reference_duration() / frames
+        self.stop_frame = self.start_frame + frames
+        return None
+
+    def set_rate(self, rate: float) -> None:
+        """Set the playback rate, deriving the duration from the reference length."""
+        if rate <= 0 or not self.has_rate:
+            return None
+        frames = max(1, int(self._reference_duration() / rate))
+        self.rate = rate
+        self.stop_frame = self.start_frame + frames
+        return None
+
     def reset(self) -> None:
         """Reset any externally-modified state before a new frame is applied.
 
@@ -78,6 +109,15 @@ class BaseAnimation(ABC):
         Override in subclasses that need this; the base implementation is a no-op.
         """
         pass
+
+    def commit(self) -> None:
+        """Apply state accumulated across all tracks after a frame's updates.
+
+        Called by the composer once every track has been updated, so that
+        animations sharing targets can combine their contributions and write
+        to VTK once. The base implementation is a no-op.
+        """
+        return None
 
     def update(self, global_frame: int) -> None:
         """Update animation state for the given global frame"""
@@ -137,7 +177,15 @@ class BaseAnimation(ABC):
 
 
 class TrajectoryAnimation(BaseAnimation):
-    """Animation for molecular trajectories"""
+    """Animation for molecular trajectories.
+
+    Before its first track starts, a trajectory shows that track's first
+    frame; after a track ends, it holds the last one. When several tracks
+    animate the same trajectory, the most recently started track drives it.
+    """
+
+    # Keyed by trajectory: (rank, local frame, track) of the driving track.
+    _claims: dict[int, tuple[tuple[bool, int], int, "TrajectoryAnimation"]] = {}
 
     def _available_trajectories(self):
         """Return (name, uuid) pairs for all trajectory objects."""
@@ -213,8 +261,46 @@ class TrajectoryAnimation(BaseAnimation):
             },
         ]
 
+    def reset(self) -> None:
+        """Withdraw this track's claim on its trajectory; applied on commit."""
+        for key, claim in list(self._claims.items()):
+            if claim[2] is self:
+                del self._claims[key]
+        return None
+
+    def update(self, global_frame: int) -> None:
+        """Bid for the trajectory, also before the track starts."""
+        if not self.enabled or getattr(self, "_trajectory", None) is None:
+            return None
+
+        local_frame = global_frame - self.global_start_frame + self.start_frame
+        started = local_frame >= self.start_frame
+        local_frame = max(self.start_frame, min(self.stop_frame, local_frame))
+        local_frame -= (local_frame - self.start_frame) % self.stride
+
+        # Started tracks beat pending ones; among started tracks the latest
+        # start wins, among pending ones the earliest. Ties go to later tracks.
+        start = self.global_start_frame
+        rank = (started, start if started else -start)
+
+        key = id(self._trajectory)
+        claim = self._claims.get(key)
+        if claim is None or rank >= claim[0]:
+            self._claims[key] = (rank, local_frame, self)
+        return None
+
+    def commit(self) -> None:
+        trajectory = getattr(self, "_trajectory", None)
+        if trajectory is None:
+            return None
+
+        claim = self._claims.get(id(trajectory))
+        if claim is not None and claim[2] is self:
+            self._update(claim[1])
+        return None
+
     def _update(self, frame: int) -> None:
-        if not hasattr(self, "_trajectory"):
+        if getattr(self, "_trajectory", None) is None:
             return None
 
         progress = self._get_progress(frame)
@@ -226,16 +312,33 @@ class TrajectoryAnimation(BaseAnimation):
         data_frame = int(data_start + progress * (data_stop - data_start))
         data_frame = max(data_start, min(data_stop - 1, data_frame))
 
+        if self._trajectory.current_frame == data_frame:
+            return None
+
         self._trajectory.display_frame(data_frame)
-        # TODO: selection restore should move to reset() once the interactor
-        # preserves highlight state across display_frame calls.
-        uuids = self.cdata.models._get_selected_uuids()
-        if uuids:
-            self.cdata.models.set_selection_by_uuid(uuids)
+        # display_frame drops the highlight color. Restore it via the container,
+        # since the interactor would render mid-frame, before later tracks
+        # have updated, and the scene would flicker between frames.
+        models = self.cdata.models
+        uuids = models._get_selected_uuids()
+        if self._trajectory.uuid in uuids:
+            models.container.highlight(uuids)
 
 
 class VolumeAnimation(BaseAnimation):
-    """Volume slicing animation"""
+    """Volume slicing animation.
+
+    Volume tracks hold their last slice after they end, so several can be
+    active at once. Each frame, the most recently started track drives the
+    viewer; the others yield instead of rewriting slice and orientation.
+    """
+
+    # Keyed by viewer: (global start frame, local frame, track) of the
+    # track that drives the viewer this frame.
+    _claims: dict[int, tuple[int, int, "VolumeAnimation"]] = {}
+
+    # Keyed by viewer: slice visibility before any volume track touched it.
+    _original_visibility: dict[int, bool] = {}
 
     def _init_parameters(self) -> None:
         self._forward_fill = True
@@ -244,7 +347,6 @@ class VolumeAnimation(BaseAnimation):
         self.parameters["projection"] = "Off"
         self.parameters["axis"] = "Z"
         self.parameters["hide"] = False
-        self._original_visibility = None
         try:
             self.update_parameters(
                 axis=self.volume_viewer.primary.orientation_selector.currentText().lower()
@@ -252,14 +354,30 @@ class VolumeAnimation(BaseAnimation):
         except Exception:
             pass
 
-    def reset(self) -> None:
-        """Restore volume visibility to the state before this animation touched it.
+    @property
+    def _viewer_key(self) -> int:
+        return id(self.volume_viewer.primary)
 
-        Uses the VTK actor directly to avoid triggering intermediate renders
-        that would cause flickering during playback.
-        """
-        if self._original_visibility is not None:
-            self.volume_viewer.primary.slice.SetVisibility(self._original_visibility)
+    def reset(self) -> None:
+        """Withdraw this track's claim on the viewer; applied on commit."""
+        claim = self._claims.get(self._viewer_key)
+        if claim is not None and claim[2] is self:
+            del self._claims[self._viewer_key]
+        return None
+
+    def commit(self) -> None:
+        """Apply the winning track's state, or restore the viewer if none."""
+        key = self._viewer_key
+        claim = self._claims.get(key)
+        if claim is None:
+            original = self._original_visibility.pop(key, None)
+            if original is not None:
+                self.volume_viewer.primary.slice.SetVisibility(original)
+            return None
+
+        if claim[2] is self:
+            self._apply(claim[1])
+        return None
 
     def _get_axis_size(self, axis=None):
         _mapping = {"x": 0, "y": 1, "z": 2}
@@ -343,9 +461,16 @@ class VolumeAnimation(BaseAnimation):
         super().update_parameters(**kwargs)
 
     def _update(self, frame: int) -> None:
+        key = self._viewer_key
+        claim = self._claims.get(key)
+        if claim is None or self.global_start_frame >= claim[0]:
+            self._claims[key] = (self.global_start_frame, frame, self)
+        return None
+
+    def _apply(self, frame: int) -> None:
         progress = self._get_progress(frame)
         if progress is None:
-            return
+            return None
 
         if self.parameters["direction"] == "backward":
             progress = 1.0 - progress
@@ -357,12 +482,11 @@ class VolumeAnimation(BaseAnimation):
 
         viewer = self.volume_viewer.primary
 
-        # Track original visibility so reset() can restore it
-        if self._original_visibility is None:
-            self._original_visibility = viewer.is_visible
-
-        if self.parameters.get("hide", False):
-            viewer.slice.SetVisibility(False)
+        # Uses the VTK actor directly; set_visibility would render mid-frame
+        original = self._original_visibility.setdefault(
+            self._viewer_key, viewer.is_visible
+        )
+        viewer.slice.SetVisibility(original and not self.parameters.get("hide", False))
 
         # Suppress intermediate renders
         viewer._rendering_suspended = True
@@ -480,20 +604,23 @@ class CameraAnimation(BaseAnimation):
 
 
 class ActorSelectionDialog(QDialog):
-    """Dialog for selecting actors using ContainerTreeWidget."""
+    """Pick the objects a visibility track affects.
+
+    Lists clusters and models with the same rows, grouping and section
+    headers as the object browser sidebar.
+    """
 
     def __init__(self, cdata, current_selection=None, parent=None):
+        from qtpy.QtCore import Qt
         from qtpy.QtWidgets import (
-            QFrame,
-            QGroupBox,
+            QAbstractItemView,
             QHBoxLayout,
             QLabel,
-            QPushButton,
-            QTreeWidget,
+            QToolButton,
             QVBoxLayout,
         )
 
-        from mosaic.widgets import DialogFooter
+        from mosaic.widgets import DialogFooter, SearchWidget
         from mosaic.widgets.container_list import (
             ContainerTreeWidget,
             StyledTreeWidgetItem,
@@ -501,108 +628,188 @@ class ActorSelectionDialog(QDialog):
 
         super().__init__(parent)
         self.setWindowTitle("Select Objects")
-        self.resize(400, 500)
         self.setModal(True)
+        self.resize(360, 520)
 
-        self._cdata = cdata
-        self._trees = []
-        self._tree_labels = []
+        current_selection = set(current_selection or [])
+        self._trees = {}
 
         layout = QVBoxLayout(self)
-        current_selection = set(current_selection or [])
+        layout.setContentsMargins(12, 12, 12, 8)
+        layout.setSpacing(8)
 
-        quick_group = QGroupBox("Quick Select")
-        quick_layout = QHBoxLayout(quick_group)
-        quick_layout.setContentsMargins(8, 8, 8, 8)
-        quick_layout.setSpacing(6)
+        search = SearchWidget(placeholder="Filter objects")
+        search.searchTextChanged.connect(self._filter)
+        layout.addWidget(search)
 
-        for label, callback in [
-            ("All", self._select_all),
-            ("Clusters", lambda: self._select_by_type("data")),
-            ("Models", lambda: self._select_by_type("models")),
-        ]:
-            btn = QPushButton(label)
-            btn.clicked.connect(callback)
-            quick_layout.addWidget(btn)
+        quick = QHBoxLayout()
+        quick.setContentsMargins(0, 0, 0, 0)
+        quick.setSpacing(2)
+        for text, data_types in (
+            ("All", ("data", "models")),
+            ("None", ()),
+            ("Clusters", ("data",)),
+            ("Models", ("models",)),
+        ):
+            button = QToolButton()
+            button.setText(text)
+            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+            button.clicked.connect(lambda _, x=data_types: self._select(x))
+            quick.addWidget(button)
+        quick.addStretch(1)
 
-        layout.addWidget(quick_group)
+        self._count = QLabel()
+        self._count.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.LABEL}px;"
+        )
+        quick.addWidget(self._count)
+        layout.addLayout(quick)
 
-        for label, data_type, interactor in [
+        for title, data_type, interactor in (
             ("Clusters", "data", cdata.data),
             ("Models", "models", cdata.models),
-        ]:
+        ):
             objects = {obj.uuid: obj for _, obj in cdata.format_datalist(data_type)}
             if not objects:
                 continue
 
-            header = QLabel(label)
-            header.setStyleSheet(f"font-weight: 500; font-size: {Typography.LABEL}px;")
-            layout.addWidget(header)
-
             tree = ContainerTreeWidget()
             tree.tree_widget.setSelectionMode(
-                QTreeWidget.SelectionMode.ExtendedSelection
+                QAbstractItemView.SelectionMode.MultiSelection
             )
-            self._trees.append(tree)
-            self._tree_labels.append(data_type)
+            tree.tree_widget.setDragDropMode(QAbstractItemView.DragDropMode.NoDragDrop)
 
-            state = interactor.data_list.to_state()
             uuid_to_item = {}
             for uuid, obj in objects.items():
-                item = StyledTreeWidgetItem(
-                    obj._meta.get("name"),
-                    obj.visible,
-                    {"object_id": id(obj), "data_type": data_type, **obj._meta},
-                )
+                item = StyledTreeWidgetItem(geometry=obj, visible=obj.visible)
+                item.metadata["object_id"] = id(obj)
+                if not obj.visible:
+                    item.setToolTip(0, "Hidden. Stays hidden during playback.")
                 uuid_to_item[uuid] = item
 
+            # Mirror the sidebar's order and groups
+            state = interactor.data_list.to_state()
+            placed = state.get_all_uuids()
             tree.apply_state(state, uuid_to_item)
+            for uuid, item in uuid_to_item.items():
+                if uuid not in placed:
+                    tree.tree_widget.addTopLevelItem(item)
+            tree.tree_widget.expandAll()
 
             for uuid, obj in objects.items():
-                if uuid in uuid_to_item and id(obj) in current_selection:
-                    uuid_to_item[uuid].setSelected(True)
-            layout.addWidget(tree)
+                uuid_to_item[uuid].setSelected(id(obj) in current_selection)
+            tree.tree_widget.itemSelectionChanged.connect(self._update_count)
 
-            separator = QFrame()
-            separator.setFrameShape(QFrame.Shape.HLine)
-            separator.setStyleSheet(f"color: {Colors.BORDER_DARK};")
-            layout.addWidget(separator)
+            header = QLabel(title)
+            header.setStyleSheet(
+                f"""
+                font-size: {Typography.LABEL}px; font-weight: 600;
+                color: {Colors.TEXT_MUTED};
+                padding: 8px 0px 4px 0px;
+                background: transparent;
+                """
+            )
+            section = QVBoxLayout()
+            section.setContentsMargins(0, 0, 0, 0)
+            section.setSpacing(2)
+            section.addWidget(header)
+            section.addWidget(tree, 1)
+            layout.addLayout(section, 1)
+            self._trees[data_type] = tree
 
-        layout.addWidget(DialogFooter(dialog=self, margin=(0, 10, 0, 0)))
+        layout.addWidget(
+            DialogFooter(
+                info_text="Hidden objects stay hidden.",
+                dialog=self,
+                margin=(0, 8, 0, 0),
+            )
+        )
+        self._update_count()
 
-    def _select_all(self):
-        """Select all items in all trees."""
-        for tree in self._trees:
-            tree.tree_widget.selectAll()
+    def _items(self, data_types=None):
+        """Yield object rows, skipping group headers."""
+        from mosaic.widgets.container_list import StyledTreeWidgetItem
 
-    def _select_by_type(self, data_type: str):
-        """Select only items of a specific type (data or models)."""
-        for tree, label in zip(self._trees, self._tree_labels):
-            if label == data_type:
-                tree.tree_widget.selectAll()
-            else:
-                tree.tree_widget.clearSelection()
+        for data_type, tree in self._trees.items():
+            if data_types is not None and data_type not in data_types:
+                continue
+            for item, _parent, _index in tree.traverse():
+                if isinstance(item, StyledTreeWidgetItem):
+                    yield item
+
+    def _select(self, data_types):
+        """Select every listed object of the given types, deselect the rest."""
+        for data_type, tree in self._trees.items():
+            tree.tree_widget.blockSignals(True)
+            for item in self._items((data_type,)):
+                item.setSelected(data_type in data_types and not item.isHidden())
+            tree.tree_widget.blockSignals(False)
+        self._update_count()
+
+    def _filter(self, text):
+        from mosaic.widgets.container_list import GroupTreeWidgetItem
+
+        text = text.strip().lower()
+        for item in self._items():
+            item.setHidden(bool(text) and text not in item.text(0).lower())
+
+        for tree in self._trees.values():
+            for item, _parent, _index in tree.traverse():
+                if not isinstance(item, GroupTreeWidgetItem):
+                    continue
+                children = [item.child(i) for i in range(item.childCount())]
+                item.setHidden(bool(text) and all(c.isHidden() for c in children))
+
+    def _update_count(self):
+        items = list(self._items())
+        selected = sum(item.isSelected() for item in items)
+        self._count.setText(f"{selected} of {len(items)} selected")
 
     def get_selected_objects(self):
-        selected = []
-        for tree in self._trees:
-            selected.extend(
-                item.metadata["object_id"] for item in tree.selected_items()
-            )
-        return selected
+        return [
+            item.metadata["object_id"] for item in self._items() if item.isSelected()
+        ]
+
+
+@dataclass
+class _FadeState:
+    """Original appearance of an actor and the track currently fading it."""
+
+    geometry: Any
+    actor: Any
+    opacity: float
+    #: (global start frame, opacity factor, track) of the driving track.
+    claim: tuple[int, float, Any] | None = None
+    hidden: bool = False
 
 
 class VisibilityAnimation(BaseAnimation):
-    """Visibility fade animation"""
+    """Hide or fade objects for the span of the track.
+
+    Outside the track objects keep their own appearance. Inside, their
+    opacity is scaled by a factor that moves from ``start_opacity`` to
+    ``target_opacity`` over the track, or jumps to the target with instant
+    easing. Objects faded to zero are switched off rather than drawn fully
+    transparent, which keeps them out of depth peeling.
+    """
+
+    has_rate = False
+
+    # Shared across tracks so overlapping visibility tracks resolve to one
+    # winner per actor, and the captured opacity is never a value another
+    # track wrote earlier.
+    _ledger: dict[int, _FadeState] = {}
 
     def _init_parameters(self) -> None:
-        self._forward_fill = True
         self.parameters.clear()
         self.parameters.update(
-            {"start_opacity": 1.0, "target_opacity": 0.0, "easing": "instant"}
+            {
+                "start_opacity": 1.0,
+                "target_opacity": 0.0,
+                "easing": "instant",
+            }
         )
-        self._original_opacities = {}
-        self._cached_actors = None
+        self._cached_geometries = None
 
     def get_settings(self) -> list[dict[str, Any]]:
         return [
@@ -612,22 +819,25 @@ class VisibilityAnimation(BaseAnimation):
                 "min": 0.0,
                 "max": 1.0,
                 "default": self.parameters.get("start_opacity", 1.0),
-                "description": "Start opacity (0.0 for invisible, 1.0 for fully visible)",
+                "description": "Opacity at the start of the track, relative to "
+                "each object's own opacity (0 hides objects).",
             },
             {
                 "label": "target_opacity",
                 "type": "float",
                 "min": 0.0,
                 "max": 1.0,
-                "default": self.parameters.get("target_opacity", 1.0),
-                "description": "Target opacity (0.0 for invisible, 1.0 for fully visible)",
+                "default": self.parameters.get("target_opacity", 0.0),
+                "description": "Opacity at the end of the track, relative to "
+                "each object's own opacity (0 hides objects).",
             },
             {
                 "label": "easing",
                 "type": "select",
-                "options": ["linear", "ease-in", "ease-out", "ease-in-out", "instant"],
+                "options": ["instant", "linear", "ease-in", "ease-out", "ease-in-out"],
                 "default": self.parameters.get("easing", "instant"),
-                "description": "Animation style (instant for immediate change)",
+                "description": "Instant holds the target for the whole track; "
+                "other easings fade from start to target across the track.",
             },
             {
                 "label": "Objects",
@@ -646,55 +856,98 @@ class VisibilityAnimation(BaseAnimation):
                 cdata=self.cdata, current_selection=current_selection
             )
             if dialog.exec():
-                selected_objects = dialog.get_selected_objects()
-                self._cached_actors = None
-                self.update_parameters(selected_objects=selected_objects)
-
+                self.update_parameters(selected_objects=dialog.get_selected_objects())
         except Exception:
             pass
 
         return False
 
-    def _get_actors(self):
-        if self._cached_actors is not None:
-            return self._cached_actors
+    def update_parameters(self, **kwargs) -> None:
+        if "selected_objects" in kwargs:
+            self._cached_geometries = None
+        return super().update_parameters(**kwargs)
 
-        object_ids = self.parameters.get("selected_objects", [])
+    def _get_geometries(self):
+        if self._cached_geometries is not None:
+            return self._cached_geometries
+
+        object_ids = set(self.parameters.get("selected_objects", []))
         try:
-            all_objects = {}
-            for _name, obj in self.cdata.format_datalist("data"):
-                all_objects[id(obj)] = obj
-            for _name, obj in self.cdata.format_datalist("models"):
-                all_objects[id(obj)] = obj
-
-            self._cached_actors = [
-                all_objects[x].actor for x in object_ids if x in all_objects
+            self._cached_geometries = [
+                obj
+                for data_type in ("data", "models")
+                for _name, obj in self.cdata.format_datalist(data_type)
+                if id(obj) in object_ids
             ]
         except Exception:
             return []
+        return self._cached_geometries
 
-        return self._cached_actors
+    def _fade_factor(self, frame: int):
+        """Opacity multiplier at the given local frame, or None outside the span."""
+        duration = self.duration
+        elapsed = frame - self.start_frame
+        if not 0 <= elapsed < duration:
+            return None
+
+        progress = 1.0
+        if self.parameters.get("easing", "instant") != "instant" and duration > 1:
+            progress = self._ease(elapsed / (duration - 1))
+
+        start = float(self.parameters.get("start_opacity", 1.0))
+        target = float(self.parameters.get("target_opacity", 0.0))
+        return start + (target - start) * progress
 
     def reset(self) -> None:
-        """Restore actors to the opacity they had before this animation touched them."""
-        for actor in self._get_actors():
-            original = self._original_opacities.get(id(actor))
-            if original is not None:
-                actor.GetProperty().SetOpacity(original)
+        """Withdraw this track's claims; actors are restored on commit."""
+        for state in self._ledger.values():
+            if state.claim is not None and state.claim[2] is self:
+                state.claim = None
+        return None
 
     def _update(self, frame: int) -> None:
-        progress = self._get_progress(frame)
-        if progress is None:
-            return
+        if (factor := self._fade_factor(frame)) is None:
+            return None
 
-        start_opacity = self.parameters["start_opacity"]
-        target_opacity = self.parameters["target_opacity"]
-        current_opacity = start_opacity + (target_opacity - start_opacity) * progress
+        start = self.global_start_frame
+        for geometry in self._get_geometries():
+            if not geometry.visible:
+                continue
+            actor = geometry.actor
+            state = self._ledger.get(id(actor))
+            if state is None:
+                state = _FadeState(geometry, actor, actor.GetProperty().GetOpacity())
+                self._ledger[id(actor)] = state
 
-        for actor in self._get_actors():
-            if id(actor) not in self._original_opacities:
-                self._original_opacities[id(actor)] = actor.GetProperty().GetOpacity()
-            actor.GetProperty().SetOpacity(current_opacity)
+            # Most recently started track wins; ties go to the later track
+            if state.claim is None or start >= state.claim[0]:
+                state.claim = (start, factor, self)
+        return None
+
+    def commit(self) -> None:
+        """Write the winning fade of each actor, restoring unclaimed ones.
+
+        VTK setters skip unchanged values, so actors whose fade is constant
+        between frames are not marked modified.
+        """
+        for key in list(self._ledger):
+            state = self._ledger[key]
+            factor = 1.0 if state.claim is None else state.claim[1]
+
+            if factor <= 0:
+                state.actor.GetProperty().SetOpacity(state.opacity)
+                state.actor.SetVisibility(False)
+                state.hidden = True
+                continue
+
+            state.actor.GetProperty().SetOpacity(state.opacity * factor)
+            if state.hidden:
+                state.actor.SetVisibility(state.geometry.visible)
+                state.hidden = False
+
+            if state.claim is None:
+                del self._ledger[key]
+        return None
 
 
 class WaypointAnimation(BaseAnimation):
@@ -713,7 +966,6 @@ class WaypointAnimation(BaseAnimation):
                 "easing": "linear",
             }
         )
-        self._path_actors = []
         self._curve = None
         self._positions = None
         self._focal_points = None
@@ -739,7 +991,6 @@ class WaypointAnimation(BaseAnimation):
         if "spline_order" in kwargs:
             self.parameters["spline_order"] = int(kwargs.pop("spline_order"))
             self._init_spline()
-            self._update_path_preview()
 
         if "easing" in kwargs:
             self.parameters["easing"] = kwargs.pop("easing")
@@ -756,7 +1007,6 @@ class WaypointAnimation(BaseAnimation):
         }
         self.parameters["waypoints"].append(waypoint)
         self._init_spline()
-        self._update_path_preview()
 
     def _remove_last_waypoint(self):
         """Remove the most recently added waypoint."""
@@ -764,13 +1014,11 @@ class WaypointAnimation(BaseAnimation):
         if waypoints:
             waypoints.pop()
             self._init_spline()
-            self._update_path_preview()
 
     def _clear_waypoints(self):
         """Remove all waypoints."""
         self.parameters["waypoints"].clear()
         self._init_spline()
-        self.cleanup_preview()
 
     def _init_spline(self):
         """Initialize the spline curve from waypoints."""
@@ -807,110 +1055,6 @@ class WaypointAnimation(BaseAnimation):
         self._view_ups = np.column_stack(
             [np.interp(t, t_wp, view_ups[:, i]) for i in range(3)]
         )
-
-    def _update_path_preview(self):
-        """Visualize the camera path in the 3D viewport.
-
-        Draws from the same sampled positions used by the animation so the
-        preview exactly matches what plays back.
-        """
-        import vtk
-
-        _, renderer = self._get_rendering_context(return_renderer=True)
-
-        self.cleanup_preview()
-
-        waypoints = self.parameters.get("waypoints", [])
-
-        # Show point markers even for a single waypoint
-        if len(waypoints) < 2 or self._positions is None:
-            for wp in waypoints:
-                actor = self._create_waypoint_marker(wp["position"])
-                renderer.AddActor(actor)
-                self._path_actors.append(actor)
-            self.vtk_widget.GetRenderWindow().Render()
-            return
-
-        # Build a polyline from the sampled animation positions
-        vtk_points = vtk.vtkPoints()
-        for pos in self._positions:
-            vtk_points.InsertNextPoint(pos)
-
-        lines = vtk.vtkCellArray()
-        n_pts = len(self._positions)
-        lines.InsertNextCell(n_pts)
-        for i in range(n_pts):
-            lines.InsertCellPoint(i)
-
-        poly_data = vtk.vtkPolyData()
-        poly_data.SetPoints(vtk_points)
-        poly_data.SetLines(lines)
-
-        tube_filter = vtk.vtkTubeFilter()
-        tube_filter.SetInputData(poly_data)
-        tube_filter.SetRadius(1.0)
-        tube_filter.SetNumberOfSides(8)
-        tube_filter.SetVaryRadiusToVaryRadiusOff()
-        tube_filter.Update()
-
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputConnection(tube_filter.GetOutputPort())
-        mapper.SetResolveCoincidentTopologyToPolygonOffset()
-        mapper.SetScalarVisibility(False)
-
-        path_actor = vtk.vtkActor()
-        path_actor.SetMapper(mapper)
-        # Pink #ec4899 → RGB
-        path_actor.GetProperty().SetColor(0.925, 0.286, 0.6)
-        path_actor.GetProperty().SetOpacity(0.7)
-        renderer.AddActor(path_actor)
-        self._path_actors.append(path_actor)
-
-        for wp in waypoints:
-            actor = self._create_waypoint_marker(wp["position"])
-            renderer.AddActor(actor)
-            self._path_actors.append(actor)
-
-        self.vtk_widget.GetRenderWindow().Render()
-
-    def _create_waypoint_marker(self, position):
-        """Create a small sphere actor at the given position."""
-        import vtk
-
-        point_data = vtk.vtkPoints()
-        point_data.InsertNextPoint(position)
-
-        vertices = vtk.vtkCellArray()
-        vertices.InsertNextCell(1)
-        vertices.InsertCellPoint(0)
-
-        poly_data = vtk.vtkPolyData()
-        poly_data.SetPoints(point_data)
-        poly_data.SetVerts(vertices)
-
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputData(poly_data)
-        mapper.SetResolveCoincidentTopologyToPolygonOffset()
-
-        actor = vtk.vtkActor()
-        actor.SetMapper(mapper)
-        # Pink #ec4899
-        actor.GetProperty().SetColor(0.925, 0.286, 0.6)
-        actor.GetProperty().SetPointSize(12)
-        actor.GetProperty().SetRenderPointsAsSpheres(True)
-
-        return actor
-
-    def cleanup_preview(self):
-        """Remove all preview actors from the renderer."""
-        try:
-            _, renderer = self._get_rendering_context(return_renderer=True)
-            for actor in self._path_actors:
-                renderer.RemoveActor(actor)
-            self._path_actors.clear()
-            self.vtk_widget.GetRenderWindow().Render()
-        except Exception:
-            self._path_actors.clear()
 
     def get_settings(self) -> list[dict[str, Any]]:
         n = len(self.parameters.get("waypoints", []))

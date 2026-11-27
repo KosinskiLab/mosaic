@@ -658,6 +658,56 @@ def _build_QDockWidget_style():
         subcontrol-position: right center;
         right: 24px;
     }}
+    QMainWindow > QTabBar {{
+        background: transparent;
+        border: none;
+        qproperty-drawBase: 0;
+        qproperty-elideMode: ElideNone;
+        qproperty-usesScrollButtons: 1;
+    }}
+    QMainWindow > QTabBar::tab {{
+        border: none;
+        background: transparent;
+        border-radius: 6px;
+        padding: 6px 14px;
+        margin: 4px 2px;
+        font-size: {Typography.BODY}px;
+        color: {Colors.TEXT_MUTED};
+    }}
+    QMainWindow > QTabBar::tab:selected {{
+        background: {"rgba(255, 255, 255, 15)" if Colors.is_dark() else "rgba(0, 0, 0, 10)"};
+        color: {Colors.TEXT_PRIMARY};
+    }}
+    QMainWindow > QTabBar::tab:hover:!selected {{
+        color: {Colors.TEXT_SECONDARY};
+    }}
+    QMainWindow > QTabBar::tear {{
+        width: 0px;
+        border: none;
+        image: none;
+    }}
+    QMainWindow > QTabBar::scroller {{
+        width: 48px;
+    }}
+    QMainWindow > QTabBar QToolButton {{
+        background: {Colors.SURFACE};
+        border: none;
+        border-radius: 6px;
+        margin: 4px 0px;
+    }}
+    QMainWindow > QTabBar QToolButton:hover {{
+        background: {Colors.BG_HOVER};
+    }}
+    QMainWindow > QTabBar QToolButton::left-arrow {{
+        image: url('{_get_resource_path("tab-caret-left.svg")}');
+        width: 14px;
+        height: 14px;
+    }}
+    QMainWindow > QTabBar QToolButton::right-arrow {{
+        image: url('{_get_resource_path("tab-caret-right.svg")}');
+        width: 14px;
+        height: 14px;
+    }}
     QDockWidget::close-button:hover, QDockWidget::float-button:hover {{
         background: {Colors.BG_HOVER};
         border: 1px solid {Colors.BORDER_DARK};
@@ -835,6 +885,24 @@ def _apply_macos_titlebar(ns_win, hide_title=False):
         pass
 
 
+def _set_macos_titlebar_transparent(ns_win):
+    """Re-assert a transparent title bar on a native window."""
+    try:
+        import ctypes
+        import ctypes.util
+
+        objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("objc"))
+        objc.sel_registerName.restype = ctypes.c_void_p
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+        send = objc.objc_msgSend
+        send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
+        send.restype = ctypes.c_void_p
+        send(ns_win, objc.sel_registerName(b"setTitlebarAppearsTransparent:"), True)
+    except Exception:
+        pass
+    return None
+
+
 def _update_macos_titlebar_color(ns_win):
     """Set an NSWindow's background color to match the current theme surface."""
     try:
@@ -902,20 +970,38 @@ def install_macos_titlebar_filter():
     if sys.platform != "darwin":
         return None
 
-    from qtpy.QtCore import QEvent, QObject
-    from qtpy.QtWidgets import QApplication
+    from qtpy.QtCore import QEvent, QObject, QTimer
+    from qtpy.QtWidgets import QApplication, QMainWindow, QTabBar
+
+    tab_bar_events = (
+        QEvent.Type.Show,
+        QEvent.Type.Hide,
+        QEvent.Type.Move,
+        QEvent.Type.Resize,
+    )
+
+    def _restore_transparency(window):
+        if (ns_win := _get_nswindow(window)) is not None:
+            _set_macos_titlebar_transparent(ns_win)
+        return None
 
     class _MacOSTitleBarFilter(QObject):
         """Event filter that styles the native title bar of every top-level window."""
 
         def eventFilter(self, obj, event):
+            # QTabBar geometry changes make Qt's cocoa plugin reset
+            # titlebarAppearsTransparent on the main window (updateMacBorderMetrics).
+            if isinstance(obj, QTabBar) and event.type() in tab_bar_events:
+                window = obj.window()
+                if isinstance(window, QMainWindow):
+                    QTimer.singleShot(0, lambda: _restore_transparency(window))
+                return False
+
             if (
                 event.type() == QEvent.Type.Show
                 and hasattr(obj, "isWindow")
                 and obj.isWindow()
             ):
-                from qtpy.QtWidgets import QMainWindow
-
                 if isinstance(obj, QMainWindow):
                     return False
                 ns_win = _get_nswindow(obj)

@@ -10,7 +10,11 @@ class TimelineContent(QWidget):
     trackSelected = Signal(str)
     frameMoved = Signal(int)
     trackMoved = Signal(str, int)
+    trackResized = Signal(str, int)
     trackRemoved = Signal(str)
+
+    #: Half-width in pixels of the grab zone around a track's right edge.
+    resize_handle_width = 5
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -18,6 +22,8 @@ class TimelineContent(QWidget):
         self.current_frame = 0
         self.selected_track = None
         self.dragging_track = None
+        self.resizing_track = None
+        self.drag_active = False
         self.drag_start_x = 0
         self.drag_start_frame = 0
 
@@ -213,92 +219,113 @@ class TimelineContent(QWidget):
             painter.setPen(QPen(QColor(Colors.BORDER_HOVER), 1))
             painter.drawLine(int(playhead_x), 0, int(playhead_x), self.height())
 
-    def mousePressEvent(self, event: QMouseEvent):
-        if event.button() != Qt.MouseButton.LeftButton or not self.tracks:
-            return super().mousePressEvent(event)
+    def _hit_test(self, x: float, y: float):
+        """Return ``(track, region)`` under the cursor, or ``(None, None)``.
 
+        Region is one of ``"remove"``, ``"resize"`` or ``"body"``.
+        """
         track_y = self.ruler_height + 10
         min_click_width = 30  # Minimum clickable width for narrow tracks
+        bar_height = self.track_height - 10
 
         for track in self.tracks:
             start_x = self.frame_to_x(track.animation.global_start_frame)
             end_x = self.frame_to_x(
                 track.animation.global_start_frame + track.animation.duration
             )
+            if not track_y <= y <= track_y + bar_height:
+                track_y += self.track_height
+                continue
 
-            # Expand clickable area for narrow tracks
-            track_width = end_x - start_x
-            if track_width < min_click_width:
-                padding = (min_click_width - track_width) / 2
-                click_start_x = start_x - padding
-                click_end_x = end_x + padding
-            else:
-                click_start_x = start_x
-                click_end_x = end_x
-
-            # Check if click is on remove button
             remove_x = int(end_x - self.remove_button_size - 5)
-            remove_y = track_y + (self.track_height - 10 - self.remove_button_size) // 2
-
+            remove_y = track_y + (bar_height - self.remove_button_size) // 2
             if (
-                remove_x <= event.x() <= remove_x + self.remove_button_size
-                and remove_y <= event.y() <= remove_y + self.remove_button_size
+                remove_x <= x <= remove_x + self.remove_button_size
+                and remove_y <= y <= remove_y + self.remove_button_size
                 and start_x < remove_x < self.width()
             ):
-                self.trackRemoved.emit(track.id)
+                return track, "remove"
 
-            # Use expanded click area for track selection
-            if (
-                click_start_x <= event.x() <= click_end_x
-                and track_y <= event.y() <= track_y + self.track_height - 10
-            ):
-                self.selected_track = track.id
-                self.dragging_track = track.id
-                self.drag_start_x = event.x()
-                self.drag_start_frame = track.animation.global_start_frame
-                self.trackSelected.emit(track.id)
-                self.update()
-                return
+            # On narrow bars only grab outside the bar so it remains movable
+            handle = self.resize_handle_width
+            inner = handle if end_x - start_x >= 3 * handle else 0
+            if end_x - inner <= x <= end_x + handle:
+                return track, "resize"
+
+            padding = max(0, (min_click_width - (end_x - start_x)) / 2)
+            if start_x - padding <= x <= end_x + padding:
+                return track, "body"
 
             track_y += self.track_height
+        return None, None
+
+    def _ensure_visible(self, frame: int) -> None:
+        if frame > self.view_end_frame - 10:
+            self.view_end_frame = frame + 20
+            self.update()
+        return None
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() != Qt.MouseButton.LeftButton or not self.tracks:
+            return super().mousePressEvent(event)
+
+        track, region = self._hit_test(event.x(), event.y())
+        if region == "remove":
+            self.trackRemoved.emit(track.id)
+            return None
+
+        if track is not None:
+            self.selected_track = track.id
+            self.drag_active = False
+            self.drag_start_x = event.x()
+            self.drag_start_frame = track.animation.global_start_frame
+            if region == "resize":
+                self.resizing_track = track.id
+            else:
+                self.dragging_track = track.id
+            self.trackSelected.emit(track.id)
+            self.update()
+            return None
 
         frame = self.x_to_frame(event.x())
         self.current_frame = max(0, frame)
         self.frameMoved.emit(self.current_frame)
         self.update()
+        return None
 
     def mouseMoveEvent(self, event: QMouseEvent):
-        # Check if we're hovering over a remove button
         if not (event.buttons() & Qt.MouseButton.LeftButton):
-            hovered_button = None
-            track_y = self.ruler_height + 10
-            for track in self.tracks:
-                start_x = self.frame_to_x(track.animation.global_start_frame)
-                end_x = self.frame_to_x(
-                    track.animation.global_start_frame + track.animation.duration
-                )
+            track, region = self._hit_test(event.x(), event.y())
 
-                remove_x = int(end_x - self.remove_button_size - 5)
-                remove_y = (
-                    track_y + (self.track_height - 10 - self.remove_button_size) // 2
-                )
-
-                if (
-                    remove_x <= event.x() <= remove_x + self.remove_button_size
-                    and remove_y <= event.y() <= remove_y + self.remove_button_size
-                    and start_x < remove_x < self.width()
-                ):
-                    hovered_button = track.id
-                    break
-
-                track_y += self.track_height
-
+            hovered_button = track.id if region == "remove" else None
             if hovered_button != self.hovered_remove_button:
                 self.hovered_remove_button = hovered_button
                 self.update()
 
-        draggable = self.dragging_track and self.tracks
-        if not draggable or not (event.buttons() & Qt.MouseButton.LeftButton):
+            if region == "resize":
+                self.setCursor(Qt.CursorShape.SizeHorCursor)
+            else:
+                self.unsetCursor()
+            return super().mouseMoveEvent(event)
+
+        # Clicking to select should never nudge a track by a frame or two
+        if (self.resizing_track or self.dragging_track) and not self.drag_active:
+            if abs(event.x() - self.drag_start_x) < QApplication.startDragDistance():
+                return None
+            self.drag_active = True
+
+        if self.resizing_track:
+            track = next((t for t in self.tracks if t.id == self.resizing_track), None)
+            if track is None:
+                return None
+
+            start = track.animation.global_start_frame
+            duration = max(1, self.x_to_frame(event.x()) - start)
+            self.trackResized.emit(track.id, duration)
+            self._ensure_visible(start + duration)
+            return None
+
+        if not (self.dragging_track and self.tracks):
             return super().mouseMoveEvent(event)
 
         frame = self.x_to_frame(event.x())
@@ -311,13 +338,13 @@ class TimelineContent(QWidget):
         if track is None:
             return None
 
-        track_end = new_frame + track.animation.duration
-        if track_end > self.view_end_frame - 10:
-            self.view_end_frame = track_end + 20
-            self.update()
+        self._ensure_visible(new_frame + track.animation.duration)
+        return None
 
     def mouseReleaseEvent(self, event: QMouseEvent):
-        self.dragging_track = False
+        self.dragging_track = None
+        self.resizing_track = None
+        self.drag_active = False
         return self.update()
 
     def wheelEvent(self, event):
@@ -358,6 +385,7 @@ class TimelineWidget(QScrollArea):
     trackSelected = Signal(str)
     frameMoved = Signal(int)
     trackMoved = Signal(str, int)
+    trackResized = Signal(str, int)
     trackRemoved = Signal(str)
 
     def __init__(self, parent=None):
@@ -368,6 +396,7 @@ class TimelineWidget(QScrollArea):
         self.content.trackSelected.connect(self.trackSelected.emit)
         self.content.frameMoved.connect(self.frameMoved.emit)
         self.content.trackMoved.connect(self.trackMoved.emit)
+        self.content.trackResized.connect(self.trackResized.emit)
         self.content.trackRemoved.connect(self.trackRemoved.emit)
 
         self.setWidget(self.content)

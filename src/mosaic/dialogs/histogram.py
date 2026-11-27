@@ -238,6 +238,7 @@ class HistogramDialog(QDialog):
     def __init__(self, cdata, parent=None):
         super().__init__(parent)
         self.cdata = cdata
+        self.setWindowTitle("Histogram")
 
         layout = QVBoxLayout(self)
         group = QGroupBox("Select")
