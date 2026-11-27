@@ -380,8 +380,8 @@ def _cmd_save(session, parsed: ParsedCommand):
         return _usage_line(_usage_for("save"))
 
     if is_session_file(filepath):
-        session.save_session(filepath)
-        return _success_text("Session saved  ", filepath)
+        written = session.save_session(filepath)
+        return _success_text("Session saved  ", written)
 
     geometries = _resolve_targets(session, parsed)
     session.save(geometries, filepath, **parsed.kwargs)

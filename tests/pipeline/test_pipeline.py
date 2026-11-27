@@ -359,7 +359,7 @@ class TestExecuteRun:
 
         simple_run_config["operations"][1]["settings"]["output_dir"] = str(output_dir)
 
-        output_file = output_dir / "test_run.pickle"
+        output_file = output_dir / "test_run.mosaic"
         output_file.write_bytes(b"dummy")
 
         result = execute_run(simple_run_config, skip_complete=True)

@@ -85,7 +85,7 @@ class TestCompileSaveExport:
             run_id="my_run",
         )
         line = compile_run(r)[1][1]
-        expected = os.path.join(str(tmp_path), "my_run.pickle")
+        expected = os.path.join(str(tmp_path), "my_run.mosaic")
         tokens = shlex.split(line)
         assert tokens == ["save", expected]
 
@@ -313,7 +313,7 @@ class TestGenerateRuns:
 class TestExecuteRun:
     def test_skip_complete(self, tmp_path):
         """When output already exists and skip_complete=True, execution is skipped."""
-        out_file = tmp_path / "test.pickle"
+        out_file = tmp_path / "test.mosaic"
         out_file.write_bytes(b"fake")
         r = _run(
             [

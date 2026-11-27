@@ -17,8 +17,7 @@ class TestMosaicData:
         md = MosaicData(mock_vtk_widget)
         md.shape = (64, 64, 64)
 
-        path = str(tmp_path / "session.pickle")
-        md.to_file(path)
+        path = md.to_file(str(tmp_path / "session.pickle"))
 
         state = open_session(path)
         assert "shape" in state["metadata"]

@@ -23,12 +23,19 @@ from ._utils import CompatibilityUnpickler
 
 _INDEX_STRUCT = struct.Struct(">I")
 _FORMAT_VERSION = 1
-_SESSION_EXTENSIONS = (".pickle",)
+_SESSION_EXTENSIONS = (".mosaic", ".pickle")
 
 
 def is_session_file(filepath: str) -> bool:
     """Return ``True`` if *filepath* has a recognised session extension."""
     return filepath.lower().endswith(_SESSION_EXTENSIONS)
+
+
+def session_save_path(filepath: str) -> str:
+    """Return *filepath* with a trailing ``.pickle`` replaced by ``.mosaic``."""
+    if filepath.lower().endswith(".pickle"):
+        return filepath[: -len(".pickle")] + ".mosaic"
+    return filepath
 
 
 def _read_index(filepath: str) -> dict | None:

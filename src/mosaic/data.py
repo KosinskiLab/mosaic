@@ -98,40 +98,39 @@ class MosaicData:
         """
         self._session_hooks.append((collect, restore))
 
-    def to_file(self, filename: str, sections: dict = None):
-        """Save current application state to file."""
+    def to_file(self, filename: str, sections: dict = None) -> str:
+        """Save current application state to file and return the path written."""
         self._session._data_tree = self.data.data_list.to_state()
         self._session._models_tree = self.models.data_list.to_state()
 
-        if not filename.endswith(".pickle"):
-            if sections is None:
-                sections = {}
+        if sections is None:
+            sections = {}
 
-            if self.thumbnail_provider is not None:
-                try:
-                    thumb = self.thumbnail_provider()
-                    if thumb is not None:
-                        sections["thumbnail"] = ("png", thumb)
-                except Exception:
-                    pass
+        if self.thumbnail_provider is not None:
+            try:
+                thumb = self.thumbnail_provider()
+                if thumb is not None:
+                    sections["thumbnail"] = ("png", thumb)
+            except Exception:
+                pass
 
-            meta = {}
-            for collect, _ in self._session_hooks:
-                try:
-                    result = collect()
-                    if result:
-                        meta.update(result)
-                except Exception:
-                    pass
-            if meta:
-                import json
+        meta = {}
+        for collect, _ in self._session_hooks:
+            try:
+                result = collect()
+                if result:
+                    meta.update(result)
+            except Exception:
+                pass
+        if meta:
+            import json
 
-                sections["meta"] = (
-                    "json",
-                    json.dumps(meta, separators=(",", ":")).encode("utf-8"),
-                )
+            sections["meta"] = (
+                "json",
+                json.dumps(meta, separators=(",", ":")).encode("utf-8"),
+            )
 
-        self._session.save_session(filename, sections=sections)
+        return self._session.save_session(filename, sections=sections)
 
     def load_session(self, filename: str):
         """Load application state from file."""
