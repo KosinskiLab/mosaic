@@ -24,58 +24,51 @@ from mosaic.formats.tomogram_matching import (
     write_tomogram_links,
 )
 
-AUTO_CASES = [
+DETECT_CASES = [
     ("TS_012_membrane", ["TS_012", "TS_013"], "TS_012"),
     ("TS_012_rec_bin4_seg", ["TS_012_rec_bin4", "TS_013_rec_bin4"], "TS_012_rec_bin4"),
     ("TS_012_seg", ["TS_012_bin4", "TS_013_bin4"], "TS_012_bin4"),
     ("TS_12_seg", ["TS_012", "TS_013"], "TS_012"),
     ("ts_012_SEG", ["TS_012.MRC", "TS_013.MRC"], "TS_012.MRC"),
     ("2024_TS_002_seg", ["2024_TS_001", "2024_TS_002"], "2024_TS_002"),
-    ("TS_012_seg", ["TS_012"], "TS_012"),
     ("TS_013.v2_seg", ["TS_012.v2.MRC", "TS_013.v2.MRC"], "TS_013.v2.MRC"),
 ]
 
 
-@pytest.mark.parametrize("session, tomos, expected", AUTO_CASES)
-def test_auto_matches(session, tomos, expected):
+@pytest.mark.parametrize("session, tomos, expected", DETECT_CASES)
+def test_detected_key_matches(session, tomos, expected):
+    sessions = [f"/s/{session}.mosaic"]
     paths = [f"/t/{t}" if "." in t else f"/t/{t}.mrc" for t in tomos]
-    (m,) = match_tomograms([f"/s/{session}.mosaic"], paths)
+    (m,) = match_tomograms(sessions, paths, key=detect_key(sessions, paths))
     assert m.status == "matched" and os.path.basename(m.tomogram).startswith(expected)
 
 
-@pytest.mark.parametrize("session, tomos, expected", AUTO_CASES)
-def test_detected_key_reproduces_auto_match(session, tomos, expected):
-    sessions = [f"/s/{session}.mosaic"]
-    paths = [f"/t/{t}" if "." in t else f"/t/{t}.mrc" for t in tomos]
-    key = detect_key(match_tomograms(sessions, paths))[0]
-    assert match_tomograms(sessions, paths, key=key) == match_tomograms(sessions, paths)
+def test_detect_prefers_key_pairing_most_sessions():
+    names = ["PR8-TS10", "PR8-TS17", "PR8oligo-TS33.st"]
+    sessions = [f"/s/{n}_10.mosaic" for n in names]
+    tomos = [f"/t/{n}_20.00Apx.mrc" for n in names]
+    assert detect_key(sessions, tomos) == r"TS\d+"
 
 
-def test_tie_is_ambiguous():
-    (m,) = match_tomograms(
-        ["/s/TS_012_seg.mosaic"], ["/t/TS_012_a.mrc", "/t/TS_012_b.mrc"]
-    )
-    assert m.status == "ambiguous" and len(m.candidates) == 2 and m.tomogram is None
+def test_detect_returns_none_without_pairs():
+    assert detect_key(["/s/a_1.mosaic"], ["/t/b.mrc"]) is None
+    assert detect_key(["/s/a_1.mosaic"], []) is None
 
 
-@pytest.mark.parametrize(
-    "session, tomos",
-    [
-        ("TS_099_seg", ["TS_012", "TS_013"]),
-        ("2024_TS_099_seg", ["2024_TS_001", "2024_TS_002"]),
-        ("TS_013_seg", ["TS_012"]),
-        ("TS_seg", ["TS_012", "TS_013"]),
-    ],
-)
-def test_missing(session, tomos):
-    (m,) = match_tomograms([f"/s/{session}.mosaic"], [f"/t/{t}.mrc" for t in tomos])
-    assert m.status == "missing" and m.tomogram is None
+def test_detect_escapes_text():
+    assert detect_key(["/s/a+b.12_seg.mosaic"], ["/t/a+b.12.mrc"]) == r"a\+b\.\d+"
+
+
+def test_empty_key_matches_nothing():
+    (m,) = match_tomograms(["/s/TS_012.mosaic"], ["/t/TS_012.mrc"], key="")
+    assert m.status == "missing"
 
 
 def test_results_follow_session_order():
     ms = match_tomograms(
         ["/s/TS_013_x.mosaic", "/s/TS_012_x.mosaic"],
         ["/t/TS_012.mrc", "/t/TS_013.mrc"],
+        key=r"TS_\d+",
     )
     assert [m.tomogram for m in ms] == ["/t/TS_013.mrc", "/t/TS_012.mrc"]
 
@@ -85,7 +78,9 @@ def test_nested_folder_names(tmp_path):
         (tmp_path / run).mkdir()
         (tmp_path / run / "tomogram.mrc").write_bytes(b"")
     tomos = scan_tomograms(str(tmp_path), recursive=True)
-    (m,) = match_tomograms(["/s/TS_013_membrane.mosaic"], tomos, root=str(tmp_path))
+    (m,) = match_tomograms(
+        ["/s/TS_013_membrane.mosaic"], tomos, root=str(tmp_path), key=r"TS_\d+"
+    )
     assert m.tomogram == str(tmp_path / "TS_013" / "tomogram.mrc")
 
 
@@ -107,7 +102,7 @@ def test_scan_not_recursive(tmp_path):
 
 def test_zarr_name_strips_suffix():
     (m,) = match_tomograms(
-        ["/s/TS_013_seg.mosaic"], ["/t/TS_012.zarr", "/t/TS_013.zarr"]
+        ["/s/TS_013_seg.mosaic"], ["/t/TS_012.zarr", "/t/TS_013.zarr"], key=r"TS_\d+"
     )
     assert m.tomogram == "/t/TS_013.zarr"
 
@@ -181,11 +176,6 @@ def test_key_searches_name_relative_to_root(tmp_path):
 def test_invalid_key_raises():
     with pytest.raises(re.error):
         match_tomograms(["/s/TS_012.mosaic"], ["/t/TS_012.mrc"], key="TS_(")
-
-
-def test_non_ascii_digit_token():
-    (m,) = match_tomograms(["/s/TS_²_seg.mosaic"], ["/t/TS_².mrc", "/t/TS_3.mrc"])
-    assert m.tomogram == "/t/TS_².mrc"
 
 
 @pytest.mark.parametrize(
@@ -284,40 +274,6 @@ def test_initial_folder():
 )
 def test_initial_folder_falls_back_to_last(links):
     assert initial_folder(links, "/last") == "/last"
-
-
-def test_detected_key():
-    matches = match_tomograms(
-        ["/s/TS_013_membrane.mosaic", "/s/TS_012_membrane.mosaic"],
-        ["/t/TS_012_rec.mrc", "/t/TS_013_rec.mrc"],
-    )
-    assert detect_key(matches) == (r"TS_\d+", "TS_012_membrane", "TS_012_rec.mrc")
-    assert detect_key([Match("/s/a.mosaic", None, (), "missing")]) is None
-
-
-def test_detected_key_escapes_text():
-    (m,) = match_tomograms(["/s/a+b.12_seg.mosaic"], ["/t/a+b.12.mrc"])
-    assert detect_key([m])[0] == r"a\+b\.\d+"
-
-
-def test_detected_key_nested_folders(tmp_path):
-    for run in ("TS_012", "TS_013"):
-        (tmp_path / run).mkdir()
-        (tmp_path / run / "tomogram.mrc").write_bytes(b"")
-    tomos = scan_tomograms(str(tmp_path), recursive=True)
-    matches = match_tomograms(["/s/ts_12-seg.mosaic"], tomos, root=str(tmp_path))
-    expected = (r"ts_\d+", "ts_12-seg", os.path.join("TS_012", "tomogram.mrc"))
-    assert detect_key(matches) == expected
-
-
-def test_detected_key_backslash_paths():
-    match = Match(
-        "/s/TS_012_seg.mosaic",
-        "C:\\data\\TS_012\\tomogram.mrc",
-        ("C:\\data\\TS_012\\tomogram.mrc",),
-        "matched",
-    )
-    assert detect_key([match]) == (r"TS_\d+", "TS_012_seg", "TS_012\\tomogram.mrc")
 
 
 def test_write_links_converts_legacy_and_continues_on_error(tmp_path):

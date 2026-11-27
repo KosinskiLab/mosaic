@@ -44,7 +44,8 @@ from ..formats.tomogram_matching import (
     scan_tomograms,
     status_text,
 )
-from ..path_display import display_paths, set_path_text
+from ..path_display import display_path, display_paths, set_path_text
+from ..pipeline._utils import natural_sort_key, strip_extension
 from ..settings import Settings
 from ..stylesheets import Colors, Typography
 from ..widgets import DialogFooter
@@ -276,11 +277,9 @@ class LinkTomogramsDialog(QDialog):
         return self._detect()
 
     def _detect(self) -> None:
-        found = detect_key(
-            match_tomograms(self._sessions, self._tomograms, root=self._root())
-        )
+        found = detect_key(self._sessions, self._tomograms, self._root())
         self.key_input.blockSignals(True)
-        self.key_input.setText(found[0] if found else "")
+        self.key_input.setText(found or "")
         self.key_input.blockSignals(False)
         return self._rematch()
 
@@ -290,16 +289,21 @@ class LinkTomogramsDialog(QDialog):
                 self._sessions,
                 self._tomograms,
                 root=self._root(),
-                key=self.key_input.text() or None,
+                key=self.key_input.text(),
                 case_sensitive=self.case_sensitive.isChecked(),
             )
         except re.error as e:
             return self._set_caption(f"Invalid pattern: {e}", Colors.ERROR)
 
-        example = detect_key(matches)
+        matched = sorted(
+            (m for m in matches if m.status == "matched"),
+            key=lambda m: natural_sort_key(m.session),
+        )
         text = "Example: no match yet"
-        if example is not None:
-            text = f"Example: {example[1]}  →  {example[2]}"
+        if matched:
+            stem = strip_extension(os.path.basename(matched[0].session))
+            name = display_path(matched[0].tomogram, root=self._root())
+            text = f"Example: {stem}  →  {name}"
         self._set_caption(text, Colors.TEXT_MUTED)
 
         self._rows = build_rows(matches, self._links)
