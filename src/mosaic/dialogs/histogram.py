@@ -157,7 +157,7 @@ class HistogramWidget(QWidget):
         self.min_value = data.min() * 0.999
         self.max_value = data.max() * 1.001
 
-        self._update_cutoff_values()
+        self._update_cutoff_values(emit=False)
         y, x = np.histogram(data, bins=self.bin_count)
 
         bin_centers = (x[:-1] + x[1:]) / 2
@@ -175,7 +175,7 @@ class HistogramWidget(QWidget):
         label = "Cluster Size" + (" (log scale)" if log_scale else "")
         self.histogram_plot.setLabel("bottom", label)
 
-    def _update_cutoff_values(self, lower_value=None, upper_value=None):
+    def _update_cutoff_values(self, lower_value=None, upper_value=None, emit=True):
         """Update cutoff values and propagate changes to UI elements."""
 
         if lower_value is None:
@@ -210,9 +210,10 @@ class HistogramWidget(QWidget):
         for element in block:
             element.blockSignals(False)
 
-        self.cutoff_changed.emit(
-            self._invert_scaling(lower_value), self._invert_scaling(upper_value)
-        )
+        if emit:
+            self.cutoff_changed.emit(
+                self._invert_scaling(lower_value), self._invert_scaling(upper_value)
+            )
 
     def _handle_input_change(self, is_lower):
         """Handle changes to either min/max input field."""
