@@ -62,7 +62,6 @@ QToolButton::menu-button {{
     border-top-right-radius: 4px;
     border-bottom-right-radius: 4px;
 }}
-QToolButton::menu-button:hover {{ background: rgba(255, 255, 255, 0.10); }}
 QToolButton::menu-arrow {{
     image: url('{_get_resource_path("spinbox-caret-up.svg")}');
     width: 14px; height: 14px;
