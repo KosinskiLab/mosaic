@@ -9,13 +9,14 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from typing import TYPE_CHECKING
 
 import numpy as np
-from qtpy.QtCore import QCoreApplication, QEvent, QObject, QPoint, Qt
-from qtpy.QtGui import QColor, QEnterEvent, QPainter, QPaintEvent, QPen, QShowEvent
+from qtpy.QtCore import QPoint, QRect, QSize
+from qtpy.QtGui import QShowEvent
 from qtpy.QtWidgets import QVBoxLayout, QWidget
 
 from ..stylesheets import Typography
 from ..utils import Throttle
 from .sliders import SliderRow
+from .viewport_hud import ViewportHUD
 
 if TYPE_CHECKING:
     import vtk
@@ -134,7 +135,7 @@ def _decompose_angles(camera: "vtk.vtkCamera", view_key: str, aligned_direction:
     )
 
 
-class CameraHUD(QWidget):
+class CameraHUD(ViewportHUD):
     """Floating HUD displaying camera elevation, azimuth, and pitch.
 
     Parameters
@@ -143,27 +144,8 @@ class CameraHUD(QWidget):
         Transient parent (the main window).
     """
 
-    _BG_IDLE = QColor(30, 32, 38, 160)
-    _BG_HOVER = QColor(36, 38, 46, 235)
-    _BORDER = QColor(255, 255, 255, 25)
-    _RADIUS = 6
-    _MARGIN = 12
-
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setWindowFlags(
-            self.windowFlags()
-            | Qt.WindowType.Tool
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.NoDropShadowWindowHint
-        )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-        self.setMouseTracking(True)
-
-        self._viewport_parent = None
-        self._top_window = None
-        self._hovered = False
         self._app = None
         self._updating_from_camera = False
         self._last_direction = None
@@ -256,18 +238,12 @@ class CameraHUD(QWidget):
             renderer, interactor, and set_camera_view).
         """
         self._app = app
-        self._viewport_parent = app.viewport_container
-        self._viewport_parent.installEventFilter(self)
-
-        # self.parent() is the main window (passed in __init__); tracking
-        # it keeps the floating HUD anchored as the window moves, resizes,
-        # or hides.
-        self._top_window = self.parent()
-        if self._top_window is not None:
-            self._top_window.installEventFilter(self)
-
         self._install_camera_observer()
-        self._reposition()
+        self.attach_to_viewport(app.viewport_container)
+        return None
+
+    def anchor(self, viewport: QRect, size: QSize) -> QPoint:
+        return viewport.topLeft() + QPoint(self._MARGIN, self._MARGIN)
 
     def _install_camera_observer(self):
         """Observe interactor events to sync HUD when user drags camera."""
@@ -317,72 +293,6 @@ class CameraHUD(QWidget):
         self._app._camera_pitch = pitch
         self.set_angles(elevation, azimuth, pitch)
 
-    def eventFilter(self, obj: QObject, event: QEvent):
-        etype = event.type()
-        if obj is self._viewport_parent and etype == QEvent.Type.Resize:
-            self._reposition()
-        elif obj is self._top_window:
-            if etype in (
-                QEvent.Type.Move,
-                QEvent.Type.Resize,
-                QEvent.Type.WindowStateChange,
-            ):
-                self._reposition()
-            elif etype == QEvent.Type.Hide and self.isVisible():
-                self._was_visible = True
-                self.hide()
-            elif etype == QEvent.Type.Show and getattr(self, "_was_visible", False):
-                self._was_visible = False
-                self.show()
-        return super().eventFilter(obj, event)
-
     def showEvent(self, event: QShowEvent):
-        super().showEvent(event)
         self._sync_from_camera()
-        self._reposition()
-
-    def _reposition(self):
-        if self._viewport_parent is None or not self.isVisible():
-            return
-        vp = self._viewport_parent
-        if vp.width() <= 0 or vp.height() <= 0:
-            return
-
-        layout = self.layout()
-        if layout is not None:
-            layout.invalidate()
-            layout.activate()
-        QCoreApplication.sendPostedEvents(None, QEvent.Type.LayoutRequest)
-
-        hint = self.sizeHint()
-        w = hint.width()
-        h = hint.height()
-        self.setMinimumSize(self.minimumSizeHint())
-
-        top_left = vp.mapToGlobal(QPoint(0, 0))
-        x = top_left.x() + self._MARGIN
-        y = top_left.y() + self._MARGIN
-        self.setGeometry(x, y, w, h)
-
-    def enterEvent(self, event: QEnterEvent):
-        self._hovered = True
-        self.update()
-        super().enterEvent(event)
-
-    def leaveEvent(self, event: QEvent):
-        self._hovered = False
-        self.update()
-        super().leaveEvent(event)
-
-    def paintEvent(self, event: QPaintEvent):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = self.rect().adjusted(1, 1, -1, -1)
-        bg = self._BG_HOVER if self._hovered else self._BG_IDLE
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(bg)
-        p.drawRoundedRect(r, self._RADIUS, self._RADIUS)
-        p.setPen(QPen(self._BORDER, 0.5))
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawRoundedRect(r, self._RADIUS, self._RADIUS)
-        p.end()
+        super().showEvent(event)

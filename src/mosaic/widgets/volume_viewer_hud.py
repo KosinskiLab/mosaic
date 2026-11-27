@@ -9,14 +9,20 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
-from qtpy.QtCore import QCoreApplication, QEvent, QObject, QPoint, QRect, Qt, QTimer
+from qtpy.QtCore import (
+    QEvent,
+    QObject,
+    QPoint,
+    QRect,
+    QSize,
+    Qt,
+    QTimer,
+)
 from qtpy.QtGui import (
     QColor,
     QCursor,
     QEnterEvent,
-    QPainter,
     QPaintEvent,
-    QPen,
     QShowEvent,
 )
 from qtpy.QtWidgets import (
@@ -33,6 +39,7 @@ from ..icons import icon
 from ..stylesheets import Colors, Typography, _get_resource_path
 from .dock import menu_pos_above, style_popup
 from .segmented_control import SegmentedControl
+from .viewport_hud import ViewportHUD, paint_hud_panel
 from .volume_viewer import VolumeViewer
 
 if TYPE_CHECKING:
@@ -203,11 +210,6 @@ class _LoadButton(QToolButton):
 
 class _ViewerStrip(QWidget):
     """A single volume viewer instance."""
-
-    _BG_IDLE = QColor(30, 32, 38, 160)
-    _BG_HOVER = QColor(36, 38, 46, 235)
-    _BORDER = QColor(255, 255, 255, 25)
-    _RADIUS = 6
 
     def __init__(
         self,
@@ -487,31 +489,13 @@ class _ViewerStrip(QWidget):
             self._load_btn.setToolTip("Load volume")
 
     def paintEvent(self, event: QPaintEvent):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = self.rect().adjusted(1, 1, -1, -1)
-        bg = self._BG_HOVER if self._hovered else self._BG_IDLE
-        p.setPen(Qt.NoPen)
-        p.setBrush(bg)
-        p.drawRoundedRect(r, self._RADIUS, self._RADIUS)
-        p.setPen(QPen(self._BORDER, 0.5))
-        p.setBrush(Qt.NoBrush)
-        p.drawRoundedRect(r, self._RADIUS, self._RADIUS)
-        p.end()
+        paint_hud_panel(self, self._hovered)
 
 
-class VolumeViewerHUD(QWidget):
+class VolumeViewerHUD(ViewportHUD):
     """Floating HUD managing one or more :class:`_ViewerStrip` pills.
 
-    Implemented as a frameless top-level ``Qt.Tool`` window with
-    ``WA_TranslucentBackground``.  Top-level ARGB windows are
-    composited reliably by X11 window managers, unlike ARGB child
-    widgets sitting under a native GL surface, which dead-lock the
-    compositor on our Linux setup.
-
-    The HUD is manually positioned at the bottom-centre of a tracked
-    viewport widget.  An event filter on the main window keeps the
-    HUD anchored when the window moves, resizes, or is minimised.
+    Anchored at the bottom centre of the viewport, see :class:`ViewportHUD`.
 
     Strip widths follow the data-model rule:
     ``min(viewport_width - 2*MARGIN_X, _MAX_PILL_WIDTH)``.
@@ -537,23 +521,9 @@ class VolumeViewerHUD(QWidget):
         legend: "LegendWidget | None" = None,
         parent: QWidget | None = None,
     ):
-        # Top-level tool window, not a child of the VTK widget.  X11
-        # compositors composite ARGB top-level windows reliably even
-        # when ARGB native subwindows under a GL surface break.
         super().__init__(parent)
-        self.setWindowFlags(
-            self.windowFlags()
-            | Qt.WindowType.Tool
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.NoDropShadowWindowHint
-        )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-
         self.vtk_widget = vtk_widget
         self.legend = legend
-        self._viewport_parent = None
-        self._top_window = None
 
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
@@ -579,74 +549,30 @@ class VolumeViewerHUD(QWidget):
 
         self.hide()
 
-    def attach_to_viewport(self, viewport_parent: QWidget):
-        """Track the viewport so strips resize and the HUD follows it."""
-        self._viewport_parent = viewport_parent
-        viewport_parent.installEventFilter(self)
+    def anchor(self, viewport: QRect, size: QSize) -> QPoint:
+        return QPoint(
+            viewport.left() + (viewport.width() - size.width()) // 2,
+            viewport.top() + viewport.height() - size.height() - self._BOTTOM_MARGIN,
+        )
 
-        # self.parent() is the main window (passed in __init__); tracking
-        # it keeps the floating HUD anchored as the window changes
-        self._top_window = self.parent()
-        if self._top_window is not None:
-            self._top_window.installEventFilter(self)
+    def _on_viewport_resized(self):
         self._layout_strips()
-
-    def eventFilter(self, obj: QObject, event: QEvent):
-        etype = event.type()
-        if obj is self._viewport_parent and etype == QEvent.Type.Resize:
-            self._layout_strips()  # also reposition
-        elif obj is self._top_window:
-            if etype in (
-                QEvent.Type.Move,
-                QEvent.Type.Resize,
-                QEvent.Type.WindowStateChange,
-            ):
-                self._reposition()
-            elif etype == QEvent.Type.Hide and self.isVisible():
-                self._was_visible = True
-                self.hide()
-            elif etype == QEvent.Type.Show and getattr(self, "_was_visible", False):
-                self._was_visible = False
-                self.show()
-        return super().eventFilter(obj, event)
 
     def showEvent(self, event: QShowEvent):
         super().showEvent(event)
         QTimer.singleShot(0, self._layout_strips)
 
-    def _reposition(self):
-        """Anchor the floating HUD to the bottom-centre of the viewport."""
-        if self._viewport_parent is None or not self.isVisible():
-            return None
-        vp = self._viewport_parent
-
-        # We delay to avoid cases like the HUD showing up on the wrong monitor
-        if vp.width() <= 0 or vp.height() <= 0:
-            return QTimer.singleShot(50, self._reposition)
-
-        # Invalidate + activate from the innermost widgets outward so
-        # each container sees fresh sizeHints from its children.
+    def _refresh_layout(self):
+        # Inner strips first so the HUD's layout sees their fresh size hints.
         for strip in [self._primary_strip] + self._strips:
             strip_layout = strip.layout()
             if strip_layout is not None:
                 strip_layout.invalidate()
                 strip_layout.activate()
-        hud_layout = self.layout()
-        if hud_layout is not None:
-            hud_layout.invalidate()
-            hud_layout.activate()
-        # Drain any LayoutRequest events that activate() may have posted.
-        QCoreApplication.sendPostedEvents(None, QEvent.Type.LayoutRequest)
+        super()._refresh_layout()
 
-        hint = self.sizeHint()
-        w = hint.width()
-        h = hint.height()
-        # Relax any stale minimum that would prevent shrinking back.
-        self.setMinimumSize(self.minimumSizeHint())
-        top_left = vp.mapToGlobal(QPoint(0, 0))
-        x = top_left.x() + (vp.width() - w) // 2
-        y = top_left.y() + vp.height() - h - self._BOTTOM_MARGIN
-        self.setGeometry(x, y, w, h)
+    def paintEvent(self, event: QPaintEvent):
+        return None
 
     def _layout_strips(self):
         """Size visible strips based on the viewport parent's width."""
