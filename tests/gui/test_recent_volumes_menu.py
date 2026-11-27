@@ -89,6 +89,18 @@ def test_menu_inert_without_recents(hud, strip, vols):
     assert button.isEnabled()
 
 
+def test_recents_property_follows_menu(hud, strip, vols):
+    button = strip._load_btn
+    hud.set_recent_paths([])
+    assert button.property("recents") == "false"
+    hud.set_recent_paths(vols)
+    assert button.property("recents") == "true"
+    assert button.menu() is not None
+    hud.set_recent_paths([])
+    assert button.property("recents") == "false"
+    assert button.menu() is None
+
+
 def test_menu_opens_above_button_left_edge(hud, strip, vols):
     hud.set_recent_paths(vols)
     hud.move(100, 400)

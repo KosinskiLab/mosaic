@@ -7,21 +7,19 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from qtpy.QtCore import QCoreApplication, QEvent, QPoint, QRect, Qt, QTimer
-from qtpy.QtGui import QColor, QCursor, QIcon, QPainter, QPen
+from qtpy.QtGui import QColor, QCursor, QPainter, QPen
 from qtpy.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QMenu,
     QPushButton,
-    QStyle,
-    QStyleOptionToolButton,
     QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
 from ..icons import icon
-from ..stylesheets import Typography
+from ..stylesheets import Typography, _get_resource_path
 from .dock import menu_pos_above
 from .segmented_control import SegmentedControl
 from .volume_viewer import VolumeViewer
@@ -65,7 +63,13 @@ QToolButton::menu-button {{
     border-bottom-right-radius: 4px;
 }}
 QToolButton::menu-button:hover {{ background: rgba(255, 255, 255, 0.10); }}
-QToolButton::menu-arrow {{ image: none; }}
+QToolButton::menu-arrow {{
+    image: url('{_get_resource_path("spinbox-caret-up.svg")}');
+    width: 10px; height: 10px;
+}}
+QToolButton[recents="false"]::menu-arrow {{
+    image: url('{_get_resource_path("spinbox-caret-up-muted.svg")}');
+}}
 
 QComboBox {{
     background: rgba(255, 255, 255, 0.07);
@@ -169,7 +173,6 @@ class _LoadButton(QToolButton):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
-        self._caret = icon("ph.caret-up", color=_ICON, color_disabled="#52525b")
 
         # Parentless so the menu takes the app's opaque style, not the HUD's.
         self.recent_menu = QMenu()
@@ -177,26 +180,11 @@ class _LoadButton(QToolButton):
         self.recent_menu.installEventFilter(self)
 
     def eventFilter(self, obj, event):
+        # Qt would open the menu below the button, which sits at the screen bottom.
         if obj is self.recent_menu and event.type() == QEvent.Type.Show:
             rect = QRect(self.mapToGlobal(QPoint(0, 0)), self.size())
             obj.move(menu_pos_above(rect, obj.size()))
         return super().eventFilter(obj, event)
-
-    def paintEvent(self, event):
-        super().paintEvent(event)
-        option = QStyleOptionToolButton()
-        self.initStyleOption(option)
-        rect = self.style().subControlRect(
-            QStyle.ComplexControl.CC_ToolButton,
-            option,
-            QStyle.SubControl.SC_ToolButtonMenu,
-            self,
-        )
-        mode = QIcon.Mode.Normal if self.menu() else QIcon.Mode.Disabled
-        painter = QPainter(self)
-        self._caret.paint(painter, rect.adjusted(4, 4, -4, -4), mode=mode)
-        painter.end()
-        return None
 
 
 class _ViewerStrip(QWidget):
@@ -404,7 +392,10 @@ class _ViewerStrip(QWidget):
                 label, lambda p=path: self.viewer._load_from_path(p)
             )
             action.setToolTip(path)
-        self._load_btn.setMenu(menu if self.viewer.recents else None)
+        has_recents = bool(self.viewer.recents)
+        self._load_btn.setMenu(menu if has_recents else None)
+        self._load_btn.setProperty("recents", "true" if has_recents else "false")
+        self._load_btn.style().polish(self._load_btn)
         return None
 
     def _set_orientation(self, axis):
