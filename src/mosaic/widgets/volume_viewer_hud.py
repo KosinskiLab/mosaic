@@ -19,12 +19,13 @@ from qtpy.QtWidgets import (
 )
 
 from ..icons import icon
-from ..stylesheets import Typography, _get_resource_path
+from ..stylesheets import Colors, Typography, _get_resource_path
 from .dock import menu_pos_above
 from .segmented_control import SegmentedControl
 from .volume_viewer import VolumeViewer
 
-_ICON = "#d4d4d8"
+# The HUD is dark in both themes, so it always takes the light palette's value.
+_ICON = Colors.LIGHT["BORDER_HOVER"]
 _BTN = 28
 
 _MAX_PILL_WIDTH = 720
@@ -65,7 +66,7 @@ QToolButton::menu-button {{
 QToolButton::menu-button:hover {{ background: rgba(255, 255, 255, 0.10); }}
 QToolButton::menu-arrow {{
     image: url('{_get_resource_path("spinbox-caret-up.svg")}');
-    width: 10px; height: 10px;
+    width: 14px; height: 14px;
 }}
 QToolButton[recents="false"]::menu-arrow {{
     image: url('{_get_resource_path("spinbox-caret-up-muted.svg")}');
