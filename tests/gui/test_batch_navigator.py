@@ -3,6 +3,7 @@ from unittest.mock import Mock
 from qtpy.QtCore import Qt
 
 from mosaic.formats.session import session_save_path
+from mosaic.settings import Settings
 from mosaic.widgets.container_list import SessionListWidget
 
 
@@ -196,38 +197,68 @@ class TestSessionHeader:
     def test_auto_save_default_on(self, qapp):
         widget = SessionListWidget(cdata=Mock())
         assert widget._auto_save is True
-        assert widget._header._auto_save_toggle.isChecked()
+        assert widget._header._action("Auto-save on switch").isChecked()
 
-    def test_auto_save_toggle_updates_property(self, qapp):
+    def test_header_menu_actions(self, qapp):
         widget = SessionListWidget(cdata=Mock())
-        widget._header._auto_save_toggle.setChecked(False)
-        assert widget._auto_save is False
-
-    def test_header_has_clear_button(self, qapp):
-        widget = SessionListWidget(cdata=Mock())
-        assert hasattr(widget._header, "_clear_btn")
+        actions = widget._header._menu.actions()
+        texts = [a.text() for a in actions if not a.isSeparator()]
+        assert texts == [
+            "Link tomograms…",
+            "Auto-save on switch",
+            "Load tomogram on switch",
+            "Clear all sessions",
+        ]
+        assert [a.isSeparator() for a in actions] == [
+            False,
+            True,
+            False,
+            False,
+            True,
+            False,
+        ]
+        assert not hasattr(widget._header, "_save_btn")
 
     def test_header_button_order(self, qapp):
         widget = SessionListWidget(cdata=Mock())
         layout = widget._header.layout()
         widgets = [layout.itemAt(i).widget() for i in range(layout.count())]
-        expected = [
-            widget._header._add_btn,
-            widget._header._save_btn,
-            widget._header._reload_btn,
-            widget._header._auto_save_toggle,
-            widget._header._clear_btn,
-        ]
-        assert widgets == expected
+        header = widget._header
+        assert widgets == [header._add_btn, header._reload_btn, header._menu_btn]
+        assert header._add_btn.text() == "Add sessions"
 
-    def test_clear_button_calls_clear_with_prompt(self, qapp, monkeypatch):
+    def test_autosave_action_toggles_flag(self, qapp):
+        widget = SessionListWidget(cdata=Mock())
+        widget._header._action("Auto-save on switch").trigger()
+        assert widget._auto_save is False
+
+    def test_load_tomogram_action_writes_setting(self, qapp):
+        widget = SessionListWidget(cdata=Mock())
+        Settings.ui.load_linked_tomogram = True
+        widget._header._action("Load tomogram on switch").trigger()
+        assert Settings.ui.load_linked_tomogram is False
+        Settings.ui.load_linked_tomogram = True
+
+    def test_link_action_emits(self, qapp):
+        widget = SessionListWidget(cdata=Mock())
+        handler = Mock()
+        widget.link_tomograms_requested.connect(handler)
+        widget._header._action("Link tomograms…").trigger()
+        handler.assert_called_once()
+
+    def test_clear_action_calls_clear_with_prompt(self, qapp, monkeypatch):
         widget = SessionListWidget(cdata=Mock())
         called = []
         monkeypatch.setattr(
             widget, "clear_sessions_with_prompt", lambda: called.append(True)
         )
-        widget._header._clear_btn.click()
+        widget._header._action("Clear all sessions").trigger()
         assert called == [True]
+
+    def test_session_rows_use_item_icon_size(self, qapp):
+        widget = SessionListWidget(cdata=Mock())
+        widget.set_sessions(["/p/a.mosaic"])
+        assert widget._tree.itemDelegate()._icon_size_for(widget._items[0]) == 20
 
 
 from mosaic.widgets.sidebar import ObjectBrowserSidebar

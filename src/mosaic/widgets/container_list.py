@@ -30,6 +30,7 @@ from qtpy.QtWidgets import (
 
 from ..icons import icon as _icon_factory
 from ..formats.session import prefer_mosaic_sessions, session_save_path
+from ..settings import Settings
 from ..pipeline._utils import natural_sort_key, strip_filepath
 from ..stylesheets import Colors, Typography
 from ..tree_state import TreeState, TreeStateData
@@ -691,6 +692,10 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
         return super().data(index, column)
 
 
+class SessionTreeItem(QTreeWidgetItem):
+    """Row of the session list."""
+
+
 class MetadataItemDelegate(QStyledItemDelegate):
     """Delegate for custom selection/hover painting."""
 
@@ -708,7 +713,7 @@ class MetadataItemDelegate(QStyledItemDelegate):
     def _icon_size_for(self, item) -> int:
         return (
             self._item_icon_size
-            if isinstance(item, StyledTreeWidgetItem)
+            if isinstance(item, (StyledTreeWidgetItem, SessionTreeItem))
             else self._header_icon_size
         )
 
@@ -826,56 +831,72 @@ class _SessionHeader(QWidget):
         lay.setContentsMargins(0, 2, 0, 4)
         lay.setSpacing(4)
 
-        self._add_btn = QPushButton()
+        self._add_btn = QPushButton("Add sessions")
         self._add_btn.setIcon(icon("ph.plus", role="muted"))
         self._add_btn.setFixedHeight(h)
         self._add_btn.setToolTip("Add session files")
         self._add_btn.clicked.connect(session_widget.add_sessions)
         lay.addWidget(self._add_btn, 1)
 
-        self._save_btn = QPushButton()
-        self._save_btn.setIcon(icon("ph.floppy-disk", role="muted"))
-        self._save_btn.setFixedHeight(h)
-        self._save_btn.setToolTip("Save current session")
-        self._save_btn.clicked.connect(session_widget.save_current)
-        lay.addWidget(self._save_btn, 1)
-
         self._reload_btn = QPushButton()
         self._reload_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
         self._reload_btn.setFixedHeight(h)
         self._reload_btn.setToolTip("Reload current session")
         self._reload_btn.clicked.connect(session_widget.reload_current)
-        lay.addWidget(self._reload_btn, 1)
+        lay.addWidget(self._reload_btn)
 
-        self._auto_save_toggle = QPushButton()
-        self._auto_save_toggle.setCheckable(True)
-        self._auto_save_toggle.setChecked(True)
-        self._auto_save_toggle.setFixedHeight(h)
-        self._auto_save_toggle.setToolTip("Auto-save when switching sessions")
-        self._auto_save_toggle.toggled.connect(self._on_auto_save_toggled)
-        self._update_auto_save_icon()
-        lay.addWidget(self._auto_save_toggle, 1)
+        self._menu_btn = QPushButton()
+        self._menu_btn.setIcon(icon("ph.gear", role="muted"))
+        self._menu_btn.setFixedHeight(h)
+        self._menu_btn.setToolTip("Session options")
+        self._menu_btn.clicked.connect(self._show_menu)
+        lay.addWidget(self._menu_btn)
 
-        self._clear_btn = QPushButton()
-        self._clear_btn.setIcon(icon("ph.trash", role="muted"))
-        self._clear_btn.setFixedHeight(h)
-        self._clear_btn.setToolTip("Clear all sessions")
-        self._clear_btn.clicked.connect(
-            lambda: session_widget.clear_sessions_with_prompt()
-        )
-        lay.addWidget(self._clear_btn, 1)
-
+        self._menu = self._build_menu()
         self._apply_btn_style()
+
+    def _build_menu(self):
+        menu = QMenu(self)
+        menu.setWindowFlags(
+            menu.windowFlags()
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint
+        )
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+
+        link = menu.addAction("Link tomograms…")
+        link.triggered.connect(self._session_widget.link_tomograms_requested)
+        menu.addSeparator()
+
+        auto_save = menu.addAction("Auto-save on switch")
+        auto_save.setCheckable(True)
+        auto_save.setChecked(self._session_widget._auto_save)
+        auto_save.toggled.connect(self._on_auto_save_toggled)
+
+        load_tomogram = menu.addAction("Load tomogram on switch")
+        load_tomogram.setCheckable(True)
+        load_tomogram.setChecked(Settings.ui.load_linked_tomogram)
+        load_tomogram.toggled.connect(self._on_load_tomogram_toggled)
+        menu.addSeparator()
+
+        clear = menu.addAction("Clear all sessions")
+        clear.triggered.connect(
+            lambda: self._session_widget.clear_sessions_with_prompt()
+        )
+        return menu
+
+    def _action(self, text: str):
+        return next(a for a in self._menu.actions() if a.text() == text)
+
+    def _show_menu(self):
+        pos = self._menu_btn.mapToGlobal(self._menu_btn.rect().bottomLeft())
+        self._menu.exec(pos)
 
     def _on_auto_save_toggled(self, checked):
         self._session_widget._auto_save = checked
-        self._update_auto_save_icon()
 
-    def _update_auto_save_icon(self):
-        from ..icons import icon
-
-        role = "primary" if self._auto_save_toggle.isChecked() else "muted"
-        self._auto_save_toggle.setIcon(icon("ph.arrows-clockwise", role=role))
+    def _on_load_tomogram_toggled(self, checked):
+        Settings.ui.load_linked_tomogram = checked
 
     def _apply_btn_style(self):
         qss = self._BTN_QSS.format(
@@ -885,24 +906,16 @@ class _SessionHeader(QWidget):
             hover=Colors.BG_HOVER,
             pressed=Colors.BG_PRESSED,
         )
-        for btn in (
-            self._add_btn,
-            self._save_btn,
-            self._reload_btn,
-            self._auto_save_toggle,
-            self._clear_btn,
-        ):
+        for btn in (self._add_btn, self._reload_btn, self._menu_btn):
             btn.setStyleSheet(qss)
 
     def _on_theme_changed(self):
         self._apply_btn_style()
-        self._update_auto_save_icon()
         from ..icons import icon
 
         self._add_btn.setIcon(icon("ph.plus", role="muted"))
-        self._save_btn.setIcon(icon("ph.floppy-disk", role="muted"))
         self._reload_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
-        self._clear_btn.setIcon(icon("ph.trash", role="muted"))
+        self._menu_btn.setIcon(icon("ph.gear", role="muted"))
 
 
 def confirm_session_overwrite(parent, source: str) -> bool:
@@ -942,6 +955,7 @@ class SessionListWidget(QWidget):
 
     load_requested = Signal(str)
     session_path_changed = Signal(str, str)
+    link_tomograms_requested = Signal()
 
     def __init__(self, cdata, parent=None):
         super().__init__(parent)
@@ -1168,9 +1182,9 @@ class SessionListWidget(QWidget):
 
         from ..icons import icon as _icon
 
-        file_icon = _icon("ph.compass", role="muted", scale_factor=0.85)
+        file_icon = _icon("ph.file", role="muted", scale_factor=0.85)
         for i, filepath in enumerate(self.session_files):
-            item = QTreeWidgetItem([strip_filepath(filepath)])
+            item = SessionTreeItem([strip_filepath(filepath)])
             item.setData(0, Qt.ItemDataRole.UserRole, filepath)
             item.setIcon(0, file_icon)
             self._tree.addTopLevelItem(item)

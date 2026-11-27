@@ -65,6 +65,7 @@ class Colors:
         "BG_PRESSED": "rgba(0, 0, 0, 0.10)",
         "SUCCESS": "#10b981",
         "WARNING": "#f59e0b",
+        "WARNING_TEXT": "#b45309",
         "ERROR": "#ef4444",
     }
 
@@ -82,6 +83,7 @@ class Colors:
         "BG_PRESSED": "rgba(255, 255, 255, 0.10)",
         "SUCCESS": "#34d399",
         "WARNING": "#fbbf24",
+        "WARNING_TEXT": "#fbbf24",
         "ERROR": "#f87171",
     }
 
