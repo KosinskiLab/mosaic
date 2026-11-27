@@ -7,7 +7,7 @@ from mosaic.tomogram_link import TomogramLink
 
 def _link(enabled=True):
     loader, notify = Mock(), Mock()
-    return TomogramLink(loader, notify, lambda: enabled), loader, notify
+    return TomogramLink(loader, notify, lambda: enabled, Mock()), loader, notify
 
 
 def test_restore_loads_existing(tmp_path):
@@ -59,3 +59,13 @@ def test_roundtrip_through_mosaic_data(qapp, mock_vtk_widget, tmp_path):
     link.set(None, load=False)
     md.to_file(path)
     assert "tomogram" not in read_session_meta(path)
+
+
+def test_on_change_gets_linked_paths_only():
+    on_change = Mock()
+    link = TomogramLink(Mock(), Mock(), lambda: False, on_change)
+    link.restore({"tomogram": "/d/t.mrc"})
+    link.set("/d/u.mrc", load=False)
+    link.set(None, load=False)
+    link.restore({})
+    assert [c.args[0] for c in on_change.call_args_list] == ["/d/t.mrc", "/d/u.mrc"]

@@ -1396,9 +1396,7 @@ class App(QMainWindow):
                 prefix, path=path, warning=warning, persist=persist
             ),
             lambda: Settings.ui.load_linked_tomogram,
-        )
-        self.cdata.register_session_hook(
-            self._tomogram_link.collect, self._tomogram_link.restore
+            self.volume_viewer.track_path,
         )
         self.cdata.register_session_hook(
             collect=lambda: (
@@ -1409,6 +1407,11 @@ class App(QMainWindow):
             restore=lambda meta: self.volume_viewer.set_recent_paths(
                 meta.get("volume_paths", [])
             ),
+        )
+
+        # Registered last so the link is added after volume_paths replaces recents.
+        self.cdata.register_session_hook(
+            self._tomogram_link.collect, self._tomogram_link.restore
         )
 
     def _show_volume_viewer(self) -> None:

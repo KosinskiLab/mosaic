@@ -23,6 +23,8 @@ class TomogramLink:
         Called as ``notify(prefix, path, warning, persist)`` to report status.
     enabled : callable
         Returns whether linked tomograms are loaded.
+    on_change : callable
+        Called with the path whenever a tomogram is linked.
     """
 
     def __init__(
@@ -30,10 +32,12 @@ class TomogramLink:
         loader: Callable[[str], None],
         notify: Callable[[str, str, bool, bool], None],
         enabled: Callable[[], bool],
+        on_change: Callable[[str], None],
     ):
         self.loader = loader
         self.notify = notify
         self.enabled = enabled
+        self.on_change = on_change
         self.path: Optional[str] = None
 
     def collect(self) -> dict:
@@ -41,12 +45,16 @@ class TomogramLink:
 
     def restore(self, meta: dict) -> None:
         self.path = meta.get("tomogram")
+        if self.path:
+            self.on_change(self.path)
         self.load()
         return None
 
     def set(self, path: Optional[str], load: bool = True) -> None:
         """Set the linked tomogram and optionally load it."""
         self.path = path
+        if path:
+            self.on_change(path)
         if load:
             self.load()
         return None

@@ -669,9 +669,9 @@ class VolumeViewerHUD(QWidget):
         viewer = viewer or self.primary
         path = viewer.source_path
         if path and isinstance(path, str):
-            self._track_path(path)
+            self.track_path(path)
 
-    def _track_path(self, path):
+    def track_path(self, path):
         if path in self._recent_paths:
             self._recent_paths.remove(path)
         self._recent_paths.insert(0, path)
