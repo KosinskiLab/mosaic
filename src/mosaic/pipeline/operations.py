@@ -13,6 +13,7 @@ from mosaic.tabs.model import SAMPLE_SETTINGS
 
 CLUSTER_SETTINGS = MethodRegistry.settings_dict("cluster")
 DOWNSAMPLE_SETTINGS = MethodRegistry.settings_dict("downsample")
+OUTLIER_SETTINGS = MethodRegistry.settings_dict("remove_outliers")
 SKELETONIZE_SETTINGS = MethodRegistry.settings_dict("skeletonize")
 MESH_SETTINGS = MethodRegistry.settings_dict("fit")
 REMESH_SETTINGS = MethodRegistry.settings_dict("remesh")
@@ -46,6 +47,15 @@ OPERATION_CATEGORIES = {
                 "icon": "ph.arrows-out-line-horizontal",
                 "has_output": True,
                 "settings": CLUSTER_SETTINGS,
+                "input_type": "point",
+                "output_type": "point",
+            },
+            "Outlier Removal": {
+                "id": "remove_outliers",
+                "description": "Remove points far from their neighbors",
+                "icon": "ph.funnel",
+                "has_output": True,
+                "settings": OUTLIER_SETTINGS,
                 "input_type": "point",
                 "output_type": "point",
             },

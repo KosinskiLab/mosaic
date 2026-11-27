@@ -254,8 +254,9 @@ class PipelineBuilderDialog(QDialog):
         from ..icons import icon, icon_pixmap
 
         btn = QPushButton()
-        btn.setFixedHeight(50)
+        btn.setFixedHeight(36)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setToolTip(format_tooltip(label=name, description=info["description"]))
 
         base_style = f"""
             QPushButton {{
@@ -281,23 +282,11 @@ class PipelineBuilderDialog(QDialog):
         icon_label.setPixmap(icon(info["icon"], color=color).pixmap(20, 20))
         btn_layout.addWidget(icon_label)
 
-        text_layout = QVBoxLayout()
-        text_layout.setSpacing(2)
-
         name_label = QLabel(name)
         name_label.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Typography.SMALL}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Typography.BODY}px;"
         )
-        text_layout.addWidget(name_label)
-
-        desc_label = QLabel(info["description"])
-        desc_label.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
-        )
-        desc_label.setWordWrap(True)
-
-        text_layout.addWidget(desc_label)
-        btn_layout.addLayout(text_layout, 1)
+        btn_layout.addWidget(name_label, 1)
 
         add_icon_label = QLabel()
         add_icon_label.setPixmap(icon_pixmap("ph.plus", 14, role="muted"))

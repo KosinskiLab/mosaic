@@ -74,11 +74,11 @@ def _add_to_grid(
 
 
 def _pack_settings_into_grid(
-    grid: QGridLayout, settings_list: Sequence, start_row: int = 0
+    grid: QGridLayout, settings_list: Sequence, start_row: int = 0, start_col: int = 0
 ):
     """Pack settings into the grid. Returns {param_name: widget}."""
     widgets = {}
-    row, col = start_row, 0
+    row, col = start_row, start_col
 
     for setting in settings_list:
         wide = setting.get("type") == "PathSelector"
@@ -194,7 +194,7 @@ class OperationCardWidget(QFrame):
         header_layout.addWidget(self.expand_btn)
 
         close_btn = QPushButton()
-        close_btn.setIcon(icon("ph.x", role="muted"))
+        close_btn.setIcon(icon("ph.trash", role="muted"))
         close_btn.setFixedSize(28, 28)
         close_btn.setStyleSheet(
             f"QPushButton {{ border: none}} QPushButton:hover {{ background: {Colors.BG_TERTIARY}; border-radius: 12px; }}"
@@ -343,6 +343,7 @@ class OperationCardWidget(QFrame):
             return None
 
         self.method_combo = None
+        col = 0
         base_settings = settings["settings"][0] if settings["settings"] else None
 
         if base_settings and "options" in base_settings:
@@ -358,14 +359,16 @@ class OperationCardWidget(QFrame):
                 0,
             )
             self._settings_widgets[param_name] = self.method_combo
-            self._grid_row += 1
+            col = 1
 
         remaining = settings["settings"][1 if self.method_combo else 0 :]
         if remaining:
             new_widgets, self._grid_row = _pack_settings_into_grid(
-                self.settings_grid, remaining, start_row=self._grid_row
+                self.settings_grid, remaining, start_row=self._grid_row, start_col=col
             )
             self._settings_widgets.update(new_widgets)
+        elif col:
+            self._grid_row += 1
 
         self.method_settings_config = settings.get("method_settings", {})
 
@@ -394,14 +397,9 @@ class OperationCardWidget(QFrame):
         ]
 
         if method_settings:
-            # Separator with method name
-            separator = QLabel(f" {method} Settings")
-            separator.setFixedHeight(Colors.WIDGET_HEIGHT)
-            separator.setStyleSheet(
-                f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
-                f"border-top: 1px solid {Colors.BORDER_DARK};"
-                f"padding-top: 6px;"
-            )
+            separator = QFrame()
+            separator.setFixedHeight(1)
+            separator.setStyleSheet(f"background: {Colors.BORDER_DARK};")
             self.settings_grid.addWidget(
                 separator, self._method_start_row, 0, 1, _COLS * 2
             )
