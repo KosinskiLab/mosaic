@@ -5,6 +5,7 @@ from qtpy.QtCore import Qt
 
 from mosaic.dialogs.link_tomograms import LinkTomogramsDialog
 from mosaic.formats.session import update_session_meta, write_session
+from mosaic.formats.tomogram_matching import NO_TOMOGRAM
 from mosaic.settings import Settings
 
 
@@ -285,3 +286,55 @@ def test_cleared_key_uses_auto_matcher(qapp, dataset):
     assert dlg.footer.info_label.text() == "3 to resolve"
     dlg.set_key("")
     assert dlg.footer.info_label.text() == "1 to resolve"
+
+
+def _pick(dlg, session, text):
+    i = [r.session for r in dlg.rows()].index(session)
+    combo = dlg._combo(i)
+    combo.setCurrentIndex(combo.findText(text))
+    return None
+
+
+def _selection(dlg, session):
+    return next(r.selection for r in dlg.rows() if r.session == session)
+
+
+def test_manual_pick_survives_key_change_and_detect(qapp, dataset, monkeypatch):
+    sessions, tomos = dataset
+    dlg = LinkTomogramsDialog(sessions)
+    dlg.set_folder(str(tomos))
+    picked = (tomos / "TS_099_manual.mrc").as_posix()
+    monkeypatch.setattr(
+        "mosaic.dialogs.link_tomograms.QFileDialog.getOpenFileName",
+        Mock(return_value=(picked, "")),
+    )
+    _pick(dlg, sessions[2], "Choose file…")
+    dlg.set_key(r"TS_\d+_seg")
+    assert _selection(dlg, sessions[2]) == picked
+    dlg.detect_button.click()
+    assert _selection(dlg, sessions[2]) == picked
+
+
+def test_none_survives_key_change(qapp, dataset):
+    sessions, tomos = dataset
+    dlg = LinkTomogramsDialog(sessions)
+    dlg.set_folder(str(tomos))
+    _pick(dlg, sessions[0], "None")
+    dlg.set_key(r"TS_\d+")
+    assert _selection(dlg, sessions[0]) == NO_TOMOGRAM
+
+
+def test_rows_keep_order_on_key_change_but_resort_on_folder(qapp, dataset):
+    sessions, tomos = dataset
+    dlg = LinkTomogramsDialog(sessions)
+    dlg.set_folder(str(tomos))
+    order = [r.session for r in dlg.rows()]
+    assert order[0] == sessions[2]
+    dlg.set_key(r"TS_\d+_seg")
+    assert [r.session for r in dlg.rows()] == order
+    dlg.set_key("TS_012")
+    assert [r.session for r in dlg.rows()] == order
+
+    (tomos / "TS_099.mrc").write_bytes(b"")
+    dlg.set_folder(str(tomos), recursive=True)
+    assert [r.session for r in dlg.rows()] != order

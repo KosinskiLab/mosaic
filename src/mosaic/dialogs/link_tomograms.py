@@ -103,6 +103,8 @@ class LinkTomogramsDialog(QDialog):
         self._scanned = None
         self._tomograms = []
         self._rows = []
+        self._choices = {}
+        self._order = None
 
         self._setup_ui()
 
@@ -270,6 +272,7 @@ class LinkTomogramsDialog(QDialog):
             return None
 
         self._scanned = scan
+        self._order = None
         folder, recursive = scan
         self._tomograms = scan_tomograms(folder, recursive) if folder else []
         if self.key_input.isModified():
@@ -304,6 +307,11 @@ class LinkTomogramsDialog(QDialog):
         self._set_caption(text, Colors.TEXT_MUTED)
 
         self._rows = build_rows(matches, self._links)
+        if self._order:
+            self._rows.sort(key=lambda r: self._order.index(r.session))
+        self._order = [r.session for r in self._rows]
+        for row in self._rows:
+            row.selection = self._choices.get(row.session, row.selection)
         self._populate()
         return self._refresh()
 
@@ -367,8 +375,11 @@ class LinkTomogramsDialog(QDialog):
                 self, "Choose Tomogram", self._root() or ""
             )
             selection = selection or row.selection
+            if selection == row.selection:
+                self._fill_combo(combo, row)
+                return None
 
-        row.selection = selection
+        row.selection = self._choices[row.session] = selection
         self._fill_combo(combo, row)
         return self._refresh()
 
