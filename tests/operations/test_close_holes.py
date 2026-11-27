@@ -28,3 +28,18 @@ def test_fills_holes_touching_at_a_vertex():
     vs, fs = _grid_with_holes(6, {(1, 1), (2, 2)})
     filled = close_holes(vs, fs, 10)
     assert _open_edges(filled) == 4 * 5
+
+
+def test_fills_hole_next_to_flipped_face():
+    vs, fs = _grid_with_holes(6, {(2, 2)})
+    touching = np.flatnonzero(np.isin(fs, [14, 15]).sum(axis=1) == 2)[0]
+    fs[touching] = fs[touching][::-1]
+    filled = close_holes(vs, fs, 10)
+    assert _open_edges(filled) == 4 * 5
+
+
+def test_keeps_majority_orientation():
+    vs, fs = _grid_with_holes(6, {(2, 2)})
+    fs[0] = fs[0][::-1]
+    filled = close_holes(vs, fs, 10)
+    np.testing.assert_array_equal(filled[1 : len(fs)], fs[1:])

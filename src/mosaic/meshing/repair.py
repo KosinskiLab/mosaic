@@ -158,7 +158,14 @@ def close_holes(
     ----------
     .. [1] Code adapted from https://github.com/kentechx/hole-filling
     """
-    out_fs = fs.copy()
+    # boundary_loop_all follows oriented edges and fragments holes next to a
+    # flipped face.
+    fs = np.asarray(fs, dtype=np.int64)
+    out_fs, comp = igl.bfs_orient(fs)
+    # bfs_orient follows each component's first face, which may be the flipped one.
+    reversed_faces = (out_fs != fs).any(axis=1)
+    inverted = np.bincount(comp, weights=reversed_faces) > np.bincount(comp) / 2
+    out_fs[inverted[comp]] = out_fs[inverted[comp], ::-1]
     # boundary_loop_all breaks holes that touch at a vertex into fragments;
     # once the first is filled, a second pass sees the other as a clean loop.
     for _ in range(2):

@@ -108,6 +108,11 @@ def remesh(
     v = np.asarray(mesh.vertices, dtype=np.float64)
     f = np.asarray(mesh.triangles, dtype=np.int32)
 
+    directed = np.concatenate([f[:, [0, 1]], f[:, [1, 2]], f[:, [2, 0]]])
+    if len(np.unique(directed, axis=0)) < len(directed):
+        # remesh_botsch exhausts memory or segfaults on such meshes.
+        raise ValueError("Input mesh is not consistently oriented")
+
     if target_edge_length is not None and target_edge_length <= 0:
         target_edge_length = None
 
