@@ -1,5 +1,6 @@
 import os
 import pickle
+import re
 
 import pytest
 
@@ -10,7 +11,7 @@ from mosaic.formats.tomogram_matching import (
     LinkWriteResult,
     Match,
     build_rows,
-    detected_key,
+    detect_key,
     entries,
     initial_folder,
     is_warning,
@@ -23,27 +24,31 @@ from mosaic.formats.tomogram_matching import (
     write_tomogram_links,
 )
 
+AUTO_CASES = [
+    ("TS_012_membrane", ["TS_012", "TS_013"], "TS_012"),
+    ("TS_012_rec_bin4_seg", ["TS_012_rec_bin4", "TS_013_rec_bin4"], "TS_012_rec_bin4"),
+    ("TS_012_seg", ["TS_012_bin4", "TS_013_bin4"], "TS_012_bin4"),
+    ("TS_12_seg", ["TS_012", "TS_013"], "TS_012"),
+    ("ts_012_SEG", ["TS_012.MRC", "TS_013.MRC"], "TS_012.MRC"),
+    ("2024_TS_002_seg", ["2024_TS_001", "2024_TS_002"], "2024_TS_002"),
+    ("TS_012_seg", ["TS_012"], "TS_012"),
+    ("TS_013.v2_seg", ["TS_012.v2.MRC", "TS_013.v2.MRC"], "TS_013.v2.MRC"),
+]
 
-@pytest.mark.parametrize(
-    "session, tomos, expected",
-    [
-        ("TS_012_membrane", ["TS_012", "TS_013"], "TS_012"),
-        (
-            "TS_012_rec_bin4_seg",
-            ["TS_012_rec_bin4", "TS_013_rec_bin4"],
-            "TS_012_rec_bin4",
-        ),
-        ("TS_012_seg", ["TS_012_bin4", "TS_013_bin4"], "TS_012_bin4"),
-        ("TS_12_seg", ["TS_012", "TS_013"], "TS_012"),
-        ("ts_012_SEG", ["TS_012.MRC", "TS_013.MRC"], "TS_012.MRC"),
-        ("2024_TS_002_seg", ["2024_TS_001", "2024_TS_002"], "2024_TS_002"),
-        ("TS_012_seg", ["TS_012"], "TS_012"),
-    ],
-)
+
+@pytest.mark.parametrize("session, tomos, expected", AUTO_CASES)
 def test_auto_matches(session, tomos, expected):
     paths = [f"/t/{t}" if "." in t else f"/t/{t}.mrc" for t in tomos]
     (m,) = match_tomograms([f"/s/{session}.mosaic"], paths)
     assert m.status == "matched" and os.path.basename(m.tomogram).startswith(expected)
+
+
+@pytest.mark.parametrize("session, tomos, expected", AUTO_CASES)
+def test_detected_key_reproduces_auto_match(session, tomos, expected):
+    sessions = [f"/s/{session}.mosaic"]
+    paths = [f"/t/{t}" if "." in t else f"/t/{t}.mrc" for t in tomos]
+    key = detect_key(match_tomograms(sessions, paths))[0]
+    assert match_tomograms(sessions, paths, key=key) == match_tomograms(sessions, paths)
 
 
 def test_tie_is_ambiguous():
@@ -100,13 +105,6 @@ def test_scan_not_recursive(tmp_path):
     assert scan_tomograms(str(tmp_path)) == [str(tmp_path / "b.mrc")]
 
 
-def test_dotted_names_match():
-    (m,) = match_tomograms(
-        ["/s/TS_013.v2_seg.mosaic"], ["/t/TS_012.v2.MRC", "/t/TS_013.v2.MRC"]
-    )
-    assert m.tomogram == "/t/TS_013.v2.MRC"
-
-
 def test_zarr_name_strips_suffix():
     (m,) = match_tomograms(
         ["/s/TS_013_seg.mosaic"], ["/t/TS_012.zarr", "/t/TS_013.zarr"]
@@ -114,31 +112,75 @@ def test_zarr_name_strips_suffix():
     assert m.tomogram == "/t/TS_013.zarr"
 
 
-def test_pattern_mode():
+@pytest.mark.parametrize(
+    "key, session, tomo",
+    [
+        (r"TS_\d+", "TS_012_membrane", "TS_012_rec"),
+        (r"TS_\d+", "TS_12_membrane", "TS_012_rec"),
+        (r"TS_(\d+)", "TS_12_membrane", "TS_012_rec"),
+        (r"(?:TS|tomo)_(\d+)", "TS_012_membrane", "tomo_012"),
+        (r"ts_\d+", "TS_012_membrane", "ts_012_rec"),
+    ],
+)
+def test_key_matches(key, session, tomo):
+    tomos = [f"/t/{tomo}.mrc", "/t/TS_013_rec.mrc", "/t/tomo_013.mrc"]
+    (m,) = match_tomograms([f"/s/{session}.mosaic"], tomos, key=key)
+    assert m.status == "matched" and m.tomogram == tomos[0]
+
+
+def test_key_without_groups_compares_whole_match():
     (m,) = match_tomograms(
-        ["/s/TS_012_membrane.mosaic"],
-        ["/t/TS_012_rec_bin4.mrc", "/t/TS_013_rec_bin4.mrc"],
-        pattern=("{key}_membrane", "{key}_rec*"),
+        ["/s/TS_012_membrane.mosaic"], ["/t/tomo_012.mrc"], key=r"(?:TS|tomo)_\d+"
     )
-    assert m.tomogram == "/t/TS_012_rec_bin4.mrc"
-
-
-def test_pattern_ambiguous_and_missing():
-    ms = match_tomograms(
-        ["/s/A_seg.mosaic", "/s/B_seg.mosaic"],
-        ["/t/A_1.mrc", "/t/A_2.mrc"],
-        pattern=("{key}_seg", "{key}_*"),
-    )
-    assert [m.status for m in ms] == ["ambiguous", "missing"]
-    assert len(ms[0].candidates) == 2
+    assert m.status == "missing"
 
 
 @pytest.mark.parametrize(
-    "pattern", [("*", "{key}"), ("{key}_{key}", "{key}"), ("{key}", "{key}{key}")]
+    "key, case_sensitive, status",
+    [
+        (r"ts_\d+", False, "matched"),
+        (r"ts_\d+", True, "missing"),
+        (r"(?i)ts_\d+", False, "matched"),
+        (r"(?i)ts_\d+", True, "missing"),
+    ],
 )
-def test_pattern_needs_one_key(pattern):
-    with pytest.raises(ValueError):
-        match_tomograms(["/s/a_a.mosaic"], ["/t/aa.mrc"], pattern=pattern)
+def test_key_case_sensitivity(key, case_sensitive, status):
+    (m,) = match_tomograms(
+        ["/s/TS_012_seg.mosaic"],
+        ["/t/ts_012.mrc"],
+        key=key,
+        case_sensitive=case_sensitive,
+    )
+    assert m.status == status
+
+
+def test_key_ambiguous_and_missing():
+    tomos = ["/t/TS_012_b.mrc", "/t/TS_012_a.mrc", "/t/TS_013.mrc", "/t/other.mrc"]
+    ms = match_tomograms(
+        ["/s/TS_012_seg.mosaic", "/s/TS_099_seg.mosaic", "/s/other.mosaic"],
+        tomos,
+        key=r"TS_\d+",
+    )
+    assert [m.status for m in ms] == ["ambiguous", "missing", "missing"]
+    assert ms[0].candidates == ("/t/TS_012_b.mrc", "/t/TS_012_a.mrc")
+    assert ms[0].tomogram is None and ms[1].candidates == ()
+
+
+def test_key_searches_name_relative_to_root(tmp_path):
+    for run in ("TS_012", "TS_013"):
+        (tmp_path / run).mkdir()
+        (tmp_path / run / "tomogram.mrc").write_bytes(b"")
+    tomos = scan_tomograms(str(tmp_path), recursive=True)
+    sessions = ["/s/TS_013_membrane.mosaic"]
+    (m,) = match_tomograms(sessions, tomos, root=str(tmp_path), key=r"TS_\d+")
+    assert m.tomogram == str(tmp_path / "TS_013" / "tomogram.mrc")
+    (m,) = match_tomograms(sessions, tomos, key=r"TS_\d+")
+    assert m.status == "missing"
+
+
+def test_invalid_key_raises():
+    with pytest.raises(re.error):
+        match_tomograms(["/s/TS_012.mosaic"], ["/t/TS_012.mrc"], key="TS_(")
 
 
 def test_non_ascii_digit_token():
@@ -249,8 +291,13 @@ def test_detected_key():
         ["/s/TS_013_membrane.mosaic", "/s/TS_012_membrane.mosaic"],
         ["/t/TS_012_rec.mrc", "/t/TS_013_rec.mrc"],
     )
-    assert detected_key(matches) == ("TS_###", "TS_012_membrane", "TS_012_rec.mrc")
-    assert detected_key([Match("/s/a.mosaic", None, (), "missing")]) is None
+    assert detect_key(matches) == (r"TS_\d+", "TS_012_membrane", "TS_012_rec.mrc")
+    assert detect_key([Match("/s/a.mosaic", None, (), "missing")]) is None
+
+
+def test_detected_key_escapes_text():
+    (m,) = match_tomograms(["/s/a+b.12_seg.mosaic"], ["/t/a+b.12.mrc"])
+    assert detect_key([m])[0] == r"a\+b\.\d+"
 
 
 def test_detected_key_nested_folders(tmp_path):
@@ -259,8 +306,8 @@ def test_detected_key_nested_folders(tmp_path):
         (tmp_path / run / "tomogram.mrc").write_bytes(b"")
     tomos = scan_tomograms(str(tmp_path), recursive=True)
     matches = match_tomograms(["/s/ts_12-seg.mosaic"], tomos, root=str(tmp_path))
-    expected = ("ts_##", "ts_12-seg", os.path.join("TS_012", "tomogram.mrc"))
-    assert detected_key(matches) == expected
+    expected = (r"ts_\d+", "ts_12-seg", os.path.join("TS_012", "tomogram.mrc"))
+    assert detect_key(matches) == expected
 
 
 def test_detected_key_backslash_paths():
@@ -270,7 +317,7 @@ def test_detected_key_backslash_paths():
         ("C:\\data\\TS_012\\tomogram.mrc",),
         "matched",
     )
-    assert detected_key([match]) == ("TS_###", "TS_012_seg", "TS_012\\tomogram.mrc")
+    assert detect_key([match]) == (r"TS_\d+", "TS_012_seg", "TS_012\\tomogram.mrc")
 
 
 def test_write_links_converts_legacy_and_continues_on_error(tmp_path):

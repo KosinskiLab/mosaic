@@ -98,7 +98,7 @@ def test_choose_file_cancel_keeps_selection(qapp, dataset, monkeypatch):
     assert dlg.footer.info_label.isHidden()
 
 
-def test_pattern_rematches_without_rescan(qapp, dataset, monkeypatch):
+def test_key_rematches_without_rescan(qapp, dataset, monkeypatch):
     sessions, tomos = dataset
     dlg = LinkTomogramsDialog(sessions)
     dlg.set_folder(str(tomos))
@@ -106,10 +106,56 @@ def test_pattern_rematches_without_rescan(qapp, dataset, monkeypatch):
         "mosaic.dialogs.link_tomograms.scan_tomograms",
         Mock(side_effect=AssertionError),
     )
-    dlg.set_pattern(("{key}_membrane", "{key}"))
-    assert dlg.footer.info_label.text() == "1 to resolve"
-    dlg.set_pattern(("{key}_seg", "{key}"))
+    dlg.set_key(r"TS_\d+_seg")
     assert dlg.footer.info_label.text() == "3 to resolve"
+    dlg.set_key(r"ts_\d+")
+    assert dlg.footer.info_label.text() == "1 to resolve"
+    dlg.case_sensitive.setChecked(True)
+    assert dlg.footer.info_label.text() == "3 to resolve"
+
+
+def test_scan_fills_key_and_detect_restores_it(qapp, dataset):
+    sessions, tomos = dataset
+    dlg = LinkTomogramsDialog(sessions)
+    assert dlg.key_input.text() == ""
+    dlg.set_folder(str(tomos))
+    assert dlg.key_input.text() == r"TS_\d+"
+    dlg.set_key("TS_099")
+    dlg.detect_button.click()
+    assert dlg.key_input.text() == r"TS_\d+" and not dlg.key_input.isModified()
+    assert dlg.footer.info_label.text() == "1 to resolve"
+
+
+def test_edited_key_survives_rescan(qapp, dataset):
+    sessions, tomos = dataset
+    dlg = LinkTomogramsDialog(sessions)
+    dlg.set_folder(str(tomos))
+    dlg.set_key(r"TS_(\d+)_membrane")
+    dlg.set_folder(str(tomos), recursive=True)
+    assert dlg.key_input.text() == r"TS_(\d+)_membrane"
+    assert dlg.footer.info_label.text() == "3 to resolve"
+
+
+def test_invalid_key_keeps_rows(qapp, dataset):
+    sessions, tomos = dataset
+    dlg = LinkTomogramsDialog(sessions)
+    dlg.set_folder(str(tomos))
+    rows = dlg.rows()
+    statuses = [dlg._status(i) for i in range(len(rows))]
+    dlg.set_key("TS_(")
+    assert dlg.rows() is rows
+    assert [dlg._status(i) for i in range(len(rows))] == statuses
+    assert dlg.caption.text().startswith("Invalid pattern")
+    dlg.set_key(r"TS_\d+")
+    assert dlg.caption.text() == "Example: TS_012_membrane  →  TS_012.mrc"
+
+
+def test_session_column_shows_stems(qapp, dataset):
+    sessions, tomos = dataset
+    dlg = LinkTomogramsDialog(sessions)
+    dlg.set_folder(str(tomos))
+    item = dlg.table.item(0, 0)
+    assert item.text() == "TS_099_membrane" and item.toolTip() == sessions[2]
 
 
 def test_accept_stores_folder(qapp, dataset):
@@ -158,12 +204,12 @@ def test_typing_waits_for_editing_finished(qapp, dataset, monkeypatch):
     scan.assert_called_once_with(str(tomos / "sub"), False)
 
 
-def test_key_line_hidden_without_match(qapp, dataset):
+def test_no_folder_shows_no_statuses(qapp, dataset):
     sessions, tomos = dataset
     dlg = LinkTomogramsDialog(sessions)
-    assert dlg.key_label.isHidden()
-    dlg.set_folder(str(tomos))
-    assert not dlg.key_label.isHidden()
+    assert [dlg._status(i) for i in range(len(sessions))] == ["", "", ""]
+    assert dlg.footer.info_label.isHidden()
+    assert dlg.caption.text() == "Example: no match yet"
 
 
 def test_rematch_leaves_one_combo_per_row(qapp, dataset):

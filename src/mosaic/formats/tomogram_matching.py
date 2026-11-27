@@ -7,6 +7,8 @@ first differing token disqualifies it. The score must exceed the leading run
 common to all tomograms, cut before its first numeric token (at least 1 for a
 single tomogram). A unique best score matches, a tie is ambiguous.
 
+Key mode searches a regular expression in both names and pairs equal keys.
+
 Copyright (c) 2024-2026 European Molecular Biology Laboratory
 
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
@@ -30,7 +32,7 @@ __all__ = [
     "LinkWriteResult",
     "Match",
     "build_rows",
-    "detected_key",
+    "detect_key",
     "entries",
     "initial_folder",
     "is_warning",
@@ -156,27 +158,24 @@ def _auto_match(session: str, names: list[str], tomograms: list[str]) -> Match:
     return Match(session, None, tied, "ambiguous")
 
 
-def _compile(template: str) -> re.Pattern:
-    if template.count("{key}") != 1:
-        raise ValueError(f"Pattern '{template}' needs exactly one {{key}}")
+def _key(regex: re.Pattern, name: str, case_sensitive: bool) -> tuple | None:
+    m = regex.search(name)
+    if m is None:
+        return None
 
-    parts = re.split(r"(\{key\}|\*)", template)
-    regex = "".join(
-        {"{key}": "(?P<key>.+?)", "*": ".*"}.get(p, re.escape(p)) for p in parts
-    )
-    return re.compile(regex, re.IGNORECASE)
-
-
-def _pattern_key(regex: re.Pattern, name: str) -> str | None:
-    m = regex.fullmatch(name)
-    return m.group("key").lower() if m else None
+    key = []
+    for part in [g or "" for g in m.groups()] or [m.group(0)]:
+        runs = re.split(r"(\d+)", part if case_sensitive else part.lower())
+        key.append(tuple(int(r) if i % 2 else r for i, r in enumerate(runs)))
+    return tuple(key)
 
 
 def match_tomograms(
     session_paths: list[str],
     tomogram_paths: list[str],
     root: str | None = None,
-    pattern: tuple[str, str] | None = None,
+    key: str | None = None,
+    case_sensitive: bool = False,
 ) -> list[Match]:
     """
     Match each session to a tomogram.
@@ -190,8 +189,11 @@ def match_tomograms(
     root : str, optional
         Folder the tomogram names are taken relative to. Defaults to the
         file name only.
-    pattern : tuple of str, optional
-        Session and tomogram templates using ``{key}`` and ``*``.
+    key : str, optional
+        Regular expression for the key. Its groups form the key if it has
+        any, digit runs compare as numbers. Defaults to auto mode.
+    case_sensitive : bool, optional
+        Compare keys case sensitively. Defaults to False.
 
     Returns
     -------
@@ -200,47 +202,49 @@ def match_tomograms(
 
     Raises
     ------
-    ValueError
-        If a template has no ``{key}``.
+    re.error
+        If ``key`` is not a valid regular expression.
     """
     names = [_tomogram_name(p, root) for p in tomogram_paths]
-    if pattern is None:
+    if key is None:
         return [_auto_match(s, names, tomogram_paths) for s in session_paths]
 
-    session_re, tomo_re = (_compile(t) for t in pattern)
-    tomo_keys = [_pattern_key(tomo_re, n) for n in names]
+    regex = re.compile(key, 0 if case_sensitive else re.IGNORECASE)
+    tomo_keys = [_key(regex, n, case_sensitive) for n in names]
 
     matches = []
     for session in session_paths:
         stem = os.path.splitext(os.path.basename(session))[0]
-        key = _pattern_key(session_re, stem)
-        found = tuple(
-            p for p, k in zip(tomogram_paths, tomo_keys) if key is not None and k == key
+        session_key = _key(regex, stem, case_sensitive)
+        candidates = tuple(
+            p
+            for p, k in zip(tomogram_paths, tomo_keys)
+            if session_key is not None and k == session_key
         )
-        if not found:
+        if not candidates:
             matches.append(Match(session, None, (), "missing"))
-        elif len(found) == 1:
-            matches.append(Match(session, found[0], found, "matched"))
+        elif len(candidates) == 1:
+            matches.append(Match(session, candidates[0], candidates, "matched"))
         else:
-            matches.append(Match(session, None, found, "ambiguous"))
+            matches.append(Match(session, None, candidates, "ambiguous"))
 
     return matches
 
 
-def detected_key(matches: list[Match]) -> tuple[str, str, str] | None:
-    """
-    Describe the auto-detected key with an example pair.
+def detect_key(matches: list[Match]) -> tuple[str, str, str] | None:
+    r"""
+    Describe the auto-detected key as a regular expression with an example.
 
     Parameters
     ----------
     matches : list of Match
-        Output of :py:func:`match_tomograms` in auto mode.
+        Output of :py:func:`match_tomograms`.
 
     Returns
     -------
     tuple of str or None
-        Key with digits shown as ``#``, the example session stem and the
-        example tomogram name, or None if nothing matched.
+        Key regex with digit runs as ``\d+``, the example session stem and
+        the example tomogram name, or None if nothing matched.
     """
     matched = sorted(
         (m for m in matches if m.status == "matched"),
@@ -264,7 +268,9 @@ def detected_key(matches: list[Match]) -> tuple[str, str, str] | None:
 
     spans = list(re.finditer(f"[^{_SEPARATORS}]+", stem))
     key = stem[: spans[shared - 1].end()] if shared > 0 else ""
-    return re.sub(r"\d", "#", key), stem, name
+    runs = re.split(r"(\d+)", key)
+    regex = "".join(r"\d+" if i % 2 else re.escape(r) for i, r in enumerate(runs))
+    return regex, stem, name
 
 
 @dataclass

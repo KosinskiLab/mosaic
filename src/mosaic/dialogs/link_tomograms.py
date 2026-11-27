@@ -6,7 +6,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-import html
+import os
+import re
 
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QColor
@@ -16,6 +17,7 @@ from qtpy.QtWidgets import (
     QComboBox,
     QDialog,
     QFileDialog,
+    QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -25,7 +27,6 @@ from qtpy.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
-    QWidget,
 )
 
 from ..formats.session import read_session_meta
@@ -33,7 +34,7 @@ from ..formats.tomogram_matching import (
     NO_TOMOGRAM,
     LinkRow,
     build_rows,
-    detected_key,
+    detect_key,
     entries,
     initial_folder,
     is_warning,
@@ -59,28 +60,6 @@ def _read_link(path: str) -> str | None:
         return read_session_meta(path).get("tomogram")
     except (OSError, ValueError):
         return None
-
-
-def _text_button(text: str) -> QPushButton:
-    button = QPushButton(text)
-    button.setFlat(True)
-    button.setAutoDefault(False)
-    button.setCursor(Qt.CursorShape.PointingHandCursor)
-    button.setStyleSheet(
-        f"""
-        QPushButton {{
-            border: none;
-            background: transparent;
-            padding: 2px 6px;
-            color: {Colors.TEXT_SECONDARY};
-            font-size: {Typography.LABEL}px;
-        }}
-        QPushButton:hover {{
-            color: {Colors.TEXT_PRIMARY};
-        }}
-        """
-    )
-    return button
 
 
 class _Combo(QComboBox):
@@ -117,7 +96,7 @@ class LinkTomogramsDialog(QDialog):
     def __init__(self, session_paths: list[str], parent=None):
         super().__init__(parent)
         self.setWindowTitle("Link Tomograms")
-        self.resize(640, 440)
+        self.resize(720, 560)
 
         self._sessions = list(session_paths)
         self._links = {p: _read_link(p) for p in self._sessions}
@@ -136,65 +115,57 @@ class LinkTomogramsDialog(QDialog):
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 10)
-        layout.setSpacing(10)
+        layout.setSpacing(0)
 
-        folder_row = QHBoxLayout()
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(8)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setColumnStretch(1, 1)
+
         self.folder_picker = PathSelector(
             placeholder="Tomogram folder", mode="directory"
         )
-        self.subfolders = QCheckBox("Subfolders")
-        folder_row.addWidget(self.folder_picker, 1)
-        folder_row.addWidget(self.subfolders)
-        layout.addLayout(folder_row)
+        grid.addWidget(_field_label("Folder"), 0, 0)
+        grid.addWidget(self.folder_picker, 0, 1)
+
+        self.subfolders = QCheckBox("Search subfolders")
+        grid.addWidget(self.subfolders, 1, 1)
+
+        self.key_input = QLineEdit()
+        self.key_input.setFixedHeight(Colors.WIDGET_HEIGHT)
+
+        # The global vertical padding clips underscores at this height.
+        self.key_input.setStyleSheet("padding: 0px 8px;")
+        self.key_input.setPlaceholderText(r"Regular expression, e.g. TS_\d+")
+        self.detect_button = QPushButton("Detect")
+        self.detect_button.setAutoDefault(False)
+        self.detect_button.setFixedHeight(Colors.WIDGET_HEIGHT)
+        key_row = QHBoxLayout()
+        key_row.setContentsMargins(0, 0, 0, 0)
+        key_row.setSpacing(8)
+        key_row.addWidget(self.key_input, 1)
+        key_row.addWidget(self.detect_button)
+        grid.addWidget(_field_label("Key"), 2, 0)
+        grid.addLayout(key_row, 2, 1)
+
+        self.case_sensitive = QCheckBox("Case sensitive")
+        grid.addWidget(self.case_sensitive, 3, 1)
+
+        self.caption = QLabel()
+        self.caption.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
+        )
+        grid.addWidget(self.caption, 4, 1)
+        layout.addLayout(grid)
+        layout.addSpacing(16)
 
         self.folder_picker.path_input.editingFinished.connect(self._rescan)
         self.folder_picker.path_input.textChanged.connect(self._on_folder_text)
         self.subfolders.toggled.connect(self._rescan)
-
-        match_row = QHBoxLayout()
-        match_row.setContentsMargins(0, 0, 0, 0)
-
-        self._auto_row = QWidget()
-        auto_layout = QHBoxLayout(self._auto_row)
-        auto_layout.setContentsMargins(0, 0, 0, 0)
-        self.key_label = QLabel()
-        self.key_label.setTextFormat(Qt.TextFormat.RichText)
-        self.key_label.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
-        )
-        self.key_label.setStyleSheet(
-            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.LABEL}px;"
-        )
-        self.edit_button = _text_button("Edit")
-        self.edit_button.clicked.connect(self._edit_pattern)
-        auto_layout.addWidget(self.key_label, 1)
-        auto_layout.addWidget(self.edit_button)
-
-        self._pattern_row = QWidget()
-        pattern_layout = QHBoxLayout(self._pattern_row)
-        pattern_layout.setContentsMargins(0, 0, 0, 0)
-        hint = "{key} is the shared part, * matches anything"
-        self.session_pattern = QLineEdit()
-        self.session_pattern.setPlaceholderText("{key}_seg")
-        self.session_pattern.setToolTip(hint)
-        self.tomogram_pattern = QLineEdit()
-        self.tomogram_pattern.setPlaceholderText("{key}_rec*")
-        self.tomogram_pattern.setToolTip(hint)
-        self.auto_button = _text_button("Auto")
-        self.auto_button.clicked.connect(lambda: self.set_pattern(None))
-        pattern_layout.addWidget(_field_label("Session"))
-        pattern_layout.addWidget(self.session_pattern, 1)
-        pattern_layout.addWidget(_field_label("Tomogram"))
-        pattern_layout.addWidget(self.tomogram_pattern, 1)
-        pattern_layout.addWidget(self.auto_button)
-        self._pattern_row.hide()
-
-        self.session_pattern.textChanged.connect(self._rematch)
-        self.tomogram_pattern.textChanged.connect(self._rematch)
-
-        match_row.addWidget(self._auto_row, 1)
-        match_row.addWidget(self._pattern_row, 1)
-        layout.addLayout(match_row)
+        self.key_input.textChanged.connect(self._rematch)
+        self.detect_button.clicked.connect(self._detect)
+        self.case_sensitive.toggled.connect(self._rematch)
 
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["Session", "Status", "Tomogram"])
@@ -203,36 +174,50 @@ class LinkTomogramsDialog(QDialog):
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
+        row_height = Colors.WIDGET_HEIGHT + 12
         rows = self.table.verticalHeader()
         rows.hide()
         rows.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
-        rows.setDefaultSectionSize(Colors.WIDGET_HEIGHT + 4)
+        rows.setDefaultSectionSize(row_height)
 
         header = self.table.horizontalHeader()
         header.setHighlightSections(False)
+        header.setFixedHeight(Colors.WIDGET_HEIGHT)
         header.setDefaultAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
 
+        # Wide enough for every status, so the column keeps its width.
+        status_width = self.table.fontMetrics().horizontalAdvance("99 candidates")
+        header.resizeSection(1, status_width + 48)
+
+        margin = (row_height - Colors.WIDGET_HEIGHT) // 2
         self.table.setStyleSheet(
             f"""
+            QTableWidget::item {{
+                padding-left: 8px;
+            }}
+            QTableWidget::item:hover {{
+                background: transparent;
+            }}
             QTableWidget QHeaderView::section {{
                 background: {Colors.BG_SECONDARY};
+                padding-left: 8px;
             }}
             QComboBox {{
-                margin: 2px 0px;
+                margin: {margin}px 8px {margin}px 0px;
             }}
             """
         )
         layout.addWidget(self.table, 1)
 
-        self.footer = DialogFooter(info_text="", dialog=self, margin=(0, 4, 0, 0))
+        self.footer = DialogFooter(info_text="", dialog=self, margin=(0, 8, 0, 0))
         self.footer.accept_button.setText("Apply")
 
-        # Enter in the folder or pattern fields must not apply the links.
+        # Enter in the folder or key fields must not apply the links.
         self.footer.accept_button.setAutoDefault(False)
         self.footer.reject_button.setAutoDefault(False)
         layout.addWidget(self.footer)
@@ -248,18 +233,11 @@ class LinkTomogramsDialog(QDialog):
             widget.blockSignals(False)
         return self._rescan()
 
-    def set_pattern(self, pattern: tuple[str, str] | None) -> None:
-        """Match by session and tomogram templates, or automatically if None."""
-        self._auto_row.setVisible(pattern is None)
-        self._pattern_row.setVisible(pattern is not None)
-        if pattern is not None:
-            for edit, text in zip(
-                (self.session_pattern, self.tomogram_pattern), pattern
-            ):
-                edit.blockSignals(True)
-                edit.setText(text)
-                edit.blockSignals(False)
-        return self._rematch()
+    def set_key(self, text: str) -> None:
+        """Match by the regular expression ``text``, kept on rescans."""
+        self.key_input.setText(text)
+        self.key_input.setModified(True)
+        return None
 
     def rows(self) -> list[LinkRow]:
         """Return the rows in display order."""
@@ -280,21 +258,10 @@ class LinkTomogramsDialog(QDialog):
     def _root(self) -> str | None:
         return (self._scanned[0] or None) if self._scanned else None
 
-    def _pattern(self) -> tuple[str, str] | None:
-        if self._pattern_row.isHidden():
-            return None
-        return self.session_pattern.text(), self.tomogram_pattern.text()
-
     def _on_folder_text(self) -> None:
         # Typed text rescans on editingFinished, set_path from Browse does not emit it.
         if not self.folder_picker.path_input.isModified():
             self._rescan()
-        return None
-
-    def _edit_pattern(self) -> None:
-        self._auto_row.hide()
-        self._pattern_row.show()
-        self.session_pattern.setFocus()
         return None
 
     def _rescan(self) -> None:
@@ -305,6 +272,17 @@ class LinkTomogramsDialog(QDialog):
         self._scanned = scan
         folder, recursive = scan
         self._tomograms = scan_tomograms(folder, recursive) if folder else []
+        if self.key_input.isModified():
+            return self._rematch()
+        return self._detect()
+
+    def _detect(self) -> None:
+        found = detect_key(
+            match_tomograms(self._sessions, self._tomograms, root=self._root())
+        )
+        self.key_input.blockSignals(True)
+        self.key_input.setText(found[0] if found else "")
+        self.key_input.blockSignals(False)
         return self._rematch()
 
     def _rematch(self) -> None:
@@ -313,31 +291,40 @@ class LinkTomogramsDialog(QDialog):
                 self._sessions,
                 self._tomograms,
                 root=self._root(),
-                pattern=self._pattern(),
+                key=self.key_input.text() or None,
+                case_sensitive=self.case_sensitive.isChecked(),
             )
-        except ValueError:
-            return None
+        except re.error as e:
+            return self._set_caption(f"Invalid pattern: {e}", Colors.ERROR)
 
-        key = detected_key(matches)
-        self.key_label.setVisible(key is not None)
-        if key is not None:
-            key, stem, name = (html.escape(k) for k in key)
-            self.key_label.setText(
-                f"Key <span style='color: {Colors.TEXT_PRIMARY}; font-weight: 600'>"
-                f"{key}</span> · {stem} → {name}"
-            )
+        example = detect_key(matches)
+        text = "Example: no match yet"
+        if example is not None:
+            text = f"Example: {example[1]}  →  {example[2]}"
+        self._set_caption(text, Colors.TEXT_MUTED)
 
         self._rows = build_rows(matches, self._links)
         self._populate()
         return self._refresh()
 
+    def _set_caption(self, text: str, color: str) -> None:
+        self.caption.setText(text)
+        self.caption.setStyleSheet(
+            f"color: {color}; font-size: {Typography.CAPTION}px;"
+        )
+        return None
+
     def _populate(self) -> None:
         self.table.setRowCount(len(self._rows))
+        metrics = self.table.fontMetrics()
+        width = metrics.horizontalAdvance("Session")
         for i, row in enumerate(self._rows):
             session = QTableWidgetItem()
 
-            # Caps the content-sized column so the Tomogram column keeps room.
-            set_path_text(session, row.session, width=220)
+            # Caps the Session column so the Tomogram column keeps room.
+            set_path_text(session, os.path.splitext(row.session)[0], width=220)
+            session.setToolTip(row.session)
+            width = max(width, metrics.horizontalAdvance(session.text()))
             self.table.setItem(i, 0, session)
             self.table.setItem(i, 1, QTableWidgetItem())
 
@@ -350,6 +337,7 @@ class LinkTomogramsDialog(QDialog):
                 )
                 self.table.setCellWidget(i, 2, combo)
             self._fill_combo(self._combo(i), row)
+        self.table.horizontalHeader().resizeSection(0, width + 48)
         return None
 
     def _fill_combo(self, combo: QComboBox, row: LinkRow) -> None:
@@ -391,10 +379,12 @@ class LinkTomogramsDialog(QDialog):
         return self.table.item(i, 1).text()
 
     def _refresh(self) -> None:
+        # Without tomograms there is nothing to resolve yet.
+        scanned = bool(self._tomograms)
         for i, row in enumerate(self._rows):
             item = self.table.item(i, 1)
-            item.setText(status_text(row))
+            item.setText(status_text(row) if scanned or not is_warning(row) else "")
             color = Colors.WARNING_TEXT if is_warning(row) else Colors.TEXT_SECONDARY
             item.setForeground(QColor(color))
-        self.footer.set_info(resolve_note(self._rows))
+        self.footer.set_info(resolve_note(self._rows) if scanned else None)
         return None
