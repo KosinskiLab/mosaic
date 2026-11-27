@@ -94,3 +94,10 @@ def test_name_token_with_backslash_in_regex_mode():
 
 def test_huge_width_stays_literal():
     assert rename(["a"], "", "{i:9999999999}") == ["{i:9999999999}"]
+
+
+def test_example_shown_when_names_unchanged(qapp):
+    dlg = BatchRenameDialog(NAMES)
+    assert dlg.preview_label.text() == ""
+    dlg.replace_input.setText("{name}")
+    assert dlg.preview_label.text() == "Example: TS_001_seg  →  TS_001_seg"

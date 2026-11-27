@@ -204,7 +204,8 @@ class BatchRenameDialog(QDialog):
             self.error_label.show()
             self.result_names = list(self.names)
 
-        if self.names[0] != self.result_names[0]:
+        edited = self.find_input.text() or self.replace_input.text()
+        if edited and self.error_label.isHidden():
             self.preview_label.setText(
                 f"Example: {self.names[0]}  →  {self.result_names[0]}"
             )
