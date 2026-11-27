@@ -10,13 +10,18 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from os import listdir, makedirs
+from collections.abc import Sequence
+from os import PathLike, listdir, makedirs
 from os.path import basename, join
 from tempfile import TemporaryDirectory
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from .utils import merge_meshes, to_open3d
+
+if TYPE_CHECKING:
+    import open3d
 
 __all__ = [
     "MeshCreator",
@@ -27,7 +32,12 @@ __all__ = [
 ]
 
 
-def simplify_mesh(mesh, aggressiveness=5.5, decimation_factor=2, lod=1):
+def simplify_mesh(
+    mesh: "open3d.geometry.TriangleMesh",
+    aggressiveness: float = 5.5,
+    decimation_factor: int = 2,
+    lod: int = 1,
+):
     import pyfqmr
 
     simplifier = pyfqmr.Simplify()
@@ -144,7 +154,13 @@ class MeshCreator:
 
         return ret
 
-    def _handle_dataset_boundary(self, data, bounds_min, bounds_max, volume_bounds):
+    def _handle_dataset_boundary(
+        self,
+        data: np.ndarray,
+        bounds_min: np.ndarray,
+        bounds_max: np.ndarray,
+        volume_bounds: np.ndarray,
+    ):
         """Add zero border along dataset boundaries for closed meshes."""
         if (not np.any(bounds_min == 0)) and (not np.any(bounds_max == volume_bounds)):
             return data, (0, 0, 0)
@@ -212,7 +228,7 @@ class MeshMerger:
 class MeshSimplifier:
     def __init__(
         self,
-        mesh_path,
+        mesh_path: str | PathLike[str],
         output_dir: str,
         decimation_factor: int = 2,
         aggressiveness: float = 5.5,
@@ -249,11 +265,11 @@ class MeshSimplifier:
         return opath
 
 
-def _execute(task):
+def _execute(task: tuple):
     return task.execute()
 
 
-def _split_volume(shape, box) -> list:
+def _split_volume(shape: Sequence[int], box: Sequence[int]) -> list:
     sx, sy, sz = np.ceil(np.divide(shape, box)).astype(int)
     sxy = sx * sy
     num_tasks = sxy * sz
@@ -269,7 +285,7 @@ def _split_volume(shape, box) -> list:
 
 def mesh_volume(
     volume_path: str,
-    output_dir: str = None,
+    output_dir: str | None = None,
     shape: tuple[int, int, int] = (448, 448, 448),
     num_workers: int = 8,
     closed_dataset_edges: bool = True,

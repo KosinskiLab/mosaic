@@ -9,11 +9,17 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import sys
 import textwrap
 import warnings
+from os import PathLike
 from subprocess import run
 from tempfile import NamedTemporaryFile
+from typing import TYPE_CHECKING
 
 import h5py
 import numpy as np
+from numpy.typing import ArrayLike
+
+if TYPE_CHECKING:
+    import open3d
 
 __all__ = [
     "center_mesh",
@@ -30,7 +36,9 @@ __all__ = [
 ]
 
 
-def to_open3d(vertices, faces, normals=None):
+def to_open3d(
+    vertices: np.ndarray, faces: np.ndarray, normals: np.ndarray | None = None
+):
     import open3d as o3d
 
     ret = o3d.geometry.TriangleMesh()
@@ -43,21 +51,21 @@ def to_open3d(vertices, faces, normals=None):
     return ret
 
 
-def _compute_edge_lengths(filename):
+def _compute_edge_lengths(filename: str | PathLike[str]):
     import open3d as o3d
 
     mesh = o3d.io.read_triangle_mesh(filename)
     return compute_edge_lengths(mesh)
 
 
-def compute_edge_lengths(mesh) -> np.ndarray:
+def compute_edge_lengths(mesh: "open3d.geometry.TriangleMesh") -> np.ndarray:
     return _edge_lengths(
         vertices=np.asarray(mesh.vertices),
         faces=np.asarray(mesh.triangles),
     ).ravel()
 
 
-def _edge_lengths(vertices, faces):
+def _edge_lengths(vertices: np.ndarray, faces: np.ndarray):
     vertices = vertices[faces]
     edge_01 = np.linalg.norm(vertices[:, 1] - vertices[:, 0], axis=1)
     edge_02 = np.linalg.norm(vertices[:, 2] - vertices[:, 0], axis=1)
@@ -65,13 +73,18 @@ def _edge_lengths(vertices, faces):
     return np.column_stack([edge_01, edge_02, edge_12])
 
 
-def scale(mesh, scaling):
+def scale(mesh: "open3d.geometry.TriangleMesh", scaling: ArrayLike):
     vertices = np.multiply(np.asarray(mesh.vertices).copy(), scaling)
     triangles = np.asarray(mesh.triangles).copy()
     return to_open3d(vertices, triangles)
 
 
-def remesh(mesh, target_edge_length=None, n_iter=100, feature=None):
+def remesh(
+    mesh: "open3d.geometry.TriangleMesh",
+    target_edge_length: float | None = None,
+    n_iter: int = 100,
+    feature: np.ndarray | None = None,
+):
     """Remesh to target edge length using Botsch-Kobbelt isotropic remeshing.
 
     Parameters
@@ -109,7 +122,7 @@ def remesh(mesh, target_edge_length=None, n_iter=100, feature=None):
 def merge_meshes(
     vertices: list[np.ndarray],
     faces: list[np.ndarray],
-    normals: list[np.ndarray] = None,
+    normals: list[np.ndarray] | None = None,
 ):
     if len(vertices) != len(faces):
         raise ValueError("Length of vertex and face list needs to match.")
@@ -142,7 +155,13 @@ def merge_meshes(
     return np.asarray(mesh.vertices), np.asarray(mesh.triangles), out_normals
 
 
-def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
+def equilibrate_edges(
+    mesh: "open3d.geometry.TriangleMesh",
+    lower_bound: float,
+    upper_bound: float,
+    steps: int = 2000,
+    **kwargs,
+):
     default_args = {
         "bond_r": 2,
         "area_fraction": 1.2,
@@ -247,7 +266,11 @@ def equilibrate_edges(mesh, lower_bound, upper_bound, steps=2000, **kwargs):
     return ret
 
 
-def compute_scale_factor(mesh, lower_bound=1.0, upper_bound=1.7):
+def compute_scale_factor(
+    mesh: "open3d.geometry.TriangleMesh",
+    lower_bound: float = 1.0,
+    upper_bound: float = 1.7,
+):
     if lower_bound > upper_bound:
         raise ValueError("lower_bound larger than upper_bound.")
 
@@ -275,13 +298,17 @@ def compute_scale_factor(mesh, lower_bound=1.0, upper_bound=1.7):
     return scale_factor
 
 
-def compute_scale_factor_lower(mesh, lower_bound=1.05):
+def compute_scale_factor_lower(
+    mesh: "open3d.geometry.TriangleMesh", lower_bound: float = 1.05
+):
     edge_lengths = compute_edge_lengths(mesh)
     scale_factor = lower_bound / edge_lengths.min()
     return scale_factor
 
 
-def center_mesh(mesh, center: bool = True, margin=20):
+def center_mesh(
+    mesh: "open3d.geometry.TriangleMesh", center: bool = True, margin: int = 20
+):
     vertices = np.asarray(mesh.vertices)
 
     offset = 0
@@ -294,7 +321,7 @@ def center_mesh(mesh, center: bool = True, margin=20):
     return data, offset
 
 
-def to_tsi(vertices, faces, margin: int = 0) -> dict:
+def to_tsi(vertices: np.ndarray, faces: np.ndarray, margin: int = 0) -> dict:
     vertices = np.asarray(vertices)
     faces = np.asarray(faces)
 
@@ -318,7 +345,7 @@ def to_tsi(vertices, faces, margin: int = 0) -> dict:
     }
 
 
-def fill_mesh(vertices, triangles, voxel_size):
+def fill_mesh(vertices: np.ndarray, triangles: np.ndarray, voxel_size: float):
     """
     Fill the interior of a closed triangle mesh with regularly spaced points.
 

@@ -6,9 +6,13 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
-from .geometry import BASE_COLOR
+from .geometry import BASE_COLOR, Geometry
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
 
 __all__ = ["DataContainer"]
 
@@ -27,7 +31,11 @@ class DataContainer:
         Default is (0.8, 0.2, 0.2).
     """
 
-    def __init__(self, base_color=BASE_COLOR, highlight_color=(0.8, 0.2, 0.2)):
+    def __init__(
+        self,
+        base_color: Sequence[float] = BASE_COLOR,
+        highlight_color: Sequence[float] = (0.8, 0.2, 0.2),
+    ):
         self.data = []
         self.base_color = base_color
         self.highlight_color = highlight_color
@@ -39,12 +47,17 @@ class DataContainer:
         """Get VTK actors from all geometries."""
         return [x.actor for x in self.data]
 
-    def add(self, points=None, color=None, **kwargs):
+    def add(
+        self,
+        points: "ArrayLike | Geometry | None" = None,
+        color: Sequence[float] | None = None,
+        **kwargs,
+    ):
         """Add a new geometry object to the container.
 
         Parameters
         ----------
-        points_or_geometry : np.ndarray or Geometry or SegmentationGeometry
+        points : array_like or Geometry, optional
             Points to add to the container, or an existing geometry object.
         color : tuple of float, optional
             RGB color values for the point cloud.
@@ -54,8 +67,6 @@ class DataContainer:
         int
             Index of the new point cloud.
         """
-        from .geometry import Geometry
-
         geometry = points
         if not isinstance(geometry, Geometry):
             if color is None:
@@ -72,7 +83,7 @@ class DataContainer:
         self.data.append(geometry)
         return len(self.data) - 1
 
-    def remove(self, uuids_or_geometries: list[str] | list["Geometry"]):
+    def remove(self, uuids_or_geometries: str | Geometry | Sequence[str | Geometry]):
         """Remove geometries at specified indices or by geometry objects.
 
         Parameters
@@ -119,7 +130,7 @@ class DataContainer:
             return self.data[index_or_uuid]
         return None
 
-    def update(self, uuid_or_geometry, new_geometry) -> bool:
+    def update(self, uuid_or_geometry: str | Geometry, new_geometry: Geometry) -> bool:
         """
         Update a geometry by UUID or geometry object.
 
@@ -145,12 +156,17 @@ class DataContainer:
         self.data[index] = new_geometry
         return True
 
-    def highlight_points(self, uuid_or_geometry, point_ids: set, color: tuple[float]):
+    def highlight_points(
+        self,
+        uuid_or_geometry: int | str | Geometry,
+        point_ids: set,
+        color: Sequence[float] | None,
+    ):
         """Highlight specific points in a cloud.
 
         Parameters
         ----------
-        uuid_or_geometry : int or str
+        uuid_or_geometry : int, str, or Geometry
             UUID of geometry to update, or the geometry object itself
         point_ids : set
             IDs of points to highlight.
@@ -267,25 +283,27 @@ class DataContainer:
 
         return full_render
 
-    def _to_uuid(self, uuid_or_geometry: Union[str, "Geometry"]) -> str:
+    def _to_uuid(self, uuid_or_geometry: int | str | Geometry) -> int | str:
         """Convert UUID or Geometry to UUID.
 
         Parameters
         ----------
-        uuid_or_geometry : str or Geometry
-            UUID or geometry object
+        uuid_or_geometry : int, str, or Geometry
+            Index, UUID, or geometry object.
 
         Returns
         -------
-        str
-            UUID string
+        int or str
+            Index or UUID.
         """
         # Check if input is a geometry-like object (has uuid attribute)
         if hasattr(uuid_or_geometry, "uuid"):
             uuid_or_geometry = uuid_or_geometry.uuid
         return uuid_or_geometry
 
-    def _to_uuids(self, uuids_or_geometries: list[str] | list["Geometry"]) -> list[str]:
+    def _to_uuids(
+        self, uuids_or_geometries: str | Geometry | Sequence[str | Geometry]
+    ) -> list[str]:
         """Convert list of UUIDs or Geometries to UUIDs.
 
         Parameters

@@ -8,9 +8,10 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import sys
 from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING
 
 from qtpy.QtCore import QEvent, Qt, Signal
-from qtpy.QtGui import QPainter
+from qtpy.QtGui import QMouseEvent, QPainter, QPaintEvent
 from qtpy.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -22,6 +23,11 @@ from qtpy.QtWidgets import (
 )
 
 from ..stylesheets import Colors, Typography
+
+if TYPE_CHECKING:
+    from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+
+    from ..gui import App
 
 __all__ = ["ViewportPlaceholder"]
 
@@ -38,7 +44,7 @@ class _ActionPill(QWidget):
 
     clicked = Signal()
 
-    def __init__(self, shortcut: str | None, label: str, parent=None):
+    def __init__(self, shortcut: str | None, label: str, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("actionPill")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -59,13 +65,13 @@ class _ActionPill(QWidget):
         text.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         row.addWidget(text)
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         opt = QStyleOption()
         opt.initFrom(self)
         p = QPainter(self)
         self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, opt, p, self)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton and self.rect().contains(
             event.pos()
         ):
@@ -76,7 +82,7 @@ class _ActionPill(QWidget):
 class _TickMark(QFrame):
     """Decorative horizontal line for vertical rhythm."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("tickMark")
         self.setFixedSize(40, 1)
@@ -107,11 +113,11 @@ class ViewportPlaceholder(QWidget):
 
     def __init__(
         self,
-        vtk_widget,
+        vtk_widget: "QVTKRenderWindowInteractor",
         actions: Iterable[ActionSpec],
         title: str = "Drop a file to begin",
         subtitle: str = "or pick a starting point below",
-        parent=None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.vtk_widget = vtk_widget
@@ -158,7 +164,7 @@ class ViewportPlaceholder(QWidget):
 
         self._apply_theme()
 
-    def changeEvent(self, event):
+    def changeEvent(self, event: QEvent):
         if event.type() == QEvent.Type.PaletteChange and not self._applying_theme:
             self._apply_theme()
         super().changeEvent(event)
@@ -167,7 +173,7 @@ class ViewportPlaceholder(QWidget):
         """Show the placeholder when *is_empty* is true, hide otherwise."""
         self.setVisible(is_empty)
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         # Required for QWidget subclasses so stylesheet backgrounds paint.
         opt = QStyleOption()
         opt.initFrom(self)
@@ -222,7 +228,7 @@ class ViewportPlaceholder(QWidget):
         self._applying_theme = False
 
 
-def default_actions(window) -> tuple[ActionSpec, ...]:
+def default_actions(window: "App") -> tuple[ActionSpec, ...]:
     """Standard pill set bound to :class:`mosaic.gui.App` methods."""
     mod = _modifier_glyph()
     return (

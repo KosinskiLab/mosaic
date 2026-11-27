@@ -5,9 +5,14 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import vtk
 from vtkmodules.util import numpy_support
+
+if TYPE_CHECKING:
+    from ..geometry import Geometry
 
 __all__ = [
     "PolyDataPointWriter",
@@ -17,7 +22,7 @@ __all__ = [
 ]
 
 
-def read_geometry_arrays(geometry) -> tuple[np.ndarray, np.ndarray]:
+def read_geometry_arrays(geometry: "Geometry") -> tuple[np.ndarray, np.ndarray]:
     """Return ``(vs, fs)`` as numpy arrays for a Mosaic ``Geometry``.
 
     Faces come from ``geometry.model.triangles``; sculpt only ever binds to
@@ -70,7 +75,7 @@ class PolyDataPointWriter:
         self._polydata.Modified()
 
 
-def sync_model_vertices(geometry, vs: np.ndarray) -> None:
+def sync_model_vertices(geometry: "Geometry", vs: np.ndarray) -> None:
     """Push sculpted vertex positions to the geometry's parametrization model."""
     model = getattr(geometry, "model", None)
     if model is None:
@@ -86,7 +91,9 @@ def sync_model_vertices(geometry, vs: np.ndarray) -> None:
     return None
 
 
-def swap_geometry_topology(geometry, vs: np.ndarray, fs: np.ndarray) -> None:
+def swap_geometry_topology(
+    geometry: "Geometry", vs: np.ndarray, fs: np.ndarray
+) -> None:
     """Replace vertex coordinates AND face connectivity on a geometry."""
     from mosaic.meshing.utils import to_open3d
     from mosaic.parametrization import TriangularMesh

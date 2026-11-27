@@ -1,5 +1,6 @@
 import functools
 from os.path import basename, exists, normpath
+from typing import TYPE_CHECKING
 
 import numpy as np
 from qtpy.QtWidgets import QApplication, QFileDialog, QVBoxLayout, QWidget
@@ -8,9 +9,13 @@ from ..parallel import submit_task
 from ..widgets import MosaicMessageBox
 from ..widgets.ribbon import create_button
 
+if TYPE_CHECKING:
+    from ..data import MosaicData
+    from ..widgets.ribbon import RibbonToolBar
+
 
 class IntelligenceTab(QWidget):
-    def __init__(self, cdata, ribbon, **kwargs):
+    def __init__(self, cdata: "MosaicData", ribbon: "RibbonToolBar", **kwargs):
         super().__init__()
         self.cdata = cdata
         self.ribbon = ribbon
@@ -171,7 +176,7 @@ class IntelligenceTab(QWidget):
             drop_pbc,
         )
 
-    def _on_trajectory_loaded(self, frames, scale: float, name: str):
+    def _on_trajectory_loaded(self, frames: list[dict], scale: float, name: str):
         """GUI-thread callback: construct GeometryTrajectory and add it."""
         if not frames or self.cdata is None:
             return

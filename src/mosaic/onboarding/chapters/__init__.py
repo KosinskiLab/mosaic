@@ -6,7 +6,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from ..base import OnboardingChapter, OnboardingStep
+from ..base import OnboardingChapter
+from ..base import OnboardingStep as OnboardingStep
 
 CHAPTERS: dict[str, type[OnboardingChapter]] = {}
 
@@ -28,4 +29,4 @@ def all_chapters() -> list[OnboardingChapter]:
 
 
 # Auto-import chapter modules so @register decorators fire.
-from . import basics
+from . import basics as basics  # noqa: E402

@@ -98,7 +98,7 @@ def read_star_header(filename: str) -> dict:
         return {}
 
 
-def _drop_prefix(iterable, target_length: int):
+def _drop_prefix(iterable: list, target_length: int):
     """
     Remove first element if iterable exceeds target length.
 

@@ -32,7 +32,13 @@ class SegmentedControl(QWidget):
 
     selectionChanged = Signal(str)
 
-    def __init__(self, options, icons=None, default=0, parent=None):
+    def __init__(
+        self,
+        options: list[str],
+        icons: list | None = None,
+        default: int = 0,
+        parent: QWidget | None = None,
+    ):
         super().__init__(parent)
         self._buttons = []
         self._selected = default
@@ -64,7 +70,7 @@ class SegmentedControl(QWidget):
 
         self._on_theme_changed()
 
-    def _select(self, index):
+    def _select(self, index: int):
         self._indeterminate = False
         for i, btn in enumerate(self._buttons):
             btn.setChecked(i == index)

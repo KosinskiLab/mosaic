@@ -6,6 +6,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from typing import TYPE_CHECKING
+
 from qtpy.QtCore import Qt, QTimer, Signal
 from qtpy.QtWidgets import (
     QFrame,
@@ -21,6 +23,10 @@ from ..icons import icon
 from ..stylesheets import Colors, Typography
 from ..utils import Throttle
 
+if TYPE_CHECKING:
+    from ..data import MosaicData
+    from ..geometry import GeometryTrajectory
+
 __all__ = ["TrajectoryPlayer"]
 
 SPEED_STEPS = (0.5, 1.0, 2.0, 4.0)
@@ -33,7 +39,7 @@ class TrajectoryRow(QFrame):
 
     frameChanged = Signal()
 
-    def __init__(self, trajectory, parent=None):
+    def __init__(self, trajectory: "GeometryTrajectory", parent: QWidget | None = None):
         super().__init__(parent)
         self.trajectory = trajectory
         self.current_frame = 0
@@ -89,7 +95,7 @@ class TrajectoryRow(QFrame):
 
         self._apply_styles()
 
-    def set_frame(self, frame_idx):
+    def set_frame(self, frame_idx: int):
         """Set frame programmatically, bypassing the slider throttle."""
         frame_idx = max(0, min(frame_idx, self.trajectory.frames - 1))
         self._slider.blockSignals(True)
@@ -97,10 +103,10 @@ class TrajectoryRow(QFrame):
         self._slider.blockSignals(False)
         self._update_frame(frame_idx)
 
-    def set_name_from_trajectory(self, trajectory):
+    def set_name_from_trajectory(self, trajectory: "GeometryTrajectory"):
         self._set_name_from_trajectory(trajectory)
 
-    def _set_name_from_trajectory(self, trajectory):
+    def _set_name_from_trajectory(self, trajectory: "GeometryTrajectory"):
         try:
             name = trajectory._meta.get("name", "Unnamed Trajectory")
             self._name_label.setText(name)
@@ -113,10 +119,10 @@ class TrajectoryRow(QFrame):
     def _speed_text(self):
         return SPEED_LABELS[self._speed_idx]
 
-    def _on_slider(self, value):
+    def _on_slider(self, value: int):
         self._update_frame(value)
 
-    def _update_frame(self, frame_idx):
+    def _update_frame(self, frame_idx: int):
         if not self.trajectory.display_frame(frame_idx):
             return
         self.current_frame = frame_idx
@@ -198,7 +204,7 @@ class TrajectoryRow(QFrame):
 class TrajectoryPlayer(QWidget):
     """Container for trajectory rows — no header, no group box."""
 
-    def __init__(self, cdata, parent=None):
+    def __init__(self, cdata: "MosaicData", parent: QWidget | None = None):
         super().__init__(parent)
         self.cdata = cdata
 
@@ -266,7 +272,7 @@ class TrajectoryPlayer(QWidget):
                 self._discard_row(widget)
         self._placeholder.setVisible(True)
 
-    def _discard_row(self, widget):
+    def _discard_row(self, widget: TrajectoryRow):
         widget._timer.stop()
         widget.setParent(None)
         widget.deleteLater()

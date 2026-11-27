@@ -8,7 +8,9 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import os
 import sys
+from collections.abc import Sequence
 from os.path import exists
+from typing import TYPE_CHECKING
 
 import numpy as np
 import vtk
@@ -21,9 +23,12 @@ from qtpy.QtCore import (
 from qtpy.QtGui import (
     QAction,
     QActionGroup,
+    QCloseEvent,
     QDragEnterEvent,
+    QDropEvent,
     QGuiApplication,
     QKeySequence,
+    QResizeEvent,
 )
 from qtpy.QtWidgets import (
     QDialog,
@@ -72,6 +77,10 @@ from .widgets import (
 from .widgets.dock import toggle_dock
 from .widgets.viewport_placeholder import ViewportPlaceholder, default_actions
 from .widgets.volume_viewer_hud import VolumeViewerHUD
+
+if TYPE_CHECKING:
+    from .formats.tomogram_matching import LinkWriteResult
+    from .widgets.container_list import SessionListWidget
 
 # From v1.3.2 these are no longer configurable in favor of vtk recommended defaults
 DEPTH_PEEL_OCCLUSION_RATIO = 0.1
@@ -148,7 +157,7 @@ class App(QMainWindow):
         for _index, (tab, name) in enumerate(self.tabs):
             self.tab_bar.addTab(name)
 
-        def on_tab_changed(tab_id):
+        def on_tab_changed(tab_id: int):
             self.tabs[tab_id][0].show_ribbon()
 
         self.tab_bar.currentChanged.connect(on_tab_changed)
@@ -223,7 +232,7 @@ class App(QMainWindow):
 
         self.setAcceptDrops(True)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         Settings.ui.window_geometry = self.saveGeometry()
         BackgroundTaskManager.instance()._shutdown()
 
@@ -253,7 +262,7 @@ class App(QMainWindow):
         else:
             event.ignore()
 
-    def dropEvent(self, event):
+    def dropEvent(self, event: QDropEvent):
         urls = event.mimeData().urls() if event.mimeData().hasUrls() else []
         paths = [u.toLocalFile() for u in urls if u.isLocalFile()]
         if not paths:
@@ -262,7 +271,7 @@ class App(QMainWindow):
         event.acceptProposedAction()
         self._handle_import(paths)
 
-    def _handle_import(self, file_paths):
+    def _handle_import(self, file_paths: Sequence[str]):
         from .formats.reader import is_volume_file
         from .formats.session import is_session_file
 
@@ -401,7 +410,7 @@ class App(QMainWindow):
             renderer.SetPass(self._screen_effect_pass(vtk.vtkEDLShading()))
 
     @staticmethod
-    def _screen_effect_pass(effect):
+    def _screen_effect_pass(effect: vtk.vtkRenderPass):
         """Wrap a screen-space effect pass in a full render sequence.
 
         Notes
@@ -532,14 +541,14 @@ class App(QMainWindow):
         self.cdata.data.remove_selection()
         self.cdata.models.remove_selection()
 
-    def on_right_click(self, obj, event):
+    def on_right_click(self, obj: vtk.vtkInteractorStyle, event: str):
         if self.cdata.viewport._interaction_mode == "clip":
             return None
 
         self.cdata.data.deselect()
         self.cdata.models.deselect()
 
-    def _transition_modes(self, new_mode):
+    def _transition_modes(self, new_mode: ViewerModes):
         self.vtk_widget.setFocus()
         if self.cursor_handler.current_mode == new_mode:
             new_mode = ViewerModes.VIEWING
@@ -549,7 +558,12 @@ class App(QMainWindow):
         return self.cursor_handler.update_mode(new_mode)
 
     def set_camera_view(
-        self, view_key, aligned_direction=True, elevation=0, azimuth=0, pitch=0
+        self,
+        view_key: str,
+        aligned_direction: bool = True,
+        elevation: int = 0,
+        azimuth: int = 0,
+        pitch: int = 0,
     ):
         camera = self.renderer.GetActiveCamera()
         focal_point = camera.GetFocalPoint()
@@ -602,7 +616,7 @@ class App(QMainWindow):
         if hasattr(self, "camera_hud"):
             self.camera_hud.set_angles(elevation, azimuth, pitch)
 
-    def swap_camera_view_direction(self, view_key):
+    def swap_camera_view_direction(self, view_key: str):
         view = getattr(self, "_camera_view", None)
         if view is None:
             return -1
@@ -621,7 +635,7 @@ class App(QMainWindow):
         panel.show()
         panel.raise_()
 
-    def _on_theme_toggled(self, checked):
+    def _on_theme_toggled(self, checked: bool):
         from .stylesheets import Colors, switch_theme
 
         Settings.ui.theme_mode = "dark" if checked else "light"
@@ -672,12 +686,12 @@ class App(QMainWindow):
         """
         )
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QResizeEvent):
         super().resizeEvent(event)
         if sys.platform == "darwin" and hasattr(self, "tab_bar"):
             self.tab_bar.setGeometry(0, 0, self.width(), 38)
 
-    def changeEvent(self, event):
+    def changeEvent(self, event: QEvent):
         if event.type() == QEvent.Type.PaletteChange:
             self._update_style()
         super().changeEvent(event)
@@ -748,7 +762,7 @@ class App(QMainWindow):
 
         menu_bar = self.menuBar()
 
-        def _style_popup(m):
+        def _style_popup(m: QMenu):
             m.setWindowFlags(
                 m.windowFlags()
                 | Qt.WindowType.FramelessWindowHint
@@ -1063,7 +1077,7 @@ class App(QMainWindow):
             lambda checked: _handle_session_bounds(checked)
         )
 
-        def _handle_session_bounds(checked):
+        def _handle_session_bounds(checked: bool):
             self.bbox_manager.show_session_bounds(checked)
             if self.cdata.shape is None:
                 self.dataset_bbox.setChecked(False)
@@ -1308,7 +1322,12 @@ class App(QMainWindow):
         )
         return None
 
-    def _apply_link_result(self, widget, changes, result):
+    def _apply_link_result(
+        self,
+        widget: "SessionListWidget",
+        changes: dict[str, str | None],
+        result: "LinkWriteResult",
+    ):
         from .formats.tomogram_matching import link_summary
 
         current = self._current_session_path
@@ -1598,7 +1617,7 @@ class App(QMainWindow):
             file_parameters,
         )
 
-    def _on_files_read(self, results):
+    def _on_files_read(self, results: Sequence[tuple[str, Exception | None]]):
         """GUI-thread callback: surface errors, render, recentre camera."""
         from .formats.parser import NotASegmentationError
 
@@ -1756,7 +1775,7 @@ class App(QMainWindow):
 
         self.recent_menu.setEnabled(len(files_to_show) > 0)
 
-    def _add_file_to_recent(self, file_path):
+    def _add_file_to_recent(self, file_path: str):
         recent_files = [file_path] + [
             f for f in Settings.ui.recent_files if f != file_path
         ]
@@ -1806,7 +1825,7 @@ class App(QMainWindow):
         UpdateDialog(__version__, latest_version, has_changelog, parent=self).exec()
 
 
-def _read_files_worker(cdata, filenames, file_parameters):
+def _read_files_worker(cdata: MosaicData, filenames: list[str], file_parameters: dict):
     """I/O worker: read each file into ``cdata`` and report progress.
 
     Parameters

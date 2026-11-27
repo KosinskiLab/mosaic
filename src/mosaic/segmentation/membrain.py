@@ -76,11 +76,11 @@ def _stem(path: str) -> str:
 def run_membrainseg(
     tomogram_path: str,
     model_path: str,
-    out_folder: str = None,
+    out_folder: str | None = None,
     window_size: int = 160,
     clustering: bool = True,
-    input_sampling_rate: tuple[float] = None,
-    output_sampling_rate: tuple[float] = None,
+    input_sampling_rate: tuple[float] | None = None,
+    output_sampling_rate: tuple[float] | None = None,
     test_time_augmentation: bool = True,
 ):
     from ..formats.parser import load_density

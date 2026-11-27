@@ -17,6 +17,7 @@ from typing import NamedTuple
 
 import igl
 import numpy as np
+from numpy.typing import DTypeLike
 
 from .tools import build_adjacency, compute_boundary_mask
 
@@ -71,7 +72,7 @@ TOOL_BY_ID: dict[str, ToolSpec] = {t.id: t for t in TOOLS}
 TOOL_BY_HOTKEY: dict[str, str] = {t.hotkey: t.id for t in TOOLS}
 
 
-def _opt_copy(arr, dtype) -> np.ndarray | None:
+def _opt_copy(arr: np.ndarray | None, dtype: DTypeLike) -> np.ndarray | None:
     return None if arr is None else np.asarray(arr, dtype=dtype).copy()
 
 

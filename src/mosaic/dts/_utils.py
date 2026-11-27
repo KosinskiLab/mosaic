@@ -9,9 +9,13 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import json
 import re
 import warnings
+from collections.abc import Iterable, Mapping, Sequence
+from os import PathLike
 from pathlib import Path
+from re import Match
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 
 # Copied from pyfreedts; may be removed once version coupling is resolved
@@ -25,7 +29,7 @@ class _ParameterParser:
         """Parse a template and extract ``{{name:range}}`` parameter definitions."""
         parameters = {}
 
-        def replace_param(match):
+        def replace_param(match: Match[str]):
             param_name = match.group(1)
             param_values = cls._parse_parameter_definition(match.group(2))
             parameters[param_name] = param_values
@@ -92,7 +96,12 @@ def parse_xvg(path: str) -> tuple[list[str], np.ndarray, dict[str, str]] | None:
     return column_names, data, metadata
 
 
-def write_xvg(path, columns, data, metadata=None):
+def write_xvg(
+    path: str | PathLike[str],
+    columns: Sequence[str],
+    data: ArrayLike,
+    metadata: Mapping[str, str] | None = None,
+):
     """Write columns + data to an .xvg file with optional metadata header."""
     xvg_path = Path(path)
     xvg_path.parent.mkdir(parents=True, exist_ok=True)
@@ -109,7 +118,7 @@ def sanitize_label(label: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "_", label).strip("_").lower()
 
 
-def find_dts_file(run_dir) -> Path | None:
+def find_dts_file(run_dir: str | PathLike[str]) -> Path | None:
     """Return the DTS config file for *run_dir*.
 
     Prefers ``input.dts``; falls back to the first ``*.dts`` file found.
@@ -121,7 +130,7 @@ def find_dts_file(run_dir) -> Path | None:
     return next(iter(sorted(run_path.glob("*.dts"))), None)
 
 
-def resolve_trajectory_dir(run_dir) -> Path | None:
+def resolve_trajectory_dir(run_dir: str | PathLike[str]) -> Path | None:
     """Return the first existing trajectory directory for a DTS run.
 
     Parses ``input.dts`` for ``VisualizationFormat`` and
@@ -143,7 +152,7 @@ def resolve_trajectory_dir(run_dir) -> Path | None:
     return None
 
 
-def list_trajectory_files(trajectory_dir):
+def list_trajectory_files(trajectory_dir: str | PathLike[str]):
     """Return sorted trajectory mesh file paths from *trajectory_dir*."""
     traj_path = Path(trajectory_dir)
     files = [
@@ -156,7 +165,7 @@ def list_trajectory_files(trajectory_dir):
     return sorted(files, key=lambda f: int(re.findall(r"\d+", f.name)[0]))
 
 
-def _drop_pbc_faces(points, faces):
+def _drop_pbc_faces(points: np.ndarray, faces: np.ndarray):
     """Remove faces that wrap across periodic boundaries."""
     from ..meshing.utils import _edge_lengths
 
@@ -170,7 +179,12 @@ def _drop_pbc_faces(points, faces):
     return faces[np.all(dist_pbc >= dist_regular, axis=-1)]
 
 
-def iter_frames(trajectory_dir, scale, offset, drop_pbc=False):
+def iter_frames(
+    trajectory_dir: str | PathLike[str],
+    scale: float,
+    offset: ArrayLike,
+    drop_pbc: bool = False,
+):
     """Yield ``(points, faces, vertex_properties, filepath)`` per frame with transform applied."""
     from ..formats import open_file
 
@@ -188,11 +202,11 @@ def iter_frames(trajectory_dir, scale, offset, drop_pbc=False):
 
 
 def build_trajectory_frames(
-    trajectory_dir,
-    scale,
-    offset,
-    vertex_props=None,
-    drop_pbc=False,
+    trajectory_dir: str | PathLike[str],
+    scale: float,
+    offset: ArrayLike,
+    vertex_props: dict[str, np.ndarray] | None = None,
+    drop_pbc: bool = False,
 ):
     """Build trajectory frame dicts for :class:`~mosaic.geometry.GeometryTrajectory`.
 
@@ -330,7 +344,7 @@ def load_screen_results(screen_dir: str) -> dict:
     return {"parameter_names": parameter_names, "runs": runs}
 
 
-def collect_available_metrics(screen_results) -> list:
+def collect_available_metrics(screen_results: dict) -> list:
     """Return sorted display names for all non-per-vertex metrics in *screen_results*."""
     if not screen_results:
         return []
@@ -352,7 +366,11 @@ def collect_available_metrics(screen_results) -> list:
     return sorted(metrics)
 
 
-def extract_metric_series(screen_results, metric_display, selected_run_ids=None):
+def extract_metric_series(
+    screen_results: dict,
+    metric_display: str,
+    selected_run_ids: Iterable[str] | None = None,
+):
     """Extract ``(run_dict, x, y)`` tuples for a given metric display name."""
     if not screen_results or not metric_display:
         return []
@@ -556,7 +574,7 @@ def parse_dts_content(content: str):
         if not parts:
             continue
 
-        def _parse_val(raw):
+        def _parse_val(raw: str):
             placeholder = extract_screening_placeholder(raw)
             if placeholder:
                 name, range_str = placeholder

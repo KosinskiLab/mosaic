@@ -9,8 +9,9 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from rich.columns import Columns
 from rich.console import Group
@@ -23,6 +24,13 @@ from ..formats.session import is_session_file
 from ..registry import _UNSET
 from .parser import ParsedCommand
 from .theme import BOX_PANEL, BOX_TABLE, get_console
+
+if TYPE_CHECKING:
+    import numpy as np
+
+    from ..geometry import Geometry
+    from ..registry import Param
+    from .session import Session
 
 __all__ = ["Command", "CommandRegistry"]
 
@@ -88,7 +96,7 @@ class CommandRegistry:
         )
 
     @classmethod
-    def dispatch(cls, session, parsed: ParsedCommand):
+    def dispatch(cls, session: "Session", parsed: ParsedCommand):
         """Look up and execute a command.
 
         Parameters
@@ -175,7 +183,7 @@ def _success_text(prefix: str, detail: str) -> Text:
     return t
 
 
-def _resolve_targets(session, parsed: ParsedCommand):
+def _resolve_targets(session: "Session", parsed: ParsedCommand):
     """Resolve targets from a parsed command."""
     if parsed.targets:
         return session.resolve_many(parsed.targets)
@@ -190,7 +198,7 @@ def _is_target_ref(value: str) -> bool:
     return all(_TARGET_RE.match(v) or v in _SPECIAL_TARGETS for v in parts)
 
 
-def _resolve_kwargs(session, kwargs: dict[str, object]) -> dict[str, object]:
+def _resolve_kwargs(session: "Session", kwargs: dict[str, object]) -> dict[str, object]:
     """Replace geometry references in kwarg values with resolved Geometry objects.
 
     Recognises ``#N``, ``#N-M``, ``@last``, ``*``, and comma-separated
@@ -217,7 +225,7 @@ def _usage_for(name: str) -> str:
     return cmd.usage if cmd is not None else name
 
 
-def _build_param_table(params) -> Table:
+def _build_param_table(params: "Iterable[Param]") -> Table:
     """Build a parameters table from a list of Param objects."""
     table = Table(
         box=BOX_TABLE,
@@ -269,7 +277,7 @@ def _help_panel(title: str, *parts) -> Panel:
     )
 
 
-def _applied_text(op_name: str, created: list, session) -> Text:
+def _applied_text(op_name: str, created: list, session: "Session") -> Text:
     """Build a styled "Applied ... → N new geometry(s): #0, #1" message."""
     if not created:
         return _success_text(f"Applied {op_name}", " (no new geometries created).")
@@ -314,7 +322,7 @@ def _natsort_key(path: str):
     return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", path)]
 
 
-def _cmd_open(session, parsed: ParsedCommand):
+def _cmd_open(session: "Session", parsed: ParsedCommand):
     import glob as _glob
     from pathlib import Path
 
@@ -374,7 +382,7 @@ def _cmd_open(session, parsed: ParsedCommand):
     return _success_text(f"Loaded {n} geometry(s)  ", "(available via @last)")
 
 
-def _cmd_save(session, parsed: ParsedCommand):
+def _cmd_save(session: "Session", parsed: ParsedCommand):
     filepath = parsed.kwargs.pop("filepath", None)
     if filepath is None:
         return _usage_line(_usage_for("save"))
@@ -388,7 +396,9 @@ def _cmd_save(session, parsed: ParsedCommand):
     return _success_text(f"Saved {len(geometries)} geometry(s)  ", filepath)
 
 
-def _build_geometry_table(session, entries) -> Table:
+def _build_geometry_table(
+    session: "Session", entries: "Sequence[tuple[int, Geometry]]"
+) -> Table:
     """Build a geometry listing table from ``(index, geometry)`` pairs."""
     table = Table(
         box=BOX_TABLE,
@@ -416,7 +426,7 @@ def _build_geometry_table(session, entries) -> Table:
     return table
 
 
-def _cmd_list(session, parsed: ParsedCommand):
+def _cmd_list(session: "Session", parsed: ParsedCommand):
     all_geoms = session._all_geometries()
     if not all_geoms:
         return Text("No geometries loaded.", style="mosaic.dim")
@@ -450,7 +460,7 @@ def _cmd_list(session, parsed: ParsedCommand):
     return _build_geometry_table(session, entries)
 
 
-def _cmd_info(session, parsed: ParsedCommand):
+def _cmd_info(session: "Session", parsed: ParsedCommand):
     geometries = _resolve_targets(session, parsed)
     if not geometries:
         return Text("No geometries to inspect.", style="mosaic.dim")
@@ -499,7 +509,7 @@ def _cmd_info(session, parsed: ParsedCommand):
     return Columns(panels, equal=True, expand=True)
 
 
-def _cmd_remove(session, parsed: ParsedCommand):
+def _cmd_remove(session: "Session", parsed: ParsedCommand):
     if not parsed.targets:
         return _usage_line("remove [targets]")
     geometries = session.resolve_many(parsed.targets)
@@ -507,7 +517,7 @@ def _cmd_remove(session, parsed: ParsedCommand):
     return _success_text(f"Removed {count} geometry(s).", "")
 
 
-def _cmd_visibility(session, parsed: ParsedCommand):
+def _cmd_visibility(session: "Session", parsed: ParsedCommand):
     geometries = _resolve_targets(session, parsed)
     if not geometries:
         return Text("No target geometries.", style="mosaic.dim")
@@ -518,7 +528,7 @@ def _cmd_visibility(session, parsed: ParsedCommand):
     return _success_text(f"Set {len(geometries)} geometry(s) to {state}.", "")
 
 
-def _cmd_group(session, parsed: ParsedCommand):
+def _cmd_group(session: "Session", parsed: ParsedCommand):
     geometries = _resolve_targets(session, parsed)
     if not geometries:
         return _usage_line("group [targets] <name>")
@@ -529,7 +539,7 @@ def _cmd_group(session, parsed: ParsedCommand):
     return _success_text(f"Grouped {len(geometries)} geometry(s)  ", f"→ {name}")
 
 
-def _cmd_ungroup(session, parsed: ParsedCommand):
+def _cmd_ungroup(session: "Session", parsed: ParsedCommand):
     geometries = _resolve_targets(session, parsed)
     if not geometries:
         return _usage_line("ungroup [targets]")
@@ -537,7 +547,7 @@ def _cmd_ungroup(session, parsed: ParsedCommand):
     return _success_text(f"Ungrouped {count} geometry(s).", "")
 
 
-def _cmd_rename(session, parsed: ParsedCommand):
+def _cmd_rename(session: "Session", parsed: ParsedCommand):
     import re as _re
 
     if not parsed.args:
@@ -667,7 +677,7 @@ def _registry_method_help(op_name: str, method_name: str):
     return _help_panel(title, *parts)
 
 
-def _cmd_help(session, parsed: ParsedCommand):
+def _cmd_help(session: "Session", parsed: ParsedCommand):
     from ..registry import MethodRegistry
 
     if parsed.args:
@@ -725,7 +735,7 @@ def _cmd_help(session, parsed: ParsedCommand):
     return _help_panel("Mosaic Commands", *parts)
 
 
-def _cmd_history(session, parsed: ParsedCommand):
+def _cmd_history(session: "Session", parsed: ParsedCommand):
     if not session._log:
         return Text("No commands in history.", style="mosaic.dim")
 
@@ -757,7 +767,7 @@ def _make_operation_handler(op_name: str, has_methods: bool = False):
         and validated against :class:`MethodRegistry`.
     """
 
-    def handler(session, parsed: ParsedCommand):
+    def handler(session: "Session", parsed: ParsedCommand):
         method_name = None
         if has_methods:
             if not parsed.args:
@@ -789,7 +799,7 @@ def _make_operation_handler(op_name: str, has_methods: bool = False):
     return handler
 
 
-def _cmd_measure(session, parsed: ParsedCommand):
+def _cmd_measure(session: "Session", parsed: ParsedCommand):
     import numpy as np
 
     if not parsed.args:
@@ -879,7 +889,7 @@ def _cmd_measure(session, parsed: ParsedCommand):
     return Group(*parts)
 
 
-def _cmd_filter(session, parsed: ParsedCommand):
+def _cmd_filter(session: "Session", parsed: ParsedCommand):
     geometries = _resolve_targets(session, parsed)
     if not geometries:
         return Text("No target geometries.", style="mosaic.dim")
@@ -912,7 +922,7 @@ def _cmd_filter(session, parsed: ParsedCommand):
     )
 
 
-def _cmd_merge(session, parsed: ParsedCommand):
+def _cmd_merge(session: "Session", parsed: ParsedCommand):
     geometries = _resolve_targets(session, parsed)
     if len(geometries) < 2:
         return _error_panel("Need at least two geometries to merge.")
@@ -923,7 +933,7 @@ def _cmd_merge(session, parsed: ParsedCommand):
     return _success_text(f"Merged {len(geometries)} geometries  ", f"→ #{idx}")
 
 
-def _cmd_dts_screen(session, parsed: ParsedCommand):
+def _cmd_dts_screen(session: "Session", parsed: ParsedCommand):
     from pathlib import Path
 
     dts_file = parsed.kwargs.pop("dts", None) or (
@@ -1009,7 +1019,7 @@ def _cmd_dts_screen(session, parsed: ParsedCommand):
 #     return _error_panel(f"Unknown action: {action}")
 
 
-def _cmd_dts_analysis(session, parsed: ParsedCommand):
+def _cmd_dts_analysis(session: "Session", parsed: ParsedCommand):
     from pathlib import Path
 
     import numpy as np
@@ -1125,7 +1135,7 @@ def _cmd_dts_analysis(session, parsed: ParsedCommand):
     return table
 
 
-def _cmd_properties(session, parsed: ParsedCommand):
+def _cmd_properties(session: "Session", parsed: ParsedCommand):
     """List vertex properties on the selected geometries.
 
     With no ``name=`` argument, prints a metadata table (one row per
@@ -1147,7 +1157,7 @@ def _cmd_properties(session, parsed: ParsedCommand):
     return _properties_metadata(session, geometries)
 
 
-def _properties_metadata(session, geometries):
+def _properties_metadata(session: "Session", geometries: "Sequence[Geometry]"):
     """Render the per-property metadata table (no ``name=`` argument)."""
     import numpy as np
 
@@ -1196,7 +1206,9 @@ def _properties_metadata(session, geometries):
     return table
 
 
-def _properties_values(session, geometries, prop_name: str):
+def _properties_values(
+    session: "Session", geometries: "Sequence[Geometry]", prop_name: str
+):
     """Render values of *prop_name* across *geometries*."""
     import numpy as np
 
@@ -1231,7 +1243,7 @@ def _properties_values(session, geometries, prop_name: str):
     return _render_numeric_per_geom_summary(per_geom, prop_name)
 
 
-def _is_categorical_for_display(arr) -> bool:
+def _is_categorical_for_display(arr: "np.ndarray") -> bool:
     """Decide whether *arr* should display as a value/count table."""
     import numpy as np
 
@@ -1245,7 +1257,7 @@ def _is_categorical_for_display(arr) -> bool:
 _CATEGORICAL_DISPLAY_LIMIT = 20
 
 
-def _render_categorical_values(arr, prop_name: str, n_geoms: int):
+def _render_categorical_values(arr: "np.ndarray", prop_name: str, n_geoms: int):
     """Render a value/count/% table for categorical *arr*."""
     import numpy as np
 
@@ -1287,7 +1299,9 @@ _SPARKLINE_BINS = 16
 _SPARKLINE_BLOCKS = "▁▂▃▄▅▆▇█"
 
 
-def _render_numeric_per_geom_summary(arrays_with_labels, prop_name: str):
+def _render_numeric_per_geom_summary(
+    arrays_with_labels: "Sequence[tuple[str, np.ndarray]]", prop_name: str
+):
     """Render a per-geometry summary table with sparkline histograms.
 
     Each row is one geometry with ``# | Points | Min | Max | Mean | Std | Median |

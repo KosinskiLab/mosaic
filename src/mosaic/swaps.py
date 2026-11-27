@@ -10,10 +10,15 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from .container import DataContainer
+    from .geometry import Geometry
 
 __all__ = [
     "GeometrySubset",
@@ -33,8 +38,8 @@ class GeometrySwap:
     """Restore a uuid to an exact geometry (or absence) in either direction."""
 
     uuid: str
-    before: Optional["Geometry"]
-    after: Optional["Geometry"]
+    before: "Geometry | None"
+    after: "Geometry | None"
 
 
 @dataclass
@@ -46,7 +51,24 @@ class GeometrySubset:
     n_kept: int
 
 
-def restore_geometry(target, uuid: str, geom) -> None:
+class _SwapTarget(Protocol):
+    @property
+    def container(self) -> "DataContainer": ...
+
+    def add(
+        self, geom: "Geometry", *, color: Sequence[float] | None = None
+    ) -> object: ...
+
+    def apply(
+        self, changes: Sequence[GeometrySwap | GeometrySubset], *, undo: bool
+    ) -> None: ...
+
+
+def restore_geometry(
+    target: _SwapTarget,
+    uuid: str,
+    geom: "Geometry | None",
+) -> None:
     """Set ``uuid`` to ``geom`` exactly, or remove it when ``geom`` is None."""
     prev = target.container.get(uuid)
     if geom is None:
@@ -62,7 +84,7 @@ def restore_geometry(target, uuid: str, geom) -> None:
     return None
 
 
-def undo_subset_removal(target, record) -> None:
+def undo_subset_removal(target: _SwapTarget, record: GeometrySubset) -> None:
     """Re-append a removed point slice to its surviving geometry."""
     from .geometry import merge_geometries
 
@@ -78,7 +100,7 @@ def undo_subset_removal(target, record) -> None:
     return None
 
 
-def redo_subset_removal(target, record) -> None:
+def redo_subset_removal(target: _SwapTarget, record: GeometrySubset) -> None:
     """Re-remove the slice by keeping only the first ``n_kept`` points."""
     if (current := target.container.get(record.uuid)) is None:
         return None
@@ -88,7 +110,9 @@ def redo_subset_removal(target, record) -> None:
     return None
 
 
-def apply_changes(target, changes: list, *, undo: bool) -> None:
+def apply_changes(
+    target: _SwapTarget, changes: Sequence[GeometrySwap | GeometrySubset], *, undo: bool
+) -> None:
     """Apply each change to ``target`` in the given direction."""
     for change in changes:
         if isinstance(change, GeometrySubset):
@@ -103,7 +127,9 @@ def apply_changes(target, changes: list, *, undo: bool) -> None:
     return None
 
 
-def record(target, changes: list, label: str) -> None:
+def record(
+    target: _SwapTarget, changes: Sequence[GeometrySwap | GeometrySubset], label: str
+) -> None:
     """Register one undo entry for an already-applied set of changes.
 
     The caller has performed the forward mutation; this only wires undo/redo
@@ -119,7 +145,9 @@ def record(target, changes: list, label: str) -> None:
     return None
 
 
-def build_changes(*, add=(), remove=()) -> list[GeometrySwap]:
+def build_changes(
+    *, add: "Iterable[Geometry]" = (), remove: "Iterable[Geometry]" = ()
+) -> list[GeometrySwap]:
     """Map add/remove geometries to a flat swap list (removals first).
 
     Parameters
@@ -140,7 +168,13 @@ def build_changes(*, add=(), remove=()) -> list[GeometrySwap]:
     return changes
 
 
-def place(target, *, add=(), remove=(), label: str) -> list:
+def place(
+    target: _SwapTarget,
+    *,
+    add: "Iterable[Geometry]" = (),
+    remove: "Iterable[Geometry]" = (),
+    label: str,
+) -> list:
     """Apply an add/remove placement on ``target`` and record one undo entry.
 
     Parameters

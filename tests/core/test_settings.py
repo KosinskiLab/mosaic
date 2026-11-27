@@ -13,7 +13,7 @@ class TestSettingsProperty:
 
         assert prop.key == "test_key"
         assert prop.default == "default_value"
-        assert prop.value_type == str
+        assert prop.value_type is str
         assert prop._value is None
         assert prop._loaded is False
 
@@ -94,7 +94,7 @@ class TestSettingsCategory:
             test_field: str = "default"
             test_number: int = 42
 
-        with patch("mosaic.settings.QSettings") as mock_qsettings_class:
+        with patch("mosaic.settings.QSettings"):
             category = SettingsCategory("test_category", TestSettings)
 
             assert hasattr(category.__class__, "test_field")

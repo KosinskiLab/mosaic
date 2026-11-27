@@ -8,9 +8,10 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 import vtk
@@ -38,6 +39,10 @@ from .tools import (
     smooth_stamp,
 )
 
+if TYPE_CHECKING:
+    from ..geometry import Geometry
+    from .session import PositionRecord, SnapshotRecord
+
 __all__ = ["Brush", "EventKind", "MeshHit", "SculptController"]
 
 
@@ -59,8 +64,12 @@ class MeshHit:
 
 
 def pick_mesh(
-    picker, renderer, screen_x: int, screen_y: int, actor
-) -> Optional["MeshHit"]:
+    picker: vtk.vtkCellPicker,
+    renderer: vtk.vtkRenderer,
+    screen_x: int,
+    screen_y: int,
+    actor: vtk.vtkActor | None,
+) -> MeshHit | None:
     """Cell-pick at the given screen coords. Returns None on miss or wrong actor."""
     if picker.Pick(screen_x, screen_y, 0, renderer) == 0:
         return None
@@ -135,7 +144,7 @@ class SculptController:
         self.radius_bounds: tuple[float, float] = (0.5, 500.0)
         self.smooth_strength: float = _DEFAULT_SMOOTH_STRENGTH
 
-    def attach_geometry(self, geometry) -> None:
+    def attach_geometry(self, geometry: "Geometry") -> None:
         vs, fs = read_geometry_arrays(geometry)
         target = SculptTarget(vs=vs, fs=fs)
         default_radius, self.radius_bounds = _radius_defaults(vs, fs)
@@ -175,7 +184,12 @@ class SculptController:
         self._writer = None
         self._mesh_actor = None
 
-    def bind_renderer(self, renderer, mesh_actor=None, render_callback=None) -> None:
+    def bind_renderer(
+        self,
+        renderer: vtk.vtkRenderer,
+        mesh_actor: vtk.vtkActor | None = None,
+        render_callback: Callable[[], object] | None = None,
+    ) -> None:
         if self._overlay is not None and self._renderer is not None:
             self._overlay.detach(self._renderer)
 
@@ -189,11 +203,13 @@ class SculptController:
         if self.session is not None:
             self._apply_tool_color(self.session.tool)
 
-    def set_geometry_resolver(self, resolver) -> None:
+    def set_geometry_resolver(
+        self, resolver: "Callable[[str], Geometry | None]"
+    ) -> None:
         """Wire how undo/redo finds the live geometry for a uuid."""
         self._resolve_geometry = resolver
 
-    def _resolve_live(self, uuid):
+    def _resolve_live(self, uuid: str):
         """Return the geometry currently under ``uuid``, or None if it is gone."""
         if uuid is None:
             return None
@@ -201,7 +217,7 @@ class SculptController:
             return self._geometry
         return self._resolve_geometry(uuid)
 
-    def bind_mesh_actor(self, mesh_actor) -> None:
+    def bind_mesh_actor(self, mesh_actor: vtk.vtkActor) -> None:
         """Record which actor the cell-picker should match against."""
         self._mesh_actor = mesh_actor
 
@@ -579,7 +595,9 @@ class SculptController:
             return self.session.tool
         return "view"
 
-    def _push_stroke_undo(self, session, record) -> None:
+    def _push_stroke_undo(
+        self, session: SculptSession, record: "PositionRecord"
+    ) -> None:
         from ..undo import STACK
 
         uuid = getattr(self._geometry, "uuid", None)
@@ -591,7 +609,7 @@ class SculptController:
         before = record.before_positions
         after = record.after_positions
 
-        def apply(positions):
+        def apply(positions: np.ndarray):
             geom = self._resolve_live(uuid)
             if geom is None or indices.size == 0:
                 return None
@@ -627,7 +645,7 @@ class SculptController:
         )
         return None
 
-    def _push_patch_undo(self, geometry, record) -> None:
+    def _push_patch_undo(self, geometry: "Geometry", record: "SnapshotRecord") -> None:
         from ..undo import STACK
 
         uuid = getattr(geometry, "uuid", None)
@@ -635,7 +653,7 @@ class SculptController:
         # controller's live callback is unreliable once sculpt mode is gone.
         render = self._render_callback
 
-        def swap(vs, fs):
+        def swap(vs: np.ndarray, fs: np.ndarray):
             geom = self._resolve_live(uuid)
             if geom is None:
                 return None

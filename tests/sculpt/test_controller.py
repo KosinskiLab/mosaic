@@ -178,7 +178,7 @@ def test_grab_stroke_round_trip(perturbed_grid_mesh):
     """Grab a vertex, drag in screen space (via injected MeshHit), commit, undo."""
     vs, fs, interior = perturbed_grid_mesh
     c = SculptController(Brush(radius=0.5))
-    geom = _attach(c, perturbed_grid_mesh)
+    _attach(c, perturbed_grid_mesh)
     c.set_tool("grab")
 
     hit = MeshHit(

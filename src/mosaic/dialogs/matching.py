@@ -185,7 +185,7 @@ class PreprocessTab(QWidget):
 
         self._toggle_options(self.skip_preprocessing_check.isChecked())
 
-    def _toggle_options(self, skip_preprocessing):
+    def _toggle_options(self, skip_preprocessing: bool):
         self.preproc_filters_group.setEnabled(not skip_preprocessing)
         self.alignment_group.setEnabled(not skip_preprocessing)
 
@@ -492,7 +492,7 @@ class ComputeTab(QWidget):
 
 
 class TemplateMatchingDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("Pytme Setup")
         self.resize(650, 600)
@@ -536,7 +536,7 @@ class TemplateMatchingDialog(QDialog):
         self.layout.addWidget(self.footer)
         self.tabs.currentChanged.connect(self._update_help_text)
 
-    def _update_help_text(self, index):
+    def _update_help_text(self, index: int):
         help_texts = [
             "Define target tomogram and template structures",
             "Create a template for template matching",

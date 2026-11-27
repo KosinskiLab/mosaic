@@ -6,7 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtWidgets import QMessageBox
+from qtpy.QtWidgets import QMessageBox, QWidget
 
 from ..stylesheets import _build_QMessageBox_style
 
@@ -26,7 +26,14 @@ class MosaicMessageBox(QMessageBox):
         self.setStyleSheet(_build_QMessageBox_style())
 
     @staticmethod
-    def _show(parent, icon, title, text, buttons, default_button):
+    def _show(
+        parent: QWidget | None,
+        icon: QMessageBox.Icon,
+        title: str,
+        text: str,
+        buttons: QMessageBox.StandardButton,
+        default_button: QMessageBox.StandardButton,
+    ):
         box = MosaicMessageBox(parent)
         box.setIcon(icon)
         box.setWindowTitle(title)
@@ -38,11 +45,11 @@ class MosaicMessageBox(QMessageBox):
 
     @staticmethod
     def warning(
-        parent,
-        title,
-        text,
-        buttons=QMessageBox.StandardButton.Ok,
-        defaultButton=QMessageBox.StandardButton.NoButton,
+        parent: QWidget | None,
+        title: str,
+        text: str,
+        buttons: QMessageBox.StandardButton = QMessageBox.StandardButton.Ok,
+        defaultButton: QMessageBox.StandardButton = QMessageBox.StandardButton.NoButton,
     ):
         return MosaicMessageBox._show(
             parent, QMessageBox.Icon.Warning, title, text, buttons, defaultButton
@@ -50,11 +57,11 @@ class MosaicMessageBox(QMessageBox):
 
     @staticmethod
     def information(
-        parent,
-        title,
-        text,
-        buttons=QMessageBox.StandardButton.Ok,
-        defaultButton=QMessageBox.StandardButton.NoButton,
+        parent: QWidget | None,
+        title: str,
+        text: str,
+        buttons: QMessageBox.StandardButton = QMessageBox.StandardButton.Ok,
+        defaultButton: QMessageBox.StandardButton = QMessageBox.StandardButton.NoButton,
     ):
         return MosaicMessageBox._show(
             parent, QMessageBox.Icon.Information, title, text, buttons, defaultButton
@@ -62,11 +69,11 @@ class MosaicMessageBox(QMessageBox):
 
     @staticmethod
     def critical(
-        parent,
-        title,
-        text,
-        buttons=QMessageBox.StandardButton.Ok,
-        defaultButton=QMessageBox.StandardButton.NoButton,
+        parent: QWidget | None,
+        title: str,
+        text: str,
+        buttons: QMessageBox.StandardButton = QMessageBox.StandardButton.Ok,
+        defaultButton: QMessageBox.StandardButton = QMessageBox.StandardButton.NoButton,
     ):
         return MosaicMessageBox._show(
             parent, QMessageBox.Icon.Critical, title, text, buttons, defaultButton
@@ -74,11 +81,12 @@ class MosaicMessageBox(QMessageBox):
 
     @staticmethod
     def question(
-        parent,
-        title,
-        text,
-        buttons=QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        defaultButton=QMessageBox.StandardButton.No,
+        parent: QWidget | None,
+        title: str,
+        text: str,
+        buttons: QMessageBox.StandardButton = QMessageBox.StandardButton.Yes
+        | QMessageBox.StandardButton.No,
+        defaultButton: QMessageBox.StandardButton = QMessageBox.StandardButton.No,
     ):
         return MosaicMessageBox._show(
             parent, QMessageBox.Icon.Question, title, text, buttons, defaultButton

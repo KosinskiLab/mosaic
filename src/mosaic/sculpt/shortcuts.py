@@ -5,9 +5,17 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from typing import TYPE_CHECKING
+
 from qtpy.QtCore import QEvent, QObject, Qt
+from qtpy.QtGui import QKeyEvent, QWheelEvent
 
 from .session import TOOLS
+
+if TYPE_CHECKING:
+    from ..widgets.sculpt_palette_hud import SculptPaletteHUD
+    from .controller import SculptController
+    from .mode import SculptMode
 
 __all__ = ["SculptShortcutFilter"]
 
@@ -18,7 +26,13 @@ _TOOL_FOR_KEY = {Qt.Key(ord(t.hotkey)): t.id for t in TOOLS}
 class SculptShortcutFilter(QObject):
     """Eats keys and Shift+Wheel intended for sculpt actions on the vtk widget."""
 
-    def __init__(self, controller, mode=None, sculpt_hud=None, parent=None):
+    def __init__(
+        self,
+        controller: "SculptController",
+        mode: "SculptMode | None" = None,
+        sculpt_hud: "SculptPaletteHUD | None" = None,
+        parent: QObject | None = None,
+    ):
         super().__init__(parent)
         self._controller = controller
         self._mode = mode
@@ -39,7 +53,7 @@ class SculptShortcutFilter(QObject):
             self._controller.set_tool(tool)
         return None
 
-    def eventFilter(self, watched, event) -> bool:
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         etype = event.type()
         if etype == QEvent.Type.KeyPress:
             return self._on_key(event)
@@ -47,7 +61,7 @@ class SculptShortcutFilter(QObject):
             return self._on_wheel(event)
         return False
 
-    def _on_key(self, event) -> bool:
+    def _on_key(self, event: QKeyEvent) -> bool:
         key = event.key()
 
         # Escape bubbles to the gui-level shortcut that requests viewing mode.
@@ -70,7 +84,7 @@ class SculptShortcutFilter(QObject):
 
         return True
 
-    def _on_wheel(self, event) -> bool:
+    def _on_wheel(self, event: QWheelEvent) -> bool:
         if not (event.modifiers() & Qt.KeyboardModifier.ShiftModifier):
             return False
         delta = event.angleDelta().y()

@@ -6,6 +6,15 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
+from qtpy.QtGui import QMouseEvent, QPaintEvent
+from qtpy.QtWidgets import QLayout
+
+if TYPE_CHECKING:
+    from ..settings import SettingsCategory
+
 __all__ = ["AppSettingsPanel"]
 
 from collections import OrderedDict
@@ -65,7 +74,9 @@ class ThemeCard(QWidget):
 
     clicked = Signal()
 
-    def __init__(self, name: str, dark: tuple, light: tuple, parent=None):
+    def __init__(
+        self, name: str, dark: tuple, light: tuple, parent: QWidget | None = None
+    ):
         super().__init__(parent)
         self.name = name
         self.dark = dark
@@ -80,10 +91,10 @@ class ThemeCard(QWidget):
         self._selected = selected
         self.update()
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         self.clicked.emit()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -150,7 +161,9 @@ class ThemeCard(QWidget):
 class CollapsibleSection(QWidget):
     """A section with a clickable header that toggles content visibility."""
 
-    def __init__(self, title: str, expanded: bool = True, parent=None):
+    def __init__(
+        self, title: str, expanded: bool = True, parent: QWidget | None = None
+    ):
         super().__init__(parent)
         self._expanded = expanded
 
@@ -179,10 +192,10 @@ class CollapsibleSection(QWidget):
     def content_layout(self):
         return self._content_layout
 
-    def addWidget(self, widget):
+    def addWidget(self, widget: QWidget):
         self._content_layout.addWidget(widget)
 
-    def addLayout(self, layout):
+    def addLayout(self, layout: QLayout):
         self._content_layout.addLayout(layout)
 
     def setExpanded(self, expanded: bool):
@@ -257,7 +270,7 @@ class AppSettingsPanel(QFrame):
 
     settingsChanged = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowFlags(
             Qt.WindowType.Tool
@@ -338,7 +351,7 @@ class AppSettingsPanel(QFrame):
     def _on_theme_changed(self):
         self._apply_panel_style()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -494,7 +507,7 @@ class AppSettingsPanel(QFrame):
         self.settingsChanged.emit()
 
     def _build_rendering_section(self):
-        def _fmt_budget(v):
+        def _fmt_budget(v: float):
             v = int(v)
             if v >= 1_000_000:
                 return f"{v / 1_000_000:.1f}M".replace(".0M", "M")
@@ -644,15 +657,21 @@ class AppSettingsPanel(QFrame):
 
         self._body_layout.addWidget(section)
 
-    def _set_setting(self, category, attr, value):
+    def _set_setting(self, category: "SettingsCategory", attr: str, value: Any):
         """Update a setting value without emitting settingsChanged."""
         setattr(category, attr, value)
 
-    def _update_setting(self, category, attr, value):
+    def _update_setting(self, category: "SettingsCategory", attr: str, value: Any):
         self._set_setting(category, attr, value)
         self.settingsChanged.emit()
 
-    def _connect_slider(self, slider, category, attr, cast=float):
+    def _connect_slider(
+        self,
+        slider: SliderRow,
+        category: "SettingsCategory",
+        attr: str,
+        cast: Callable[[float], int | float] = float,
+    ):
         """Connect a SliderRow: live updates on drag, signal on release."""
         slider.valueChanged.connect(
             lambda v: self._set_setting(category, attr, cast(v))

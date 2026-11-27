@@ -39,7 +39,7 @@ for _module_path, _names in _module_map.items():
         _lazy_imports[_name] = (_module_path, _name)
 
 
-def __getattr__(name):
+def __getattr__(name: str):
     module_path, attr_name = _lazy_imports.get(name, ("", ""))
 
     if not module_path:

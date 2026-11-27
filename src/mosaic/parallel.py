@@ -14,10 +14,11 @@ import sys
 import threading
 import uuid
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
+from warnings import WarningMessage
 
 from qtpy.QtCore import QObject, QTimer, Signal
 
@@ -172,7 +173,7 @@ def _init_worker_with_queue(progress_queue: multiprocessing.Queue):
     sys.stderr = QueueStream(progress_queue, MessageType.STDERR, _original_stderr)
 
 
-def _format_captured_warnings(warning_list) -> str | None:
+def _format_captured_warnings(warning_list: Sequence[WarningMessage]) -> str | None:
     """
     Format a list of captured warnings into the wire-format string.
 
@@ -190,7 +191,7 @@ def _format_captured_warnings(warning_list) -> str | None:
     return warning_msg.rstrip() if warning_msg else None
 
 
-def _run_with_warning_capture(func, *args, **kwargs) -> dict[str, Any]:
+def _run_with_warning_capture(func: Callable, *args, **kwargs) -> dict[str, Any]:
     """
     Execute ``func`` with warnings captured, returning the completion dict.
 
@@ -207,7 +208,7 @@ def _run_with_warning_capture(func, *args, **kwargs) -> dict[str, Any]:
         }
 
 
-def _wrap_task(func, task_id, *args, **kwargs):
+def _wrap_task(func: Callable, task_id: str, *args, **kwargs):
     """
     Wrapper that sets task context and captures warnings.
 
@@ -230,7 +231,7 @@ def _wrap_task(func, task_id, *args, **kwargs):
         _worker_task_id = None
 
 
-def _wrap_io_task(func, task_id, *args, **kwargs):
+def _wrap_io_task(func: Callable, task_id: str, *args, **kwargs):
     """
     Wrapper for I/O tasks running in the main process on a worker thread.
 
@@ -249,7 +250,7 @@ _pending_messages = []
 _message_timer = None
 
 
-def _default_handler(task_id, task_name, msg, is_warning=False):
+def _default_handler(task_id: str, task_name: str, msg: str, is_warning: bool = False):
     global _message_timer
 
     _pending_messages.append((task_name, str(msg), is_warning))
@@ -554,10 +555,10 @@ class BackgroundTaskManager(QObject):
         self,
         name: str,
         func: Callable,
-        callback: Callable = None,
-        batch_id: str = None,
+        callback: Callable | None = None,
+        batch_id: str | None = None,
         args: tuple = (),
-        kwargs: dict = None,
+        kwargs: dict | None = None,
     ) -> str:
         """Submit a single task to the queue.
 
@@ -582,10 +583,10 @@ class BackgroundTaskManager(QObject):
         self,
         name: str,
         func: Callable,
-        callback: Callable = None,
-        batch_id: str = None,
+        callback: Callable | None = None,
+        batch_id: str | None = None,
         args: tuple = (),
-        kwargs: dict = None,
+        kwargs: dict | None = None,
     ) -> str:
         """Submit a thread-backed I/O task."""
         return self._enqueue(name, func, callback, batch_id, args, kwargs, is_io=True)
@@ -593,8 +594,8 @@ class BackgroundTaskManager(QObject):
     def submit_task_batch(
         self,
         tasks: list,
-        max_concurrent: int = None,
-        batch_id: str = None,
+        max_concurrent: int | None = None,
+        batch_id: str | None = None,
     ) -> str:
         """
         Submit batch of tasks with optional concurrency limit.
@@ -660,7 +661,7 @@ class BackgroundTaskManager(QObject):
         for task in tasks_to_submit:
             self._submit_from_queue(task)
 
-    def _submit_from_queue(self, task):
+    def _submit_from_queue(self, task: dict):
         """Submit a queued task to the appropriate executor."""
         task_id = task["task_id"]
         batch_id = task["batch_id"]
@@ -835,29 +836,45 @@ class BackgroundTaskManager(QObject):
         return removed
 
 
-def submit_task(name, func, callback=None, *args, **kwargs):
+def submit_task(
+    name: str,
+    func: Callable,
+    callback: Callable[[Any], object] | None = None,
+    *args,
+    **kwargs,
+):
     return BackgroundTaskManager.instance().submit_task(
         name, func, callback, args=args, kwargs=kwargs
     )
 
 
-def submit_task_batch(tasks, max_concurrent=None, batch_id=None):
+def submit_task_batch(
+    tasks: Iterable[dict],
+    max_concurrent: int | None = None,
+    batch_id: str | None = None,
+):
     return BackgroundTaskManager.instance().submit_task_batch(
         tasks, max_concurrent, batch_id
     )
 
 
-def submit_io_task(name, func, callback=None, *args, **kwargs):
+def submit_io_task(
+    name: str,
+    func: Callable,
+    callback: Callable[[Any], object] | None = None,
+    *args,
+    **kwargs,
+):
     return BackgroundTaskManager.instance().submit_io_task(
         name, func, callback, args=args, kwargs=kwargs
     )
 
 
 def report_progress(
-    progress: float = None,
-    message: str = None,
-    current: int = None,
-    total: int = None,
+    progress: float | None = None,
+    message: str | None = None,
+    current: int | None = None,
+    total: int | None = None,
 ):
     """
     Report progress from within a worker function.

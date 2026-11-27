@@ -6,7 +6,10 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from typing import TYPE_CHECKING
+
 from qtpy.QtCore import Qt, Signal
+from qtpy.QtGui import QCloseEvent
 from qtpy.QtWidgets import (
     QDialog,
     QDoubleSpinBox,
@@ -17,6 +20,7 @@ from qtpy.QtWidgets import (
     QPushButton,
     QTreeWidget,
     QVBoxLayout,
+    QWidget,
 )
 
 from ..icons import icon
@@ -24,6 +28,9 @@ from ..stylesheets import Colors, Typography
 from ..widgets import MosaicMessageBox
 from ..widgets.container_list import ContainerTreeWidget, StyledTreeWidgetItem
 from ..widgets.segmented_control import SegmentedControl
+
+if TYPE_CHECKING:
+    from ..data import MosaicData
 
 
 class DistanceCropDialog(QDialog):
@@ -40,7 +47,7 @@ class DistanceCropDialog(QDialog):
     cropApplied = Signal(dict)
     previewRequested = Signal(dict)
 
-    def __init__(self, cdata, parent=None):
+    def __init__(self, cdata: "MosaicData", parent: QWidget | None = None):
         super().__init__(parent)
         self.cdata = cdata
         self._preview_active = False
@@ -243,7 +250,7 @@ class DistanceCropDialog(QDialog):
         self._clear_preview()
         self._apply_preview(params)
 
-    def _apply_preview(self, params):
+    def _apply_preview(self, params: dict):
         """Apply preview highlighting to show points that would be removed.
 
         Parameters
@@ -318,7 +325,7 @@ class DistanceCropDialog(QDialog):
         self._clear_preview()
         return super().reject()
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         """Clean up preview when dialog is closed."""
         self._clear_preview()
         super().closeEvent(event)

@@ -496,7 +496,7 @@ class TestCLI:
             ["mosaic-pipeline", str(valid_config), "--index", "0", "--dry-run"],
         ):
             with patch("mosaic.scripts.pipeline.ProcessPoolExecutor"):
-                result = main()
+                main()
 
         captured = capsys.readouterr()
         assert expected_run_id in captured.out
@@ -639,6 +639,6 @@ class TestOperationCategories:
 
         for preset_name, preset_ops in PIPELINE_PRESETS.items():
             for op in preset_ops:
-                assert (
-                    op["name"] in valid_ops
-                ), f"Preset {preset_name} references invalid operation {op['name']}"
+                assert op["name"] in valid_ops, (
+                    f"Preset {preset_name} references invalid operation {op['name']}"
+                )

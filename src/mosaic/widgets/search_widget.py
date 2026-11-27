@@ -13,11 +13,11 @@ class SearchWidget(QWidget):
 
     searchTextChanged = Signal(str)
 
-    def __init__(self, placeholder="Search...", parent=None):
+    def __init__(self, placeholder: str = "Search...", parent: QWidget | None = None):
         super().__init__(parent)
         self.setup_ui(placeholder)
 
-    def setup_ui(self, placeholder):
+    def setup_ui(self, placeholder: str):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)

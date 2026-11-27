@@ -1,4 +1,5 @@
 from qtpy.QtCore import QPoint, QRect, QSize, Qt
+from qtpy.QtGui import QCloseEvent, QResizeEvent
 from qtpy.QtWidgets import (
     QApplication,
     QDockWidget,
@@ -6,6 +7,7 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMenu,
     QScrollArea,
     QToolButton,
     QWidget,
@@ -30,7 +32,7 @@ def menu_pos_above(button_rect: QRect, menu_size: QSize) -> QPoint:
     return QPoint(button_rect.left(), button_rect.top() - menu_size.height())
 
 
-def style_popup(menu):
+def style_popup(menu: QMenu):
     """Give a menu the app's frameless, rounded popup look.
 
     Parameters
@@ -52,7 +54,7 @@ def style_popup(menu):
     return menu
 
 
-def toggle_dock(dock, show):
+def toggle_dock(dock: QDockWidget, show: bool):
     """Show or hide a QDockWidget.
 
     Parameters
@@ -66,7 +68,7 @@ def toggle_dock(dock, show):
 
 
 class _DockTitleBar(QWidget):
-    def __init__(self, dock):
+    def __init__(self, dock: QDockWidget):
         super().__init__(dock)
         self._dock = dock
         self._setup_ui()
@@ -100,7 +102,7 @@ class _DockTitleBar(QWidget):
         self.setFixedHeight(24)
         self._on_theme_changed()
 
-    def _on_floating_changed(self, floating):
+    def _on_floating_changed(self, floating: bool):
         from ..icons import icon
 
         if floating:
@@ -128,12 +130,12 @@ class VerticalScrollArea(QScrollArea):
                 return QSize(width, min(child_hint.height(), 600))
         return QSize(400, 350)
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QResizeEvent):
         if self.widget():
             self.widget().setFixedWidth(self.viewport().width())
         super().resizeEvent(event)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         widget = self.widget()
         if widget is not None and hasattr(widget, name):
             return getattr(widget, name)
@@ -143,11 +145,11 @@ class VerticalScrollArea(QScrollArea):
 
 
 def create_or_toggle_dock(
-    instance,
-    dock_attr_name,
-    dialog_widget,
-    dock_area=Qt.RightDockWidgetArea,
-    scroll=True,
+    instance: object,
+    dock_attr_name: str,
+    dialog_widget: QWidget | None,
+    dock_area: Qt.DockWidgetArea = Qt.RightDockWidgetArea,
+    scroll: bool = True,
 ):
     """
     Helper method to create or toggle a docked dialog.
@@ -184,7 +186,7 @@ def create_or_toggle_dock(
         return None
 
     class ClosableDockWidget(QDockWidget):
-        def closeEvent(self, event):
+        def closeEvent(self, event: QCloseEvent):
             _exit()
             super().closeEvent(event)
 

@@ -7,10 +7,14 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import warnings
+from collections.abc import Sequence
 from contextlib import contextmanager
+from types import EllipsisType
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import numpy as np
+from numpy.typing import ArrayLike
 from vtkmodules.util import numpy_support
 from vtkmodules.vtkCommonCore import vtkLookupTable, vtkPoints
 from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
@@ -18,6 +22,12 @@ from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
 from . import lod
 from .stylesheets import Colors
 from .utils import NORMAL_REFERENCE, apply_quat, normals_to_rot
+
+if TYPE_CHECKING:
+    import vtk
+
+    from .formats.records import VertexPropertyContainer
+    from .parametrization import Parametrization
 
 __all__ = [
     "Geometry",
@@ -91,14 +101,14 @@ class GeometryData:
 
     def __init__(
         self,
-        polydata=None,
-        sampling_rate=None,
-        model=None,
-        meta=None,
-        vertex_properties=None,
-        points=None,
-        normals=None,
-        quaternions=None,
+        polydata: vtkPolyData | None = None,
+        sampling_rate: ArrayLike | None = None,
+        model: "Parametrization | None" = None,
+        meta: dict | None = None,
+        vertex_properties: "VertexPropertyContainer | dict | None" = None,
+        points: ArrayLike | None = None,
+        normals: ArrayLike | None = None,
+        quaternions: ArrayLike | None = None,
     ):
         if polydata is None and points is not None:
             # Legacy construction from numpy arrays
@@ -126,13 +136,13 @@ class GeometryData:
     @classmethod
     def from_arrays(
         cls,
-        points=None,
-        normals=None,
-        quaternions=None,
-        sampling_rate=None,
-        model=None,
-        meta=None,
-        vertex_properties=None,
+        points: ArrayLike | None = None,
+        normals: ArrayLike | None = None,
+        quaternions: ArrayLike | None = None,
+        sampling_rate: ArrayLike | None = None,
+        model: "Parametrization | None" = None,
+        meta: dict | None = None,
+        vertex_properties: "VertexPropertyContainer | dict | None" = None,
     ):
         """Create a GeometryData from numpy arrays."""
         pd = vtkPolyData()
@@ -159,7 +169,7 @@ class GeometryData:
         return numpy_support.vtk_to_numpy(pts.GetData())
 
     @points.setter
-    def points(self, value):
+    def points(self, value: ArrayLike | None):
         if value is None:
             return self.polydata.SetPoints(None)
         value = np.asarray(value, dtype=np.float32)
@@ -178,7 +188,7 @@ class GeometryData:
         return numpy_support.vtk_to_numpy(n)
 
     @normals.setter
-    def normals(self, value):
+    def normals(self, value: ArrayLike | None):
         if value is None:
             return self.polydata.GetPointData().SetNormals(None)
         value = np.asarray(value, dtype=np.float32)
@@ -200,7 +210,7 @@ class GeometryData:
         return numpy_support.vtk_to_numpy(arr)
 
     @quaternions.setter
-    def quaternions(self, value):
+    def quaternions(self, value: ArrayLike | None):
         if value is None:
             return self.polydata.GetPointData().RemoveArray("OrientationQuaternion")
         value = np.asarray(value, dtype=np.float32)
@@ -209,7 +219,7 @@ class GeometryData:
         self.polydata.GetPointData().AddArray(vtk_arr)
         self.polydata.Modified()
 
-    def set_faces(self, faces):
+    def set_faces(self, faces: ArrayLike):
         """Set triangular face connectivity on the polydata."""
         # Use int64 to avoid platform-dependent promotion schemes which may
         # not satisfy the int64 requirement of numpy_to_vtkIdTypeArray.
@@ -231,7 +241,7 @@ class GeometryData:
         self.polydata.SetVerts(None)
         self.polydata.Modified()
 
-    def set_sampling_rate(self, sampling_rate):
+    def set_sampling_rate(self, sampling_rate: ArrayLike | None):
         if sampling_rate is None:
             sampling_rate = np.ones(3, dtype=np.float32)
         sampling_rate = np.asarray(sampling_rate, dtype=np.float32)
@@ -269,7 +279,7 @@ class GeometryData:
             vertex_properties=self.vertex_properties,
         )
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int | slice | ArrayLike | EllipsisType):
         """Subset points via VTK extraction, return new GeometryData."""
         n_points = self.get_number_of_points()
         if isinstance(idx, (int, np.integer)):
@@ -365,16 +375,16 @@ class Geometry:
 
     def __init__(
         self,
-        points=None,
-        normals=None,
-        quaternions=None,
-        color=BASE_COLOR,
-        sampling_rate=None,
-        meta=None,
-        vtk_actor=None,
-        vertex_properties=None,
-        model=None,
-        polydata=None,
+        points: ArrayLike | None = None,
+        normals: ArrayLike | None = None,
+        quaternions: ArrayLike | None = None,
+        color: Sequence[float] = BASE_COLOR,
+        sampling_rate: ArrayLike | None = None,
+        meta: dict | None = None,
+        vtk_actor: "vtk.vtkProp3D | None" = None,
+        vertex_properties: "VertexPropertyContainer | dict | None" = None,
+        model: "Parametrization | None" = None,
+        polydata: vtkPolyData | None = None,
         **kwargs,
     ):
         self.uuid = str(uuid4())
@@ -390,13 +400,14 @@ class Geometry:
         else:
             if quaternions is not None:
                 _normals = apply_quat(quaternions)
-                if normals is not None:
-                    if not np.allclose(_normals, normals, atol=1e-3):
-                        warnings.warn(
-                            "Orientation given by quaternions does not match "
-                            "the supplied normal vectors. Overwriting normals "
-                            "with quaternions for now."
-                        )
+                if normals is not None and not np.allclose(
+                    _normals, normals, atol=1e-3
+                ):
+                    warnings.warn(
+                        "Orientation given by quaternions does not match "
+                        "the supplied normal vectors. Overwriting normals "
+                        "with quaternions for now."
+                    )
                 normals = _normals
 
             self._geometry_data = GeometryData.from_arrays(
@@ -456,7 +467,7 @@ class Geometry:
         return self._geometry_data.sampling_rate
 
     @sampling_rate.setter
-    def sampling_rate(self, sampling_rate):
+    def sampling_rate(self, sampling_rate: ArrayLike):
         self._geometry_data.set_sampling_rate(sampling_rate)
 
     def __getstate__(self):
@@ -475,7 +486,7 @@ class Geometry:
             "uuid": self.uuid,
         }
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict):
         """
         Restore object state from unpickling.
 
@@ -503,7 +514,7 @@ class Geometry:
             self.change_representation(state.get("representation"))
         self.set_appearance(**appearance)
 
-    def subset(self, idx, copy: bool = False):
+    def subset(self, idx: int | slice | ArrayLike | EllipsisType, copy: bool = False):
         n_points = self.get_number_of_points()
         if isinstance(idx, (int, np.integer)):
             idx = [idx]
@@ -547,12 +558,12 @@ class Geometry:
 
         return ret
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int | slice | ArrayLike | EllipsisType):
         """Array-like indexing using int/bool numpy arrays, slices or ellipsis."""
         return self.subset(idx, copy=True)
 
     @classmethod
-    def merge(cls, geometries):
+    def merge(cls, geometries: "Sequence[Geometry]"):
         """
         Merge multiple geometry objects into a single geometry.
 
@@ -591,7 +602,7 @@ class Geometry:
             if (model := geometry.model) is not None:
                 models.append(model)
 
-        def _fill(per_source, fill_row):
+        def _fill(per_source: Sequence[np.ndarray | None], fill_row: ArrayLike):
             # None unless at least one source carries the attribute; otherwise
             # concatenate, filling absent sources with the reference row.
             if all(a is None for a in per_source):
@@ -800,11 +811,11 @@ class Geometry:
 
         self._geometry_data.quaternions = quaternions
 
-    def _set_faces(self, faces):
+    def _set_faces(self, faces: ArrayLike):
         """Set triangular face connectivity. Delegates to GeometryData."""
         self._geometry_data.set_faces(faces)
 
-    def set_color(self, color: tuple[int] = None):
+    def set_color(self, color: tuple[int] | None = None):
         """
         Set uniform color for all points in the geometry.
 
@@ -836,13 +847,13 @@ class Geometry:
 
     def set_appearance(
         self,
-        size: int = None,
-        opacity: float = None,
-        render_spheres: bool = None,
-        ambient: float = None,
-        diffuse: float = None,
-        specular: float = None,
-        base_color: tuple[float] = None,
+        size: int | None = None,
+        opacity: float | None = None,
+        render_spheres: bool | None = None,
+        ambient: float | None = None,
+        diffuse: float | None = None,
+        specular: float | None = None,
+        base_color: tuple[float] | None = None,
         **kwargs,
     ):
         """
@@ -898,7 +909,7 @@ class Geometry:
         prop.SetDiffuse(self._appearance.get("diffuse", 0.7))
         prop.SetSpecular(self._appearance.get("specular", 0.2))
 
-    def _create_actor(self, actor=None):
+    def _create_actor(self, actor: "vtk.vtkActor | None" = None):
         """
         Create VTK actor with appropriate mapper configuration.
 
@@ -938,7 +949,13 @@ class Geometry:
         """
         return self._geometry_data.get_number_of_points()
 
-    def set_scalars(self, scalars, color_lut, scalar_range=None, use_point=False):
+    def set_scalars(
+        self,
+        scalars: ArrayLike,
+        color_lut: "vtk.vtkScalarsToColors | None",
+        scalar_range: tuple[float, float] | None = None,
+        use_point: bool = False,
+    ):
         """
         Set scalar data for coloring points.
 
@@ -979,7 +996,11 @@ class Geometry:
         self._actor.Modified()
 
     def _update_scalars_from_ids(
-        self, point_ids, color_lut, scalar_range=None, use_point=False
+        self,
+        point_ids: np.ndarray,
+        color_lut: "vtk.vtkScalarsToColors | None",
+        scalar_range: tuple[float, float] | None = None,
+        use_point: bool = False,
     ) -> bool:
         """
         Try to update existing scalar array in place for better performance.
@@ -1019,7 +1040,11 @@ class Geometry:
         return True
 
     def _configure_scalar_mapper(
-        self, mapper, color_lut, scalar_range=None, use_point=False
+        self,
+        mapper: "vtk.vtkMapper",
+        color_lut: "vtk.vtkScalarsToColors | None",
+        scalar_range: tuple[float, float] | None = None,
+        use_point: bool = False,
     ):
         """
         Configure mapper for scalar coloring with common settings.
@@ -1078,12 +1103,12 @@ class Geometry:
 
     def swap_data(
         self,
-        points,
-        normals=None,
-        faces=None,
-        quaternions=None,
-        model=None,
-        meta: dict = None,
+        points: ArrayLike,
+        normals: ArrayLike | None = None,
+        faces: ArrayLike | None = None,
+        quaternions: ArrayLike | None = None,
+        model: "Parametrization | None" = None,
+        meta: dict | None = None,
         **kwargs,
     ):
         """
@@ -1362,7 +1387,7 @@ class Geometry:
 
         return self.set_appearance()
 
-    def is_mesh_representation(self, representation: str = None) -> bool:
+    def is_mesh_representation(self, representation: str | None = None) -> bool:
         if representation is None:
             representation = self._representation
         return representation in ("mesh", "surface", "wireframe")
@@ -1373,11 +1398,11 @@ class Geometry:
 
 
 def _geometry_from_polydata(
-    polydata,
-    sampling_rate=None,
-    color=BASE_COLOR,
-    representation="surface",
-    meta=None,
+    polydata: vtkPolyData,
+    sampling_rate: ArrayLike | None = None,
+    color: Sequence[float] = BASE_COLOR,
+    representation: str = "surface",
+    meta: dict | None = None,
 ):
     """Create a :class:`Geometry` from an existing ``vtkPolyData``."""
     g = Geometry(
@@ -1417,7 +1442,7 @@ class VolumeGeometry(Geometry):
     def __init__(
         self,
         volume: np.ndarray = None,
-        volume_sampling_rate=np.ones(3),
+        volume_sampling_rate: np.ndarray | tuple[float, ...] | None = None,
         target_resolution: float = 10.0,
         **kwargs,
     ):
@@ -1431,6 +1456,9 @@ class VolumeGeometry(Geometry):
 
         if volume is None:
             return None
+
+        if volume_sampling_rate is None:
+            volume_sampling_rate = np.ones(3)
 
         self._volume = vtk.vtkImageData()
         self._volume.SetSpacing(volume_sampling_rate)
@@ -1511,7 +1539,7 @@ class VolumeGeometry(Geometry):
             )
         return state
 
-    def update_isovalue(self, upper, lower: float = 0):
+    def update_isovalue(self, upper: float, lower: float = 0):
         """
         Update the isovalue for volume surface rendering.
 
@@ -1605,14 +1633,14 @@ class SegmentationGeometry(Geometry):
 
     def __init__(
         self,
-        points=None,
-        sampling_rate=None,
-        color=BASE_COLOR,
-        meta=None,
-        volume=None,
-        volume_origin=None,
-        vertex_properties=None,
-        model=None,
+        points: ArrayLike | None = None,
+        sampling_rate: ArrayLike | None = None,
+        color: Sequence[float] = BASE_COLOR,
+        meta: dict | None = None,
+        volume: np.ndarray | None = None,
+        volume_origin: ArrayLike | None = None,
+        vertex_properties: "VertexPropertyContainer | dict | None" = None,
+        model: "Parametrization | None" = None,
         **kwargs,
     ):
         self.uuid = str(uuid4())
@@ -1647,7 +1675,7 @@ class SegmentationGeometry(Geometry):
             self._build_surface(None)
             self._set_appearance()
 
-    def _build_surface(self, volume_data=None):
+    def _build_surface(self, volume_data: np.ndarray | None = None):
         """Extract a surface mesh and create the VTK actor.
 
         Parameters
@@ -1671,7 +1699,7 @@ class SegmentationGeometry(Geometry):
             *self._appearance.get("base_color", BASE_COLOR)
         )
 
-    def _extract_surface_mesh(self, volume_data=None):
+    def _extract_surface_mesh(self, volume_data: np.ndarray | None = None):
         """
         Extract a surface mesh from binary volume data.
 
@@ -1719,7 +1747,7 @@ class SegmentationGeometry(Geometry):
 
         self._ensure_vertex_mapping(spacing)
 
-    def _ensure_vertex_mapping(self, spacing):
+    def _ensure_vertex_mapping(self, spacing: np.ndarray):
         """
         Build the vertex-to-point-index mapping for the current mesh.
 
@@ -1758,7 +1786,7 @@ class SegmentationGeometry(Geometry):
             sparse_flat = sorted_flat[unique_mask]
             sparse_point = sorted_point[unique_mask]
 
-            def _lookup_flat(flat_indices):
+            def _lookup_flat(flat_indices: np.ndarray):
                 """Map flat voxel indices -> point indices via binary search."""
                 idx = np.searchsorted(sparse_flat, flat_indices)
                 idx = np.clip(idx, 0, len(sparse_flat) - 1)
@@ -1832,7 +1860,7 @@ class SegmentationGeometry(Geometry):
         else:
             self._vertex_to_point_idx = np.array([], dtype=np.intp)
 
-    def _coord_to_voxel(self, coords):
+    def _coord_to_voxel(self, coords: np.ndarray):
         """Convert world coordinates to voxel indices.
 
         Parameters
@@ -1860,7 +1888,7 @@ class SegmentationGeometry(Geometry):
         return self._geometry_data.points
 
     @points.setter
-    def points(self, value):
+    def points(self, value: ArrayLike | None):
         value = np.asarray(value, dtype=np.float32)
         self._geometry_data.points = value
         self._rebuild(value)
@@ -1870,7 +1898,7 @@ class SegmentationGeometry(Geometry):
         return None
 
     @normals.setter
-    def normals(self, value):
+    def normals(self, value: ArrayLike | None):
         pass
 
     @property
@@ -1878,10 +1906,15 @@ class SegmentationGeometry(Geometry):
         return None
 
     @quaternions.setter
-    def quaternions(self, value):
+    def quaternions(self, value: ArrayLike | None):
         pass
 
-    def _set_vertex_scalars(self, vertex_scalars, color_lut, scalar_range):
+    def _set_vertex_scalars(
+        self,
+        vertex_scalars: np.ndarray | None,
+        color_lut: "vtk.vtkScalarsToColors | None",
+        scalar_range: tuple[float, float] | None,
+    ):
         """
         Push per-vertex scalars and a LUT to the mapper.
 
@@ -1953,7 +1986,7 @@ class SegmentationGeometry(Geometry):
         lut.Build()
         return lut
 
-    def color_points(self, point_ids, color):
+    def color_points(self, point_ids: np.ndarray, color: Sequence[float]):
         """
         Highlight specific points on the surface mesh.
 
@@ -1979,7 +2012,13 @@ class SegmentationGeometry(Geometry):
         self.set_scalars(scalars, lut, (0.0, 1.0))
         self._highlighted_point_ids = point_ids
 
-    def set_scalars(self, scalars, color_lut, scalar_range=None, use_point=False):
+    def set_scalars(
+        self,
+        scalars: ArrayLike,
+        color_lut: "vtk.vtkScalarsToColors | None",
+        scalar_range: tuple[float, float] | None = None,
+        use_point: bool = False,
+    ):
         """
         Set scalar data for coloring the surface mesh.
 
@@ -2013,7 +2052,7 @@ class SegmentationGeometry(Geometry):
         vertex_scalars = scalars[self._vertex_to_point_idx]
         self._set_vertex_scalars(vertex_scalars, color_lut, scalar_range)
 
-    def set_color(self, color=None):
+    def set_color(self, color: Sequence[float] | None = None):
         """
         Set uniform mesh color, resetting any per-point highlights.
 
@@ -2035,7 +2074,7 @@ class SegmentationGeometry(Geometry):
             self._set_vertex_scalars(None, None, None)
             self._actor.GetProperty().SetColor(*color)
 
-    def subset(self, idx, copy=False):
+    def subset(self, idx: int | slice | ArrayLike | EllipsisType, copy: bool = False):
         """
         Subset the segmentation, updating the vertex mapping.
 
@@ -2114,7 +2153,7 @@ class SegmentationGeometry(Geometry):
             self.set_color()
         return self
 
-    def _should_rebuild(self, current_points):
+    def _should_rebuild(self, current_points: np.ndarray):
         """
         Check if the mesh should be rebuilt with a tighter bounding box.
 
@@ -2140,7 +2179,7 @@ class SegmentationGeometry(Geometry):
 
         return current_volume_size > self._COMPACTION_THRESHOLD * optimal_size
 
-    def _rebuild(self, current_points):
+    def _rebuild(self, current_points: np.ndarray):
         """Rebuild the mesh from scratch around current points.
 
         Parameters
@@ -2167,11 +2206,11 @@ class SegmentationGeometry(Geometry):
         self._build_surface(vol)
         self._set_appearance()
 
-    def change_representation(self, representation=None):
+    def change_representation(self, representation: str | None = None):
         """Representation changes are not supported."""
         return None
 
-    def is_mesh_representation(self, representation=None):
+    def is_mesh_representation(self, representation: str | None = None):
         return False
 
     def swap_data(self, *args, **kwargs):
@@ -2192,7 +2231,7 @@ class SegmentationGeometry(Geometry):
             "uuid": self.uuid,
         }
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict):
         uuid = state.pop("uuid", None)
         visible = state.pop("visible", True)
         appearance = state.pop("appearance", {})
@@ -2294,7 +2333,7 @@ class PointCloud(Geometry):
     pass
 
 
-def merge_geometries(geometries):
+def merge_geometries(geometries: Sequence[Geometry]):
     """Merge geometries, dispatching on a shared subclass.
 
     Parameters

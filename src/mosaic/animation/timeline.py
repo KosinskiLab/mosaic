@@ -1,9 +1,22 @@
+from typing import TYPE_CHECKING
+
 from qtpy.QtCore import QRect, Qt, Signal
-from qtpy.QtGui import QColor, QFont, QMouseEvent, QPainter, QPen
+from qtpy.QtGui import (
+    QColor,
+    QFont,
+    QMouseEvent,
+    QPainter,
+    QPaintEvent,
+    QPen,
+    QWheelEvent,
+)
 from qtpy.QtWidgets import QApplication, QScrollArea, QWidget
 
 from ..icons import icon
 from ..stylesheets import Colors, Typography
+
+if TYPE_CHECKING:
+    from .compose import Track
 
 
 class TimelineContent(QWidget):
@@ -16,7 +29,7 @@ class TimelineContent(QWidget):
     #: Half-width in pixels of the grab zone around a track's right edge.
     resize_handle_width = 5
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.tracks = []
         self.current_frame = 0
@@ -46,13 +59,13 @@ class TimelineContent(QWidget):
 
         self.setMinimumHeight(max(100, min_height))
 
-    def set_tracks(self, tracks):
+    def set_tracks(self, tracks: "list[Track]"):
         self.tracks = tracks
         self.update_view_range()
         self.update_size()
         self.update()
 
-    def set_current_frame(self, frame):
+    def set_current_frame(self, frame: int):
         self.current_frame = frame
 
         if frame < self.view_start_frame:
@@ -83,20 +96,20 @@ class TimelineContent(QWidget):
                 0, self.view_end_frame - self.min_visible_frames
             )
 
-    def frame_to_x(self, frame):
+    def frame_to_x(self, frame: int):
         """Convert frame number to x coordinate"""
         view_range = self.view_end_frame - self.view_start_frame
         if view_range == 0:
             return 0
         return (frame - self.view_start_frame) / view_range * self.width()
 
-    def x_to_frame(self, x):
+    def x_to_frame(self, x: float):
         """Convert x coordinate to frame number"""
         view_range = self.view_end_frame - self.view_start_frame
         frame = self.view_start_frame + (x / self.width()) * view_range
         return int(round(frame))
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -347,7 +360,7 @@ class TimelineContent(QWidget):
         self.drag_active = False
         return self.update()
 
-    def wheelEvent(self, event):
+    def wheelEvent(self, event: QWheelEvent):
         if not self.tracks:
             return super().wheelEvent(event)
 
@@ -388,7 +401,7 @@ class TimelineWidget(QScrollArea):
     trackResized = Signal(str, int)
     trackRemoved = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
 
         self.content = TimelineContent(self)
@@ -405,11 +418,11 @@ class TimelineWidget(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.setFrameShape(self.NoFrame)
 
-    def set_tracks(self, tracks):
+    def set_tracks(self, tracks: "list[Track]"):
         self.content.set_tracks(tracks)
         QApplication.processEvents()
 
-    def set_current_frame(self, frame):
+    def set_current_frame(self, frame: int):
         self.content.set_current_frame(frame)
 
     @property
@@ -417,7 +430,7 @@ class TimelineWidget(QScrollArea):
         return self.content.selected_track
 
     @selected_track.setter
-    def selected_track(self, value):
+    def selected_track(self, value: str | None):
         self.content.selected_track = value
 
     def update(self):

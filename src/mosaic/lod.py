@@ -6,10 +6,17 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
 import numpy as np
+from numpy.typing import ArrayLike
 from vtkmodules.util import numpy_support
 from vtkmodules.vtkCommonCore import vtkPoints
 from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
+
+if TYPE_CHECKING:
+    from .geometry import Geometry
 
 LOD_DISABLED = 0
 
@@ -28,7 +35,7 @@ def get_point_budget() -> int:
     return int(Settings.vtk.point_budget)
 
 
-def _subsample(indices, budget):
+def _subsample(indices: np.ndarray, budget: int):
     """Pick *budget* entries from a sorted index array, preserving order.
 
     Parameters
@@ -44,7 +51,9 @@ def _subsample(indices, budget):
     return indices[pos]
 
 
-def surface_shell_indices(points: np.ndarray, sampling_rate, budget: int) -> np.ndarray:
+def surface_shell_indices(
+    points: np.ndarray, sampling_rate: float | ArrayLike, budget: int
+) -> np.ndarray:
     """Return indices of points on the surface shell of a cloud.
 
     Uses a 6-connected occupancy grid to classify each point as
@@ -145,7 +154,9 @@ def build_lod_actor(points: np.ndarray, indices: np.ndarray):
     return actor, lod, indices
 
 
-def remap_lod_indices(parent_indices, subset_idx, n_child, budget):
+def remap_lod_indices(
+    parent_indices: np.ndarray, subset_idx: np.ndarray, n_child: int, budget: int
+):
     """Remap a parent's LOD indices into a child subset's index space.
 
     Parameters
@@ -184,7 +195,9 @@ def remap_lod_indices(parent_indices, subset_idx, n_child, budget):
     return new_indices
 
 
-def merge_lod_indices(lod_indices, counts, budget):
+def merge_lod_indices(
+    lod_indices: list[np.ndarray] | None, counts: list[int], budget: int
+):
     """Combine per-geometry LOD indices into a merged index space.
 
     Parameters
@@ -217,7 +230,7 @@ def merge_lod_indices(lod_indices, counts, budget):
     return merged
 
 
-def compute_scene_lod(geometries, budget):
+def compute_scene_lod(geometries: "list[Geometry]", budget: int):
     """Determine per-geometry LOD budgets for a scene.
 
     Parameters
@@ -279,7 +292,7 @@ class InteractionLOD:
         Geometry supplying points, sampling rate, the main actor and data.
     """
 
-    def __init__(self, owner):
+    def __init__(self, owner: "Geometry"):
         self._owner = owner
         self.actor = None
         self.data = None
@@ -292,7 +305,7 @@ class InteractionLOD:
         """Number of points in the owning geometry."""
         return self._owner.get_number_of_points()
 
-    def setup(self, budget=None):
+    def setup(self, budget: int | None = None):
         """Build the LOD actor from a fresh surface-shell extraction.
 
         Parameters
@@ -312,7 +325,12 @@ class InteractionLOD:
         owner = self._owner
         self.apply(surface_shell_indices(owner.points, owner.sampling_rate, budget))
 
-    def inherit(self, parent, subset_idx, budget=None):
+    def inherit(
+        self,
+        parent: "InteractionLOD",
+        subset_idx: np.ndarray,
+        budget: int | None = None,
+    ):
         """Remap a parent's LOD into the owner's index space.
 
         Parameters
@@ -331,7 +349,7 @@ class InteractionLOD:
             budget = get_point_budget()
         self.apply(remap_lod_indices(parent.indices, subset_idx, self.count, budget))
 
-    def merge(self, inputs, budget=None):
+    def merge(self, inputs: "Sequence[InteractionLOD]", budget: int | None = None):
         """Rebuild the LOD from the LODs of merged geometries.
 
         Each input's indices are offset by the running point count, mirroring
@@ -355,7 +373,7 @@ class InteractionLOD:
         if merged is not None:
             self.apply(merged)
 
-    def apply(self, indices):
+    def apply(self, indices: np.ndarray):
         """Build and attach the LOD actor for the given point *indices*."""
         actor, data, indices = build_lod_actor(self._owner.points, indices)
         if actor is not None:

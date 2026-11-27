@@ -7,10 +7,10 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import re
-from typing import List, Optional
 
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QFontMetrics
+from qtpy.QtWidgets import QLabel, QTableWidgetItem
 
 __all__ = ["display_path", "display_paths", "set_path_text"]
 
@@ -25,7 +25,7 @@ def _with_parent(path: str) -> str:
     return f"…/{parent}/{name}" if parent else name
 
 
-def display_path(path: str, root: Optional[str] = None) -> str:
+def display_path(path: str, root: str | None = None) -> str:
     """Return a short display form of a path.
 
     Parameters
@@ -51,7 +51,7 @@ def display_path(path: str, root: Optional[str] = None) -> str:
     return _with_parent(path)
 
 
-def display_paths(paths: List[str], root: Optional[str] = None) -> List[str]:
+def display_paths(paths: list[str], root: str | None = None) -> list[str]:
     """Apply :py:func:`display_path`, adding the parent to colliding entries.
 
     Parameters
@@ -67,17 +67,15 @@ def display_paths(paths: List[str], root: Optional[str] = None) -> List[str]:
         Display strings in the order of ``paths``.
     """
     shown = [display_path(p, root) for p in paths]
-    return [
-        _with_parent(p) if shown.count(s) > 1 else s for p, s in zip(paths, shown)
-    ]
+    return [_with_parent(p) if shown.count(s) > 1 else s for p, s in zip(paths, shown)]
 
 
 def set_path_text(
-    widget,
+    widget: QLabel | QTableWidgetItem,
     path: str,
-    root: Optional[str] = None,
+    root: str | None = None,
     prefix: str = "",
-    width: Optional[int] = None,
+    width: int | None = None,
 ) -> None:
     """Show a shortened path on a widget with the full path as tooltip.
 

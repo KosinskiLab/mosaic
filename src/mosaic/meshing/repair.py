@@ -11,6 +11,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Sequence
+
 import igl
 import numpy as np
 import scipy.sparse
@@ -26,7 +28,9 @@ __all__ = [
 ]
 
 
-def _close_hole(vs: np.ndarray, fs: np.ndarray, hole_vids, fast=True) -> np.ndarray:
+def _close_hole(
+    vs: np.ndarray, fs: np.ndarray, hole_vids: Sequence[int], fast: bool = True
+) -> np.ndarray:
     """Close mesh holes with perimeter length below threshold.
 
     Parameters
@@ -50,7 +54,7 @@ def _close_hole(vs: np.ndarray, fs: np.ndarray, hole_vids, fast=True) -> np.ndar
     .. [1] Code adapted from https://github.com/kentechx/hole-filling
     """
 
-    def hash_func(edges):
+    def hash_func(edges: np.ndarray):
         # edges: (n, 2)
         edges = np.core.defchararray.chararray.encode(edges.astype("str"))
         edges = np.concatenate(
@@ -130,7 +134,7 @@ def _close_hole(vs: np.ndarray, fs: np.ndarray, hole_vids, fast=True) -> np.ndar
 
 
 def close_holes(
-    vs: np.ndarray, fs: np.ndarray, hole_len_thr: float = 10000.0, fast=True
+    vs: np.ndarray, fs: np.ndarray, hole_len_thr: float = 10000.0, fast: bool = True
 ) -> np.ndarray:
     """Close mesh holes with perimeter length below threshold.
 
@@ -241,7 +245,7 @@ def bridge_boundaries(vs: np.ndarray, fs: np.ndarray, alpha: float) -> np.ndarra
 
 
 def get_mollified_edge_length(
-    vs: np.ndarray, fs: np.ndarray, mollify_factor=1e-5
+    vs: np.ndarray, fs: np.ndarray, mollify_factor: float = 1e-5
 ) -> np.ndarray:
     """Calculate mollified edge lengths of mesh faces.
 
@@ -275,7 +279,9 @@ def get_mollified_edge_length(
     return lin
 
 
-def get_ring_vertices(V, F, query_vertices, n=1):
+def get_ring_vertices(
+    V: np.ndarray, F: np.ndarray, query_vertices: Sequence[int], n: int = 1
+):
     """
     Find n-ring vertices for given vertices in a mesh.
     Args:
@@ -539,7 +545,7 @@ def triangulation_refine_leipa(
 
 
 def _robust_laplacian(
-    vs, fs, mollify_factor=1e-5
+    vs: np.ndarray, fs: np.ndarray, mollify_factor: float = 1e-5
 ) -> tuple[scipy.sparse.csc_matrix, scipy.sparse.csc_matrix]:
     """
     Get a laplacian with intrinsic Delaunay triangulation and intrinsic mollification.

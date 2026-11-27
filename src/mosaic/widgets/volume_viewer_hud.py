@@ -6,8 +6,19 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtCore import QCoreApplication, QEvent, QPoint, QRect, Qt, QTimer
-from qtpy.QtGui import QColor, QCursor, QPainter, QPen
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
+
+from qtpy.QtCore import QCoreApplication, QEvent, QObject, QPoint, QRect, Qt, QTimer
+from qtpy.QtGui import (
+    QColor,
+    QCursor,
+    QEnterEvent,
+    QPainter,
+    QPaintEvent,
+    QPen,
+    QShowEvent,
+)
 from qtpy.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -23,6 +34,12 @@ from ..stylesheets import Colors, Typography, _get_resource_path
 from .dock import menu_pos_above, style_popup
 from .segmented_control import SegmentedControl
 from .volume_viewer import VolumeViewer
+
+if TYPE_CHECKING:
+    from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+
+    from .sliders import DualHandleSlider
+    from .vtk_widgets import LegendWidget
 
 _ICON = Colors.LIGHT["BORDER_HOVER"]
 _BTN = 28
@@ -144,7 +161,7 @@ QLabel:disabled {{ color: rgba(255, 255, 255, 0.18); }}
 """
 
 
-def _icon_btn(name, tooltip, size=_BTN):
+def _icon_btn(name: str, tooltip: str, size: int = _BTN):
     btn = QPushButton()
     btn.setIcon(icon(name, color=_ICON))
     btn.setFixedSize(size, size)
@@ -152,7 +169,7 @@ def _icon_btn(name, tooltip, size=_BTN):
     return btn
 
 
-def _dark_dual_slider(slider):
+def _dark_dual_slider(slider: "DualHandleSlider"):
     """Re-theme a :class:`DualHandleSlider` for the dark HUD."""
     slider.setMinimumHeight(_BTN)
     slider.handle_size = 12
@@ -169,7 +186,7 @@ def _dark_dual_slider(slider):
 class _LoadButton(QToolButton):
     """Load/Close button whose arrow opens the recent volumes upward."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
@@ -177,7 +194,7 @@ class _LoadButton(QToolButton):
         self.recent_menu.setToolTipsVisible(True)
         self.recent_menu.installEventFilter(self)
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent):
         if obj is self.recent_menu and event.type() == QEvent.Type.Show:
             rect = QRect(self.mapToGlobal(QPoint(0, 0)), self.size())
             obj.move(menu_pos_above(rect, obj.size()))
@@ -193,7 +210,13 @@ class _ViewerStrip(QWidget):
     _RADIUS = 6
 
     def __init__(
-        self, viewer, *, add_btn=False, remove_btn=False, hud=None, parent=None
+        self,
+        viewer: VolumeViewer,
+        *,
+        add_btn: bool = False,
+        remove_btn: bool = False,
+        hud: "VolumeViewerHUD | None" = None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.viewer = viewer
@@ -235,7 +258,7 @@ class _ViewerStrip(QWidget):
 
         _orig = v.set_visibility
 
-        def _patched(visible, _f=_orig):
+        def _patched(visible: bool, _f: Callable[[bool], object] = _orig):
             _f(visible)
             icon_name = "ph.eye" if visible else "ph.eye-slash"
             v.visibility_button.setIcon(icon(icon_name, color=_ICON))
@@ -247,7 +270,7 @@ class _ViewerStrip(QWidget):
     def _on_theme_changed(self):
         _dark_dual_slider(self.viewer.contrast_slider)
 
-    def _build_layout(self, add_btn, remove_btn):
+    def _build_layout(self, add_btn: bool, remove_btn: bool):
         v = self.viewer
         main = QVBoxLayout(self)
         main.setContentsMargins(6, 6, 6, 6)
@@ -323,17 +346,17 @@ class _ViewerStrip(QWidget):
     _PROJ_MAP = {"Off": "Off", "Clip +": "Project +", "Clip −": "Project -"}
     _PROJ_RMAP = {v: k for k, v in _PROJ_MAP.items()}
 
-    def _set_projection(self, label):
+    def _set_projection(self, label: str):
         combo_val = self._PROJ_MAP.get(label, "Off")
         self.viewer.project_selector.setCurrentText(combo_val)
 
-    def _on_projection_changed(self, text):
+    def _on_projection_changed(self, text: str):
         seg_label = self._PROJ_RMAP.get(text, "Off")
         idx = ["Off", "Clip +", "Clip −"].index(seg_label)
         self._proj_seg._select(idx)
 
     @staticmethod
-    def _restyle_segmented(seg, square=True):
+    def _restyle_segmented(seg: SegmentedControl, square: bool = True):
         """Apply dark-HUD colours to a :class:`SegmentedControl`."""
         n = len(seg._buttons)
         for i, btn in enumerate(seg._buttons):
@@ -395,19 +418,19 @@ class _ViewerStrip(QWidget):
         self._load_btn.style().polish(self._load_btn)
         return None
 
-    def _set_orientation(self, axis):
+    def _set_orientation(self, axis: str):
         self.viewer.orientation_selector.setCurrentText(axis)
 
-    def _on_orientation_changed(self, text):
+    def _on_orientation_changed(self, text: str):
         self._ori_seg._select(["X", "Y", "Z"].index(text))
 
-    def enterEvent(self, event):
+    def enterEvent(self, event: QEnterEvent):
         self._leave_timer.stop()
         self._hovered = True
         self.update()
         super().enterEvent(event)
 
-    def leaveEvent(self, event):
+    def leaveEvent(self, event: QEvent):
         self._leave_timer.start()
         super().leaveEvent(event)
 
@@ -463,7 +486,7 @@ class _ViewerStrip(QWidget):
             self._load_btn.setText("Load")
             self._load_btn.setToolTip("Load volume")
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = self.rect().adjusted(1, 1, -1, -1)
@@ -508,7 +531,12 @@ class VolumeViewerHUD(QWidget):
 
     _BOTTOM_MARGIN = 10
 
-    def __init__(self, vtk_widget, legend=None, parent=None):
+    def __init__(
+        self,
+        vtk_widget: "QVTKRenderWindowInteractor",
+        legend: "LegendWidget | None" = None,
+        parent: QWidget | None = None,
+    ):
         # Top-level tool window, not a child of the VTK widget.  X11
         # compositors composite ARGB top-level windows reliably even
         # when ARGB native subwindows under a GL surface break.
@@ -551,7 +579,7 @@ class VolumeViewerHUD(QWidget):
 
         self.hide()
 
-    def attach_to_viewport(self, viewport_parent):
+    def attach_to_viewport(self, viewport_parent: QWidget):
         """Track the viewport so strips resize and the HUD follows it."""
         self._viewport_parent = viewport_parent
         viewport_parent.installEventFilter(self)
@@ -563,7 +591,7 @@ class VolumeViewerHUD(QWidget):
             self._top_window.installEventFilter(self)
         self._layout_strips()
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent):
         etype = event.type()
         if obj is self._viewport_parent and etype == QEvent.Type.Resize:
             self._layout_strips()  # also reposition
@@ -582,7 +610,7 @@ class VolumeViewerHUD(QWidget):
                 self.show()
         return super().eventFilter(obj, event)
 
-    def showEvent(self, event):
+    def showEvent(self, event: QShowEvent):
         super().showEvent(event)
         QTimer.singleShot(0, self._layout_strips)
 
@@ -661,17 +689,17 @@ class VolumeViewerHUD(QWidget):
     def recent_paths(self):
         return list(self._recent_paths)
 
-    def set_recent_paths(self, paths):
+    def set_recent_paths(self, paths: Sequence[str]):
         self._recent_paths = list(paths)[:5]
         self._update_all_menus()
 
-    def _on_volume_changed(self, viewer=None):
+    def _on_volume_changed(self, viewer: VolumeViewer | None = None):
         viewer = viewer or self.primary
         path = viewer.source_path
         if path and isinstance(path, str):
             self.track_path(path)
 
-    def track_path(self, path):
+    def track_path(self, path: str):
         if path in self._recent_paths:
             self._recent_paths.remove(path)
         self._recent_paths.insert(0, path)
@@ -714,7 +742,7 @@ class VolumeViewerHUD(QWidget):
             self.add_viewer()
             self._strips[-1].viewer.load_volume(path)
 
-    def remove_viewer(self, strip):
+    def remove_viewer(self, strip: _ViewerStrip):
         if strip not in self._strips:
             return None
         self._strips.remove(strip)

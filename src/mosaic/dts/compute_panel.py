@@ -7,6 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
@@ -18,10 +19,14 @@ from qtpy.QtWidgets import (
     QLabel,
     QPushButton,
     QSpinBox,
+    QWidget,
 )
 
 from ..icons import icon
 from ..widgets import MosaicMessageBox
+
+if TYPE_CHECKING:
+    from ..data import MosaicData
 
 
 class ComputePanel(QGroupBox):
@@ -46,11 +51,11 @@ class ComputePanel(QGroupBox):
     def __init__(
         self,
         get_mesh_transform: Callable,
-        cdata=None,
+        cdata: "MosaicData | None" = None,
         get_run_ids: Callable | None = None,
         get_run_dir: Callable | None = None,
         on_complete: Callable | None = None,
-        parent=None,
+        parent: QWidget | None = None,
     ):
         super().__init__("Compute", parent)
         self.cdata = cdata
@@ -95,7 +100,7 @@ class ComputePanel(QGroupBox):
         self._form.addRow(bottom)
         self._on_type_changed(self._type_combo.currentText())
 
-    def _on_type_changed(self, text):
+    def _on_type_changed(self, text: str):
         self._option_widgets.clear()
         form = self._form
 
@@ -192,7 +197,7 @@ class ComputePanel(QGroupBox):
         elif prop == "Bending Energy":
             self._submit("Bending Energy", "bending_energy")
 
-    def _submit(self, task_label, kind, **kwargs):
+    def _submit(self, task_label: str, kind: str, **kwargs):
         from ..dts import compute
         from ..dts._utils import resolve_trajectory_dir
         from ..parallel import submit_task

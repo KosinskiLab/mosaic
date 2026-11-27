@@ -11,7 +11,10 @@ from ..stylesheets import Colors, Typography
 
 class DialogFooter(QFrame):
     def __init__(
-        self, info_text: str = None, dialog: QDialog = None, margin: tuple[int] = None
+        self,
+        info_text: str | None = None,
+        dialog: QDialog = None,
+        margin: tuple[int] | None = None,
     ):
         super().__init__()
 

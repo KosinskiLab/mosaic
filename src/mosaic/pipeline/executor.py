@@ -34,7 +34,7 @@ def _known_params(op_name: str) -> set:
     return names
 
 
-def generate_runs(pipeline_config):
+def generate_runs(pipeline_config: dict):
     """
     Generate individual run configurations from a pipeline graph.
     For each input file, creates a linear sequence of operations to execute by

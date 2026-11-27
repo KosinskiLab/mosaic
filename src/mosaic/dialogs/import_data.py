@@ -1,3 +1,6 @@
+from collections.abc import Sequence
+from os import PathLike
+
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QDialog,
@@ -5,8 +8,10 @@ from qtpy.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
 
 from ..formats._utils import read_density_header, read_star_header
@@ -14,7 +19,7 @@ from ..widgets.settings import create_setting_widget, get_widget_value, set_widg
 
 
 class ImportDataDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.current_file_index = 0
         self.filenames = []
@@ -235,7 +240,7 @@ class ImportDataDialog(QDialog):
         self.toggle_per_axis_mode(False)
         self.accept_button.setFocus()
 
-    def toggle_per_axis_mode(self, checked):
+    def toggle_per_axis_mode(self, checked: bool):
         self.x_label.setVisible(checked)
         self.y_label.setVisible(checked)
         self.z_label.setVisible(checked)
@@ -252,7 +257,7 @@ class ImportDataDialog(QDialog):
         self.grid_layout.setColumnStretch(2, 1 if checked else 0)
         self.grid_layout.setColumnStretch(3, 1 if checked else 0)
 
-    def toggle_override_mode(self, checked):
+    def toggle_override_mode(self, checked: bool):
         per_axis = self.axis_checkbox.isChecked()
         self.scale_label.setVisible(checked)
         self.scale_x.setVisible(checked)
@@ -264,11 +269,11 @@ class ImportDataDialog(QDialog):
             self.scale_y.setText(self.sampling_y.text())
             self.scale_z.setText(self.sampling_z.text())
 
-    def _propagate_value(self, text, y_input, z_input):
+    def _propagate_value(self, text: str, y_input: QLineEdit, z_input: QLineEdit):
         y_input.setText(text)
         z_input.setText(text)
 
-    def set_files(self, filenames):
+    def set_files(self, filenames: Sequence[str]):
         from ..formats._utils import get_extension
         from ..formats.parser import read_star, read_volume, resolve_parser
 
@@ -363,7 +368,7 @@ class ImportDataDialog(QDialog):
             "override": override,
         }
 
-    def load_file_parameters(self, filename):
+    def load_file_parameters(self, filename: str | PathLike[str]):
         if filename not in self.file_parameters:
             return None
 

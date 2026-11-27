@@ -1,4 +1,6 @@
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -19,9 +21,18 @@ from qtpy.QtWidgets import (
 from ..icons import icon
 from ..widgets import DialogFooter, MosaicMessageBox, PathSelector
 
+if TYPE_CHECKING:
+    from ..geometry import Geometry
+
 
 class MeshMappingRow(QWidget):
-    def __init__(self, clusters, is_first=False, parent=None, dialog=None):
+    def __init__(
+        self,
+        clusters: "Sequence[tuple[str, Geometry]]",
+        is_first: bool = False,
+        parent: QWidget | None = None,
+        dialog: "MeshMappingDialog | None" = None,
+    ):
         super().__init__(parent)
         self.clusters = clusters
         self.dialog = dialog
@@ -51,7 +62,7 @@ class MeshMappingRow(QWidget):
         layout.addWidget(self.cluster_combo, 2)
         layout.addWidget(self.toggle_btn)
 
-    def update_button_state(self, state):
+    def update_button_state(self, state: bool):
         if state:
             self.toggle_btn.setIcon(icon("ph.plus"))
             self.toggle_btn.clicked.connect(self.add_requested)
@@ -75,7 +86,12 @@ class MeshMappingRow(QWidget):
 
 
 class MeshMappingDialog(QDialog):
-    def __init__(self, fits, clusters, parent=None):
+    def __init__(
+        self,
+        fits: "Sequence[tuple[str, Geometry]]",
+        clusters: "Sequence[tuple[str, Geometry]]",
+        parent: QWidget | None = None,
+    ):
         super().__init__(parent)
         self.fits = fits
         self.clusters = clusters

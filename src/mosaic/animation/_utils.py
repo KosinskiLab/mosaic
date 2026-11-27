@@ -6,8 +6,10 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Callable
 from contextlib import contextmanager
 from os.path import splitext
+from typing import TYPE_CHECKING
 
 import numpy as np
 from PIL import Image
@@ -18,9 +20,17 @@ from vtkmodules.vtkRenderingCore import vtkWindowToImageFilter
 
 from ..geometry import render_scale
 
+if TYPE_CHECKING:
+    import vtk
+    from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+
 
 def read_frame(
-    window_to_image, target_width, target_height, magnification=1, transparent_bg=False
+    window_to_image: vtkWindowToImageFilter,
+    target_width: int,
+    target_height: int,
+    magnification: int = 1,
+    transparent_bg: bool = False,
 ):
     """Read and post-process a frame from a vtkWindowToImageFilter.
 
@@ -84,7 +94,7 @@ _TEXT_PROPERTY_GETTERS = (
 )
 
 
-def _iter_props(render_window):
+def _iter_props(render_window: "vtk.vtkRenderWindow"):
     """Yield every prop in every renderer, assembly parts included."""
     from vtkmodules.vtkRenderingCore import vtkPropCollection
 
@@ -109,7 +119,7 @@ def _iter_props(render_window):
 
 
 @contextmanager
-def scaled_device_pixel_attributes(render_window, factor: float):
+def scaled_device_pixel_attributes(render_window: "vtk.vtkRenderWindow", factor: float):
     """Scale pixel-denominated render attributes for the duration of a capture.
 
     Parameters
@@ -135,7 +145,11 @@ def scaled_device_pixel_attributes(render_window, factor: float):
     restore = []
     scaled = set()
 
-    def scale(owner, attribute, transform):
+    def scale(
+        owner: "vtk.vtkObject | None",
+        attribute: str,
+        transform: Callable[[float], float],
+    ):
         if owner is None or (owner, attribute) in scaled:
             return
 
@@ -173,13 +187,13 @@ def scaled_device_pixel_attributes(render_window, factor: float):
 
 
 def capture_frame(
-    render_window,
+    render_window: "vtk.vtkRenderWindow",
     transparent_bg: bool = False,
     magnification: int = 1,
-    multisamples: int = None,
-    width: int = None,
-    height: int = None,
-    pixel_scale: float = None,
+    multisamples: int | None = None,
+    width: int | None = None,
+    height: int | None = None,
+    pixel_scale: float | None = None,
 ) -> np.ndarray:
     """Capture the current frame from a VTK render window.
 
@@ -260,7 +274,9 @@ def capture_frame(
     return arr
 
 
-def compute_crop_context(render_window, width, height, padding=0.1):
+def compute_crop_context(
+    render_window: "vtk.vtkRenderWindow", width: int, height: int, padding: float = 0.1
+):
     """Precompute render window size and crop region for actor-tight capture.
 
     Parameters
@@ -338,7 +354,7 @@ def compute_crop_context(render_window, width, height, padding=0.1):
     }
 
 
-def capture_cropped(render_window, ctx):
+def capture_cropped(render_window: "vtk.vtkRenderWindow", ctx: dict):
     """Capture a frame and crop using a precomputed context.
 
     Parameters
@@ -364,7 +380,7 @@ def capture_cropped(render_window, ctx):
     return np.ascontiguousarray(frame[fh - y - h : fh - y, x : x + w])
 
 
-def restore_window_size(render_window, ctx):
+def restore_window_size(render_window: "vtk.vtkRenderWindow", ctx: dict):
     """Restore the render window to its original size after cropped capture."""
     render_window.SetSize(*ctx["original_size"])
     render_window.Render()
@@ -373,7 +389,7 @@ def restore_window_size(render_window, ctx):
 class ScreenshotManager:
     """Manages screenshot capture and export for VTK widgets."""
 
-    def __init__(self, vtk_widget):
+    def __init__(self, vtk_widget: "QVTKRenderWindowInteractor"):
         self.vtk_widget = vtk_widget
 
     def copy_to_clipboard(self, window: bool = False):
@@ -410,8 +426,8 @@ class ScreenshotManager:
     def capture(
         self,
         transparent_bg: bool = False,
-        width: int = None,
-        height: int = None,
+        width: int | None = None,
+        height: int | None = None,
         magnification: int = 2,
         multisamples: int = 8,
     ):

@@ -8,8 +8,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from sys import argv, executable
 
-from qtpy.QtCore import Qt, QThread, QUrl, Signal
-from qtpy.QtGui import QDesktopServices
+from qtpy.QtCore import QObject, Qt, QThread, QUrl, Signal
+from qtpy.QtGui import QCloseEvent, QDesktopServices
 from qtpy.QtWidgets import (
     QApplication,
     QDialog,
@@ -134,7 +134,9 @@ class UpdateChecker(QThread):
 
     update_available = Signal(str, bool)
 
-    def __init__(self, current_version: str = __version__, parent=None):
+    def __init__(
+        self, current_version: str = __version__, parent: QObject | None = None
+    ):
         super().__init__(parent)
         self.current_version = str(current_version)
 
@@ -155,7 +157,7 @@ class _InstallWorker(QThread):
 
     completed = Signal(bool, str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
         self._process = None
 
@@ -242,7 +244,7 @@ class UpdateDialog(QDialog):
         current_version: str,
         latest_version: str,
         has_changelog: bool = False,
-        parent=None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.setModal(True)
@@ -480,7 +482,7 @@ class UpdateDialog(QDialog):
         Popen([executable] + argv)
         QApplication.instance().quit()
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         if self._worker is not None and self._worker.isRunning():
             self._worker.cancel()
             self._worker.wait(2000)

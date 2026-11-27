@@ -47,9 +47,6 @@ def test_place_add_through_interactor_is_undoable(interactor):
     assert interactor.container.get(result.uuid) is None
 
 
-from mosaic.swaps import place as _place  # noqa: F401  (path sanity)
-
-
 def test_distance_crop_is_undoable(interactor):
     from types import SimpleNamespace
 

@@ -16,7 +16,7 @@ from pathlib import Path
 from mosaic.pipeline.executor import execute_run, generate_runs
 
 
-def run_wrapper(run_config, skip_complete: bool = False):
+def run_wrapper(run_config: dict, skip_complete: bool = False):
 
     run_id = run_config["run_id"]
     try:

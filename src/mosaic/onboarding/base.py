@@ -8,7 +8,10 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from ..gui import App
 
 __all__ = ["OnboardingChapter", "OnboardingStep"]
 
@@ -39,13 +42,13 @@ class OnboardingChapter:
         self._main_window = None
         self._stash: dict[str, tuple[list, list]] = {}
 
-    def setup(self, main_window) -> None:
+    def setup(self, main_window: "App") -> None:
         self._main_window = main_window
 
     def steps(self) -> list[OnboardingStep]:
         raise NotImplementedError
 
-    def teardown(self, main_window) -> None:
+    def teardown(self, main_window: "App") -> None:
         pass
 
     def snapshot(self, key: str) -> None:

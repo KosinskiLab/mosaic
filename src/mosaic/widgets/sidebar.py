@@ -11,6 +11,7 @@ from qtpy.QtWidgets import (
     QLabel,
     QSizePolicy,
     QSplitter,
+    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -20,7 +21,7 @@ from .search_widget import SearchWidget
 
 
 class ObjectBrowserSidebar(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self._widgets = {}
@@ -46,7 +47,7 @@ class ObjectBrowserSidebar(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         self._apply_styling()
 
-    def add_widget(self, title, widget):
+    def add_widget(self, title: str, widget: QWidget):
         box = QWidget()
         box.setStyleSheet("background: transparent;")
         box_lay = QVBoxLayout(box)
@@ -63,7 +64,7 @@ class ObjectBrowserSidebar(QWidget):
         self._widgets[title] = widget
         self._boxes[title] = box
 
-    def remove_widget(self, title):
+    def remove_widget(self, title: str):
         if title not in self._widgets:
             return
         widget = self._widgets.pop(title)
@@ -72,7 +73,7 @@ class ObjectBrowserSidebar(QWidget):
         widget.setParent(None)
         box.setParent(None)
 
-    def _style_label(self, label):
+    def _style_label(self, label: QLabel):
         label.setStyleSheet(
             f"""
             font-size: {Typography.LABEL}px; font-weight: 600;
@@ -97,7 +98,7 @@ class ObjectBrowserSidebar(QWidget):
             if hasattr(widget, "_on_theme_changed"):
                 widget._on_theme_changed()
 
-    def _filter_objects(self, text):
+    def _filter_objects(self, text: str):
         lower = text.lower()
         for widget in self._widgets.values():
             if hasattr(widget, "tree_widget"):
@@ -107,7 +108,7 @@ class ObjectBrowserSidebar(QWidget):
             if hasattr(widget, "filter_items"):
                 widget.filter_items(text)
 
-    def _filter_item(self, item, text):
+    def _filter_item(self, item: QTreeWidgetItem, text: str):
         if not text:
             item.setHidden(False)
             for i in range(item.childCount()):

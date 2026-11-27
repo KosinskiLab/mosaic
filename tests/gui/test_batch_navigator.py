@@ -6,6 +6,7 @@ from qtpy.QtCore import Qt
 from mosaic.formats.session import session_save_path
 from mosaic.settings import Settings
 from mosaic.widgets.container_list import SessionListWidget
+from mosaic.widgets.sidebar import ObjectBrowserSidebar
 
 
 class TestSessionListWidget:
@@ -287,9 +288,6 @@ class TestSessionHeader:
         widget = SessionListWidget(cdata=Mock())
         widget.set_sessions(["/p/a.mosaic"])
         assert widget._tree.itemDelegate()._icon_size_for(widget._items[0]) == 20
-
-
-from mosaic.widgets.sidebar import ObjectBrowserSidebar
 
 
 @pytest.fixture

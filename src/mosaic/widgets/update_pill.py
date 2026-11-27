@@ -7,7 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from qtpy.QtCore import Qt, Signal
-from qtpy.QtWidgets import QPushButton
+from qtpy.QtWidgets import QPushButton, QWidget
 
 from ..stylesheets import Colors, Typography
 
@@ -23,7 +23,7 @@ class UpdatePill(QPushButton):
 
     update_clicked = Signal(str, bool)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__("Update Mosaic", parent)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedHeight(26)

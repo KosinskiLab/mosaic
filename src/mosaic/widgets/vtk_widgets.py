@@ -6,6 +6,15 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+
+    from ..data import MosaicData
+    from ..geometry import Geometry
+
 __all__ = [
     "AXIS_COLORS",
     "AxesWidget",
@@ -32,7 +41,9 @@ AXIS_COLORS = Colors.AXIS
 class LegendWidget:
     """Widget for visualization of scalar mappings."""
 
-    def __init__(self, renderer, interactor):
+    def __init__(
+        self, renderer: vtk.vtkRenderer, interactor: vtk.vtkRenderWindowInteractor
+    ):
         self.renderer = renderer
         self.interactor = interactor
 
@@ -73,7 +84,7 @@ class LegendWidget:
         default_lut.Build()
         self.set_lookup_table(default_lut)
 
-    def set_lookup_table(self, lut, title=""):
+    def set_lookup_table(self, lut: vtk.vtkScalarsToColors, title: str = ""):
         self.scalar_bar.SetLookupTable(lut)
         display_title = f"{title}\n" if title else title
         self.scalar_bar.SetTitle(display_title)
@@ -153,7 +164,10 @@ class ScaleBarWidget:
 
 
 def create_bounding_box_actor(
-    bounds_or_shape, offset=None, color=(0.5, 0.5, 0.5), opacity=1.0
+    bounds_or_shape: "ArrayLike",
+    offset: "ArrayLike | None" = None,
+    color: tuple[float, ...] = (0.5, 0.5, 0.5),
+    opacity: float = 1.0,
 ):
     """
     Create a bounding box actor from bounds or shape.
@@ -210,7 +224,12 @@ def create_bounding_box_actor(
 class BoundingBoxManager:
     """Manager for showing bounding boxes"""
 
-    def __init__(self, renderer, interactor, cdata):
+    def __init__(
+        self,
+        renderer: vtk.vtkRenderer,
+        interactor: vtk.vtkRenderWindowInteractor,
+        cdata: "MosaicData",
+    ):
         self.renderer = renderer
         self.interactor = interactor
         self.cdata = cdata
@@ -244,7 +263,12 @@ class BoundingBoxManager:
             model_geometries=[i for i in self.cdata.models.container.data if i.visible],
         )
 
-    def show_selected_boxes(self, *args, data_geometries=None, model_geometries=None):
+    def show_selected_boxes(
+        self,
+        *args,
+        data_geometries: "Sequence[Geometry] | None" = None,
+        model_geometries: "Sequence[Geometry] | None" = None,
+    ):
         """Show bounding boxes for selected objects only"""
         self.clear_object_boxes()
 
@@ -259,7 +283,7 @@ class BoundingBoxManager:
 
         self.renderer.GetRenderWindow().Render()
 
-    def _create_object_box(self, geometry):
+    def _create_object_box(self, geometry: "Geometry"):
         """Create a bounding box actor for a specific geometry object"""
         bounds = geometry._actor.GetBounds()
 
@@ -288,7 +312,7 @@ class BoundingBoxManager:
             self.renderer.RemoveActor(self.session_box_actor)
             self.session_box_actor = None
 
-    def show_dataset_bounds(self, visible):
+    def show_dataset_bounds(self, visible: bool):
         """Toggle bounding box computed from all loaded data"""
         if visible:
             if not self.dataset_box_actor:
@@ -299,7 +323,7 @@ class BoundingBoxManager:
                 self.dataset_box_actor = None
         self.renderer.GetRenderWindow().Render()
 
-    def show_session_bounds(self, visible):
+    def show_session_bounds(self, visible: bool):
         """Toggle session bounding box from cdata.shape"""
         if visible:
             if not self.session_box_actor:
@@ -360,7 +384,9 @@ class BoundingBoxManager:
 class AxesWidget:
     """Widget for displaying coordinate axes in the viewport."""
 
-    def __init__(self, renderer, interactor):
+    def __init__(
+        self, renderer: vtk.vtkRenderer, interactor: vtk.vtkRenderWindowInteractor
+    ):
         self.axes_actor = vtkAxesActor()
         self.axes_actor.SetTotalLength(20, 20, 20)
         self.axes_actor.SetShaftType(1)

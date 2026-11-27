@@ -8,12 +8,12 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import json
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import imageio
 from qtpy.QtCore import QSize, Qt, QTimer
-from qtpy.QtGui import QKeySequence, QShortcut
+from qtpy.QtGui import QCloseEvent, QKeySequence, QShortcut
 from qtpy.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -48,6 +48,12 @@ from .animations import AnimationType, BaseAnimation
 from .settings import AnimationSettings, ExportDialog
 from .timeline import TimelineWidget
 
+if TYPE_CHECKING:
+    from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+
+    from ..data import MosaicData
+    from ..widgets.volume_viewer_hud import VolumeViewerHUD
+
 
 @dataclass
 class Track:
@@ -66,7 +72,13 @@ class AnimationComposerDialog(QDialog):
         "PNG Sequence": {"ext": ".png", "video": False},
     }
 
-    def __init__(self, vtk_widget, volume_viewer=None, cdata=None, parent=None):
+    def __init__(
+        self,
+        vtk_widget: "QVTKRenderWindowInteractor",
+        volume_viewer: "VolumeViewerHUD | None" = None,
+        cdata: "MosaicData | None" = None,
+        parent: QWidget | None = None,
+    ):
         super().__init__(parent)
         self.tracks: list[Track] = []
         self.selected_track = None
@@ -373,7 +385,7 @@ class AnimationComposerDialog(QDialog):
             t.animation.global_start_frame + t.animation.duration for t in self.tracks
         )
 
-    def _cleanup_tracks(self, tracks=None):
+    def _cleanup_tracks(self, tracks: list[Track] | None = None):
         """Restore state modified by the given tracks."""
         tracks = tracks or self.tracks
         for track in tracks:
@@ -495,7 +507,7 @@ class AnimationComposerDialog(QDialog):
 
         self.set_current_frame(next_frame)
 
-    def _on_loop_changed(self, state):
+    def _on_loop_changed(self, state: int):
         """Handle loop checkbox state change."""
         self.is_looping = state == Qt.CheckState.Checked.value
 
@@ -523,7 +535,7 @@ class AnimationComposerDialog(QDialog):
             lambda: self.set_current_frame(self.current_frame + 1)
         )
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         """Clean up all tracks when the dialog is closed."""
         self._cleanup_tracks()
         super().closeEvent(event)

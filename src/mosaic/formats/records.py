@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+from numpy.typing import DTypeLike
 
 
 class NotASegmentationError(ValueError):
@@ -127,9 +128,8 @@ class GeometryDataContainer:
         if len(self.vertices) != len(self.normals):
             raise ValueError("Normals need to be specified for each vertex set.")
 
-        if self.faces is not None:
-            if len(self.vertices) != len(self.faces):
-                raise ValueError("Faces need to be specified for each vertex set.")
+        if self.faces is not None and len(self.vertices) != len(self.faces):
+            raise ValueError("Faces need to be specified for each vertex set.")
 
     def __len__(self):
         return len(self.vertices)
@@ -149,7 +149,7 @@ class GeometryDataContainer:
         )
 
     @staticmethod
-    def _to_dtype(data: list[np.ndarray], dtype=np.float32):
+    def _to_dtype(data: list[np.ndarray], dtype: DTypeLike = np.float32):
         try:
             n_elements = len(data)
         except Exception:

@@ -12,8 +12,14 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import json
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from .undo import STACK
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+    from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 __all__ = ["MosaicData"]
 
@@ -27,7 +33,7 @@ class MosaicData:
         VTK widget instance for 3D visualization.
     """
 
-    def __init__(self, vtk_widget):
+    def __init__(self, vtk_widget: "QVTKRenderWindowInteractor"):
         super().__init__()
         from .commands.session import Session
         from .interactor import DataContainerInteractor
@@ -44,7 +50,12 @@ class MosaicData:
         self.viewport = ViewportInteractor(vtk_widget, [self.data, self.models])
 
     def open_file(
-        self, filename, offset=0, scale=1, sampling_rate=1, segmentation=False
+        self,
+        filename: str,
+        offset: "ArrayLike" = 0,
+        scale: "ArrayLike" = 1,
+        sampling_rate: "ArrayLike" = 1,
+        segmentation: bool = False,
     ):
         """Open a file and register new geometries with the GUI."""
         data_container = self.data.container
@@ -76,7 +87,7 @@ class MosaicData:
         return self._session.metadata.get("shape")
 
     @shape.setter
-    def shape(self, value):
+    def shape(self, value: "ArrayLike | None"):
         if value is None:
             self._session.metadata.pop("shape", None)
         else:
@@ -86,7 +97,9 @@ class MosaicData:
     def physical_shape(self):
         return self._session.metadata.get("physical_shape")
 
-    def register_session_hook(self, collect, restore):
+    def register_session_hook(
+        self, collect: Callable[[], dict], restore: Callable[[dict], object]
+    ):
         """Register callbacks for session save/load.
 
         Parameters
@@ -100,7 +113,7 @@ class MosaicData:
         """
         self._session_hooks.append((collect, restore))
 
-    def to_file(self, filename: str, sections: dict = None) -> str:
+    def to_file(self, filename: str, sections: dict | None = None) -> str:
         """Save current application state to file and return the path written."""
         self._session._data_tree = self.data.data_list.to_state()
         self._session._models_tree = self.models.data_list.to_state()
@@ -173,7 +186,7 @@ class MosaicData:
         return self.viewport.refresh_lod()
 
     def format_datalist(
-        self, type="data", mesh_only: bool = False, selected: bool = False
+        self, type: str = "data", mesh_only: bool = False, selected: bool = False
     ):
         """Format data list for dialog display."""
         if mesh_only and type != "models":
@@ -202,7 +215,7 @@ class MosaicData:
             ret.append((geometry._meta.get("name", ""), geometry))
         return ret
 
-    def get_tree_state(self, type="data"):
+    def get_tree_state(self, type: str = "data"):
         """Get the tree state (group structure) for a container."""
         if type == "models":
             return self.models.data_list.to_state()

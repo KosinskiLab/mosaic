@@ -1,5 +1,7 @@
 import warnings
+from collections.abc import Sequence
 from functools import partial
+from typing import TYPE_CHECKING
 
 import numpy as np
 from qtpy.QtWidgets import QVBoxLayout, QWidget
@@ -10,17 +12,23 @@ from ..parallel import submit_task, submit_task_batch
 from ..registry import MethodRegistry
 from ..widgets.ribbon import create_button
 
+if TYPE_CHECKING:
+    from ..data import MosaicData
+    from ..geometry import Geometry
+    from ..widgets.ribbon import RibbonToolBar
+    from ..widgets.vtk_widgets import LegendWidget
+
 
 def _repair_mesh(
-    geometry,
-    max_hole_size=None,
-    bridge_alpha=0.0,
-    smoothness=0,
-    curvature_weight=0,
-    pressure=0,
-    flip_normals=False,
-    fair_all=False,
-    boundary_ring=0,
+    geometry: "Geometry",
+    max_hole_size: int | None = None,
+    bridge_alpha: float = 0.0,
+    smoothness: int = 0,
+    curvature_weight: float = 0,
+    pressure: float = 0,
+    flip_normals: bool = False,
+    fair_all: bool = False,
+    boundary_ring: int = 0,
 ):
     from .. import meshing
     from ..geometry import GeometryData
@@ -89,7 +97,7 @@ def _repair_mesh(
     )
 
 
-def _fill_mesh(mesh_geometry):
+def _fill_mesh(mesh_geometry: "Geometry"):
     from ..geometry import GeometryData
 
     model = mesh_geometry.model
@@ -99,8 +107,8 @@ def _fill_mesh(mesh_geometry):
 
 
 def _project(
-    mesh_geometries,
-    geometries,
+    mesh_geometries: "Sequence[Geometry]",
+    geometries: "Sequence[Geometry]",
     projection: str = "closest",
     update_normals: bool = False,
     partition: bool = False,
@@ -190,7 +198,13 @@ def _project(
 
 
 class ModelTab(QWidget):
-    def __init__(self, cdata, ribbon, legend, **kwargs):
+    def __init__(
+        self,
+        cdata: "MosaicData",
+        ribbon: "RibbonToolBar",
+        legend: "LegendWidget",
+        **kwargs,
+    ):
         super().__init__()
         self.cdata = cdata
         self.ribbon = ribbon
@@ -309,7 +323,7 @@ class ModelTab(QWidget):
         ]
         self.ribbon.add_section("Mesh Operations", mesh_actions)
 
-    def _default_callback(self, geom, label="Operation"):
+    def _default_callback(self, geom: "Geometry", label: str = "Operation"):
         from ..geometry import Geometry, GeometryData
         from ..parametrization import TriangularMesh
         from ..swaps import place
@@ -375,7 +389,7 @@ class ModelTab(QWidget):
             ]
         )
 
-    def _smooth_parallel(self, method, **kwargs):
+    def _smooth_parallel(self, method: str, **kwargs):
         from ..operations import GeometryOperations
 
         submit_task_batch(
@@ -391,7 +405,9 @@ class ModelTab(QWidget):
             ]
         )
 
-    def _sample_parallel(self, sampling, method, normal_offset=0.0, **kwargs):
+    def _sample_parallel(
+        self, sampling: float, method: str, normal_offset: float = 0.0, **kwargs
+    ):
         from ..operations import GeometryOperations
 
         submit_task_batch(
@@ -412,7 +428,7 @@ class ModelTab(QWidget):
             ]
         )
 
-    def _remesh_parallel(self, method, **kwargs):
+    def _remesh_parallel(self, method: str, **kwargs):
         from ..operations import GeometryOperations
 
         submit_task_batch(

@@ -6,10 +6,13 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pyqtgraph as pg
+from numpy.typing import ArrayLike
 from qtpy.QtCore import QSize, Qt, Signal
-from qtpy.QtGui import QColor, QDoubleValidator
+from qtpy.QtGui import QCloseEvent, QColor, QDoubleValidator
 from qtpy.QtWidgets import (
     QComboBox,
     QDialog,
@@ -26,11 +29,14 @@ from qtpy.QtWidgets import (
 from ..utils import Throttle
 from ..widgets.sliders import DualHandleSlider
 
+if TYPE_CHECKING:
+    from ..data import MosaicData
+
 
 class HistogramWidget(QWidget):
     cutoff_changed = Signal(float, float)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
 
         self.data = []
@@ -127,7 +133,7 @@ class HistogramWidget(QWidget):
 
         return controls_layout
 
-    def update_histogram(self, data):
+    def update_histogram(self, data: ArrayLike):
         """Update the histogram with new data"""
         self.data = np.asarray(data)
 
@@ -138,7 +144,7 @@ class HistogramWidget(QWidget):
                 return None
         return self._draw_histogram()
 
-    def _invert_scaling(self, value):
+    def _invert_scaling(self, value: float):
         if self.transform_combo.currentText().lower() == "log":
             return 10**value
         return value
@@ -175,7 +181,12 @@ class HistogramWidget(QWidget):
         label = "Cluster Size" + (" (log scale)" if log_scale else "")
         self.histogram_plot.setLabel("bottom", label)
 
-    def _update_cutoff_values(self, lower_value=None, upper_value=None, emit=True):
+    def _update_cutoff_values(
+        self,
+        lower_value: float | None = None,
+        upper_value: float | None = None,
+        emit: bool = True,
+    ):
         """Update cutoff values and propagate changes to UI elements."""
 
         if lower_value is None:
@@ -215,7 +226,7 @@ class HistogramWidget(QWidget):
                 self._invert_scaling(lower_value), self._invert_scaling(upper_value)
             )
 
-    def _handle_input_change(self, is_lower):
+    def _handle_input_change(self, is_lower: bool):
         """Handle changes to either min/max input field."""
         try:
             input_field = self.min_value_input if is_lower else self.max_value_input
@@ -229,14 +240,14 @@ class HistogramWidget(QWidget):
             line = self.lower_cutoff_line if is_lower else self.upper_cutoff_line
             input_field.setText(str(int(line.value())))
 
-    def _on_bin_count_changed(self, value):
+    def _on_bin_count_changed(self, value: int):
         """Update the number of bins used in the histogram"""
         self.bin_count = value
         self._draw_histogram()
 
 
 class HistogramDialog(QDialog):
-    def __init__(self, cdata, parent=None):
+    def __init__(self, cdata: "MosaicData", parent: QWidget | None = None):
         super().__init__(parent)
         self.cdata = cdata
         self.setWindowTitle("Histogram")
@@ -259,10 +270,12 @@ class HistogramDialog(QDialog):
     def get_cluster_size(self):
         return [x.get_number_of_points() for x in self.cdata.data.container.data]
 
-    def update_histogram(self, data=None):
+    def update_histogram(self, data: ArrayLike | None = None):
         self.histogram_widget.update_histogram(self.get_cluster_size())
 
-    def _on_cutoff_changed(self, lower_cutoff, upper_cutoff=None):
+    def _on_cutoff_changed(
+        self, lower_cutoff: float, upper_cutoff: float | None = None
+    ):
         cluster_sizes = self.get_cluster_size()
         if upper_cutoff is None:
             upper_cutoff = max(cluster_sizes) + 1
@@ -274,7 +287,7 @@ class HistogramDialog(QDialog):
                 uuids.append(geometry.uuid)
         self.cdata.data.set_selection_by_uuid(uuids)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         """Disconnect when dialog closes"""
         self.histogram_widget.histogram_plot.close()
         try:

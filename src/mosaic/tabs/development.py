@@ -1,7 +1,10 @@
 import time
+from os import PathLike
+from typing import TYPE_CHECKING
 
 import numpy as np
-from qtpy.QtCore import QEvent, Qt, QTimer
+from qtpy.QtCore import QEvent, QObject, Qt, QTimer
+from qtpy.QtGui import QCloseEvent
 from qtpy.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -15,11 +18,17 @@ from qtpy.QtWidgets import (
 from ..widgets import MosaicMessageBox
 from ..widgets.ribbon import create_button
 
+if TYPE_CHECKING:
+    import vtk
+
+    from ..data import MosaicData
+    from ..widgets.ribbon import RibbonToolBar
+
 
 class PerformanceMonitor:
     """Monitor VTK rendering performance"""
 
-    def __init__(self, render_window):
+    def __init__(self, render_window: "vtk.vtkRenderWindow"):
         self.render_window = render_window
         self.frame_times = []
         self.start_time = None
@@ -47,7 +56,7 @@ class PerformanceMonitor:
             "frame_count": len(frame_times),
         }
 
-    def print_stats(self, label="Performance"):
+    def print_stats(self, label: str = "Performance"):
         stats = self.get_stats()
         if stats:
             print(f"\n=== {label} ===")
@@ -75,7 +84,7 @@ class DevelopmentTab(QWidget):
         Qt.Key.Key_F: "fill",
     }
 
-    def __init__(self, cdata, ribbon, **kwargs):
+    def __init__(self, cdata: "MosaicData", ribbon: "RibbonToolBar", **kwargs):
         super().__init__()
         self.cdata = cdata
         self.ribbon = ribbon
@@ -225,7 +234,7 @@ class DevelopmentTab(QWidget):
         monitor.print_stats()
         return monitor
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent):
         if self._overlay is None or not self._overlay.active:
             return super().eventFilter(obj, event)
 
@@ -283,7 +292,7 @@ class DevelopmentTab(QWidget):
 
         return super().eventFilter(obj, event)
 
-    def _switch_tool(self, tool_id):
+    def _switch_tool(self, tool_id: str):
         if self._tool_panel is not None:
             self._tool_panel.set_active_tool(tool_id)
         self._on_tool_changed(tool_id)
@@ -336,7 +345,7 @@ class DevelopmentTab(QWidget):
         if self._tool_dock is not None:
             original_close = self._tool_dock.closeEvent
 
-            def _on_dock_close(event):
+            def _on_dock_close(event: QCloseEvent):
                 self._deactivate_overlay()
                 self._tool_panel = None
                 original_close(event)
@@ -399,7 +408,7 @@ class DevelopmentTab(QWidget):
         # activation to the next tick so we read fully-settled state.
         QTimer.singleShot(0, self._activate_overlay)
 
-    def _on_threshold_changed(self, value):
+    def _on_threshold_changed(self, value: float):
         """Re-threshold cached logits and update the overlay."""
         if self._cached_logits is None or self._prediction_label_id is None:
             return
@@ -412,11 +421,11 @@ class DevelopmentTab(QWidget):
         if self._overlay.active:
             self._overlay._refresh_overlay_slice()
 
-    def _on_brush_changed(self, value):
+    def _on_brush_changed(self, value: float):
         if self._overlay is not None:
             self._overlay._brush_diameter = max(1, int(value))
 
-    def _on_tint_changed(self, value):
+    def _on_tint_changed(self, value: float):
         if self._overlay is not None:
             self._overlay.set_tint_strength(value)
 
@@ -432,7 +441,7 @@ class DevelopmentTab(QWidget):
         if 0 <= index < self._tool_panel.label_list.count():
             self._tool_panel.label_list.setCurrentRow(index)
 
-    def _on_tool_changed(self, tool_id):
+    def _on_tool_changed(self, tool_id: str):
         if tool_id != "navigate" and (
             self._overlay is None or not self._overlay.active
         ):
@@ -609,7 +618,7 @@ class DevelopmentTab(QWidget):
         scalars = numpy_support.vtk_to_numpy(volume.GetPointData().GetScalars())
         return scalars.reshape(dims, order="F").astype(np.float32)
 
-    def _prepare_manifest(self, action="train"):
+    def _prepare_manifest(self, action: str = "train"):
         """Validate state and build a training manifest.
 
         Returns ``(manifest, fg_labels, bg_labels, label_name, tmp_dir)``
@@ -718,7 +727,9 @@ class DevelopmentTab(QWidget):
         )
 
     @staticmethod
-    def _save_patch(output_dir, idx, img, mask):
+    def _save_patch(
+        output_dir: str | PathLike[str], idx: int, img: np.ndarray, mask: np.ndarray
+    ):
         """Save an image/mask pair as PNGs for visual inspection.
 
         Mask values: 0 (bg) → black, 1 (fg) → white, 2 (ignore) → gray.
@@ -727,7 +738,7 @@ class DevelopmentTab(QWidget):
 
         from PIL import Image
 
-        def to_uint8(arr):
+        def to_uint8(arr: np.ndarray):
             arr = arr.astype(np.float64)
             lo, hi = arr.min(), arr.max()
             if hi - lo > 0:
@@ -770,7 +781,7 @@ class DevelopmentTab(QWidget):
         from ..models.trainer import train_from_manifest
         from ..parallel import submit_task
 
-        def _on_complete(result):
+        def _on_complete(result: dict):
             import io
 
             import torch
@@ -869,7 +880,7 @@ class DevelopmentTab(QWidget):
         threshold = self._tool_panel.logit_threshold if self._tool_panel else 0.0
         pred_name = f"Prediction: {active.name}" if active else "Prediction"
 
-        def _on_complete(logits):
+        def _on_complete(logits: np.ndarray):
             # Cache logits for interactive re-thresholding
             self._cached_logits = logits
 

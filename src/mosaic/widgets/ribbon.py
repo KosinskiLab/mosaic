@@ -1,5 +1,16 @@
-from qtpy.QtCore import QEvent, QPoint, QRectF, QSize, Qt, QTimer, Signal
-from qtpy.QtGui import QColor, QPainter, QPainterPath, QPen
+from collections.abc import Callable, Iterable
+
+from qtpy.QtCore import QEvent, QObject, QPoint, QRectF, QSize, Qt, QTimer, Signal
+from qtpy.QtGui import (
+    QCloseEvent,
+    QColor,
+    QMouseEvent,
+    QPainter,
+    QPainterPath,
+    QPaintEvent,
+    QPen,
+    QResizeEvent,
+)
 from qtpy.QtWidgets import (
     QApplication,
     QFrame,
@@ -25,7 +36,7 @@ class SettingsPanel(QFrame):
     PANEL_WIDTH = 350
     LABEL_COLUMN_WIDTH = 100
 
-    def __init__(self, config, parent_button=None):
+    def __init__(self, config: dict, parent_button: QPushButton | None = None):
         super().__init__(parent=parent_button.window() if parent_button else None)
         self.config = config.copy()
         self.parent_button = parent_button
@@ -129,7 +140,7 @@ class SettingsPanel(QFrame):
 
         self.setFocusProxy(apply_btn)
 
-    def _add_form_row(self, label_text, widget):
+    def _add_form_row(self, label_text: str, widget: QWidget):
         label = QLabel(label_text)
         self.settings_grid.addWidget(
             label, self._grid_row, 0, Qt.AlignmentFlag.AlignVCenter
@@ -159,7 +170,7 @@ class SettingsPanel(QFrame):
             ret[parameter] = get_widget_value(widget)
         return ret
 
-    def update_method_settings(self, method):
+    def update_method_settings(self, method: str):
         if self.method_row_start is None:
             return
 
@@ -191,7 +202,7 @@ class SettingsPanel(QFrame):
         self.settings_applied.emit(settings)
         self.close()
 
-    def showAtButton(self, button):
+    def showAtButton(self, button: QPushButton):
         """Position and show the panel below the button."""
         self.parent_button = button
         self.adjustSize()
@@ -213,7 +224,7 @@ class SettingsPanel(QFrame):
         if hasattr(button, "_set_panel_open"):
             button._set_panel_open(True)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         app = QApplication.instance()
         if app is not None:
             app.removeEventFilter(self)
@@ -221,7 +232,7 @@ class SettingsPanel(QFrame):
             self.parent_button._set_panel_open(False)
         super().closeEvent(event)
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent):
         if event.type() == QEvent.Type.MouseButtonPress:
             if QApplication.activeModalWidget() is not None:
                 return False
@@ -238,7 +249,7 @@ class SettingsPanel(QFrame):
                 self.close()
         return False
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         """Custom paint to draw connected border with button."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -314,7 +325,12 @@ class RibbonButton(QPushButton):
     CHEVRON_WIDTH = 24
 
     def __init__(
-        self, text, icon_name, settings_config=None, parent=None, callback=None
+        self,
+        text: str,
+        icon_name: str,
+        settings_config: dict | None = None,
+        parent: QWidget | None = None,
+        callback: Callable[..., object] | None = None,
     ):
         self._has_settings = settings_config is not None
         super().__init__(text, parent)
@@ -354,7 +370,7 @@ class RibbonButton(QPushButton):
             self.settings_panel.settings_applied.connect(self._applied_settings)
         return self.settings_panel
 
-    def set_collapsed(self, collapsed):
+    def set_collapsed(self, collapsed: bool):
         if collapsed == self._collapsed:
             return
         self._collapsed = collapsed
@@ -374,7 +390,7 @@ class RibbonButton(QPushButton):
         self.setIcon(icon(self._icon_name, role="active"))
         self._apply_style()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         super().paintEvent(event)
         if not self._has_settings:
             return None
@@ -395,7 +411,7 @@ class RibbonButton(QPushButton):
         p.drawPath(path)
         p.end()
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         if self._has_settings:
             self._chevron_clicked = event.pos().x() >= self.width() - self.CHEVRON_WIDTH
         super().mousePressEvent(event)
@@ -416,7 +432,7 @@ class RibbonButton(QPushButton):
             return self.callback(**settings) if self.callback else None
         return self.callback() if self.callback else None
 
-    def _applied_settings(self, settings):
+    def _applied_settings(self, settings: dict):
         return self.callback(**settings) if self.callback else None
 
     def _toggle_panel(self):
@@ -426,7 +442,7 @@ class RibbonButton(QPushButton):
         else:
             panel.showAtButton(self)
 
-    def _set_panel_open(self, is_open):
+    def _set_panel_open(self, is_open: bool):
         self._panel_open = is_open
         self._apply_style()
 
@@ -472,7 +488,7 @@ class RibbonButton(QPushButton):
 
 
 class RibbonToolBar(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setFixedHeight(42)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -500,7 +516,7 @@ class RibbonToolBar(QWidget):
         self._dividers.clear()
         self._buttons.clear()
 
-    def button(self, name):
+    def button(self, name: str):
         for btn in self._buttons:
             if isinstance(btn, RibbonButton) and btn._full_text == name:
                 return btn
@@ -515,7 +531,7 @@ class RibbonToolBar(QWidget):
             if hasattr(btn, "_on_theme_changed"):
                 btn._on_theme_changed()
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QResizeEvent):
         super().resizeEvent(event)
         self._update_collapse()
 
@@ -549,7 +565,7 @@ class RibbonToolBar(QWidget):
                 needed -= btn._full_width - btn._collapsed_width
                 btn.set_collapsed(True)
 
-    def add_section(self, title, actions):
+    def add_section(self, title: str, actions: Iterable[QWidget]):
         if self._sections:
             div = QFrame()
             div.setFixedWidth(1)
@@ -577,7 +593,12 @@ class RibbonToolBar(QWidget):
 
 
 def create_button(
-    text, icon_name, parent=None, callback=None, tooltip=None, settings_config=None
+    text: str,
+    icon_name: str,
+    parent: QWidget | None = None,
+    callback: Callable[..., object] | None = None,
+    tooltip: str | None = None,
+    settings_config: dict | None = None,
 ):
     button = RibbonButton(
         text, icon_name, settings_config, parent=parent, callback=callback

@@ -9,7 +9,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from io import StringIO
 
 from rich.box import ROUNDED, SIMPLE_HEAD
-from rich.console import Console
+from rich.console import Console, RenderableType
 from rich.theme import Theme
 
 from ..stylesheets import Colors
@@ -46,7 +46,7 @@ def get_console() -> Console:
     return _console
 
 
-def render_to_text(renderable) -> str:
+def render_to_text(renderable: RenderableType) -> str:
     """Render a rich renderable to plain text (no ANSI codes).
 
     Used for ``$()`` substitution and script output where markup

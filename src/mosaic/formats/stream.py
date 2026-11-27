@@ -7,6 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from collections import OrderedDict
+from collections.abc import Callable, Sequence
 
 import numpy as np
 import vtk
@@ -27,7 +28,7 @@ class ZarrPyramid:
         Maximum decoded chunk cache size in bytes.
     """
 
-    def __init__(self, levels, cache_bytes=8 * 1024**3):
+    def __init__(self, levels: list[dict], cache_bytes: int = 8 * 1024**3):
         self._levels = list(levels)
         self._cache_bytes = cache_bytes
 
@@ -40,16 +41,18 @@ class ZarrPyramid:
     def num_levels(self):
         return len(self._levels)
 
-    def level_shape(self, n):
+    def level_shape(self, n: int):
         return tuple(self._levels[n]["shape"])
 
-    def level_spacing(self, n):
+    def level_spacing(self, n: int):
         return tuple(float(s) for s in self._levels[n]["spacing"])
 
     def level_spacings(self):
         return [self.level_spacing(i) for i in range(self.num_levels)]
 
-    def read_region(self, level, x0, x1, y0, y1, z0, z1):
+    def read_region(
+        self, level: int, x0: int, x1: int, y0: int, y1: int, z0: int, z1: int
+    ):
         """
         Return a float32 ZYX array for the requested extent at *level*.
 
@@ -90,7 +93,17 @@ class ZarrPyramid:
             self._fill_fallback(level, result, x0, x1, y0, y1, z0, z1)
         return result
 
-    def _fill_fallback(self, level, result, x0, x1, y0, y1, z0, z1):
+    def _fill_fallback(
+        self,
+        level: int,
+        result: np.ndarray,
+        x0: int,
+        x1: int,
+        y0: int,
+        y1: int,
+        z0: int,
+        z1: int,
+    ):
         """Fill zero regions from any overlapping cached chunk at another level."""
         cur_sp = self.level_spacing(level)
         phys_z = (z0 * cur_sp[0], (z1 + 1) * cur_sp[0])
@@ -144,7 +157,7 @@ class ZarrPyramid:
             self._cache.move_to_end((cl, *ck_idx))
 
     @staticmethod
-    def _upsample_into(source, target):
+    def _upsample_into(source: np.ndarray, target: np.ndarray):
         """Upsample *source* into zero regions of *target*."""
         if source.shape == target.shape:
             mask = target == 0
@@ -158,21 +171,23 @@ class ZarrPyramid:
         mask = target == 0
         target[mask] = upsampled[mask]
 
-    def _chunks_for(self, level):
+    def _chunks_for(self, level: int):
         arr = self._levels[level]["array"]
         chunks = getattr(arr, "chunks", None)
         if chunks is None:
             return tuple(self._levels[level]["shape"])
         return tuple(int(c) for c in chunks)
 
-    def _overlapping_chunks(self, level, x0, x1, y0, y1, z0, z1):
+    def _overlapping_chunks(
+        self, level: int, x0: int, x1: int, y0: int, y1: int, z0: int, z1: int
+    ):
         cz, cy, cx = self._chunks_for(level)
         for iz in range(z0 // cz, z1 // cz + 1):
             for iy in range(y0 // cy, y1 // cy + 1):
                 for ix in range(x0 // cx, x1 // cx + 1):
                     yield (iz, iy, ix)
 
-    def _chunk_slices(self, level, iz, iy, ix):
+    def _chunk_slices(self, level: int, iz: int, iy: int, ix: int):
         cz, cy, cx = self._chunks_for(level)
         sz, sy, sx = self._levels[level]["shape"]
         return (
@@ -181,7 +196,16 @@ class ZarrPyramid:
             slice(ix * cx, min((ix + 1) * cx, sx)),
         )
 
-    def _copy_chunk(self, level, cache_key, chunk_idx, result, x0, y0, z0):
+    def _copy_chunk(
+        self,
+        level: int,
+        cache_key: tuple[int, int, int, int],
+        chunk_idx: tuple[int, int, int],
+        result: np.ndarray,
+        x0: int,
+        y0: int,
+        z0: int,
+    ):
         chunk_data = self._cache[cache_key]
         zs, ys, xs = self._chunk_slices(level, *chunk_idx)
 
@@ -201,7 +225,7 @@ class ZarrPyramid:
 
         result[rz, ry, rx] = chunk_data[sz, sy, sx]
 
-    def _put_cache(self, key, data):
+    def _put_cache(self, key: tuple[int, int, int, int], data: np.ndarray):
         if key in self._cache:
             self._cache_used -= self._cache[key].nbytes
         self._cache[key] = data
@@ -210,7 +234,7 @@ class ZarrPyramid:
             _, evicted = self._cache.popitem(last=False)
             self._cache_used -= evicted.nbytes
 
-    def _fetch_chunk_data(self, level, chunk_key):
+    def _fetch_chunk_data(self, level: int, chunk_key: tuple[int, int, int]):
         """Worker-thread: read the chunk; no shared-state mutation."""
         cache_key = (level, *chunk_key)
         try:
@@ -221,14 +245,18 @@ class ZarrPyramid:
         except Exception:
             return cache_key, None
 
-    def _install_chunk(self, fetched):
+    def _install_chunk(
+        self, fetched: tuple[tuple[int, int, int, int], np.ndarray | None]
+    ):
         """GUI-thread: install the fetched chunk into the cache."""
         cache_key, data = fetched
         self._pending.discard(cache_key)
         if data is not None:
             self._put_cache(cache_key, data)
 
-    def _on_chunk_fetched(self, fetched):
+    def _on_chunk_fetched(
+        self, fetched: tuple[tuple[int, int, int, int], np.ndarray | None]
+    ):
         """GUI-thread callback for an IO-pool fetch."""
         self._install_chunk(fetched)
         if self._on_chunk_ready is not None:
@@ -248,7 +276,7 @@ class ZarrImageSource(VTKPythonAlgorithmBase):
         Pyramid level to start at.
     """
 
-    def __init__(self, pyramid, initial_level=-1):
+    def __init__(self, pyramid: ZarrPyramid, initial_level: int = -1):
         super().__init__(
             nInputPorts=0,
             nOutputPorts=1,
@@ -277,15 +305,20 @@ class ZarrImageSource(VTKPythonAlgorithmBase):
     def level_spacings(self):
         return self.pyramid.level_spacings()
 
-    def set_level(self, n):
+    def set_level(self, n: int):
         n = max(0, min(n, self.num_levels - 1))
         if n != self._level:
             self._level = n
 
-    def set_on_chunk_ready(self, callback):
+    def set_on_chunk_ready(self, callback: Callable[[], object] | None):
         self.pyramid._on_chunk_ready = callback
 
-    def RequestInformation(self, request, inInfo, outInfo):
+    def RequestInformation(
+        self,
+        request: vtk.vtkInformation,
+        inInfo: vtk.vtkInformationVector,
+        outInfo: vtk.vtkInformationVector,
+    ):
         info = outInfo.GetInformationObject(0)
         z, y, x = self.shape
         info.Set(
@@ -301,7 +334,12 @@ class ZarrImageSource(VTKPythonAlgorithmBase):
         info.Set(vtk.vtkDataObject.ORIGIN(), 0.0, 0.0, 0.0)
         return 1
 
-    def RequestData(self, request, inInfo, outInfo):
+    def RequestData(
+        self,
+        request: vtk.vtkInformation,
+        inInfo: vtk.vtkInformationVector,
+        outInfo: vtk.vtkInformationVector,
+    ):
         info = outInfo.GetInformationObject(0)
         output = vtk.vtkImageData.GetData(outInfo)
 
@@ -320,7 +358,7 @@ class ZarrImageSource(VTKPythonAlgorithmBase):
         return 1
 
 
-def resolve_omezarr(url):
+def resolve_omezarr(url: str):
     """
     Open a remote OME-Zarr store and return all pyramid levels with metadata.
 
@@ -398,7 +436,7 @@ def resolve_omezarr(url):
     return levels, info
 
 
-def open_omezarr(url):
+def open_omezarr(url: str):
     """
     Open a remote OME-Zarr store and return a VTK streaming source.
 
@@ -418,7 +456,7 @@ def open_omezarr(url):
     return source, info
 
 
-def pick_level(spacings, world_per_pixel):
+def pick_level(spacings: Sequence[Sequence[float]], world_per_pixel: float):
     """
     Choose the coarsest pyramid level that is still sharp at the given zoom.
 

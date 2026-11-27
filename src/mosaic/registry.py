@@ -12,6 +12,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -177,7 +178,7 @@ class Operation:
     title: str = "Settings"
     targets: bool = True
 
-    def build_usage(self, method_name: str = None) -> str:
+    def build_usage(self, method_name: str | None = None) -> str:
         """Derive the canonical usage synopsis from parameter metadata.
 
         Parameters
@@ -292,12 +293,12 @@ _DECORATED_OPERATIONS = []
 
 
 def operation(
-    methods=(),
-    common_params=(),
-    method_param_name="method",
-    title="Settings",
-    targets=True,
-    decorator=None,
+    methods: tuple[Method, ...] = (),
+    common_params: tuple[Param, ...] = (),
+    method_param_name: str = "method",
+    title: str = "Settings",
+    targets: bool = True,
+    decorator: Callable[[Callable], Callable] | None = None,
 ):
     """Register an :class:`Operation` from a decorated function.
 
@@ -307,7 +308,7 @@ def operation(
     registration.
     """
 
-    def wrapper(func):
+    def wrapper(func: Callable):
         desc = ""
         method_descs = {}
         if func.__doc__:

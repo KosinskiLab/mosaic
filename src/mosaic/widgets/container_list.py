@@ -1,17 +1,20 @@
 import os
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from qtpy.QtCore import (
     QEvent,
     QItemSelection,
     QItemSelectionModel,
+    QModelIndex,
+    QObject,
     QPoint,
     QRect,
-    QSize,
     Qt,
     Signal,
 )
-from qtpy.QtGui import QColor, QPainter
+from qtpy.QtGui import QColor, QDropEvent, QMouseEvent, QPainter
 from qtpy.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -24,20 +27,25 @@ from qtpy.QtWidgets import (
     QPushButton,
     QStyle,
     QStyledItemDelegate,
+    QStyleOptionViewItem,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
-from ..icons import icon as _icon_factory
 from ..formats.session import prefer_mosaic_sessions, session_save_path
-from ..settings import Settings
+from ..icons import icon as _icon_factory
 from ..pipeline._utils import natural_sort_key, strip_filepath
+from ..settings import Settings
 from ..stylesheets import Colors, Typography
 from ..tree_state import TreeState, TreeStateData
 from .dock import menu_pos_above, style_popup
 from .message_box import MosaicMessageBox
+
+if TYPE_CHECKING:
+    from ..data import MosaicData
+    from ..geometry import Geometry
 
 
 class SelectionIndicator(QWidget):
@@ -74,7 +82,7 @@ class SelectionIndicator(QWidget):
         self.setVisible(True)
         self._on_theme_changed()
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent):
         if obj is self._tree.viewport() and event.type() == QEvent.Type.Resize:
             self._reposition()
             self._recompute()
@@ -106,7 +114,9 @@ class SelectionIndicator(QWidget):
         self._update_label(self._bottom_label, self._below, "\u2193")
         self._reposition()
 
-    def _update_label(self, label, items, arrow):
+    def _update_label(
+        self, label: QLabel, items: Sequence[QTreeWidgetItem], arrow: str
+    ):
         if not items:
             label.hide()
             return
@@ -128,7 +138,7 @@ class SelectionIndicator(QWidget):
         self._top_label.setGeometry(4, 0, w - 8, 16)
         self._bottom_label.setGeometry(4, h - 16, w - 8, 16)
 
-    def _scroll_to(self, items):
+    def _scroll_to(self, items: Sequence[QTreeWidgetItem]):
         if not items:
             return
         target = items[0]
@@ -158,7 +168,7 @@ class _DropAwareTreeWidget(QTreeWidget):
 
     dropped = Signal()
 
-    def dropEvent(self, event):
+    def dropEvent(self, event: QDropEvent):
         super().dropEvent(event)
         self.dropped.emit()
 
@@ -168,7 +178,7 @@ class ContainerTreeWidget(QFrame):
 
     structure_changed = Signal()
 
-    def __init__(self, title: str = None, compact: bool = False):
+    def __init__(self, title: str | None = None, compact: bool = False):
         super().__init__()
         self.setFrameStyle(QFrame.Shape.NoFrame)
 
@@ -276,7 +286,7 @@ class ContainerTreeWidget(QFrame):
             for uuid in uuids:
                 group_item.addChild(uuid_to_items[uuid])
 
-    def update(self, uuid_to_items):
+    def update(self, uuid_to_items: "Mapping[str, StyledTreeWidgetItem]"):
         """
         Update tree incrementally based on provided items.
 
@@ -295,7 +305,9 @@ class ContainerTreeWidget(QFrame):
                 continue
             self.tree_widget.addTopLevelItem(item)
 
-    def _move_items_to_parent(self, items, new_parent):
+    def _move_items_to_parent(
+        self, items: Sequence[QTreeWidgetItem], new_parent: QTreeWidgetItem
+    ):
         """Move items to a new parent (or root if None).
 
         Parameters
@@ -369,7 +381,7 @@ class ContainerTreeWidget(QFrame):
         self.structure_changed.emit()
         return len(selected_items)
 
-    def traverse(self, reverse=False):
+    def traverse(self, reverse: bool = False):
         """Generator that yields all (item, parent, index) tuples.
 
         Parameters
@@ -394,7 +406,7 @@ class ContainerTreeWidget(QFrame):
         else:
             yield from items
 
-    def _process_tree_items(self, uuid_to_items):
+    def _process_tree_items(self, uuid_to_items: "Mapping[str, StyledTreeWidgetItem]"):
         """Walk tree, replace existing items, and remove invalid items."""
         existing_uuids = set()
 
@@ -419,14 +431,14 @@ class ContainerTreeWidget(QFrame):
                     self.tree_widget.takeTopLevelItem(index)
         return existing_uuids
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         """Forward all other attributes to tree_widget for compatibility."""
         return getattr(self.tree_widget, name)
 
-    def addItem(self, item):
+    def addItem(self, item: QTreeWidgetItem):
         self.tree_widget.addTopLevelItem(item)
 
-    def create_group(self, name: str, insert_index: int = None):
+    def create_group(self, name: str, insert_index: int | None = None):
         """Create a new group at the root level.
 
         Parameters
@@ -444,7 +456,7 @@ class ContainerTreeWidget(QFrame):
         group_item.setExpanded(True)
         return group_item
 
-    def _on_item_clicked(self, item, column):
+    def _on_item_clicked(self, item: QTreeWidgetItem, column: int):
         """Handle item clicks - toggle expand/collapse for groups and select children."""
         if not isinstance(item, GroupTreeWidgetItem):
             return
@@ -458,7 +470,7 @@ class ContainerTreeWidget(QFrame):
             item.update_icon(item.isExpanded())
         self._select_group_children(item)
 
-    def _select_group_children(self, group_item):
+    def _select_group_children(self, group_item: QTreeWidgetItem):
         """Select all children of a group and the group itself.
 
         Parameters
@@ -484,7 +496,9 @@ class ContainerTreeWidget(QFrame):
         self._set_selection(items_to_select, selection_flag)
 
     def _set_selection(
-        self, items, selection_flag=QItemSelectionModel.SelectionFlag.ClearAndSelect
+        self,
+        items: Sequence[QTreeWidgetItem],
+        selection_flag: QItemSelectionModel.SelectionFlag = QItemSelectionModel.SelectionFlag.ClearAndSelect,
     ):
         """
         Set selection to specific items.
@@ -511,7 +525,7 @@ class ContainerTreeWidget(QFrame):
     def set_selection(
         self,
         uuids: list[str],
-        selection_flag=QItemSelectionModel.SelectionFlag.ClearAndSelect,
+        selection_flag: QItemSelectionModel.SelectionFlag = QItemSelectionModel.SelectionFlag.ClearAndSelect,
     ):
         """
         Set selection to specific items.
@@ -537,7 +551,7 @@ class ContainerTreeWidget(QFrame):
 class GroupTreeWidgetItem(QTreeWidgetItem):
     """Special tree widget item representing a group."""
 
-    def __init__(self, name: str, parent=None):
+    def __init__(self, name: str, parent: QTreeWidget | QTreeWidgetItem | None = None):
         super().__init__(parent, [name])
         self.group_name = name
 
@@ -557,7 +571,7 @@ class GroupTreeWidgetItem(QTreeWidgetItem):
         name = "ph.caret-down" if expanded else "ph.caret-right"
         self.setIcon(0, _icon_factory(name, role="muted"))
 
-    def setData(self, column, role, value):
+    def setData(self, column: int, role: int, value: Any):
         """Update group_name when text is changed."""
         if role == Qt.ItemDataRole.EditRole:
             self.group_name = value
@@ -584,12 +598,12 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
 
     def __init__(
         self,
-        text=None,
-        visible=True,
-        metadata=None,
-        parent=None,
-        editable=False,
-        geometry=None,
+        text: str | None = None,
+        visible: bool = True,
+        metadata: dict | None = None,
+        parent: QTreeWidget | QTreeWidgetItem | None = None,
+        editable: bool = False,
+        geometry: "Geometry | None" = None,
     ):
 
         self._geometry = geometry
@@ -635,7 +649,7 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
 
         self.set_visible(other.visible)
 
-    def update_icon(self, visible):
+    def update_icon(self, visible: bool):
         """Update the item icon based on type and visibility."""
         self.visible = visible
 
@@ -655,13 +669,13 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
         icon = _icon_factory(icon_name, color=color, scale_factor=0.85)
         self.setIcon(0, icon)
 
-    def set_visible(self, visible):
+    def set_visible(self, visible: bool):
         """Update visibility state and icon."""
         self.update_icon(visible)
         foreground = self.original_color if visible else QColor(Colors.TEXT_MUTED)
         self.setForeground(0, foreground)
 
-    def text(self, column=0):
+    def text(self, column: int = 0):
         return super().text(column)
 
     def setData(self, *args):
@@ -702,7 +716,7 @@ class SessionTreeItem(QTreeWidgetItem):
 class MetadataItemDelegate(QStyledItemDelegate):
     """Delegate for custom selection/hover painting."""
 
-    def __init__(self, parent=None, compact: bool = False):
+    def __init__(self, parent: QObject | None = None, compact: bool = False):
         super().__init__(parent)
         # Compact mode strips the left padding for embedded uses (e.g. option
         # blocks in dialogs); the default keeps a small breathing room.
@@ -713,17 +727,19 @@ class MetadataItemDelegate(QStyledItemDelegate):
         self._header_icon_size = 14
         self._item_icon_size = 20
 
-    def _icon_size_for(self, item) -> int:
+    def _icon_size_for(self, item: QTreeWidgetItem) -> int:
         return (
             self._item_icon_size
             if isinstance(item, (StyledTreeWidgetItem, SessionTreeItem))
             else self._header_icon_size
         )
 
-    def _indent_for(self, index):
+    def _indent_for(self, index: QModelIndex):
         return self._child_indent if index.parent().isValid() else 0
 
-    def updateEditorGeometry(self, editor, option, index):
+    def updateEditorGeometry(
+        self, editor: QWidget, option: QStyleOptionViewItem, index: QModelIndex
+    ):
         tree_widget = self.parent()
         item = tree_widget.itemFromIndex(index)
         icon_size = self._icon_size_for(item)
@@ -733,7 +749,9 @@ class MetadataItemDelegate(QStyledItemDelegate):
         text_left = self._pad + icon_size + 4 if has_icon else self._pad
         editor.setGeometry(option.rect.adjusted(text_left + indent - 4, 2, 0, -2))
 
-    def paint(self, painter, option, index):
+    def paint(
+        self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex
+    ):
         tree_widget = self.parent()
         item = tree_widget.itemFromIndex(index)
 
@@ -804,7 +822,7 @@ class MetadataItemDelegate(QStyledItemDelegate):
 class _CheckableMenu(QMenu):
     """Menu that stays open when a checkable action is clicked."""
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent):
         action = self.actionAt(event.position().toPoint())
         if action is not None and action.isCheckable() and action.isEnabled():
             action.trigger()
@@ -833,7 +851,9 @@ class _SessionHeader(QWidget):
         QPushButton:focus {{ outline: none; }}
     """
 
-    def __init__(self, session_widget, parent=None):
+    def __init__(
+        self, session_widget: "SessionListWidget", parent: QWidget | None = None
+    ):
         super().__init__(parent)
         self._session_widget = session_widget
 
@@ -904,10 +924,10 @@ class _SessionHeader(QWidget):
         button_rect = QRect(top_left, self._menu_btn.size())
         self._menu.exec(menu_pos_above(button_rect, self._menu.sizeHint()))
 
-    def _on_auto_save_toggled(self, checked):
+    def _on_auto_save_toggled(self, checked: bool):
         self._session_widget._auto_save = checked
 
-    def _on_load_tomogram_toggled(self, checked):
+    def _on_load_tomogram_toggled(self, checked: bool):
         Settings.ui.load_linked_tomogram = checked
 
     def _apply_btn_style(self):
@@ -931,7 +951,7 @@ class _SessionHeader(QWidget):
         self._action("Clear all sessions").setIcon(icon("ph.trash", role="muted"))
 
 
-def confirm_session_overwrite(parent, source: str) -> bool:
+def confirm_session_overwrite(parent: QWidget, source: str) -> bool:
     """Ask before a legacy ``.pickle`` save replaces an existing ``.mosaic``.
 
     Parameters
@@ -970,7 +990,7 @@ class SessionListWidget(QWidget):
     session_path_changed = Signal(str, str)
     link_tomograms_requested = Signal()
 
-    def __init__(self, cdata, parent=None):
+    def __init__(self, cdata: "MosaicData", parent: QWidget | None = None):
         super().__init__(parent)
         self._cdata = cdata
         self.session_files = []
@@ -1004,7 +1024,7 @@ class SessionListWidget(QWidget):
         self._layout.addWidget(self._tree, 1)
         self._layout.addWidget(self._header)
 
-    def set_sessions(self, filepaths):
+    def set_sessions(self, filepaths: Sequence[str]):
         self.session_files = prefer_mosaic_sessions(
             sorted(filepaths, key=natural_sort_key)
         )
@@ -1032,15 +1052,14 @@ class SessionListWidget(QWidget):
         self._rebuild_items()
 
     def clear_sessions(self):
-        if self._auto_save and self._session_modified:
-            if not self.save_current():
-                return None
+        if self._auto_save and self._session_modified and not self.save_current():
+            return None
 
         self.session_files.clear()
         self.current_index = -1
         self._rebuild_items()
 
-    def set_current(self, filepath):
+    def set_current(self, filepath: str):
         try:
             self.current_index = self.session_files.index(filepath)
         except ValueError:
@@ -1056,7 +1075,7 @@ class SessionListWidget(QWidget):
         self._session_modified = False
         return True
 
-    def replace_paths(self, mapping):
+    def replace_paths(self, mapping: Mapping[str, str]):
         """Swap list entries using an old to new mapping."""
         current = None
         if 0 <= self.current_index < len(self.session_files):
@@ -1073,14 +1092,16 @@ class SessionListWidget(QWidget):
                 self.session_path_changed.emit(old, new)
         return None
 
-    def mark_saved(self, filepath):
+    def mark_saved(self, filepath: str):
         """Clear the modified flag if ``filepath`` is the current session."""
-        if 0 <= self.current_index < len(self.session_files):
-            if self.session_files[self.current_index] == filepath:
-                self._session_modified = False
+        if (
+            0 <= self.current_index < len(self.session_files)
+            and self.session_files[self.current_index] == filepath
+        ):
+            self._session_modified = False
         return None
 
-    def _save_to(self, filepath):
+    def _save_to(self, filepath: str):
         if not confirm_session_overwrite(self, filepath):
             return False
 
@@ -1123,7 +1144,7 @@ class SessionListWidget(QWidget):
         except (TypeError, RuntimeError):
             pass
 
-    def filter_items(self, text):
+    def filter_items(self, text: str):
         lower = text.lower()
         for item in self._items:
             name = strip_filepath(item.data(0, Qt.ItemDataRole.UserRole)).lower()
@@ -1153,14 +1174,13 @@ class SessionListWidget(QWidget):
         )
         if reply == QMessageBox.StandardButton.Cancel:
             return False
-        if reply == QMessageBox.StandardButton.Save:
-            if not self.save_current():
-                return False
+        if reply == QMessageBox.StandardButton.Save and not self.save_current():
+            return False
 
         self._session_modified = False
         return True
 
-    def remove_session(self, index):
+    def remove_session(self, index: int):
         """Remove a single session by index. Prompts to save if removing the active session."""
         if index < 0 or index >= len(self.session_files):
             return None
@@ -1219,13 +1239,12 @@ class SessionListWidget(QWidget):
             self._items[self.current_index].setSelected(True)
         self._tree.blockSignals(False)
 
-    def _on_item_clicked(self, item):
+    def _on_item_clicked(self, item: SessionTreeItem):
         if (index := self._tree.indexOfTopLevelItem(item)) == self.current_index:
             return None
 
-        if self._auto_save and self._session_modified:
-            if not self.save_current():
-                return None
+        if self._auto_save and self._session_modified and not self.save_current():
+            return None
 
         self.current_index = index
         self._update_highlight()
@@ -1233,7 +1252,7 @@ class SessionListWidget(QWidget):
         self.load_requested.emit(filepath)
         self._session_modified = False
 
-    def _on_context_menu(self, pos):
+    def _on_context_menu(self, pos: QPoint):
         if (item := self._tree.itemAt(pos)) is None:
             return None
 
