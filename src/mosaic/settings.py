@@ -120,6 +120,7 @@ class UISettings:
     always_open_as_volume: bool = False
     onboarding_done: bool = False
     load_linked_tomogram: bool = True
+    last_tomogram_folder: str = ""
 
 
 @dataclass

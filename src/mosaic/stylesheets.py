@@ -1062,6 +1062,11 @@ def build_appstyle():
 
                 current = combo.currentIndex()
                 for i in range(combo.count()):
+                    role = Qt.ItemDataRole.AccessibleDescriptionRole
+                    if combo.itemData(i, role) == "separator":
+                        menu.addSeparator()
+                        continue
+
                     action = menu.addAction(combo.itemText(i))
                     if i == current:
                         f = action.font()

@@ -1,8 +1,27 @@
 import os
+import pickle
 
 import pytest
 
-from mosaic.formats.tomogram_matching import match_tomograms, scan_tomograms
+from mosaic.formats.session import read_session_meta, write_session
+from mosaic.formats.tomogram_matching import (
+    NO_TOMOGRAM,
+    LinkRow,
+    LinkWriteResult,
+    Match,
+    build_rows,
+    detected_key,
+    entries,
+    initial_folder,
+    is_warning,
+    link_summary,
+    match_tomograms,
+    pending_changes,
+    resolve_note,
+    scan_tomograms,
+    status_text,
+    write_tomogram_links,
+)
 
 
 @pytest.mark.parametrize(
@@ -44,9 +63,7 @@ def test_tie_is_ambiguous():
     ],
 )
 def test_missing(session, tomos):
-    (m,) = match_tomograms(
-        [f"/s/{session}.mosaic"], [f"/t/{t}.mrc" for t in tomos]
-    )
+    (m,) = match_tomograms([f"/s/{session}.mosaic"], [f"/t/{t}.mrc" for t in tomos])
     assert m.status == "missing" and m.tomogram is None
 
 
@@ -119,3 +136,143 @@ def test_pattern_ambiguous_and_missing():
 def test_pattern_without_key_raises():
     with pytest.raises(ValueError):
         match_tomograms(["/s/a.mosaic"], ["/t/a.mrc"], pattern=("*", "{key}"))
+
+
+@pytest.mark.parametrize(
+    "current, candidates, selection, expected",
+    [
+        (None, ("/t/a.mrc",), "/t/a.mrc", "New"),
+        ("/t/a.mrc", ("/t/a.mrc",), "/t/a.mrc", "Linked"),
+        ("/t/old.mrc", ("/t/a.mrc",), "/t/a.mrc", "Replaced"),
+        ("/t/old.mrc", (), NO_TOMOGRAM, "Removed"),
+        (None, ("/t/a.mrc",), NO_TOMOGRAM, "Skipped"),
+        (None, ("/t/a.mrc", "/t/b.mrc"), None, "2 candidates"),
+        (None, (), None, "No match"),
+    ],
+)
+def test_status_text(current, candidates, selection, expected):
+    row = LinkRow("/s/x.mosaic", current, candidates, selection)
+    assert status_text(row) == expected
+    assert is_warning(row) == (expected in ("2 candidates", "No match"))
+
+
+def test_entries_order():
+    row = LinkRow(
+        "/s/x.mosaic", "/old/x.mrc", ("/t/a.mrc", "/t/b.mrc"), "/elsewhere/c.mrc"
+    )
+    assert entries(row) == ["/t/a.mrc", "/t/b.mrc", "/old/x.mrc", "/elsewhere/c.mrc"]
+    row = LinkRow("/s/x.mosaic", "/t/a.mrc", ("/t/a.mrc",), "/t/a.mrc")
+    assert entries(row) == ["/t/a.mrc"]
+
+
+def test_build_rows_replaces_by_default_and_sorts_attention_first():
+    matches = [
+        Match("/s/TS_2.mosaic", "/t/2.mrc", ("/t/2.mrc",), "matched"),
+        Match("/s/TS_10.mosaic", None, (), "missing"),
+        Match("/s/TS_1.mosaic", "/t/1.mrc", ("/t/1.mrc",), "matched"),
+        Match("/s/TS_3.mosaic", None, ("/t/a", "/t/b"), "ambiguous"),
+        Match("/s/TS_4.mosaic", "/t/4_new.mrc", ("/t/4_new.mrc",), "matched"),
+    ]
+    rows = build_rows(
+        matches, {"/s/TS_4.mosaic": "/t/4_old.mrc", "/s/TS_2.mosaic": "/t/2.mrc"}
+    )
+    assert [r.session for r in rows] == [
+        "/s/TS_3.mosaic",
+        "/s/TS_4.mosaic",
+        "/s/TS_10.mosaic",
+        "/s/TS_1.mosaic",
+        "/s/TS_2.mosaic",
+    ]
+    assert [status_text(r) for r in rows] == [
+        "2 candidates",
+        "Replaced",
+        "No match",
+        "New",
+        "Linked",
+    ]
+    assert pending_changes(rows) == {
+        "/s/TS_4.mosaic": "/t/4_new.mrc",
+        "/s/TS_1.mosaic": "/t/1.mrc",
+    }
+    assert resolve_note(rows) == "2 to resolve"
+
+
+def test_choosing_again_is_the_undo():
+    (row,) = build_rows(
+        [Match("/s/a.mosaic", "/t/new.mrc", ("/t/new.mrc",), "matched")],
+        {"/s/a.mosaic": "/t/old.mrc"},
+    )
+    row.selection = NO_TOMOGRAM
+    assert pending_changes([row]) == {"/s/a.mosaic": None}
+    row.selection = "/t/old.mrc"
+    assert pending_changes([row]) == {} and status_text(row) == "Linked"
+
+
+def test_resolve_note_hidden_when_resolved():
+    (row,) = build_rows([Match("/s/a.mosaic", None, (), "missing")], {})
+    row.selection = "/t/picked.mrc"
+    assert resolve_note([row]) is None and status_text(row) == "New"
+
+
+def test_initial_folder():
+    links = {
+        "/s/a.mosaic": "/data/tomos/TS_1/tomogram.mrc",
+        "/s/b.mosaic": "/data/tomos/TS_2/tomogram.mrc",
+        "/s/c.mosaic": None,
+    }
+    assert initial_folder(links, "/last") == "/data/tomos"
+    assert initial_folder({"/s/a.mosaic": None}, "/last") == "/last"
+    assert initial_folder({}, "") is None
+
+
+def test_detected_key():
+    matches = match_tomograms(
+        ["/s/TS_013_membrane.mosaic", "/s/TS_012_membrane.mosaic"],
+        ["/t/TS_012_rec.mrc", "/t/TS_013_rec.mrc"],
+    )
+    assert detected_key(matches) == ("TS_###", "TS_012_membrane", "TS_012_rec.mrc")
+    assert detected_key([Match("/s/a.mosaic", None, (), "missing")]) is None
+
+
+def test_detected_key_nested_folders(tmp_path):
+    for run in ("TS_012", "TS_013"):
+        (tmp_path / run).mkdir()
+        (tmp_path / run / "tomogram.mrc").write_bytes(b"")
+    tomos = scan_tomograms(str(tmp_path), recursive=True)
+    matches = match_tomograms(["/s/ts_12-seg.mosaic"], tomos, root=str(tmp_path))
+    assert detected_key(matches) == ("ts_##", "ts_12-seg", "TS_012/tomogram.mrc")
+
+
+def test_write_links_converts_legacy_and_continues_on_error(tmp_path):
+    good = str(tmp_path / "a.mosaic")
+    write_session(good, {})
+    legacy = tmp_path / "b.pickle"
+    legacy.write_bytes(pickle.dumps({}))
+    blocked = tmp_path / "c.pickle"
+    blocked.write_bytes(pickle.dumps({}))
+    (tmp_path / "c.mosaic").write_bytes(b"newer")
+    gone = str(tmp_path / "gone.mosaic")
+    changes = {
+        good: "/t/a.mrc",
+        str(legacy): "/t/b.mrc",
+        str(blocked): "/t/c.mrc",
+        gone: "/t/d.mrc",
+    }
+    result = write_tomogram_links(changes)
+    assert read_session_meta(good)["tomogram"] == "/t/a.mrc"
+    assert result.paths == {str(legacy): str(tmp_path / "b.mosaic")}
+    assert read_session_meta(str(tmp_path / "b.mosaic"))["tomogram"] == "/t/b.mrc"
+    assert set(result.errors) == {str(blocked), gone}
+    assert (tmp_path / "c.mosaic").read_bytes() == b"newer"
+    assert link_summary(result, len(changes)) == (
+        "Updated 2 sessions, 1 converted to .mosaic, 2 failed",
+        True,
+    )
+    assert link_summary(LinkWriteResult({}, {}), 1) == ("Updated 1 session", False)
+
+
+def test_write_links_removes_link(tmp_path):
+    path = str(tmp_path / "a.mosaic")
+    write_session(path, {}, sections={"meta": ("json", b'{"tomogram": "/t/a.mrc"}')})
+    result = write_tomogram_links({path: None})
+    assert "tomogram" not in read_session_meta(path) and not result.errors
