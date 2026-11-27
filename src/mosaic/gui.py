@@ -1260,6 +1260,9 @@ class App(QMainWindow):
         if not hasattr(self, "_session_list_widget"):
             self._session_list_widget = SessionListWidget(self.cdata)
             self._session_list_widget.load_requested.connect(self._load_session)
+            self._session_list_widget.session_path_changed.connect(
+                self._on_session_path_changed
+            )
 
         widget = self._session_list_widget
 
@@ -1271,6 +1274,14 @@ class App(QMainWindow):
             self.list_wrapper.add_widget("Sessions", widget)
             widget.activate()
             self.batch_navigator_action.setIcon(icon("ph.compass", role="primary"))
+
+    def _on_session_path_changed(self, old: str, new: str):
+        if self._current_session_path == old:
+            self._current_session_path = new
+        self.status_indicator.update_status(
+            task=f"Converted to {os.path.basename(new)}"
+        )
+        return None
 
     def open_czi_dialog(self):
         """Open the CZI CryoET Data Portal browser."""
@@ -1451,7 +1462,7 @@ class App(QMainWindow):
             self,
             "Open Session",
             "",
-            "Session Files (*.pickle)",
+            "Session Files (*.mosaic *.pickle)",
         )
         if not file_path:
             return -1
@@ -1621,26 +1632,42 @@ class App(QMainWindow):
             return None
 
     def save_session(self):
-        if self._current_session_path:
-            self.cdata.to_file(self._current_session_path)
-            return None
-        return self.save_session_as()
+        path = self._current_session_path
+        if not path:
+            return self.save_session_as()
+
+        from .widgets.container_list import confirm_session_overwrite
+
+        if not confirm_session_overwrite(self, path):
+            return -1
+
+        written = self.cdata.to_file(path)
+        self._current_session_path = written
+        widget = getattr(self, "_session_list_widget", None)
+        if written != path:
+            if widget is not None:
+                widget.replace_paths({path: written})
+            else:
+                self._on_session_path_changed(path, written)
+        if widget is not None:
+            widget.mark_saved(written)
+        return None
 
     def save_session_as(self):
         file_dialog = QFileDialog()
-        file_dialog.setDefaultSuffix("pickle")
+        file_dialog.setDefaultSuffix("mosaic")
         file_path, _ = file_dialog.getSaveFileName(
             self,
             "Save File",
             self._current_session_path or "",
-            "Session Files (*.pickle)",
+            "Session Files (*.mosaic)",
         )
         if not file_path:
             return -1
 
-        if not file_path.lower().endswith(".pickle"):
-            file_path += ".pickle"
-        self.cdata.to_file(file_path)
+        if not file_path.lower().endswith(".mosaic"):
+            file_path += ".mosaic"
+        file_path = self.cdata.to_file(file_path)
         self._current_session_path = file_path
         self._add_file_to_recent(file_path)
 

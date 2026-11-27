@@ -2,6 +2,7 @@ from unittest.mock import Mock
 
 from qtpy.QtCore import Qt
 
+from mosaic.formats.session import session_save_path
 from mosaic.widgets.container_list import SessionListWidget
 
 
@@ -97,6 +98,7 @@ class TestSessionListWidget:
 
     def test_prompt_save_proceeds_when_auto_save_on(self, qapp):
         cdata = Mock()
+        cdata.to_file.side_effect = lambda path: path
         widget = SessionListWidget(cdata=cdata)
         widget.set_sessions(["/p/a.mosaic"])
         widget.current_index = 0
@@ -262,3 +264,57 @@ class TestSidebarSessionIntegration:
         sidebar._filter_objects("tomo")
         assert session_widget._items[0].isHidden()
         assert not session_widget._items[1].isHidden()
+
+
+class TestSessionPathRedirect:
+    def test_autosave_of_pickle_swaps_entry(self, qapp, tmp_path):
+        cdata = Mock()
+        cdata.to_file.side_effect = session_save_path
+        widget = SessionListWidget(cdata=cdata)
+        a, b = str(tmp_path / "a.pickle"), str(tmp_path / "b.mosaic")
+        widget.set_sessions([a, b])
+        widget.current_index, widget._session_modified = 0, True
+        changed = Mock()
+        widget.session_path_changed.connect(changed)
+        widget.load_requested.connect(lambda _: None)
+        widget._on_item_clicked(widget._items[1])
+        assert widget.session_files[0] == str(tmp_path / "a.mosaic")
+        changed.assert_called_once_with(a, str(tmp_path / "a.mosaic"))
+
+    def test_set_sessions_prefers_mosaic(self, qapp, tmp_path):
+        (tmp_path / "a.mosaic").write_bytes(b"")
+        widget = SessionListWidget(cdata=Mock())
+        widget.set_sessions([str(tmp_path / "a.pickle"), str(tmp_path / "a.mosaic")])
+        assert widget.session_files == [str(tmp_path / "a.mosaic")]
+
+    def test_declined_overwrite_keeps_edits_and_does_not_switch(
+        self, qapp, tmp_path, monkeypatch
+    ):
+        (tmp_path / "a.mosaic").write_bytes(b"newer")
+        monkeypatch.setattr(
+            "mosaic.widgets.container_list.confirm_session_overwrite",
+            lambda *_: False,
+        )
+        cdata = Mock()
+        widget = SessionListWidget(cdata=cdata)
+        widget.session_files = [str(tmp_path / "a.pickle"), str(tmp_path / "b.mosaic")]
+        widget._rebuild_items()
+        widget.current_index, widget._session_modified = 0, True
+        widget._on_item_clicked(widget._items[1])
+        cdata.to_file.assert_not_called()
+        assert widget.current_index == 0 and widget._session_modified
+
+    def test_mark_saved_clears_flag(self, qapp):
+        widget = SessionListWidget(cdata=Mock())
+        widget.set_sessions(["/p/a.mosaic"])
+        widget.current_index, widget._session_modified = 0, True
+        widget.mark_saved("/p/a.mosaic")
+        assert widget._session_modified is False
+
+    def test_replace_paths_keeps_current_session(self, qapp):
+        widget = SessionListWidget(cdata=Mock())
+        widget.set_sessions(["/p/a.pickle", "/p/b.pickle"])
+        widget.current_index = 1
+        widget.replace_paths({"/p/b.pickle": "/p/b.mosaic"})
+        assert widget.session_files == ["/p/a.pickle", "/p/b.mosaic"]
+        assert widget.current_index == 1

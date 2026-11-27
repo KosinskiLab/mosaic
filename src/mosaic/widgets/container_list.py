@@ -1,3 +1,4 @@
+import os
 from uuid import uuid4
 
 from qtpy.QtCore import (
@@ -28,6 +29,7 @@ from qtpy.QtWidgets import (
 )
 
 from ..icons import icon as _icon_factory
+from ..formats.session import prefer_mosaic_sessions, session_save_path
 from ..pipeline._utils import natural_sort_key, strip_filepath
 from ..stylesheets import Colors, Typography
 from ..tree_state import TreeState, TreeStateData
@@ -903,10 +905,43 @@ class _SessionHeader(QWidget):
         self._clear_btn.setIcon(icon("ph.trash", role="muted"))
 
 
+def confirm_session_overwrite(parent, source: str) -> bool:
+    """Ask before a legacy ``.pickle`` save replaces an existing ``.mosaic``.
+
+    Parameters
+    ----------
+    parent : QWidget
+        Parent of the dialog.
+    source : str
+        Path the caller wants to save to.
+
+    Returns
+    -------
+    bool
+        True if the save may proceed.
+    """
+    if not source.lower().endswith(".pickle"):
+        return True
+
+    target = session_save_path(source)
+    if not os.path.exists(target):
+        return True
+
+    reply = MosaicMessageBox.question(
+        parent,
+        "Overwrite Session",
+        f"Overwrite {os.path.basename(target)}?",
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        QMessageBox.StandardButton.No,
+    )
+    return reply == QMessageBox.StandardButton.Yes
+
+
 class SessionListWidget(QWidget):
     """Sidebar-integrated session list for batch navigation."""
 
     load_requested = Signal(str)
+    session_path_changed = Signal(str, str)
 
     def __init__(self, cdata, parent=None):
         super().__init__(parent)
@@ -943,7 +978,9 @@ class SessionListWidget(QWidget):
         self._layout.addWidget(self._header)
 
     def set_sessions(self, filepaths):
-        self.session_files = sorted(filepaths, key=natural_sort_key)
+        self.session_files = prefer_mosaic_sessions(
+            sorted(filepaths, key=natural_sort_key)
+        )
         self.current_index = -1
         self._rebuild_items()
 
@@ -952,7 +989,7 @@ class SessionListWidget(QWidget):
             self,
             "Add Session Files",
             "",
-            "Session Files (*.pickle)",
+            "Session Files (*.mosaic *.pickle)",
         )
         if not filepaths:
             return None
@@ -962,7 +999,9 @@ class SessionListWidget(QWidget):
             if fp not in existing:
                 self.session_files.append(fp)
                 existing.add(fp)
-        self.session_files.sort(key=natural_sort_key)
+        self.session_files = prefer_mosaic_sessions(
+            sorted(self.session_files, key=natural_sort_key)
+        )
         self._rebuild_items()
 
     def clear_sessions(self):
@@ -982,9 +1021,37 @@ class SessionListWidget(QWidget):
     def save_current(self):
         if self.current_index < 0 or self.current_index >= len(self.session_files):
             return None
-        filepath = self.session_files[self.current_index]
-        self._cdata.to_file(filepath)
+        if not self._save_to(self.session_files[self.current_index]):
+            return False
+
         self._session_modified = False
+        return True
+
+    def replace_paths(self, mapping):
+        """Swap list entries using an old to new mapping."""
+        self.session_files = [mapping.get(x, x) for x in self.session_files]
+        self._rebuild_items()
+
+        for old, new in mapping.items():
+            if old != new:
+                self.session_path_changed.emit(old, new)
+        return None
+
+    def mark_saved(self, filepath):
+        """Clear the modified flag if ``filepath`` is the current session."""
+        if 0 <= self.current_index < len(self.session_files):
+            if self.session_files[self.current_index] == filepath:
+                self._session_modified = False
+        return None
+
+    def _save_to(self, filepath):
+        if not confirm_session_overwrite(self, filepath):
+            return False
+
+        written = self._cdata.to_file(filepath)
+        if written != filepath:
+            self.replace_paths({filepath: written})
+        return True
 
     def reload_current(self):
         if self.current_index < 0:
@@ -1035,9 +1102,8 @@ class SessionListWidget(QWidget):
             return True
 
         if self._auto_save and self._active:
-            filepath = self.session_files[self.current_index]
-            self._cdata.to_file(filepath)
-            self._session_modified = False
+            if not self.save_current():
+                return False
             return True
 
         reply = MosaicMessageBox.question(
@@ -1052,8 +1118,8 @@ class SessionListWidget(QWidget):
         if reply == QMessageBox.StandardButton.Cancel:
             return False
         if reply == QMessageBox.StandardButton.Save:
-            filepath = self.session_files[self.current_index]
-            self._cdata.to_file(filepath)
+            if not self.save_current():
+                return False
 
         self._session_modified = False
         return True
@@ -1122,10 +1188,12 @@ class SessionListWidget(QWidget):
             return None
 
         if self._auto_save and self._session_modified:
-            self.save_current()
+            if not self.save_current():
+                return None
+
         self.current_index = index
         self._update_highlight()
-        filepath = item.data(0, Qt.ItemDataRole.UserRole)
+        filepath = self.session_files[index]
         self.load_requested.emit(filepath)
         self._session_modified = False
 
