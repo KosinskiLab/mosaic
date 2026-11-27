@@ -798,6 +798,17 @@ class MetadataItemDelegate(QStyledItemDelegate):
         painter.restore()
 
 
+class _CheckableMenu(QMenu):
+    """Menu that stays open when a checkable action is clicked."""
+
+    def mouseReleaseEvent(self, event):
+        action = self.actionAt(event.position().toPoint())
+        if action is not None and action.isCheckable() and action.isEnabled():
+            action.trigger()
+            return None
+        return super().mouseReleaseEvent(event)
+
+
 class _SessionHeader(QWidget):
     """Icon action bar for session management, sits below the session list."""
 
@@ -832,22 +843,22 @@ class _SessionHeader(QWidget):
         lay.setSpacing(4)
 
         self._add_btn = QPushButton("Add sessions")
-        self._add_btn.setIcon(icon("ph.plus", role="muted"))
         self._add_btn.setFixedHeight(h)
         self._add_btn.setToolTip("Add session files")
         self._add_btn.clicked.connect(session_widget.add_sessions)
-        lay.addWidget(self._add_btn, 1)
+        lay.addWidget(self._add_btn)
+        lay.addStretch(1)
 
         self._reload_btn = QPushButton()
         self._reload_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
-        self._reload_btn.setFixedHeight(h)
+        self._reload_btn.setFixedSize(h, h)
         self._reload_btn.setToolTip("Reload current session")
         self._reload_btn.clicked.connect(session_widget.reload_current)
         lay.addWidget(self._reload_btn)
 
         self._menu_btn = QPushButton()
         self._menu_btn.setIcon(icon("ph.gear", role="muted"))
-        self._menu_btn.setFixedHeight(h)
+        self._menu_btn.setFixedSize(h, h)
         self._menu_btn.setToolTip("Session options")
         self._menu_btn.clicked.connect(self._show_menu)
         lay.addWidget(self._menu_btn)
@@ -856,7 +867,8 @@ class _SessionHeader(QWidget):
         self._apply_btn_style()
 
     def _build_menu(self):
-        menu = QMenu(self)
+        # Without a parent the menu takes the app stylesheet, not the sidebar's.
+        menu = _CheckableMenu()
         menu.setWindowFlags(
             menu.windowFlags()
             | Qt.WindowType.FramelessWindowHint
@@ -913,7 +925,6 @@ class _SessionHeader(QWidget):
         self._apply_btn_style()
         from ..icons import icon
 
-        self._add_btn.setIcon(icon("ph.plus", role="muted"))
         self._reload_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
         self._menu_btn.setIcon(icon("ph.gear", role="muted"))
 

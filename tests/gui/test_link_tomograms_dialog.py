@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
 import pytest
+from qtpy.QtCore import Qt
 
 from mosaic.dialogs.link_tomograms import LinkTomogramsDialog
 from mosaic.formats.session import update_session_meta, write_session
@@ -76,12 +77,13 @@ def test_choose_file_cancel_keeps_selection(qapp, dataset, monkeypatch):
     dlg.set_folder(str(tomos))
     monkeypatch.setattr(
         "mosaic.dialogs.link_tomograms.QFileDialog.getOpenFileName",
-        Mock(return_value=("", "")),
+        cancel := Mock(return_value=("", "")),
     )
     i = [r.session for r in dlg.rows()].index(sessions[0])
     combo = dlg._combo(i)
     combo.setCurrentIndex(combo.findText("Choose file…"))
     assert combo.currentText() == "TS_012.mrc" and dlg._status(i) == "New"
+    cancel.assert_called_once()
 
     combo = dlg._combo(0)
 
@@ -164,21 +166,47 @@ def test_key_line_hidden_without_match(qapp, dataset):
     assert not dlg.key_label.isHidden()
 
 
-def test_row_hover_outlines_combo(qapp, dataset):
-    from qtpy.QtGui import QColor
+def test_rematch_leaves_one_combo_per_row(qapp, dataset):
+    sessions, tomos = dataset
+    dlg = LinkTomogramsDialog(sessions)
+    dlg.show()
+    dlg.set_folder(str(tomos))
+    dlg.set_folder(str(tomos), recursive=True)
+    viewport = dlg.table.viewport()
+    shown = [w for w in viewport.children() if w.isWidgetType() and not w.isHidden()]
+    combos = [dlg._combo(i) for i in range(dlg.table.rowCount())]
+    assert len(combos) == len(sessions) and set(shown) == set(combos)
+    dlg.close()
 
-    from mosaic.stylesheets import Colors
 
+def test_wheel_leaves_combo_selection(qapp, dataset, monkeypatch):
+    from qtpy.QtCore import QPoint, QPointF
+    from qtpy.QtGui import QWheelEvent
+
+    from mosaic.stylesheets import build_appstyle
+
+    choose = Mock(return_value=("", ""))
+    monkeypatch.setattr(
+        "mosaic.dialogs.link_tomograms.QFileDialog.getOpenFileName", choose
+    )
     sessions, tomos = dataset
     dlg = LinkTomogramsDialog(sessions)
     dlg.set_folder(str(tomos))
     combo = dlg._combo(1)
-
-    def border():
-        image = combo.grab().toImage()
-        return QColor(image.pixel(0, image.height() // 2)).name()
-
-    dlg._set_hovered(1)
-    assert border() == QColor(Colors.BORDER_HOVER).name()
-    dlg._set_hovered(0)
-    assert border() != QColor(Colors.BORDER_HOVER).name()
+    combo.setStyle(build_appstyle())
+    combo.setCurrentIndex(combo.findText("None"))
+    index = combo.currentIndex()
+    center = QPointF(combo.rect().center())
+    wheel = QWheelEvent(
+        center,
+        QPointF(combo.mapToGlobal(center.toPoint())),
+        QPoint(),
+        QPoint(0, 120),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase,
+        False,
+    )
+    qapp.sendEvent(combo, wheel)
+    assert combo.currentIndex() == index
+    choose.assert_not_called()

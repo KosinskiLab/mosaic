@@ -223,7 +223,8 @@ class TestSessionHeader:
     def test_header_button_order(self, qapp):
         widget = SessionListWidget(cdata=Mock())
         layout = widget._header.layout()
-        widgets = [layout.itemAt(i).widget() for i in range(layout.count())]
+        items = [layout.itemAt(i).widget() for i in range(layout.count())]
+        widgets = [w for w in items if w is not None]
         header = widget._header
         assert widgets == [header._add_btn, header._reload_btn, header._menu_btn]
         assert header._add_btn.text() == "Add sessions"
@@ -255,6 +256,29 @@ class TestSessionHeader:
         widget._header._action("Clear all sessions").trigger()
         assert called == [True]
 
+    def test_checkable_action_keeps_menu_open(self, qapp):
+        from qtpy.QtTest import QTest
+
+        widget = SessionListWidget(cdata=Mock())
+        menu = widget._header._menu
+        auto_save = widget._header._action("Auto-save on switch")
+        menu.popup(widget.mapToGlobal(widget.rect().topLeft()))
+        QTest.mouseClick(
+            menu,
+            Qt.MouseButton.LeftButton,
+            pos=menu.actionGeometry(auto_save).center(),
+        )
+        assert menu.isVisible() and widget._auto_save is False
+
+        link = widget._header._action("Link tomograms…")
+        widget.link_tomograms_requested.connect(lambda: None)
+        QTest.mouseClick(
+            menu,
+            Qt.MouseButton.LeftButton,
+            pos=menu.actionGeometry(link).center(),
+        )
+        assert not menu.isVisible()
+
     def test_session_rows_use_item_icon_size(self, qapp):
         widget = SessionListWidget(cdata=Mock())
         widget.set_sessions(["/p/a.mosaic"])
@@ -262,6 +286,16 @@ class TestSessionHeader:
 
 
 from mosaic.widgets.sidebar import ObjectBrowserSidebar
+
+
+@pytest.fixture
+def app_stylesheet(qapp):
+    from mosaic.stylesheets import build_global_stylesheet
+
+    previous = qapp.styleSheet()
+    qapp.setStyleSheet(build_global_stylesheet())
+    yield
+    qapp.setStyleSheet(previous)
 
 
 class TestSidebarSessionIntegration:
@@ -286,6 +320,34 @@ class TestSidebarSessionIntegration:
         sidebar.add_widget("Sessions", session_widget)
         sidebar.remove_widget("Sessions")
         assert len(session_widget.session_files) == 0
+
+    def test_add_button_fits_at_minimum_width(self, qapp):
+        sidebar = ObjectBrowserSidebar()
+        session_widget = SessionListWidget(cdata=Mock())
+        sidebar.add_widget("Sessions", session_widget)
+        sidebar.resize(sidebar.minimumWidth(), 400)
+        sidebar.show()
+        qapp.processEvents()
+        button = session_widget._header._add_btn
+        assert button.width() >= button.sizeHint().width()
+        sidebar.close()
+
+    def test_header_menu_is_opaque(self, qapp, app_stylesheet):
+        from qtpy.QtGui import QColor
+
+        from mosaic.stylesheets import Colors
+
+        sidebar = ObjectBrowserSidebar()
+        session_widget = SessionListWidget(cdata=Mock())
+        sidebar.add_widget("Sessions", session_widget)
+        sidebar.show()
+        menu = session_widget._header._menu
+        menu.popup(sidebar.mapToGlobal(sidebar.rect().topLeft()))
+        qapp.processEvents()
+        image = menu.grab().toImage()
+        menu.close()
+        sidebar.close()
+        assert QColor(image.pixel(image.width() // 2, 2)) == QColor(Colors.SURFACE)
 
     def test_filter_objects_filters_sessions(self, qapp):
         sidebar = ObjectBrowserSidebar()

@@ -8,8 +8,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import html
 
-from qtpy.QtCore import QEvent, QPointF, Qt
-from qtpy.QtGui import QColor, QPainter, QPen
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QColor
 from qtpy.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -84,24 +84,14 @@ def _text_button(text: str) -> QPushButton:
 
 
 class _Combo(QComboBox):
-    """Combo box drawing its chevron in the muted text color."""
+    """Combo box that leaves wheel events to the table."""
 
-    def paintEvent(self, event) -> None:
-        super().paintEvent(event)
-        hovered = bool(self.property("rowHovered")) or self.underMouse()
-        pen = QPen(QColor(Colors.TEXT_SECONDARY if hovered else Colors.TEXT_MUTED))
-        pen.setWidthF(1.5)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    def __init__(self):
+        super().__init__()
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(pen)
-        x, y = self.width() - 14, self.height() / 2
-        painter.drawPolyline(
-            [QPointF(x - 4, y - 2), QPointF(x, y + 2), QPointF(x + 4, y - 2)]
-        )
-        painter.end()
+    def wheelEvent(self, event) -> None:
+        event.ignore()
         return None
 
 
@@ -134,7 +124,6 @@ class LinkTomogramsDialog(QDialog):
         self._scanned = None
         self._tomograms = []
         self._rows = []
-        self._hovered = -1
 
         self._setup_ui()
 
@@ -213,9 +202,6 @@ class LinkTomogramsDialog(QDialog):
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.table.setMouseTracking(True)
-        self.table.cellEntered.connect(lambda row, _: self._set_hovered(row))
-        self.table.viewport().installEventFilter(self)
 
         rows = self.table.verticalHeader()
         rows.hide()
@@ -238,12 +224,6 @@ class LinkTomogramsDialog(QDialog):
             }}
             QComboBox {{
                 margin: 2px 0px;
-            }}
-            QComboBox::down-arrow {{
-                image: none;
-            }}
-            QComboBox[rowHovered="true"]:!focus {{
-                border: 1px solid {Colors.BORDER_HOVER};
             }}
             """
         )
@@ -293,11 +273,6 @@ class LinkTomogramsDialog(QDialog):
         Settings.ui.last_tomogram_folder = self._folder()
         super().accept()
         return None
-
-    def eventFilter(self, obj, event) -> bool:
-        if obj is self.table.viewport() and event.type() == QEvent.Type.Leave:
-            self._set_hovered(-1)
-        return super().eventFilter(obj, event)
 
     def _folder(self) -> str:
         return self.folder_picker.get_path().strip()
@@ -357,7 +332,6 @@ class LinkTomogramsDialog(QDialog):
         return self._refresh()
 
     def _populate(self) -> None:
-        self._hovered = -1
         self.table.setRowCount(len(self._rows))
         for i, row in enumerate(self._rows):
             session = QTableWidgetItem()
@@ -367,13 +341,15 @@ class LinkTomogramsDialog(QDialog):
             self.table.setItem(i, 0, session)
             self.table.setItem(i, 1, QTableWidgetItem())
 
-            combo = _Combo()
-            combo.setPlaceholderText("Choose…")
-            combo.currentIndexChanged.connect(
-                lambda index, i=i: self._on_selected(i, index)
-            )
-            self.table.setCellWidget(i, 2, combo)
-            self._fill_combo(combo, row)
+            # A replaced cell widget stays visible until exec() returns.
+            if self._combo(i) is None:
+                combo = _Combo()
+                combo.setPlaceholderText("Choose…")
+                combo.currentIndexChanged.connect(
+                    lambda index, i=i: self._on_selected(i, index)
+                )
+                self.table.setCellWidget(i, 2, combo)
+            self._fill_combo(self._combo(i), row)
         return None
 
     def _fill_combo(self, combo: QComboBox, row: LinkRow) -> None:
@@ -407,19 +383,6 @@ class LinkTomogramsDialog(QDialog):
         row.selection = selection
         self._fill_combo(combo, row)
         return self._refresh()
-
-    def _set_hovered(self, i: int) -> None:
-        if i == self._hovered:
-            return None
-
-        for row in (self._hovered, i):
-            if 0 <= row < self.table.rowCount():
-                combo = self._combo(row)
-                combo.setProperty("rowHovered", row == i)
-                combo.style().polish(combo)
-                combo.update()
-        self._hovered = i
-        return None
 
     def _combo(self, i: int) -> QComboBox:
         return self.table.cellWidget(i, 2)
