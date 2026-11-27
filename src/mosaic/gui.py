@@ -52,6 +52,7 @@ from .parallel import BackgroundTaskManager
 from .settings import Settings
 from .stylesheets import Colors
 from .tabs import DevelopmentTab, IntelligenceTab, ModelTab, SegmentationTab
+from .tomogram_link import TomogramLink
 from .undo import STACK
 from .widgets import (
     AxesWidget,
@@ -1278,9 +1279,7 @@ class App(QMainWindow):
     def _on_session_path_changed(self, old: str, new: str):
         if self._current_session_path == old:
             self._current_session_path = new
-        self.status_indicator.update_status(
-            task=f"Converted to {os.path.basename(new)}"
-        )
+        self.status_indicator.show_task("Saved as ", path=new)
         return None
 
     def open_czi_dialog(self):
@@ -1351,6 +1350,16 @@ class App(QMainWindow):
             self.vtk_widget, legend=self.legend, parent=self
         )
         self.volume_viewer.attach_to_viewport(self.viewport_container)
+        self._tomogram_link = TomogramLink(
+            self._load_linked_tomogram,
+            lambda prefix, path, warning, persist: self.status_indicator.show_task(
+                prefix, path=path, warning=warning, persist=persist
+            ),
+            lambda: Settings.ui.load_linked_tomogram,
+        )
+        self.cdata.register_session_hook(
+            self._tomogram_link.collect, self._tomogram_link.restore
+        )
         self.cdata.register_session_hook(
             collect=lambda: (
                 {"volume_paths": self.volume_viewer.recent_paths}
@@ -1362,12 +1371,21 @@ class App(QMainWindow):
             ),
         )
 
-    def _load_volume_file(self, path: str) -> None:
-        """Show the volume dock if hidden and load *path* into the primary viewer."""
+    def _show_volume_viewer(self) -> None:
         if not self.volume_viewer.isVisible():
             self.volume_viewer.setVisible(True)
             self.volume_action._on = True
             self.volume_action.setIcon(icon("ph.cube", role="primary"))
+        return None
+
+    def _load_linked_tomogram(self, path: str) -> None:
+        self._show_volume_viewer()
+        self.volume_viewer.primary.load_volume(path)
+        return None
+
+    def _load_volume_file(self, path: str) -> None:
+        """Show the volume dock if hidden and load *path* into the primary viewer."""
+        self._show_volume_viewer()
         try:
             self.volume_viewer.primary.load_volume(path)
         except Exception as e:
@@ -1487,6 +1505,8 @@ class App(QMainWindow):
         if self.status_indicator.visible:
             self.status_indicator.show()
 
+        self._tomogram_link.set(None, load=False)
+        self.status_indicator.clear_persistent_task()
         self.cdata.reset()
         self.cdata.viewport.render(defer_render=True)
         self._current_session_path = None

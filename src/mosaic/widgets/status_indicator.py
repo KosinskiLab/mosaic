@@ -10,7 +10,7 @@ import enum
 from collections import Counter
 
 from qtpy.QtCore import QRectF, Qt, QTimer, Signal
-from qtpy.QtGui import QColor, QPainter, QPainterPath, QPen, QTextCursor
+from qtpy.QtGui import QColor, QFontMetrics, QPainter, QPainterPath, QPen, QTextCursor
 from qtpy.QtWidgets import (
     QApplication,
     QFrame,
@@ -27,6 +27,7 @@ from qtpy.QtWidgets import (
 
 from ..icons import icon
 from ..parallel import BackgroundTaskManager
+from ..path_display import set_path_text
 from ..stylesheets import Colors, Typography
 
 
@@ -724,6 +725,10 @@ class StatusIndicator:
                     f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
                 )
 
+        persistent = getattr(self, "_persistent_task", None)
+        if persistent is not None and persistent[2]:
+            self._set_task_style(True)
+
     def _setup_status_bar(self):
         status_bar = self.main_window.statusBar()
         status_bar.setFixedHeight(24)
@@ -735,13 +740,14 @@ class StatusIndicator:
         )
 
         self.task_label = QLabel()
-        self.task_label.setFixedWidth(150)
+        self.task_label.setFixedWidth(260)
         self.task_label.setStyleSheet(
             f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
         )
         self._task_timer = QTimer(self.task_label)
         self._task_timer.setSingleShot(True)
-        self._task_timer.timeout.connect(lambda: self.task_label.clear())
+        self._persistent_task = None
+        self._task_timer.timeout.connect(self._on_task_timeout)
 
         self.progress_label = QLabel()
         self.progress_label.setFixedWidth(120)
@@ -862,8 +868,73 @@ class StatusIndicator:
             self._update_task_styling(busy)
 
         if task is not None:
-            self.task_label.setText(task)
+            self.show_task(task)
+
+    def _set_task_style(self, warning: bool):
+        color = Colors.WARNING_TEXT if warning else Colors.TEXT_SECONDARY
+        self.task_label.setStyleSheet(
+            f"color: {color}; font-size: {Typography.SMALL}px;"
+        )
+
+    def _display_task(self, prefix, path, warning):
+        if path is not None:
+            set_path_text(self.task_label, path, prefix=prefix)
+        else:
+            self.task_label.setText(
+                QFontMetrics(self.task_label.font()).elidedText(
+                    prefix, Qt.TextElideMode.ElideMiddle, self.task_label.width()
+                )
+            )
+            self.task_label.setToolTip(prefix)
+        self._set_task_style(warning)
+
+    def show_task(
+        self,
+        prefix: str,
+        path: str = None,
+        warning: bool = False,
+        persist: bool = False,
+    ) -> None:
+        """Show a status message, optionally with a path and warning color.
+
+        Parameters
+        ----------
+        prefix : str
+            Message text, placed before ``path``.
+        path : str, optional
+            Path shown with middle elision and a full-text tooltip.
+        warning : bool, optional
+            Use the warning color. Defaults to False.
+        persist : bool, optional
+            Keep the message until cleared and restore it after transient
+            messages. Defaults to False.
+        """
+        self._display_task(prefix, path, warning)
+        if persist:
+            self._persistent_task = (prefix, path, warning)
+            self._task_timer.stop()
+        else:
             self._task_timer.start(3000)
+        return None
+
+    def _on_task_timeout(self):
+        if self._persistent_task is None:
+            self.task_label.clear()
+            self.task_label.setToolTip("")
+            return None
+
+        prefix, path, warning = self._persistent_task
+        self._display_task(prefix, path, warning)
+        return None
+
+    def clear_persistent_task(self) -> None:
+        """Drop the persistent message and clear the label."""
+        self._persistent_task = None
+        self._task_timer.stop()
+        self.task_label.clear()
+        self.task_label.setToolTip("")
+        self._set_task_style(False)
+        return None
 
     def _update_task_styling(self, busy: bool = False):
         if not busy:
