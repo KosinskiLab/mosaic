@@ -68,3 +68,19 @@ def test_task_card_shortens_long_names(qapp):
 
     card.update_task_data({"id": "t", "name": "Short", "status": "running"})
     assert card.name_label.text() == "Short"
+
+
+def test_task_card_builds_output_view_on_first_expand(qapp):
+    from qtpy.QtWidgets import QTextEdit
+
+    from mosaic.widgets.status_indicator import TaskCard
+
+    card = TaskCard({"id": "t", "name": "meshing", "status": "running"})
+    card.append_output("stdout", "step 1 done\n")
+    assert card.findChildren(QTextEdit) == []
+
+    card._toggle_expanded()
+
+    views = card.findChildren(QTextEdit)
+    assert len(views) == 2
+    assert "step 1 done" in views[0].toPlainText()

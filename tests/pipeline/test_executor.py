@@ -392,3 +392,24 @@ def test_run_complete_needs_every_output(tmp_path):
 
 def test_run_without_outputs_is_never_complete():
     assert not run_complete(_run([_import_op()]))
+
+
+def test_progress_counts_operations_not_script_lines():
+    r = _run(
+        [
+            _import_op(),
+            _op("cluster", {"method": "Connected Components"}, group_name="Clusters"),
+            _op("downsample", {"method": "Radius"}, visible_output=False),
+        ]
+    )
+    progress = []
+    with (
+        patch("mosaic.commands.repl.MosaicREPL"),
+        patch(
+            "mosaic.pipeline.executor.report_progress",
+            side_effect=lambda **kw: progress.append((kw["current"], kw["total"])),
+        ),
+    ):
+        execute_run(r, verbose=True)
+
+    assert progress == [(0, 3), (1, 3), (2, 3)]

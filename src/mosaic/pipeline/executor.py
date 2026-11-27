@@ -149,145 +149,150 @@ def compile_run(run_config: dict) -> list[tuple[str, str]]:
         Each element is ``(operation_id, script_line)`` where
         *script_line* is a valid Mosaic REPL command.
     """
-    steps: list[tuple[str, str]] = []
+    return [
+        (op["operation_id"], line)
+        for op in run_config["operations"]
+        for line in _compile_operation(op, run_config)
+    ]
 
-    for op in run_config["operations"]:
-        op_id = op["operation_id"]
-        settings = op["settings"]
-        save_output = op.get("save_output", True)
-        visible_output = op.get("visible_output", True)
-        group_name = op.get("group_name", "")
 
-        if op_id == "import_batch":
-            input_file = settings.get("input_file", run_config["input_file"])
-            params = run_config.get("input_params", {})
-            from ..formats.session import is_session_file
+def _compile_operation(op: dict, run_config: dict) -> list[str]:
+    lines: list[str] = []
+    op_id = op["operation_id"]
+    settings = op["settings"]
+    save_output = op.get("save_output", True)
+    visible_output = op.get("visible_output", True)
+    group_name = op.get("group_name", "")
 
-            if is_session_file(input_file):
-                parts = [f"open {shlex.quote(input_file)}"]
-            else:
-                parts = [f"open {shlex.quote(input_file)}"]
-                for key in ("offset", "scale", "sampling_rate"):
-                    if key in params and params[key] not in (0, 1, None):
-                        parts.append(f"{key}={format_value(params[key])}")
+    if op_id == "import_batch":
+        input_file = settings.get("input_file", run_config["input_file"])
+        params = run_config.get("input_params", {})
+        from ..formats.session import is_session_file
 
-            if not save_output:
-                parts.append("persist=false")
-            steps.append((op_id, " ".join(parts)))
-            continue
+        if is_session_file(input_file):
+            parts = [f"open {shlex.quote(input_file)}"]
+        else:
+            parts = [f"open {shlex.quote(input_file)}"]
+            for key in ("offset", "scale", "sampling_rate"):
+                if key in params and params[key] not in (0, 1, None):
+                    parts.append(f"{key}={format_value(params[key])}")
 
-        if op_id == "save_session":
-            output_dir = settings.get("output_dir", ".")
-            os.makedirs(output_dir, exist_ok=True)
-            output_path = os.path.join(output_dir, f"{run_config['run_id']}.mosaic")
-            steps.append((op_id, f"save {shlex.quote(output_path)}"))
-            continue
-
-        if op_id == "export_data":
-            output_dir = settings.get("output_dir", ".")
-            os.makedirs(output_dir, exist_ok=True)
-            fmt = settings.get("format", "star")
-            output_path = os.path.join(output_dir, f"{run_config['run_id']}.{fmt}")
-            save_kwargs = {
-                k: v
-                for k, v in settings.items()
-                if k not in ("output_dir", "method", "format")
-            }
-
-            shape = save_kwargs.get("shape")
-            if isinstance(shape, str):
-                if shape.strip().lower() in ("", "auto"):
-                    save_kwargs.pop("shape", None)
-                else:
-                    parts = [p for p in shape.replace(";", ",").split(",") if p.strip()]
-                    try:
-                        parsed_shape = [int(float(p)) for p in parts]
-                    except ValueError as exc:
-                        raise ValueError(
-                            f"Invalid shape '{shape}'. Expected three "
-                            "comma-separated numbers or 'Auto'."
-                        ) from exc
-                    if len(parsed_shape) != 3:
-                        raise ValueError(
-                            f"Invalid shape '{shape}'. Expected three "
-                            "comma-separated numbers or 'Auto'."
-                        )
-                    save_kwargs["shape"] = parsed_shape
-
-            if save_kwargs.get("sampling") is None:
-                save_kwargs.pop("sampling", None)
-
-            line = f"save @last {shlex.quote(output_path)} format={fmt}"
-            if save_kwargs:
-                line += f" {format_kwargs(save_kwargs)}"
-            steps.append((op_id, line))
-            continue
-
-        if op_id == "mesh_analysis":
-            method = settings.get("method", "")
-            reg_op = MethodRegistry.get("mesh_analysis")
-            m = reg_op.get_method(method) if reg_op else None
-            if m is None:
-                continue
-            property_name = m.internal_name
-
-            measure_kwargs = {
-                k: v for k, v in settings.items() if k not in ("method", "output_dir")
-            }
-            output_dir = settings.get("output_dir", "").strip()
-            output_part = ""
-            if output_dir:
-                os.makedirs(output_dir, exist_ok=True)
-                output_name = method.lower().replace(" ", "_")
-                output_path = os.path.join(
-                    output_dir, f"{run_config['run_id']}_{output_name}.csv"
-                )
-                output_part = f" output={shlex.quote(output_path)}"
-
-            line = f"measure {property_name} @last{output_part}"
-            if measure_kwargs:
-                line += f" {format_kwargs(measure_kwargs)}"
-            steps.append((op_id, line))
-            continue
-
-        if op_id == "cluster_select":
-            parts = ["filter @last property=n_points"]
-            lower = settings.get("lower_threshold")
-            upper = settings.get("upper_threshold")
-            if lower is not None:
-                parts.append(f"lower={lower}")
-            if upper is not None and (lower is None or upper > lower):
-                parts.append(f"upper={upper}")
-            steps.append((op_id, " ".join(parts)))
-            continue
-
-        method = settings.get("method")
-        if method:
-            method = MethodRegistry.resolve_method(op_id, method)
-        known = _known_params(op_id)
-        filtered = {
-            k: v
-            for k, v in settings.items()
-            if k not in ("group_name", "method") and (not known or k in known)
-        }
-        kwargs = format_kwargs(filtered)
-
-        parts = [op_id]
-        if method:
-            parts.append(method)
-        parts.append("@last")
-        if kwargs:
-            parts.append(kwargs)
         if not save_output:
             parts.append("persist=false")
-        steps.append((op_id, " ".join(parts)))
+        lines.append(" ".join(parts))
+        return lines
 
-        if save_output and not visible_output:
-            steps.append((op_id, "visibility @last visible=false"))
-        if save_output and group_name:
-            steps.append((op_id, f"group @last {shlex.quote(group_name)}"))
+    if op_id == "save_session":
+        output_dir = settings.get("output_dir", ".")
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, f"{run_config['run_id']}.mosaic")
+        lines.append(f"save {shlex.quote(output_path)}")
+        return lines
 
-    return steps
+    if op_id == "export_data":
+        output_dir = settings.get("output_dir", ".")
+        os.makedirs(output_dir, exist_ok=True)
+        fmt = settings.get("format", "star")
+        output_path = os.path.join(output_dir, f"{run_config['run_id']}.{fmt}")
+        save_kwargs = {
+            k: v
+            for k, v in settings.items()
+            if k not in ("output_dir", "method", "format")
+        }
+
+        shape = save_kwargs.get("shape")
+        if isinstance(shape, str):
+            if shape.strip().lower() in ("", "auto"):
+                save_kwargs.pop("shape", None)
+            else:
+                parts = [p for p in shape.replace(";", ",").split(",") if p.strip()]
+                try:
+                    parsed_shape = [int(float(p)) for p in parts]
+                except ValueError as exc:
+                    raise ValueError(
+                        f"Invalid shape '{shape}'. Expected three "
+                        "comma-separated numbers or 'Auto'."
+                    ) from exc
+                if len(parsed_shape) != 3:
+                    raise ValueError(
+                        f"Invalid shape '{shape}'. Expected three "
+                        "comma-separated numbers or 'Auto'."
+                    )
+                save_kwargs["shape"] = parsed_shape
+
+        if save_kwargs.get("sampling") is None:
+            save_kwargs.pop("sampling", None)
+
+        line = f"save @last {shlex.quote(output_path)} format={fmt}"
+        if save_kwargs:
+            line += f" {format_kwargs(save_kwargs)}"
+        lines.append(line)
+        return lines
+
+    if op_id == "mesh_analysis":
+        method = settings.get("method", "")
+        reg_op = MethodRegistry.get("mesh_analysis")
+        m = reg_op.get_method(method) if reg_op else None
+        if m is None:
+            return lines
+        property_name = m.internal_name
+
+        measure_kwargs = {
+            k: v for k, v in settings.items() if k not in ("method", "output_dir")
+        }
+        output_dir = settings.get("output_dir", "").strip()
+        output_part = ""
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+            output_name = method.lower().replace(" ", "_")
+            output_path = os.path.join(
+                output_dir, f"{run_config['run_id']}_{output_name}.csv"
+            )
+            output_part = f" output={shlex.quote(output_path)}"
+
+        line = f"measure {property_name} @last{output_part}"
+        if measure_kwargs:
+            line += f" {format_kwargs(measure_kwargs)}"
+        lines.append(line)
+        return lines
+
+    if op_id == "cluster_select":
+        parts = ["filter @last property=n_points"]
+        lower = settings.get("lower_threshold")
+        upper = settings.get("upper_threshold")
+        if lower is not None:
+            parts.append(f"lower={lower}")
+        if upper is not None and (lower is None or upper > lower):
+            parts.append(f"upper={upper}")
+        lines.append(" ".join(parts))
+        return lines
+
+    method = settings.get("method")
+    if method:
+        method = MethodRegistry.resolve_method(op_id, method)
+    known = _known_params(op_id)
+    filtered = {
+        k: v
+        for k, v in settings.items()
+        if k not in ("group_name", "method") and (not known or k in known)
+    }
+    kwargs = format_kwargs(filtered)
+
+    parts = [op_id]
+    if method:
+        parts.append(method)
+    parts.append("@last")
+    if kwargs:
+        parts.append(kwargs)
+    if not save_output:
+        parts.append("persist=false")
+    lines.append(" ".join(parts))
+
+    if save_output and not visible_output:
+        lines.append("visibility @last visible=false")
+    if save_output and group_name:
+        lines.append(f"group @last {shlex.quote(group_name)}")
+    return lines
 
 
 def run_complete(run_config: dict) -> bool:
@@ -333,9 +338,12 @@ def execute_run(
     from ..commands.repl import MosaicREPL
     from ..commands.session import Session
 
-    steps = compile_run(run_config)
+    operations = run_config["operations"]
     repl = MosaicREPL(session=Session(quiet=True))
-    for idx, (op_id, line) in enumerate(steps):
+    for idx, op in enumerate(operations):
         if verbose:
-            report_progress(message=op_id, current=idx, total=len(steps))
-        repl.execute(line)
+            report_progress(
+                message=op["operation_id"], current=idx, total=len(operations)
+            )
+        for line in _compile_operation(op, run_config):
+            repl.execute(line)

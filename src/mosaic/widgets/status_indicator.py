@@ -131,7 +131,8 @@ class TaskCard(QFrame):
         row.addWidget(self.icon_label)
 
         self.spinner = TextSpinnerLabel()
-        self.spinner.setFixedWidth(14)
+        self.spinner.setFixedWidth(16)
+        self.spinner.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.spinner.setVisible(False)
         row.addWidget(self.spinner)
 
@@ -170,8 +171,11 @@ class TaskCard(QFrame):
 
         self.main_layout.addWidget(row_widget)
 
+        self._output_container = None
+
+    def _build_output(self):
+        """Create the stdout and stderr views, on first expand."""
         self._output_container = QWidget()
-        self._output_container.setVisible(False)
         output_layout = QHBoxLayout(self._output_container)
         output_layout.setContentsMargins(0, 4, 0, 4)
         output_layout.setSpacing(4)
@@ -205,6 +209,7 @@ class TaskCard(QFrame):
         output_layout.addWidget(self._stderr_group)
 
         self.main_layout.addWidget(self._output_container)
+        return None
 
     def _apply_status(self):
         accent = self._ACCENT.get(self.status, Colors.BORDER_DARK)
@@ -328,6 +333,8 @@ class TaskCard(QFrame):
     def _toggle_expanded(self):
         self.expanded = not self.expanded
         if self.expanded:
+            if self._output_container is None:
+                self._build_output()
             self._update_output()
             self.setMinimumHeight(0)
         else:
