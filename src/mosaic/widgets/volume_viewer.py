@@ -30,8 +30,6 @@ from .colors import ColorMapSelector
 from .message_box import MosaicMessageBox
 from .sliders import DualHandleSlider, SliderRow
 
-_BROWSE = object()
-
 _VTK_READERS = {
     ".mrc": "vtkMRCReader",
     ".nii": "vtkNIFTIImageReader",
@@ -327,16 +325,23 @@ class VolumeViewer(QWidget):
         self.clipping_direction = 1
 
         self._build_ui()
-        self._rebuild_load_menu()
 
     def _build_ui(self):
 
-        self.load_combo = QComboBox()
-        self.load_combo.setSizeAdjustPolicy(
-            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        self.open_button = QPushButton("Load")
+        self.open_button.clicked.connect(self.open_volume)
+        self.open_button.setStyleSheet(
+            "QPushButton { border-top-right-radius: 0;"
+            " border-bottom-right-radius: 0; margin-right: 0; }"
         )
-        self.load_combo.setMinimumContentsLength(14)
-        self.load_combo.activated.connect(self._on_load_selected)
+
+        self._path_combo = QComboBox()
+        self._path_combo.setFixedWidth(20)
+        self._path_combo.setStyleSheet(
+            "QComboBox { border-top-left-radius: 0;"
+            " border-bottom-left-radius: 0; border-left: none; }"
+        )
+        self._path_combo.activated.connect(self._on_path_selected)
 
         self.close_button = QPushButton("Close")
         self.close_button.clicked.connect(self.close_volume)
@@ -400,7 +405,12 @@ class VolumeViewer(QWidget):
 
         self.controls_layout = QHBoxLayout()
 
-        self.controls_layout.addWidget(self.load_combo)
+        load_group = QHBoxLayout()
+        load_group.setSpacing(0)
+        load_group.setContentsMargins(0, 0, 0, 0)
+        load_group.addWidget(self.open_button)
+        load_group.addWidget(self._path_combo)
+        self.controls_layout.addLayout(load_group)
 
         self.controls_layout.addWidget(self.close_button)
         self.controls_layout.addWidget(self.orientation_selector)
@@ -540,39 +550,21 @@ class VolumeViewer(QWidget):
         self._setup_after_load()
 
     def _rebuild_load_menu(self, paths=None):
-        self._recent_paths = [p for p in paths or [] if "://" in p or os.path.exists(p)]
-        return self._sync_load_combo()
+        paths = [p for p in paths or [] if "://" in p or os.path.exists(p)]
 
-    def _sync_load_combo(self):
-        loaded = self._source_path if self.volume is not None else None
-        paths = self._recent_paths
-        combo = self.load_combo
-
-        combo.blockSignals(True)
-        combo.clear()
+        self._path_combo.blockSignals(True)
+        self._path_combo.clear()
         for i, (path, text) in enumerate(zip(paths, display_paths(paths))):
-            combo.addItem(text, path)
-            combo.setItemData(i, path, Qt.ItemDataRole.ToolTipRole)
-        if paths:
-            combo.insertSeparator(combo.count())
-        combo.addItem("Browse…", _BROWSE)
-        combo.setCurrentIndex(combo.findData(loaded) if loaded else -1)
-        combo.setPlaceholderText(
-            display_paths([loaded])[0] if loaded else "Load volume…"
-        )
-        combo.setToolTip(loaded or "")
-        combo.blockSignals(False)
-        return None
+            self._path_combo.addItem(text, path)
+            self._path_combo.setItemData(i, path, Qt.ItemDataRole.ToolTipRole)
+        self._path_combo.setCurrentIndex(-1)
+        self._path_combo.blockSignals(False)
 
-    def _on_load_selected(self, index):
-        selection = self.load_combo.itemData(index)
-        if selection is _BROWSE:
-            self.open_volume()
-        elif selection and not (
-            self.volume is not None and selection == self._source_path
-        ):
-            self._load_from_path(selection)
-        return self._sync_load_combo()
+    def _on_path_selected(self, index):
+        path = self._path_combo.itemData(index)
+        if path:
+            self._load_from_path(path)
+        self._path_combo.setCurrentIndex(-1)
 
     def _load_from_path(self, path):
         try:
@@ -620,7 +612,6 @@ class VolumeViewer(QWidget):
 
         self._close_volume()
         self.change_widget_state(is_enabled=False)
-        self._sync_load_combo()
         self._render()
 
     def _render(self):
@@ -650,7 +641,6 @@ class VolumeViewer(QWidget):
             self.auto_contrast()
             self.set_visibility(True)
             self.renderer.ResetCamera()
-        self._sync_load_combo()
 
     def change_widget_state(self, is_enabled: bool = False):
         for widget in self.editable_widgets:
