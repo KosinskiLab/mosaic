@@ -43,3 +43,32 @@ def test_keeps_majority_orientation():
     fs[0] = fs[0][::-1]
     filled = close_holes(vs, fs, 10)
     np.testing.assert_array_equal(filled[1 : len(fs)], fs[1:])
+
+
+def _mobius(n, w):
+    t, s = np.meshgrid(
+        np.linspace(0, 2 * np.pi, n, endpoint=False), np.linspace(-1, 1, w + 1)
+    )
+    r = 3 + s.T * np.cos(t.T / 2)
+    vs = np.stack([r * np.cos(t.T), r * np.sin(t.T), s.T * np.sin(t.T / 2)], -1)
+    fs = []
+    for i in range(n):
+        for j in range(w):
+            a, b = i * (w + 1) + j, i * (w + 1) + j + 1
+            if i == n - 1:
+                c, d = w - j, w - j - 1
+            else:
+                c, d = a + w + 1, b + w + 1
+            fs += [[a, c, b], [b, c, d]]
+    return vs.reshape(-1, 3), np.array(fs)
+
+
+def _orientation_conflicts(fs):
+    directed = np.concatenate([fs[:, [0, 1]], fs[:, [1, 2]], fs[:, [2, 0]]])
+    return len(directed) - len(np.unique(directed, axis=0))
+
+
+def test_does_not_add_orientation_conflicts_to_non_orientable_surface():
+    vs, fs = _mobius(60, 4)
+    filled = close_holes(vs, fs, 1)
+    assert _orientation_conflicts(filled) <= _orientation_conflicts(fs)

@@ -17,6 +17,8 @@ import igl
 import numpy as np
 import scipy.sparse
 
+from .utils import _orientation_conflicts
+
 _epsilon = 1e-16
 
 __all__ = [
@@ -160,12 +162,15 @@ def close_holes(
     """
     # boundary_loop_all follows oriented edges and fragments holes next to a
     # flipped face.
-    fs = np.asarray(fs, dtype=np.int64)
-    out_fs, comp = igl.bfs_orient(fs)
+    out_fs = np.asarray(fs, dtype=np.int64)
+    oriented, comp = igl.bfs_orient(out_fs)
     # bfs_orient follows each component's first face, which may be the flipped one.
-    reversed_faces = (out_fs != fs).any(axis=1)
+    reversed_faces = (oriented != out_fs).any(axis=1)
     inverted = np.bincount(comp, weights=reversed_faces) > np.bincount(comp) / 2
-    out_fs[inverted[comp]] = out_fs[inverted[comp], ::-1]
+    oriented[inverted[comp]] = oriented[inverted[comp], ::-1]
+    # On a non-orientable surface the seam can end up longer than before.
+    if _orientation_conflicts(oriented) <= _orientation_conflicts(out_fs):
+        out_fs = oriented
     # boundary_loop_all breaks holes that touch at a vertex into fragments;
     # once the first is filled, a second pass sees the other as a clean loop.
     for _ in range(2):
