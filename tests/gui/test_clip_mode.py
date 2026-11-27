@@ -416,3 +416,49 @@ def test_style_cleanup_stops_forwarding():
     interactor.InvokeEvent("RightButtonPressEvent")
 
     assert mode.mock_calls == []
+
+
+def _copy_as_normals(pane, geometry):
+    pane.set_selection_by_uuid([geometry.uuid])
+    pane.change_representation("normals")
+    replaced = pane.container.get(geometry.uuid)
+    assert replaced is not geometry
+    return replaced
+
+
+def test_replaced_target_is_cut_again(md):
+    cloud = _add_cloud(md.data)
+    mode = _active(md, cloud)
+    cut = md.viewport.clip_cut
+    md.viewport._interaction_mode, md.viewport._active_mode = "clip", mode
+    _drag(mode, (100, 100), (100, 60))
+    _drag(mode, (100, 100), (100, 100))
+
+    replaced = _copy_as_normals(md.data, cloud)
+    _drag(mode, (100, 100), (100, 60))
+
+    assert cut.geometries == [replaced]
+    assert _planes(replaced) == [cut.plane]
+
+
+def test_lod_ends_when_dragged_geometry_leaves(md, monkeypatch):
+    first, second = _add_cloud(md.data, seed=0), _add_cloud(md.data, seed=1)
+    _select_all(md.data, [first, second])
+    mode = ClipMode(md.viewport, md.viewport.clip_cut, lambda text: None)
+    mode.activate()
+    md.viewport._interaction_mode, md.viewport._active_mode = "clip", mode
+    calls = []
+    for name, geometry in (("first", first), ("second", second)):
+        lod = geometry.lod
+        monkeypatch.setattr(lod, "begin", lambda n=name: calls.append(("begin", n)))
+        monkeypatch.setattr(lod, "end", lambda n=name: calls.append(("end", n)))
+
+    mode.right_press(100, 100)
+    mode.right_move(100, 60, False)
+    md.data.remove([second])
+    md.data.render(defer_render=True)
+    _copy_as_normals(md.data, first)
+    assert calls[2:] == [("end", "second"), ("end", "first")]
+
+    mode.right_release(100, 60)
+    assert len(calls) == 4

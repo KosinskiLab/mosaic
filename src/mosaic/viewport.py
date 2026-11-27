@@ -497,9 +497,9 @@ class ViewportInteractor(QObject):
             if geom.lod.actor is not None:
                 current_actors.add(geom.lod.actor)
 
-        self.clip_cut.retain(geometries)
+        self.clip_cut.sync(geometries)
         if self._interaction_mode == "clip":
-            self._active_mode.retain(geometries)
+            self._active_mode.sync(geometries)
 
         actors_to_remove = self.rendered_actors - current_actors
         for actor in actors_to_remove:

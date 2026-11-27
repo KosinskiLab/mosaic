@@ -8,6 +8,7 @@ import vtk
 from mosaic.data import MosaicData
 from mosaic.formats import read_session_meta
 from mosaic.gui import App
+from mosaic.undo import STACK
 
 
 @pytest.fixture
@@ -114,3 +115,60 @@ def test_close_session_clears_cut(md):
     assert not cut.has_pose
     assert cut.geometries == []
     assert _planes(cloud) == []
+
+
+def _collected_uuids(md):
+    return App._collect_clip(SimpleNamespace(cdata=md))["clip"]["uuids"]
+
+
+def test_representation_copy_keeps_cut(md):
+    cloud = _add_cloud(md.data)
+    cut = _cut(md, [cloud])
+    md.data.set_selection_by_uuid([cloud.uuid])
+
+    md.data.change_representation("normals")
+
+    replaced = md.data.container.get(cloud.uuid)
+    assert replaced is not cloud
+    assert cut.geometries == [replaced]
+    assert _planes(replaced) == [cut.plane]
+    assert _planes(cloud) == []
+    assert _collected_uuids(md) == [cloud.uuid]
+
+
+def _assert_cut_on(md, uuid):
+    cut = md.viewport.clip_cut
+    geometry = md.data.container.get(uuid)
+    assert cut.geometries == [geometry]
+    assert _planes(geometry) == [cut.plane]
+    assert _collected_uuids(md) == [uuid]
+
+
+def test_point_removal_keeps_cut(md):
+    cloud = _add_cloud(md.data)
+    _cut(md, [cloud])
+    md.data.point_selection[cloud.uuid] = np.arange(100)
+
+    md.data.remove_selection()
+    assert md.data.container.get(cloud.uuid).get_number_of_points() == 400
+    _assert_cut_on(md, cloud.uuid)
+
+    STACK.undo()
+    restored = md.data.container.get(cloud.uuid)
+    assert restored is not cloud and restored.get_number_of_points() == 500
+    _assert_cut_on(md, cloud.uuid)
+
+    STACK.redo()
+    assert md.data.container.get(cloud.uuid) is not restored
+    _assert_cut_on(md, cloud.uuid)
+
+
+def test_segmentation_switch_leaves_cut(md):
+    first, second = _add_cloud(md.data, seed=0), _add_cloud(md.data, seed=1)
+    cut = _cut(md, [first, second])
+    md.data.set_selection_by_uuid([second.uuid])
+
+    md.data.change_representation("segmentation")
+
+    assert cut.geometries == [first]
+    assert _planes(md.data.container.get(second.uuid)) == []

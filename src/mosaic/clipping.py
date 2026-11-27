@@ -10,7 +10,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 from vtkmodules.vtkCommonDataModel import vtkPlane
 
-__all__ = ["ClipCut", "bounds", "clip_targets", "eligible"]
+__all__ = ["ClipCut", "bounds", "clip_targets", "eligible", "remap"]
 
 
 def eligible(geometry) -> bool:
@@ -81,6 +81,34 @@ def bounds(geometries: list) -> tuple:
     lower = actor_bounds[:, 0::2].min(axis=0)
     upper = actor_bounds[:, 1::2].max(axis=0)
     return tuple(np.column_stack([lower, upper]).ravel())
+
+
+def remap(geometries: list, live: list) -> list:
+    """Return ``geometries`` as they are found in ``live``.
+
+    Parameters
+    ----------
+    geometries : list of Geometry
+        Geometries to look up.
+    live : list of Geometry
+        Geometries in the session.
+
+    Returns
+    -------
+    list of Geometry
+        Each geometry still in ``live``, or the eligible geometry in
+        ``live`` with its uuid. Others are dropped.
+    """
+    alive = set(map(id, live))
+    by_uuid = {g.uuid: g for g in live}
+    ret = []
+    for geometry in geometries:
+        if id(geometry) not in alive:
+            geometry = by_uuid.get(geometry.uuid)
+            if geometry is None or not eligible(geometry):
+                continue
+        ret.append(geometry)
+    return ret
 
 
 def _mappers(geometry):
@@ -215,24 +243,27 @@ class ClipCut:
         depths = corners @ np.array(self.plane.GetNormal())
         return float(depths.min()), float(depths.max())
 
-    def retain(self, geometries: list) -> None:
-        """Drop clipped geometries that are not in ``geometries``.
+    def sync(self, geometries: list) -> None:
+        """Follow removed and replaced geometries and re-add lost planes.
 
         Parameters
         ----------
         geometries : list of Geometry
-            Geometries still in the session. The cut is removed when none
-            of its geometries is among them.
+            Geometries in the session, matched with :func:`remap`. The cut
+            is removed when none of its geometries is left.
         """
-        alive = set(map(id, geometries))
-        remaining = [g for g in self._geometries if id(g) in alive]
-        if len(remaining) == len(self._geometries):
+        current = self._geometries
+        remaining = remap(current, geometries)
+        if current and not remaining:
+            self.clear()
             return None
 
-        if remaining:
-            self.set_objects(remaining)
-        else:
-            self.clear()
+        if list(map(id, remaining)) != list(map(id, current)):
+            self._detach()
+            self._geometries = remaining
+
+        # Rebuilding a geometry in place replaces its mapper.
+        self._attach()
         return None
 
     def clear(self) -> None:

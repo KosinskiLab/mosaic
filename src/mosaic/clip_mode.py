@@ -13,7 +13,7 @@ import vtk
 from qtpy.QtCore import QTimer
 from qtpy.QtGui import QColor
 
-from .clipping import ClipCut, bounds, clip_targets
+from .clipping import ClipCut, bounds, clip_targets, remap
 from .stylesheets import Colors
 
 __all__ = ["ClipInteractorStyle", "ClipMode"]
@@ -111,16 +111,21 @@ class ClipMode:
             interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
         return None
 
-    def retain(self, geometries: list) -> None:
-        """Drop targets that are not in ``geometries``.
+    def sync(self, geometries: list) -> None:
+        """Follow removed and replaced targets with :func:`remap`.
 
         Parameters
         ----------
         geometries : list of Geometry
-            Geometries still in the session.
+            Geometries in the session.
         """
+        self._targets = remap(self._targets, geometries)
+
         alive = set(map(id, geometries))
-        self._targets = [g for g in self._targets if id(g) in alive]
+        for geometry in self._lod_geometries:
+            if id(geometry) not in alive:
+                geometry.lod.end()
+        self._lod_geometries = [g for g in self._lod_geometries if id(g) in alive]
         return None
 
     def right_press(self, x: int, y: int) -> None:
