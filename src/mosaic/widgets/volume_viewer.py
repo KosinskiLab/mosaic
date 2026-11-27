@@ -9,7 +9,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from contextlib import contextmanager
 
 import vtk
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -22,6 +22,7 @@ from qtpy.QtWidgets import (
 from vtkmodules.util import numpy_support
 
 from ..icons import icon as _icon_factory
+from ..path_display import display_paths
 from ..stylesheets import Colors
 from ..utils import Throttle
 from .colors import ColorMapSelector
@@ -548,12 +549,13 @@ class VolumeViewer(QWidget):
         self._setup_after_load()
 
     def _rebuild_load_menu(self, paths=None):
-        import os
+        paths = paths or []
 
         self._path_combo.blockSignals(True)
         self._path_combo.clear()
-        for path in paths or []:
-            self._path_combo.addItem(os.path.basename(path), path)
+        for i, (path, text) in enumerate(zip(paths, display_paths(paths))):
+            self._path_combo.addItem(text, path)
+            self._path_combo.setItemData(i, path, Qt.ItemDataRole.ToolTipRole)
         self._path_combo.setCurrentIndex(-1)
         self._path_combo.blockSignals(False)
 
