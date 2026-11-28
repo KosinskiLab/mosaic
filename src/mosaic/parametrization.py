@@ -13,6 +13,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import warnings
 from abc import ABC, abstractmethod
+from functools import cached_property
 from os import PathLike
 from typing import TYPE_CHECKING
 
@@ -960,6 +961,11 @@ class TriangularMesh(Parametrization):
     @property
     def triangles(self):
         return np.asarray(self.mesh.triangles)
+
+    @cached_property
+    def defects(self) -> list["meshing.MeshDefect"]:
+        """Holes, twisted spots and non-manifold edges left on the mesh."""
+        return meshing.check_mesh(self.vertices, self.triangles)
 
     @classmethod
     def fit(cls, positions: np.ndarray, **kwargs):
