@@ -14,6 +14,8 @@ import numpy as np
 import vtk
 from qtpy.QtCore import QEvent, QObject, Qt, QTimer, Signal
 
+from .clipping import ClipCut
+
 __all__ = ["PropIdBuffer", "ViewportInteractor", "hardware_picking"]
 
 
@@ -146,6 +148,7 @@ class ViewportInteractor(QObject):
 
     render_update = Signal()
     vtk_pre_render = Signal()
+    status_message = Signal(str)
 
     def __init__(self, vtk_widget, panes):
         super().__init__()
@@ -161,6 +164,7 @@ class ViewportInteractor(QObject):
         self._active_mode = None
         self._sculpt_hud = None
         self._sculpt_controller = None
+        self.clip_cut = ClipCut()
 
         for pane in self.panes:
             pane.attach_viewport(self)
@@ -265,6 +269,15 @@ class ViewportInteractor(QObject):
                 self, self.models_pane, self._sculpt_hud, self._sculpt_controller
             )
             self._interaction_mode = "sculpt"
+            self._active_mode = mode
+            mode.activate()
+            return None
+
+        if viewer_mode == ViewerModes.CLIP:
+            from mosaic.clip_mode import ClipMode
+
+            mode = ClipMode(self, self.clip_cut, self.status_message.emit)
+            self._interaction_mode = "clip"
             self._active_mode = mode
             mode.activate()
             return None
@@ -477,12 +490,16 @@ class ViewportInteractor(QObject):
         if self._prop_ids is not None:
             self._prop_ids.invalidate()
 
+        geometries = [g for pane in self.panes for g in pane.container.data]
         current_actors = set()
-        for pane in self.panes:
-            for geom in pane.container.data:
-                current_actors.add(geom.actor)
-                if geom.lod.actor is not None:
-                    current_actors.add(geom.lod.actor)
+        for geom in geometries:
+            current_actors.add(geom.actor)
+            if geom.lod.actor is not None:
+                current_actors.add(geom.lod.actor)
+
+        self.clip_cut.sync(geometries)
+        if self._interaction_mode == "clip":
+            self._active_mode.sync(geometries)
 
         actors_to_remove = self.rendered_actors - current_actors
         for actor in actors_to_remove:
