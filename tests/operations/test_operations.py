@@ -101,6 +101,12 @@ class TestDownsample:
         result = downsample(cloud, method="number", size=50)
         assert result.points.shape[0] == 50
 
+    def test_number_downsampling_is_reproducible(self, cloud):
+        first = downsample(cloud, method="number", size=50)
+        second = downsample(cloud, method="number", size=50)
+        np.testing.assert_array_equal(first.points, second.points)
+        np.testing.assert_array_equal(first.normals, second.normals)
+
     def test_center_of_mass(self, cloud):
         result = downsample(cloud, method="center_of_mass", radius=20.0)
         assert result.points.shape[0] < cloud.points.shape[0]

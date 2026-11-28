@@ -1764,6 +1764,7 @@ class ShrinkWrap(TriangularMesh):
             Reconstructed surface mesh.
         """
         import gpytoolbox as gpy
+        import open3d as o3d
         from scipy.spatial import cKDTree
 
         positions = np.asarray(positions, dtype=np.float64)
@@ -1793,6 +1794,7 @@ class ShrinkWrap(TriangularMesh):
             mean_nn = float(real_tree.query(positions, k=2)[0][:, 1].mean())
             n_hull_samples = hull_shape.points_per_sampling(mean_nn)
 
+            o3d.utility.random.seed(0)
             pcd_hull = hull.sample_points_uniformly(number_of_points=n_hull_samples)
             hull_pts = np.asarray(pcd_hull.points, dtype=np.float64)
             hull_normals = np.asarray(pcd_hull.normals, dtype=np.float64)
@@ -1987,6 +1989,9 @@ def _sample_from_mesh(
     n_samples: int,
     mesh_init_factor: int | None = None,
 ) -> np.ndarray:
+    import open3d as o3d
+
+    o3d.utility.random.seed(0)
     if mesh_init_factor is None:
         point_cloud = mesh.sample_points_uniformly(
             number_of_points=n_samples,

@@ -276,7 +276,8 @@ def downsample(
     elif method == "number":
         size = kwargs.get("size", 1000)
         size = min(size, points.shape[0])
-        keep = np.random.choice(range(points.shape[0]), replace=False, size=size)
+        rng = np.random.default_rng(0)
+        keep = rng.choice(points.shape[0], replace=False, size=size)
         points = points[keep]
         normals = normals[keep] if normals is not None else None
     elif method in ("center_of_mass", "center of mass"):

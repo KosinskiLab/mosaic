@@ -181,7 +181,7 @@ def volume_to_points(
     if mask.sum() >= 0.7 * volume.size:
         n_points = min(50 * 50 * 50, volume.size)
 
-        rng = np.random.default_rng()
+        rng = np.random.default_rng(0)
         random_indices = rng.integers(0, volume.size, size=n_points)
         clusters = np.unique(volume.flat[random_indices])
         if max_cluster is not None and clusters.size > max_cluster:
