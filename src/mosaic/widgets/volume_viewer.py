@@ -6,6 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import os
 from contextlib import contextmanager
 
 import vtk
@@ -22,6 +23,7 @@ from qtpy.QtWidgets import (
 from vtkmodules.util import numpy_support
 
 from ..icons import icon as _icon_factory
+from ..path_display import display_paths
 from ..stylesheets import Colors
 from ..utils import Throttle
 from .colors import ColorMapSelector
@@ -295,6 +297,7 @@ class _Volume3DRenderer(_ViewerRenderer):
 class VolumeViewer(QWidget):
     data_changed = Signal()
     mode_changed = Signal(str)
+    recents_changed = Signal()
 
     def __init__(self, vtk_widget, legend=None, parent=None):
         super().__init__(parent)
@@ -321,25 +324,11 @@ class VolumeViewer(QWidget):
         self.current_palette = "gray"
         self.clipping_plane = vtk.vtkPlane()
         self.clipping_direction = 1
+        self.recents = []
 
         self._build_ui()
 
     def _build_ui(self):
-
-        self.open_button = QPushButton("Load")
-        self.open_button.clicked.connect(self.open_volume)
-        self.open_button.setStyleSheet(
-            "QPushButton { border-top-right-radius: 0;"
-            " border-bottom-right-radius: 0; margin-right: 0; }"
-        )
-
-        self._path_combo = QComboBox()
-        self._path_combo.setFixedWidth(20)
-        self._path_combo.setStyleSheet(
-            "QComboBox { border-top-left-radius: 0;"
-            " border-bottom-left-radius: 0; border-left: none; }"
-        )
-        self._path_combo.activated.connect(self._on_path_selected)
 
         self.close_button = QPushButton("Close")
         self.close_button.clicked.connect(self.close_volume)
@@ -402,13 +391,6 @@ class VolumeViewer(QWidget):
         self.project_selector.currentTextChanged.connect(self.handle_projection_change)
 
         self.controls_layout = QHBoxLayout()
-
-        load_group = QHBoxLayout()
-        load_group.setSpacing(0)
-        load_group.setContentsMargins(0, 0, 0, 0)
-        load_group.addWidget(self.open_button)
-        load_group.addWidget(self._path_combo)
-        self.controls_layout.addLayout(load_group)
 
         self.controls_layout.addWidget(self.close_button)
         self.controls_layout.addWidget(self.orientation_selector)
@@ -547,21 +529,11 @@ class VolumeViewer(QWidget):
         self._renderer.set_input_data(self.volume)
         self._setup_after_load()
 
-    def _rebuild_load_menu(self, paths=None):
-        import os
-
-        self._path_combo.blockSignals(True)
-        self._path_combo.clear()
-        for path in paths or []:
-            self._path_combo.addItem(os.path.basename(path), path)
-        self._path_combo.setCurrentIndex(-1)
-        self._path_combo.blockSignals(False)
-
-    def _on_path_selected(self, index):
-        path = self._path_combo.itemData(index)
-        if path:
-            self._load_from_path(path)
-        self._path_combo.setCurrentIndex(-1)
+    def set_recents(self, paths):
+        """List the URLs and existing files among *paths* as recents."""
+        paths = [p for p in paths if "://" in p or os.path.exists(p)]
+        self.recents = list(zip(paths, display_paths(paths)))
+        self.recents_changed.emit()
 
     def _load_from_path(self, path):
         try:

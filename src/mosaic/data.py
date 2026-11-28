@@ -11,6 +11,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import json
+
 from .undo import STACK
 
 __all__ = ["MosaicData"]
@@ -98,40 +100,41 @@ class MosaicData:
         """
         self._session_hooks.append((collect, restore))
 
-    def to_file(self, filename: str, sections: dict = None):
-        """Save current application state to file."""
+    def to_file(self, filename: str, sections: dict = None) -> str:
+        """Save current application state to file and return the path written."""
         self._session._data_tree = self.data.data_list.to_state()
         self._session._models_tree = self.models.data_list.to_state()
 
-        if not filename.endswith(".pickle"):
-            if sections is None:
-                sections = {}
+        if sections is None:
+            sections = {}
 
-            if self.thumbnail_provider is not None:
-                try:
-                    thumb = self.thumbnail_provider()
-                    if thumb is not None:
-                        sections["thumbnail"] = ("png", thumb)
-                except Exception:
-                    pass
+        if self.thumbnail_provider is not None:
+            try:
+                thumb = self.thumbnail_provider()
+                if thumb is not None:
+                    sections["thumbnail"] = ("png", thumb)
+            except Exception:
+                pass
 
-            meta = {}
-            for collect, _ in self._session_hooks:
-                try:
-                    result = collect()
-                    if result:
-                        meta.update(result)
-                except Exception:
-                    pass
-            if meta:
-                import json
+        file_sections = self._session._file_sections
+        base = file_sections.get("meta")
+        meta = json.loads(base[1]) if base is not None else {}
+        for collect, _ in self._session_hooks:
+            try:
+                meta.update(collect() or {})
+            except Exception:
+                pass
 
-                sections["meta"] = (
-                    "json",
-                    json.dumps(meta, separators=(",", ":")).encode("utf-8"),
-                )
+        meta = {k: v for k, v in meta.items() if v is not None}
+        if meta:
+            sections["meta"] = (
+                "json",
+                json.dumps(meta, separators=(",", ":")).encode("utf-8"),
+            )
+        else:
+            file_sections.pop("meta", None)
 
-        self._session.save_session(filename, sections=sections)
+        return self._session.save_session(filename, sections=sections)
 
     def load_session(self, filename: str):
         """Load application state from file."""
@@ -145,8 +148,6 @@ class MosaicData:
         meta_entry = self._session._file_sections.get("meta")
         meta = {}
         if meta_entry is not None:
-            import json
-
             meta = json.loads(meta_entry[1])
 
         for _, restore in self._session_hooks:
@@ -165,6 +166,7 @@ class MosaicData:
         self.data.clear()
         self.models.clear()
         STACK.clear()
+        self._session._file_sections = {}
 
     def refresh_lod(self):
         """Shortcut for :meth:`ViewportInteractor.refresh_lod`."""

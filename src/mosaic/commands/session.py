@@ -11,7 +11,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import os
-import pickle
 import warnings
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from uuid import uuid4
@@ -349,7 +348,7 @@ class Session:
             export_parameters["shape"] = self.metadata.get("shape")
         write_geometries(geometries, filepath, **export_parameters)
 
-    def save_session(self, filepath: str, sections: dict = None) -> None:
+    def save_session(self, filepath: str, sections: dict = None) -> str:
         """Save session state to *filepath*.
 
         Parameters
@@ -359,7 +358,11 @@ class Session:
         sections : dict, optional
             Extra sections to include in the file, mapping section names to
             ``(encoding, data)`` tuples (e.g. ``{"thumbnail": ("png", bytes)}``).
-            Ignored for ``.pickle`` files.
+
+        Returns
+        -------
+        str
+            Path written, with a ``.pickle`` extension replaced by ``.mosaic``.
         """
         state = {
             "metadata": self.metadata,
@@ -368,16 +371,19 @@ class Session:
             "_data_tree": self._data_tree,
             "_models_tree": self._models_tree,
         }
-        if filepath.endswith(".pickle"):
-            with open(filepath, "wb") as fh:
-                pickle.dump(state, fh, protocol=pickle.HIGHEST_PROTOCOL)
-        else:
-            from ..formats.session import write_session
+        from ..formats.session import session_save_path, write_session
 
-            merged = dict(self._file_sections)
-            if sections:
-                merged.update(sections)
-            write_session(filepath, state, sections=merged or None)
+        target = session_save_path(filepath)
+        if target != filepath:
+            warnings.warn(
+                f"Session files are saved as .mosaic; writing {target}", stacklevel=2
+            )
+
+        merged = dict(self._file_sections)
+        if sections:
+            merged.update(sections)
+        write_session(target, state, sections=merged or None)
+        return target
 
     def load_session(self, filepath: str, persist: bool = True) -> None:
         """Restore session state from a session file.

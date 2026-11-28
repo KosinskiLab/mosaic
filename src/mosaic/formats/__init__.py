@@ -13,6 +13,7 @@ _module_map = {
         "read_session_index",
         "read_session_meta",
         "read_session_section",
+        "session_save_path",
         "write_session",
     ],
     ".records": [

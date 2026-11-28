@@ -293,10 +293,12 @@ class TestCmdSave:
     def test_save_session_file(self, make_session, tmp_path):
         session = make_session(n=2, n_points=10)
         path = str(tmp_path / "test.pickle")
-        result = _dispatch(session, f"save filepath={path}")
+        with pytest.warns(UserWarning):
+            result = _dispatch(session, f"save filepath={path}")
         text = _render(result)
         assert "session saved" in text.lower()
-        assert (tmp_path / "test.pickle").exists()
+        assert (tmp_path / "test.mosaic").exists()
+        assert ".pickle" not in text
 
 
 class TestCmdOpen:
@@ -319,8 +321,7 @@ class TestCmdOpen:
 
     def test_open_session_file(self, make_session, tmp_path):
         original = make_session(n=2, n_points=30)
-        path = str(tmp_path / "roundtrip.pickle")
-        original.save_session(path)
+        path = original.save_session(str(tmp_path / "roundtrip.mosaic"))
 
         loaded = Session(quiet=True)
         result = _dispatch(loaded, f"open filepath={path}")

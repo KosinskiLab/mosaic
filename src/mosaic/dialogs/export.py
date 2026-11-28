@@ -137,7 +137,7 @@ class ExportDialog(QDialog):
                 "shape": {
                     "type": "text",
                     "label": "Shape",
-                    "description": "Volume dimensions for coordinate transformation (RELION 5). Clear to derive from data.",
+                    "description": "Tomogram dimensions as X, Y, Z in voxels, used for RELION 5 centering. Clear to derive from data.",
                     "default": None,
                     "special_text": "Auto",
                     "parameter": "shape",

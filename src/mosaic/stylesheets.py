@@ -65,6 +65,7 @@ class Colors:
         "BG_PRESSED": "rgba(0, 0, 0, 0.10)",
         "SUCCESS": "#10b981",
         "WARNING": "#f59e0b",
+        "WARNING_TEXT": "#b45309",
         "ERROR": "#ef4444",
     }
 
@@ -82,6 +83,7 @@ class Colors:
         "BG_PRESSED": "rgba(255, 255, 255, 0.10)",
         "SUCCESS": "#34d399",
         "WARNING": "#fbbf24",
+        "WARNING_TEXT": "#fbbf24",
         "ERROR": "#f87171",
     }
 
@@ -1060,6 +1062,11 @@ def build_appstyle():
 
                 current = combo.currentIndex()
                 for i in range(combo.count()):
+                    role = Qt.ItemDataRole.AccessibleDescriptionRole
+                    if combo.itemData(i, role) == "separator":
+                        menu.addSeparator()
+                        continue
+
                     action = menu.addAction(combo.itemText(i))
                     if i == current:
                         f = action.font()

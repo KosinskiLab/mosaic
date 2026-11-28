@@ -36,6 +36,7 @@ class DialogFooter(QFrame):
             info.setStyleSheet(HelpLabel_style)
             info_label = QLabel(info_text)
             info_label.setStyleSheet(HelpLabel_style)
+            self.info_icon = info
             self.info_label = info_label
 
             layout.addWidget(info)
@@ -54,3 +55,10 @@ class DialogFooter(QFrame):
 
         layout.addWidget(self.reject_button)
         layout.addWidget(self.accept_button)
+
+    def set_info(self, text: str | None) -> None:
+        """Show ``text`` in the info slot, or hide the slot if it is empty."""
+        self.info_label.setText(text or "")
+        self.info_icon.setVisible(bool(text))
+        self.info_label.setVisible(bool(text))
+        return None

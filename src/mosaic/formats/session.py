@@ -16,19 +16,28 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import json
+import os
 import pickle
+import shutil
 import struct
 
 from ._utils import CompatibilityUnpickler
 
 _INDEX_STRUCT = struct.Struct(">I")
 _FORMAT_VERSION = 1
-_SESSION_EXTENSIONS = (".pickle",)
+_SESSION_EXTENSIONS = (".mosaic", ".pickle")
 
 
 def is_session_file(filepath: str) -> bool:
     """Return ``True`` if *filepath* has a recognised session extension."""
     return filepath.lower().endswith(_SESSION_EXTENSIONS)
+
+
+def session_save_path(filepath: str) -> str:
+    """Return *filepath* with a trailing ``.pickle`` replaced by ``.mosaic``."""
+    if filepath.lower().endswith(".pickle"):
+        return filepath[: -len(".pickle")] + ".mosaic"
+    return filepath
 
 
 def _read_index(filepath: str) -> dict | None:
@@ -141,10 +150,57 @@ def open_session(filepath: str) -> dict:
         return CompatibilityUnpickler(fh).load()
 
 
+def _write_sections(filepath: str, sections_data: dict) -> None:
+    """Write ``{name: (encoding, bytes)}`` as an indexed file, replacing atomically."""
+    from ..__version__ import __version__
+
+    index = {
+        "format_version": _FORMAT_VERSION,
+        "version": __version__,
+        "sections": {
+            name: {"offset": 0, "size": len(blob), "encoding": encoding}
+            for name, (encoding, blob) in sections_data.items()
+        },
+    }
+
+    index_bytes = b""
+    while True:
+        cursor = 4 + len(index_bytes)
+        for info in index["sections"].values():
+            info["offset"] = cursor
+            cursor += info["size"]
+
+        encoded = json.dumps(index, separators=(",", ":")).encode("utf-8")
+        settled = len(encoded) == len(index_bytes)
+        index_bytes = encoded
+        if settled:
+            break
+
+    tmp_path = f"{filepath}.partial"
+    try:
+        with open(tmp_path, "wb") as fh:
+            fh.write(_INDEX_STRUCT.pack(len(index_bytes)))
+            fh.write(index_bytes)
+            for _, blob in sections_data.values():
+                fh.write(blob)
+
+        if os.path.exists(filepath):
+            shutil.copymode(filepath, tmp_path)
+        os.replace(tmp_path, filepath)
+    except BaseException:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise
+
+    return None
+
+
 def write_session(
     filepath: str,
-    state: dict,
+    state: dict = None,
     sections: dict = None,
+    *,
+    state_bytes: bytes = None,
 ) -> None:
     """Write a session file in the indexed format.
 
@@ -152,75 +208,107 @@ def write_session(
     ----------
     filepath : str
         Destination file path.
-    state : dict
+    state : dict, optional
         Session state dictionary to pickle.
     sections : dict, optional
         Extra sections mapping names to ``(encoding, data)`` tuples.
         The ``"state"`` section is always written from *state*.
+    state_bytes : bytes, optional
+        Pickled state written verbatim. Exactly one of *state* and
+        *state_bytes* is required.
     """
-    from ..__version__ import __version__
+    if (state is None) == (state_bytes is None):
+        raise ValueError("Pass exactly one of state and state_bytes.")
 
-    sections_data = {}
+    if state_bytes is None:
+        state_bytes = pickle.dumps(state, protocol=pickle.HIGHEST_PROTOCOL)
 
-    state_bytes = pickle.dumps(state, protocol=pickle.HIGHEST_PROTOCOL)
-    sections_data["state"] = ("pickle", state_bytes)
-
+    sections_data = {"state": ("pickle", state_bytes)}
     if sections:
         sections_data.update(sections)
 
-    index = {
-        "format_version": _FORMAT_VERSION,
-        "version": __version__,
-        "sections": {},
-    }
+    return _write_sections(filepath, sections_data)
 
-    placeholder_index = json.dumps(index, separators=(",", ":")).encode("utf-8")
-    data_start = 4 + len(placeholder_index)
 
-    # Estimate index size with section entries to compute correct offsets.
-    # Each section entry adds to the index, shifting offsets.  We iterate
-    # once to measure, then build the final index.
-    offset = data_start
-    for name, (encoding, blob) in sections_data.items():
-        # Rough estimate — will be recalculated
-        offset += len(blob)
+def update_session_meta(filepath: str, updates: dict) -> None:
+    """Merge *updates* into the ``meta`` section, deleting keys set to ``None``.
 
-    # Build real index
-    offset = 0  # relative to data_start; adjusted below
-    section_order = list(sections_data.keys())
-    section_blobs = []
+    Parameters
+    ----------
+    filepath : str
+        Path to an indexed session file.
+    updates : dict
+        Metadata keys to set. A ``None`` value removes the key.
 
-    for name in section_order:
-        encoding, blob = sections_data[name]
-        section_blobs.append(blob)
-        index["sections"][name] = {
-            "offset": 0,  # placeholder
-            "size": len(blob),
-            "encoding": encoding,
-        }
+    Raises
+    ------
+    ValueError
+        If *filepath* is a legacy plain pickle.
+    """
+    index = _read_index(filepath)
+    if index is None:
+        raise ValueError(f"Cannot update metadata of a legacy session: {filepath}")
 
-    # Compute final index size to get real offsets
-    trial_index = json.dumps(index, separators=(",", ":")).encode("utf-8")
-    data_start = 4 + len(trial_index)
+    sections_data = {}
+    with open(filepath, "rb") as fh:
+        for name, info in index.get("sections", {}).items():
+            fh.seek(info["offset"])
+            sections_data[name] = (info["encoding"], fh.read(info["size"]))
 
-    cursor = data_start
-    for name in section_order:
-        index["sections"][name]["offset"] = cursor
-        cursor += index["sections"][name]["size"]
+    meta = read_session_meta(filepath)
+    for key, value in updates.items():
+        if value is None:
+            meta.pop(key, None)
+        else:
+            meta[key] = value
 
-    # Re-encode — offsets may have changed the index length
-    final_index = json.dumps(index, separators=(",", ":")).encode("utf-8")
-    if len(final_index) != len(trial_index):
-        # Length changed, recompute offsets
-        data_start = 4 + len(final_index)
-        cursor = data_start
-        for name in section_order:
-            index["sections"][name]["offset"] = cursor
-            cursor += index["sections"][name]["size"]
-        final_index = json.dumps(index, separators=(",", ":")).encode("utf-8")
+    sections_data["meta"] = ("json", json.dumps(meta).encode("utf-8"))
+    return _write_sections(filepath, sections_data)
 
-    with open(filepath, "wb") as fh:
-        fh.write(_INDEX_STRUCT.pack(len(final_index)))
-        fh.write(final_index)
-        for blob in section_blobs:
-            fh.write(blob)
+
+def convert_legacy_session(filepath: str) -> str:
+    """Wrap a legacy plain pickle into an indexed ``.mosaic`` file.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to a legacy plain pickle session. It is left in place.
+
+    Returns
+    -------
+    str
+        Path of the new file.
+
+    Raises
+    ------
+    ValueError
+        If *filepath* is not a legacy plain pickle.
+    FileExistsError
+        If the target path already exists.
+    """
+    if _read_index(filepath) is not None:
+        raise ValueError(f"Not a legacy session: {filepath}")
+
+    target = session_save_path(filepath)
+    if os.path.exists(target):
+        raise FileExistsError(target)
+
+    with open(filepath, "rb") as fh:
+        write_session(target, state_bytes=fh.read())
+
+    return target
+
+
+def prefer_mosaic_sessions(paths: list[str]) -> list[str]:
+    """Drop ``x.pickle`` entries that have an ``x.mosaic`` sibling."""
+    present = set(paths)
+    keep = []
+    for path in paths:
+        if path.lower().endswith(".pickle"):
+            sibling = session_save_path(path)
+            if sibling in present or os.path.exists(sibling):
+                continue
+
+        keep.append(path)
+
+    return keep

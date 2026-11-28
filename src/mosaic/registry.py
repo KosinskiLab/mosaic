@@ -772,7 +772,7 @@ MethodRegistry.register(
 MethodRegistry.register(
     Operation(
         name="save",
-        description="Save geometries or session (.pickle) to file.",
+        description="Save geometries or session (.mosaic) to file.",
         common_params=(
             Param(
                 "filepath",
@@ -794,7 +794,6 @@ MethodRegistry.register(
                     "em",
                     "h5",
                     "mosaic",
-                    "pickle",
                 ),
                 description="Output file format.",
             ),

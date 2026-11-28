@@ -49,9 +49,11 @@ from .data import MosaicData
 from .dialogs import ImportDataDialog
 from .icons import icon
 from .parallel import BackgroundTaskManager
+from .path_display import display_paths
 from .settings import Settings
 from .stylesheets import Colors
 from .tabs import DevelopmentTab, IntelligenceTab, ModelTab, SegmentationTab
+from .tomogram_link import TomogramLink
 from .undo import STACK
 from .widgets import (
     AxesWidget,
@@ -794,6 +796,7 @@ class App(QMainWindow):
         self.recent_file_actions = []
         self.recent_menu = _style_popup(QMenu("Recent Files", self))
         self.recent_menu.setIcon(icon("ph.clock-counter-clockwise"))
+        self.recent_menu.setToolTipsVisible(True)
         for i in range(Settings.ui.max_recent_files):
             action = QAction(self)
             action.setVisible(False)
@@ -1260,6 +1263,12 @@ class App(QMainWindow):
         if not hasattr(self, "_session_list_widget"):
             self._session_list_widget = SessionListWidget(self.cdata)
             self._session_list_widget.load_requested.connect(self._load_session)
+            self._session_list_widget.session_path_changed.connect(
+                self._on_session_path_changed
+            )
+            self._session_list_widget.link_tomograms_requested.connect(
+                self._open_link_tomograms
+            )
 
         widget = self._session_list_widget
 
@@ -1271,6 +1280,49 @@ class App(QMainWindow):
             self.list_wrapper.add_widget("Sessions", widget)
             widget.activate()
             self.batch_navigator_action.setIcon(icon("ph.compass", role="primary"))
+
+    def _open_link_tomograms(self):
+        from .dialogs.link_tomograms import LinkTomogramsDialog
+        from .formats.tomogram_matching import write_tomogram_links
+        from .parallel import submit_io_task
+
+        widget = self._session_list_widget
+        dialog = LinkTomogramsDialog(widget.session_files, parent=self)
+        if not dialog.exec():
+            return None
+
+        changes = dialog.changes()
+        if not changes:
+            return None
+
+        submit_io_task(
+            "Link tomograms",
+            write_tomogram_links,
+            lambda result: self._apply_link_result(widget, changes, result),
+            changes,
+        )
+        return None
+
+    def _apply_link_result(self, widget, changes, result):
+        from .formats.tomogram_matching import link_summary
+
+        current = self._current_session_path
+        widget.replace_paths(result.paths)
+        if current in changes and current not in result.errors:
+            self._tomogram_link.set(changes[current], load=True)
+
+        message, warning = link_summary(result, len(changes))
+        self.status_indicator.show_task(message, warning=warning)
+        for path, error in result.errors.items():
+            print(f"Link tomograms: {path}: {error}")
+        return None
+
+    def _on_session_path_changed(self, old: str, new: str):
+        if self._current_session_path == old:
+            self._current_session_path = new
+            self._add_file_to_recent(new)
+        self.status_indicator.show_task("Saved as ", path=new)
+        return None
 
     def open_czi_dialog(self):
         """Open the CZI CryoET Data Portal browser."""
@@ -1340,6 +1392,14 @@ class App(QMainWindow):
             self.vtk_widget, legend=self.legend, parent=self
         )
         self.volume_viewer.attach_to_viewport(self.viewport_container)
+        self._tomogram_link = TomogramLink(
+            self._load_linked_tomogram,
+            lambda prefix, path, warning, persist: self.status_indicator.show_task(
+                prefix, path=path, warning=warning, persist=persist
+            ),
+            lambda: Settings.ui.load_linked_tomogram,
+            self.volume_viewer.track_path,
+        )
         self.cdata.register_session_hook(
             collect=lambda: (
                 {"volume_paths": self.volume_viewer.recent_paths}
@@ -1351,12 +1411,25 @@ class App(QMainWindow):
             ),
         )
 
-    def _load_volume_file(self, path: str) -> None:
-        """Show the volume dock if hidden and load *path* into the primary viewer."""
+        self.cdata.register_session_hook(
+            self._tomogram_link.collect, self._tomogram_link.restore
+        )
+
+    def _show_volume_viewer(self) -> None:
         if not self.volume_viewer.isVisible():
             self.volume_viewer.setVisible(True)
             self.volume_action._on = True
             self.volume_action.setIcon(icon("ph.cube", role="primary"))
+        return None
+
+    def _load_linked_tomogram(self, path: str) -> None:
+        self._show_volume_viewer()
+        self.volume_viewer.primary.load_volume(path)
+        return None
+
+    def _load_volume_file(self, path: str) -> None:
+        """Show the volume dock if hidden and load *path* into the primary viewer."""
+        self._show_volume_viewer()
         try:
             self.volume_viewer.primary.load_volume(path)
         except Exception as e:
@@ -1451,7 +1524,7 @@ class App(QMainWindow):
             self,
             "Open Session",
             "",
-            "Session Files (*.pickle)",
+            "Session Files (*.mosaic *.pickle)",
         )
         if not file_path:
             return -1
@@ -1476,6 +1549,8 @@ class App(QMainWindow):
         if self.status_indicator.visible:
             self.status_indicator.show()
 
+        self._tomogram_link.set(None, load=False)
+        self.status_indicator.clear_persistent_task()
         self.cdata.reset()
         self.cdata.viewport.render(defer_render=True)
         self._current_session_path = None
@@ -1621,26 +1696,45 @@ class App(QMainWindow):
             return None
 
     def save_session(self):
-        if self._current_session_path:
-            self.cdata.to_file(self._current_session_path)
-            return None
-        return self.save_session_as()
+        path = self._current_session_path
+        if not path:
+            return self.save_session_as()
+
+        from .widgets.container_list import confirm_session_overwrite
+
+        if not confirm_session_overwrite(self, path):
+            return -1
+
+        written = self.cdata.to_file(path)
+        self._current_session_path = written
+        widget = getattr(self, "_session_list_widget", None)
+        if written != path:
+            if widget is not None:
+                widget.replace_paths({path: written})
+            else:
+                self._on_session_path_changed(path, written)
+        if widget is not None:
+            widget.mark_saved(written)
+        return None
 
     def save_session_as(self):
         file_dialog = QFileDialog()
-        file_dialog.setDefaultSuffix("pickle")
+        file_dialog.setDefaultSuffix("mosaic")
         file_path, _ = file_dialog.getSaveFileName(
             self,
             "Save File",
             self._current_session_path or "",
-            "Session Files (*.pickle)",
+            "Session Files (*.mosaic)",
         )
         if not file_path:
             return -1
 
-        if not file_path.lower().endswith(".pickle"):
-            file_path += ".pickle"
-        self.cdata.to_file(file_path)
+        from .formats.session import session_save_path
+
+        file_path = session_save_path(file_path)
+        if not file_path.lower().endswith(".mosaic"):
+            file_path += ".mosaic"
+        file_path = self.cdata.to_file(file_path)
         self._current_session_path = file_path
         self._add_file_to_recent(file_path)
 
@@ -1648,9 +1742,10 @@ class App(QMainWindow):
         Settings.ui.recent_files = [x for x in Settings.ui.recent_files if exists(x)]
 
         files_to_show = list(dict.fromkeys(Settings.ui.recent_files))
-        for i, file_path in enumerate(files_to_show):
-            text = f"&{i + 1} {os.path.basename(file_path)}"
-            self.recent_file_actions[i].setText(text)
+        labels = display_paths(files_to_show)
+        for i, (file_path, label) in enumerate(zip(files_to_show, labels)):
+            self.recent_file_actions[i].setText(f"&{i + 1} {label}")
+            self.recent_file_actions[i].setToolTip(file_path)
             self.recent_file_actions[i].setData(file_path)
             self.recent_file_actions[i].setVisible(True)
 

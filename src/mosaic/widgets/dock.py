@@ -1,4 +1,4 @@
-from qtpy.QtCore import QSize, Qt
+from qtpy.QtCore import QPoint, QRect, QSize, Qt
 from qtpy.QtWidgets import (
     QApplication,
     QDockWidget,
@@ -10,6 +10,46 @@ from qtpy.QtWidgets import (
     QToolButton,
     QWidget,
 )
+
+
+def menu_pos_above(button_rect: QRect, menu_size: QSize) -> QPoint:
+    """Top-left for a menu whose bottom-left sits above a button's top-left.
+
+    Parameters
+    ----------
+    button_rect : QRect
+        Button rectangle in global coordinates.
+    menu_size : QSize
+        Size of the menu.
+
+    Returns
+    -------
+    QPoint
+        Global position of the menu's top-left corner.
+    """
+    return QPoint(button_rect.left(), button_rect.top() - menu_size.height())
+
+
+def style_popup(menu):
+    """Give a menu the app's frameless, rounded popup look.
+
+    Parameters
+    ----------
+    menu : QMenu
+        Menu to style.
+
+    Returns
+    -------
+    QMenu
+        The same menu.
+    """
+    menu.setWindowFlags(
+        menu.windowFlags()
+        | Qt.WindowType.FramelessWindowHint
+        | Qt.WindowType.NoDropShadowWindowHint
+    )
+    menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+    return menu
 
 
 def toggle_dock(dock, show):

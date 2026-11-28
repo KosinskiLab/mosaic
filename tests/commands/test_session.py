@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from mosaic.commands.session import Session
+from mosaic.formats.session import read_session_index
 from mosaic.geometry import Geometry
 
 
@@ -515,12 +516,20 @@ class TestSaveLoad:
     def test_save_session_pickle_roundtrip(self, make_session, tmp_path):
         session = make_session(n=2, n_points=30)
         session.group(session._all_geometries(), "TestGroup")
-        path = str(tmp_path / "session.pickle")
-        session.save_session(path)
+        with pytest.warns(UserWarning):
+            path = session.save_session(str(tmp_path / "session.pickle"))
 
         loaded = Session(quiet=True)
         loaded.load_session(path)
         assert len(loaded._all_geometries()) == 2
+
+    def test_save_session_pickle_target_writes_mosaic(self, make_session, tmp_path):
+        session = make_session(n=1, n_points=10)
+        with pytest.warns(UserWarning):
+            written = session.save_session(str(tmp_path / "s.pickle"))
+        assert written == str(tmp_path / "s.mosaic")
+        assert not (tmp_path / "s.pickle").exists()
+        assert read_session_index(written)["format_version"] == 1
 
     def test_save_session_mosaic_roundtrip(self, make_session, tmp_path):
         session = make_session(n=2, n_points=30)
@@ -535,8 +544,7 @@ class TestSaveLoad:
 
     def test_load_session_persist_false(self, make_session, tmp_path):
         session = make_session(n=2, n_points=10)
-        path = str(tmp_path / "session.pickle")
-        session.save_session(path)
+        path = session.save_session(str(tmp_path / "session.mosaic"))
 
         loaded = Session(quiet=True)
         loaded.load_session(path, persist=False)

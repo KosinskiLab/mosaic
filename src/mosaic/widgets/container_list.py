@@ -1,10 +1,13 @@
+import os
 from uuid import uuid4
 
 from qtpy.QtCore import (
     QEvent,
     QItemSelection,
     QItemSelectionModel,
+    QPoint,
     QRect,
+    QSize,
     Qt,
     Signal,
 )
@@ -28,9 +31,12 @@ from qtpy.QtWidgets import (
 )
 
 from ..icons import icon as _icon_factory
+from ..formats.session import prefer_mosaic_sessions, session_save_path
+from ..settings import Settings
 from ..pipeline._utils import natural_sort_key, strip_filepath
 from ..stylesheets import Colors, Typography
 from ..tree_state import TreeState, TreeStateData
+from .dock import menu_pos_above, style_popup
 from .message_box import MosaicMessageBox
 
 
@@ -689,6 +695,10 @@ class StyledTreeWidgetItem(QTreeWidgetItem):
         return super().data(index, column)
 
 
+class SessionTreeItem(QTreeWidgetItem):
+    """Row of the session list."""
+
+
 class MetadataItemDelegate(QStyledItemDelegate):
     """Delegate for custom selection/hover painting."""
 
@@ -706,7 +716,7 @@ class MetadataItemDelegate(QStyledItemDelegate):
     def _icon_size_for(self, item) -> int:
         return (
             self._item_icon_size
-            if isinstance(item, StyledTreeWidgetItem)
+            if isinstance(item, (StyledTreeWidgetItem, SessionTreeItem))
             else self._header_icon_size
         )
 
@@ -791,6 +801,17 @@ class MetadataItemDelegate(QStyledItemDelegate):
         painter.restore()
 
 
+class _CheckableMenu(QMenu):
+    """Menu that stays open when a checkable action is clicked."""
+
+    def mouseReleaseEvent(self, event):
+        action = self.actionAt(event.position().toPoint())
+        if action is not None and action.isCheckable() and action.isEnabled():
+            action.trigger()
+            return None
+        return super().mouseReleaseEvent(event)
+
+
 class _SessionHeader(QWidget):
     """Icon action bar for session management, sits below the session list."""
 
@@ -826,54 +847,68 @@ class _SessionHeader(QWidget):
 
         self._add_btn = QPushButton()
         self._add_btn.setIcon(icon("ph.plus", role="muted"))
-        self._add_btn.setFixedHeight(h)
+        self._add_btn.setFixedSize(h, h)
         self._add_btn.setToolTip("Add session files")
         self._add_btn.clicked.connect(session_widget.add_sessions)
-        lay.addWidget(self._add_btn, 1)
-
-        self._save_btn = QPushButton()
-        self._save_btn.setIcon(icon("ph.floppy-disk", role="muted"))
-        self._save_btn.setFixedHeight(h)
-        self._save_btn.setToolTip("Save current session")
-        self._save_btn.clicked.connect(session_widget.save_current)
-        lay.addWidget(self._save_btn, 1)
+        lay.addWidget(self._add_btn)
 
         self._reload_btn = QPushButton()
         self._reload_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
-        self._reload_btn.setFixedHeight(h)
+        self._reload_btn.setFixedSize(h, h)
         self._reload_btn.setToolTip("Reload current session")
         self._reload_btn.clicked.connect(session_widget.reload_current)
-        lay.addWidget(self._reload_btn, 1)
+        lay.addWidget(self._reload_btn)
+        lay.addStretch(1)
 
-        self._auto_save_toggle = QPushButton()
-        self._auto_save_toggle.setCheckable(True)
-        self._auto_save_toggle.setChecked(True)
-        self._auto_save_toggle.setFixedHeight(h)
-        self._auto_save_toggle.setToolTip("Auto-save when switching sessions")
-        self._auto_save_toggle.toggled.connect(self._on_auto_save_toggled)
-        self._update_auto_save_icon()
-        lay.addWidget(self._auto_save_toggle, 1)
+        self._menu_btn = QPushButton()
+        self._menu_btn.setIcon(icon("ph.gear", role="muted"))
+        self._menu_btn.setFixedSize(h, h)
+        self._menu_btn.setToolTip("Session options")
+        self._menu_btn.clicked.connect(self._show_menu)
+        lay.addWidget(self._menu_btn)
 
-        self._clear_btn = QPushButton()
-        self._clear_btn.setIcon(icon("ph.trash", role="muted"))
-        self._clear_btn.setFixedHeight(h)
-        self._clear_btn.setToolTip("Clear all sessions")
-        self._clear_btn.clicked.connect(
-            lambda: session_widget.clear_sessions_with_prompt()
-        )
-        lay.addWidget(self._clear_btn, 1)
-
+        self._menu = self._build_menu()
         self._apply_btn_style()
+
+    def _build_menu(self):
+        menu = style_popup(_CheckableMenu())
+
+        link = menu.addAction("Link tomograms…")
+        link.triggered.connect(self._session_widget.link_tomograms_requested)
+        menu.addSeparator()
+
+        auto_save = menu.addAction("Auto-save on switch")
+        auto_save.setCheckable(True)
+        auto_save.setChecked(self._session_widget._auto_save)
+        auto_save.toggled.connect(self._on_auto_save_toggled)
+
+        load_tomogram = menu.addAction("Load tomogram on switch")
+        load_tomogram.setCheckable(True)
+        load_tomogram.setChecked(Settings.ui.load_linked_tomogram)
+        load_tomogram.toggled.connect(self._on_load_tomogram_toggled)
+        menu.addSeparator()
+
+        clear = menu.addAction(
+            _icon_factory("ph.trash", role="muted"), "Clear all sessions"
+        )
+        clear.triggered.connect(
+            lambda: self._session_widget.clear_sessions_with_prompt()
+        )
+        return menu
+
+    def _action(self, text: str):
+        return next(a for a in self._menu.actions() if a.text() == text)
+
+    def _show_menu(self):
+        top_left = self._menu_btn.mapToGlobal(QPoint(0, 0))
+        button_rect = QRect(top_left, self._menu_btn.size())
+        self._menu.exec(menu_pos_above(button_rect, self._menu.sizeHint()))
 
     def _on_auto_save_toggled(self, checked):
         self._session_widget._auto_save = checked
-        self._update_auto_save_icon()
 
-    def _update_auto_save_icon(self):
-        from ..icons import icon
-
-        role = "primary" if self._auto_save_toggle.isChecked() else "muted"
-        self._auto_save_toggle.setIcon(icon("ph.arrows-clockwise", role=role))
+    def _on_load_tomogram_toggled(self, checked):
+        Settings.ui.load_linked_tomogram = checked
 
     def _apply_btn_style(self):
         qss = self._BTN_QSS.format(
@@ -883,30 +918,57 @@ class _SessionHeader(QWidget):
             hover=Colors.BG_HOVER,
             pressed=Colors.BG_PRESSED,
         )
-        for btn in (
-            self._add_btn,
-            self._save_btn,
-            self._reload_btn,
-            self._auto_save_toggle,
-            self._clear_btn,
-        ):
+        for btn in (self._add_btn, self._reload_btn, self._menu_btn):
             btn.setStyleSheet(qss)
 
     def _on_theme_changed(self):
         self._apply_btn_style()
-        self._update_auto_save_icon()
         from ..icons import icon
 
-        self._add_btn.setIcon(icon("ph.plus", role="muted"))
-        self._save_btn.setIcon(icon("ph.floppy-disk", role="muted"))
         self._reload_btn.setIcon(icon("ph.arrow-counter-clockwise", role="muted"))
-        self._clear_btn.setIcon(icon("ph.trash", role="muted"))
+        self._menu_btn.setIcon(icon("ph.gear", role="muted"))
+        self._add_btn.setIcon(icon("ph.plus", role="muted"))
+        self._action("Clear all sessions").setIcon(icon("ph.trash", role="muted"))
+
+
+def confirm_session_overwrite(parent, source: str) -> bool:
+    """Ask before a legacy ``.pickle`` save replaces an existing ``.mosaic``.
+
+    Parameters
+    ----------
+    parent : QWidget
+        Parent of the dialog.
+    source : str
+        Path the caller wants to save to.
+
+    Returns
+    -------
+    bool
+        True if the save may proceed.
+    """
+    if not source.lower().endswith(".pickle"):
+        return True
+
+    target = session_save_path(source)
+    if not os.path.exists(target):
+        return True
+
+    reply = MosaicMessageBox.question(
+        parent,
+        "Overwrite Session",
+        f"Overwrite {os.path.basename(target)}?",
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        QMessageBox.StandardButton.No,
+    )
+    return reply == QMessageBox.StandardButton.Yes
 
 
 class SessionListWidget(QWidget):
     """Sidebar-integrated session list for batch navigation."""
 
     load_requested = Signal(str)
+    session_path_changed = Signal(str, str)
+    link_tomograms_requested = Signal()
 
     def __init__(self, cdata, parent=None):
         super().__init__(parent)
@@ -943,7 +1005,9 @@ class SessionListWidget(QWidget):
         self._layout.addWidget(self._header)
 
     def set_sessions(self, filepaths):
-        self.session_files = sorted(filepaths, key=natural_sort_key)
+        self.session_files = prefer_mosaic_sessions(
+            sorted(filepaths, key=natural_sort_key)
+        )
         self.current_index = -1
         self._rebuild_items()
 
@@ -952,7 +1016,7 @@ class SessionListWidget(QWidget):
             self,
             "Add Session Files",
             "",
-            "Session Files (*.pickle)",
+            "Session Files (*.mosaic *.pickle)",
         )
         if not filepaths:
             return None
@@ -962,12 +1026,16 @@ class SessionListWidget(QWidget):
             if fp not in existing:
                 self.session_files.append(fp)
                 existing.add(fp)
-        self.session_files.sort(key=natural_sort_key)
+        self.session_files = prefer_mosaic_sessions(
+            sorted(self.session_files, key=natural_sort_key)
+        )
         self._rebuild_items()
 
     def clear_sessions(self):
         if self._auto_save and self._session_modified:
-            self.save_current()
+            if not self.save_current():
+                return None
+
         self.session_files.clear()
         self.current_index = -1
         self._rebuild_items()
@@ -981,10 +1049,45 @@ class SessionListWidget(QWidget):
 
     def save_current(self):
         if self.current_index < 0 or self.current_index >= len(self.session_files):
-            return None
-        filepath = self.session_files[self.current_index]
-        self._cdata.to_file(filepath)
+            return True
+        if not self._save_to(self.session_files[self.current_index]):
+            return False
+
         self._session_modified = False
+        return True
+
+    def replace_paths(self, mapping):
+        """Swap list entries using an old to new mapping."""
+        current = None
+        if 0 <= self.current_index < len(self.session_files):
+            current = self.session_files[self.current_index]
+
+        mapped = [mapping.get(x, x) for x in self.session_files]
+        self.session_files = list(dict.fromkeys(mapped))
+        if current is not None:
+            self.current_index = self.session_files.index(mapping.get(current, current))
+        self._rebuild_items()
+
+        for old, new in mapping.items():
+            if old != new:
+                self.session_path_changed.emit(old, new)
+        return None
+
+    def mark_saved(self, filepath):
+        """Clear the modified flag if ``filepath`` is the current session."""
+        if 0 <= self.current_index < len(self.session_files):
+            if self.session_files[self.current_index] == filepath:
+                self._session_modified = False
+        return None
+
+    def _save_to(self, filepath):
+        if not confirm_session_overwrite(self, filepath):
+            return False
+
+        written = self._cdata.to_file(filepath)
+        if written != filepath:
+            self.replace_paths({filepath: written})
+        return True
 
     def reload_current(self):
         if self.current_index < 0:
@@ -1035,9 +1138,8 @@ class SessionListWidget(QWidget):
             return True
 
         if self._auto_save and self._active:
-            filepath = self.session_files[self.current_index]
-            self._cdata.to_file(filepath)
-            self._session_modified = False
+            if not self.save_current():
+                return False
             return True
 
         reply = MosaicMessageBox.question(
@@ -1052,8 +1154,8 @@ class SessionListWidget(QWidget):
         if reply == QMessageBox.StandardButton.Cancel:
             return False
         if reply == QMessageBox.StandardButton.Save:
-            filepath = self.session_files[self.current_index]
-            self._cdata.to_file(filepath)
+            if not self.save_current():
+                return False
 
         self._session_modified = False
         return True
@@ -1100,9 +1202,9 @@ class SessionListWidget(QWidget):
 
         from ..icons import icon as _icon
 
-        file_icon = _icon("ph.compass", role="muted", scale_factor=0.85)
+        file_icon = _icon("ph.file", role="muted", scale_factor=0.85)
         for i, filepath in enumerate(self.session_files):
-            item = QTreeWidgetItem([strip_filepath(filepath)])
+            item = SessionTreeItem([strip_filepath(filepath)])
             item.setData(0, Qt.ItemDataRole.UserRole, filepath)
             item.setIcon(0, file_icon)
             self._tree.addTopLevelItem(item)
@@ -1122,10 +1224,12 @@ class SessionListWidget(QWidget):
             return None
 
         if self._auto_save and self._session_modified:
-            self.save_current()
+            if not self.save_current():
+                return None
+
         self.current_index = index
         self._update_highlight()
-        filepath = item.data(0, Qt.ItemDataRole.UserRole)
+        filepath = self.session_files[index]
         self.load_requested.emit(filepath)
         self._session_modified = False
 
@@ -1134,13 +1238,7 @@ class SessionListWidget(QWidget):
             return None
 
         index = self._tree.indexOfTopLevelItem(item)
-        menu = QMenu(self.window())
-        menu.setWindowFlags(
-            menu.windowFlags()
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.NoDropShadowWindowHint
-        )
-        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        menu = style_popup(QMenu(self.window()))
         remove_action = menu.addAction("Remove from list")
         action = menu.exec(self._tree.viewport().mapToGlobal(pos))
         if action == remove_action:

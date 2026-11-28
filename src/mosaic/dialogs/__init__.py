@@ -5,6 +5,7 @@ from .cropping import DistanceCropDialog
 from .export import ExportDialog
 from .histogram import HistogramDialog
 from .import_data import ImportDataDialog
+from .link_tomograms import LinkTomogramsDialog
 from .matching import TemplateMatchingDialog
 from .properties import GeometryPropertiesDialog
 from .property_analysis import PropertyAnalysisDialog
