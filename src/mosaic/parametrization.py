@@ -881,15 +881,19 @@ class TriangularMesh(Parametrization):
             self.mesh.remove_duplicated_triangles()
             self.mesh.remove_unreferenced_vertices()
             self.mesh.remove_duplicated_vertices()
+        self._orient()
 
-            import open3d as o3d
+    def _orient(self) -> None:
+        """Make winding consistent and turn closed pieces outward."""
+        import open3d as o3d
 
-            faces = np.asarray(self.mesh.triangles)
-            oriented = _orient_closed_outward(np.asarray(self.mesh.vertices), faces)
-            if not np.array_equal(oriented, faces):
-                self.mesh.triangles = o3d.utility.Vector3iVector(oriented)
-                if self.mesh.has_vertex_normals():
-                    self.mesh.compute_vertex_normals()
+        faces = np.asarray(self.mesh.triangles)
+        oriented = _orient_closed_outward(np.asarray(self.mesh.vertices), faces)
+        if not np.array_equal(oriented, faces):
+            self.mesh.triangles = o3d.utility.Vector3iVector(oriented)
+            if self.mesh.has_vertex_normals():
+                self.mesh.compute_vertex_normals()
+        return None
 
     def to_file(self, file_path: str | PathLike[str]):
         from os.path import splitext
@@ -947,6 +951,7 @@ class TriangularMesh(Parametrization):
             setattr(mesh, attr, o3d.utility.Vector3dVector(state.get(attr)))
 
         self.mesh = mesh
+        self._orient()
 
     @property
     def vertices(self):

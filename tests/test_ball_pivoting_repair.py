@@ -78,3 +78,29 @@ def test_triangular_mesh_faces_closed_surfaces_outward():
     assert _signed_volume(v, f) > 0
     normals = np.asarray(model.mesh.vertex_normals)
     assert (np.einsum("ij,ij->i", normals, v) > 0).all()
+
+
+def test_triangular_mesh_orients_without_repair():
+    from mosaic.parametrization import TriangularMesh
+
+    vs, fs = _sphere()
+    model = TriangularMesh(to_open3d(vs, fs[:, ::-1].copy()), repair=False)
+    assert _signed_volume(model.vertices, model.triangles) > 0
+
+
+def test_unpickled_mesh_faces_outward():
+    from mosaic.parametrization import TriangularMesh
+
+    vs, fs = _sphere()
+    model = TriangularMesh.__new__(TriangularMesh)
+    model.__setstate__({"vertices": vs, "triangles": fs[:, ::-1].copy()})
+    assert _signed_volume(model.vertices, model.triangles) > 0
+
+
+def test_orientation_keeps_vertex_indices():
+    from mosaic.parametrization import TriangularMesh
+
+    vs, fs = _sphere()
+    model = TriangularMesh(to_open3d(vs, fs[:, ::-1].copy()), repair=False)
+    np.testing.assert_array_equal(model.vertices, vs)
+    np.testing.assert_array_equal(np.sort(model.triangles, axis=1), np.sort(fs, axis=1))
