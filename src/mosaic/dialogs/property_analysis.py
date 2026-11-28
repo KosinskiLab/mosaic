@@ -7,12 +7,15 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import warnings
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pyqtgraph as pg
+from numpy.typing import ArrayLike
 from qtpy.QtCore import QSize, Qt, QTimer
+from qtpy.QtGui import QCloseEvent, QColor
 from qtpy.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -52,8 +55,14 @@ from ..widgets import (
 from ..widgets.segmented_control import SegmentedControl
 from ..widgets.settings import get_widget_value
 
+if TYPE_CHECKING:
+    from ..data import MosaicData
+    from ..geometry import Geometry
+    from ..tree_state import TreeStateData
+    from ..widgets.vtk_widgets import LegendWidget
 
-def to_numeric(arr):
+
+def to_numeric(arr: ArrayLike):
     """Encode a numpy array to float64, factorising string/object dtypes."""
     arr = np.asarray(arr)
     if arr.dtype.kind in ("U", "S", "O"):
@@ -79,7 +88,7 @@ class PropertyCache:
     def __init__(self):
         self._entries: dict[str, CacheEntry] = {}
 
-    def get(self, geometry, parameters: dict[str, Any]) -> Any | None:
+    def get(self, geometry: "Geometry", parameters: dict[str, Any]) -> Any | None:
         """Get cached value if still valid, None otherwise."""
         entry = self._entries.get(geometry.uuid)
         if entry is None:
@@ -97,7 +106,7 @@ class PropertyCache:
 
         return entry.value
 
-    def set(self, geometry, parameters: dict[str, Any], value: Any):
+    def set(self, geometry: "Geometry", parameters: dict[str, Any], value: Any):
         """Store a computed value with its computation context."""
         model_id = id(geometry.model) if geometry.model is not None else None
         self._entries[geometry.uuid] = CacheEntry(
@@ -153,7 +162,7 @@ class PropertyCache:
             return False
 
 
-def _make_uuid_to_items(geometries):
+def _make_uuid_to_items(geometries: "Sequence[Geometry]"):
     """Build a uuid-to-StyledTreeWidgetItem map from geometry pairs."""
     return {
         obj.uuid: StyledListWidgetItem(geometry=obj, visible=obj.visible)
@@ -161,7 +170,9 @@ def _make_uuid_to_items(geometries):
     }
 
 
-def _populate_list(geometries, tree_state=None):
+def _populate_list(
+    geometries: "Sequence[Geometry]", tree_state: "TreeStateData | None" = None
+):
     target_list = ContainerTreeWidget(compact=True)
     target_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
     target_list.tree_widget.setEditTriggers(
@@ -181,7 +192,9 @@ def _populate_list(geometries, tree_state=None):
     return target_list
 
 
-def _build_type_combo_option(dlg, key, items):
+def _build_type_combo_option(
+    dlg: "PropertyAnalysisDialog", key: str, items: Sequence[str]
+):
     """Add a 'Type:' combo wrapped in an Options group."""
     group, layout = dlg._create_options_group()
     combo = QComboBox()
@@ -192,7 +205,7 @@ def _build_type_combo_option(dlg, key, items):
     dlg.option_widgets[key] = combo
 
 
-def _collect_vertex_properties(dlg):
+def _collect_vertex_properties(dlg: "PropertyAnalysisDialog"):
     properties = set()
     for geometry in dlg._get_all_geometries():
         if geometry.vertex_properties is None:
@@ -201,7 +214,7 @@ def _collect_vertex_properties(dlg):
     return sorted(properties)
 
 
-def _build_vertex_properties_options(dlg):
+def _build_vertex_properties_options(dlg: "PropertyAnalysisDialog"):
     group, layout = dlg._create_options_group()
     options = QComboBox()
     options.addItems(_collect_vertex_properties(dlg))
@@ -211,7 +224,7 @@ def _build_vertex_properties_options(dlg):
     dlg.option_widgets["name"] = options
 
 
-def _build_curvature_options(dlg):
+def _build_curvature_options(dlg: "PropertyAnalysisDialog"):
     group, layout = dlg._create_options_group()
     curvature, radius = dlg._create_curvature_options(layout)
     dlg.property_options_layout.addWidget(group)
@@ -219,15 +232,15 @@ def _build_curvature_options(dlg):
     dlg.option_widgets["radius"] = radius
 
 
-def _build_area_options(dlg):
+def _build_area_options(dlg: "PropertyAnalysisDialog"):
     _build_type_combo_option(dlg, "area_type", ["Total", "Per-Triangle"])
 
 
-def _build_volume_options(dlg):
+def _build_volume_options(dlg: "PropertyAnalysisDialog"):
     _build_type_combo_option(dlg, "volume_type", ["Total", "Per-Triangle"])
 
 
-def _build_mesh_statistics_options(dlg):
+def _build_mesh_statistics_options(dlg: "PropertyAnalysisDialog"):
     _build_type_combo_option(
         dlg, "stat_type", ["Vertex Count", "Triangle Count", "Edge Length"]
     )
@@ -247,7 +260,7 @@ def _create_projection_combo():
     return combo
 
 
-def _build_projected_curvature_options(dlg):
+def _build_projected_curvature_options(dlg: "PropertyAnalysisDialog"):
     group, layout, target_list, _ = dlg._create_target_list_group(
         "Options", "models", mesh_only=True
     )
@@ -264,7 +277,7 @@ def _build_projected_curvature_options(dlg):
     dlg.option_widgets["projection"] = projection
 
 
-def _build_angle_options(dlg):
+def _build_angle_options(dlg: "PropertyAnalysisDialog"):
     group, layout, target_list, _ = dlg._create_target_list_group(
         "Options", "models", mesh_only=True
     )
@@ -278,7 +291,7 @@ def _build_angle_options(dlg):
     dlg.option_widgets["projection"] = projection
 
 
-def _build_geodesic_distance_options(dlg):
+def _build_geodesic_distance_options(dlg: "PropertyAnalysisDialog"):
     group, layout, target_list, _ = dlg._create_target_list_group(
         "Options", "models", mesh_only=True
     )
@@ -296,7 +309,7 @@ def _build_geodesic_distance_options(dlg):
     dlg.option_widgets["projection"] = projection
 
 
-def _build_thickness_options(dlg):
+def _build_thickness_options(dlg: "PropertyAnalysisDialog"):
     group, layout, target_list, _ = dlg._create_target_list_group(
         "Options", "data", with_compare_all=False
     )
@@ -319,7 +332,7 @@ def _build_thickness_options(dlg):
     dlg.option_widgets["smoothing_radius"] = smoothing_spin
 
 
-def _build_tomogram_options(dlg):
+def _build_tomogram_options(dlg: "PropertyAnalysisDialog"):
     from mosaic.widgets import PathSelector, SliderRow
 
     group, layout = dlg._create_options_group()
@@ -372,7 +385,7 @@ def _build_tomogram_options(dlg):
     dlg.property_options_layout.addWidget(group)
 
 
-def _build_to_cluster_options(dlg):
+def _build_to_cluster_options(dlg: "PropertyAnalysisDialog"):
     group, layout, target_list, compare_all = dlg._create_target_list_group(
         "Options", "data", with_compare_all=True
     )
@@ -392,7 +405,7 @@ def _build_to_cluster_options(dlg):
     dlg.option_widgets["aggregation"] = aggregation
 
 
-def _build_to_self_options(dlg):
+def _build_to_self_options(dlg: "PropertyAnalysisDialog"):
     group = QWidget()
     layout = QVBoxLayout(group)
     layout.setContentsMargins(0, 0, 0, 0)
@@ -408,7 +421,7 @@ def _build_to_self_options(dlg):
     dlg.option_widgets["aggregation"] = aggregation
 
 
-def _build_to_model_options(dlg):
+def _build_to_model_options(dlg: "PropertyAnalysisDialog"):
     group, layout, target_list, compare_all = dlg._create_target_list_group(
         "Options", "models", with_compare_all=True
     )
@@ -437,7 +450,7 @@ _OPTION_BUILDERS = {
 class ColorScaleSettingsDialog(QDialog):
     """Dialog for configuring color scale thresholds"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         from ..icons import dialog_accept_icon, dialog_reject_icon
 
         super().__init__(parent)
@@ -524,7 +537,7 @@ class ColorScaleSettingsDialog(QDialog):
             "upper_value": self.upper_spinbox.value(),
         }
 
-    def set_settings(self, settings):
+    def set_settings(self, settings: dict):
         """Apply threshold settings"""
         self.lower_checkbox.setChecked(settings.get("lower_enabled", False))
         self.upper_checkbox.setChecked(settings.get("upper_enabled", False))
@@ -581,7 +594,12 @@ class PropertyAnalysisDialog(QDialog):
     # Properties that bypass the standard compute + colormap preview flow.
     _CUSTOM_PREVIEWS = {"mesh_tomogram"}
 
-    def __init__(self, cdata, legend=None, parent=None):
+    def __init__(
+        self,
+        cdata: "MosaicData",
+        legend: "LegendWidget | None" = None,
+        parent: QWidget | None = None,
+    ):
         super().__init__(parent)
         self.cdata = cdata
         self._cache = PropertyCache()
@@ -696,7 +714,7 @@ class PropertyAnalysisDialog(QDialog):
             combo.setCurrentIndex(index)
         combo.blockSignals(False)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         """Disconnect signals and restore textured geometries when dialog closes."""
         if hasattr(self, "plot_widget"):
             self.plot_widget.close()
@@ -857,7 +875,7 @@ class PropertyAnalysisDialog(QDialog):
 
         main_layout.addWidget(self._tabs)
 
-    def _create_colormap_combo(self, with_settings_button=False):
+    def _create_colormap_combo(self, with_settings_button: bool = False):
         """Create a colormap combo widget with optional settings button"""
         colormap = ColorMapSelector()
 
@@ -1256,7 +1274,7 @@ class PropertyAnalysisDialog(QDialog):
         self.options_group.setVisible(True)
         return None
 
-    def toggle_all_targets(self, state, target_list):
+    def toggle_all_targets(self, state: int, target_list: ContainerTreeWidget):
         target_list.setEnabled(not bool(state))
 
         if bool(state):
@@ -1279,14 +1297,18 @@ class PropertyAnalysisDialog(QDialog):
             *self.cdata.format_datalist("models", selected=selected),
         ]
 
-    def _interactor_for(self, geometry):
+    def _interactor_for(self, geometry: "Geometry"):
         """Return the interactor (data or models) that owns *geometry*."""
         if self.cdata.models.container.get(geometry.uuid) is not None:
             return self.cdata.models
         return self.cdata.data
 
     def _get_or_create_texture_sampler(
-        self, geometry, file_path: str, texture_size: int, interpolation_order: int
+        self,
+        geometry: "Geometry",
+        file_path: str,
+        texture_size: int,
+        interpolation_order: int,
     ):
         """Get cached TextureSampler or create a new one."""
         from .. import meshing
@@ -1416,7 +1438,7 @@ class PropertyAnalysisDialog(QDialog):
                 MosaicMessageBox.warning(self, "Error", str(e))
                 return None
 
-    def _is_categorical(self, geometries):
+    def _is_categorical(self, geometries: "Sequence[Geometry]"):
         """Check whether the current cached property values are categorical."""
         for g in geometries:
             v = self._cache.get_value(g.uuid)
@@ -1424,7 +1446,7 @@ class PropertyAnalysisDialog(QDialog):
                 return v.dtype.kind in ("U", "S", "O")
         return False
 
-    def _get_transformed_properties(self, geometries):
+    def _get_transformed_properties(self, geometries: "Sequence[Geometry]"):
         """Apply the full visualization transform pipeline to cached properties.
 
         Applies normalization, quantization, and threshold clipping in the same
@@ -1458,7 +1480,7 @@ class PropertyAnalysisDialog(QDialog):
                 }
         return self._apply_threshold_clipping(properties)
 
-    def _apply_threshold_clipping(self, properties):
+    def _apply_threshold_clipping(self, properties: Mapping[str, np.ndarray | float]):
         """Apply threshold clipping to property values"""
         if (
             not self.threshold_settings["lower_enabled"]
@@ -1588,7 +1610,7 @@ class PropertyAnalysisDialog(QDialog):
         """Return the set of selected label strings from the category filter."""
         return {item.text(0) for item in self.category_filter_list.selectedItems()}
 
-    def _on_filter_changed(self, lower, upper):
+    def _on_filter_changed(self, lower: float, upper: float):
         """Hide points outside the filter range using transparent LUT colors."""
         from ..utils import cmap_to_vtkctf
 
@@ -1635,7 +1657,7 @@ class PropertyAnalysisDialog(QDialog):
 
         self.render()
 
-    def _on_filter_dragging(self, lower, upper):
+    def _on_filter_dragging(self, lower: float, upper: float):
         """Handle slider drag events with throttling for live preview."""
         if not self.filter_live_checkbox.isChecked():
             return
@@ -1748,7 +1770,7 @@ class PropertyAnalysisDialog(QDialog):
             if id(self.cdata.models) in dirty_interactors:
                 self.cdata.models.render()
 
-    def _switch_tab(self, index):
+    def _switch_tab(self, index: int):
         self._update_tab()
 
     def _update_tab(self):
@@ -1766,7 +1788,7 @@ class PropertyAnalysisDialog(QDialog):
             ),
         )
 
-    def _set_stat_cell(self, row, col, text):
+    def _set_stat_cell(self, row: int, col: int, text: str):
         """Set a read-only text cell in the statistics table."""
         item = QTableWidgetItem(text)
         item.setFlags(item.flags() & ~Qt.ItemIsEditable)
@@ -1791,7 +1813,7 @@ class PropertyAnalysisDialog(QDialog):
             self._set_stat_cell(index, 4, str(np.round(np.nanstd(value), n_decimals)))
         self.stats_table.setRowCount(row_count)
 
-    def _set_plot_type(self, plot_type):
+    def _set_plot_type(self, plot_type: str):
         self.current_plot_type = plot_type
         self._update_plot_type_buttons()
         self._update_plot()
@@ -1867,7 +1889,12 @@ class PropertyAnalysisDialog(QDialog):
         finally:
             self.plot_widget.setUpdatesEnabled(True)
 
-    def _create_categorical_plot(self, data_series, values, plot_type):
+    def _create_categorical_plot(
+        self,
+        data_series: "Sequence[tuple[str, Geometry, np.ndarray, QColor]]",
+        values: np.ndarray,
+        plot_type: str,
+    ):
         """Create a categorical plot with names on x-axis for single values"""
         property_name = self._current_metric()
 
@@ -1909,14 +1936,14 @@ class PropertyAnalysisDialog(QDialog):
 
     def _create_plot_item(
         self,
-        plot_type,
-        values,
-        color,
-        name=None,
-        bins=None,
-        x_range=None,
-        offset=0,
-        bar_width=None,
+        plot_type: str,
+        values: ArrayLike,
+        color: QColor,
+        name: str | None = None,
+        bins: np.ndarray | None = None,
+        x_range: np.ndarray | None = None,
+        offset: float = 0,
+        bar_width: float | None = None,
     ):
         """Create a single pyqtgraph item for the given plot type."""
         values = np.asarray(values).flatten()
@@ -1960,7 +1987,13 @@ class PropertyAnalysisDialog(QDialog):
                 symbolBrush=color,
             )
 
-    def _create_plot(self, data_series, all_values, plot_mode, plot_type):
+    def _create_plot(
+        self,
+        data_series: "Sequence[tuple[str, Geometry, np.ndarray, QColor]]",
+        all_values: Sequence[np.ndarray],
+        plot_mode: str,
+        plot_type: str,
+    ):
         """Create either histogram, density or line plot based on plot_type"""
         property_name = self._current_metric()
 
@@ -2055,7 +2088,9 @@ class PropertyAnalysisDialog(QDialog):
             except Exception as e:
                 warnings.warn(f"Error creating plot for {name}: {e}")
 
-    def _run_export(self, title: str, file_filter: str, export_func) -> None:
+    def _run_export(
+        self, title: str, file_filter: str, export_func: Callable[[str], object]
+    ) -> None:
         """Run an export operation with file dialog and error handling."""
         file_path, _ = QFileDialog.getSaveFileName(self, title, "", file_filter)
         if not file_path:
@@ -2078,7 +2113,7 @@ class PropertyAnalysisDialog(QDialog):
             )
             return
 
-        def write_data(file_path):
+        def write_data(file_path: str):
             from ..properties import export_property_csv
 
             property_name = self._current_metric()
@@ -2100,7 +2135,7 @@ class PropertyAnalysisDialog(QDialog):
         """Save the current plot as an image."""
         from pyqtgraph.exporters import ImageExporter
 
-        def write_plot(file_path):
+        def write_plot(file_path: str):
             exporter = ImageExporter(self.plot_widget.scene())
             exporter.parameters()["width"] = 1920
             exporter.parameters()["height"] = 1080
@@ -2112,7 +2147,7 @@ class PropertyAnalysisDialog(QDialog):
     def _export_statistics(self):
         """Export statistics table to a CSV file."""
 
-        def write_stats(file_path):
+        def write_stats(file_path: str):
             with open(file_path, mode="w", encoding="utf-8") as ofile:
                 headers = [
                     (

@@ -25,7 +25,9 @@ from ..widgets import DialogFooter, MosaicMessageBox, PathSelector
 from ..widgets.settings import create_setting_widget, get_widget_value, set_widget_value
 
 
-def _make_setting(parameter, default, min_val=0, description=""):
+def _make_setting(
+    parameter: str, default: float, min_val: int = 0, description: str = ""
+):
     """Create a setting dict compatible with create_setting_widget."""
     setting_type = "float" if isinstance(default, float) else "number"
     return {
@@ -39,7 +41,7 @@ def _make_setting(parameter, default, min_val=0, description=""):
 
 
 class MeshEquilibrationDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
 
         self.setWindowTitle("Mesh Equilibration")
@@ -74,7 +76,9 @@ class MeshEquilibrationDialog(QDialog):
         self._widgets = {}
         self._setup_ui()
 
-    def _add_row(self, grid, row, left, right=None):
+    def _add_row(
+        self, grid: QGridLayout, row: int, left: dict, right: dict | None = None
+    ):
         """Add one or two label:widget pairs to a grid row."""
         label = QLabel(left["label"])
         label.setToolTip(left.get("description", ""))
@@ -185,14 +189,14 @@ class MeshEquilibrationDialog(QDialog):
 
         self.output_selector.path_input.textChanged.connect(self._update_accept_state)
 
-    def _toggle_advanced(self, expanded):
+    def _toggle_advanced(self, expanded: bool):
         """Toggle visibility of advanced parameters."""
         icon_name = "ph.caret-down" if expanded else "ph.caret-right"
         self._toggle_btn.setIcon(icon(icon_name, role="muted"))
         self._advanced.setVisible(expanded)
         self.adjustSize()
 
-    def _update_bounds(self, value):
+    def _update_bounds(self, value: float):
         """Update lower and upper bounds when edge length changes."""
         try:
             val = float(value)

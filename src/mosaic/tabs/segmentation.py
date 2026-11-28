@@ -1,9 +1,10 @@
+from collections.abc import Iterable, Sequence
 from functools import partial
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import vtk
-from qtpy.QtCore import QEvent, Qt
+from qtpy.QtCore import QEvent, QObject, Qt
 from qtpy.QtWidgets import (
     QVBoxLayout,
     QWidget,
@@ -14,9 +15,21 @@ from ..utils import Throttle
 from ..widgets import MosaicMessageBox
 from ..widgets.ribbon import create_button
 
+if TYPE_CHECKING:
+    from ..data import MosaicData
+    from ..geometry import Geometry, GeometryData
+    from ..widgets.ribbon import RibbonToolBar
+    from ..widgets.vtk_widgets import LegendWidget
+
 
 class SegmentationTab(QWidget):
-    def __init__(self, cdata, ribbon, legend, **kwargs):
+    def __init__(
+        self,
+        cdata: "MosaicData",
+        ribbon: "RibbonToolBar",
+        legend: "LegendWidget",
+        **kwargs,
+    ):
         super().__init__()
         self.cdata = cdata
         self.ribbon = ribbon
@@ -32,7 +45,7 @@ class SegmentationTab(QWidget):
         # Something to decouple later
         self.cdata.data.viewport.vtk_widget.installEventFilter(self)
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent):
         """Handle Escape key to exit transformer and trimmer mode."""
         if event.type() == QEvent.Type.KeyPress:
             key = event.key()
@@ -156,14 +169,16 @@ class SegmentationTab(QWidget):
         ]
         self.ribbon.add_section("Analysis", analysis_actions)
 
-    def _run_op(self, op_name, replace=False, **kwargs):
+    def _run_op(self, op_name: str, replace: bool = False, **kwargs):
         from ..geometry import Geometry, GeometryData
         from ..operations import GeometryOperations
         from ..parallel import submit_task
         from ..swaps import place
 
-        def _make_callback(source):
-            def callback(ret):
+        def _make_callback(source: "Geometry"):
+            def callback(
+                ret: "Geometry | GeometryData | Iterable[Geometry | GeometryData | None] | None",
+            ):
                 if ret is None:
                     return None
                 if isinstance(ret, (Geometry, GeometryData)):
@@ -238,7 +253,7 @@ class SegmentationTab(QWidget):
 
         create_or_toggle_dock(self, "distance_crop_dock", dialog)
 
-    def _apply_distance_crop(self, crop_data):
+    def _apply_distance_crop(self, crop_data: dict):
         """Apply the distance crop operation.
 
         Parameters
@@ -279,7 +294,7 @@ class SegmentationTab(QWidget):
 
 
 class ClusterTransformer:
-    def __init__(self, data):
+    def __init__(self, data: "MosaicData"):
         self.data = data
         self.geometry = None
         self.transform_widget = None
@@ -350,7 +365,7 @@ class ClusterTransformer:
         self._transform_throttle = Throttle(self.on_transform, interval_ms=50)
         self.transform_widget.AddObserver("InteractionEvent", self._transform_throttle)
 
-    def on_transform(self, widget, event):
+    def on_transform(self, widget: vtk.vtkBoxWidget, event: str):
         """Handle transformation updates."""
         if not self.active:
             return None
@@ -379,7 +394,7 @@ class ClusterTransformer:
 class PlaneTrimmer:
     _ID_ARRAY_NAME = "_TrimOrigIds"
 
-    def __init__(self, data):
+    def __init__(self, data: "MosaicData"):
         self.data = data
         self.plane1, self.plane2 = None, None
         self._update_throttle = Throttle(self._update_selection, interval_ms=100)
@@ -405,7 +420,7 @@ class PlaneTrimmer:
         self.plane_widget1, self.plane_widget2 = None, None
         self.plane1, self.plane2 = None, None
 
-    def show(self, state=None):
+    def show(self, state: bool | None = None):
         if len(self.data.container) == 0:
             return None
 
@@ -451,7 +466,9 @@ class PlaneTrimmer:
             polydata.GetPointData().AddArray(ids)
             self._tagged_geometries.append(geometry)
 
-    def align_to_axis(self, widget, axis: Literal["x", "y", "z"]):
+    def align_to_axis(
+        self, widget: vtk.vtkImplicitPlaneWidget, axis: Literal["x", "y", "z"]
+    ):
         """Align plane normal to specified axis."""
         _normal_mapping = {
             "x": (1, 0, 0),
@@ -511,7 +528,7 @@ class PlaneTrimmer:
         widget.ScaleEnabledOff()
         widget.OutlineTranslationOff()
 
-        def callback(obj, event):
+        def callback(obj: vtk.vtkImplicitPlaneWidget, event: str):
             origin = [0, 0, 0]
             normal = [0, 0, 0]
             obj.GetNormal(normal)
@@ -547,7 +564,7 @@ class PlaneTrimmer:
 
         return bounds
 
-    def _bounds_in_frustum(self, bounds):
+    def _bounds_in_frustum(self, bounds: Sequence[float]):
         """Check if geometry bounds intersect the region between the planes."""
         xmin, xmax, ymin, ymax, zmin, zmax = bounds
         corners = [
@@ -558,7 +575,7 @@ class PlaneTrimmer:
                 return False
         return True
 
-    def _ensure_tagged(self, geometry):
+    def _ensure_tagged(self, geometry: "Geometry"):
         """Tag a geometry with point IDs if not already tagged."""
         from vtkmodules.util.numpy_support import numpy_to_vtk
 

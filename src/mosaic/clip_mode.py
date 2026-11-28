@@ -7,6 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 import vtk
@@ -15,6 +16,9 @@ from qtpy.QtGui import QColor
 
 from .clipping import ClipCut, bounds, clip_targets, remap
 from .stylesheets import Colors
+
+if TYPE_CHECKING:
+    from .viewport import ViewportInteractor
 
 __all__ = ["ClipInteractorStyle", "ClipMode"]
 
@@ -34,7 +38,12 @@ class ClipMode:
         Receives status messages for the user.
     """
 
-    def __init__(self, viewport, cut: ClipCut, notify: Callable[[str], None]):
+    def __init__(
+        self,
+        viewport: "ViewportInteractor",
+        cut: ClipCut,
+        notify: Callable[[str], None],
+    ):
         self._viewport = viewport
         self._cut = cut
         self._notify = notify
@@ -285,17 +294,17 @@ class ClipInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self._observers = []
         return None
 
-    def _on_right_press(self, obj, event):
+    def _on_right_press(self, obj: vtk.vtkInteractorStyle, event: str):
         self._right_down = True
         self._mode.right_press(*self.GetInteractor().GetEventPosition())
         return None
 
-    def _on_right_release(self, obj, event):
+    def _on_right_release(self, obj: vtk.vtkInteractorStyle, event: str):
         self._right_down = False
         self._mode.right_release(*self.GetInteractor().GetEventPosition())
         return None
 
-    def _on_mouse_move(self, obj, event):
+    def _on_mouse_move(self, obj: vtk.vtkInteractorStyle, event: str):
         if not self._right_down:
             self.OnMouseMove()
             return None
@@ -305,7 +314,7 @@ class ClipInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self._mode.right_move(x, y, bool(interactor.GetShiftKey()))
         return None
 
-    def _on_char(self, obj, event):
+    def _on_char(self, obj: vtk.vtkInteractorStyle, event: str):
         key = self.GetInteractor().GetKeySym()
         if key is not None and key.lower() == "f":
             self._mode.key("f")

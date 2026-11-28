@@ -8,11 +8,15 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .parser import parse_command
 from .registry import CommandRegistry, _error_panel
 from .session import Session
 from .theme import get_console, render_to_text
+
+if TYPE_CHECKING:
+    from ..registry import Operation
 
 try:
     import readline
@@ -89,7 +93,7 @@ class _Completer:
 
         return MethodRegistry.get(verb)
 
-    def _has_method_token(self, tokens: list, op) -> bool:
+    def _has_method_token(self, tokens: list, op: "Operation") -> bool:
         """Check whether any token matches a known method of *op*."""
         for tok in tokens[1:]:
             if "=" in tok:
@@ -98,7 +102,7 @@ class _Completer:
                 return True
         return False
 
-    def _active_method(self, tokens: list, op):
+    def _active_method(self, tokens: list, op: "Operation"):
         """Return the Method for the first matching token, or None."""
         for tok in tokens[1:]:
             if "=" in tok:
@@ -108,7 +112,9 @@ class _Completer:
                 return m
         return None
 
-    def _complete_param_names(self, text: str, line: str, op, tokens: list) -> list:
+    def _complete_param_names(
+        self, text: str, line: str, op: "Operation", tokens: list
+    ) -> list:
         """Complete parameter names, filtering out those already used."""
         already_used = set()
         for tok in tokens[1:]:
@@ -166,7 +172,7 @@ class _Completer:
 
         return []
 
-    def _find_param(self, key: str, op, tokens: list):
+    def _find_param(self, key: str, op: "Operation", tokens: list):
         """Find the Param matching *key* in the operation + active method."""
         for p in op.common_params:
             if p.name == key:

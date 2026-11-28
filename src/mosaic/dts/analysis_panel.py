@@ -7,11 +7,12 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 
 import numpy as np
 import pyqtgraph as pg
 from qtpy.QtCore import Qt, QTimer
+from qtpy.QtGui import QCloseEvent, QShowEvent
 from qtpy.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -55,7 +56,7 @@ class AnalysisPanel(QWidget):
     def __init__(
         self,
         get_selected_run_ids: Callable | None = None,
-        parent=None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self._get_selected_run_ids = get_selected_run_ids or (lambda: [])
@@ -320,7 +321,7 @@ class AnalysisPanel(QWidget):
         self._lod_active = False
         self._plot_item.setDownsampling(auto=True, mode="peak")
 
-    def _style_plot(self, plot):
+    def _style_plot(self, plot: pg.PlotItem):
         fg = Colors.TEXT_PRIMARY
         for axis_name in ("left", "bottom", "top", "right"):
             axis = plot.getAxis(axis_name)
@@ -330,7 +331,7 @@ class AnalysisPanel(QWidget):
         plot.setDownsampling(auto=True, mode="peak")
         pg.setConfigOptions(antialias=True)
 
-    def _on_derived_text_changed(self, text):
+    def _on_derived_text_changed(self, text: str):
         """Update completer model to complete the last token."""
         from qtpy.QtCore import QStringListModel
 
@@ -374,7 +375,7 @@ class AnalysisPanel(QWidget):
             return None
         return m.group(1), m.group(2), m.group(3)
 
-    def _derive_series(self, parsed, run_ids):
+    def _derive_series(self, parsed: tuple[str, str, str], run_ids: Collection[str]):
         """Build derived ``(run, x, y)`` tuples from two metric series."""
         metric_a, op_char, metric_b = parsed
         op = self._DERIVED_OPS[op_char]
@@ -412,7 +413,7 @@ class AnalysisPanel(QWidget):
         series = extract_metric_series(self._screen_results, metric_display, run_ids)
         return series, metric_display
 
-    def _update_readout(self, series):
+    def _update_readout(self, series: Sequence[tuple[dict, np.ndarray, np.ndarray]]):
         """Populate the readout table with per-run aggregates."""
         table = self._readout_table
         table.setSortingEnabled(False)
@@ -444,7 +445,12 @@ class AnalysisPanel(QWidget):
 
         table.setSortingEnabled(True)
 
-    def _plot_multi_run(self, series, ylabel, xlabel="Frame"):
+    def _plot_multi_run(
+        self,
+        series: Sequence[tuple[dict, np.ndarray, np.ndarray]],
+        ylabel: str,
+        xlabel: str = "Frame",
+    ):
         plot = self._plot_item
 
         # Cancel any pending LOD restore and return the plot to a known
@@ -567,7 +573,7 @@ class AnalysisPanel(QWidget):
         self._plot_multi_run(series, metric_display)
         self._update_readout(series)
 
-    def showEvent(self, event):
+    def showEvent(self, event: QShowEvent):
         super().showEvent(event)
         if self._needs_replot:
             self._needs_replot = False
@@ -591,7 +597,7 @@ class AnalysisPanel(QWidget):
         stem = f"{sanitize_label(metric_a)}{self._DERIVED_OP_TOKENS[op_char]}{sanitize_label(metric_b)}"
         meta = {"computation": "derived", "expression": label}
 
-        def load_pv(run, metric):
+        def load_pv(run: dict, metric: str):
             col = metric.split("/", 1)[-1].lower()
             for ts in run.get("time_series") or []:
                 if (ts.get("metadata") or {}).get("format") == "per_vertex":
@@ -726,6 +732,6 @@ class AnalysisPanel(QWidget):
                     parts.append(item.text() if item else "")
                 f.write(sep.join(parts) + "\n")
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         self._plot_widget.close()
         super().closeEvent(event)

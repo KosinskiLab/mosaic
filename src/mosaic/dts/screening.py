@@ -13,7 +13,7 @@ import textwrap
 import warnings
 from datetime import datetime
 from itertools import product
-from os import makedirs
+from os import PathLike, makedirs
 from pathlib import Path
 
 import numpy as np
@@ -550,7 +550,7 @@ def _write_launcher_scripts(output_dir: Path, summary: dict) -> None:
     slurm_path.chmod(0o755)
 
 
-def _setup_screen_dir(screen_dir, mesh):
+def _setup_screen_dir(screen_dir: str | PathLike[str], mesh: str | PathLike[str]):
     """Copy mesh into screen directory, return mesh filename."""
     mesh_src = Path(mesh).resolve()
     if not mesh_src.exists():
@@ -561,7 +561,7 @@ def _setup_screen_dir(screen_dir, mesh):
     return mesh_src.name
 
 
-def _merge_parameters(old_summary, new_parameters):
+def _merge_parameters(old_summary: dict, new_parameters: dict):
     """Merge existing parameter ranges from a summary with new values."""
     merged = dict(new_parameters)
     for name, info in old_summary.get("parameter_ranges", {}).items():

@@ -6,9 +6,13 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Callable
+from os import PathLike
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from ._utils import (
     iter_frames,
@@ -18,10 +22,13 @@ from ._utils import (
     write_xvg,
 )
 
+if TYPE_CHECKING:
+    from ..geometry import Geometry
+
 __all__ = ["compute"]
 
 
-def _build_stem(kind, **kwargs):
+def _build_stem(kind: str, **kwargs):
     """Derive the cache file stem from analysis kind and parameters."""
     if kind == "distance":
         label = sanitize_label(kwargs.get("reference_label", "reference"))
@@ -40,7 +47,7 @@ def _build_stem(kind, **kwargs):
     return stem
 
 
-def _read_cached(output_dir, stem, force):
+def _read_cached(output_dir: str | PathLike[str] | None, stem: str, force: bool):
     """Read cached scalar + optional per-vertex result if available."""
     if not output_dir or force:
         return None
@@ -65,7 +72,7 @@ def _read_cached(output_dir, stem, force):
     }
 
 
-def _write_result(output_dir, stem, result):
+def _write_result(output_dir: str | PathLike[str] | None, stem: str, result: dict):
     """Write scalar + optional per-vertex XVG files."""
     if not output_dir:
         return None
@@ -90,7 +97,7 @@ def _write_result(output_dir, stem, result):
         )
 
 
-def _build_mesh(points, faces):
+def _build_mesh(points: np.ndarray, faces: np.ndarray):
     """Build a TriangularMesh from points and faces."""
     from ..meshing import to_open3d
     from ..parametrization import TriangularMesh
@@ -160,7 +167,12 @@ def compute(
 
 
 def _compute_fluctuation(
-    trajectory_dir, scale, offset, window=5, start_frame=None, end_frame=None
+    trajectory_dir: str | PathLike[str],
+    scale: float,
+    offset: ArrayLike,
+    window: int = 5,
+    start_frame: int | None = None,
+    end_frame: int | None = None,
 ):
     """Per-vertex positional fluctuation via sliding-window surface distance."""
     from ..geometry import Geometry
@@ -219,10 +231,10 @@ def _compute_fluctuation(
 
 
 def _compute_distance(
-    trajectory_dir,
-    scale,
-    offset,
-    reference,
+    trajectory_dir: str | PathLike[str],
+    scale: float,
+    offset: ArrayLike,
+    reference: "Geometry | np.ndarray",
     invert: bool = False,
     **kwargs,
 ):
@@ -286,7 +298,13 @@ def _compute_distance(
     }
 
 
-def _compute_property(trajectory_dir, property_name, scale, offset, **kwargs):
+def _compute_property(
+    trajectory_dir: str | PathLike[str],
+    property_name: str,
+    scale: float,
+    offset: ArrayLike,
+    **kwargs,
+):
     """Per-frame mesh property (area, volume, etc.)."""
     from ..geometry import Geometry
     from ..parallel import report_progress
@@ -323,7 +341,13 @@ def _compute_property(trajectory_dir, property_name, scale, offset, **kwargs):
     }
 
 
-def _vertex_bending_energy(vertices, triangles, kappa, kappa_g=0.0, c0=0.0):
+def _vertex_bending_energy(
+    vertices: np.ndarray,
+    triangles: np.ndarray,
+    kappa: float,
+    kappa_g: float = 0.0,
+    c0: float = 0.0,
+):
     """Compute per-vertex Helfrich bending energy.
 
     Parameters
@@ -367,7 +391,13 @@ def _vertex_bending_energy(vertices, triangles, kappa, kappa_g=0.0, c0=0.0):
     return (mean - gaus) * vertex_areas
 
 
-def _compute_bending_energy(trajectory_dir, scale, offset, output_dir=None, **kwargs):
+def _compute_bending_energy(
+    trajectory_dir: str | PathLike[str],
+    scale: float,
+    offset: ArrayLike,
+    output_dir: str | PathLike[str] | None = None,
+    **kwargs,
+):
     """Per-frame bending energy from DTS config and trajectory meshes."""
     from ..parallel import report_progress
     from ._utils import parse_dts_content
@@ -409,13 +439,13 @@ def _compute_bending_energy(trajectory_dir, scale, offset, output_dir=None, **kw
 
 
 def _hmff_potential(
-    vertices,
-    interpolator,
-    xi=5.0,
-    theta_min=0.0,
-    theta_max=1.0,
-    boundary_values=None,
-    padding=0.4,
+    vertices: np.ndarray,
+    interpolator: Callable[[np.ndarray], np.ndarray],
+    xi: float = 5.0,
+    theta_min: float = 0.0,
+    theta_max: float = 1.0,
+    boundary_values: np.ndarray | None = None,
+    padding: float = 0.4,
 ):
     """Evaluate the HMFF potential for a set of vertices.
 
@@ -457,7 +487,7 @@ def _hmff_potential(
     return potential
 
 
-def _compute_boundary_values(data):
+def _compute_boundary_values(data: np.ndarray):
     """Compute min-max normalized per-slice boundary values.
 
     Matches the FreeDTS ``HarmonicPotentialCalculator`` constructor:
@@ -488,7 +518,13 @@ def _compute_boundary_values(data):
     return smoothed
 
 
-def _compute_hmff(trajectory_dir, scale, offset, output_dir=None, **kwargs):
+def _compute_hmff(
+    trajectory_dir: str | PathLike[str],
+    scale: float,
+    offset: ArrayLike,
+    output_dir: str | PathLike[str] | None = None,
+    **kwargs,
+):
     """Per-frame HMFF potential energy from DTS config and density volume.
 
     Parameters

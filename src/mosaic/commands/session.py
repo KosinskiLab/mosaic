@@ -12,13 +12,20 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import os
 import warnings
+from collections.abc import Callable, Sequence
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from ..container import DataContainer
 from ..tree_state import TreeState, TreeStateData
+
+if TYPE_CHECKING:
+    from ..geometry import Geometry
+    from ..swaps import GeometrySubset, GeometrySwap
 
 __all__ = ["Session"]
 
@@ -32,15 +39,17 @@ class _SessionTarget:
         The container this target wraps.
     """
 
-    def __init__(self, container):
+    def __init__(self, container: DataContainer):
         self.container = container
 
-    def add(self, geom, *args, **kwargs) -> None:
+    def add(self, geom: "Geometry", *args, **kwargs) -> None:
         """Add *geom* directly to the container (no palette colour assignment)."""
         self.container.add(geom)
         return None
 
-    def apply(self, changes, *, undo: bool) -> None:
+    def apply(
+        self, changes: "Sequence[GeometrySwap | GeometrySubset]", *, undo: bool
+    ) -> None:
         """Apply *changes* in the given direction without any rendering side-effects."""
         from ..swaps import apply_changes
 
@@ -72,7 +81,7 @@ class Session:
         self.metadata: dict = {}
         self.quiet: bool = quiet
 
-    def _update_shape(self, data_shape, sampling) -> None:
+    def _update_shape(self, data_shape: ArrayLike, sampling: ArrayLike) -> None:
         """Extend the session bounding box to include *data_shape*."""
         data_shape = np.asarray(data_shape)
         physical = np.multiply(data_shape, sampling)
@@ -96,14 +105,14 @@ class Session:
                 ordered.add(id(g))
         return list(self._order)
 
-    def _owner(self, geometry):
+    def _owner(self, geometry: "Geometry"):
         """Return which container owns *geometry*."""
         for container in (self._data, self._models):
             if geometry in container.data:
                 return container
         return None
 
-    def _tree_for(self, container) -> TreeStateData:
+    def _tree_for(self, container: DataContainer) -> TreeStateData:
         """Return the tree state associated with *container*."""
         if container is self._models:
             return self._models_tree
@@ -170,11 +179,11 @@ class Session:
     def open(
         self,
         filepath: str,
-        offset=0,
-        scale=None,
-        sampling_rate=None,
-        persist=True,
-        segmentation=False,
+        offset: ArrayLike = 0,
+        scale: ArrayLike | None = None,
+        sampling_rate: ArrayLike | None = None,
+        persist: bool = True,
+        segmentation: bool = False,
         **kwargs,
     ) -> list[int]:
         """Load geometries from a file.
@@ -220,7 +229,12 @@ class Session:
             **kwargs,
         )
 
-    def _open_segmentation(self, filepath, sampling_rate=None, persist=True):
+    def _open_segmentation(
+        self,
+        filepath: str,
+        sampling_rate: ArrayLike | None = None,
+        persist: bool = True,
+    ):
         """Open a volume as SegmentationGeometry from point clouds."""
         from ..formats import open_file
         from ..geometry import SegmentationGeometry
@@ -257,11 +271,11 @@ class Session:
 
     def _open_generic(
         self,
-        filepath,
-        offset=0,
-        scale=None,
-        sampling_rate=None,
-        persist=True,
+        filepath: str,
+        offset: ArrayLike = 0,
+        scale: ArrayLike | None = None,
+        sampling_rate: ArrayLike | None = None,
+        persist: bool = True,
         **kwargs,
     ):
         """Load geometries via the format parsers (generic path)."""
@@ -348,7 +362,7 @@ class Session:
             export_parameters["shape"] = self.metadata.get("shape")
         write_geometries(geometries, filepath, **export_parameters)
 
-    def save_session(self, filepath: str, sections: dict = None) -> str:
+    def save_session(self, filepath: str, sections: dict | None = None) -> str:
         """Save session state to *filepath*.
 
         Parameters
@@ -457,7 +471,13 @@ class Session:
         self._order = list(self._data.data) + list(self._models.data)
         self._last_results = self._all_geometries()
 
-    def _run_parallel(self, func, geometries, operation_name, **kwargs):
+    def _run_parallel(
+        self,
+        func: Callable,
+        geometries: "list[Geometry]",
+        operation_name: str,
+        **kwargs,
+    ):
         """Execute *func* on each geometry using a process pool.
 
         Parameters
@@ -678,10 +698,10 @@ class Session:
         self,
         geometries: list,
         prop_name: str,
-        lower=None,
-        upper=None,
-        include=None,
-        exclude=None,
+        lower: float | None = None,
+        upper: float | None = None,
+        include: ArrayLike | None = None,
+        exclude: ArrayLike | None = None,
         **kwargs,
     ) -> tuple:
         """Filter geometries by property value range or membership.
@@ -721,12 +741,12 @@ class Session:
         """
         from ..properties import GeometryProperties
 
-        def _is_non_numeric(v):
+        def _is_non_numeric(v: ArrayLike):
             if isinstance(v, np.ndarray):
                 return v.dtype.kind in ("U", "S", "O")
             return isinstance(v, (str, bytes))
 
-        def _as_set_array(v):
+        def _as_set_array(v: ArrayLike):
             if isinstance(v, np.ndarray):
                 return np.atleast_1d(v)
             if isinstance(v, (list, tuple)):
@@ -814,7 +834,7 @@ class Session:
         self._last_results = kept_geoms
         return (kept, removed, level or "population")
 
-    def _geometry_name(self, geometry, index: int) -> str:
+    def _geometry_name(self, geometry: "Geometry", index: int) -> str:
         """Return the display name, falling back to GUI-style defaults."""
         name = geometry._meta.get("name")
         if name:
@@ -823,7 +843,7 @@ class Session:
             return f"Fit {index}"
         return f"Cluster {index}"
 
-    def _geometry_group(self, geometry) -> str:
+    def _geometry_group(self, geometry: "Geometry") -> str:
         """Return the group name a geometry belongs to, or empty string."""
         uuid = geometry.uuid
         for tree in (self._data_tree, self._models_tree):

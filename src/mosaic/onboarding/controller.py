@@ -7,11 +7,16 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import re
+from typing import TYPE_CHECKING
 
 from qtpy.QtCore import QObject, Signal
+from qtpy.QtWidgets import QWidget
 
 from .base import OnboardingChapter, OnboardingStep
 from .overlay import SpotlightOverlay
+
+if TYPE_CHECKING:
+    from ..gui import App
 
 __all__ = ["OnboardingController"]
 
@@ -19,7 +24,7 @@ _CALL_PATTERN = re.compile(r"^(\w+)\(\s*(?:(['\"])([^'\"]*)\2)?\s*\)$")
 _INDEX_PATTERN = re.compile(r"^(\w+)((?:\[[^\[\]]+\])+)$")
 
 
-def resolve_widget(root, path: str):
+def resolve_widget(root: QWidget, path: str):
     obj = root
     for attr in path.split("."):
         idx_match = _INDEX_PATTERN.match(attr)
@@ -52,7 +57,7 @@ def resolve_widget(root, path: str):
 class OnboardingController(QObject):
     finished = Signal()
 
-    def __init__(self, main_window):
+    def __init__(self, main_window: "App"):
         super().__init__(main_window)
         self._window = main_window
         self._overlay = SpotlightOverlay(main_window)

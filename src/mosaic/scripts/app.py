@@ -10,6 +10,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import argparse
 import signal
 import sys
+from typing import TYPE_CHECKING
 
 from importlib_resources import files
 from qtpy.QtCore import QLocale, Qt, QTimer
@@ -26,8 +27,11 @@ from mosaic.stylesheets import (
     install_macos_titlebar_filter,
 )
 
+if TYPE_CHECKING:
+    from ..gui import App
 
-def _prompt_first_launch(window):
+
+def _prompt_first_launch(window: "App"):
     from qtpy.QtWidgets import QMessageBox
 
     from mosaic.onboarding import launch_onboarding

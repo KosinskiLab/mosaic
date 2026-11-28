@@ -7,7 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from dataclasses import dataclass, fields
-from typing import get_origin
+from typing import Any, get_origin
 
 from qtpy.QtCore import QSettings, QThread
 
@@ -15,7 +15,7 @@ from qtpy.QtCore import QSettings, QThread
 class SettingsProperty:
     """Descriptor that automatically syncs with QSettings."""
 
-    def __init__(self, key: str, default, value_type):
+    def __init__(self, key: str, default: Any, value_type: type):
         self.key = key
         self.default = default
         self.value_type = value_type
@@ -23,7 +23,11 @@ class SettingsProperty:
         self._value = None
         self._loaded = False
 
-    def __get__(self, obj, objtype=None):
+    def __get__(
+        self,
+        obj: "SettingsCategory | None",
+        objtype: "type[SettingsCategory] | None" = None,
+    ):
         if obj is None:
             return self
 
@@ -32,7 +36,7 @@ class SettingsProperty:
 
         return self._value
 
-    def __set__(self, obj, value):
+    def __set__(self, obj: "SettingsCategory | None", value: Any):
         self._value = value
         self._loaded = True
 
@@ -182,7 +186,7 @@ class SettingsManager:
         if self.vtk.point_budget <= 0:
             self.vtk.point_budget = int(2e6)
 
-    def reset_to_defaults(self, category: str = None):
+    def reset_to_defaults(self, category: str | None = None):
         """Reset settings to defaults."""
 
         categories = [category]

@@ -6,7 +6,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from typing import Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
@@ -36,10 +37,13 @@ from .utils import (
     statistical_outlier_removal,
 )
 
+if TYPE_CHECKING:
+    from .geometry import Geometry, GeometryData
+
 __all__ = ["GeometryOperations"]
 
 
-def _get_meta(geometry):
+def _get_meta(geometry: "Geometry | GeometryData"):
     name = geometry._meta.get("name", None)
     if name is None:
         return {}
@@ -106,7 +110,12 @@ def _get_meta(geometry):
         ),
     ),
 )
-def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
+def skeletonize(
+    geometry: "Geometry | GeometryData",
+    method: str = "core",
+    sigma: float = 1.0,
+    **kwargs,
+):
     """
     Extract structural skeleton from point cloud.
 
@@ -220,7 +229,7 @@ def skeletonize(geometry, method: str = "core", sigma: float = 1.0, **kwargs):
         ),
     ),
 )
-def downsample(geometry, method: str = "radius", **kwargs):
+def downsample(geometry: "Geometry | GeometryData", method: str = "radius", **kwargs):
     """
     Downsample point cloud.
 
@@ -319,7 +328,7 @@ def downsample(geometry, method: str = "radius", **kwargs):
     ),
 )
 def sample(
-    geometry,
+    geometry: "Geometry | GeometryData",
     sampling: float,
     method: str,
     normal_offset: float = 0.0,
@@ -516,7 +525,7 @@ def sample(
     ),
 )
 def cluster(
-    geometry,
+    geometry: "Geometry | GeometryData",
     method: str,
     drop_noise: bool = False,
     use_points: bool = True,
@@ -660,7 +669,9 @@ def cluster(
         ),
     ),
 )
-def remove_outliers(geometry, method: str = "statistical", **kwargs):
+def remove_outliers(
+    geometry: "Geometry | GeometryData", method: str = "statistical", **kwargs
+):
     """
     Remove statistical outliers from point cloud.
 
@@ -729,7 +740,7 @@ def remove_outliers(geometry, method: str = "statistical", **kwargs):
     ),
 )
 def compute_normals(
-    geometry, method: str = "Compute", k: int = 15, **kwargs
+    geometry: "Geometry | GeometryData", method: str = "Compute", k: int = 15, **kwargs
 ) -> Optional:
     """
     Compute, flip, or remove point normals.
@@ -780,7 +791,7 @@ def compute_normals(
 
 
 @operation()
-def duplicate(geometry, **kwargs):
+def duplicate(geometry: "Geometry | GeometryData", **kwargs):
     """
     Duplicate a geometry.
 
@@ -800,7 +811,7 @@ def duplicate(geometry, **kwargs):
 @operation(
     common_params=(Param("visible", "bool", default=True),),
 )
-def visibility(geometry, visible: bool = True, **kwargs):
+def visibility(geometry: "Geometry | GeometryData", visible: bool = True, **kwargs):
     """
     Change geometry visibility.
 
@@ -902,7 +913,7 @@ def visibility(geometry, visible: bool = True, **kwargs):
         ),
     ),
 )
-def remesh(geometry, method: str, **kwargs):
+def remesh(geometry: "Geometry | GeometryData", method: str, **kwargs):
     """
     Remesh by edge length, vertex count, or subdivision.
 
@@ -1023,7 +1034,7 @@ def remesh(geometry, method: str, **kwargs):
         ),
     ),
 )
-def smooth(geometry, method: str, **kwargs):
+def smooth(geometry: "Geometry | GeometryData", method: str, **kwargs):
     """
     Smooth a triangle mesh.
 
@@ -1278,7 +1289,7 @@ def smooth(geometry, method: str, **kwargs):
         ),
     ),
 )
-def fit(geometry, method: str, **kwargs):
+def fit(geometry: "Geometry | GeometryData", method: str, **kwargs):
     """
     Fit a model to a point cloud.
 
@@ -1367,7 +1378,12 @@ class GeometryOperations:
     """Registry for geometry operation functions."""
 
     @classmethod
-    def register(cls, operation_name: str, func, decorator=None):
+    def register(
+        cls,
+        operation_name: str,
+        func: Callable,
+        decorator: Callable[[Callable], Callable] | None = None,
+    ):
         """Register an operation function."""
         if decorator is not None:
             func = decorator(func)

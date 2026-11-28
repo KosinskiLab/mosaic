@@ -197,10 +197,10 @@ def _write_sections(filepath: str, sections_data: dict) -> None:
 
 def write_session(
     filepath: str,
-    state: dict = None,
-    sections: dict = None,
+    state: dict | None = None,
+    sections: dict | None = None,
     *,
-    state_bytes: bytes = None,
+    state_bytes: bytes | None = None,
 ) -> None:
     """Write a session file in the indexed format.
 

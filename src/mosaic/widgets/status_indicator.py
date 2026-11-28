@@ -8,9 +8,19 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import enum
 from collections import Counter
+from typing import TYPE_CHECKING
 
 from qtpy.QtCore import QRectF, Qt, QTimer, Signal
-from qtpy.QtGui import QColor, QFontMetrics, QPainter, QPainterPath, QPen, QTextCursor
+from qtpy.QtGui import (
+    QColor,
+    QFontMetrics,
+    QMouseEvent,
+    QPainter,
+    QPainterPath,
+    QPaintEvent,
+    QPen,
+    QTextCursor,
+)
 from qtpy.QtWidgets import (
     QApplication,
     QFrame,
@@ -30,6 +40,9 @@ from ..parallel import BackgroundTaskManager
 from ..path_display import set_path_text
 from ..stylesheets import Colors, Typography
 
+if TYPE_CHECKING:
+    from ..gui import App
+
 
 class ViewerModes(enum.Enum):
     VIEWING = "Viewing"
@@ -44,7 +57,7 @@ class ViewerModes(enum.Enum):
 
 
 class TextSpinnerLabel(QLabel):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         self.current_frame = 0
@@ -87,7 +100,7 @@ class TaskCard(QFrame):
         "failed": "ph.x-circle",
     }
 
-    def __init__(self, task_data, parent=None):
+    def __init__(self, task_data: dict, parent: QWidget | None = None):
         super().__init__(parent)
         self.task_data = task_data
         self.task_id = task_data.get("id", "unknown")
@@ -246,7 +259,7 @@ class TaskCard(QFrame):
         self.setMinimumHeight(32)
         self.update()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         """Draw the progress fill behind the card content."""
         if self._progress > 0:
             painter = QPainter(self)
@@ -265,7 +278,7 @@ class TaskCard(QFrame):
         self.name_label.setText(name)
         return None
 
-    def update_task_data(self, task_data):
+    def update_task_data(self, task_data: dict):
         self.task_data = task_data
         self.status = task_data.get("status", "running")
         self._set_name(task_data.get("name", "Unnamed Task"))
@@ -305,10 +318,11 @@ class TaskCard(QFrame):
         scrollbar = view.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            if not self.cancel_btn.geometry().contains(event.pos()):
-                self._toggle_expanded()
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton and not (
+            self.cancel_btn.geometry().contains(event.pos())
+        ):
+            self._toggle_expanded()
         super().mousePressEvent(event)
 
     def _toggle_expanded(self):
@@ -344,7 +358,7 @@ class TaskMonitorPanel(QFrame):
     _MARGIN = 8
     _RADIUS = float(Colors.RADIUS)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowFlags(
             Qt.WindowType.Tool
@@ -422,7 +436,7 @@ class TaskMonitorPanel(QFrame):
     def _on_theme_changed(self):
         self._apply_panel_style()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -441,7 +455,7 @@ class TaskMonitorPanel(QFrame):
 
         p.end()
 
-    def _insert_card(self, card):
+    def _insert_card(self, card: TaskCard):
         """Insert card at the right position: running > queued > completed > failed."""
         priority = {"running": 0, "queued": 1, "completed": 2, "failed": 3}
         card_prio = priority.get(card.status, 4)
@@ -558,7 +572,7 @@ class TaskMonitorPanel(QFrame):
 class StatusIndicator:
     _instance = None
 
-    def __init__(self, main_window):
+    def __init__(self, main_window: "App"):
         self.main_window = main_window
         self.visible = True
         self.current_target = "Clusters"
@@ -854,10 +868,10 @@ class StatusIndicator:
 
     def update_status(
         self,
-        interaction=None,
-        target=None,
-        busy: bool = None,
-        task: str = None,
+        interaction: str | None = None,
+        target: str | None = None,
+        busy: bool | None = None,
+        task: str | None = None,
         **kwargs,
     ):
         if not self.visible:
@@ -883,7 +897,7 @@ class StatusIndicator:
             f"color: {color}; font-size: {Typography.SMALL}px;"
         )
 
-    def _display_task(self, prefix, path, warning):
+    def _display_task(self, prefix: str, path: str | None, warning: bool):
         width = self.task_label.contentsRect().width()
         if path is not None:
             set_path_text(self.task_label, path, prefix=prefix, width=width)
@@ -899,7 +913,7 @@ class StatusIndicator:
     def show_task(
         self,
         prefix: str,
-        path: str = None,
+        path: str | None = None,
         warning: bool = False,
         persist: bool = False,
     ) -> None:

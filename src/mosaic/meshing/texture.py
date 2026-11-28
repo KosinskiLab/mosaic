@@ -7,6 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from functools import lru_cache
+from typing import TYPE_CHECKING
 
 import numpy as np
 import vtk
@@ -14,6 +15,9 @@ from numpy.typing import NDArray
 from vtk.util import numpy_support
 
 from .. import utils
+
+if TYPE_CHECKING:
+    from ..geometry import Geometry
 
 __all__ = ["TextureSampler"]
 
@@ -221,7 +225,7 @@ class TextureSampler:
 
     def __init__(
         self,
-        geometry,
+        geometry: "Geometry",
         tomogram_path: str,
         texture_size: int = 1024,
         interpolation_order: int = 3,
@@ -272,7 +276,7 @@ class TextureSampler:
 
         self.update(0.0)
 
-    def _setup_texture_coords(self, per_vertex_uvs):
+    def _setup_texture_coords(self, per_vertex_uvs: np.ndarray):
         """Set up texture coordinates on the geometry."""
         tcoords = vtk.vtkFloatArray()
         tcoords.SetNumberOfComponents(2)

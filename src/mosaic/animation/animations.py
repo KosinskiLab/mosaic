@@ -1,12 +1,19 @@
 from abc import ABC, abstractmethod
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from qtpy.QtWidgets import QDialog
+from qtpy.QtWidgets import QDialog, QWidget
 from vtk import vtkTransform
 
 from ..stylesheets import Colors, Typography
+
+if TYPE_CHECKING:
+    from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+
+    from ..data import MosaicData
+    from ..widgets.volume_viewer_hud import VolumeViewerHUD
 
 
 class BaseAnimation(ABC):
@@ -18,11 +25,11 @@ class BaseAnimation(ABC):
 
     def __init__(
         self,
-        vtk_widget,
-        cdata,
-        volume_viewer,
-        global_start_frame=0,
-        enabled=True,
+        vtk_widget: "QVTKRenderWindowInteractor",
+        cdata: "MosaicData",
+        volume_viewer: "VolumeViewerHUD | None",
+        global_start_frame: int = 0,
+        enabled: bool = True,
         name: str = "",
     ):
         self.cdata = cdata
@@ -379,7 +386,7 @@ class VolumeAnimation(BaseAnimation):
             self._apply(claim[1])
         return None
 
-    def _get_axis_size(self, axis=None):
+    def _get_axis_size(self, axis: str | None = None):
         _mapping = {"x": 0, "y": 1, "z": 2}
         if axis is None:
             axis = self.parameters.get("axis", "Z")
@@ -610,7 +617,12 @@ class ActorSelectionDialog(QDialog):
     headers as the object browser sidebar.
     """
 
-    def __init__(self, cdata, current_selection=None, parent=None):
+    def __init__(
+        self,
+        cdata: "MosaicData",
+        current_selection: Iterable[int] | None = None,
+        parent: QWidget | None = None,
+    ):
         from qtpy.QtCore import Qt
         from qtpy.QtWidgets import (
             QAbstractItemView,
@@ -726,7 +738,7 @@ class ActorSelectionDialog(QDialog):
         )
         self._update_count()
 
-    def _items(self, data_types=None):
+    def _items(self, data_types: Collection[str] | None = None):
         """Yield object rows, skipping group headers."""
         from mosaic.widgets.container_list import StyledTreeWidgetItem
 
@@ -737,7 +749,7 @@ class ActorSelectionDialog(QDialog):
                 if isinstance(item, StyledTreeWidgetItem):
                     yield item
 
-    def _select(self, data_types):
+    def _select(self, data_types: Collection[str]):
         """Select every listed object of the given types, deselect the rest."""
         for data_type, tree in self._trees.items():
             tree.tree_widget.blockSignals(True)
@@ -746,7 +758,7 @@ class ActorSelectionDialog(QDialog):
             tree.tree_widget.blockSignals(False)
         self._update_count()
 
-    def _filter(self, text):
+    def _filter(self, text: str):
         from mosaic.widgets.container_list import GroupTreeWidgetItem
 
         text = text.strip().lower()
@@ -848,7 +860,7 @@ class VisibilityAnimation(BaseAnimation):
             },
         ]
 
-    def _open_object_selection_dialog(self, _checked=None):
+    def _open_object_selection_dialog(self, _checked: bool | None = None):
         """Open dialog to select which objects should be affected"""
         try:
             current_selection = self.parameters.get("selected_objects", [])

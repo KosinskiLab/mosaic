@@ -7,8 +7,12 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import sys
+from typing import Any
 
 from importlib_resources import files
+from qtpy.QtCore import QEvent, QObject
+from qtpy.QtGui import QPalette
+from qtpy.QtWidgets import QApplication, QComboBox, QWidget
 
 __all__ = [
     "Colors",
@@ -98,7 +102,7 @@ class Colors:
         cls.ICON_ACTIVE = cls.TEXT_SECONDARY
 
     @classmethod
-    def alpha(cls, token, value):
+    def alpha(cls, token: str, value: float):
         """Return a palette color at the given alpha as an rgba() string."""
         import re
 
@@ -171,7 +175,7 @@ class Colors:
 Colors.apply_palette(Colors.LIGHT)
 
 
-def _get_resource_path(resource_name):
+def _get_resource_path(resource_name: str):
     """Get the absolute path to a resource in the package."""
     # Build an absolute path to the requested resource inside the package data directory.
     # Convert the path to POSIX format because Qt stylesheets expect forward slashes.
@@ -772,7 +776,7 @@ def build_qt_palette():
     return pal
 
 
-def _get_nswindow(widget):
+def _get_nswindow(widget: QWidget):
     """Return the NSWindow pointer for a Qt widget, or None."""
     if sys.platform != "darwin":
         return None
@@ -796,7 +800,7 @@ def _get_nswindow(widget):
         return None
 
 
-def _apply_macos_titlebar(ns_win, hide_title=False):
+def _apply_macos_titlebar(ns_win: Any, hide_title: bool = False):
     """Make a native window's title bar transparent with themed background.
 
     Parameters
@@ -887,7 +891,7 @@ def _apply_macos_titlebar(ns_win, hide_title=False):
         pass
 
 
-def _set_macos_titlebar_transparent(ns_win):
+def _set_macos_titlebar_transparent(ns_win: Any):
     """Re-assert a transparent title bar on a native window."""
     try:
         import ctypes
@@ -905,7 +909,7 @@ def _set_macos_titlebar_transparent(ns_win):
     return None
 
 
-def _update_macos_titlebar_color(ns_win):
+def _update_macos_titlebar_color(ns_win: Any):
     """Set an NSWindow's background color to match the current theme surface."""
     try:
         import ctypes
@@ -972,7 +976,7 @@ def install_macos_titlebar_filter():
     if sys.platform != "darwin":
         return None
 
-    from qtpy.QtCore import QEvent, QObject, QTimer
+    from qtpy.QtCore import QTimer
     from qtpy.QtWidgets import QApplication, QMainWindow, QTabBar
 
     tab_bar_events = (
@@ -982,7 +986,7 @@ def install_macos_titlebar_filter():
         QEvent.Type.Resize,
     )
 
-    def _restore_transparency(window):
+    def _restore_transparency(window: QWidget):
         if (ns_win := _get_nswindow(window)) is not None:
             _set_macos_titlebar_transparent(ns_win)
         return None
@@ -990,7 +994,7 @@ def install_macos_titlebar_filter():
     class _MacOSTitleBarFilter(QObject):
         """Event filter that styles the native title bar of every top-level window."""
 
-        def eventFilter(self, obj, event):
+        def eventFilter(self, obj: QObject, event: QEvent):
             # QTabBar geometry changes make Qt's cocoa plugin reset
             # titlebarAppearsTransparent on the main window (updateMacBorderMetrics).
             if isinstance(obj, QTabBar) and event.type() in tab_bar_events:
@@ -1018,13 +1022,13 @@ def install_macos_titlebar_filter():
 
 def build_appstyle():
 
-    from qtpy.QtWidgets import QComboBox, QMenu, QProxyStyle
+    from qtpy.QtWidgets import QMenu, QProxyStyle
 
     class MosaicStyle(QProxyStyle):
         def __init__(self):
             super().__init__("Fusion")
 
-        def polish(self, obj):
+        def polish(self, obj: QWidget | QPalette | QApplication):
             from qtpy.QtGui import QPalette
 
             if isinstance(obj, QPalette):
@@ -1035,8 +1039,8 @@ def build_appstyle():
                 return self._install_menu_popup(obj)
 
         @staticmethod
-        def _install_menu_popup(combo):
-            def _show_popup(combo=combo):
+        def _install_menu_popup(combo: QComboBox):
+            def _show_popup(combo: QComboBox = combo):
                 from qtpy.QtCore import QPoint, Qt
 
                 if (old := getattr(combo, "_popup_menu", None)) is not None:

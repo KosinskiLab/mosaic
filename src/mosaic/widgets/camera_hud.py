@@ -6,14 +6,21 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from typing import TYPE_CHECKING
+
 import numpy as np
-from qtpy.QtCore import QCoreApplication, QEvent, QPoint, Qt
-from qtpy.QtGui import QColor, QPainter, QPen
+from qtpy.QtCore import QCoreApplication, QEvent, QObject, QPoint, Qt
+from qtpy.QtGui import QColor, QEnterEvent, QPainter, QPaintEvent, QPen, QShowEvent
 from qtpy.QtWidgets import QVBoxLayout, QWidget
 
 from ..stylesheets import Typography
 from ..utils import Throttle
 from .sliders import SliderRow
+
+if TYPE_CHECKING:
+    import vtk
+
+    from ..gui import App
 
 _STYLE = f"""
 QSlider {{
@@ -59,7 +66,7 @@ _REF_VIEW_UPS = {
 }
 
 
-def _project_orthonormal(vec, axis):
+def _project_orthonormal(vec: np.ndarray, axis: np.ndarray):
     """Return the unit component of ``vec`` perpendicular to unit ``axis``."""
     vec = vec - axis * float(np.dot(vec, axis))
     n = np.linalg.norm(vec)
@@ -68,7 +75,7 @@ def _project_orthonormal(vec, axis):
     return vec / n
 
 
-def _decompose_angles(camera, view_key, aligned_direction):
+def _decompose_angles(camera: "vtk.vtkCamera", view_key: str, aligned_direction: bool):
     """Recover (elevation, azimuth, pitch) consistent with ``set_camera_view``.
 
     set_camera_view applies ``M = R_z(elev) * R_y(az) * R_x(pitch)`` to the
@@ -142,7 +149,7 @@ class CameraHUD(QWidget):
     _RADIUS = 6
     _MARGIN = 12
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowFlags(
             self.windowFlags()
@@ -231,7 +238,7 @@ class CameraHUD(QWidget):
         self._last_direction = d / n if n > 1e-12 else None
         self._last_view_up = np.array(camera.GetViewUp())
 
-    def set_angles(self, elevation=0, azimuth=0, pitch=0):
+    def set_angles(self, elevation: int = 0, azimuth: int = 0, pitch: int = 0):
         """Update displayed angles (called from camera observer)."""
         self._updating_from_camera = True
         self._rows["elevation"].setValue(int(elevation))
@@ -239,7 +246,7 @@ class CameraHUD(QWidget):
         self._rows["pitch"].setValue(int(pitch))
         self._updating_from_camera = False
 
-    def attach(self, app):
+    def attach(self, app: "App"):
         """Attach HUD to the application and its viewport.
 
         Parameters
@@ -270,7 +277,7 @@ class CameraHUD(QWidget):
             "InteractionEvent", self._on_camera_interaction
         )
 
-    def _on_camera_interaction(self, obj, event):
+    def _on_camera_interaction(self, obj: "vtk.vtkObject", event: str):
         self._throttle_sync()
 
     def _sync_from_camera(self):
@@ -310,7 +317,7 @@ class CameraHUD(QWidget):
         self._app._camera_pitch = pitch
         self.set_angles(elevation, azimuth, pitch)
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent):
         etype = event.type()
         if obj is self._viewport_parent and etype == QEvent.Type.Resize:
             self._reposition()
@@ -329,7 +336,7 @@ class CameraHUD(QWidget):
                 self.show()
         return super().eventFilter(obj, event)
 
-    def showEvent(self, event):
+    def showEvent(self, event: QShowEvent):
         super().showEvent(event)
         self._sync_from_camera()
         self._reposition()
@@ -357,17 +364,17 @@ class CameraHUD(QWidget):
         y = top_left.y() + self._MARGIN
         self.setGeometry(x, y, w, h)
 
-    def enterEvent(self, event):
+    def enterEvent(self, event: QEnterEvent):
         self._hovered = True
         self.update()
         super().enterEvent(event)
 
-    def leaveEvent(self, event):
+    def leaveEvent(self, event: QEvent):
         self._hovered = False
         self.update()
         super().leaveEvent(event)
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = self.rect().adjusted(1, 1, -1, -1)

@@ -1,11 +1,15 @@
+from typing import Any
+
 from qtpy.QtGui import QDoubleValidator
 from qtpy.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
+    QLayout,
     QLineEdit,
     QSpinBox,
+    QWidget,
 )
 
 from ..stylesheets import Colors, Typography
@@ -19,7 +23,12 @@ __all__ = [
 ]
 
 
-def format_tooltip(description=None, default=None, notes=None, **kwargs):
+def format_tooltip(
+    description: str | None = None,
+    default: object | None = None,
+    notes: str | None = None,
+    **kwargs,
+):
     if description is None and default is None and notes is None:
         return ""
 
@@ -124,7 +133,7 @@ def create_setting_widget(setting: dict):
     return widget
 
 
-def get_widget_value(widget):
+def get_widget_value(widget: QWidget):
     from .path_selector import PathSelector
 
     if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
@@ -157,7 +166,7 @@ def get_widget_value(widget):
         return None
 
 
-def set_widget_value(widget, value):
+def set_widget_value(widget: QWidget, value: Any):
     from .path_selector import PathSelector
 
     if isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox):
@@ -185,7 +194,7 @@ def set_widget_value(widget, value):
             pass
 
 
-def get_layout_widget_value(layout):
+def get_layout_widget_value(layout: QLayout):
     ret = {}
     for i in range(layout.rowCount()):
         field_item = layout.itemAt(i, QFormLayout.ItemRole.FieldRole)

@@ -8,6 +8,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import urllib.request
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
@@ -19,10 +20,14 @@ from qtpy.QtWidgets import (
     QProgressBar,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
 
 from ..base import OnboardingChapter, OnboardingStep
 from . import register
+
+if TYPE_CHECKING:
+    from ...gui import App
 
 __all__ = ["BasicsChapter"]
 
@@ -52,7 +57,7 @@ class BasicsChapter(OnboardingChapter):
         super().__init__()
         self._data_dir: Path | None = None
 
-    def _download(self, parent) -> bool:
+    def _download(self, parent: QWidget) -> bool:
         from mosaic.stylesheets import Colors, Typography
         from mosaic.widgets import MosaicMessageBox
 
@@ -322,7 +327,7 @@ class BasicsChapter(OnboardingChapter):
         self._main_window.cdata.models.set_selection_by_uuid([latest.uuid])
         self._main_window.cdata.models.data_changed.emit()
 
-    def setup(self, main_window) -> None:
+    def setup(self, main_window: "App") -> None:
         self._data_dir = Path.cwd() / "mosaic_basics"
         self._data_dir.mkdir(exist_ok=True)
 
@@ -663,7 +668,7 @@ class BasicsChapter(OnboardingChapter):
             ),
         ]
 
-    def teardown(self, main_window) -> None:
+    def teardown(self, main_window: "App") -> None:
         if self._data_dir is None:
             return None
 

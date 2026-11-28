@@ -6,14 +6,24 @@ Copyright (c) 2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
 import numpy as np
+from numpy.typing import ArrayLike
 from scipy.spatial.transform import Rotation
 from vtkmodules.vtkCommonDataModel import vtkPlane
+
+if TYPE_CHECKING:
+    import vtk
+
+    from .geometry import Geometry
+    from .interactor import DataContainerInteractor
 
 __all__ = ["ClipCut", "bounds", "clip_targets", "eligible", "remap"]
 
 
-def eligible(geometry) -> bool:
+def eligible(geometry: "Geometry") -> bool:
     """Return whether a geometry can be clipped.
 
     Parameters
@@ -42,7 +52,9 @@ def eligible(geometry) -> bool:
     return model is None or isinstance(model, TriangularMesh)
 
 
-def clip_targets(data_pane, models_pane) -> list:
+def clip_targets(
+    data_pane: "DataContainerInteractor", models_pane: "DataContainerInteractor"
+) -> list:
     """Return the geometries a cut applies to.
 
     Parameters
@@ -114,19 +126,19 @@ def remap(geometries: list, live: list) -> list:
     return ret
 
 
-def _mappers(geometry):
+def _mappers(geometry: "Geometry"):
     mappers = [geometry.actor.GetMapper()]
     if geometry.lod.actor is not None:
         mappers.append(geometry.lod.actor.GetMapper())
     return mappers
 
 
-def _has_plane(mapper, plane) -> bool:
+def _has_plane(mapper: "vtk.vtkAbstractMapper", plane: vtkPlane) -> bool:
     planes = mapper.GetClippingPlanes()
     return planes is not None and bool(planes.IsItemPresent(plane))
 
 
-def _corners(bounds) -> np.ndarray:
+def _corners(bounds: Sequence[float]) -> np.ndarray:
     grid = np.meshgrid(bounds[0:2], bounds[2:4], bounds[4:6], indexing="ij")
     return np.stack(grid, axis=-1).reshape(-1, 3)
 
@@ -166,7 +178,7 @@ class ClipCut:
         self._attach()
         return None
 
-    def place_facing(self, view_direction, box) -> None:
+    def place_facing(self, view_direction: ArrayLike, box: tuple[float, ...]) -> None:
         """Place the plane facing the viewer in front of ``box``.
 
         Parameters
@@ -204,7 +216,7 @@ class ClipCut:
         self.plane.SetOrigin(origin + normal * (target - depth))
         return None
 
-    def tilt(self, axis, degrees: float) -> None:
+    def tilt(self, axis: ArrayLike, degrees: float) -> None:
         """Rotate the normal about ``axis`` through the origin.
 
         Parameters
@@ -221,7 +233,7 @@ class ClipCut:
         self.plane.SetNormal(rotation.apply(self.plane.GetNormal()))
         return None
 
-    def face(self, view_direction) -> None:
+    def face(self, view_direction: ArrayLike) -> None:
         """Turn the normal to ``view_direction``, keeping the origin.
 
         Parameters

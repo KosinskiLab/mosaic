@@ -47,7 +47,7 @@ def strip_extension(name: str) -> str:
     return stem
 
 
-def natural_sort_key(path):
+def natural_sort_key(path: str):
     """
     Natural sorting key for filenames with numbers.
 
@@ -69,7 +69,7 @@ def natural_sort_key(path):
     return [int(part) if part.isdigit() else part.lower() for part in parts]
 
 
-def topological_sort(nodes, node_map, start_node_id):
+def topological_sort(nodes: list, node_map: dict, start_node_id: str):
     """
     Perform topological sort starting from a given node.
 

@@ -4,7 +4,8 @@ import numpy as np
 
 from mosaic.container import DataContainer
 from mosaic.geometry import Geometry
-from mosaic.swaps import GeometrySwap, apply_changes
+from mosaic.swaps import GeometrySwap, apply_changes, place
+from mosaic.undo import STACK
 
 
 class _Target:
@@ -35,10 +36,6 @@ def test_apply_changes_add_then_undo_removes():
 
     apply_changes(target, [change], undo=True)
     assert target.container.get(g.uuid) is None
-
-
-from mosaic.swaps import place
-from mosaic.undo import STACK
 
 
 def test_place_add_records_entry_and_undo_removes():

@@ -1,6 +1,7 @@
 import textwrap
 import warnings
 from os.path import basename, join
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -8,11 +9,14 @@ from ..formats.writer import write_topology_file
 from ..utils import NORMAL_REFERENCE, find_closest_points, normals_to_rot
 from . import center_mesh, compute_scale_factor_lower, remesh, scale
 
+if TYPE_CHECKING:
+    from ..geometry import GeometryData
+
 __all__ = ["mesh_to_cg"]
 
 
 def mesh_to_cg(
-    geometry_data,
+    geometry_data: "GeometryData",
     output_directory: str,
     inclusions: list[dict],
     edge_length: float = 40.0,

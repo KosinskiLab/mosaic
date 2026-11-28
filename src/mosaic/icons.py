@@ -124,7 +124,7 @@ _COMPAT_SHIMS = {
 }
 
 
-def __getattr__(attr):
+def __getattr__(attr: str):
     if attr in _COMPAT_SHIMS:
         name, role = _COMPAT_SHIMS[attr]
         return icon(name, role=role)

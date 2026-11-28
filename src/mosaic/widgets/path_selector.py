@@ -23,7 +23,7 @@ from ..stylesheets import Colors, Typography
 class _TabCompleteFilter(QObject):
     """Accept inline completion on Tab and scroll to show completed text."""
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent):
         if event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Tab:
             completer = obj.completer()
             if completer and completer.currentCompletion():
@@ -88,11 +88,11 @@ class PathSelector(QWidget):
 
     def __init__(
         self,
-        label_text="",
-        placeholder="Path to file",
+        label_text: str = "",
+        placeholder: str = "Path to file",
         mode: str = "file",
         file_filter: str = "",
-        parent=None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
 
@@ -270,7 +270,7 @@ class PathSelector(QWidget):
                 self.path_input.setText(self._paths[0])
             self._paths.clear()
 
-    def _update_completions(self, text):
+    def _update_completions(self, text: str):
         if self.mode == "files":
             return
         parent_dir = str(Path(text).parent) if text else ""

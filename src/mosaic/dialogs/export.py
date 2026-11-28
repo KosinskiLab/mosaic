@@ -1,4 +1,6 @@
+from collections.abc import Iterable
 from os.path import splitext
+from typing import Any
 
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
@@ -8,6 +10,7 @@ from qtpy.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QLineEdit,
     QPushButton,
     QVBoxLayout,
@@ -24,7 +27,12 @@ LABEL_WIDTH = 80
 
 class StyleableButton(QPushButton):
     def __init__(
-        self, icon_name, title, description=None, is_compact=False, parent=None
+        self,
+        icon_name: str,
+        title: str,
+        description: str | None = None,
+        is_compact: bool = False,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
 
@@ -85,10 +93,10 @@ class ExportDialog(QDialog):
 
     def __init__(
         self,
-        parent=None,
-        parameters={},
-        enabled_categories=None,
-        names: list[str] = None,
+        parent: QWidget | None = None,
+        parameters: dict | None = None,
+        enabled_categories: Iterable[str] | None = None,
+        names: list[str] | None = None,
     ):
         super().__init__(parent)
 
@@ -172,12 +180,14 @@ class ExportDialog(QDialog):
         ][0]
 
         # Set parameters before drawing dialog
+        if parameters is None:
+            parameters = {}
         self.set_defaults(list(parameters.keys()), list(parameters.values()))
 
         self.setup_ui()
         self.resize(700, 460)
 
-    def set_defaults(self, keys, values):
+    def set_defaults(self, keys: Iterable[str], values: Iterable[Any]):
         """Update default values for format settings"""
         params = dict(zip(keys, values))
 
@@ -265,7 +275,7 @@ class ExportDialog(QDialog):
         self.export_button.setIcon(_icon("ph.download", role="primary"))
         main_layout.addWidget(footer)
 
-    def _set_export_blocked(self, blocked):
+    def _set_export_blocked(self, blocked: bool):
         if hasattr(self, "export_button"):
             self.export_button.setEnabled(not blocked)
 
@@ -285,7 +295,7 @@ class ExportDialog(QDialog):
                 self.file_names[i] = pattern
         self._refresh_export_blocked()
 
-    def _on_single_file_toggled(self, checked):
+    def _on_single_file_toggled(self, checked: bool):
         self._update_output_enabled()
         self._refresh_export_blocked()
 
@@ -296,7 +306,7 @@ class ExportDialog(QDialog):
         self.suffix_label.setEnabled(enabled)
         self.pattern_input.setEnabled(enabled)
 
-    def _clear_layout(self, layout):
+    def _clear_layout(self, layout: QLayout):
         while layout.count():
             item = layout.takeAt(0)
             if item.widget():
@@ -417,7 +427,7 @@ class ExportDialog(QDialog):
 
         return settings
 
-    def on_category_selected(self, category_id):
+    def on_category_selected(self, category_id: str):
         if category_id == self.selected_category:
             return None
 
@@ -433,7 +443,7 @@ class ExportDialog(QDialog):
         self.setup_format_buttons()
         self.update_advanced_settings()
 
-    def on_format_selected(self, format_id):
+    def on_format_selected(self, format_id: str):
         if format_id == self.selected_format:
             return None
 

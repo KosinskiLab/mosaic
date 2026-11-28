@@ -9,6 +9,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from collections.abc import Callable
 
 import numpy as np
+from numpy.typing import ArrayLike, DTypeLike
 
 __all__ = [
     "NORMAL_REFERENCE",
@@ -93,13 +94,13 @@ class Throttle:
 
 
 def points_to_volume(
-    points,
-    sampling_rate=1,
-    shape=None,
-    weight=1,
-    out=None,
+    points: np.ndarray,
+    sampling_rate: float = 1,
+    shape: tuple | None = None,
+    weight: float = 1,
+    out: np.ndarray | None = None,
     use_offset: bool = False,
-    out_dtype=None,
+    out_dtype: DTypeLike | None = None,
 ):
     """
     Convert point cloud to a volumetric representation.
@@ -150,8 +151,8 @@ def points_to_volume(
 
 
 def volume_to_points(
-    volume,
-    sampling_rate,
+    volume: np.ndarray,
+    sampling_rate: float,
     reverse_order: bool = False,
     max_cluster: int | None = None,
 ):
@@ -225,7 +226,9 @@ def volume_to_points(
     return ret
 
 
-def _get_adjacency_matrix(points, symmetric: bool = False, eps: float = 0.0):
+def _get_adjacency_matrix(
+    points: np.ndarray, symmetric: bool = False, eps: float = 0.0
+):
     from scipy.sparse import coo_matrix
     from scipy.spatial import KDTree
 
@@ -252,7 +255,7 @@ def _get_adjacency_matrix(points, symmetric: bool = False, eps: float = 0.0):
     return adjacency
 
 
-def connected_components(data, **kwargs):
+def connected_components(data: np.ndarray, **kwargs):
     """
     Find connected components in point clouds using sparse graph representations.
 
@@ -274,7 +277,7 @@ def connected_components(data, **kwargs):
     return sparse_connected_components(adjacency, directed=False, return_labels=True)[1]
 
 
-def envelope_components(data, **kwargs):
+def envelope_components(data: np.ndarray, **kwargs):
     """
     Find envelope of a point cloud using sparse graph representations.
 
@@ -303,7 +306,7 @@ def envelope_components(data, **kwargs):
     return total_labels
 
 
-def leiden_clustering(data, resolution_parameter: float = -7.3, **kwargs):
+def leiden_clustering(data: np.ndarray, resolution_parameter: float = -7.3, **kwargs):
     """
     Find Leiden partition of a point cloud using sparse graph representations.
 
@@ -336,7 +339,7 @@ def leiden_clustering(data, resolution_parameter: float = -7.3, **kwargs):
     return labels
 
 
-def dbscan_clustering(data, distance=1.0, min_points=10):
+def dbscan_clustering(data: np.ndarray, distance: float = 1.0, min_points: int = 10):
     """
     Perform DBSCAN clustering on the input points.
 
@@ -362,7 +365,10 @@ def dbscan_clustering(data, distance=1.0, min_points=10):
 
 
 def birch_clustering(
-    data, n_clusters: int = 3, threshold: float = 0.5, branching_factor: int = 50
+    data: np.ndarray,
+    n_clusters: int = 3,
+    threshold: float = 0.5,
+    branching_factor: int = 50,
 ):
     """
     Perform Birch clustering on the input points using skimage.
@@ -395,7 +401,7 @@ def birch_clustering(
     ).fit_predict(data)
 
 
-def kmeans_clustering(data, k=2, **kwargs):
+def kmeans_clustering(data: np.ndarray, k: int = 2, **kwargs):
     """Split point cloud into k using K-means.
 
     Parameters
@@ -415,7 +421,9 @@ def kmeans_clustering(data, k=2, **kwargs):
     return KMeans(n_clusters=k, n_init="auto").fit_predict(data)
 
 
-def eigenvalue_outlier_removal(points, k_neighbors=20, thresh=0.05):
+def eigenvalue_outlier_removal(
+    points: np.ndarray, k_neighbors: int = 20, thresh: float = 0.05
+):
     """
     Remove outliers using covariance-based edge detection.
 
@@ -457,7 +465,9 @@ def eigenvalue_outlier_removal(points, k_neighbors=20, thresh=0.05):
     return mask
 
 
-def statistical_outlier_removal(points, k_neighbors=20, thresh=2.0):
+def statistical_outlier_removal(
+    points: np.ndarray, k_neighbors: int = 20, thresh: float = 2.0
+):
     """
     Remove statistical outliers from the point cloud.
 
@@ -486,7 +496,7 @@ def statistical_outlier_removal(points, k_neighbors=20, thresh=2.0):
     return mask
 
 
-def find_closest_points(positions1, positions2, k=1):
+def find_closest_points(positions1: ArrayLike, positions2: ArrayLike, k: int = 1):
     """
     Find the k nearest points in ``positions1`` for each point in ``positions2``.
 
@@ -514,7 +524,9 @@ def find_closest_points(positions1, positions2, k=1):
     return tree.query(positions2, k=k)
 
 
-def find_closest_points_cutoff(positions1, positions2, cutoff=1):
+def find_closest_points_cutoff(
+    positions1: ArrayLike, positions2: ArrayLike, cutoff: float = 1
+):
     """
     Find all points in ``positions1`` within ``cutoff`` of each point in ``positions2``.
 
@@ -718,7 +730,11 @@ def get_cmap(*args, **kwargs):
 
 
 def cmap_to_vtkctf(
-    cmap, max_value, min_value, gamma: float = 1.0, transparent_range: bool = False
+    cmap: str,
+    max_value: float,
+    min_value: float,
+    gamma: float = 1.0,
+    transparent_range: bool = False,
 ):
     """Convert a colormap to a VTK color transfer function or lookup table.
 
@@ -996,7 +1012,7 @@ def quat_to_euler(
     return _quat_to_euler(q, degrees=degrees)
 
 
-def apply_quat(quaternions, target=NORMAL_REFERENCE):
+def apply_quat(quaternions: np.ndarray, target: ArrayLike = NORMAL_REFERENCE):
     """
     Rotate a target vector by a set of quaternions.
 

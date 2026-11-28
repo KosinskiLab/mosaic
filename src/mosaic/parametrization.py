@@ -13,12 +13,17 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import warnings
 from abc import ABC, abstractmethod
+from os import PathLike
+from typing import TYPE_CHECKING
 
 import igl
 import numpy as np
 from scipy import interpolate, optimize
 
 from . import meshing, utils
+
+if TYPE_CHECKING:
+    import open3d
 
 __all__ = [
     "RBF",
@@ -100,7 +105,7 @@ class Parametrization(ABC):
 
     @abstractmethod
     def points_per_sampling(
-        self, sampling_density: float, normal_offset: float = None
+        self, sampling_density: float, normal_offset: float | None = None
     ) -> int:
         """
         Computes the approximate number of random samples
@@ -219,7 +224,7 @@ class Sphere(Parametrization):
         return np.abs(centered - self.radius)
 
     def points_per_sampling(
-        self, sampling_density: float, normal_offset: float = None
+        self, sampling_density: float, normal_offset: float | None = None
     ) -> int:
         radius = self.radius
         if normal_offset is not None:
@@ -247,7 +252,7 @@ class Ellipsoid(Parametrization):
         self.orientations = np.asarray(orientations)
 
     @classmethod
-    def fit(cls, positions, **kwargs) -> "Ellipsoid":
+    def fit(cls, positions: np.ndarray, **kwargs) -> "Ellipsoid":
         """Fit an ellipsoid to a point cloud.
 
         Uses eigenvalue decomposition to solve for the three semi-axis
@@ -357,7 +362,7 @@ class Ellipsoid(Parametrization):
         return np.linalg.norm(points - norm_points, axis=1)
 
     def points_per_sampling(
-        self, sampling_density: float, normal_offset: float = None
+        self, sampling_density: float, normal_offset: float | None = None
     ) -> int:
         area_points = np.pi * np.square(sampling_density)
 
@@ -470,7 +475,7 @@ class Cylinder(Parametrization):
         center_init, direction_init, radius_init = cls._compute_initial_guess(positions)
         params_init = np.concatenate([center_init, direction_init, [radius_init]])
 
-        def objective(params):
+        def objective(params: np.ndarray):
             center = params[:3]
             direction = params[3:6]
             radius = params[6]
@@ -636,7 +641,7 @@ class Cylinder(Parametrization):
         )
 
     def points_per_sampling(
-        self, sampling_density: float, normal_offset: float = None
+        self, sampling_density: float, normal_offset: float | None = None
     ) -> int:
         area_points = np.square(sampling_density)
 
@@ -757,7 +762,9 @@ class RBF(Parametrization):
         normals = utils.compute_normals(points, k=15)
         return _normalize(normals)
 
-    def points_per_sampling(self, sampling_density: float, normal_offset=None) -> int:
+    def points_per_sampling(
+        self, sampling_density: float, normal_offset: float | None = None
+    ) -> int:
         (xmin, xmax), (ymin, ymax) = self.grid
         surface_area = (xmax - xmin) * (ymax - ymin)
 
@@ -843,7 +850,9 @@ class SplineCurve(Parametrization):
             normals[degenerate] = refs - np.sum(refs * t, axis=1, keepdims=True) * t
         return _normalize(normals)
 
-    def points_per_sampling(self, sampling_density: float, normal_offset=None) -> int:
+    def points_per_sampling(
+        self, sampling_density: float, normal_offset: float | None = None
+    ) -> int:
         curve_points = self.sample(1000)
         segments = curve_points[1:] - curve_points[:-1]
         length = np.sum(np.linalg.norm(segments, axis=1))
@@ -861,7 +870,7 @@ class TriangularMesh(Parametrization):
         Triangular mesh.
     """
 
-    def __init__(self, mesh, repair: bool = True):
+    def __init__(self, mesh: "open3d.geometry.TriangleMesh", repair: bool = True):
         self.mesh = mesh
 
         # We make sure the mesh is clean here to avoid segfaults from
@@ -873,7 +882,7 @@ class TriangularMesh(Parametrization):
             self.mesh.remove_unreferenced_vertices()
             self.mesh.remove_duplicated_vertices()
 
-    def to_file(self, file_path):
+    def to_file(self, file_path: str | PathLike[str]):
         from os.path import splitext
 
         ext = splitext(file_path)[1].lower()
@@ -888,7 +897,7 @@ class TriangularMesh(Parametrization):
 
         o3d.io.write_triangle_mesh(file_path, self.mesh)
 
-    def subset(self, idx):
+    def subset(self, idx: np.ndarray | list[int]):
         new_vertices = self.vertices[idx].copy()
 
         old_to_new = np.full(len(self.vertices), -1, dtype=np.int32)
@@ -902,7 +911,7 @@ class TriangularMesh(Parametrization):
         return TriangularMesh(new_mesh, repair=False)
 
     @classmethod
-    def from_file(cls, file_path):
+    def from_file(cls, file_path: str | PathLike[str]):
         import open3d as o3d
 
         return cls(mesh=o3d.io.read_triangle_mesh(file_path), repair=False)
@@ -918,7 +927,7 @@ class TriangularMesh(Parametrization):
             state["triangle_normals"] = np.asarray(self.mesh.triangle_normals)
         return {k: v.copy() for k, v in state.items()}
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict):
         import open3d as o3d
 
         mesh = meshing.to_open3d(state["vertices"], state["triangles"])
@@ -939,13 +948,13 @@ class TriangularMesh(Parametrization):
         return np.asarray(self.mesh.triangles)
 
     @classmethod
-    def fit(cls, positions, **kwargs):
+    def fit(cls, positions: np.ndarray, **kwargs):
         raise NotImplementedError("Use a subclass (BallPivoting, PoissonMesh, etc.).")
 
     def sample(
         self,
         n_samples: int,
-        mesh_init_factor: bool = None,
+        mesh_init_factor: bool | None = None,
         normal_offset: float = 0.0,
         **kwargs,
     ) -> np.ndarray:
@@ -1021,7 +1030,7 @@ class TriangularMesh(Parametrization):
         return np.asarray(self.mesh.vertex_normals).copy()
 
     def points_per_sampling(
-        self, sampling_density: float, normal_offset: float = None
+        self, sampling_density: float, normal_offset: float | None = None
     ) -> int:
         area_per_sample = np.pi * np.square(sampling_density)
 
@@ -1321,13 +1330,13 @@ class BallPivoting(TriangularMesh):
         cls,
         positions: np.ndarray,
         radii: tuple[float] = (5.0,),
-        max_hole_size: float = None,
-        target_edge_length: float = None,
+        max_hole_size: float | None = None,
+        target_edge_length: float | None = None,
         smoothness: float = 0.0,
         curvature_weight: float = 0.0,
         pressure: float = 0.0,
         n_smoothing: int = 5,
-        k_neighbors=15,
+        k_neighbors: int = 15,
         boundary_ring: int = 0,
         normals: np.ndarray = None,
         **kwargs,
@@ -1562,7 +1571,7 @@ class AlphaShape(TriangularMesh):
         positions: np.ndarray,
         voxel_size: float = 1,
         alpha: float = 1,
-        target_edge_length: float = None,
+        target_edge_length: float | None = None,
         smoothness: float = 0.0,
         curvature_weight: float = 0.0,
         pressure: float = 0.0,
@@ -1671,7 +1680,7 @@ class ShrinkWrap(TriangularMesh):
         voxel_size: float = 1,
         max_iter: int = 100,
         k_neighbors: int = 8,
-        target_edge_length: float = None,
+        target_edge_length: float | None = None,
         smoothness: float = 0.0,
         curvature_weight: float = 0.0,
         pressure: float = 0.0,
@@ -1789,7 +1798,7 @@ class ShrinkWrap(TriangularMesh):
 
         tree = cKDTree(positions)
 
-        def sdf(Q):
+        def sdf(Q: np.ndarray):
             d, idx = tree.query(Q, k=1)
             sign = np.sign(np.einsum("ij,ij->i", Q - positions[idx], normals[idx]))
             sign = np.where(sign == 0, 1.0, sign)
@@ -1920,7 +1929,11 @@ class FlyingEdges(TriangularMesh):
         return cls(mesh=meshing.to_open3d(vertices, faces), repair=False)
 
 
-def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.ndarray:
+def _sample_from_mesh(
+    mesh: "open3d.geometry.TriangleMesh",
+    n_samples: int,
+    mesh_init_factor: int | None = None,
+) -> np.ndarray:
     if mesh_init_factor is None:
         point_cloud = mesh.sample_points_uniformly(
             number_of_points=n_samples,
@@ -1934,7 +1947,7 @@ def _sample_from_mesh(mesh, n_samples: int, mesh_init_factor: int = None) -> np.
 
 
 def _sample_from_chull(
-    positions_xyz: np.ndarray, n_samples: int, mesh_init_factor: int = None
+    positions_xyz: np.ndarray, n_samples: int, mesh_init_factor: int | None = None
 ) -> np.ndarray:
     chull = AlphaShape.fit(positions_xyz, smoothness=0.0, alpha=1)
     return _sample_from_mesh(chull.mesh, n_samples, mesh_init_factor)

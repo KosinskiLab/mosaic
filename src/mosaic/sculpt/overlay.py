@@ -82,10 +82,10 @@ class SculptOverlay:
         self.drag_vector.SetVisibility(False)
         self.drag_vector.GetProperty().SetOpacity(0.0)
 
-    def attach(self, renderer) -> None:
+    def attach(self, renderer: vtk.vtkRenderer) -> None:
         renderer.AddActor2D(self.cursor_ring)
         renderer.AddActor(self.drag_vector)
 
-    def detach(self, renderer) -> None:
+    def detach(self, renderer: vtk.vtkRenderer) -> None:
         renderer.RemoveActor2D(self.cursor_ring)
         renderer.RemoveActor(self.drag_vector)

@@ -5,6 +5,8 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from typing import TYPE_CHECKING
+
 import vtk
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QCursor
@@ -12,10 +14,19 @@ from qtpy.QtGui import QCursor
 from .controller import EventKind
 from .shortcuts import SculptShortcutFilter
 
+if TYPE_CHECKING:
+    from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+
+    from ..geometry import Geometry
+    from ..interactor import DataContainerInteractor
+    from ..viewport import ViewportInteractor
+    from ..widgets.sculpt_palette_hud import SculptPaletteHUD
+    from .controller import SculptController
+
 __all__ = ["SculptInteractorStyle", "SculptMode", "sync_palette"]
 
 
-def sync_palette(hud, controller) -> None:
+def sync_palette(hud: "SculptPaletteHUD", controller: "SculptController") -> None:
     """Push the controller's per-mesh radius scale to ``hud``."""
     if hud is None:
         return None
@@ -24,7 +35,7 @@ def sync_palette(hud, controller) -> None:
     return None
 
 
-def _first_triangular_mesh(models_pane):
+def _first_triangular_mesh(models_pane: "DataContainerInteractor"):
     """Return the first visible (geometry, actor) pair whose model is a TriangularMesh."""
     from mosaic.parametrization import TriangularMesh
 
@@ -38,7 +49,13 @@ def _first_triangular_mesh(models_pane):
 class SculptMode:
     """Owns sculpt-specific viewport binding for one active session."""
 
-    def __init__(self, viewport, models_pane, sculpt_hud, controller) -> None:
+    def __init__(
+        self,
+        viewport: "ViewportInteractor",
+        models_pane: "DataContainerInteractor",
+        sculpt_hud: "SculptPaletteHUD",
+        controller: "SculptController",
+    ) -> None:
         self._viewport = viewport
         self._vtk_widget = viewport.vtk_widget
         self._models_pane = models_pane
@@ -218,7 +235,13 @@ class SculptMode:
 class SculptInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     """VTK interactor style for sculpt mode."""
 
-    def __init__(self, vtk_widget, models_pane, controller, sculpt_hud=None):
+    def __init__(
+        self,
+        vtk_widget: "QVTKRenderWindowInteractor",
+        models_pane: "DataContainerInteractor",
+        controller: "SculptController",
+        sculpt_hud: "SculptPaletteHUD | None" = None,
+    ):
         super().__init__()
         self.vtk_widget = vtk_widget
         self.models_pane = models_pane
@@ -245,13 +268,13 @@ class SculptInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self._bound_actor = None
         return None
 
-    def _swallow(self, obj, event):
+    def _swallow(self, obj: vtk.vtkInteractorStyle, event: str):
         return None
 
     def _event_position(self):
         return self.GetInteractor().GetEventPosition()
 
-    def _pick_mesh_geometry_at(self, x, y):
+    def _pick_mesh_geometry_at(self, x: int, y: int):
         from mosaic.parametrization import TriangularMesh
 
         result = self._mesh_picker.Pick(x, y, 0, self.renderer)
@@ -277,7 +300,7 @@ class SculptInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         return geometry, actor
 
-    def _ensure_bound(self, x, y):
+    def _ensure_bound(self, x: int, y: int):
         if self._bound_actor is not None and self.controller.session is not None:
             return True
 
@@ -287,7 +310,7 @@ class SculptInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self._bind_to(*picked)
         return True
 
-    def _bind_to(self, geometry, actor) -> None:
+    def _bind_to(self, geometry: "Geometry", actor: vtk.vtkActor) -> None:
         """Attach the controller to ``geometry`` and sync the HUD to its scale."""
         self.controller.attach_geometry(geometry)
         if self.sculpt_hud is not None:
@@ -302,7 +325,7 @@ class SculptInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         session = self.controller.session
         return session is not None and session.tool == "view"
 
-    def _on_left_button_down(self, obj, event):
+    def _on_left_button_down(self, obj: vtk.vtkInteractorStyle, event: str):
         if self._is_view_mode():
             return None
         x, y = self._event_position()
@@ -311,14 +334,14 @@ class SculptInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.controller.handle_event(EventKind.LMB_DOWN, x, y)
         return None
 
-    def _on_left_button_up(self, obj, event):
+    def _on_left_button_up(self, obj: vtk.vtkInteractorStyle, event: str):
         if self.controller.session is None or self._is_view_mode():
             return None
         x, y = self._event_position()
         self.controller.handle_event(EventKind.LMB_UP, x, y)
         return None
 
-    def _on_mouse_move(self, obj, event):
+    def _on_mouse_move(self, obj: vtk.vtkInteractorStyle, event: str):
         x, y = self._event_position()
         self._maybe_rebind(x, y)
         self.controller.handle_event(EventKind.MOUSE_MOVE, x, y)

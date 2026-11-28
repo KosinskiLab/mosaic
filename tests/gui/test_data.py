@@ -51,9 +51,7 @@ class TestMosaicData:
         md.to_file(path)
         assert read_session_meta(path) == {"run_id": "r1"}
 
-    def test_reset_drops_previous_file_sections(
-        self, qapp, mock_vtk_widget, tmp_path
-    ):
+    def test_reset_drops_previous_file_sections(self, qapp, mock_vtk_widget, tmp_path):
         src = str(tmp_path / "a.mosaic")
         write_session(src, {}, sections={"meta": ("json", b'{"run_id":"r1"}')})
         md = MosaicData(mock_vtk_widget)

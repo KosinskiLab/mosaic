@@ -8,19 +8,29 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Sequence
 from contextlib import contextmanager
+from typing import TYPE_CHECKING
 
 import numpy as np
 import vtk
 from qtpy.QtCore import QEvent, QObject, Qt, QTimer, Signal
+from qtpy.QtGui import QMouseEvent
 
 from .clipping import ClipCut
+
+if TYPE_CHECKING:
+    from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+
+    from .interactor import DataContainerInteractor
+    from .widgets.sculpt_palette_hud import SculptPaletteHUD
+    from .widgets.status_indicator import ViewerModes
 
 __all__ = ["PropIdBuffer", "ViewportInteractor", "hardware_picking"]
 
 
 @contextmanager
-def hardware_picking(renderer):
+def hardware_picking(renderer: vtk.vtkRenderer):
     """Detach the renderer's custom render pass for the duration of a pick.
 
     vtkPropPicker resolves props through vtkHardwareSelector, which re-renders
@@ -58,7 +68,7 @@ class PropIdBuffer:
         Renderer the snapshot is taken from.
     """
 
-    def __init__(self, renderer):
+    def __init__(self, renderer: vtk.vtkRenderer):
         self._renderer = renderer
         self._selector = None
         self._picker = None
@@ -69,12 +79,12 @@ class PropIdBuffer:
         self._selector = None
         self._state = None
 
-    def prop_at(self, x: int, y: int):
+    def prop_at(self, x: float, y: float):
         """Return the prop at display coordinates *x*, *y*, or None.
 
         Parameters
         ----------
-        x, y : int
+        x, y : float
             Display coordinates, origin at the lower left of the render window.
 
         Returns
@@ -150,7 +160,11 @@ class ViewportInteractor(QObject):
     vtk_pre_render = Signal()
     status_message = Signal(str)
 
-    def __init__(self, vtk_widget, panes):
+    def __init__(
+        self,
+        vtk_widget: "QVTKRenderWindowInteractor",
+        panes: "Sequence[DataContainerInteractor]",
+    ):
         super().__init__()
         self.vtk_widget = vtk_widget
         self.panes = list(panes)
@@ -174,11 +188,11 @@ class ViewportInteractor(QObject):
         self.vtk_widget.installEventFilter(self)
         self._setup_interaction_lod()
 
-    def register_sculpt_hud(self, hud) -> None:
+    def register_sculpt_hud(self, hud: "SculptPaletteHUD") -> None:
         """Register the SculptPaletteHUD so sculpt mode can wire its signals."""
         self._sculpt_hud = hud
 
-    def set_target(self, pane):
+    def set_target(self, pane: "DataContainerInteractor"):
         """Set the active interaction target and reset to viewing mode."""
         if pane not in self.panes:
             raise ValueError("Pane is not registered with this viewport.")
@@ -193,7 +207,7 @@ class ViewportInteractor(QObject):
         idx = self.panes.index(self.current_target)
         return self.set_target(self.panes[(idx + 1) % len(self.panes)])
 
-    def set_mode(self, viewer_mode) -> None:
+    def set_mode(self, viewer_mode: "ViewerModes") -> None:
         """Dispatch entry for interaction modes."""
         from mosaic.widgets.status_indicator import ViewerModes
 
@@ -313,19 +327,23 @@ class ViewportInteractor(QObject):
         self.interactor.CharEvent()
         self.area_picker.AddObserver("EndPickEvent", self._on_area_pick)
 
-    def get_event_position(self, event, return_event_position: bool = True):
+    def get_event_position(
+        self, event: QMouseEvent, return_event_position: bool = True
+    ):
         pos = event.pos()
         return self._get_event_position(
             (pos.x(), pos.y(), 0), return_event_position=return_event_position
         )
 
-    def _display_position(self, position):
+    def _display_position(self, position: Sequence[float]):
         """Map a Qt widget *position* to VTK display coordinates."""
         dpr = self.vtk_widget.devicePixelRatio()
         y = (self.vtk_widget.height() - position[1]) * dpr
         return (position[0] * dpr, y, 0)
 
-    def _get_event_position(self, position, return_event_position: bool = True):
+    def _get_event_position(
+        self, position: Sequence[float], return_event_position: bool = True
+    ):
         event_position = self._display_position(position)
         r = self.vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
         self._world_picker.Pick(*event_position, r)
@@ -343,23 +361,27 @@ class ViewportInteractor(QObject):
             return x, event_position
         return x
 
-    def eventFilter(self, watched_obj, event):
-        if self._interaction_mode in ("draw", "pick") and event.type() in (
-            QEvent.Type.MouseButtonPress,
-            QEvent.Type.MouseMove,
+    def eventFilter(self, watched_obj: QObject, event: QEvent):
+        if (
+            self._interaction_mode in ("draw", "pick")
+            and event.type()
+            in (
+                QEvent.Type.MouseButtonPress,
+                QEvent.Type.MouseMove,
+            )
+            and event.buttons() & Qt.MouseButton.LeftButton
         ):
-            if event.buttons() & Qt.MouseButton.LeftButton:
-                if self._interaction_mode == "draw":
-                    world_position, _ = self.get_event_position(event, True)
-                    self.current_target.add_point(world_position)
-                elif self._interaction_mode == "pick":
-                    pos = event.pos()
-                    event_position = self._display_position((pos.x(), pos.y()))
-                    self.current_target.pick_prop(self._pick_prop_at(event_position))
-                return True
+            if self._interaction_mode == "draw":
+                world_position, _ = self.get_event_position(event, True)
+                self.current_target.add_point(world_position)
+            elif self._interaction_mode == "pick":
+                pos = event.pos()
+                event_position = self._display_position((pos.x(), pos.y()))
+                self.current_target.pick_prop(self._pick_prop_at(event_position))
+            return True
         return super().eventFilter(watched_obj, event)
 
-    def _pick_prop_at(self, event_position):
+    def _pick_prop_at(self, event_position: Sequence[float]):
         """Return the prop at *event_position* in display coordinates (or None)."""
         if self._prop_ids is None:
             renderer = (
@@ -368,7 +390,7 @@ class ViewportInteractor(QObject):
             self._prop_ids = PropIdBuffer(renderer)
         return self._prop_ids.prop_at(event_position[0], event_position[1])
 
-    def _on_area_pick(self, obj, event):
+    def _on_area_pick(self, obj: vtk.vtkObject, event: str):
         frustum = obj.GetFrustum()
         interactor = self.vtk_widget.GetRenderWindow().GetInteractor()
         target = self.current_target
@@ -466,13 +488,13 @@ class ViewportInteractor(QObject):
         interactor.AddObserver("StartInteractionEvent", self._on_interaction_start)
         interactor.AddObserver("EndInteractionEvent", self._on_interaction_end)
 
-    def _on_interaction_start(self, obj, event):
+    def _on_interaction_start(self, obj: vtk.vtkObject, event: str):
         self._lod_restore_timer.stop()
         for pane in self.panes:
             for geom in pane.container.data:
                 geom.lod.begin()
 
-    def _on_interaction_end(self, obj, event):
+    def _on_interaction_end(self, obj: vtk.vtkObject, event: str):
         self._lod_restore_timer.start()
 
     def _restore_full_data(self):
@@ -546,7 +568,9 @@ class ViewportInteractor(QObject):
             )
 
 
-def _compute_frustum_bound(plane_normals, plane_origins, tol=1e-6):
+def _compute_frustum_bound(
+    plane_normals: np.ndarray, plane_origins: np.ndarray, tol: float = 1e-6
+):
     from itertools import combinations
 
     vertices = []
@@ -568,12 +592,16 @@ def _compute_frustum_bound(plane_normals, plane_origins, tol=1e-6):
     return vertices.min(axis=0), vertices.max(axis=0)
 
 
-def _points_in_frustum(points, plane_normals, plane_origins):
+def _points_in_frustum(
+    points: np.ndarray, plane_normals: np.ndarray, plane_origins: np.ndarray
+):
     offsets = (plane_origins * plane_normals).sum(axis=1)
     return ((points @ plane_normals.T) <= offsets).all(axis=1)
 
 
-def _bounds_in_frustum(bounds, plane_normals, plane_origins):
+def _bounds_in_frustum(
+    bounds: Sequence[float], plane_normals: np.ndarray, plane_origins: np.ndarray
+):
     xmin, xmax, ymin, ymax, zmin, zmax = bounds
     corners = np.array(
         [

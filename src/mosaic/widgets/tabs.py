@@ -9,7 +9,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import sys
 
 from qtpy.QtCore import QEasingCurve, QPropertyAnimation, QRect, Qt, QTimer, Signal
-from qtpy.QtGui import QColor, QPainter
+from qtpy.QtGui import QColor, QIcon, QMouseEvent, QPainter, QPaintEvent, QResizeEvent
 from qtpy.QtWidgets import (
     QButtonGroup,
     QHBoxLayout,
@@ -25,11 +25,11 @@ from ..stylesheets import Colors, Typography
 class _PillIndicator(QWidget):
     """Subtle rounded background behind the active tab."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setPen(Qt.PenStyle.NoPen)
@@ -55,7 +55,7 @@ class TabBar(QWidget):
 
     def __init__(
         self,
-        parent=None,
+        parent: QWidget | None = None,
         margins: tuple[int, int, int, int] = (8, 0, 8, 0),
     ):
         super().__init__(parent)
@@ -80,7 +80,7 @@ class TabBar(QWidget):
         self._button_group.idClicked.connect(self._on_tab_clicked)
         self._stretch_added = False
 
-    def addTab(self, label, icon=None):
+    def addTab(self, label: str, icon: QIcon | None = None):
         """Add a tab button.
 
         Parameters
@@ -121,24 +121,24 @@ class TabBar(QWidget):
             self._layout.addStretch()
             self._stretch_added = True
 
-    def setCurrentIndex(self, index):
+    def setCurrentIndex(self, index: int):
         if index in self._buttons:
             self._buttons[index].setChecked(True)
             self._on_tab_clicked(index)
 
-    def _on_tab_clicked(self, index):
+    def _on_tab_clicked(self, index: int):
         btn = self._buttons[index]
         QTimer.singleShot(0, lambda: self._animate_indicator(btn))
         self.currentChanged.emit(index)
 
-    def _snap_indicator(self, btn):
+    def _snap_indicator(self, btn: QPushButton):
         """Position the indicator on *btn* without animation."""
         h = 28
         self._indicator.setGeometry(
             QRect(btn.x(), (self.height() - h) // 2, btn.width(), h)
         )
 
-    def _animate_indicator(self, btn):
+    def _animate_indicator(self, btn: QPushButton):
         h = 28
         target = QRect(btn.x(), (self.height() - h) // 2, btn.width(), h)
 
@@ -149,13 +149,13 @@ class TabBar(QWidget):
         self._anim.setEndValue(target)
         self._anim.start()
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QResizeEvent):
         super().resizeEvent(event)
         btn = self._button_group.checkedButton()
         if btn is not None:
             QTimer.singleShot(0, lambda: self._snap_indicator(btn))
 
-    def _apply_button_style(self, btn):
+    def _apply_button_style(self, btn: QPushButton):
         btn.setStyleSheet(
             f"""
             QPushButton {{
@@ -178,7 +178,7 @@ class TabBar(QWidget):
         """
         )
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         if (
             sys.platform == "darwin"
             and event.button() == Qt.MouseButton.LeftButton
@@ -188,7 +188,7 @@ class TabBar(QWidget):
             return
         super().mousePressEvent(event)
 
-    def mouseDoubleClickEvent(self, event):
+    def mouseDoubleClickEvent(self, event: QMouseEvent):
         if sys.platform == "darwin" and not self.childAt(event.pos()):
             win = self.window()
             if win.isMaximized():
@@ -222,7 +222,7 @@ class TabWidget(QWidget):
 
     def __init__(
         self,
-        parent=None,
+        parent: QWidget | None = None,
         tab_bar_margins: tuple[int, int, int, int] = (8, 0, 8, 0),
     ):
         super().__init__(parent)
@@ -238,7 +238,7 @@ class TabWidget(QWidget):
 
         self.tab_bar.currentChanged.connect(self._on_tab_changed)
 
-    def addTab(self, widget, label, icon=None):
+    def addTab(self, widget: QWidget, label: str, icon: QIcon | None = None):
         """Add a tab with its content widget.
 
         Parameters
@@ -263,16 +263,16 @@ class TabWidget(QWidget):
         """Call after all tabs are added."""
         self.tab_bar.finalize()
 
-    def setCurrentIndex(self, index):
+    def setCurrentIndex(self, index: int):
         self.tab_bar.setCurrentIndex(index)
 
     def currentIndex(self):
         return self._stack.currentIndex()
 
-    def widget(self, index):
+    def widget(self, index: int):
         return self._stack.widget(index)
 
-    def _on_tab_changed(self, index):
+    def _on_tab_changed(self, index: int):
         self._stack.setCurrentIndex(index)
         self.currentChanged.emit(index)
 

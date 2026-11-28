@@ -7,8 +7,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from qtpy.QtCore import Property, QEasingCurve, QPropertyAnimation, Qt
-from qtpy.QtGui import QColor, QFont, QPainter
-from qtpy.QtWidgets import QPushButton
+from qtpy.QtGui import QColor, QFont, QPainter, QPaintEvent
+from qtpy.QtWidgets import QPushButton, QWidget
 
 from ..stylesheets import Colors
 
@@ -16,7 +16,7 @@ from ..stylesheets import Colors
 class ThemeToggle(QPushButton):
     """Animated toggle switch for light/dark theme."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setCheckable(True)
         self.setFixedSize(48, 26)
@@ -32,19 +32,19 @@ class ThemeToggle(QPushButton):
     def _get_knob_x(self):
         return self._knob
 
-    def _set_knob_x(self, v):
+    def _set_knob_x(self, v: float):
         self._knob = v
         self.update()
 
     knob_x = Property(float, _get_knob_x, _set_knob_x)
 
-    def _animate(self, checked):
+    def _animate(self, checked: bool):
         self._anim.stop()
         self._anim.setStartValue(self._knob)
         self._anim.setEndValue(24.0 if checked else 2.0)
         self._anim.start()
 
-    def set_initial_state(self, checked):
+    def set_initial_state(self, checked: bool):
         """Set checked state on construction without animation or signal."""
         self.blockSignals(True)
         self.setChecked(checked)
@@ -52,7 +52,7 @@ class ThemeToggle(QPushButton):
         self.update()
         self.blockSignals(False)
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 

@@ -7,7 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 from qtpy.QtCore import QPointF, QRect, Qt, Signal
-from qtpy.QtGui import QColor, QLinearGradient, QPainter, QPen
+from qtpy.QtGui import QColor, QLinearGradient, QMouseEvent, QPainter, QPaintEvent, QPen
 from qtpy.QtWidgets import (
     QColorDialog,
     QHBoxLayout,
@@ -87,7 +87,7 @@ class ColormapMenuItem(QWidget):
 
     clicked = Signal(str)
 
-    def __init__(self, cmap_name: str, parent=None):
+    def __init__(self, cmap_name: str, parent: QWidget | None = None):
         super().__init__(parent)
         self.cmap_name = cmap_name
         self.setFixedHeight(26)
@@ -96,11 +96,11 @@ class ColormapMenuItem(QWidget):
         self.setMouseTracking(True)
         self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         self.clicked.emit(self.cmap_name)
         super().mousePressEvent(event)
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         from qtpy.QtGui import QBrush, QPainterPath
 
         painter = QPainter(self)
@@ -163,7 +163,7 @@ class ColorMapSelector(QPushButton):
         self,
         categories: dict[str, list[str]] | None = None,
         default: str | None = None,
-        parent=None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
 
@@ -234,7 +234,7 @@ class ColorMapSelector(QPushButton):
         self._current_cmap = cmap_name
         self._update_text()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         """Draw default button, then add text and gradient preview overlay."""
         super().paintEvent(event)
 
@@ -283,7 +283,7 @@ class ColorSwatch(QWidget):
 
     clicked = Signal()
 
-    def __init__(self, color: tuple, size: int = 28, parent=None):
+    def __init__(self, color: tuple, size: int = 28, parent: QWidget | None = None):
         super().__init__(parent)
         self.color = color
         self.selected = False
@@ -300,7 +300,7 @@ class ColorSwatch(QWidget):
         self.color = color
         self.update()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -318,7 +318,7 @@ class ColorSwatch(QWidget):
             painter.setPen(pen)
             painter.drawRoundedRect(1, 1, self.width() - 2, self.height() - 2, 4, 4)
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         self.clicked.emit()
 
 
@@ -341,8 +341,8 @@ class ColorPickerRow(QWidget):
         self,
         label: str,
         default_color: tuple = (0.7, 0.7, 0.7),
-        preset_colors: list = None,
-        parent=None,
+        preset_colors: list | None = None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.current_color = default_color

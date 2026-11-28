@@ -7,7 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import os
-from typing import Callable, Optional
+from collections.abc import Callable
 
 __all__ = ["TomogramLink"]
 
@@ -38,7 +38,7 @@ class TomogramLink:
         self.notify = notify
         self.enabled = enabled
         self.on_change = on_change
-        self.path: Optional[str] = None
+        self.path: str | None = None
 
     def collect(self) -> dict:
         return {"tomogram": self.path}
@@ -50,7 +50,7 @@ class TomogramLink:
         self.load()
         return None
 
-    def set(self, path: Optional[str], load: bool = True) -> None:
+    def set(self, path: str | None, load: bool = True) -> None:
         """Set the linked tomogram and optionally load it."""
         self.path = path
         if path:

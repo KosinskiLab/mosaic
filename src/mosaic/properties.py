@@ -1,15 +1,20 @@
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from functools import lru_cache, wraps
+from typing import TYPE_CHECKING
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from .geometry import Geometry
+
+if TYPE_CHECKING:
+    from .parametrization import TriangularMesh
 
 __all__ = ["GeometryProperties", "export_property_csv"]
 
 
-def get_mesh(func):
+def get_mesh(func: Callable):
     @wraps(func)
     def wrapper(geometry: Geometry, *args, **kwargs):
         fit = geometry.model
@@ -20,7 +25,7 @@ def get_mesh(func):
     return wrapper
 
 
-def _aggregate(data, mode: str):
+def _aggregate(data: np.ndarray, mode: str):
     """
     Aggregate data based on mode.
 
@@ -53,7 +58,7 @@ def _aggregate(data, mode: str):
 
 
 @get_mesh
-def mesh_curvature(fit, curvature: str, radius: int, **kwargs):
+def mesh_curvature(fit: "TriangularMesh", curvature: str, radius: int, **kwargs):
     """
     Compute mesh curvature values per vertex.
 
@@ -75,7 +80,7 @@ def mesh_curvature(fit, curvature: str, radius: int, **kwargs):
 
 
 @get_mesh
-def mesh_area(fit, area_type: str = "Total", **kwargs):
+def mesh_area(fit: "TriangularMesh", area_type: str = "Total", **kwargs):
     """Compute mesh area.
 
     Parameters
@@ -100,7 +105,7 @@ def mesh_area(fit, area_type: str = "Total", **kwargs):
 
 
 @get_mesh
-def mesh_volume(fit, volume_type: str = "Total", **kwargs):
+def mesh_volume(fit: "TriangularMesh", volume_type: str = "Total", **kwargs):
     """Compute mesh volume.
 
     Parameters
@@ -125,7 +130,7 @@ def mesh_volume(fit, volume_type: str = "Total", **kwargs):
 
 
 @get_mesh
-def mesh_statistics(fit, stat_type: str = "Vertex Count", **kwargs):
+def mesh_statistics(fit: "TriangularMesh", stat_type: str = "Vertex Count", **kwargs):
     """Compute mesh statistics.
 
     Parameters
@@ -151,7 +156,7 @@ def mesh_statistics(fit, stat_type: str = "Vertex Count", **kwargs):
 
 def distance(
     geometry: Geometry,
-    queries: list[np.ndarray | Geometry] = [],
+    queries: Sequence[np.ndarray | Geometry] | np.ndarray | Geometry | None = None,
     k: int = 1,
     k_start: int = 1,
     aggregation: str = "mean",
@@ -191,7 +196,9 @@ def distance(
     if k_start > k:
         raise ValueError("k_start must be <= k")
 
-    if not isinstance(queries, (list, tuple)):
+    if queries is None:
+        queries = []
+    elif not isinstance(queries, (list, tuple)):
         queries = [queries]
 
     if only_self:
@@ -231,7 +238,7 @@ def distance(
         return _aggregate(distance, mode=aggregation)
 
 
-def box_size(geometry, axis: int = None):
+def box_size(geometry: Geometry, axis: int | None = None):
     """
     Compute bounding box dimensions of a geometry.
 
@@ -254,7 +261,7 @@ def box_size(geometry, axis: int = None):
     return shape[axis]
 
 
-def width(geometry, *args, **kwargs):
+def width(geometry: Geometry, *args, **kwargs):
     """
     Return X coordinates of all points.
 
@@ -271,7 +278,7 @@ def width(geometry, *args, **kwargs):
     return geometry.points[:, 0]
 
 
-def depth(geometry, *args, **kwargs):
+def depth(geometry: Geometry, *args, **kwargs):
     """
     Return Y coordinates of all points.
 
@@ -288,7 +295,7 @@ def depth(geometry, *args, **kwargs):
     return geometry.points[:, 1]
 
 
-def height(geometry, *args, **kwargs):
+def height(geometry: Geometry, *args, **kwargs):
     """
     Return Z coordinates of all points.
 
@@ -305,7 +312,7 @@ def height(geometry, *args, **kwargs):
     return geometry.points[:, 2]
 
 
-def n_points(geometry, *args, **kwargs):
+def n_points(geometry: Geometry, *args, **kwargs):
     """
     Return the number of points in a geometry.
 
@@ -441,7 +448,7 @@ def geodesic_distance(
     geometry: Geometry,
     queries: list[Geometry],
     k: int = 1,
-    k_start=1,
+    k_start: int = 1,
     aggregation: str = "mean",
     projection: str = "closest",
 ):
@@ -499,7 +506,7 @@ def geodesic_distance(
     return _aggregate(distance, mode=aggregation)
 
 
-def vertex_property(geometry, name: str, *args, **kwargs):
+def vertex_property(geometry: Geometry, name: str, *args, **kwargs):
     """
     Retrieve a named vertex property from a geometry.
 
@@ -536,7 +543,7 @@ def _load_tomogram_cached(file_path: str):
 
 def thickness(
     geometry: Geometry,
-    queries: list[np.ndarray | Geometry] = [],
+    queries: Sequence[np.ndarray | Geometry] | np.ndarray | Geometry | None = None,
     smoothing_radius: float = 0.0,
     *args,
     **kwargs,
@@ -564,6 +571,8 @@ def thickness(
     if model is None or not hasattr(model, "compute_distance"):
         return None
 
+    if queries is None:
+        return None
     if not isinstance(queries, (list, tuple)):
         queries = [queries]
 
@@ -629,7 +638,13 @@ def thickness(
     return vertex_thickness
 
 
-def export_property_csv(file_path, property_name, geometries, values, sources=None):
+def export_property_csv(
+    file_path: str,
+    property_name: str,
+    geometries: Sequence[Geometry],
+    values: Sequence[ArrayLike],
+    sources: list[str] | None = None,
+):
     """Write property analysis results to CSV.
 
     Parameters
@@ -699,7 +714,7 @@ class GeometryProperties:
         cls._calculators[property_name] = func
 
     @classmethod
-    def compute(cls, property_name, *args, **kwargs):
+    def compute(cls, property_name: str, *args, **kwargs):
         """Compute a property for a geometry object."""
         func = cls._calculators.get(property_name, None)
         if func is None:

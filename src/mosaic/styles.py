@@ -6,15 +6,28 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
 import numpy as np
 import vtk
 from vtkmodules.util import numpy_support
 
 from mosaic.viewport import hardware_picking
 
+if TYPE_CHECKING:
+    from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+
+    from .interactor import DataContainerInteractor
+
 
 class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
-    def __init__(self, vtk_widget, data_pane, models_pane):
+    def __init__(
+        self,
+        vtk_widget: "QVTKRenderWindowInteractor",
+        data_pane: "DataContainerInteractor",
+        models_pane: "DataContainerInteractor",
+    ):
         super().__init__()
         self.vtk_widget = vtk_widget
         self.data_pane = data_pane
@@ -60,7 +73,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         if not self.add_face_mode:
             self.clear_point_selection()
 
-    def on_left_button_down(self, obj, event):
+    def on_left_button_down(self, obj: vtk.vtkInteractorStyle, event: str):
         if self.add_face_mode:
             self.handle_point_selection()
         else:
@@ -71,16 +84,16 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         if not self.is_dragging:
             self.OnLeftButtonDown()
 
-    def on_left_button_up(self, obj, event):
+    def on_left_button_up(self, obj: vtk.vtkInteractorStyle, event: str):
         self.is_dragging = False
         self.OnLeftButtonUp()
 
-    def on_mouse_move(self, obj, event):
+    def on_mouse_move(self, obj: vtk.vtkInteractorStyle, event: str):
         if self.is_dragging:
             return self.handle_face_selection()
         self.OnMouseMove()
 
-    def _get_actor_index(self, actor, container="model"):
+    def _get_actor_index(self, actor: vtk.vtkActor, container: str = "model"):
         # We use this order to promote extending existing meshes
         data = self.models_pane.container
         if container == "cluster":
@@ -91,7 +104,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         except ValueError:
             return None
 
-    def _get_geometry_from_actor(self, actor):
+    def _get_geometry_from_actor(self, actor: vtk.vtkActor):
         if (index := self._get_actor_index(actor, "model")) is not None:
             return self.models_pane.container.get(index)
         if (index := self._get_actor_index(actor, "cluster")) is not None:
@@ -285,7 +298,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         )
         return self.cleanup()
 
-    def on_key_press(self, obj, event):
+    def on_key_press(self, obj: vtk.vtkInteractorStyle, event: str):
         key = self.GetInteractor().GetKeySym().lower()
         if key in ["return", "enter", "delete", "backspace"]:
             self.remove_selected()
@@ -295,7 +308,11 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
     """VTK interactor style for building spline curves."""
 
-    def __init__(self, vtk_widget, data_pane):
+    def __init__(
+        self,
+        vtk_widget: "QVTKRenderWindowInteractor",
+        data_pane: "DataContainerInteractor",
+    ):
         super().__init__()
         self.vtk_widget = vtk_widget
         self.data_pane = data_pane
@@ -315,7 +332,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
         self.AddObserver("LeftButtonReleaseEvent", self.on_left_button_release)
         self.AddObserver("KeyPressEvent", self.on_key_press)
 
-    def _event_to_worldposition(self, position):
+    def _event_to_worldposition(self, position: Sequence[int]):
         event_position = (position[0], position[1], 0)
         r = self.renderer
         self.world_picker.Pick(*event_position, r)
@@ -331,7 +348,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
         camera_plane.IntersectWithLine(camera.GetPosition(), world_position, t, x)
         return x
 
-    def on_left_button_down(self, obj, event):
+    def on_left_button_down(self, obj: vtk.vtkInteractorStyle, event: str):
         """Handle left button press events"""
         event_position = [*self.GetInteractor().GetEventPosition(), 0]
 
@@ -349,11 +366,11 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
         func(position=world_position, actor=picked_actor)
         return self.OnLeftButtonDown()
 
-    def on_left_button_release(self, obj, event):
+    def on_left_button_release(self, obj: vtk.vtkInteractorStyle, event: str):
         self.selected_actor = None
         return self.OnLeftButtonUp()
 
-    def on_mouse_move(self, obj, event):
+    def on_mouse_move(self, obj: vtk.vtkInteractorStyle, event: str):
         """Handle mouse move events"""
         if self.selected_actor is None:
             return self.OnMouseMove()
@@ -375,7 +392,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
         self.current_connection = None
         self.vtk_widget.GetRenderWindow().Render()
 
-    def _create_point_actor(self, position):
+    def _create_point_actor(self, position: Sequence[int]):
         """Create a VTK actor for a control point"""
         point_data = vtk.vtkPoints()
         point_data.InsertNextPoint(position)
@@ -400,7 +417,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
 
         return actor
 
-    def _handle_spline_interaction(self, position, actor):
+    def _handle_spline_interaction(self, position: Sequence[int], actor: vtk.vtkActor):
         """Handle spline interaction events"""
         try:
             index = self.data_pane.container.get_actors().index(actor)
@@ -425,7 +442,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
         self.renderer.AddActor(actor)
         self._update_visualization()
 
-    def _update_point_position(self, position, **kwargs):
+    def _update_point_position(self, position: Sequence[int], **kwargs):
         """Update the position of a control point"""
         try:
             index = self.actors.index(self.selected_actor)
@@ -484,7 +501,7 @@ class CurveBuilderInteractorStyle(vtk.vtkInteractorStyleRubberBandPick):
         self.data_pane.data_changed.emit()
         return self.data_pane.render()
 
-    def on_key_press(self, obj, event):
+    def on_key_press(self, obj: vtk.vtkInteractorStyle, event: str):
         key = self.GetInteractor().GetKeySym().lower()
         if key in ["return", "enter", "delete"]:
             self._add_points_to_cluster()

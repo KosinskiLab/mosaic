@@ -10,7 +10,7 @@ import os
 import re
 
 from qtpy.QtCore import Qt
-from qtpy.QtGui import QColor
+from qtpy.QtGui import QColor, QWheelEvent
 from qtpy.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -27,6 +27,7 @@ from qtpy.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
+    QWidget,
 )
 
 from ..formats.session import read_session_meta
@@ -70,7 +71,7 @@ class _Combo(QComboBox):
         super().__init__()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
-    def wheelEvent(self, event) -> None:
+    def wheelEvent(self, event: QWheelEvent) -> None:
         event.ignore()
         return None
 
@@ -94,7 +95,7 @@ class LinkTomogramsDialog(QDialog):
         Parent widget.
     """
 
-    def __init__(self, session_paths: list[str], parent=None):
+    def __init__(self, session_paths: list[str], parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("Link Tomograms")
         self.resize(720, 560)

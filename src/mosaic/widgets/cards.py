@@ -6,8 +6,10 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Sequence
+
 from qtpy.QtCore import Qt, Signal
-from qtpy.QtGui import QPainter, QPainterPath, QPixmap
+from qtpy.QtGui import QMouseEvent, QPainter, QPainterPath, QPixmap
 from qtpy.QtWidgets import (
     QFrame,
     QLabel,
@@ -40,7 +42,7 @@ _PILL = (
 )
 
 
-def _card_qss(cls_name):
+def _card_qss(cls_name: str):
     return f"""
         {cls_name} {{
             border: 1px solid {Colors.BORDER_DARK};
@@ -53,7 +55,7 @@ def _card_qss(cls_name):
     """
 
 
-def _card_qss_selected(cls_name):
+def _card_qss_selected(cls_name: str):
     return f"""
         {cls_name} {{
             border: 1px solid {Colors.PRIMARY};
@@ -64,16 +66,16 @@ def _card_qss_selected(cls_name):
 
 
 def place_pill(
-    text,
-    parent,
+    text: str,
+    parent: QWidget,
     *,
-    top=None,
-    bottom=None,
-    left=None,
-    right=None,
-    style=None,
-    pw=None,
-    ph=None,
+    top: int | None = None,
+    bottom: int | None = None,
+    left: int | None = None,
+    right: int | None = None,
+    style: str | None = None,
+    pw: int | None = None,
+    ph: int | None = None,
 ):
     pill = QLabel(text, parent)
     pill.setStyleSheet(style or _PILL)
@@ -91,7 +93,7 @@ def place_pill(
     return pill
 
 
-def clip_thumbnail(pixmap, w=_CONTENT_W, h=THUMB_HEIGHT):
+def clip_thumbnail(pixmap: QPixmap, w: int = _CONTENT_W, h: int = THUMB_HEIGHT):
     """Scale, center-crop, clip top corners rounded, bottom flat."""
     out = QPixmap(w, h)
     out.fill(Qt.GlobalColor.transparent)
@@ -125,7 +127,7 @@ def clip_thumbnail(pixmap, w=_CONTENT_W, h=THUMB_HEIGHT):
     return out
 
 
-def _apply_thumb(thumb_label, pixmap):
+def _apply_thumb(thumb_label: QLabel, pixmap: QPixmap):
     if pixmap is None or pixmap.isNull():
         return None
     clipped = clip_thumbnail(pixmap)
@@ -140,7 +142,14 @@ class Card(QFrame):
     clicked = Signal(object)
     double_clicked = Signal(object)
 
-    def __init__(self, parent=None, *, width=None, thumb_height=None, text_height=None):
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        width: int | None = None,
+        thumb_height: int | None = None,
+        text_height: int | None = None,
+    ):
         super().__init__(parent)
         self._selected = False
         self._pixmap = None
@@ -221,7 +230,7 @@ class Card(QFrame):
             f"color: {Colors.TEXT_PRIMARY}; font-size: {Typography.LABEL}px; font-weight: 600;"
         )
 
-    def set_thumbnail(self, pixmap):
+    def set_thumbnail(self, pixmap: QPixmap):
         w = self._thumb.width()
         h = self._thumb.height()
         if pixmap is None or pixmap.isNull():
@@ -231,7 +240,7 @@ class Card(QFrame):
         self._thumb.setStyleSheet("background: transparent;")
         self._pixmap = clipped
 
-    def set_selected(self, sel):
+    def set_selected(self, sel: bool):
         if self._selected == sel:
             return
         self._selected = sel
@@ -240,12 +249,12 @@ class Card(QFrame):
     def is_selected(self):
         return self._selected
 
-    def mousePressEvent(self, ev):
+    def mousePressEvent(self, ev: QMouseEvent):
         if ev.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit(self)
         ev.accept()
 
-    def mouseDoubleClickEvent(self, ev):
+    def mouseDoubleClickEvent(self, ev: QMouseEvent):
         if ev.button() == Qt.MouseButton.LeftButton:
             self.double_clicked.emit(self)
         ev.accept()
@@ -263,11 +272,11 @@ class FlowLayout:
 
     def __init__(
         self,
-        parent_widget,
-        card_width=CARD_WIDTH,
-        card_height=None,
-        margin=None,
-        spacing=None,
+        parent_widget: QWidget,
+        card_width: int = CARD_WIDTH,
+        card_height: int | None = None,
+        margin: int | None = None,
+        spacing: int | None = None,
     ):
         self._parent = parent_widget
         self._card_w = card_width
@@ -277,14 +286,14 @@ class FlowLayout:
         self._items = []
         self._cols = 0
 
-    def set_card_size(self, width=None, height=None):
+    def set_card_size(self, width: int | None = None, height: int | None = None):
         if width is not None:
             self._card_w = width
         if height is not None:
             self._card_h = height
         self._cols = 0
 
-    def build(self, cards, container_width):
+    def build(self, cards: Sequence[Card], container_width: int):
         """Place all cards using manual positioning."""
         self._items = list(cards)
         self._reposition(container_width, show_all=True)
@@ -292,7 +301,7 @@ class FlowLayout:
     def clear(self):
         self._items.clear()
 
-    def reflow(self, container_width):
+    def reflow(self, container_width: int):
         cols = max(
             1, (container_width - 2 * self._margin) // (self._card_w + self._spacing)
         )
@@ -300,10 +309,10 @@ class FlowLayout:
             return
         self._reposition(container_width)
 
-    def reflow_visibility(self, container_width):
+    def reflow_visibility(self, container_width: int):
         self._reposition(container_width)
 
-    def _reposition(self, container_width, show_all=False):
+    def _reposition(self, container_width: int, show_all: bool = False):
         cols = max(
             1, (container_width - 2 * self._margin) // (self._card_w + self._spacing)
         )

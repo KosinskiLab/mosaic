@@ -39,7 +39,7 @@ __all__ = ["PipelineBuilderDialog"]
 class PipelineBuilderDialog(QDialog):
     """Pipeline builder with tree structure and operation library."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("Pipeline Builder")
         self.setMinimumSize(1100, 750)
@@ -247,7 +247,7 @@ class PipelineBuilderDialog(QDialog):
         self._update_library_state()
         return widget
 
-    def _create_library_button(self, name, info, color):
+    def _create_library_button(self, name: str, info: dict, color: str):
         """Create compact button for library operation."""
         from ..icons import icon, icon_pixmap
 
@@ -320,7 +320,7 @@ class PipelineBuilderDialog(QDialog):
                     return output_type
         return None
 
-    def _is_operation_valid(self, operation_info):
+    def _is_operation_valid(self, operation_info: dict):
         """Check if an operation can be added to the current pipeline."""
         current_output = self._get_current_output_type()
         operation_input = operation_info.get("input_type")
@@ -365,7 +365,14 @@ class PipelineBuilderDialog(QDialog):
                 """
                 )
 
-    def _add_card(self, name, info, color, node_id=None, settings=None):
+    def _add_card(
+        self,
+        name: str,
+        info: dict,
+        color: str,
+        node_id: str | None = None,
+        settings: dict | None = None,
+    ):
         settings = settings if isinstance(settings, dict) else {}
 
         previous_node = None
@@ -383,7 +390,7 @@ class PipelineBuilderDialog(QDialog):
         card.set_settings(settings)
         self.pipeline_tree.add_operation_card(card)
 
-    def _load_preset(self, preset_name):
+    def _load_preset(self, preset_name: str):
         """Load a predefined preset pipeline."""
         self.pipeline_tree.clear()
 

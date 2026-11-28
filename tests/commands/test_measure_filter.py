@@ -104,7 +104,7 @@ class TestMeasureStore:
 
         # 'width' returns per-vertex X coordinates (array of len n_points)
         result = _dispatch(session, "measure width #0 store=true")
-        text = render_to_text(result)
+        render_to_text(result)
 
         geom = session._all_geometries()[0]
         stored = geom.vertex_properties.get_property("width")
@@ -151,7 +151,7 @@ class TestFilterChaining:
 
         # Second filter on @last: keep n_points <= 70
         result = _dispatch(session, "filter @last property=n_points upper=70")
-        text = render_to_text(result)
+        render_to_text(result)
 
         remaining_after_second = session._all_geometries()
         # Should keep 30, 40, 50, 60, 70 => 5 geometries

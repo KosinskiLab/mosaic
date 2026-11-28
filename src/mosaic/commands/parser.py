@@ -95,7 +95,7 @@ def _coerce_value(value: str) -> Any:
     return value
 
 
-def format_value(value) -> str:
+def format_value(value: object) -> str:
     """Format a Python value as a REPL-safe token.
 
     Inverse of :func:`_coerce_value`.  Arrays, lists and tuples become
@@ -173,7 +173,7 @@ class ParsedCommand:
     args: list[str] = field(default_factory=list)
     kwargs: dict[str, Any] = field(default_factory=dict)
 
-    def resolve_positional(self, params) -> None:
+    def resolve_positional(self, params: list) -> None:
         """Map remaining positional *args* into *kwargs* by parameter order.
 
         Parameters already present in *kwargs* are skipped.  Values are

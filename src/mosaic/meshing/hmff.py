@@ -1,4 +1,5 @@
 from os import makedirs
+from typing import TYPE_CHECKING
 
 from ..formats.writer import write_topology_file
 from ..meshing.utils import (
@@ -11,10 +12,13 @@ from ..meshing.utils import (
 )
 from ..parallel import report_progress
 
+if TYPE_CHECKING:
+    from ..geometry import Geometry
+
 __all__ = ["equilibrate_fit"]
 
 
-def equilibrate_fit(geometry, directory: str, parameters: dict):
+def equilibrate_fit(geometry: "Geometry", directory: str, parameters: dict):
     makedirs(directory, exist_ok=True)
     mesh_base = geometry.model.mesh
 

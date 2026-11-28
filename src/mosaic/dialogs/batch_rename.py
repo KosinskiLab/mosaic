@@ -7,6 +7,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import re
+from re import Match
 
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -16,6 +17,7 @@ from qtpy.QtWidgets import (
     QLabel,
     QLineEdit,
     QVBoxLayout,
+    QWidget,
 )
 
 from ..stylesheets import Colors, Typography
@@ -26,7 +28,9 @@ __all__ = ["BatchRenameDialog", "rename"]
 _TOKEN = re.compile(r"\{name\}|\{i(?::(\d{1,3}))?\}")
 
 
-def _expand(template: str, name: str, index: int, match=None) -> str:
+def _expand(
+    template: str, name: str, index: int, match: Match[str] | None = None
+) -> str:
     parts, pos = [], 0
     for token in _TOKEN.finditer(template):
         literal = template[pos : token.start()]
@@ -109,7 +113,7 @@ class BatchRenameDialog(QDialog):
         Parent widget.
     """
 
-    def __init__(self, names: list[str], parent=None):
+    def __init__(self, names: list[str], parent: QWidget | None = None):
         super().__init__(parent)
         self.names = names
         self.result_names = list(names)

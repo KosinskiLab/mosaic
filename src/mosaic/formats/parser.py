@@ -10,7 +10,9 @@ import struct
 import warnings
 from gzip import open as gzip_open
 from io import BytesIO
+from os import PathLike
 from string import ascii_lowercase
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -20,6 +22,9 @@ from .records import (
     NotASegmentationError,
     VertexPropertyContainer,
 )
+
+if TYPE_CHECKING:
+    import open3d
 
 __all__ = [
     "GeometryData",
@@ -180,7 +185,7 @@ def read_txt(filename: str):
     else:
         data = [data]
 
-    vertices, normals, quaternions = [], [], []
+    vertices, normals = [], []
     for cluster in data:
         cols = ("x", "y", "z")
         vertices.append(np.hstack([cluster[k][:, None] for k in cols]))
@@ -289,7 +294,9 @@ def read_mesh(filename: str) -> GeometryDataContainer:
     return _return_mesh(o3d.io.read_triangle_mesh(filename))
 
 
-def _return_mesh(mesh, vertex_properties: dict = None) -> GeometryDataContainer:
+def _return_mesh(
+    mesh: "open3d.geometry.TriangleMesh", vertex_properties: dict | None = None
+) -> GeometryDataContainer:
     """
     Convert Open3D mesh to GeometryDataContainer.
 
@@ -367,7 +374,7 @@ def read_volume(filename: str):
     return GeometryDataContainer(vertices=ret, shape=shape, sampling=spacing)
 
 
-def read_mrc_dtype(filepath):
+def read_mrc_dtype(filepath: str | PathLike[str]):
     """Return the NumPy dtype of an MRC file from its header, or None.
 
     Only reads the first 1024 bytes. Returns None for non-MRC files or
@@ -395,7 +402,7 @@ def read_mrc_dtype(filepath):
     return _MRC_DTYPES.get(mode)
 
 
-def read_mrc_flat(filepath):
+def read_mrc_flat(filepath: str | PathLike[str]):
     """Read an MRC file into a flat buffer.
 
     Returns
@@ -451,7 +458,7 @@ def read_mrc_flat(filepath):
         return data, grid, spacing, axis_order
 
 
-def points_from_flat_array(arr, dims, max_cluster=10000):
+def points_from_flat_array(arr: np.ndarray, dims: tuple, max_cluster: int = 10000):
     """Extract per-label point clouds from a flat voxel array.
 
     Parameters

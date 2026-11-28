@@ -6,6 +6,11 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Callable
+
+from numpy.typing import ArrayLike
+from qtpy.QtGui import QMouseEvent, QPaintEvent
+
 __all__ = ["DualHandleSlider", "HistogramRangeSlider", "SliderRow"]
 
 import numpy as np
@@ -41,9 +46,9 @@ class SliderRow(QWidget):
         label_position: str = "left",
         steps: int = 100,
         exponent: float = 1.0,
-        values: list = None,
-        formatter=None,
-        parent=None,
+        values: list | None = None,
+        formatter: Callable[[float], str] | None = None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self._values = values
@@ -199,7 +204,7 @@ class DualHandleSlider(QWidget):
 
     rangeChanged = Signal(float, float)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.min_val = 0.0
         self.max_val = 100.0
@@ -230,13 +235,13 @@ class DualHandleSlider(QWidget):
         self._apply_colors()
         self.update()
 
-    def setRange(self, minimum, maximum):
+    def setRange(self, minimum: float, maximum: float):
         """Set the range of values the slider represents."""
         self.min_val = minimum
         self.max_val = maximum
         self.update()
 
-    def setValues(self, lower, upper):
+    def setValues(self, lower: float, upper: float):
         """Set both handle positions."""
         self.lower_pos = np.clip(lower, self.min_val, self.max_val)
         self.upper_pos = np.clip(upper, self.min_val, self.max_val)
@@ -244,7 +249,7 @@ class DualHandleSlider(QWidget):
             self.lower_pos, self.upper_pos = self.upper_pos, self.lower_pos
         self.update()
 
-    def _value_to_pixel(self, value):
+    def _value_to_pixel(self, value: float):
         """Convert a value to pixel position."""
         if self.max_val == self.min_val:
             return self.handle_size
@@ -253,7 +258,7 @@ class DualHandleSlider(QWidget):
         normalized = (value - self.min_val) / (self.max_val - self.min_val)
         return margin + normalized * width
 
-    def _pixel_to_value(self, pixel):
+    def _pixel_to_value(self, pixel: int):
         """Convert pixel position to value."""
         margin = self.handle_size
         width = self.width() - margin * 2
@@ -263,7 +268,7 @@ class DualHandleSlider(QWidget):
         normalized = np.clip(normalized, 0, 1)
         return self.min_val + normalized * (self.max_val - self.min_val)
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         """Draw the slider with range visualization."""
         from qtpy.QtGui import QBrush, QPainter, QPen
 
@@ -307,7 +312,7 @@ class DualHandleSlider(QWidget):
             painter.setPen(QPen(border, 1))
             painter.drawEllipse(handle_x, handle_y, self.handle_size, self.handle_size)
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         """Start dragging a handle."""
         if not self.isEnabled() or event.button() != Qt.LeftButton:
             return
@@ -334,7 +339,7 @@ class DualHandleSlider(QWidget):
             self.update()
             self.rangeChanged.emit(self.lower_pos, self.upper_pos)
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent):
         """Drag the active handle."""
         if not self.isEnabled() or self.dragging_handle is None:
             return
@@ -349,7 +354,7 @@ class DualHandleSlider(QWidget):
         self.update()
         self.rangeChanged.emit(self.lower_pos, self.upper_pos)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent):
         """Stop dragging."""
         was_dragging = self.dragging_handle is not None
         if event.button() == Qt.LeftButton:
@@ -363,7 +368,9 @@ class DualHandleSlider(QWidget):
 class MiniHistogram(QWidget):
     """A compact histogram display widget."""
 
-    def __init__(self, parent=None, n_bins: int = 50, margin: int = 16):
+    def __init__(
+        self, parent: QWidget | None = None, n_bins: int = 50, margin: int = 16
+    ):
         super().__init__(parent)
         self.n_bins = n_bins
         self.margin = margin  # Match DualHandleSlider handle_size for alignment
@@ -391,7 +398,7 @@ class MiniHistogram(QWidget):
         self.placeholder_color.setAlpha(30)
         self.update()
 
-    def setData(self, values):
+    def setData(self, values: ArrayLike):
         """Compute histogram from values."""
         if values is None or len(values) == 0:
             self._hist = None
@@ -414,13 +421,13 @@ class MiniHistogram(QWidget):
         self._upper = self._max_val
         self.update()
 
-    def setSelection(self, lower, upper):
+    def setSelection(self, lower: float, upper: float):
         """Update the highlighted range."""
         self._lower = lower
         self._upper = upper
         self.update()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         """Draw the histogram bars or placeholder."""
         from qtpy.QtGui import QBrush, QPainter, QPen
 
@@ -466,7 +473,7 @@ class HistogramRangeSlider(QWidget):
     rangeChanged = Signal(float, float)
     rangeReleased = Signal(float, float)
 
-    def __init__(self, parent=None, n_bins: int = 50):
+    def __init__(self, parent: QWidget | None = None, n_bins: int = 50):
         super().__init__(parent)
 
         layout = QVBoxLayout(self)
@@ -487,11 +494,11 @@ class HistogramRangeSlider(QWidget):
         self._histogram._on_theme_changed()
         self._slider._on_theme_changed()
 
-    def _on_range_changed(self, lower, upper):
+    def _on_range_changed(self, lower: float, upper: float):
         self._histogram.setSelection(lower, upper)
         self.rangeChanged.emit(lower, upper)
 
-    def setData(self, values):
+    def setData(self, values: ArrayLike):
         """Set data and update histogram and slider range."""
         self._histogram.setData(values)
         if values is not None and len(values) > 0:

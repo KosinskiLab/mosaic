@@ -7,8 +7,12 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Literal
+
 import numpy as np
-from qtpy.QtCore import QObject, QSignalBlocker, Qt, Signal
+from numpy.typing import ArrayLike
+from qtpy.QtCore import QObject, QPoint, QSignalBlocker, Qt, Signal
 from qtpy.QtGui import QAction
 from qtpy.QtWidgets import QDialog, QListWidget, QMenu
 
@@ -16,6 +20,14 @@ from .formats.writer import write_geometries
 from .swaps import GeometrySubset, GeometrySwap, apply_changes, record
 from .widgets import MosaicMessageBox
 from .widgets.container_list import StyledTreeWidgetItem
+
+if TYPE_CHECKING:
+    import vtk
+
+    from .commands.session import Session
+    from .geometry import Geometry, GeometryTrajectory
+    from .tree_state import TreeState, TreeStateData
+    from .viewport import ViewportInteractor
 
 __all__ = ["DataContainerInteractor"]
 
@@ -29,12 +41,12 @@ _VOLUME_GEOMETRY_KEYS = (
 )
 
 
-def _has_mesh_model(geometry) -> bool:
+def _has_mesh_model(geometry: "Geometry") -> bool:
     """Whether ``geometry`` carries triangular-mesh connectivity in its model."""
     return geometry is not None and hasattr(getattr(geometry, "model", None), "mesh")
 
 
-def _convert_geometry(geometry, target_cls):
+def _convert_geometry(geometry: "Geometry", target_cls: "type[Geometry]"):
     """Rebuild *geometry* as an instance of *target_cls* preserving shared state.
 
     Why: VTK subclasses (Volume/Segmentation) own type-specific attributes that
@@ -62,7 +74,12 @@ class DataContainerInteractor(QObject):
 
     data_changed = Signal()
 
-    def __init__(self, session, role, prefix="Cluster"):
+    def __init__(
+        self,
+        session: "Session",
+        role: Literal["data", "models"],
+        prefix: str = "Cluster",
+    ):
         from .widgets import ContainerListWidget
 
         super().__init__()
@@ -92,11 +109,11 @@ class DataContainerInteractor(QObject):
         self._active_cluster = None
         self.set_coloring_mode("default")
 
-    def attach_viewport(self, viewport):
+    def attach_viewport(self, viewport: "ViewportInteractor"):
         """Wire this pane to its ViewportInteractor."""
         self.viewport = viewport
 
-    def set_active_cluster(self, uuid):
+    def set_active_cluster(self, uuid: str | None):
         """Set the UUID of the cluster receiving drawn points (``None`` to clear)."""
         self._active_cluster = uuid
 
@@ -122,7 +139,7 @@ class DataContainerInteractor(QObject):
         ret = [self.container.get(uuid) for uuid in self._get_selected_uuids()]
         return [x for x in ret if x is not None]
 
-    def _on_item_renamed(self, item):
+    def _on_item_renamed(self, item: StyledTreeWidgetItem):
         if item.metadata.get("uuid") is None:
             return None
 
@@ -161,9 +178,12 @@ class DataContainerInteractor(QObject):
         self.container.highlight([])
 
     def add(self, *args, **kwargs):
-        if kwargs.get("color", None) is None:
-            if hasattr(self, "colors") and len(self.colors) > 1:
-                kwargs["color"] = self.next_color()
+        if (
+            kwargs.get("color") is None
+            and hasattr(self, "colors")
+            and len(self.colors) > 1
+        ):
+            kwargs["color"] = self.next_color()
         ret = self.container.add(*args, **kwargs)
         self.data_changed.emit()
         return ret
@@ -213,7 +233,7 @@ class DataContainerInteractor(QObject):
             return self.add(Geometry.merge(new_cluster))
         return -1
 
-    def add_point(self, point):
+    def add_point(self, point: ArrayLike):
         """Append a point to the active drawing cluster."""
         if (geometry := self.container.get(self._active_cluster)) is None:
             return -1
@@ -223,7 +243,7 @@ class DataContainerInteractor(QObject):
         self.data_changed.emit()
         return self.render()
 
-    def set_selection_by_uuid(self, uuids):
+    def set_selection_by_uuid(self, uuids: list[str]):
         """
         Set selection by UUIDs.
 
@@ -261,7 +281,7 @@ class DataContainerInteractor(QObject):
         self.container.highlight(self._get_selected_uuids())
         self.render_vtk()
 
-    def pick_prop(self, picked_prop):
+    def pick_prop(self, picked_prop: "vtk.vtkProp | None"):
         """Select the geometry whose actor was picked by the viewport, if any."""
         actors = self.container.get_actors()
         if picked_prop in actors:
@@ -270,7 +290,7 @@ class DataContainerInteractor(QObject):
             self.set_selection_by_uuid([uuid, *self._get_selected_uuids()])
         return None
 
-    def _show_context_menu(self, position):
+    def _show_context_menu(self, position: QPoint):
         item = self.data_list.itemAt(position)
         if not item:
             return -1
@@ -410,7 +430,7 @@ class DataContainerInteractor(QObject):
 
         context_menu.exec(self.data_list.mapToGlobal(position))
 
-    def _extract_trajectory_frame(self, trajectory):
+    def _extract_trajectory_frame(self, trajectory: "GeometryTrajectory"):
         from .geometry import Geometry
 
         model = trajectory.model
@@ -441,7 +461,7 @@ class DataContainerInteractor(QObject):
         dialog.export_requested.connect(self._wrap_export)
         return dialog.exec()
 
-    def _wrap_export(self, export_data):
+    def _wrap_export(self, export_data: dict):
         from os.path import splitext
 
         from .geometry import Geometry, GeometryTrajectory
@@ -516,7 +536,7 @@ class DataContainerInteractor(QObject):
 
         dialog = GeometryPropertiesDialog(property_list, anchor=self.data_list)
 
-        def on_parameters_changed(parameters):
+        def on_parameters_changed(parameters: dict):
             sampling_rate = parameters.pop("sampling_rate", None)
             full_render = False
             if parameters:
@@ -623,7 +643,7 @@ class DataContainerInteractor(QObject):
 
         self.point_selection.clear()
 
-    def highlight_selected_points(self, color):
+    def highlight_selected_points(self, color: Sequence[float]):
         for uuid, point_ids in self.point_selection.items():
             self.container.highlight_points(uuid, point_ids, color)
 
@@ -670,7 +690,9 @@ class DataContainerInteractor(QObject):
         self._highlight_selection()
         self.render()
 
-    def apply(self, changes, *, undo: bool) -> None:
+    def apply(
+        self, changes: Sequence[GeometrySwap | GeometrySubset], *, undo: bool
+    ) -> None:
         """Apply each change in the given direction, then refresh once."""
         with QSignalBlocker(self):
             apply_changes(self, changes, undo=undo)
@@ -678,7 +700,7 @@ class DataContainerInteractor(QObject):
         self.render()
         return None
 
-    def _capture_selection(self, selected):
+    def _capture_selection(self, selected: "Sequence[Geometry]"):
         """Snapshot the pre-op state shared by ``merge`` and ``remove_selection``."""
         whole_uuids = {g.uuid for g in selected}
         point_uuids = [u for u in self.point_selection if u not in whole_uuids]
@@ -698,7 +720,9 @@ class DataContainerInteractor(QObject):
                 originals[u] = source[...]
         return swaps, slices, originals
 
-    def _subset_changes(self, slices, originals):
+    def _subset_changes(
+        self, slices: "Mapping[str, Geometry]", originals: "Mapping[str, Geometry]"
+    ):
         """Build one change per point source from its post-op survival state."""
         changes = []
         for uuid, removed in slices.items():
@@ -717,7 +741,9 @@ class DataContainerInteractor(QObject):
                 )
         return changes
 
-    def _push_swap(self, label: str, changes) -> None:
+    def _push_swap(
+        self, label: str, changes: Sequence[GeometrySwap | GeometrySubset]
+    ) -> None:
         record(self, changes, label)
         return None
 
@@ -759,7 +785,7 @@ class DataContainerInteractor(QObject):
         self.render()
         return None
 
-    def remove(self, uuids_or_geometries):
+    def remove(self, uuids_or_geometries: "str | Geometry | Sequence[str | Geometry]"):
         """Remove the given geometries from the container and notify listeners."""
         self.container.remove(uuids_or_geometries)
         self.data_changed.emit()
@@ -781,14 +807,14 @@ class DataContainerInteractor(QObject):
         self.render()
         return None
 
-    def visibility(self, geometries, visible: bool = True):
+    def visibility(self, geometries: "Sequence[Geometry]", visible: bool = True):
         for geometry in geometries:
             if geometry is None:
                 continue
             geometry.set_visibility(visible)
         self.render()
 
-    def duplicate(self, geometries):
+    def duplicate(self, geometries: "Sequence[Geometry]"):
         """Copy each geometry into the container as a single undoable step."""
         copies = []
         for geometry in geometries:
@@ -806,7 +832,7 @@ class DataContainerInteractor(QObject):
         self.render()
         return None
 
-    def update(self, tree_state=None):
+    def update(self, tree_state: "TreeState | TreeStateData | None" = None):
         """Resync the tree widget after the session swapped containers.
 
         Parameters

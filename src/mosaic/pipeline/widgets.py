@@ -7,9 +7,10 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import uuid
+from collections.abc import Sequence
 
 from qtpy.QtCore import Qt, QTimer, Signal
-from qtpy.QtGui import QFont
+from qtpy.QtGui import QFont, QMouseEvent
 from qtpy.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -52,7 +53,14 @@ def _make_grid():
     return grid
 
 
-def _add_to_grid(grid, label_text, widget, row, col, wide=False):
+def _add_to_grid(
+    grid: QGridLayout,
+    label_text: str,
+    widget: QWidget,
+    row: int,
+    col: int,
+    wide: bool = False,
+):
     """Add a label: widget pair to the grid at the given logical column."""
     label = QLabel(f"{label_text}:")
     widget.setFixedHeight(Colors.WIDGET_HEIGHT)
@@ -65,7 +73,9 @@ def _add_to_grid(grid, label_text, widget, row, col, wide=False):
     grid.addWidget(widget, row, gcol + 1, 1, width)
 
 
-def _pack_settings_into_grid(grid, settings_list, start_row=0):
+def _pack_settings_into_grid(
+    grid: QGridLayout, settings_list: Sequence, start_row: int = 0
+):
     """Pack settings into the grid. Returns {param_name: widget}."""
     widgets = {}
     row, col = start_row, 0
@@ -84,7 +94,7 @@ def _pack_settings_into_grid(grid, settings_list, start_row=0):
     return widgets, row if col == 0 else row + 1
 
 
-def _clear_grid_from_row(grid, start_row):
+def _clear_grid_from_row(grid: QGridLayout, start_row: int):
     """Remove all items at row >= start_row from a QGridLayout."""
     to_remove = []
     for i in range(grid.count()):
@@ -106,7 +116,12 @@ class OperationCardWidget(QFrame):
     settings_changed = Signal()
 
     def __init__(
-        self, operation_name, operation_info, category_color, parent=None, node_id=None
+        self,
+        operation_name: str,
+        operation_info: dict,
+        category_color: str,
+        parent: QWidget | None = None,
+        node_id: str | None = None,
     ):
         super().__init__(parent)
         self.operation_name = operation_name
@@ -130,7 +145,7 @@ class OperationCardWidget(QFrame):
         self.setup_ui()
         self.setFixedHeight(self._collapsed_height)
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
             self.toggle_settings()
         super().mousePressEvent(event)
@@ -279,7 +294,7 @@ class OperationCardWidget(QFrame):
         self.update_summary()
         layout.addWidget(self.settings_container)
 
-    def _add_operation_settings(self, settings):
+    def _add_operation_settings(self, settings: dict):
         """Add operation-specific settings widgets."""
         settings_outer = self.settings_container.layout()
 
@@ -324,7 +339,7 @@ class OperationCardWidget(QFrame):
         if hasattr(self, "method_settings_config") and self.method_settings_config:
             self._add_method_settings_section()
 
-    def _add_base_settings(self, settings):
+    def _add_base_settings(self, settings: dict):
         """Add base operation settings to the grid layout."""
         if len(settings) == 0:
             return None
@@ -362,7 +377,7 @@ class OperationCardWidget(QFrame):
         if self.method_combo:
             self._update_method_settings(self.method_combo.currentText())
 
-    def _update_method_settings(self, method):
+    def _update_method_settings(self, method: str):
         """Update method-specific settings based on selected method."""
         if not hasattr(self, "_method_start_row"):
             return None
@@ -509,7 +524,7 @@ class OperationCardWidget(QFrame):
             "visible_output": self.visible_output,
         }
 
-    def set_settings(self, settings):
+    def set_settings(self, settings: dict):
         """Set operation settings from config."""
 
         self.node_id = settings.get("id", self.node_id)
@@ -561,7 +576,7 @@ class PipelineTreeWidget(QTreeWidget):
 
     pipeline_changed = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setHeaderHidden(True)
         self.setIndentation(0)
@@ -604,11 +619,11 @@ class PipelineTreeWidget(QTreeWidget):
         super().clear()
         self._add_tail_spacer()
 
-    def _insert_before_spacer(self, item):
+    def _insert_before_spacer(self, item: QTreeWidgetItem):
         idx = self.indexOfTopLevelItem(self._tail_spacer)
         self.insertTopLevelItem(idx, item)
 
-    def add_operation_card(self, card_widget):
+    def add_operation_card(self, card_widget: OperationCardWidget):
         """Add operation card to list."""
 
         from ..icons import icon_pixmap
@@ -644,7 +659,7 @@ class PipelineTreeWidget(QTreeWidget):
         self.pipeline_changed.emit()
         return item
 
-    def _remove_card(self, card_item):
+    def _remove_card(self, card_item: QTreeWidgetItem):
         """Remove card and update graph connectivity."""
         card_index = self.indexOfTopLevelItem(card_item)
 

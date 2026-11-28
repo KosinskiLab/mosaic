@@ -47,7 +47,7 @@ _EXTRA_CONFIG_PLACEHOLDER = (
 
 
 class _AutoSizedStack(QStackedWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.currentChanged.connect(lambda _: self.updateGeometry())
 
@@ -72,7 +72,7 @@ class ConfigurePanel(QScrollArea):
     screenGenerated = Signal(str)
     """Emitted with the output directory path after a screen is generated."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
 
         self._param_widgets = {}
@@ -361,13 +361,22 @@ class ConfigurePanel(QScrollArea):
         outer.addLayout(btn_row)
         return outer
 
-    def set_preview_widgets(self, plot_widget, plot_item, placeholder):
+    def set_preview_widgets(
+        self, plot_widget: pg.PlotWidget, plot_item: pg.PlotItem, placeholder: QLabel
+    ):
         """Receive preview plot widgets owned by the parent dialog."""
         self._preview_plot = plot_widget
         self._preview_plot_item = plot_item
         self._preview_placeholder = placeholder
 
-    def _add_screenable_row(self, form, key, label, default=0.0, step=0.1):
+    def _add_screenable_row(
+        self,
+        form: QFormLayout,
+        key: str,
+        label: str,
+        default: float = 0.0,
+        step: float = 0.1,
+    ):
         row = QWidget()
         row_layout = QHBoxLayout(row)
         row_layout.setContentsMargins(0, 0, 0, 0)
@@ -402,7 +411,9 @@ class ConfigurePanel(QScrollArea):
 
         form.addRow(f"{label}:", row)
 
-    def _add_coupling_section(self, parent_form, coupling_key, coupling_def):
+    def _add_coupling_section(
+        self, parent_form: QFormLayout, coupling_key: str, coupling_def: dict
+    ):
         header = QWidget()
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(0, 0, 0, 0)
@@ -440,7 +451,11 @@ class ConfigurePanel(QScrollArea):
         parent_form.addRow(mode_stack)
         mode_stack.setVisible(False)
 
-        def _on_checkbox(state, mc=mode_combo, mpk=mode_param_keys):
+        def _on_checkbox(
+            state: int,
+            mc: QComboBox = mode_combo,
+            mpk: dict[str, list[str]] = mode_param_keys,
+        ):
             enabled = bool(state)
             mc.setEnabled(enabled)
             mode_stack.setVisible(enabled)
@@ -453,7 +468,7 @@ class ConfigurePanel(QScrollArea):
 
         cb.stateChanged.connect(_on_checkbox)
 
-        def _on_mode_switch(idx, mpk=mode_param_keys):
+        def _on_mode_switch(idx: int, mpk: dict[str, list[str]] = mode_param_keys):
             mode_stack.setCurrentIndex(idx)
             for mode, keys in mpk.items():
                 if mode != mode_combo.currentText():
@@ -470,7 +485,7 @@ class ConfigurePanel(QScrollArea):
             "mode_param_keys": mode_param_keys,
         }
 
-    def _set_hmff_volume_visible(self, visible):
+    def _set_hmff_volume_visible(self, visible: bool):
         """Show/hide HMFF volume-dependent form rows."""
         for widget in self._hmff_dep_widgets:
             widget.setVisible(visible)
@@ -661,7 +676,7 @@ class ConfigurePanel(QScrollArea):
             self._param_widgets["use_filters"].setChecked(False)
         self._update_combo_summary()
 
-    def _toggle_filter_inputs(self, state):
+    def _toggle_filter_inputs(self, state: int):
         show = state == Qt.CheckState.Checked.value
         for widget in self._filter_dep_widgets:
             widget.setVisible(show)
@@ -761,7 +776,7 @@ class ConfigurePanel(QScrollArea):
             "C_g0": "C\u2080",
         }
 
-        def _short(key):
+        def _short(key: str):
             if "__" in key:
                 key = key.rsplit("__", 1)[-1]
             return _SHORT_NAMES.get(key, key)
@@ -860,7 +875,7 @@ class ConfigurePanel(QScrollArea):
 
         screen_params = self._get_screen_params()
 
-        def _screen_or_fixed(key):
+        def _screen_or_fixed(key: str):
             if key in screen_params:
                 return "{{" + f"{key}:{screen_params[key]}" + "}}"
             return get_widget_value(self._param_widgets[key])
@@ -962,7 +977,7 @@ class ConfigurePanel(QScrollArea):
             )
 
         output = Path(output)
-        mesh_name = _setup_screen_dir(output, mesh)
+        _setup_screen_dir(output, mesh)
         (output / "screen.dts").write_text(content, encoding="utf-8")
 
     def _run_screen(self):
@@ -978,13 +993,13 @@ class ConfigurePanel(QScrollArea):
 
         return self._generate_screen(mesh, output)
 
-    def _generate_screen(self, mesh, output):
+    def _generate_screen(self, mesh: str, output: str):
         from ..dts import generate_screen
         from ..parallel import submit_task
 
         dts_content = self._build_dts_content()
 
-        def _on_done(result):
+        def _on_done(result: dict | None):
             if isinstance(result, dict):
                 self.screenGenerated.emit(output)
 

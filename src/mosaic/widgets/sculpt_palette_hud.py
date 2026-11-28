@@ -6,8 +6,10 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from qtpy.QtCore import QCoreApplication, QEvent, QPoint, Qt, Signal
-from qtpy.QtGui import QColor, QPainter, QPen
+from typing import TYPE_CHECKING
+
+from qtpy.QtCore import QCoreApplication, QEvent, QObject, QPoint, Qt, Signal
+from qtpy.QtGui import QColor, QEnterEvent, QPainter, QPaintEvent, QPen, QShowEvent
 from qtpy.QtWidgets import (
     QButtonGroup,
     QHBoxLayout,
@@ -19,6 +21,9 @@ from qtpy.QtWidgets import (
 from ..sculpt.session import TOOLS
 from ..stylesheets import Colors, Typography
 from .sliders import SliderRow
+
+if TYPE_CHECKING:
+    from ..gui import App
 
 __all__ = ["SculptPaletteHUD"]
 
@@ -85,7 +90,7 @@ class SculptPaletteHUD(QWidget):
     _RADIUS = 6
     _MARGIN = 12
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowFlags(
             self.windowFlags()
@@ -232,7 +237,7 @@ class SculptPaletteHUD(QWidget):
     def current_strength(self) -> float:
         return float(self._strength_row.value())
 
-    def attach(self, app):
+    def attach(self, app: "App"):
         """Attach the HUD to the application and its viewport container.
 
         Parameters
@@ -250,7 +255,7 @@ class SculptPaletteHUD(QWidget):
 
         self._reposition()
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent):
         viewport_parent = getattr(self, "_viewport_parent", None)
         top_window = getattr(self, "_top_window", None)
         if viewport_parent is None and top_window is None:
@@ -274,7 +279,7 @@ class SculptPaletteHUD(QWidget):
                 self.show()
         return super().eventFilter(obj, event)
 
-    def showEvent(self, event):
+    def showEvent(self, event: QShowEvent):
         super().showEvent(event)
         self._reposition()
 
@@ -301,17 +306,17 @@ class SculptPaletteHUD(QWidget):
         y = top_left.y() + vp.height() - h - self._MARGIN
         self.setGeometry(x, y, w, h)
 
-    def enterEvent(self, event):
+    def enterEvent(self, event: QEnterEvent):
         self._hovered = True
         self.update()
         super().enterEvent(event)
 
-    def leaveEvent(self, event):
+    def leaveEvent(self, event: QEvent):
         self._hovered = False
         self.update()
         super().leaveEvent(event)
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = self.rect().adjusted(1, 1, -1, -1)

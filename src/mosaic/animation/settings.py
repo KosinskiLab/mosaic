@@ -1,3 +1,6 @@
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -21,11 +24,14 @@ from mosaic.icons import icon
 from mosaic.stylesheets import Colors
 from mosaic.widgets import create_setting_widget
 
+if TYPE_CHECKING:
+    from .animations import BaseAnimation
+
 
 class AnimationSettings(QGroupBox):
     animationChanged = Signal(dict)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__("Track Settings", parent)
         self.animation = None
         self.parameter_widgets = {}
@@ -121,7 +127,7 @@ class AnimationSettings(QGroupBox):
         for label in self._param_labels:
             label.setStyleSheet(muted)
 
-    def _on_rate_changed(self, rate):
+    def _on_rate_changed(self, rate: float):
         if not self.animation:
             return None
         self.animation.set_rate(rate)
@@ -129,7 +135,7 @@ class AnimationSettings(QGroupBox):
         self.animationChanged.emit({"rate": rate})
         return None
 
-    def _on_duration_changed(self, frames):
+    def _on_duration_changed(self, frames: int):
         if not self.animation:
             return None
         self.animation.set_duration(frames)
@@ -154,7 +160,7 @@ class AnimationSettings(QGroupBox):
         self.rate_spin.setVisible(has_rate)
         return None
 
-    def set_animation(self, animation):
+    def set_animation(self, animation: "BaseAnimation"):
         self.animation = animation
 
         # Block signals during setup to avoid triggering changes
@@ -186,7 +192,10 @@ class AnimationSettings(QGroupBox):
             if widget_settings["type"] == "button":
                 widget = QPushButton(widget_settings["text"])
 
-                def _on_button(_checked, cb=widget_settings["callback"]):
+                def _on_button(
+                    _checked: bool,
+                    cb: Callable[[], object] = widget_settings["callback"],
+                ):
                     cb(_checked)
                     if self.animation:
                         self.set_animation(self.animation)
@@ -222,7 +231,7 @@ class AnimationSettings(QGroupBox):
             self.params_layout.addRow(f"{label_clean}:", widget)
             self.parameter_widgets[label] = widget
 
-    def on_change(self, value, key):
+    def on_change(self, value: Any, key: str):
         if not self.animation:
             return None
 
@@ -256,7 +265,7 @@ class ExportDialog(QDialog):
         total_frames: int = 300,
         current_width: int = 1280,
         current_height: int = 720,
-        parent=None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.setWindowTitle("Export Animation")

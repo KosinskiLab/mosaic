@@ -6,9 +6,12 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+from collections.abc import Callable, Iterable
 from os.path import exists
+from typing import Any
 
 from qtpy.QtCore import Qt, Signal
+from qtpy.QtGui import QShowEvent
 from qtpy.QtWidgets import (
     QDialog,
     QFileDialog,
@@ -34,7 +37,7 @@ from ..widgets import (
 from ..widgets.segmented_control import SegmentedControl
 
 
-def tuple_or_value(v):
+def tuple_or_value(v: Any):
     """Coerce scalars to a 3-tuple of themselves; pass tuples through."""
     if isinstance(v, (tuple, list)):
         return tuple(v)
@@ -44,7 +47,12 @@ def tuple_or_value(v):
 class GeometryPropertiesDialog(QDialog):
     parametersChanged = Signal(dict)
 
-    def __init__(self, initial_properties=None, parent=None, anchor=None):
+    def __init__(
+        self,
+        initial_properties: dict | Iterable[dict] | None = None,
+        parent: QWidget | None = None,
+        anchor: QWidget | None = None,
+    ):
         super().__init__(parent)
         self.setWindowTitle("Properties")
         self.setFixedWidth(400)
@@ -157,7 +165,7 @@ class GeometryPropertiesDialog(QDialog):
             else:
                 self._initially_unanimous.add("scale")
 
-    def _widget_is_indeterminate(self, widget) -> bool:
+    def _widget_is_indeterminate(self, widget: QWidget) -> bool:
         """Indeterminate check that works for both widget-owned and dialog-tracked widgets."""
         if hasattr(widget, "is_indeterminate"):
             return widget.is_indeterminate()
@@ -179,7 +187,7 @@ class GeometryPropertiesDialog(QDialog):
             widget = widget.parentWidget()
         return self._anchor
 
-    def showEvent(self, event):
+    def showEvent(self, event: QShowEvent):
         super().showEvent(event)
         self.setFocus(Qt.FocusReason.OtherFocusReason)
 
@@ -407,10 +415,10 @@ class GeometryPropertiesDialog(QDialog):
             lambda *args: self.emit_parameters(), interval_ms=150
         )
 
-        def mark_and_throttle(field):
+        def mark_and_throttle(field: str):
             return lambda *_: (self._touched.add(field), self._emit_throttle())
 
-        def mark_and_emit(field):
+        def mark_and_emit(field: str):
             return lambda *_: (self._touched.add(field), self.emit_parameters())
 
         self.size_spin.valueChanged.connect(self._on_size_changed)
@@ -432,14 +440,14 @@ class GeometryPropertiesDialog(QDialog):
 
         self.attach_button.clicked.connect(self.reattach_emit)
 
-    def _on_size_changed(self, _value):
+    def _on_size_changed(self, _value: float):
         if self.size_spin in self._indeterminate_widgets:
             self._indeterminate_widgets.discard(self.size_spin)
             self.size_spin.setSpecialValueText("")
         self._touched.add("size")
         self._emit_throttle()
 
-    def _on_scale_changed(self, _value):
+    def _on_scale_changed(self, _value: float):
         # A scale toggle requires reloading the volume so the data is actually
         # re-multiplied; bare appearance updates ignore `scale`.
         self._touched.add("scale")
@@ -448,7 +456,7 @@ class GeometryPropertiesDialog(QDialog):
             parameters["volume_path"] = self.volume_path
         self.parametersChanged.emit(parameters)
 
-    def _on_sampling_changed(self, widget, axis_key: str):
+    def _on_sampling_changed(self, widget: QWidget, axis_key: str):
         if widget in self._indeterminate_widgets:
             # Programmatic clears send empty text; only the user typing a value
             # should clear the indeterminate state.
@@ -459,13 +467,13 @@ class GeometryPropertiesDialog(QDialog):
         self._touched.add(axis_key)
         self._emit_throttle()
 
-    def _on_sampling_x_changed(self, _text):
+    def _on_sampling_x_changed(self, _text: str):
         self._on_sampling_changed(self.sampling_x, "_sampling_x")
 
-    def _on_sampling_y_changed(self, _text):
+    def _on_sampling_y_changed(self, _text: str):
         self._on_sampling_changed(self.sampling_y, "_sampling_y")
 
-    def _on_sampling_z_changed(self, _text):
+    def _on_sampling_z_changed(self, _text: str):
         self._on_sampling_changed(self.sampling_z, "_sampling_z")
 
     def reattach_emit(self):
@@ -556,7 +564,7 @@ class GeometryPropertiesDialog(QDialog):
         """
         out: dict = {}
 
-        def include(field, widget, getter):
+        def include(field: str, widget: QWidget, getter: Callable[[], object]):
             if self._widget_is_indeterminate(widget):
                 return
             if field not in self._touched and field not in self._initially_unanimous:

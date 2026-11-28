@@ -7,11 +7,14 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
 import functools
+from os import PathLike
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pyqtgraph as pg
 from qtpy.QtCore import Qt
+from qtpy.QtGui import QCloseEvent
 from qtpy.QtWidgets import (
     QDialog,
     QGroupBox,
@@ -36,13 +39,18 @@ from .analysis_panel import AnalysisPanel
 from .compute_panel import ComputePanel
 from .configure_panel import ConfigurePanel
 
+if TYPE_CHECKING:
+    from ..data import MosaicData
+
 __all__ = ["DTSScreeningDialog"]
 
 
 class DTSScreeningDialog(QDialog):
     """DTS parameter screening and analysis dialog."""
 
-    def __init__(self, cdata=None, parent=None):
+    def __init__(
+        self, cdata: "MosaicData | None" = None, parent: QWidget | None = None
+    ):
         super().__init__(parent)
         self.setWindowFlags(
             Qt.WindowType.Window
@@ -206,7 +214,7 @@ class DTSScreeningDialog(QDialog):
         ids = self._get_selected_run_ids()
         return ids if ids else self._analysis_panel.available_run_ids()
 
-    def _get_run_dir(self, run_id):
+    def _get_run_dir(self, run_id: str):
         """Return the run directory path for a run ID, or None."""
         results = self._analysis_panel.screen_results
         if not results:
@@ -247,7 +255,7 @@ class DTSScreeningDialog(QDialog):
                 selected.add(run_item.text())
         return list(selected)
 
-    def _load_screen_overview(self, screen_dir=None):
+    def _load_screen_overview(self, screen_dir: str | PathLike[str] | None = None):
         from ..dts import get_screen_status
 
         if not screen_dir:
@@ -282,7 +290,7 @@ class DTSScreeningDialog(QDialog):
         header.setSectionResizeMode(actions_col, QHeaderView.ResizeMode.Fixed)
         self._overview_table.setColumnWidth(actions_col, 64)
 
-        def _make_item(text):
+        def _make_item(text: str):
             item = QTableWidgetItem(str(text))
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             return item
@@ -424,7 +432,7 @@ class DTSScreeningDialog(QDialog):
             vertex_props,
         )
 
-    def _on_trajectory_loaded(self, frames, run_id: str, scale: float):
+    def _on_trajectory_loaded(self, frames: list[dict], run_id: str, scale: float):
         """GUI-thread callback: construct GeometryTrajectory and add it."""
         if not frames or self.cdata is None:
             return None
@@ -443,6 +451,6 @@ class DTSScreeningDialog(QDialog):
         self.cdata.models.data_changed.emit()
         self.cdata.models.render()
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         self._preview_plot.close()
         super().closeEvent(event)

@@ -1,12 +1,18 @@
 import json
 import warnings
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from .records import GeometryData
 
+if TYPE_CHECKING:
+    from ..geometry import Geometry
+    from .records import VertexPropertyContainer
 
-def _coerce_records(geometries) -> list[GeometryData]:
+
+def _coerce_records(geometries: "list[Geometry]") -> list[GeometryData]:
     """Build per-geometry records for the writers.
 
     Parameters
@@ -35,7 +41,7 @@ def _coerce_records(geometries) -> list[GeometryData]:
     return records
 
 
-def _prepare_oriented_points(records, sampling):
+def _prepare_oriented_points(records: Sequence[GeometryData], sampling: float | None):
     """Scale, synthesize quaternions, and concatenate records for STAR/TSV.
 
     Parameters
@@ -76,7 +82,7 @@ def _prepare_oriented_points(records, sampling):
     }
 
 
-def _ensure_quaternions(rec):
+def _ensure_quaternions(rec: GeometryData):
     """Return ``rec.quaternions``, synthesizing from normals when absent.
 
     Parameters
@@ -100,14 +106,14 @@ def _ensure_quaternions(rec):
 
 
 def _write_orientations(
-    points,
-    quaternions,
-    entities,
-    path,
-    file_format,
+    points: np.ndarray,
+    quaternions: np.ndarray,
+    entities: np.ndarray,
+    path: str,
+    file_format: str,
     *,
-    vertex_properties=None,
-    optics=None,
+    vertex_properties: "VertexPropertyContainer | None" = None,
+    optics: dict | None = None,
     **kwargs,
 ):
     """Convert oriented points to ZYZ Eulers and write via ``tme.Orientations``.
@@ -219,7 +225,14 @@ def write_topology_file(file_path: str, data: dict, tsi_format: bool = False) ->
         ofile.write(inclusion_string)
 
 
-def write_star(records, path, sampling, shape=None, relion_5_format=False, **_):
+def write_star(
+    records: Sequence[GeometryData],
+    path: str,
+    sampling: float,
+    shape: Sequence[int] | None = None,
+    relion_5_format: bool = False,
+    **_,
+):
     """Write records to a STAR file.
 
     Parameters
@@ -274,7 +287,7 @@ def write_star(records, path, sampling, shape=None, relion_5_format=False, **_):
     )
 
 
-def write_tsv(records, path, sampling, **_):
+def write_tsv(records: Sequence[GeometryData], path: str, sampling: float, **_):
     """Write records to a tab-separated orientation file.
 
     Parameters
@@ -297,7 +310,7 @@ def write_tsv(records, path, sampling, **_):
     )
 
 
-def write_xyz(records, path, sampling, **_):
+def write_xyz(records: Sequence[GeometryData], path: str, sampling: float, **_):
     """Write records to a plain ``x,y,z`` CSV file.
 
     Parameters
@@ -313,7 +326,7 @@ def write_xyz(records, path, sampling, **_):
     np.savetxt(path, prepared["points"], delimiter=",", header="x,y,z", comments="")
 
 
-def write_ndjson(records, path, sampling, **_):
+def write_ndjson(records: Sequence[GeometryData], path: str, sampling: float, **_):
     """Write records as newline-delimited JSON oriented-point records.
 
     Parameters
@@ -350,7 +363,7 @@ def write_ndjson(records, path, sampling, **_):
         f.write("\n".join(lines) + "\n")
 
 
-def write_meshes(records, path, **_):
+def write_meshes(records: Sequence[GeometryData], path: str, **_):
     """Write fitted mesh models to disk, merging records for single-file output.
 
     Records without a mesh-bearing model are skipped; if none remain,
@@ -374,7 +387,14 @@ def write_meshes(records, path, **_):
     merge(models).to_file(path)
 
 
-def write_volume(records, path, *, shape, sampling, **_):
+def write_volume(
+    records: Sequence[GeometryData],
+    path: str,
+    *,
+    shape: Sequence[int],
+    sampling: float,
+    **_,
+):
     """Render records into a single labeled volume at the given sampling.
 
     Each record paints with its 1-based index as the label value; the
@@ -447,12 +467,12 @@ def resolve_writer(file_format: str):
 
 
 def write_geometries(
-    geometries,
-    file_path,
+    geometries: "list[Geometry]",
+    file_path: str | list[str],
     *,
     format: str = "star",
-    shape=None,
-    sampling: float = None,
+    shape: Sequence[int] | None = None,
+    sampling: float | None = None,
     relion_5_format: bool = False,
 ) -> None:
     """Export geometries to file.

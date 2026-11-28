@@ -9,6 +9,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 from qtpy.QtCore import (
     QCoreApplication,
     QEvent,
+    QObject,
     QPoint,
     QPointF,
     QRect,
@@ -20,9 +21,11 @@ from qtpy.QtCore import (
 from qtpy.QtGui import (
     QBrush,
     QColor,
+    QKeyEvent,
     QMouseEvent,
     QPainter,
     QPainterPath,
+    QPaintEvent,
     QPen,
     QRegion,
 )
@@ -55,7 +58,7 @@ _TOOLTIP_MARGIN = 16
 class TooltipPanel(QFrame):
     action_clicked = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("onboarding_tooltip")
         self.setFrameShape(QFrame.Shape.NoFrame)
@@ -211,16 +214,15 @@ class SpotlightOverlay(QWidget):
         )
         self.hide()
 
-    def _on_application_state_changed(self, state):
+    def _on_application_state_changed(self, state: Qt.ApplicationState):
         if state == Qt.ApplicationState.ApplicationActive:
             if self._was_visible:
                 self._was_visible = False
                 self.show()
                 self.raise_()
-        elif state == Qt.ApplicationState.ApplicationInactive:
-            if self.isVisible():
-                self._was_visible = True
-                self.hide()
+        elif state == Qt.ApplicationState.ApplicationInactive and self.isVisible():
+            self._was_visible = True
+            self.hide()
 
     def activate(self):
         self._sync_geometry()
@@ -244,29 +246,34 @@ class SpotlightOverlay(QWidget):
         geo = self._host.geometry()
         self.setGeometry(geo)
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent):
         if obj is self._host:
-            if event.type() in (
-                QEvent.Type.Move,
-                QEvent.Type.Resize,
-                QEvent.Type.WindowStateChange,
+            if (
+                event.type()
+                in (
+                    QEvent.Type.Move,
+                    QEvent.Type.Resize,
+                    QEvent.Type.WindowStateChange,
+                )
+                and self.isVisible()
             ):
-                if self.isVisible():
-                    self._sync_geometry()
-                    if self._spotlight_global:
-                        local = self.mapFromGlobal(self._spotlight_global.topLeft())
-                        self._spotlight_rect = QRect(
-                            local, self._spotlight_global.size()
-                        )
-                        self._update_input_mask()
-                        self.update()
-        elif obj is self._spotlight_widget and event.type() in (
-            QEvent.Type.Resize,
-            QEvent.Type.Move,
-            QEvent.Type.Show,
+                self._sync_geometry()
+                if self._spotlight_global:
+                    local = self.mapFromGlobal(self._spotlight_global.topLeft())
+                    self._spotlight_rect = QRect(local, self._spotlight_global.size())
+                    self._update_input_mask()
+                    self.update()
+        elif (
+            obj is self._spotlight_widget
+            and event.type()
+            in (
+                QEvent.Type.Resize,
+                QEvent.Type.Move,
+                QEvent.Type.Show,
+            )
+            and self.isVisible()
         ):
-            if self.isVisible():
-                self._spotlight_resize_timer.start()
+            self._spotlight_resize_timer.start()
         return False
 
     def _reapply_spotlight(self):
@@ -408,7 +415,7 @@ class SpotlightOverlay(QWidget):
         self.tooltip.move(pos)
         self.tooltip.show()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -439,7 +446,7 @@ class SpotlightOverlay(QWidget):
 
         painter.end()
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         if self._spotlight_rect and self._spotlight_rect.contains(event.pos()):
             global_pos = self.mapToGlobal(event.pos())
             target = self._host.childAt(self._host.mapFromGlobal(global_pos))
@@ -455,13 +462,13 @@ class SpotlightOverlay(QWidget):
                 QCoreApplication.sendEvent(target, forwarded)
         event.accept()
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent):
         event.accept()
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent):
         event.accept()
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key.Key_Escape:
             self.skip_requested.emit()
         else:
