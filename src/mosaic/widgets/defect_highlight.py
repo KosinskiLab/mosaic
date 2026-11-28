@@ -76,10 +76,13 @@ class DefectHighlight:
         self._actor, self.defect = actor, defect
 
         target = vertices[defect.vertices].mean(axis=0)
-        direction = target - vertices.mean(axis=0)
-        direction /= max(np.linalg.norm(direction), np.finfo(float).eps)
-        distance = 2.5 * np.ptp(vertices, axis=0).max()
+        tri = vertices[patch]
+        direction = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]).sum(axis=0)
         camera = self.renderer.GetActiveCamera()
+        if np.linalg.norm(direction) < np.finfo(float).eps:
+            direction = np.subtract(camera.GetPosition(), camera.GetFocalPoint())
+        direction = direction / np.linalg.norm(direction)
+        distance = 2.5 * np.ptp(vertices, axis=0).max()
         camera.SetFocalPoint(*target)
         camera.SetPosition(*(target + direction * distance))
         self.renderer.ResetCameraClippingRange()

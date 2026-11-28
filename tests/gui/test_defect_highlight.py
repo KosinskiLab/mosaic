@@ -42,3 +42,23 @@ def test_camera_looks_at_the_defect_from_outside():
     np.testing.assert_allclose(camera.GetFocalPoint(), target, atol=1e-6)
     outward = target - vs.mean(0)
     assert np.dot(np.subtract(camera.GetPosition(), target), outward) > 0
+
+
+def test_camera_backs_off_from_a_hole_in_the_middle_of_a_sheet():
+    n = 11
+    xs, ys = np.meshgrid(np.arange(n, dtype=float), np.arange(n, dtype=float))
+    vs = np.stack([xs.ravel(), ys.ravel(), np.zeros(n * n)], axis=1)
+    fs = []
+    for i in range(n - 1):
+        for j in range(n - 1):
+            if 4 <= i <= 5 and 4 <= j <= 5:
+                continue
+            a, b, c, d = i * n + j, i * n + j + 1, (i + 1) * n + j, (i + 1) * n + j + 1
+            fs += [[a, b, d], [a, d, c]]
+    fs = np.array(fs)
+    defect = check_mesh(vs, fs)[0]
+    renderer = vtk.vtkRenderer()
+    DefectHighlight(renderer).show(vs, fs, defect)
+    camera = renderer.GetActiveCamera()
+    offset = np.subtract(camera.GetPosition(), camera.GetFocalPoint())
+    assert np.linalg.norm(offset) > 1
